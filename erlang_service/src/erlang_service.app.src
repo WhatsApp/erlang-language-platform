@@ -1,0 +1,14 @@
+{application, erlang_service, [
+    {description, "An escript"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        edoc,
+        xmerl
+    ]},
+    {env, []},
+    {modules, []},
+    {links, []}
+]}.

@@ -1,0 +1,9 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests/..." ]
+excluded_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests:test_elp_ignored" ]
+source_root = "whatsapp/elp/test_projects/buck_tests"
+
+[eqwalizer]
+enable_all = false

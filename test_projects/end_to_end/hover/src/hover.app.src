@@ -1,0 +1,3 @@
+{application, hover,
+  [{description, "dummy app for hover tests"}, {vsn, "1.0.0"}, {applications, [kernel, stdlib]}]
+}.

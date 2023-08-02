@@ -1,0 +1,4 @@
+file specified: {project_path}/app_a/src/diagnostics_warnings.escript
+Diagnostics reported in 1 modules:
+  diagnostics_warnings.escript: 1
+      23:0-23:6::[Warning] [L1230] function unused/0 is unused

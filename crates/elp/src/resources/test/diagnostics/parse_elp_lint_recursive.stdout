@@ -1,0 +1,45 @@
+module specified: lint_recursive
+Diagnostics reported in 1 modules:
+  lint_recursive: 1
+      10:4-10:20::[Warning] [W0007] match is redundant
+---------------------------------------------
+
+Applying fix in module 'lint_recursive' for
+      10:4-10:20::[Warning] [W0007] match is redundant
+@@ -8,7 +8,7 @@
+ 
+ test_foo(Config) ->
+     do_something(),
+-    Config1 = Config,
++    Config,
+     clean_mocks().
+ 
+ clean_mocks() ->
+
+---------------------------------------------
+
+Applying fix in module 'lint_recursive' for
+      10:4-10:10::[Warning] [W0006] this statement has no effect
+@@ -8,7 +8,6 @@
+ 
+ test_foo(Config) ->
+     do_something(),
+-    Config,
+     clean_mocks().
+ 
+ clean_mocks() ->
+
+---------------------------------------------
+
+Applying fix in module 'lint_recursive' for
+      8:9-8:15::[Warning] [W0010] this variable is unused
+@@ -6,7 +6,7 @@
+     ok,
+     ok.
+ 
+-test_foo(Config) ->
++test_foo(_Config) ->
+     do_something(),
+     clean_mocks().
+ 
+

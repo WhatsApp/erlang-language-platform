@@ -1,0 +1,8 @@
+module specified: diagnostics
+Diagnostics reported in 1 modules:
+  diagnostics: 5
+      3:0-3:35::[Warning] [L1500] Unused file: broken_diagnostics.hrl
+      3:0-3:0::[Error] [L0000] Issue in included file
+      5:30-5:44::[Error] [L1295] type undefined_type() undefined
+      6:0-6:4::[Warning] [L1230] function main/1 is unused
+      9:0-9:3::[Warning] [L1230] function foo/0 is unused

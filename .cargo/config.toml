@@ -1,0 +1,14 @@
+[alias]
+xtask = "run --package xtask --"
+
+# @fb-only: [build]
+# @fb-only: target-dir = "../../../buck-out/elp"
+
+[profile.release]
+lto = "thin"
+strip = true
+
+# Workaround to easily locate workspace root
+# See https://github.com/rust-lang/cargo/issues/3946
+[env]
+CARGO_WORKSPACE_DIR = {value = "", relative = true}

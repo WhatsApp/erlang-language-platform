@@ -1,0 +1,9 @@
+{application, test_elp,
+ [{description, "desc"},
+  {vsn, "1.0.0"},
+  {applications,
+   [kernel,
+    stdlib,
+    test_elp_direct_dep
+   ]}
+ ]}.

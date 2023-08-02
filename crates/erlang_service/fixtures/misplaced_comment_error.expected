@@ -1,0 +1,81 @@
+AST
+{attribute,{0,0},file,{"fixtures/misplaced_comment_error.erl",0}}.
+{attribute,{0,32},module,misplaced_comment_error}.
+{function,{35,111},
+          bad_hint_arg,0,
+          [{clause,{35,111},
+                   [],[],
+                   [{call,{55,111},
+                          {atom,{55,58},get},
+                          [{atom,{104,107},key}]}]}]}.
+{function,
+    {114,248},
+    bad_hint_comprehension,0,
+    [{clause,
+         {114,248},
+         [],[],
+         [{match,
+              {147,158},
+              {var,{144,146},'L0'},
+              {cons,
+                  {149,158},
+                  {integer,{150,151},1},
+                  {cons,
+                      {151,158},
+                      {integer,{153,154},2},
+                      {cons,
+                          {154,158},
+                          {integer,{156,157},3},
+                          {nil,{157,158}}}}}},
+          {match,
+              {165,242},
+              {var,{162,164},'L1'},
+              {lc,{167,242},
+                  {var,{173,174},'X'},
+                  [{generate,
+                       {178,185},
+                       {var,{178,179},'X'},
+                       {var,{183,185},'L0'}},
+                   {op,{233,238},
+                       '>',
+                       {var,{233,234},'X'},
+                       {integer,{237,238},1}}]}},
+          {var,{246,248},'L1'}]}]}.
+{eof,{250,250}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/misplaced_comment_error.erl",0}}.
+{attribute,{0,32},module,misplaced_comment_error}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "fixtures/misplaced_comment_error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    35..111,
+                ),
+            ),
+        ),
+        msg: "function bad_hint_arg/0 is unused",
+        code: "L1230",
+    },
+    ParseError {
+        path: "fixtures/misplaced_comment_error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    114..248,
+                ),
+            ),
+        ),
+        msg: "function bad_hint_comprehension/0 is unused",
+        code: "L1230",
+    },
+]
+
+ERRORS
+[]

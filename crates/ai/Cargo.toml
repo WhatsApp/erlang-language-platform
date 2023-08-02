@@ -1,0 +1,17 @@
+[package]
+name = "elp_ai"
+edition.workspace = true
+version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow.workspace = true
+crossbeam-channel.workspace = true
+log.workspace = true
+stdx.workspace = true
+jod-thread.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]

@@ -1,0 +1,4 @@
+module specified: app_a
+Diagnostics reported in 1 modules:
+  app_a: 1
+      8:0-8:4::[Error] [P1700] head mismatch 'fooX' vs 'food'

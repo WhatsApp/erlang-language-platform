@@ -1,0 +1,28 @@
+[package]
+name = "elp_syntax"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+cov-mark.workspace = true
+eetf.workspace = true
+fxhash.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+log.workspace = true
+num-derive.workspace = true
+num-traits.workspace = true
+once_cell.workspace = true
+profile.workspace = true
+rowan.workspace = true
+smol_str.workspace = true
+stdx.workspace = true
+text-edit.workspace = true
+tree-sitter.workspace = true
+tree-sitter-erlang.workspace = true
+
+[dev-dependencies]
+# For testing of abstract forms line number conversion
+elp_ide_db = { path = "../ide_db" }
+
+expect-test.workspace = true

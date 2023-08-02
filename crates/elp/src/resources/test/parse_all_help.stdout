@@ -1,0 +1,9 @@
+Usage: [--project PROJECT] --to ARG [--as PROFILE] [--module MODULE] [--buck]
+
+Available options:
+        --project <PROJECT>  Path to directory with project (defaults to `.`)
+        --to <ARG>           Path to a directory where to dump .etf files
+        --as <PROFILE>       Rebar3 profile to pickup (default is test)
+        --module <MODULE>    Parse a single module from the project, not the entire project
+        --buck               Run with buck
+    -h, --help               Prints help information

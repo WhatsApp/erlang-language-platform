@@ -1,0 +1,65 @@
+{
+  "comments": {
+    "lineComment": "%"
+  },
+  "brackets": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"]
+  ],
+  "autoClosingPairs": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+    {"open": "'", "close": "'", "notIn": ["string", "comment"]},
+    {"open": "\"", "close": "\"", "notIn": ["string"]},
+    {"open": "<<\"", "close": "\">>", "notIn": ["string"]}
+  ],
+  "surroundingPairs": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+    ["'", "'"],
+    ["\"", "\""]
+  ],
+  "indentationRules": {
+    "increaseIndentPattern": "^((?!%).)*([{([]|->|after|begin|case|catch|else|fun|if|maybe|of|receive|try|when|(\\|\\|.*))\\s*$",
+    "decreaseIndentPattern": "^\\s*([)}\\]]|else|end|->\\s*$)",
+    "indentNextLinePattern": "^((?!%).)*(::|=>|:=|<-)\\s*$"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^((?!%).)*[;.]",
+      "action": {
+        "indent": "outdent"
+      }
+    },
+    {
+      "beforeText": "^\\s*%%%",
+      "action": {
+        "indent": "none",
+        "appendText": "%%% "
+      }
+    },
+    {
+      "beforeText": "^\\s*%%",
+      "action": {
+        "indent": "none",
+        "appendText": "%% "
+      }
+    },
+    {
+      "beforeText": "^\\s*%",
+      "action": {
+        "indent": "none",
+        "appendText": "% "
+      }
+    },
+    {
+      "beforeText": "^$",
+      "action": {
+        "indent": "outdent"
+      }
+    }
+  ]
+}

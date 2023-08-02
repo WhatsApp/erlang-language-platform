@@ -1,0 +1,11 @@
+erlang_application(
+    name = "test_elp_flat_inside_target",
+    srcs = glob([
+        "*.erl",
+    ]),
+    includes = glob([
+        "*.hrl",
+    ]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)

@@ -1,0 +1,32 @@
+[package]
+name = "elp_ide"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+elp_ide_assists.workspace = true
+elp_ide_completion.workspace = true
+elp_ide_db.workspace = true
+elp_project_model.workspace = true
+elp_syntax.workspace = true
+hir.workspace = true
+
+anyhow.workspace = true
+fxhash.workspace = true
+imara-diff.workspace = true
+itertools.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+profile.workspace = true
+regex.workspace = true
+smallvec.workspace = true
+stdx.workspace = true
+strsim.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+text-edit.workspace = true
+triple_accel.workspace = true
+
+[dev-dependencies]
+env_logger.workspace = true
+expect-test.workspace = true

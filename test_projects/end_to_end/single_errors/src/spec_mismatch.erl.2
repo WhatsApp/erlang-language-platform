@@ -1,0 +1,16 @@
+% To reproduce T106706879.
+% This file correspond to the second state of the file,
+% after user edit. A plain file allows us to mimick
+% workspace change by simply copying files (which we
+% need to do anyway since some analysis are done from
+% on-disc version of the module).
+% Using .<N> suffix in filename prevents the file to
+% be seen as part of the initial erlang modules.
+-module(spec_mismatch).
+-compile(warn_missing_spec).
+-typing([eqwalizer]).
+-export([foo/0]).
+-spec foo() -> ok.
+foo() ->
+    % Dummy comment
+       green.

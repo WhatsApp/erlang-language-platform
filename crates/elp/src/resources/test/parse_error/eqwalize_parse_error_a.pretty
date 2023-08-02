@@ -1,0 +1,11 @@
+error: incompatible_types
+   ┌─ parse_error_a/src/parse_error_a.erl:15:5
+   │
+15 │     X.
+   │     ^ X.
+Expression has type:   [number()]
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+1 ERROR

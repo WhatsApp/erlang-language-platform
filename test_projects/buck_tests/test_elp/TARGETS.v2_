@@ -1,0 +1,77 @@
+load("@prelude//erlang:erlang_utils.bzl", "file_mapping")
+
+erlang_application(
+    name = "test_elp",
+    srcs = glob([
+        "src/*.erl",
+    ]),
+    app_src = "src/test_elp.app.src",
+    applications = [
+        "//whatsapp/elp/test_projects/buck_tests/test_elp_direct_dep:test_elp_direct_dep",
+        "//whatsapp/elp/test_projects/buck_tests:test_elp_no_private_headers",
+        "//whatsapp/elp/test_projects/buck_tests:test_elp_no_public_headers",
+        "//whatsapp/elp/test_projects/buck_tests:test_elp_flat_outside_target",
+        "//whatsapp/elp/test_projects/buck_tests/test_elp_flat_inside_target:test_elp_flat_inside_target",
+    ],
+    includes = glob(["include/*.hrl"]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)
+
+erlang_tests(
+    contacts = ["whatsapp"],
+    labels = ["unit"],
+    resources = [":test_resources"],
+    suites = [
+        "test/test_elp_SUITE.erl",
+    ],
+    deps = [
+        ":test_elp",
+        ":test_elp_test_utils",
+        ":test_elp_unittest_deps",
+    ],
+)
+
+file_mapping(
+    name = "test_resources",
+    mapping = {
+        "res": glob(["test/test_elp_SUITE_data/*"]),
+    },
+)
+
+erlang_application(
+    name = "test_elp_unittest_deps",
+    applications = [
+        "stdlib",
+        "prelude//erlang/common_test/common:common",
+    ],
+    labels = [
+        "test_application",
+        "unit_test_deps",
+    ],
+    resources = [":test_resources"],
+)
+
+erlang_application(
+    name = "test_elp_test_utils",
+    srcs = [
+        "test/test_elp_test_utils.erl",
+    ],
+    applications = [
+        ":test_elp",
+    ],
+    includes = glob(["test/*.hrl"]),
+    labels = [
+        "test_application",
+        "test_utils",
+    ],
+)
+
+erlang_application(
+    name = "test_elp_suite_data",
+    srcs = glob([
+        "test/test_elp_SUITE_data/*.erl",
+    ]),
+    includes = glob(["test/test_elp_SUITE_data/*.hrl"]),
+    labels = ["test_application"],
+)

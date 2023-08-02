@@ -1,0 +1,26 @@
+MODULE_DOC
+
+
+FUNCTION_DOCS
+{
+    (
+        "one",
+        0,
+    ): "This is function 1\n\n\n\n\n\n",
+}
+
+EDOC_DIAGNOSTICS
+[
+    DocDiagnostic {
+        severity: "warning",
+        line: 1,
+        message: "tag @docc not recognized.",
+    },
+    DocDiagnostic {
+        severity: "warning",
+        line: 8,
+        message: "tag @docc not recognized.",
+    },
+]
+
+

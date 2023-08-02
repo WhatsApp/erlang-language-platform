@@ -1,0 +1,3 @@
+{application, assist_examples,
+  [{description, "assist_examples"}, {vsn, "1.0.0"}, {applications, [kernel, stdlib]}]
+}.

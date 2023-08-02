@@ -1,0 +1,97 @@
+[workspace]
+members = ["crates/*", "xtask"]
+default-members = ["crates/*", "xtask"]
+
+[workspace.package]
+edition = "2021"
+version = "1.1.0"
+
+[workspace.dependencies]
+# own local crates
+elp_ai = { path = "./crates/ai" }
+elp_base_db = { path = "./crates/base_db" }
+elp_eqwalizer = { path = "./crates/eqwalizer" }
+elp_erlang_service = { path = "./crates/erlang_service" }
+elp_ide = { path = "./crates/ide" }
+elp_ide_assists = { path = "./crates/ide_assists" }
+elp_ide_completion = { path = "./crates/ide_completion" }
+elp_ide_db = { path = "./crates/ide_db" }
+elp_log = { path = "./crates/elp_log" }
+elp_project_model = { path = "./crates/project_model" }
+elp_syntax = { path = "./crates/syntax" }
+hir = { path = "./crates/hir" }
+
+# Forks
+erl_ast = { path = "./crates/erl_ast" }
+
+# External crates
+always-assert = "0.1.3"
+anyhow = "1.0.70"
+bpaf = { version = "=0.7.9", features = ["derive", "autocomplete", "batteries"] }
+codespan-reporting = "0.11.1"
+cov-mark = "2.0.0-pre.1"
+criterion = "0.3.6"
+crossbeam-channel = "0.5.8"
+dissimilar = "1.0.6"
+triple_accel = "0.4.0"
+eetf = "0.8.0"
+either = "1.8.1"
+env_logger = "0.10.0"
+expect-test = "1.4.1"
+fs_extra = "1.3.0"
+fxhash = "0.2.1"
+imara-diff = "0.1.5"
+indexmap = "1.9.3"
+indicatif = { version = "0.17.3", features = ["rayon"] }
+itertools = "0.10.5"
+jemallocator = { version = "0.5.0", package = "tikv-jemallocator" }
+jod-thread = "0.1.2"
+krates = "0.12.6"
+la-arena = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+lazy_static = "1.4.0"
+log = "0.4.17"
+lsp-server = "0.7.0"
+lsp-types = { version = "0.93.2", features = ["proposed"] }
+memchr = "2.5.0"
+num-derive = "0.3.3"
+num-traits = "0.2.15"
+once_cell = "1.17.1"
+parking_lot = "0.12.1"
+paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+pico-args = "0.5.0"
+proc-macro2 = "1.0.56"
+profile = { features = [
+    "jemalloc",
+], git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+quote = "1.0.26"
+rayon = "1.7.0"
+regex = "1.7.3"
+rowan = "0.15.11"
+rust-ini = "0.18"
+rustc-hash = "1.1.0"
+rustyline = "11.0.0"
+salsa = "0.17.0-pre.2"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+serde_path_to_error = "0.1.11"
+serde_with = "1.6.0"
+smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }
+smol_str = "0.1.24"
+stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+strsim = { version = "0.10.0" }
+strum = "0.25.0"
+strum_macros = "0.25.0"
+tempfile = "3.5.0"
+test-case = "2.2.2"
+text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+text-size = "1.1.0"
+threadpool = "1.8.1"
+timeout-readwrite = "0.3.3"
+toml = "0.5"
+tree-sitter = "0.20.10"
+# @fb-only: tree-sitter-erlang = { path = "./tree-sitter-erlang" }
+tree-sitter-erlang = "0.1.0" # @oss-only
+vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+walkdir = "2.3.3"
+xshell = "0.2.3"

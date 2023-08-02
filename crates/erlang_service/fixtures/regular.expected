@@ -1,0 +1,16 @@
+AST
+{attribute,{0,0},file,{"fixtures/regular.erl",0}}.
+{attribute,{0,16},module,regular}.
+{eof,{18,18}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/regular.erl",0}}.
+{attribute,{0,16},module,regular}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[]

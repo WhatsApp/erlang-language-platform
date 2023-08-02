@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach to a running ELP instance",
+            "pid": "${command:pickMyProcess}",
+            "sourceLanguages": [
+                "rust"
+            ]
+        }
+    ]
+}

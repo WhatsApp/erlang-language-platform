@@ -1,0 +1,11 @@
+erlang_application(
+    name = "test_elp_transitive_dep",
+    srcs = glob([
+        "src/*.erl",
+        "src/*.hrl",
+    ]),
+    applications = [
+    ],
+    includes = glob(["include/*.hrl"]),
+    version = "1.0.0",
+)

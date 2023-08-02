@@ -1,0 +1,153 @@
+AST
+{attribute,{0,0},file,{"fixtures/error.erl",0}}.
+{attribute,{0,14},module,error}.
+{attribute,{17,46},
+           spec,
+           {{unrecognized1,0},
+            [{type,{36,46},
+                   'fun',
+                   [{type,{36,46},product,[]},{atom,{42,46},atom}]}]}}.
+{function,{48,122},
+          unrecognized1,0,
+          [{clause,{48,122},
+                   [],[],
+                   [{match,{103,113},
+                           {var,{99,102},'Key'},
+                           {call,{105,113},
+                                 {atom,{105,108},get},
+                                 [{atom,{109,112},key}]}},
+                    {var,{119,122},'Key'}]}]}.
+{attribute,{125,154},
+           spec,
+           {{unrecognized2,0},
+            [{type,{144,154},
+                   'fun',
+                   [{type,{144,154},product,[]},{atom,{150,154},atom}]}]}}.
+{function,{156,239},
+          unrecognized2,0,
+          [{clause,{156,239},
+                   [],[],
+                   [{match,{220,230},
+                           {var,{216,219},'Key'},
+                           {call,{222,230},
+                                 {atom,{222,225},get},
+                                 [{atom,{226,229},key}]}},
+                    {var,{236,239},'Key'}]}]}.
+{attribute,{242,271},
+           spec,
+           {{unrecognized3,0},
+            [{type,{261,271},
+                   'fun',
+                   [{type,{261,271},product,[]},{atom,{267,271},atom}]}]}}.
+{function,{273,374},
+          unrecognized3,0,
+          [{clause,{273,374},
+                   [],[],
+                   [{match,{355,365},
+                           {var,{351,354},'Key'},
+                           {call,{357,365},
+                                 {atom,{357,360},get},
+                                 [{atom,{361,364},key}]}},
+                    {var,{371,374},'Key'}]}]}.
+{attribute,{377,406},
+           spec,
+           {{unrecognized4,0},
+            [{type,{396,406},
+                   'fun',
+                   [{type,{396,406},product,[]},{atom,{402,406},atom}]}]}}.
+{function,{408,483},
+          unrecognized4,0,
+          [{clause,{408,483},
+                   [],[],
+                   [{match,{464,474},
+                           {var,{460,463},'Key'},
+                           {call,{466,474},
+                                 {atom,{466,469},get},
+                                 [{atom,{470,473},key}]}},
+                    {var,{480,483},'Key'}]}]}.
+{eof,{485,485}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/error.erl",0}}.
+{attribute,{0,14},module,error}.
+{attribute,{17,46},
+           spec,
+           {{unrecognized1,0},
+            [{type,{36,46},
+                   'fun',
+                   [{type,{36,46},product,[]},{atom,{42,46},atom}]}]}}.
+{attribute,{125,154},
+           spec,
+           {{unrecognized2,0},
+            [{type,{144,154},
+                   'fun',
+                   [{type,{144,154},product,[]},{atom,{150,154},atom}]}]}}.
+{attribute,{242,271},
+           spec,
+           {{unrecognized3,0},
+            [{type,{261,271},
+                   'fun',
+                   [{type,{261,271},product,[]},{atom,{267,271},atom}]}]}}.
+{attribute,{377,406},
+           spec,
+           {{unrecognized4,0},
+            [{type,{396,406},
+                   'fun',
+                   [{type,{396,406},product,[]},{atom,{402,406},atom}]}]}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "fixtures/error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    48..122,
+                ),
+            ),
+        ),
+        msg: "function unrecognized1/0 is unused",
+        code: "L1230",
+    },
+    ParseError {
+        path: "fixtures/error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    156..239,
+                ),
+            ),
+        ),
+        msg: "function unrecognized2/0 is unused",
+        code: "L1230",
+    },
+    ParseError {
+        path: "fixtures/error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    273..374,
+                ),
+            ),
+        ),
+        msg: "function unrecognized3/0 is unused",
+        code: "L1230",
+    },
+    ParseError {
+        path: "fixtures/error.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    408..483,
+                ),
+            ),
+        ),
+        msg: "function unrecognized4/0 is unused",
+        code: "L1230",
+    },
+]
+
+ERRORS
+[]

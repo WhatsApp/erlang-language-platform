@@ -1,0 +1,21 @@
+[package]
+name = "hir"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+elp_base_db.workspace = true
+elp_syntax.workspace = true
+triple_accel.workspace = true
+either.workspace = true
+fxhash.workspace = true
+itertools.workspace = true
+la-arena.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+profile.workspace = true
+regex.workspace = true
+stdx.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true

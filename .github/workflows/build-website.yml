@@ -1,0 +1,27 @@
+name: Build Website
+
+defaults:
+  run:
+    working-directory: website
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-website:
+    name: Build Website
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: yarn
+          cache-dependency-path: website/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build website
+        run: yarn build

@@ -1,0 +1,80 @@
+// Convert to PNG by
+// dot -Tpng databases.dot -o databases.png
+
+digraph {
+
+rankdir = "TB";
+
+{
+  rank=same; ExpandDatabase; InternDatabase
+}
+{
+  rank=same; HirDatabase; EqwalizerDatabase
+}
+{
+  rank=same; SourceDatabase; LineIndexDatabase
+}
+{
+  rank=max; FileLoader; "salsa::Database"
+}
+
+    // Inputs
+    SourceDatabase    [label="SourceDatabase\nbase_db";    style=filled;]
+    SourceDatabaseExt [label="SourceDatabaseExt\nbase_db"; style=filled;]
+
+    // Using the erlang-based parser
+    EqwalizerDatabase [label="EqwalizerDatabase\nide_db"; style=filled; color="brown1"]
+    EqwalizerLoader   [label="EqwalizerLoader\nide_db";   style=filled; color="brown1"]
+    ErlAstDatabase    [label="ErlAstDatabase\nide_db";    style=filled; color="brown1"]
+    AstLoader         [label="AstLoader\nerl_ast";        style=filled; color="brown1"]
+
+    // Main external API exposure
+    HirDatabase       [label="HirDatabase\nhir"; style=filled; color="lightblue"]
+    // Internal to HIR, but exposed via HirDatabase
+    ExpandDatabase    [label="ExpandDatabase\nhir_expand"; style=filled; color="lightblue"]
+    DefDatabase       [label="DefDatabase\nhir_def"; style=filled; color="lightblue"]
+
+    InternDatabase    [label="InternDatabase\nhir_def"]
+
+    // Utility and low level
+    FileLoader        [label="FileLoader\nbase_db"]
+    LineIndexDatabase [label="LineIndexDatabase\nide_db"]
+    "salsa::Database"
+
+    //------------------------------------------------------------------
+
+    // pub trait SourceDatabase: FileLoader + salsa::Database {
+    SourceDatabase -> FileLoader
+    SourceDatabase -> "salsa::Database"
+
+    // pub trait SourceDatabaseExt: SourceDatabase {
+    SourceDatabaseExt -> SourceDatabase
+
+    // pub trait EqwalizerDatabase: SourceDatabase + EqwalizerLoader + ErlAstDatabase {
+    EqwalizerDatabase -> SourceDatabase
+    EqwalizerDatabase -> EqwalizerLoader
+    EqwalizerDatabase -> ErlAstDatabase
+
+    // pub trait LineIndexDatabase: SourceDatabase {
+    LineIndexDatabase -> SourceDatabase
+
+    // pub trait ErlAstDatabase: SourceDatabase + AstLoader {
+    ErlAstDatabase -> SourceDatabase
+    ErlAstDatabase -> AstLoader
+
+    // pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {}
+    HirDatabase -> DefDatabase
+    // HirDatabase -> "Upcast<dyn DefDatabase>"
+
+    // pub trait ExpandDatabase: SourceDatabase {
+    ExpandDatabase -> SourceDatabase
+
+    // pub trait InternDatabase: SourceDatabase {
+    InternDatabase -> SourceDatabase
+
+    // pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDatabase> {
+    DefDatabase -> InternDatabase
+    DefDatabase -> ExpandDatabase
+    // DefDatabase -> "Upcast<dyn ExpandDatabase>"
+
+}

@@ -1,0 +1,56 @@
+AST
+{attribute,{0,0},file,{"fixtures/error_attr.erl",0}}.
+{attribute,{0,19},module,error_attr}.
+{error,{{23,28},elp_epp,{error,"alamakota"}}}.
+{error,{{45,50},elp_epp,{bad,error}}}.
+{error,{{70,75},elp_epp,{bad,error}}}.
+{eof,{87,87}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/error_attr.erl",0}}.
+{attribute,{0,19},module,error_attr}.
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "fixtures/error_attr.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    23..28,
+                ),
+            ),
+        ),
+        msg: "-error(\"alamakota\").",
+        code: "E1522",
+    },
+    ParseError {
+        path: "fixtures/error_attr.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    45..50,
+                ),
+            ),
+        ),
+        msg: "badly formed 'error'",
+        code: "E1501",
+    },
+    ParseError {
+        path: "fixtures/error_attr.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    70..75,
+                ),
+            ),
+        ),
+        msg: "badly formed 'error'",
+        code: "E1501",
+    },
+]

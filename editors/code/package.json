@@ -1,0 +1,103 @@
+{
+	"name": "erlang-language-platform",
+	"description": "Erlang language server",
+	"author": "Meta Platforms, Inc",
+	"license": "MIT",
+	"version": "1.0.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/WhatsApp/erlang-language-platform"
+	},
+	"publisher": "erlang-language-platform",
+	"categories": [],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"activationEvents": [
+		"onLanguage:erlang"
+	],
+	"main": "./client/out/extension",
+	"contributes": {
+		"languages": [
+			{
+			  "id": "erlang",
+			  "aliases": [
+				"Erlang"
+			  ],
+			  "extensions": [
+				".erl",
+				".hrl",
+				".app.src",
+				".app",
+				".escript",
+				"rebar.config",
+				"rebar.lock",
+				"rebar.config.script",
+				"sys.config",
+				"sys.config.src",
+				"sys.ct.config",
+				"sys.shell.config",
+				".yrl",
+				".xrl"
+			  ],
+			  "configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+			  "language": "erlang",
+			  "scopeName": "source.erlang",
+			  "path": "./third-party/grammar/Erlang.plist"
+			}
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Example configuration",
+			"properties": {
+				"languageServerExample.maxNumberOfProblems": {
+					"scope": "resource",
+					"type": "number",
+					"default": 100,
+					"description": "Controls the maximum number of problems produced by the server."
+				},
+				"languageServerExample.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the language server."
+				},
+				"elp.serverCommand": {
+					"type": "string",
+					"description": "The command to start the ELP language server",
+					"default": "elp"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"lint": "eslint ./client/src --ext .ts,.tsx",
+		"postinstall": "cd client && npm install && cd ..",
+		"test": "sh ./scripts/e2e.sh",
+		"package": "vsce package -o erlang-language-platform.vsix"
+	},
+	"devDependencies": {
+		"@types/mocha": "^9.1.0",
+		"@types/node": "^16.11.7",
+		"@typescript-eslint/eslint-plugin": "^5.54.0",
+		"@typescript-eslint/parser": "^5.54.0",
+		"eslint": "^8.35.0",
+		"mocha": "^9.2.1",
+		"typescript": "^5.0.2"
+	}
+}

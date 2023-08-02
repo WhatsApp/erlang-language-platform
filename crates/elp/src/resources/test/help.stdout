@@ -1,0 +1,22 @@
+Usage: [--log-file LOG_FILE] [--no-log-buffering] [COMMAND ...]
+
+Available options:
+        --log-file <LOG_FILE>
+        --no-log-buffering
+    -h, --help                 Prints help information
+
+Available commands:
+    eqwalize              Eqwalize specified module
+    eqwalize-all          Eqwalize all opted-in modules in a project
+    eqwalize-app          Eqwalize all opted-in modules in specified application
+    eqwalize-target       Eqwalize all opted-in modules in specified buck target
+    lint                  Parse files in project and emit diagnostics, optionally apply fixes.
+    server                Run lsp server
+    generate-completions  Generate shell completions
+    parse-all             Dump ast for all files in a project for specified rebar.config file
+    parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
+    eqwalize-passthrough  Pass args to eqwalizer
+    build-info            Generate build info file
+    version               Print version
+    shell                 Starts an interactive ELP shell
+    eqwalize-stats        Return statistics about code quality for eqWAlizer

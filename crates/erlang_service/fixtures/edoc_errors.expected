@@ -1,0 +1,16 @@
+MODULE_DOC
+
+
+FUNCTION_DOCS
+{}
+
+EDOC_DIAGNOSTICS
+[
+    DocDiagnostic {
+        severity: "error",
+        line: 2,
+        message: "`-quote ended unexpectedly at line 2",
+    },
+]
+
+

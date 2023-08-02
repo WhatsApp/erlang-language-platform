@@ -1,0 +1,35 @@
+AST
+{attribute,{0,0},file,{"fixtures/unused_record.erl",0}}.
+{attribute,{0,22},module,unused_record}.
+{attribute,{25,55},
+           record,
+           {my_record,[{record_field,{45,53},{atom,{45,53},my_field}}]}}.
+{eof,{57,57}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/unused_record.erl",0}}.
+{attribute,{0,22},module,unused_record}.
+{attribute,{25,55},
+           record,
+           {my_record,[{record_field,{45,53},{atom,{45,53},my_field}}]}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "fixtures/unused_record.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    25..55,
+                ),
+            ),
+        ),
+        msg: "record my_record is unused",
+        code: "L1260",
+    },
+]
+
+ERRORS
+[]

@@ -1,0 +1,1 @@
+-record(my_record, {my_field}).

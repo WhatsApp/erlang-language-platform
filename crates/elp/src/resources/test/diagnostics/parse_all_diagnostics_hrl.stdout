@@ -1,0 +1,6 @@
+file specified: {project_path}/app_a/include/broken_diagnostics.hrl
+Diagnostics reported in 1 modules:
+  broken_diagnostics.hrl: 3
+      0:1-0:6::[Error] [W0013] misspelled attribute, saw 'defin' but expected 'define'
+      0:7-0:14::[Error] [P1702] bad attribute
+      2:5-2:14::[Error] [P1702] bad attribute

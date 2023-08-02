@@ -1,0 +1,4 @@
+file specified: {project_path}/app_a/src/diagnostics_errors.escript
+Diagnostics reported in 1 modules:
+  diagnostics_errors.escript: 1
+      23:5-23:20::[Error] [P1711] syntax error before: tion_with_error

@@ -1,0 +1,3 @@
+{application, single_errors,
+  [{description,  "single_errors"}, {vsn, "inplace"}, {applications, [kernel, stdlib]}]
+}.

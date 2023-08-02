@@ -1,0 +1,20 @@
+// Convert to PNG by
+// dot -Tpng input_data_graph.dot -o input_data_graph.png
+
+digraph {
+    SourceRoot
+    SourceRootId
+    ProjectData
+    ProjectId
+    AppData
+    FileId
+
+    SourceRootId -> AppData    [label = "SourceDatabase\n::app_data"]
+    ProjectId -> ProjectData   [label = "SourceDatabase\n::project_data" ]
+
+    AppData -> ProjectId       [label = "<<contains>>"]
+
+    FileId       -> String        [label = "SourceDatabaseExt\n::file_text"]
+    FileId       -> SourceRootId  [label = "SourceDatabaseExt\n::file_source_root"]
+    SourceRootId -> SourceRoot    [label = "SourceDatabaseExt\n::source_root"]
+}

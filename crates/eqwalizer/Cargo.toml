@@ -1,0 +1,22 @@
+[package]
+name = "elp_eqwalizer"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+elp_base_db.workspace = true
+elp_syntax.workspace = true
+
+anyhow.workspace = true
+eetf.workspace = true
+fxhash.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+salsa.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+stdx.workspace = true
+tempfile.workspace = true
+timeout-readwrite.workspace = true

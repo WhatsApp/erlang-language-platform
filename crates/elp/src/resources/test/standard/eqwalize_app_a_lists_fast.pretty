@@ -1,0 +1,79 @@
+error: incompatible_types
+    ┌─ app_a/src/app_a_lists.erl:576:5
+    │
+576 │     flatmap(fun thing_to_list/1, List).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ flatmap(thing_to_list/1, List).
+Expression has type:   [term()]
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:588:29
+    │
+588 │       DeepList :: [term() | DeepList],
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:595:29
+    │
+595 │       DeepList :: [term() | DeepList],
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:613:29
+    │
+613 │       DeepList :: [term() | DeepList].
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1114:36
+     │
+1114 │    lists:reverse(umerge3_1(L1, [H2 | H3], T2, H2, [], T3, H3), []).
+     │                                    ^^^^^ H3.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1305:5
+     │
+1305 │     filtermap(F, L).
+     │     ^^^^^^^^^^^^^^^
+     │     │
+     │     filtermap(eqwalizer:dynamic_cast(F), L).
+Expression has type:   [term()]
+Context expected type: [T | X]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  [term()] is not compatible with [T | X]
+  because
+  term() is not compatible with T | X
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1305:15
+     │
+1305 │     filtermap(F, L).
+     │               ^
+     │               │
+     │               F.
+Expression has type:   fun((T) -> boolean() | {'true', X})
+Context expected type: fun((term()) -> boolean() | {'true', term()})
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │               
+
+  fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
+  because
+  term() is not compatible with T
+
+7 ERRORS

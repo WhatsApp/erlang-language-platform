@@ -1,0 +1,206 @@
+error: incompatible_types
+  ┌─ app_a/src/app_a.erl:9:5
+  │
+9 │     ?OK.
+  │     ^^^ 'error'.
+Expression has type:   'error'
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ app_a/src/app_a.erl:13:5
+   │
+13 │     error.
+   │     ^^^^^ 'error'.
+Expression has type:   'error'
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ app_a/src/app_a.erl:17:13
+   │
+17 │     _ = 3 * an_atom, ok.
+   │             ^^^^^^^ 'an_atom'.
+Expression has type:   'an_atom'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: redundant_fixme
+   ┌─ app_a/src/app_a.erl:55:5
+   │
+55 │     % eqwalizer:fixme redundant issue should be reported
+   │     ^^^^^^^^^^^^^^^^^ redundant fixme
+
+See https://fb.me/eqwalizer_errors#redundant_fixme
+
+error: incompatible_types
+   ┌─ app_a/src/app_a.erl:77:5
+   │
+77 │     X.
+   │     ^
+   │     │
+   │     X.
+Expression has type:   #S{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
+Context expected type: #S{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+These associations do not match:
+
+  #S{
++    k_extra  => ...
+-    k_req1   := ...
++    k_req1   => ...
+-    k_req2   := ...
++    k_req2   => ...
+-    k_req3   := ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ app_a/src/app_a.erl:101:5
+    │
+101 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   id(#S{a := 'va', b := #S{c := #S{d => atom()}}})
+Context expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  id(#S{a := 'va', b := #S{c := #S{d => atom()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  because
+  at shape key 'b':
+  #S{a := 'va', b := #S{c := #S{d => atom()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  because
+  at shape key 'c':
+  #S{c := #S{d => atom()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}
+  because
+  #S{d => atom()} is not compatible with id(#S{d := atom(), e := atom()})
+
+error: incompatible_types
+    ┌─ app_a/src/app_a.erl:124:5
+    │
+124 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}})
+Context expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  because
+  at shape key 'b':
+  #S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  because
+  at shape key 'c':
+  #S{c := #S{d := pid(), e := pid()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}
+  because
+  #S{d := pid(), e := pid()} is not compatible with id(#S{d := atom(), e := atom()})
+
+error: incompatible_types
+    ┌─ app_a/src/app_a_lists.erl:576:5
+    │
+576 │     flatmap(fun thing_to_list/1, List).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ flatmap(thing_to_list/1, List).
+Expression has type:   [term()]
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:588:29
+    │
+588 │       DeepList :: [term() | DeepList],
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:595:29
+    │
+595 │       DeepList :: [term() | DeepList],
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: recursive_constraint
+    ┌─ app_a/src/app_a_lists.erl:613:29
+    │
+613 │       DeepList :: [term() | DeepList].
+    │                             ^^^^^^^^ Recursive constraint: DeepList
+
+See https://fb.me/eqwalizer_errors#recursive_constraint
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1114:36
+     │
+1114 │    lists:reverse(umerge3_1(L1, [H2 | H3], T2, H2, [], T3, H3), []).
+     │                                    ^^^^^ H3.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1305:5
+     │
+1305 │     filtermap(F, L).
+     │     ^^^^^^^^^^^^^^^
+     │     │
+     │     filtermap(eqwalizer:dynamic_cast(F), L).
+Expression has type:   [term()]
+Context expected type: [T | X]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  [term()] is not compatible with [T | X]
+  because
+  term() is not compatible with T | X
+
+error: incompatible_types
+     ┌─ app_a/src/app_a_lists.erl:1305:15
+     │
+1305 │     filtermap(F, L).
+     │               ^
+     │               │
+     │               F.
+Expression has type:   fun((T) -> boolean() | {'true', X})
+Context expected type: fun((term()) -> boolean() | {'true', term()})
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │               
+
+  fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
+  because
+  term() is not compatible with T
+
+error: type_alias_is_non_productive
+   ┌─ app_a/src/app_a_mod2.erl:22:1
+   │
+22 │ -type invalid() :: invalid().
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type invalid/0 is not productive
+
+See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
+
+error: incompatible_types
+   ┌─ app_a/src/app_a_mod2.erl:31:9
+   │
+31 │     1 + an_atom,
+   │         ^^^^^^^ 'an_atom'.
+Expression has type:   'an_atom'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+16 ERRORS

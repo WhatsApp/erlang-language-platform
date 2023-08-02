@@ -1,0 +1,47 @@
+AST
+{attribute,{0,0},file,{"fixtures/structured_comment.erl",0}}.
+{attribute,{0,27},module,structured_comment}.
+{function,{30,74},
+          test,1,
+          [{clause,{30,74},[{var,{35,36},'X'}],[],[{var,{73,74},'X'}]}]}.
+{function,{77,126},
+          test2,1,
+          [{clause,{77,126},[{var,{83,84},'X'}],[],[{var,{125,126},'X'}]}]}.
+{eof,{128,128}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/structured_comment.erl",0}}.
+{attribute,{0,27},module,structured_comment}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "fixtures/structured_comment.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    30..74,
+                ),
+            ),
+        ),
+        msg: "function test/1 is unused",
+        code: "L1230",
+    },
+    ParseError {
+        path: "fixtures/structured_comment.erl",
+        location: Some(
+            Normal(
+                TextRange(
+                    77..126,
+                ),
+            ),
+        ),
+        msg: "function test2/1 is unused",
+        code: "L1230",
+    },
+]
+
+ERRORS
+[]
