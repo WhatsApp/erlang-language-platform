@@ -13,8 +13,8 @@ use hir::db::MinInternDatabase;
 use hir::Expr;
 use hir::ExprId;
 use hir::InFile;
-use hir::Name;
 use hir::On;
+use hir::ParamName;
 use hir::Semantic;
 use hir::Strategy;
 
@@ -68,16 +68,19 @@ pub(super) fn hints(
                                                         .unwrap()
                                                         .contains_range(arg_range)
                                                 {
-                                                    let hint = InlayHint {
-                                                        range: arg_range,
-                                                        kind: InlayKind::Parameter,
-                                                        label: InlayHintLabel::simple(
-                                                            param_name.as_str(),
-                                                            None,
-                                                            None,
-                                                        ),
-                                                    };
-                                                    res.push(hint);
+                                                    if let ParamName::Name(param_name) = param_name
+                                                    {
+                                                        let hint = InlayHint {
+                                                            range: arg_range,
+                                                            kind: InlayKind::Parameter,
+                                                            label: InlayHintLabel::simple(
+                                                                param_name.as_str(),
+                                                                None,
+                                                                None,
+                                                            ),
+                                                        };
+                                                        res.push(hint);
+                                                    }
                                                 }
                                             }
                                         }
@@ -107,11 +110,16 @@ pub(super) fn hints(
     Some(())
 }
 
-fn should_hint(db: &dyn MinInternDatabase, param_name: &Name, expr: &Expr) -> bool {
-    if let Some(var) = expr.as_var() {
-        var.as_string(db) != param_name.as_str()
-    } else {
-        true
+fn should_hint(db: &dyn MinInternDatabase, param_name: &ParamName, expr: &Expr) -> bool {
+    match param_name {
+        ParamName::Name(name) => {
+            if let Some(var) = expr.as_var() {
+                var.as_string(db) != name.as_str()
+            } else {
+                true
+            }
+        }
+        ParamName::Default(_) => false,
     }
 }
 
@@ -283,7 +291,7 @@ call(One, Two, Three = {_, _, _}) ->
     }
 
     #[test]
-    fn param_hints_variables_default_names() {
+    fn param_hints_variables_skip_default_names() {
         check_params(
             r#"
 -module(main).~
@@ -296,7 +304,6 @@ main() ->
   do(A, B, C).
 %%   ^ X
 %%      ^ Y
-%%         ^ Arg3
 "#,
         );
     }

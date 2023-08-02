@@ -47,6 +47,8 @@
 // file.  This allows us to speed up operations by caching a map from
 // the form `SyntaxNode` to the `Form` itself.
 
+use std::fmt;
+use std::ops::Deref;
 use std::ops::Index;
 use std::sync::Arc;
 
@@ -497,9 +499,35 @@ pub enum DeprecatedDesc {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ParamName {
+    Name(Name),
+    Default(Name),
+}
+
+impl fmt::Display for ParamName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ParamName::Name(name) => fmt::Display::fmt(name, f),
+            ParamName::Default(name) => fmt::Display::fmt(name, f),
+        }
+    }
+}
+
+impl Deref for ParamName {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            ParamName::Name(name) => &name,
+            ParamName::Default(name) => &name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Function {
     pub name: NameArity,
-    pub param_names: Vec<Name>,
+    pub param_names: Vec<ParamName>,
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::FunDecl>,
 }

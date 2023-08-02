@@ -102,6 +102,7 @@ pub use form_list::PPCondition;
 pub use form_list::PPConditionId;
 pub use form_list::PPDirective;
 pub use form_list::PPDirectiveId;
+pub use form_list::ParamName;
 pub use form_list::Record;
 pub use form_list::RecordField;
 pub use form_list::RecordFieldId;

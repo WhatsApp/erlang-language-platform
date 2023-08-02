@@ -24,6 +24,7 @@ use profile::Count;
 use super::form_id::FormIdMap;
 use super::FormIdx;
 use super::FormListData;
+use super::ParamName;
 use crate::db::MinDefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
@@ -216,13 +217,13 @@ impl<'a> Ctx<'a> {
         })?;
 
         let name = self.resolve_name(&name);
-        let param_names: Vec<Name> = args
+        let param_names: Vec<ParamName> = args
             .args()
             .enumerate()
             .map(
                 |(i, param)| match ast::Var::cast(param.syntax().to_owned()) {
-                    Some(var) if var.as_name() != "_" => var.as_name(),
-                    _ => Name::arg(i + 1),
+                    Some(var) if var.as_name() != "_" => ParamName::Name(var.as_name()),
+                    _ => ParamName::Default(Name::arg(i + 1)),
                 },
             )
             .collect();
