@@ -1,0 +1,1 @@
+(self.webpackChunkstaticdocs_starter=self.webpackChunkstaticdocs_starter||[]).push([[684],{29039:function(t,s,c){"use strict";var a=c(31336);s.Z=a},15525:function(){}}]);
