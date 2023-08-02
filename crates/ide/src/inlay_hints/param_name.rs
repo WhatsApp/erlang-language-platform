@@ -11,9 +11,12 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
 use hir::db::MinInternDatabase;
 use hir::Expr;
+use hir::ExprId;
 use hir::InFile;
 use hir::Name;
+use hir::On;
 use hir::Semantic;
+use hir::Strategy;
 
 use crate::InlayHint;
 use crate::InlayHintLabel;
@@ -36,44 +39,63 @@ pub(super) fn hints(
             let def_fb = def.in_function_body(sema.db, def);
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
-            sema.fold_function(
-                function_id,
+            let mut macro_stack: Vec<ExprId> = Vec::default();
+            function_body.fold_function_with_macros(
+                Strategy::Both,
                 (),
                 &mut |acc, _clause_id, ctx| {
                     match ctx.expr {
                         Expr::Call { target, args } => {
-                            let arity = args.len() as u32;
-                            let body = &function_body.body();
-                            if let Some(call_def) = target.resolve_call(arity, &sema, file_id, body)
-                            {
-                                let param_names = call_def.function.param_names;
-                                for (param_name, arg) in param_names.iter().zip(args) {
-                                    if should_hint(
-                                        sema.db.upcast(),
-                                        param_name,
-                                        &function_body[arg],
-                                    ) {
-                                        if let Some(arg_range) = def_fb.range_for_expr(sema.db, arg)
-                                        {
-                                            if range_limit.is_none()
-                                                || range_limit.unwrap().contains_range(arg_range)
+                            // Do not produce hints if inside a macro
+                            if ctx.on == On::Entry && macro_stack.is_empty() {
+                                let arity = args.len() as u32;
+                                let body = &function_body.body();
+                                if let Some(call_def) =
+                                    target.resolve_call(arity, &sema, file_id, body)
+                                {
+                                    let param_names = call_def.function.param_names;
+                                    for (param_name, arg) in param_names.iter().zip(args) {
+                                        if should_hint(
+                                            sema.db.upcast(),
+                                            param_name,
+                                            &function_body[arg],
+                                        ) {
+                                            if let Some(arg_range) =
+                                                def_fb.range_for_expr(sema.db, arg)
                                             {
-                                                let hint = InlayHint {
-                                                    range: arg_range,
-                                                    kind: InlayKind::Parameter,
-                                                    label: InlayHintLabel::simple(
-                                                        param_name.as_str(),
-                                                        None,
-                                                        None,
-                                                    ),
-                                                };
-                                                res.push(hint);
+                                                if range_limit.is_none()
+                                                    || range_limit
+                                                        .unwrap()
+                                                        .contains_range(arg_range)
+                                                {
+                                                    let hint = InlayHint {
+                                                        range: arg_range,
+                                                        kind: InlayKind::Parameter,
+                                                        label: InlayHintLabel::simple(
+                                                            param_name.as_str(),
+                                                            None,
+                                                            None,
+                                                        ),
+                                                    };
+                                                    res.push(hint);
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                        Expr::MacroCall {
+                            expansion: _,
+                            args: _,
+                        } => match ctx.on {
+                            On::Entry => {
+                                macro_stack.push(ctx.expr_id);
+                            }
+                            On::Exit => {
+                                macro_stack.pop();
+                            }
+                        },
                         _ => {}
                     }
                     acc
@@ -232,7 +254,7 @@ main() ->
     }
 
     #[test]
-    fn param_hints_variables_included_macro() {
+    fn param_hints_skip_in_macro() {
         check_params(
             r#"
 //- /src/main.erl
@@ -242,10 +264,7 @@ main() ->
 -export([read_file/0]).
 read_file() ->
     ?LOG(warning,
-%%      ^^^ Arg3
-%%       ^^^^^^^ One
          [],
-%%       ^^ Two
          "Sample", []).
 //- /src/dep.erl
 -module(dep).
