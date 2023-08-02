@@ -281,4 +281,23 @@ call(One, Two, Three = {_, _, _}) ->
 "#,
         );
     }
+
+    #[test]
+    fn param_hints_variables_default_names() {
+        check_params(
+            r#"
+-module(main).~
+-compile(export_all).
+do(X, Y, #{}) -> A + B.
+main() ->
+  A = 1,
+  B = 2,
+  C = 3,
+  do(A, B, C).
+%%   ^ X
+%%      ^ Y
+%%         ^ Arg3
+"#,
+        );
+    }
 }
