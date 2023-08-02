@@ -44,6 +44,9 @@ use super::expr::MGenerate;
 use super::expr::MapCreate;
 use super::expr::MapUpdate;
 use super::expr::Match;
+use super::expr::Maybe;
+use super::expr::MaybeElse;
+use super::expr::MaybeMatch;
 use super::expr::NilLit;
 use super::expr::Qualifier;
 use super::expr::Receive;
@@ -1098,6 +1101,35 @@ impl Converter {
                             location,
                             module: Box::new(self.convert_expr(module)?),
                             name: Box::new(self.convert_expr(name)?),
+                        }));
+                    }
+                    ("maybe", [Term::List(exprs)]) => {
+                        return Ok(Expr::Maybe(Maybe {
+                            location,
+                            body: Body {
+                                exprs: self.convert_exprs(exprs)?,
+                            },
+                        }));
+                    }
+                    ("maybe", [Term::List(exprs), Term::Tuple(m_else)]) => {
+                        if let [Term::Atom(at_else), _, Term::List(clauses)] = &m_else.elements[..]
+                        {
+                            if at_else.name == "else" {
+                                return Ok(Expr::MaybeElse(MaybeElse {
+                                    location,
+                                    body: Body {
+                                        exprs: self.convert_exprs(exprs)?,
+                                    },
+                                    else_clauses: self.convert_clauses(clauses)?,
+                                }));
+                            }
+                        }
+                    }
+                    ("maybe_match", [exp1, exp2]) => {
+                        return Ok(Expr::MaybeMatch(MaybeMatch {
+                            location,
+                            pat: self.convert_pat(exp1)?,
+                            arg: Box::new(self.convert_expr(exp2)?),
                         }));
                     }
                     _ => (),

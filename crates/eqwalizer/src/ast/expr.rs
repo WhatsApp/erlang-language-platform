@@ -54,6 +54,9 @@ pub enum Expr {
     RecordIndex(RecordIndex),
     MapCreate(MapCreate),
     MapUpdate(MapUpdate),
+    Maybe(Maybe),
+    MaybeElse(MaybeElse),
+    MaybeMatch(MaybeMatch),
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
@@ -375,4 +378,24 @@ pub struct MGenerate {
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Filter {
     pub expr: Expr,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct Maybe {
+    pub location: ast::Pos,
+    pub body: Body,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct MaybeElse {
+    pub location: ast::Pos,
+    pub body: Body,
+    pub else_clauses: Vec<Clause>,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct MaybeMatch {
+    pub location: ast::Pos,
+    pub pat: pat::Pat,
+    pub arg: Box<Expr>,
 }
