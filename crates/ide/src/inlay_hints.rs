@@ -220,9 +220,9 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_with_config(config: InlayHintsConfig, fixture: &str) {
-        let (analysis, file_id) = fixture::single_file(fixture);
-        let mut expected = extract_annotations(&analysis.file_text(file_id).unwrap());
-        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
+        let (analysis, pos) = fixture::position(fixture);
+        let mut expected = extract_annotations(&analysis.file_text(pos.file_id).unwrap());
+        let inlay_hints = analysis.inlay_hints(&config, pos.file_id, None).unwrap();
         let actual = inlay_hints
             .into_iter()
             .map(|it| (it.range, it.label.to_string()))
@@ -241,7 +241,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { ..DISABLED_CONFIG },
             r#"
--module(main).
+-module(main).~
 sum(A, B) -> A + B.
 main() -> _X = sum(1, 2).
 "#,

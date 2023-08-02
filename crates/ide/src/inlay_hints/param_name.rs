@@ -114,7 +114,7 @@ mod tests {
     fn param_hints_basic() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() -> sum(1,
@@ -130,7 +130,7 @@ main() -> sum(1,
     fn param_hints_variables_same_name() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
@@ -147,7 +147,7 @@ main() ->
     fn param_hints_variables_different_name() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
@@ -165,7 +165,7 @@ main() ->
     fn param_hints_variables_expression() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
@@ -183,7 +183,7 @@ main() ->
     fn param_hints_variables_multiple_calls() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
@@ -206,7 +206,7 @@ main() ->
     fn param_hints_variables_wrong_arity() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
@@ -220,13 +220,25 @@ main() ->
     fn param_hints_variables_missing_param() {
         check_params(
             r#"
--module(main).
+-module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.
 main() ->
   A = 1,
   B = 2,
   sum(A, ).
+"#,
+        );
+    }
+
+    #[test]
+    fn param_hints_variables_included_macro() {
+        check_params(
+            r#"
+//- /src/main.erl
+-module(main).~
+-include("header.hrl").
+//- /src/header.hrl
 "#,
         );
     }
