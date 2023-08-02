@@ -237,8 +237,28 @@ main() ->
             r#"
 //- /src/main.erl
 -module(main).~
+-compile(warn_missing_spec).
 -include("header.hrl").
+-export([read_file/0]).
+read_file() ->
+    ?LOG(warning,
+%%      ^^^ Arg3
+%%       ^^^^^^^ One
+         [],
+%%       ^^ Two
+         "Sample", []).
+//- /src/dep.erl
+-module(dep).
+-compile(export_all).
+call(One, Two, Three = {_, _, _}) ->
+    ok.
 //- /src/header.hrl
+-define(LAZY(X), fun() -> X end).
+-define(LOG(Level, Opts, Format, Args),
+    ?LAZY(
+        dep:call(Level, Opts, #{})
+    )()
+).
 "#,
         );
     }
