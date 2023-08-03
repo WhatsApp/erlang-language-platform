@@ -87,6 +87,15 @@ Adding `eqwalizer_support` and `eqwalizer_rebar3`:
 
 * [CONTRIBUTING.md]: Provides an overview of how to contribute changes to ELP (e.g., diffs, testing, etc)
 
+## FAQ
+
+Please refer to [the FAQ document](./FAQ.md) for answers to some common questions,
+including:
+
+- What's the difference between ELP and Erlang LS?
+- Why not extend Erlang LS, rather than creating a new tool?
+- Why is ELP implemented in Rust, rather than Erlang?
+
 ## License
 
 erlang-language-platform is dual-licensed
