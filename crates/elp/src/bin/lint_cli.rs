@@ -380,7 +380,7 @@ fn filter_diagnostics<'a>(
                     .filter(|d| {
                         let range = convert::range(&line_index, d.range);
                         let line = range.start.line;
-                        (diagnostic_code.is_none() || Some(&d.code.to_string()) == diagnostic_code)
+                        diagnostic_is_allowed(d, diagnostic_code)
                             && check(&line_from, |l| &line >= l)
                             && check(&line_to, |l| &line <= l)
                             && check_changes(&changes, line)
@@ -396,6 +396,19 @@ fn filter_diagnostics<'a>(
             }
         })
         .collect::<Vec<_>>())
+}
+
+fn diagnostic_is_allowed<'a>(
+    d: &diagnostics::Diagnostic,
+    diagnostic_code: Option<&'a String>,
+) -> bool {
+    if !diagnostic_code.is_none() {
+        Some(&d.code.to_string()) == diagnostic_code
+    } else if let diagnostics::DiagnosticCode::AdHoc(_) = d.code {
+        false
+    } else {
+        true
+    }
 }
 
 // No changes mean no constraint, so the condition passes. If there
