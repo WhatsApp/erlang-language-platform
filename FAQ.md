@@ -15,6 +15,6 @@ Erlang LS acts as the "glue" between existing OTP tools (Compiler, EDoc, XRef, e
 
 There are a few reasons for our choice:
 
-* ELP required two big components to exist: a parser generator with good error recovery and a framework for incremental computation. Both compoonents (respectively [Tree Sitter](https://tree-sitter.github.io/tree-sitter/) and [Salsa](https://github.com/salsa-rs/salsa) are available for Rust but not yet for Erlang
+* ELP required two big components to exist: a parser generator with good error recovery and a framework for incremental computation. Both components (respectively [Tree Sitter](https://tree-sitter.github.io/tree-sitter/) and [Salsa](https://github.com/salsa-rs/salsa) are available for Rust but not yet for Erlang
 * The LSP libraries for Erlang are only partially implemented (as part of Erlang LS), while they are complete for Rust
 * ELP is modeled after Rust Analyzer, which is itself implemented in Rust. Having a widely used reference was extremely helpful during development
