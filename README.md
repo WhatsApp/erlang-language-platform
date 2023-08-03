@@ -17,8 +17,8 @@ terms of the Apache-2.0 and MIT licences.  See [LICENCE-APACHE](./LICENCE-APACHE
 ## Prerequisites
 
 ### VS Code
-1. [Install VS Code](https://www.internalfb.com/intern/wiki/Vscode/Getting_Started/First_Run_Launch_Login_VS_Code/#installation)
-1. Install [Erlang LS @ Meta] (not yet published on app store)
+
+Coming soon.
 
 ### Emacs
 1. Download the appropriate elp executable from https://github.com/WhatsApp/erlang-language-platform/releases, and make sure it is on your `$PATH`.
