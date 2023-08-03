@@ -1,5 +1,7 @@
 # Erlang Language Platform (ELP)
 
+![ELP](logo/elp_final_Full_Logo_Color.png "ELP Logo")
+
 ## Description
 
 ELP integrates Erlang into modern IDEs via the language server protocol.
