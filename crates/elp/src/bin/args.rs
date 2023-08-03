@@ -383,19 +383,13 @@ pub fn command() -> impl Parser<Command> {
 fn parse_print_diags() -> impl Parser<bool> {
     long("no-diags")
         .help("Do not print the full diagnostics for a file, just the count")
-        .switch()
-        .map(|v| {
-            !v // negate
-        })
+        .flag(/* present */ false, true)
 }
 
 fn parse_experimental_diags() -> impl Parser<bool> {
     long("experimental")
         .help("Report experimental diagnostics too, if diagnostics are enabled")
-        .switch()
-        .map(|v| {
-            !v // negate
-        })
+        .flag(/* present */ false, true)
 }
 
 #[derive(Deserialize)]
