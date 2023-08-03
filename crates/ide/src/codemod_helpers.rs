@@ -215,15 +215,8 @@ impl<'a, T> FunctionMatcher<'a, T> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionMatch {
     MFA(MFA),
-    #[allow(dead_code)]
-    MF {
-        module: String,
-        name: String,
-    },
-    #[allow(dead_code)]
-    M {
-        module: String,
-    },
+    MF { module: String, name: String },
+    M { module: String },
 }
 
 impl FunctionMatch {
@@ -235,7 +228,6 @@ impl FunctionMatch {
         })
     }
 
-    #[allow(dead_code)]
     pub fn mfas(m: &str, f: &str, arity: Vec<u32>) -> Vec<FunctionMatch> {
         arity
             .into_iter()
@@ -249,7 +241,6 @@ impl FunctionMatch {
             .collect()
     }
 
-    #[allow(dead_code)]
     pub fn mf(m: &str, f: &str) -> FunctionMatch {
         FunctionMatch::MF {
             module: m.into(),
@@ -257,7 +248,6 @@ impl FunctionMatch {
         }
     }
 
-    #[allow(dead_code)]
     pub fn m(m: &str) -> FunctionMatch {
         FunctionMatch::M { module: m.into() }
     }
@@ -434,7 +424,8 @@ mod tests {
                 FxHashSet::default(),
                 vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
             )
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec),
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::CrossNodeEval),
             fixture,
         );
     }

@@ -54,6 +54,7 @@ use crate::RootDatabase;
 use crate::SourceDatabase;
 
 mod application_env;
+mod cross_node_eval;
 mod effect_free_statement;
 mod head_mismatch;
 // @fb-only: mod meta_only;
@@ -234,6 +235,7 @@ pub enum DiagnosticCode {
     ApplicationGetEnv,
     MissingCompileWarnMissingSpec,
     MisspelledAttribute,
+    CrossNodeEval,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -270,6 +272,7 @@ impl DiagnosticCode {
             DiagnosticCode::ApplicationGetEnv => "W0011".to_string(),   // application_get_env
             DiagnosticCode::MissingCompileWarnMissingSpec => "W0012".to_string(),
             DiagnosticCode::MisspelledAttribute => "W0013".to_string(), // misspelled-attribute
+            DiagnosticCode::CrossNodeEval => "W0014".to_string(),       // cross-node-eval
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
@@ -300,6 +303,7 @@ impl DiagnosticCode {
             }
             DiagnosticCode::ApplicationGetEnv => "application_get_env".to_string(),
             DiagnosticCode::MisspelledAttribute => "misspelled_attribute".to_string(),
+            DiagnosticCode::CrossNodeEval => "cross_node_eval".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
@@ -492,6 +496,7 @@ pub fn semantic_diagnostics(
     application_env::application_env(res, sema, file_id);
     // @fb-only: meta_only::diagnostics(res, sema, file_id);
     missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
+    cross_node_eval::cross_node_eval(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(

@@ -258,7 +258,6 @@ impl<'a> AssistContext<'a> {
             .join(", ")
     }
 
-    #[allow(dead_code)] // Used further up the stack, will delete then
     pub(crate) fn create_function_args_from_types(
         &self,
         args: &[TypeExprId],
