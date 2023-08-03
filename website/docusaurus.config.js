@@ -16,8 +16,8 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 (module.exports = {
   title: 'ELP',
   tagline: 'The Erlang Language Platform',
-  url: 'https://github.com/whatsapp/erlang-language-platform',
-  baseUrl: '/',
+  url: 'https://whatsapp.github.io',
+  baseUrl: '/erlang-language-platform/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'throw',
   trailingSlash: true,
