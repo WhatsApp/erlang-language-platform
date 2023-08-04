@@ -85,7 +85,7 @@ Adding `eqwalizer_support` and `eqwalizer_rebar3`:
 
 ## Contributing
 
-* [CONTRIBUTING.md]: Provides an overview of how to contribute changes to ELP (e.g., diffs, testing, etc)
+* [CONTRIBUTING.md](./CONTRIBUTING.md): Provides an overview of how to contribute changes to ELP (e.g., diffs, testing, etc)
 
 ## FAQ
 
