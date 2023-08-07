@@ -8,6 +8,7 @@
  */
 
 use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -77,7 +78,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
-    pub experimental: bool,
+    pub categories: HashSet<Category>,
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
@@ -95,7 +96,7 @@ impl Diagnostic {
             message,
             range,
             severity: Severity::Error,
-            experimental: false,
+            categories: HashSet::new(),
             fixes: None,
             related_info: None,
         }
@@ -127,8 +128,19 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn experimental(mut self) -> Diagnostic {
-        self.experimental = true;
+    pub(crate) fn experimental(self) -> Diagnostic {
+        self.add_categories([Category::Experimental])
+    }
+
+    pub fn has_category(&self, category: Category) -> bool {
+        self.categories.contains(&category)
+    }
+
+    pub(crate) fn add_categories<I: IntoIterator<Item = Category>>(
+        mut self,
+        iter: I,
+    ) -> Diagnostic {
+        self.categories.extend(iter);
         self
     }
 
@@ -211,6 +223,11 @@ pub enum Severity {
     // the problems pane, has an unobtrusive underline, but does show
     // up on hover if the cursor is placed on it.
     WeakWarning,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Category {
+    Experimental,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
@@ -469,7 +486,7 @@ pub fn diagnostics(
     let line_index = db.file_line_index(file_id);
     res.retain(|d| {
         !config.disabled.contains(&d.code)
-            && !(config.disable_experimental && d.experimental)
+            && !(config.disable_experimental && d.has_category(Category::Experimental))
             && !d.should_be_ignored(&line_index, &parse.syntax_node())
     });
 
@@ -525,7 +542,7 @@ fn no_module_definition_diagnostic(
             message: "no module definition".to_string(),
             range,
             severity: Severity::Error,
-            experimental: false,
+            categories: HashSet::new(),
             fixes: None,
             related_info: None,
             code: DiagnosticCode::MissingModule,
@@ -687,7 +704,7 @@ fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -
         message,
         range,
         severity: Severity::Warning,
-        experimental: false,
+        categories: HashSet::new(),
         fixes: None,
         related_info: None,
         code: DiagnosticCode::Missing(code),
