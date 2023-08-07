@@ -1240,6 +1240,7 @@ baz(1)->4.
                         arity: 0,
                     }),
                     replace_call::Replacement::UseOk,
+                    &replace_call::adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,

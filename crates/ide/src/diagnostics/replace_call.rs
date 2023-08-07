@@ -37,10 +37,13 @@ use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
+pub type DiagnosticBuilder<'a> = &'a dyn Fn(&MFA, &str, TextRange) -> Option<Diagnostic>;
+
 #[allow(dead_code)]
 pub fn replace_call_site(
     mfa: &FunctionMatch,
     replacement: Replacement,
+    diagnostic_builder: DiagnosticBuilder,
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
@@ -49,6 +52,7 @@ pub fn replace_call_site(
         mfa,
         &|_mfa, _, _target, _args, _def_fb| Some("".to_string()),
         replacement,
+        diagnostic_builder,
         acc,
         sema,
         file_id,
@@ -59,6 +63,7 @@ pub fn replace_call_site_if_args_match(
     fm: &FunctionMatch,
     args_match: CheckCall<()>,
     replacement: Replacement,
+    diagnostic_builder: DiagnosticBuilder,
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
@@ -77,14 +82,9 @@ pub fn replace_call_site_if_args_match(
                     move |sema, mut def_fb, target, args, extra_info, range| {
                         let mfa = to_mfa(fm, target, args.len() as u32, sema, &def_fb.body())?;
                         let mfa_str = mfa.label();
-                        let sep = if extra_info.len() > 0 { " " } else { "" };
-                        let diag = Diagnostic::new(
-                            DiagnosticCode::AdHoc(mfa_str.clone()),
-                            format!("'{}' called{}{}", &mfa_str, &sep, &extra_info),
-                            range.clone(),
-                        )
-                        .severity(Severity::WeakWarning)
-                        .experimental();
+
+                        let diag = diagnostic_builder(&mfa, extra_info, range)?;
+
                         if let Some(edit) =
                             replace_call(replacement, sema, &mut def_fb, file_id, args, &range)
                         {
@@ -101,6 +101,19 @@ pub fn replace_call_site_if_args_match(
                 );
             }
         });
+}
+
+pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option<Diagnostic> {
+    let mfa_str = mfa.label();
+    let sep = if extra_info.len() > 0 { " " } else { "" };
+    let diag = Diagnostic::new(
+        DiagnosticCode::AdHoc(mfa_str.clone()),
+        format!("'{}' called{}{}", &mfa_str, &sep, &extra_info),
+        range.clone(),
+    )
+    .severity(Severity::WeakWarning)
+    .experimental();
+    return Some(diag);
 }
 
 #[allow(dead_code)]
@@ -140,11 +153,11 @@ fn replace_call(
 #[allow(dead_code)]
 pub fn remove_fun_ref_from_list(
     mfa: &MFA,
+    diagnostic_builder: DiagnosticBuilder,
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let mfa_str = &mfa.label();
     sema.def_map(file_id)
         .get_functions()
         .iter()
@@ -170,23 +183,19 @@ pub fn remove_fun_ref_from_list(
                                         if let Some(statement_removal) =
                                             remove_statement(&list_elem_ast)
                                         {
-                                            let diag = Diagnostic::new(
-                                                DiagnosticCode::AdHoc(mfa_str.into()),
-                                                format!("'{}' ref found", &mfa_str),
-                                                range.clone(),
-                                            )
-                                            .severity(Severity::WeakWarning)
-                                            .experimental()
-                                            .with_fixes(Some(vec![fix(
-                                                "remove_fun_ref_from_list",
-                                                "Remove noop fun ref from list",
-                                                SourceChange::from_text_edit(
-                                                    file_id,
-                                                    statement_removal,
-                                                ),
-                                                range,
-                                            )]));
-                                            diags.push(diag);
+                                            if let Some(diag) =
+                                                diagnostic_builder(mfa, "", range.clone())
+                                            {
+                                                diags.push(diag.with_fixes(Some(vec![fix(
+                                                    "remove_fun_ref_from_list",
+                                                    "Remove noop fun ref from list",
+                                                    SourceChange::from_text_edit(
+                                                        file_id,
+                                                        statement_removal,
+                                                    ),
+                                                    range,
+                                                )])));
+                                            }
                                         }
                                     }
                                 }
@@ -289,6 +298,7 @@ mod tests {
                         arity: 1,
                     }),
                     Replacement::UseOk,
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -333,6 +343,7 @@ mod tests {
                         arity: 2,
                     }),
                     Replacement::UseCallArg(1),
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -383,6 +394,7 @@ mod tests {
                         _ => None,
                     },
                     Replacement::UseOk,
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -423,6 +435,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 1,
                     },
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -475,6 +488,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 1,
                     },
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -527,6 +541,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 1,
                     },
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
@@ -579,6 +594,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 1,
                     },
+                    &adhoc_diagnostic,
                     acc,
                     sema,
                     file_id,
