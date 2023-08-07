@@ -11,7 +11,6 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
 use hir::db::MinInternDatabase;
 use hir::Expr;
-use hir::ExprId;
 use hir::InFile;
 use hir::On;
 use hir::ParamName;
@@ -39,7 +38,6 @@ pub(super) fn hints(
             let def_fb = def.in_function_body(sema.db, def);
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
-            let mut macro_stack: Vec<ExprId> = Vec::default();
             function_body.fold_function_with_macros(
                 Strategy::Both,
                 (),
@@ -47,7 +45,7 @@ pub(super) fn hints(
                     match ctx.expr {
                         Expr::Call { target, args } => {
                             // Do not produce hints if inside a macro
-                            if ctx.on == On::Entry && macro_stack.is_empty() {
+                            if ctx.on == On::Entry && ctx.in_macro.is_none() {
                                 let arity = args.len() as u32;
                                 let body = &function_body.body();
                                 if let Some(call_def) =
@@ -88,17 +86,6 @@ pub(super) fn hints(
                                 }
                             }
                         }
-                        Expr::MacroCall {
-                            expansion: _,
-                            args: _,
-                        } => match ctx.on {
-                            On::Entry => {
-                                macro_stack.push(ctx.expr_id);
-                            }
-                            On::Exit => {
-                                macro_stack.pop();
-                            }
-                        },
                         _ => {}
                     }
                     acc
