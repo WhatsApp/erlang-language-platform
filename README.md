@@ -1,6 +1,9 @@
 # Erlang Language Platform (ELP)
 
-![ELP](logo/elp_final_Full_Logo_Color.png "ELP Logo")
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./logo/elp_final_Full_Logo_White_Text.png">
+  <img alt="ELP logo" src="./logo/elp_final_Full_Logo_Color.png" width="100%">
+</picture>
 
 ## Description
 
