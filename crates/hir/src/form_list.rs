@@ -135,6 +135,11 @@ impl FormList {
             .map(|(_idx, attr)| attr)
     }
 
+    /// Returns the -define attributes in the file
+    pub fn define_attributes(&self) -> impl Iterator<Item = (DefineId, &Define)> {
+        self.data.defines.iter()
+    }
+
     /// Returns the -behaviour attributes in the file
     pub fn behaviour_attributes(&self) -> impl Iterator<Item = (BehaviourId, &Behaviour)> {
         self.data.behaviours.iter()

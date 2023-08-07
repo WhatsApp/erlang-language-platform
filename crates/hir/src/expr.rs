@@ -187,6 +187,16 @@ impl Expr {
         }
     }
 
+    pub fn as_record_name(&self) -> Option<&Atom> {
+        match self {
+            Expr::Record { name, .. }
+            | Expr::RecordField { name, .. }
+            | Expr::RecordIndex { name, .. }
+            | Expr::RecordUpdate { name, .. } => Some(name),
+            _ => None,
+        }
+    }
+
     pub fn list_length(&self) -> Option<usize> {
         match &self {
             Expr::List { exprs, tail } => {
