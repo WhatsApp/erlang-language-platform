@@ -127,7 +127,11 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
               },
               {
                 label: 'Terms of Use',
-                href: 'https://github.com/whatsapp/erlang-language-platform#terms-of-use',
+                href: 'https://opensource.fb.com/legal/terms',
+              },
+              {
+                label: 'Privacy Policy',
+                href: 'https://opensource.fb.com/legal/privacy',
               },
             ],
           },
