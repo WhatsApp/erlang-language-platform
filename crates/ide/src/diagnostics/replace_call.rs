@@ -17,6 +17,8 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::TextRange;
+use hir::Body;
+use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
@@ -73,9 +75,8 @@ pub fn replace_call_site_if_args_match(
                     &vec![(fm, ())],
                     &args_match,
                     move |sema, mut def_fb, target, args, extra_info, range| {
-                        let mfa_str = target
-                            .label(args.len() as u32, sema, &def_fb.body())?
-                            .to_string();
+                        let mfa = to_mfa(fm, target, args.len() as u32, sema, &def_fb.body())?;
+                        let mfa_str = mfa.label();
                         let sep = if extra_info.len() > 0 { " " } else { "" };
                         let diag = Diagnostic::new(
                             DiagnosticCode::AdHoc(mfa_str.clone()),
@@ -244,6 +245,26 @@ fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
     let mut edit_builder = TextEdit::builder();
     edit_builder.delete(range);
     Some(edit_builder.finish())
+}
+
+fn to_mfa(
+    fm: &FunctionMatch,
+    target: &CallTarget<ExprId>,
+    arity: u32,
+    sema: &Semantic,
+    body: &Body,
+) -> Option<MFA> {
+    match target {
+        CallTarget::Local { name } => {
+            let name = sema.db.lookup_atom(body[*name].as_atom()?);
+            return Some(MFA::new(fm.module().as_str(), name.as_str(), arity));
+        }
+        CallTarget::Remote { module, name } => {
+            let module = sema.db.lookup_atom(body[*module].as_atom()?);
+            let name = sema.db.lookup_atom(body[*name].as_atom()?);
+            return Some(MFA::new(module.as_str(), name.as_str(), arity));
+        }
+    }
 }
 
 #[cfg(test)]

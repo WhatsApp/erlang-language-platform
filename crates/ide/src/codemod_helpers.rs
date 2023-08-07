@@ -251,6 +251,14 @@ impl FunctionMatch {
     pub fn m(m: &str) -> FunctionMatch {
         FunctionMatch::M { module: m.into() }
     }
+
+    pub fn module(self: &FunctionMatch) -> String {
+        match self {
+            FunctionMatch::MFA(mfa) => mfa.module.clone(),
+            FunctionMatch::MF { module, name: _ } => module.to_string(),
+            FunctionMatch::M { module } => module.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
