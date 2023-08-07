@@ -228,6 +228,10 @@ pub enum Severity {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Category {
     Experimental,
+
+    // During codemods, this diagnostic should be used automatically as rewrite-rule
+    // to clean-up the code
+    SimplificationRule,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]

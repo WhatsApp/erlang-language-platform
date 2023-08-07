@@ -33,6 +33,7 @@ use hir::PatId;
 use hir::Semantic;
 use text_edit::TextEdit;
 
+use super::Category;
 use super::Diagnostic;
 use super::Severity;
 use crate::codemod_helpers::is_only_place_where_var_is_defined;
@@ -265,7 +266,8 @@ fn make_diagnostic(
     maybe_replacement: Option<ast::Expr>,
 ) -> Diagnostic {
     let diag = Diagnostic::new(DiagnosticCode::TrivialMatch, "match is redundant", *range)
-        .severity(Severity::Warning);
+        .severity(Severity::Warning)
+        .add_categories([Category::SimplificationRule]);
 
     if let Some(replacement_ast) = maybe_replacement {
         let replacement_str = replacement_ast.to_string();

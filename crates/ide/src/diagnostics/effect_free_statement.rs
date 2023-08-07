@@ -28,6 +28,7 @@ use hir::InFunctionBody;
 use hir::Semantic;
 use text_edit::TextEdit;
 
+use super::Category;
 use super::Diagnostic;
 use super::Severity;
 use crate::codemod_helpers::statement_range;
@@ -185,7 +186,8 @@ fn make_diagnostic(file_id: FileId, expr: &ast::Expr) -> Diagnostic {
         "this statement has no effect",
         range,
     )
-    .severity(Severity::Warning);
+    .severity(Severity::Warning)
+    .add_categories([Category::SimplificationRule]);
 
     if let Some(statement_removal) = remove_statement(expr) {
         diag.with_fixes(Some(vec![fix(

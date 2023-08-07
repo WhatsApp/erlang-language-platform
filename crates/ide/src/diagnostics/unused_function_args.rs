@@ -29,6 +29,7 @@ use hir::Strategy;
 use text_edit::TextEdit;
 use text_edit::TextRange;
 
+use super::Category;
 use super::Diagnostic;
 use super::Severity;
 use crate::diagnostics::DiagnosticCode;
@@ -168,8 +169,11 @@ fn make_diagnostic(file_id: FileId, range: TextRange, new_name: String) -> Diagn
         range,
     )
     .severity(Severity::Warning)
-    // Marking as EXPERIMENTAL since it currently conflicts with handlers::ignore_variable https://fburl.com/code/rkm52yfj
-    .experimental()
+    .add_categories([
+        // Marking as EXPERIMENTAL since it currently conflicts with handlers::ignore_variable https://fburl.com/code/rkm52yfj
+        Category::Experimental,
+        Category::SimplificationRule,
+    ])
     .with_fixes(Some(vec![fix(
         "prefix_with_underscore",
         "Prefix variable with an underscore",

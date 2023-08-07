@@ -404,10 +404,8 @@ fn diagnostic_is_allowed<'a>(
 ) -> bool {
     if !diagnostic_code.is_none() {
         Some(&d.code.to_string()) == diagnostic_code
-    } else if let diagnostics::DiagnosticCode::AdHoc(_) = d.code {
-        false
     } else {
-        true
+        d.has_category(diagnostics::Category::SimplificationRule)
     }
 }
 

@@ -30,6 +30,7 @@ use super::Diagnostic;
 use super::Severity;
 use crate::codemod_helpers::check_is_only_place_where_var_is_defined;
 use crate::codemod_helpers::check_var_has_references;
+use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
@@ -100,6 +101,7 @@ fn is_var_assignment_to_unused_var(
         range,
     )
     .severity(Severity::WeakWarning)
+    .add_categories([Category::SimplificationRule])
     .with_fixes(Some(vec![fix(
         "remove_redundant_assignment",
         "Use right-hand of assignment everywhere",
