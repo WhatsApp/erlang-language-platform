@@ -10,6 +10,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
@@ -38,13 +39,6 @@ use crate::SpecId;
 use crate::TypeAlias;
 use crate::Var;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum FileKind {
-    Module,
-    Header,
-    Other,
-}
-
 /// Represents an erlang file - header or module
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct File {
@@ -57,16 +51,7 @@ impl File {
     }
 
     pub fn kind(&self, db: &dyn SourceDatabase) -> FileKind {
-        let source_root = db.source_root(db.file_source_root(self.file_id));
-        let ext = source_root
-            .path_for_file(&self.file_id)
-            .and_then(|path| path.name_and_extension())
-            .and_then(|(_name, ext)| ext);
-        match ext {
-            Some("erl") => FileKind::Module,
-            Some("hrl") => FileKind::Header,
-            _ => FileKind::Other,
-        }
+        db.file_kind(self.file_id)
     }
 
     pub fn name(&self, db: &dyn SourceDatabase) -> SmolStr {

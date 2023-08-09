@@ -89,6 +89,13 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FileKind {
+    Module,
+    Header,
+    Other,
+}
+
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<String>;
@@ -130,6 +137,8 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn file_app_type(&self, file_id: FileId) -> Option<AppType>;
 
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
+
+    fn file_kind(&self, file_id: FileId) -> FileKind;
 }
 
 fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleIndex> {
@@ -191,6 +200,19 @@ fn file_app_type(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppType> {
 fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
     let app_data = db.app_data(db.file_source_root(file_id))?;
     Some(app_data.name.clone())
+}
+
+fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
+    let source_root = db.source_root(db.file_source_root(file_id));
+    let ext = source_root
+        .path_for_file(&file_id)
+        .and_then(|path| path.name_and_extension())
+        .and_then(|(_name, ext)| ext);
+    match ext {
+        Some("erl") => FileKind::Module,
+        Some("hrl") => FileKind::Header,
+        _ => FileKind::Other,
+    }
 }
 
 /// We don't want to give HIR knowledge of source roots, hence we extract these

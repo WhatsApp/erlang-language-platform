@@ -15,6 +15,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_base_db::FileRange;
 use elp_base_db::ProjectId;
 use elp_syntax::algo;
@@ -25,7 +26,6 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use hir::db::MinDefDatabase;
-use hir::FileKind;
 use hir::InFile;
 use hir::Semantic;
 use memchr::memmem::Finder;

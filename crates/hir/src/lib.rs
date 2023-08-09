@@ -119,7 +119,6 @@ pub use macro_exp::ResolvedMacro;
 pub use module_data::CallbackDef;
 pub use module_data::DefineDef;
 pub use module_data::File;
-pub use module_data::FileKind;
 pub use module_data::FunctionDef;
 pub use module_data::Module;
 pub use module_data::RecordDef;
