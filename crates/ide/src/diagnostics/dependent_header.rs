@@ -12,6 +12,7 @@
 // Return a warning if a header file is not self-contained.
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
 use elp_syntax::AstNode;
@@ -28,9 +29,9 @@ pub(crate) fn dependent_header(
     diagnostics: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    ext: Option<&str>,
+    file_kind: FileKind,
 ) -> Option<()> {
-    if Some("hrl") == ext {
+    if FileKind::Header == file_kind {
         let def_map = sema.def_map(file_id);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);

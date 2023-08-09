@@ -13,6 +13,7 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
@@ -30,9 +31,9 @@ pub(crate) fn unused_macro(
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    ext: Option<&str>,
+    file_kind: FileKind,
 ) -> Option<()> {
-    if Some("erl") == ext {
+    if FileKind::Module == file_kind {
         let def_map = sema.def_map(file_id);
         for (name, def) in def_map.get_macros() {
             // Only run the check for macros defined in the local module,

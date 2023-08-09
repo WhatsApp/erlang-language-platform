@@ -691,6 +691,7 @@ impl Server {
         for file in &changed_files {
             let file_path = vfs.file_path(file.file_id);
             // Invalidate DB when making changes to header files
+            // Note: do not use FileKind here, it causes a panic, we are still setting the input for the db
             if let Some((_, Some("hrl"))) = file_path.name_and_extension() {
                 raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
             }

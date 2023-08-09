@@ -12,6 +12,7 @@
 // Return a warning if a record field defined in an .erl file has no references to it
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
@@ -24,9 +25,9 @@ pub(crate) fn unused_record_field(
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    ext: Option<&str>,
+    file_kind: FileKind,
 ) -> Option<()> {
-    if Some("erl") == ext {
+    if FileKind::Module == file_kind {
         let def_map = sema.def_map(file_id);
         for (name, def) in def_map.get_records() {
             // Only run the check for records defined in the local module,

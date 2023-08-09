@@ -19,6 +19,7 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::document::Document;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
@@ -224,8 +225,7 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     let raw_database = loaded.analysis_host.raw_database_mut();
 
     for file in &changed_files {
-        let file_path = loaded.vfs.file_path(file.file_id);
-        if let Some((_, Some("hrl"))) = file_path.name_and_extension() {
+        if raw_database.file_kind(file.file_id) == FileKind::Header {
             raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
         }
         if file.exists() {

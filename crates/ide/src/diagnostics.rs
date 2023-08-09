@@ -17,6 +17,7 @@ use elp_ide_assists::AssistKind;
 use elp_ide_db::assists::Assist;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::Location;
@@ -401,11 +402,11 @@ impl fmt::Display for DiagnosticCode {
 }
 
 pub trait AdhocSemanticDiagnostics:
-    Fn(&mut Vec<Diagnostic>, &Semantic, FileId, Option<&str>) -> () + std::panic::RefUnwindSafe + Sync
+    Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) -> () + std::panic::RefUnwindSafe + Sync
 {
 }
 impl<F> AdhocSemanticDiagnostics for F where
-    F: Fn(&mut Vec<Diagnostic>, &Semantic, FileId, Option<&str>) -> ()
+    F: Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) -> ()
         + std::panic::RefUnwindSafe
         + Sync
 {
@@ -444,20 +445,20 @@ pub fn diagnostics(
     include_generated: bool,
 ) -> Vec<Diagnostic> {
     lazy_static! {
-        static ref EXTENSIONS: Vec<String> = vec!["erl".to_string(), "hrl".to_string(),];
+        static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
     };
     let parse = db.parse(file_id);
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap();
 
-    let ext = path.name_and_extension().unwrap_or_default().1;
-    let report_diagnostics = EXTENSIONS.iter().any(|it| Some(it.as_str()) == ext);
+    let file_kind = db.file_kind(file_id);
+    let report_diagnostics = EXTENSIONS.iter().any(|it| it == &file_kind);
 
     let mut res = Vec::new();
 
     if report_diagnostics {
-        let is_erl_module = matches!(path.name_and_extension(), Some((_, Some("erl"))));
+        let is_erl_module = file_kind == FileKind::Module;
         let sema = Semantic::new(db);
 
         if is_erl_module {
@@ -479,8 +480,14 @@ pub fn diagnostics(
         config
             .adhoc_semantic_diagnostics
             .iter()
-            .for_each(|f| f(&mut res, &sema, file_id, ext));
-        semantic_diagnostics(&mut res, &sema, file_id, ext, config.disable_experimental);
+            .for_each(|f| f(&mut res, &sema, file_id, file_kind));
+        semantic_diagnostics(
+            &mut res,
+            &sema,
+            file_id,
+            file_kind,
+            config.disable_experimental,
+        );
         syntax_diagnostics(db, &parse, &mut res, file_id);
 
         res.extend(parse.errors().iter().take(128).map(|err| {
@@ -505,7 +512,7 @@ pub fn semantic_diagnostics(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    ext: Option<&str>,
+    file_kind: FileKind,
     disable_experimental: bool,
 ) {
     // TODO: disable this check when T151727890 and T151605845 are resolved
@@ -514,15 +521,15 @@ pub fn semantic_diagnostics(
         redundant_assignment::redundant_assignment(res, sema, file_id);
         trivial_match::trivial_match(res, sema, file_id);
     }
-    unused_macro::unused_macro(res, sema, file_id, ext);
-    unused_record_field::unused_record_field(res, sema, file_id, ext);
+    unused_macro::unused_macro(res, sema, file_id, file_kind);
+    unused_record_field::unused_record_field(res, sema, file_id, file_kind);
     mutable_variable::mutable_variable_bug(res, sema, file_id);
     effect_free_statement::effect_free_statement(res, sema, file_id);
     application_env::application_env(res, sema, file_id);
     // @fb-only: meta_only::diagnostics(res, sema, file_id);
     missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
     cross_node_eval::cross_node_eval(res, sema, file_id);
-    dependent_header::dependent_header(res, sema, file_id, ext);
+    dependent_header::dependent_header(res, sema, file_id, file_kind);
 }
 
 pub fn syntax_diagnostics(
