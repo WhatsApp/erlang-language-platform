@@ -37,13 +37,13 @@ const FeatureList = [
     ),
   },
   {
-    title: 'Powered by Rust',
+    title: 'Inspired by Rust Analyzer',
     icon: '🦀',
     description: (
       <>
-        ELP leverages the memory safety, the strong type system and the
-        battle-tested libraries of Rust to provide a reliable and efficient
-        solution to Erlang developers.
+        ELP reuses the architecture, components and libraries of
+        the <a href="https://rust-analyzer.github.io/" target="_blank">Rust Analyzer</a> project
+        to provide a reliable and efficient solution to Erlang developers.
       </>
     ),
   },
