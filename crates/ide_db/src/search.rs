@@ -166,6 +166,7 @@ impl SymbolDefinition {
                     let includers = usages.iter().map(|(file_id, _)| file_id);
                     SearchScope::files(iter::once(file.file_id).chain(included).chain(includers))
                 }
+                FileKind::Escript => SearchScope::single_file(self.file().file_id, None),
                 FileKind::Other => SearchScope::single_file(self.file().file_id, None),
             }
         } else {

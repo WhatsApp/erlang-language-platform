@@ -24,6 +24,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::ChangedFile;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
@@ -34,6 +35,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_log::telemetry;
 use elp_log::telemetry::TelemetryMessage;
@@ -81,7 +83,8 @@ mod progress;
 pub mod setup;
 
 const LOGGER_NAME: &str = "lsp";
-const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[&str] = &["erl", "hrl"];
+const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] =
+    &[FileKind::Module, FileKind::Header, FileKind::Escript];
 const EDOC_SUPPORTED_EXTENSIONS: &[&str] = &["erl"];
 
 enum Event {
@@ -828,7 +831,7 @@ impl Server {
         let snapshot = self.snapshot();
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| is_supported_by_parse_server(&self.vfs.read(), *file_id))
+            .filter(|file_id| is_supported_by_parse_server(&snapshot.analysis, *file_id))
             .collect();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -1148,11 +1151,10 @@ pub fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
     convert::url_from_abs_path(path)
 }
 
-pub fn is_supported_by_parse_server(vfs: &Vfs, id: FileId) -> bool {
-    let path = vfs.file_path(id);
-    match path.name_and_extension() {
-        Some((_name, Some(ext))) => PARSE_SERVER_SUPPORTED_EXTENSIONS.contains(&ext),
-        _ => false,
+pub fn is_supported_by_parse_server(analysis: &Analysis, id: FileId) -> bool {
+    match analysis.file_kind(id) {
+        Ok(kind) => PARSE_SERVER_SUPPORTED_EXTENSIONS.contains(&kind),
+        Err(_) => false,
     }
 }
 

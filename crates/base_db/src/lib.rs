@@ -93,6 +93,7 @@ pub struct FileRange {
 pub enum FileKind {
     Module,
     Header,
+    Escript,
     Other,
 }
 
@@ -211,6 +212,7 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
     match ext {
         Some("erl") => FileKind::Module,
         Some("hrl") => FileKind::Header,
+        Some("escript") => FileKind::Escript,
         _ => FileKind::Other,
     }
 }

@@ -27,6 +27,7 @@ use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::elp_base_db::salsa::ParallelDatabase;
 use elp_ide_db::elp_base_db::Change;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ModuleIndex;
@@ -317,6 +318,11 @@ impl Analysis {
     /// Returns the app_type for a file
     pub fn file_app_type(&self, file_id: FileId) -> Cancellable<Option<AppType>> {
         self.with_db(|db| db.file_app_type(file_id))
+    }
+
+    /// Returns the FileKind for a file
+    pub fn file_kind(&self, file_id: FileId) -> Cancellable<FileKind> {
+        self.with_db(|db| db.file_kind(file_id))
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
