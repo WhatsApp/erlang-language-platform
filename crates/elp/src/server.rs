@@ -98,7 +98,7 @@ pub enum Task {
     NativeDiagnostics(Vec<(FileId, Vec<Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
-    ParseServerDiagnostics(Vec<(FileId, Vec<Diagnostic>)>),
+    ErlangServiceDiagnostics(Vec<(FileId, Vec<Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
@@ -362,7 +362,7 @@ impl Server {
                         spinner.end();
                         self.edoc_diagnostics_completed(diags)
                     }
-                    Task::ParseServerDiagnostics(diags) => {
+                    Task::ErlangServiceDiagnostics(diags) => {
                         self.erlang_service_diagnostics_completed(diags)
                     }
                     Task::CompileDeps(spinner) => {
@@ -837,7 +837,7 @@ impl Server {
                 .flatten()
                 .collect();
 
-            Task::ParseServerDiagnostics(diagnostics)
+            Task::ErlangServiceDiagnostics(diagnostics)
         });
     }
 
