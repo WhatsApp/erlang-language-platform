@@ -149,23 +149,13 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
     // bunch of args set
     match args {
         Lint {
-            project: _,
-            module: _,
-            file: _,
-            to: _,
-            print_diags: _,
-            experimental_diags: _,
-            profile: _,
-            rebar: _,
-            include_generated: _,
-            apply_fix: _,
             recursive,
             in_place,
             diagnostic_filter: Some(diagnostic_filter),
             line_from,
             line_to,
             ignore_apps,
-            format: _,
+            ..
         } => {
             let mut cfg = DiagnosticsConfig::default();
             cfg.disable_experimental = args.experimental_diags;
