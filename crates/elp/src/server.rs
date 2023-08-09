@@ -85,7 +85,7 @@ pub mod setup;
 const LOGGER_NAME: &str = "lsp";
 const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] =
     &[FileKind::Module, FileKind::Header, FileKind::Escript];
-const EDOC_SUPPORTED_EXTENSIONS: &[&str] = &["erl"];
+const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -795,7 +795,7 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| is_supported_by_edoc(&self.vfs.read(), *file_id))
+            .filter(|file_id| is_supported_by_edoc(&snapshot.analysis, *file_id))
             .collect();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -1158,10 +1158,9 @@ pub fn is_supported_by_parse_server(analysis: &Analysis, id: FileId) -> bool {
     }
 }
 
-pub fn is_supported_by_edoc(vfs: &Vfs, id: FileId) -> bool {
-    let path = vfs.file_path(id);
-    match path.name_and_extension() {
-        Some((_name, Some(ext))) => EDOC_SUPPORTED_EXTENSIONS.contains(&ext),
-        _ => false,
+pub fn is_supported_by_edoc(analysis: &Analysis, id: FileId) -> bool {
+    match analysis.file_kind(id) {
+        Ok(kind) => EDOC_SUPPORTED_EXTENSIONS.contains(&kind),
+        Err(_) => false,
     }
 }
