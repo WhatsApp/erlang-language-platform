@@ -365,7 +365,7 @@ fn test_function_args_from_type() {
     let config = TEST_CONFIG;
     let diagnostics = vec![];
     let ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
-    let behaviour_forms = ctx.sema.db.file_form_list(ctx.file_id());
+    let behaviour_forms = ctx.sema.form_list(ctx.file_id());
     if let Some((idx, _callback)) = behaviour_forms.callback_attributes().next() {
         let callback_body = ctx.sema.db.callback_body(InFile::new(ctx.file_id(), idx));
         if let Some(sig) = callback_body.sigs.iter().next() {

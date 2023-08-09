@@ -54,6 +54,7 @@ use crate::Expr;
 use crate::ExprId;
 use crate::File;
 use crate::FormIdx;
+use crate::FormList;
 use crate::FunctionBody;
 use crate::FunctionId;
 use crate::InFile;
@@ -106,6 +107,10 @@ impl<'db> Semantic<'db> {
 
     pub fn def_map(&self, file_id: FileId) -> Arc<DefMap> {
         self.db.def_map(file_id)
+    }
+
+    pub fn form_list(&self, file_id: FileId) -> Arc<FormList> {
+        self.db.file_form_list(file_id)
     }
 
     pub fn to_def<T: ToDef>(&self, ast: InFile<&T>) -> Option<T::Def> {

@@ -768,7 +768,7 @@ bar() ->
             algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
         let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
 
-        let form_list = sema.db.file_form_list(file_id);
+        let form_list = sema.form_list(file_id);
         let (idx, _) = form_list.compile_attributes().next().unwrap();
         let compiler_options = sema.db.compile_body(InFile::new(file_id, idx));
         let r = FoldCtx::fold_term(
@@ -822,7 +822,7 @@ bar() ->
             algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
         let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
 
-        let form_list = sema.db.file_form_list(file_id);
+        let form_list = sema.form_list(file_id);
         let (idx, _) = form_list.functions().next().unwrap();
         let compiler_options = sema.db.function_body(InFile::new(file_id, idx));
 

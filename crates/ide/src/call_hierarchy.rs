@@ -47,7 +47,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
     for (file_id, ranges) in references {
         let source_file = sema.parse(file_id);
         let syntax = source_file.value.syntax();
-        let form_list = sema.db.file_form_list(file_id);
+        let form_list = sema.form_list(file_id);
 
         for range in ranges {
             if let Some(call) = algo::find_node_at_offset::<ast::Call>(syntax, range.start()) {

@@ -143,7 +143,7 @@ fn check_valid_application(
     def: &FunctionDef,
 ) -> Option<String> {
     let arg_name = def_fb.as_atom_name(sema.db, arg)?;
-    let form_list = sema.db.file_form_list(def.file.file_id);
+    let form_list = sema.form_list(def.file.file_id);
     // We need the app from the calling function location.
     let app = sema.db.file_app_name(def_fb.file_id())?;
 

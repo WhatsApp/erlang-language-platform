@@ -339,7 +339,7 @@ pub fn add_compile_option<'a>(
     builder: &'a mut SourceChangeBuilder,
 ) -> Option<()> {
     let source = sema.parse(file_id).value;
-    let form_list = sema.db.file_form_list(file_id);
+    let form_list = sema.form_list(file_id);
 
     builder.edit_file(file_id);
     if form_list.compile_attributes().count() == 0 {
@@ -452,7 +452,7 @@ impl<'a> ExportBuilder<'a> {
 
     pub(crate) fn finish(&mut self) {
         let source = self.sema.parse(self.file_id).value;
-        let form_list = self.sema.db.file_form_list(self.file_id);
+        let form_list = self.sema.form_list(self.file_id);
         let export_text = self
             .funs
             .iter()

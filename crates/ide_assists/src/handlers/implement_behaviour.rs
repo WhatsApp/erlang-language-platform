@@ -55,9 +55,9 @@ pub(crate) fn implement_behaviour(acc: &mut Assists, ctx: &AssistContext) -> Opt
         .sema
         .to_def(InFile::new(ctx.file_id(), &behaviour_ast))?;
     let our_def_map = ctx.sema.def_map(ctx.file_id());
-    let our_forms = ctx.sema.db.file_form_list(ctx.file_id());
+    let our_forms = ctx.sema.form_list(ctx.file_id());
     let module_def_map = ctx.sema.def_map(behaviour.file.file_id);
-    let behaviour_forms = ctx.sema.db.file_form_list(behaviour.file.file_id);
+    let behaviour_forms = ctx.sema.form_list(behaviour.file.file_id);
     let mut existing_callback = None;
     let mut existing_optional_callback = None;
     let mut additions = Vec::default();

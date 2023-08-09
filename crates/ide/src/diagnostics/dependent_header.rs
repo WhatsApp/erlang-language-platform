@@ -33,7 +33,7 @@ pub(crate) fn dependent_header(
     if Some("hrl") == ext {
         let def_map = sema.def_map(file_id);
         let source_file = sema.parse(file_id);
-        let form_list = sema.db.file_form_list(file_id);
+        let form_list = sema.form_list(file_id);
         for (define_id, _define) in form_list.define_attributes() {
             sema.db
                 .define_body_with_source(InFile::new(file_id, define_id))

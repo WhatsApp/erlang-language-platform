@@ -43,7 +43,7 @@ pub(crate) fn missing_compile_warn_missing_spec(
     if sema.db.is_generated(file_id) || Some(false) == is_in_src_dir(sema.db.upcast(), file_id) {
         return;
     }
-    let form_list = sema.db.file_form_list(file_id);
+    let form_list = sema.form_list(file_id);
     if form_list.compile_attributes().next().is_none() {
         report_diagnostic(sema, None, file_id, diags);
     }

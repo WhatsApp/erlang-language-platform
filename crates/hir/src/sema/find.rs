@@ -38,7 +38,7 @@ impl FindForm for ast::ModuleAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::ModuleAttribute(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::ModuleAttribute(idx) => {
@@ -60,7 +60,7 @@ impl FindForm for ast::TypeName {
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let ast_form = ast::Form::cast(ast.value.syntax().parent()?)?;
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast_form)?;
         let form = match form_idx {
             FormIdx::TypeAlias(idx) => {
@@ -81,7 +81,7 @@ impl FindForm for ast::RecordDecl {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::RecordDecl(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Record(idx) => {
@@ -102,7 +102,7 @@ impl FindForm for ast::Callback {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::Callback(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Callback(idx) => {
@@ -123,7 +123,7 @@ impl FindForm for ast::PpDefine {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::cast(ast.value.syntax().clone())?)?;
         let form = match form_idx {
             FormIdx::PPDirective(idx) => {
@@ -145,7 +145,7 @@ impl FindForm for ast::BehaviourAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::BehaviourAttribute(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Behaviour(idx) => {
@@ -166,7 +166,7 @@ impl FindForm for ast::ImportAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::ImportAttribute(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Import(idx) => {
@@ -187,7 +187,7 @@ impl FindForm for ast::ExportAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::ExportAttribute(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Export(idx) => {
@@ -208,7 +208,7 @@ impl FindForm for ast::ExportTypeAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::ExportTypeAttribute(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::TypeExport(idx) => {
@@ -229,7 +229,7 @@ impl FindForm for ast::Spec {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx = form_list.find_form(&ast::Form::Spec(ast.value.clone()))?;
         let form = match form_idx {
             FormIdx::Spec(idx) => {
@@ -250,7 +250,7 @@ impl FindForm for ast::OptionalCallbacksAttribute {
 
     fn find(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Form> {
         let source_file = sema.parse(ast.file_id).value;
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let form_idx =
             form_list.find_form(&ast::Form::OptionalCallbacksAttribute(ast.value.clone()))?;
         let form = match form_idx {
@@ -291,7 +291,7 @@ fn find_any_include(
     ast_form: &ast::Form,
 ) -> Option<IncludeAttributeId> {
     let source_file = sema.parse(file_id).value;
-    let form_list = sema.db.file_form_list(file_id);
+    let form_list = sema.form_list(file_id);
     let form_idx = form_list.find_form(ast_form)?;
     let form = match form_idx {
         FormIdx::PPDirective(idx) => {

@@ -287,7 +287,7 @@ impl ToDef for ast::MacroCallExpr {
                 }
             }
         };
-        let form_list = sema.db.file_form_list(resolved.file_id);
+        let form_list = sema.form_list(resolved.file_id);
         let define = form_list[resolved.value].clone();
         let file = File {
             file_id: resolved.file_id,
@@ -338,7 +338,7 @@ impl ToDef for ast::Fa {
     type Def = FaDef;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let parent = ast.value.syntax().parent()?;
         match_ast! {
             match (parent) {
@@ -409,7 +409,7 @@ impl ToDef for ast::MacroName {
     type Def = Vec<DefineDef>;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let ctx = MacroExpCtx::new(form_list.data(), sema.db);
         let defines = ctx.find_defines_by_name(ast.value);
         let file = File {
@@ -643,7 +643,7 @@ impl ToDef for ast::FunctionClause {
     type Def = FunctionDef;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let form_list = sema.db.file_form_list(ast.file_id);
+        let form_list = sema.form_list(ast.file_id);
         let idx = sema.find_enclosing_function(ast.file_id, ast.value.syntax())?;
         let name = &form_list[idx].name;
         sema.db.def_map(ast.file_id).get_function(name).cloned()

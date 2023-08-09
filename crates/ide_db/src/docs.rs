@@ -155,7 +155,7 @@ impl ToDoc for InFile<&ast::FunctionClause> {
             .sema
             .find_enclosing_function(ast.file_id, ast.value.syntax())
         {
-            let form_list = docs.sema.db.file_form_list(ast.file_id);
+            let form_list = docs.sema.form_list(ast.file_id);
             let function = &form_list[function_id];
             docs.function_doc(ast.file_id, function.name.clone())
         } else {
