@@ -24,7 +24,6 @@ use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::InFunctionBody;
-use hir::On;
 use hir::Semantic;
 use hir::Strategy;
 
@@ -315,33 +314,30 @@ pub(crate) fn find_call_in_function<T>(
     let mut def_fb = def.in_function_body(sema.db, def);
     let matcher = FunctionMatcher::new(call);
     def_fb.clone().fold_function_with_macros(
-        Strategy::Both,
+        Strategy::TopDown,
         (),
         &mut |acc, _, ctx| {
             match ctx.expr {
                 Expr::Call { target, args } => {
-                    if ctx.on == On::Entry {
-                        if let Some((mfa, t)) =
-                            matcher.get_match(&target, &args, sema, &def_fb.body())
-                        {
-                            if let Some(match_descr) = check_call(mfa, t, &target, &args, &def_fb) {
-                                // Got one.
-                                let call_expr_id = if let Some(expr_id) = ctx.in_macro {
-                                    expr_id
-                                } else {
-                                    ctx.expr_id
-                                };
-                                if let Some(range) = &def_fb.range_for_expr(sema.db, call_expr_id) {
-                                    if let Some(diag) = make_diag(
-                                        sema,
-                                        &mut def_fb,
-                                        &target,
-                                        &args,
-                                        &match_descr,
-                                        range.clone(),
-                                    ) {
-                                        diags.push(diag)
-                                    }
+                    if let Some((mfa, t)) = matcher.get_match(&target, &args, sema, &def_fb.body())
+                    {
+                        if let Some(match_descr) = check_call(mfa, t, &target, &args, &def_fb) {
+                            // Got one.
+                            let call_expr_id = if let Some(expr_id) = ctx.in_macro {
+                                expr_id
+                            } else {
+                                ctx.expr_id
+                            };
+                            if let Some(range) = &def_fb.range_for_expr(sema.db, call_expr_id) {
+                                if let Some(diag) = make_diag(
+                                    sema,
+                                    &mut def_fb,
+                                    &target,
+                                    &args,
+                                    &match_descr,
+                                    range.clone(),
+                                ) {
+                                    diags.push(diag)
                                 }
                             }
                         }
