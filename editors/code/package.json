@@ -2,7 +2,7 @@
 	"name": "erlang-language-platform",
 	"description": "Erlang language server",
 	"author": "Meta Platforms, Inc",
-	"license": "MIT",
+	"license": "Apache2",
 	"version": "1.0.0",
 	"repository": {
 		"type": "git",
