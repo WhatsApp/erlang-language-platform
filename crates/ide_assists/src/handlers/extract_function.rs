@@ -333,10 +333,7 @@ impl FunctionBody {
                     .iter()
                     .find(|it| text_range.contains_range(it.text_range()))
                 {
-                    match element {
-                        NodeOrToken::Node(node) => IndentLevel::from_node(&node),
-                        NodeOrToken::Token(t) => IndentLevel::from_token(&t),
-                    }
+                    IndentLevel::from_element(element)
                 } else {
                     IndentLevel(1)
                 }
