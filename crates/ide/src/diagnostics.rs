@@ -696,15 +696,13 @@ fn prev_line_comment_text(
     // Temporary for T153426323
     let _pctx = stdx::panic_context::enter(format!("\nprev_line_comment_text"));
     let token = source.token_at_offset(prev_line).left_biased()?;
-    Some(
-        token
-            .siblings_with_tokens(elp_syntax::Direction::Next)
-            .filter(|node| node.kind() == SyntaxKind::COMMENT)
-            .next()?
-            .as_node()?
-            .text()
-            .to_string(),
-    )
+    let prev_line_range = TextRange::new(prev_line, offset);
+    let node_or_token = token
+        .siblings_with_tokens(elp_syntax::Direction::Next)
+        .filter(|node| prev_line_range.contains_range(node.text_range()))
+        .filter(|node| node.kind() == SyntaxKind::COMMENT)
+        .next()?;
+    Some(node_or_token.to_string())
 }
 
 fn non_whitespace_sibling_or_token(node: &SyntaxNode, dir: Direction) -> Option<NodeOrToken> {
@@ -1384,5 +1382,74 @@ baz(1)->4.
             ]
         "#]]
         .assert_debug_eq(&codes);
+    }
+
+    #[test]
+    fn elp_ignore_1() {
+        check_diagnostics(
+            r#"
+  baz(1)->4.
+%%^^^^^^^^^^ error: no module definition
+  foo(2)->3.
+"#,
+        );
+    }
+
+    #[test]
+    fn elp_ignore_2() {
+        check_diagnostics(
+            r#"
+ %% elp:ignore L1201
+  baz(1)->4.
+  foo(2)->3.
+"#,
+        );
+    }
+
+    #[test]
+    fn elp_ignore_3() {
+        check_diagnostics(
+            r#"
+ %% elp:ignore L1201
+
+  baz(1)->4.
+%%^^^^^^^^^^ error: no module definition
+  foo(2)->3.
+"#,
+        );
+    }
+
+    #[test]
+    fn elp_ignore_4() {
+        check_diagnostics(
+            r#"
+             -module(main).
+
+             baz()->
+               Foo = 1,
+             %%^^^^^^^ 💡 warning: match is redundant
+               % elp:ignore W0007
+               Bar = 2,
+               ok.
+             "#,
+        );
+    }
+
+    #[test]
+    fn elp_ignore_5() {
+        check_diagnostics(
+            r#"
+             -module(main).
+
+             baz()->
+               Foo = 1,
+             %%^^^^^^^ 💡 warning: match is redundant
+               % elp:ignore W0007
+
+               Bar = 2,
+             %%^^^^^^^ 💡 warning: match is redundant
+               ok.
+             "#,
+        );
     }
 }
