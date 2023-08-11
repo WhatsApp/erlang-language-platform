@@ -28,6 +28,7 @@ mod token_text;
 
 pub mod algo;
 pub mod ast;
+pub mod label;
 pub mod syntax_node;
 pub mod ted;
 pub mod tree_sitter_elp;

@@ -16,11 +16,11 @@
 
 use std::str::FromStr;
 
+use elp_syntax::label::Label;
 use elp_syntax::TextRange;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::label::Label;
 use crate::source_change::SourceChange;
 
 #[derive(Debug, Clone)]

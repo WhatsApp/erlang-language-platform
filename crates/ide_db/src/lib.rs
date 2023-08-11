@@ -52,7 +52,6 @@ mod search;
 // ---------------------------------------------------------------------
 pub mod assists;
 pub mod helpers;
-pub mod label;
 pub mod rename;
 pub mod source_change;
 
