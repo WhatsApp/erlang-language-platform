@@ -368,6 +368,7 @@ mod tests {
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
     use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_fix_with_config;
 
     fn check_functions(
         diags: &mut Vec<Diagnostic>,
@@ -408,13 +409,14 @@ mod tests {
             def,
             &mfas,
             &move |_mfa, _, _target, _args, _def_fb| Some("Diagnostic Message".to_string()),
-            move |_sema, mut _def_fb, __target, _args, extra_info, range| {
+            move |_sema, def_fb, __target, _args, extra_info, range| {
                 let diag = Diagnostic::new(
                     DiagnosticCode::AdHoc("test".to_string()),
                     extra_info,
                     range.clone(),
                 )
-                .severity(Severity::Warning);
+                .severity(Severity::Warning)
+                .with_ignore_fix(sema, def_fb.file_id());
                 Some(diag)
             },
         );
@@ -434,6 +436,25 @@ mod tests {
         );
     }
 
+    #[track_caller]
+    fn check_adhoc_function_fix(
+        match_spec: &Vec<Vec<FunctionMatch>>,
+        fixture_before: &str,
+        fixture_after: &str,
+    ) {
+        check_fix_with_config(
+            DiagnosticsConfig::new(
+                false,
+                FxHashSet::default(),
+                vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
+            )
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::CrossNodeEval),
+            fixture_before,
+            fixture_after,
+        );
+    }
+
     // -----------------------------------------------------------------
 
     #[test]
@@ -445,9 +466,9 @@ mod tests {
 
             bar(Config) ->
                 foo:fire_bombs(Config),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 foo:fire_bombs(Config, zz).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
             "#,
         )
     }
@@ -463,13 +484,13 @@ mod tests {
                 erlang:spawn(fun() -> ok end),
                 spawn(fun() -> ok end),
                 erlang:spawn(Node, fun() -> ok end),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 spawn(Node, fun() -> ok end),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 erlang:spawn(Node, mod, fff, []),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 spawn(Node, mod, fff, []).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
             "#,
         )
     }
@@ -484,7 +505,7 @@ mod tests {
 
             bar() ->
                 erlang:spawn(),
-            %%  ^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 spawn().
             "#,
         )
@@ -499,11 +520,11 @@ mod tests {
 
             bar() ->
                 foo:bar(),
-            %%  ^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
                 foo:bar(x),
-            %%  ^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
                 foo:bar(x,y).
-            %%  ^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^ 💡 warning: Diagnostic Message
             "#,
         )
     }
@@ -517,11 +538,73 @@ mod tests {
 
             bar() ->
                 foo:bar(),
-            %%  ^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
                 baz:bar(x),
                 foo:florgle(x,y).
-            %%  ^^^^^^^^^^^^^^^^ warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
             "#,
         )
+    }
+
+    #[test]
+    fn ignore_fix_1() {
+        check_adhoc_function_fix(
+            &vec![vec![FunctionMatch::m("foo")]],
+            r#"
+            -module(main).
+
+            bar() ->
+                fo~o:bar().
+            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+            r#"
+            -module(main).
+
+            bar() ->
+                % elp:ignore ad-hoc: test (ad-hoc: test)
+                foo:bar().
+            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+        );
+    }
+
+    #[test]
+    fn ignore_fix_2() {
+        check_adhoc_function_fix(
+            &vec![vec![FunctionMatch::m("rpc")]],
+            r#"
+            -module(main).
+            foo(Node, M,F,A) ->
+               rpc:c~all(Node, M, F, A).
+            %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+            r#"
+            -module(main).
+            foo(Node, M,F,A) ->
+               % elp:ignore ad-hoc: test (ad-hoc: test)
+               rpc:call(Node, M, F, A).
+            %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+        );
+    }
+
+    #[test]
+    fn ignore_fix_3() {
+        check_adhoc_function_fix(
+            &vec![vec![FunctionMatch::m("rpc")]],
+            r#"
+            -module(main).
+            foo(Node, M,F,A) ->
+               baz(rpc:c~all(Node, M, F, A)).
+            %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+            r#"
+            -module(main).
+            foo(Node, M,F,A) ->
+               % elp:ignore ad-hoc: test (ad-hoc: test)
+               baz(rpc:call(Node, M, F, A)).
+            %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+             "#,
+        );
     }
 }

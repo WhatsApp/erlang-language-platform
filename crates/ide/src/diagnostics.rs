@@ -30,6 +30,8 @@ use elp_ide_db::LineIndex;
 use elp_ide_db::LineIndexDatabase;
 use elp_syntax::algo;
 use elp_syntax::ast;
+use elp_syntax::ast::edit::start_of_line;
+use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::ast::AstNode;
 use elp_syntax::label::Label;
 use elp_syntax::Direction;
@@ -153,28 +155,40 @@ impl Diagnostic {
         }
     }
 
-    pub(crate) fn with_ignore_fix(mut self, file_id: FileId) -> Diagnostic {
+    pub(crate) fn with_ignore_fix(mut self, sema: &Semantic, file_id: FileId) -> Diagnostic {
         let mut builder = TextEdit::builder();
-        let text = format!(
-            "% elp:ignore {} ({})\n",
-            self.code.as_code(),
-            self.code.as_label()
-        );
-        builder.insert(self.range.start(), text);
-        let edit = builder.finish();
-        let source_change = SourceChange::from_text_edit(file_id, edit);
-        let ignore_fix = Assist {
-            id: AssistId("ignore_problem", AssistKind::QuickFix),
-            label: Label::new("Ignore problem"),
-            group: None,
-            target: self.range,
-            source_change: Some(source_change),
-            user_input: None,
-        };
-        match &mut self.fixes {
-            Some(fixes) => fixes.push(ignore_fix),
-            None => self.fixes = Some(vec![ignore_fix]),
-        };
+        let parsed = sema.parse(file_id);
+        if let Some(token) = parsed
+            .value
+            .syntax()
+            .token_at_offset(self.range.start())
+            .right_biased()
+        {
+            let indent = IndentLevel::from_token(&token);
+            let text = format!(
+                "\n{}% elp:ignore {} ({})",
+                indent,
+                self.code.as_code(),
+                self.code.as_label()
+            );
+
+            let offset = start_of_line(&token);
+            builder.insert(offset, text);
+            let edit = builder.finish();
+            let source_change = SourceChange::from_text_edit(file_id, edit);
+            let ignore_fix = Assist {
+                id: AssistId("ignore_problem", AssistKind::QuickFix),
+                label: Label::new("Ignore problem"),
+                group: None,
+                target: self.range,
+                source_change: Some(source_change),
+                user_input: None,
+            };
+            match &mut self.fixes {
+                Some(fixes) => fixes.push(ignore_fix),
+                None => self.fixes = Some(vec![ignore_fix]),
+            };
+        }
         self
     }
 

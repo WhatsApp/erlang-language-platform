@@ -14,6 +14,8 @@ use std::fmt;
 use std::iter;
 use std::ops;
 
+use rowan::TextSize;
+
 use crate::ast::AstNode;
 use crate::ted;
 use crate::ted::make_whitespace;
@@ -135,6 +137,21 @@ impl IndentLevel {
             }
         }
     }
+}
+
+/// Given a token, return the `TextSize` of the preceding start of
+/// line.
+pub fn start_of_line(token: &SyntaxToken) -> TextSize {
+    for ws in prev_tokens(token.clone())
+        .skip(1)
+        .filter(|t| t.kind() == WHITESPACE)
+    {
+        let text = ws.text();
+        if let Some(pos) = text.rfind('\n') {
+            return ws.text_range().start() + TextSize::from(pos as u32);
+        }
+    }
+    token.text_range().start()
 }
 
 fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {

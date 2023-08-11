@@ -93,7 +93,7 @@ pub fn unreachable_test(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file
                         range,
                     )
                     .severity(Severity::Warning)
-                    .with_ignore_fix(file_id);
+                    .with_ignore_fix(sema, file_id);
                     diagnostics.push(d);
                 }
             }
