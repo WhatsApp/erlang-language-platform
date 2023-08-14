@@ -33,7 +33,7 @@ use crate::SourceDatabaseExt;
 /// source root, and ELP does not know the root path of the source root at
 /// all. So, a file from one source root can't refer to a file in another source
 /// root by path.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SourceRootId(pub u32);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -166,6 +166,7 @@ impl AppData {
 pub struct AppStructure {
     pub(crate) app_map: FxHashMap<SourceRootId, Option<AppData>>,
     pub(crate) project_map: FxHashMap<ProjectId, ProjectData>,
+    pub(crate) catch_all_source_root: SourceRootId,
 }
 
 impl AppStructure {
@@ -187,6 +188,7 @@ impl AppStructure {
         for (project_id, project_data) in self.project_map {
             db.set_project_data(project_id, Arc::new(project_data));
         }
+        db.set_catch_all_source_root(self.catch_all_source_root);
     }
 }
 
@@ -347,6 +349,7 @@ impl<'a> ProjectApps<'a> {
         // Final SourceRoot for out-of-project files
         log::info!("Final source root: {:?}", SourceRootId(app_idx));
         app_structure.add_app_data(SourceRootId(app_idx), None);
+        app_structure.catch_all_source_root = SourceRootId(app_idx);
         app_structure
     }
 }

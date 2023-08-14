@@ -974,6 +974,9 @@ bar() -> ?FOO.
                             },
                         },
                     },
+                    catch_all_source_root: SourceRootId(
+                        3,
+                    ),
                 },
             )"#]]
         .assert_eq(format!("{:#?}", change.app_structure).as_str());
@@ -1108,6 +1111,9 @@ foo() -> ?BAR.
                             },
                         },
                     },
+                    catch_all_source_root: SourceRootId(
+                        1,
+                    ),
                 },
             )"#]]
         .assert_eq(format!("{:#?}", change.app_structure).as_str());

@@ -168,6 +168,9 @@ impl SymbolDefinition {
                 }
                 FileKind::Escript => SearchScope::single_file(self.file().file_id, None),
                 FileKind::Other => SearchScope::single_file(self.file().file_id, None),
+                FileKind::OutsideProjectModel => {
+                    SearchScope::single_file(self.file().file_id, None)
+                }
             }
         } else {
             // Consider the entire project

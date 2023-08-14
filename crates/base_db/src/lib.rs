@@ -95,6 +95,7 @@ pub enum FileKind {
     Header,
     Escript,
     Other,
+    OutsideProjectModel,
 }
 
 pub trait FileLoader {
@@ -110,6 +111,9 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     /// Source root of the file.
     #[salsa::input]
     fn file_source_root(&self, file_id: FileId) -> SourceRootId;
+
+    #[salsa::input]
+    fn catch_all_source_root(&self) -> SourceRootId;
 
     /// Contents of the source root.
     #[salsa::input]
@@ -204,16 +208,23 @@ fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
 }
 
 fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
-    let source_root = db.source_root(db.file_source_root(file_id));
-    let ext = source_root
-        .path_for_file(&file_id)
-        .and_then(|path| path.name_and_extension())
-        .and_then(|(_name, ext)| ext);
-    match ext {
-        Some("erl") => FileKind::Module,
-        Some("hrl") => FileKind::Header,
-        Some("escript") => FileKind::Escript,
-        _ => FileKind::Other,
+    let source_root_id = db.file_source_root(file_id);
+    let catch_all = db.catch_all_source_root();
+    if source_root_id == catch_all {
+        // not part of the known project model, do not process
+        FileKind::OutsideProjectModel
+    } else {
+        let source_root = db.source_root(source_root_id);
+        let ext = source_root
+            .path_for_file(&file_id)
+            .and_then(|path| path.name_and_extension())
+            .and_then(|(_name, ext)| ext);
+        match ext {
+            Some("erl") => FileKind::Module,
+            Some("hrl") => FileKind::Header,
+            Some("escript") => FileKind::Escript,
+            _ => FileKind::Other,
+        }
     }
 }
 
