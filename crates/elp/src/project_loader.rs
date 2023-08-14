@@ -9,7 +9,6 @@
 
 use std::time::Instant;
 
-use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -64,16 +63,17 @@ impl ProjectLoader {
                 Ok(Some(manifest))
             }
             Err((buck_err, rebar_err)) => {
-                log::warn!(
+                log::info!(
                     "Couldn't open neither buck nor rebar project for path {:?}. buck err: {:?}, rebar err: {:?}",
                     path,
                     buck_err,
                     rebar_err
                 );
-                bail!(
-                    "Couldn't open neither buck nor rebar project for path {:?}",
-                    path
-                )
+                //cache parent path not to discover project for every file without project
+                if let Some(parent) = path.parent() {
+                    self.project_roots.insert(parent.to_path_buf());
+                }
+                Ok(None)
             }
         }
     }
