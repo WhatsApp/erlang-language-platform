@@ -14,6 +14,7 @@ use elp_syntax::ast::SourceFile;
 use elp_syntax::Parse;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use lazy_static::lazy_static;
 
 mod change;
 mod input;
@@ -23,6 +24,7 @@ mod module_index;
 // Public API
 
 pub mod fixture;
+mod meta_only;
 pub mod test_fixture;
 pub mod test_utils;
 pub use change::Change;
@@ -44,6 +46,7 @@ pub use paths::AbsPath;
 pub use paths::AbsPathBuf;
 pub use paths::RelPath;
 pub use paths::RelPathBuf;
+use regex::Regex;
 pub use salsa;
 pub use vfs::file_set::FileSet;
 pub use vfs::file_set::FileSetConfig;
@@ -207,14 +210,31 @@ fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
     Some(app_data.name.clone())
 }
 
+lazy_static! {
+static ref IGNORED_SOURCES: Vec<Regex> =
+    vec![
+        //ignore sources goes here
+        // @fb-only: meta_only::ignored_sources_regexes()
+    ].into_iter().flatten().collect();
+}
+
 fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
     let source_root_id = db.file_source_root(file_id);
+    let source_root = db.source_root(source_root_id);
+    let ignored_path = source_root
+        .path_for_file(&file_id)
+        .and_then(|path| path.as_path())
+        .map(|path| {
+            let path = path.as_os_str().to_str().unwrap();
+            IGNORED_SOURCES.iter().any(|r| r.is_match(path))
+        })
+        .unwrap_or(false);
     let catch_all = db.catch_all_source_root();
-    if source_root_id == catch_all {
-        // not part of the known project model, do not process
+    if source_root_id == catch_all && ignored_path {
+        // not part of the known project model, and on list of ignored
+        // sources, do not process
         FileKind::OutsideProjectModel
     } else {
-        let source_root = db.source_root(source_root_id);
         let ext = source_root
             .path_for_file(&file_id)
             .and_then(|path| path.name_and_extension())
