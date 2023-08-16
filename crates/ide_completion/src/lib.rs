@@ -181,7 +181,7 @@ fn get_previous_tokens(
     file_position: FilePosition,
 ) -> Option<Vec<(SyntaxKind, SyntaxToken)>> {
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nget_previous_tokens"));
+    let _pctx = stdx::panic_context::enter("\nget_previous_tokens".to_string());
     let mut token = node.token_at_offset(file_position.offset).left_biased()?;
     let mut tokens = Vec::new();
 

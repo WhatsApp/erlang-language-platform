@@ -34,9 +34,7 @@ pub(crate) fn add_remote(
 ) -> DoneFlag {
     let node = parsed.value.syntax();
     match algo::find_node_at_offset::<ast::Remote>(node, file_position.offset) {
-        None => {
-            return false;
-        }
+        None => false,
         Some(remote) => {
             || -> Option<()> {
                 let (module_atom, name) = &helpers::split_remote(&remote)?;
@@ -68,7 +66,7 @@ fn complete_remote_name(
 
     let completions = def_map
         .get_exported_types()
-        .into_iter()
+        .iter()
         .filter(|na| na.name().starts_with(fun_prefix))
         .map(create_call_completion);
     acc.extend(completions);
@@ -90,16 +88,13 @@ pub(crate) fn add_local(
     }
     let prefix = &helpers::atom_value(parsed, file_position.offset).unwrap_or_default();
     let def_map = sema.def_map(file_position.file_id);
-    let completions = def_map
-        .get_types()
-        .into_iter()
-        .filter_map(|(name_arity, _)| {
-            if name_arity.name().starts_with(prefix) {
-                Some(create_call_completion(name_arity))
-            } else {
-                None
-            }
-        });
+    let completions = def_map.get_types().iter().filter_map(|(name_arity, _)| {
+        if name_arity.name().starts_with(prefix) {
+            Some(create_call_completion(name_arity))
+        } else {
+            None
+        }
+    });
     acc.extend(completions);
     false
 }

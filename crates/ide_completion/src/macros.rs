@@ -38,7 +38,7 @@ pub(crate) fn add_completions(
 
     let node = parsed.value.syntax();
     match algo::find_node_at_offset::<ast::MacroCallExpr>(node, file_position.offset) {
-        None => return false,
+        None => false,
         Some(call) => {
             let prefix = &call.name().map(|n| n.to_string()).unwrap_or_default();
             let def_map = sema.def_map(file_position.file_id);

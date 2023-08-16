@@ -47,7 +47,7 @@ pub(crate) fn add_in_create_or_update(
             algo::find_node_at_offset::<ast::RecordUpdateExpr>(node, file_position.offset)
                 .and_then(|e| e.name())
         }) {
-        None => return false,
+        None => false,
         Some(record_name) => {
             || -> Option<()> {
                 let record = sema.to_def(InFile::new(file_position.file_id, &record_name))?;
