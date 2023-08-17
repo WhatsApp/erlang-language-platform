@@ -36,12 +36,19 @@ use crate::TextSize;
 pub fn ancestors_at_offset(
     node: &SyntaxNode,
     offset: TextSize,
-) -> impl Iterator<Item = SyntaxNode> {
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nancestors_at_offset".to_string());
-    node.token_at_offset(offset)
-        .map(|token| token.parent_ancestors())
-        .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
+) -> Option<impl Iterator<Item = SyntaxNode>> {
+    // Check that token_at_offset will not fail an assertion, and
+    // return None if so
+    let range = node.text_range();
+    if range.start() <= offset && offset <= range.end() {
+        Some(
+            node.token_at_offset(offset)
+                .map(|token| token.parent_ancestors())
+                .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len()),
+        )
+    } else {
+        None
+    }
 }
 
 /// Finds a node of specific Ast type at offset. Note that this is slightly
@@ -54,9 +61,7 @@ pub fn ancestors_at_offset(
 ///
 /// then the shorter node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nfind_node_at_offset".to_string());
-    ancestors_at_offset(syntax, offset).find_map(N::cast)
+    ancestors_at_offset(syntax, offset).and_then(|mut ns| ns.find_map(N::cast))
 }
 
 pub fn find_node_at_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {

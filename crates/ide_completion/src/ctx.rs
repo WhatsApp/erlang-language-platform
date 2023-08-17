@@ -51,9 +51,7 @@ impl Ctx {
         }
     }
     fn is_atom_colon(node: &SyntaxNode, offset: TextSize) -> bool {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nis_atom_colon".to_string());
-        if let Some(parent) = algo::ancestors_at_offset(node, offset).next() {
+        if let Some(parent) = algo::ancestors_at_offset(node, offset).and_then(|mut ns| ns.next()) {
             match_ast! {
                     match parent {
                         ast::RemoteModule(_) => {
@@ -88,9 +86,8 @@ impl Ctx {
             .unwrap_or_default()
     }
     fn is_pattern(node: &SyntaxNode, offset: TextSize) -> bool {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nis_pattern".to_string());
-        algo::ancestors_at_offset(node, offset).any(|n| {
+        if let Some(mut ancestors) = algo::ancestors_at_offset(node, offset) {
+            ancestors.any(|n| {
             let is_match = |node: &SyntaxNode| node.text_range() == n.text_range();
             if let Some(parent) = n.parent() {
                 match_ast! {
@@ -134,24 +131,29 @@ impl Ctx {
             }
             false
         })
+        } else {
+            false
+        }
     }
 
     fn is_expr(node: &SyntaxNode, offset: TextSize) -> bool {
         let mut in_expr = true;
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nis_expr".to_string());
-        let ancestor_offset = algo::ancestors_at_offset(node, offset)
-            .map(|n| {
-                if n.kind() == SyntaxKind::TYPE_SIG {
-                    in_expr = false;
-                };
-                n
-            })
-            .take_while(|n| n.kind() != SyntaxKind::SOURCE_FILE)
-            .last()
-            .and_then(|n| n.first_token())
-            .map(|tok: SyntaxToken| tok.text_range().start())
-            .unwrap_or_default();
+        let ancestor_offset = if let Some(ancestors) = algo::ancestors_at_offset(node, offset) {
+            ancestors
+                .map(|n| {
+                    if n.kind() == SyntaxKind::TYPE_SIG {
+                        in_expr = false;
+                    };
+                    n
+                })
+                .take_while(|n| n.kind() != SyntaxKind::SOURCE_FILE)
+                .last()
+                .and_then(|n| n.first_token())
+                .map(|tok: SyntaxToken| tok.text_range().start())
+                .unwrap_or_default()
+        } else {
+            return false;
+        };
         if !in_expr {
             return false;
         }
@@ -174,36 +176,38 @@ impl Ctx {
     }
 
     fn is_type(node: &SyntaxNode, offset: TextSize) -> bool {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nis_type".to_string());
-        for n in algo::ancestors_at_offset(node, offset) {
-            match_ast! {
-                match n {
-                    ast::Spec(_) => {
-                        return true;
-                    },
-                    ast::TypeName(_) => {
-                        return false;
-                    },
-                    ast::TypeAlias(_) => {
-                        return true;
-                    },
-                    ast::Opaque(_) => {
-                        return true;
-                    },
-                    ast::FieldType(_) => {
-                        return true;
-                    },
-                    _ => ()
-                }
-            };
+        if let Some(ancestors) = algo::ancestors_at_offset(node, offset) {
+            for n in ancestors {
+                match_ast! {
+                    match n {
+                        ast::Spec(_) => {
+                            return true;
+                        },
+                        ast::TypeName(_) => {
+                            return false;
+                        },
+                        ast::TypeAlias(_) => {
+                            return true;
+                        },
+                        ast::Opaque(_) => {
+                            return true;
+                        },
+                        ast::FieldType(_) => {
+                            return true;
+                        },
+                        _ => ()
+                    }
+                };
+            }
         }
         false
     }
     fn is_in_error(node: &SyntaxNode, offset: TextSize) -> bool {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nis_in_error".to_string());
-        algo::ancestors_at_offset(node, offset).any(|n| n.kind() == SyntaxKind::ERROR)
+        if let Some(mut ancestors) = algo::ancestors_at_offset(node, offset) {
+            ancestors.any(|n| n.kind() == SyntaxKind::ERROR)
+        } else {
+            false
+        }
     }
     fn previous_non_trivia_sibling_or_token(node: &SyntaxNode) -> Option<SyntaxElement> {
         let mut sot = node.prev_sibling_or_token();

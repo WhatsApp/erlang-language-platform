@@ -528,7 +528,8 @@ impl Analysis {
             let sema = Semantic::new(db);
             let source = sema.parse(position.file_id);
             let syntax = source.value.syntax();
-            let form = ancestors_at_offset(syntax, position.offset).find_map(ast::Form::cast)?;
+            let form = ancestors_at_offset(syntax, position.offset)
+                .and_then(|mut ns| ns.find_map(ast::Form::cast))?;
             Some(form.syntax().text_range())
         })
     }
