@@ -202,7 +202,7 @@ pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRan
 }
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {
-    let indent_str = " ".repeat(delta_indent.abs() as usize);
+    let indent_str = " ".repeat(delta_indent.unsigned_abs() as usize);
     if str.contains('\n') {
         // Only change indentation if the new string has more than one line.
         str.split('\n')
@@ -237,11 +237,10 @@ pub const DEFAULT_INDENT_STEP: i8 = 4;
 /// Any parameters to the `Clause` that are just a single variable.
 pub(crate) fn simple_param_vars(clause: &InFunctionBody<&Clause>) -> Option<FxHashSet<Var>> {
     let mut acc = FxHashSet::default();
-    clause.value.pats.iter().for_each(|p| match &clause[*p] {
-        hir::Pat::Var(v) => {
+    clause.value.pats.iter().for_each(|p| {
+        if let hir::Pat::Var(v) = &clause[*p] {
             acc.insert(*v);
         }
-        _ => {}
     });
     Some(acc)
 }
@@ -473,23 +472,21 @@ impl<'a> ExportBuilder<'a> {
             } else if self.with_comment.is_some() {
                 // Preceding comment for export, always make a fresh one
                 self.new_export(form_list, source, export_text)
-            } else {
-                if let Some((insert, text)) = || -> Option<_> {
-                    if form_list.exports().count() == 1 {
-                        // One existing export, add the function to it.
+            } else if let Some((insert, text)) = || -> Option<_> {
+                if form_list.exports().count() == 1 {
+                    // One existing export, add the function to it.
 
-                        let (_, export) = form_list.exports().next()?;
-                        add_to_export(export, &source, &export_text)
-                    } else {
-                        // Multiple
-                        None
-                    }
-                }() {
-                    (insert, text)
+                    let (_, export) = form_list.exports().next()?;
+                    add_to_export(export, &source, &export_text)
                 } else {
-                    // Zero or multiple existing exports, create a fresh one
-                    self.new_export(form_list, source, export_text)
+                    // Multiple
+                    None
                 }
+            }() {
+                (insert, text)
+            } else {
+                // Zero or multiple existing exports, create a fresh one
+                self.new_export(form_list, source, export_text)
             }
         };
 

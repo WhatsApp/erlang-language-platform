@@ -176,7 +176,7 @@ fn inline_function_as_case(
     clauses.push("end".to_string());
     let old_indent = IndentLevel::from_node(call.syntax());
     let delta_indent = old_indent.0 as i8 + DEFAULT_INDENT_STEP;
-    let replacement_range = if clauses[0] == "" {
+    let replacement_range = if clauses[0].is_empty() {
         call_replacement_range(call)
     } else {
         call.syntax().text_range()
@@ -200,7 +200,7 @@ fn call_replacement_range(call: &ast::Call) -> TextRange {
         }
         // Temporary for  T148094436
         let _pctx =
-            stdx::panic_context::enter(format!("\ninline_function::call_replacement_range"));
+            stdx::panic_context::enter("\ninline_function::call_replacement_range".to_string());
         Some(TextRange::new(start_pos, call.syntax().text_range().end()))
     }
 
@@ -239,7 +239,7 @@ fn inline_single_function_clause_with_begin(
     final_text.push_str("\nbegin");
 
     assign_params_for_begin(&mut final_text, body_indent, ast_clause, call, clause)?;
-    if edited_text.chars().next() != Some('\n') {
+    if !edited_text.starts_with('\n') {
         final_text.push_str((format!("\n{body_indent}")).as_str());
         final_text.push_str(&edited_text);
     } else {
@@ -248,7 +248,6 @@ fn inline_single_function_clause_with_begin(
 
         let indent = edited_text
             .chars()
-            .into_iter()
             .skip(1)
             .take_while(|c| *c == ' ')
             .count();
@@ -259,7 +258,7 @@ fn inline_single_function_clause_with_begin(
 
     let old_indent = IndentLevel::from_node(call.syntax());
     let delta_indent = old_indent.0 as i8 + DEFAULT_INDENT_STEP;
-    let replacement_range = if final_text.chars().next() == Some('\n') {
+    let replacement_range = if final_text.starts_with('\n') {
         call_replacement_range(call)
     } else {
         call.syntax().text_range()
@@ -282,9 +281,10 @@ fn assign_params_for_begin(
     )
     .enumerate()
     .for_each(|(idx, (val, var, pat))| {
-        let is_single_var = match &clause[*pat] {
-            Pat::Var(_) => true,
-            _ => false,
+        let is_single_var = if let Pat::Var(_) = &clause[*pat] {
+            true
+        } else {
+            false
         };
         if idx == 0 {
             if let Some(leading_comments) = get_val_preceding_comments(val.syntax()) {
@@ -300,7 +300,7 @@ fn assign_params_for_begin(
                 (false, val, "".to_string())
             };
 
-        if comments != "" || !is_single_var || (var_str.to_string() != val.to_string()) {
+        if !comments.is_empty() || !is_single_var || (var_str.to_string() != val.to_string()) {
             final_text.push_str(format!("\n{body_indent}{var_str} = ").as_str());
 
             if idx == arity - 1 {
@@ -309,7 +309,7 @@ fn assign_params_for_begin(
             } else {
                 final_text.push_str(format!("{val}{comments}").as_str());
                 if !has_comma {
-                    final_text.push_str(",");
+                    final_text.push(',');
                 }
             }
         }
@@ -431,7 +431,7 @@ fn inline_simple_function_clause(
 
     let old_indent = IndentLevel::from_node(call.syntax());
     let delta_indent = old_indent.0 as i8 + DEFAULT_INDENT_STEP;
-    let replacement_range = if edited_text.chars().next() == Some('\n') {
+    let replacement_range = if edited_text.starts_with('\n') {
         call_replacement_range(call)
     } else {
         call.syntax().text_range()
@@ -479,7 +479,7 @@ fn has_vars_in_clause(sema: &Semantic, file_id: FileId, fun_clause: &ast::Functi
 
 fn apply_offset(edit: &TextEdit, offset: TextSize) -> Option<Vec<(TextRange, String)>> {
     // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter(format!("\ninline_function::apply_offset"));
+    let _pctx = stdx::panic_context::enter("\ninline_function::apply_offset".to_string());
     Some(
         edit.iter()
             .filter_map(|te| {
@@ -528,7 +528,6 @@ fn clause_body_text_with_intro(
         .syntax()
         .descendants_with_tokens()
         .skip(1) // Skip the entire node
-        .map(|n| n)
         .skip_while(|n| match n {
             NodeOrToken::Token(t) => t.kind() != SyntaxKind::WHITESPACE,
             NodeOrToken::Node(_) => true,
@@ -555,7 +554,7 @@ fn clause_body_text(clause: &ast::FunctionClause) -> Option<(String, TextSize)> 
         .skip_while(|n| match n {
             NodeOrToken::Token(t) => {
                 if t.kind() == SyntaxKind::WHITESPACE {
-                    !t.text().contains("\n")
+                    !t.text().contains('\n')
                 } else {
                     false
                 }
@@ -593,8 +592,8 @@ fn params_text(args: &ast::ExprArgs) -> Option<String> {
         .syntax()
         .text()
         .to_string()
-        .strip_prefix("(")?
-        .strip_suffix(")")?
+        .strip_prefix('(')?
+        .strip_suffix(')')?
         .trim()
         .to_string();
 
@@ -605,7 +604,7 @@ fn params_text(args: &ast::ExprArgs) -> Option<String> {
         token = token.prev_token()?;
     }
     if token.kind() == SyntaxKind::COMMENT {
-        args_str.push_str("\n");
+        args_str.push('\n');
     }
 
     if args.args().count() == 1 {
@@ -640,7 +639,7 @@ fn guards_text(guard: Option<ast::Guard>) -> Option<String> {
         trail.push_str(&token.text().to_string().clone());
         token = token.next_token()?;
     }
-    if trail.contains("\n") {
+    if trail.contains('\n') {
         trail.push_str("  ");
     }
     when.push(trail);
@@ -765,10 +764,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                 acc.extend(new.into_iter());
                 acc
             });
-        let fun_vars: FxHashSet<Var> = fun_vars
-            .difference(&simple_param_vars)
-            .map(|x| x.clone())
-            .collect();
+        let fun_vars: FxHashSet<Var> = fun_vars.difference(&simple_param_vars).copied().collect();
 
         // At each call site, check that no param clashes with the fun_vars.
         let file_id = ctx.file_id();
@@ -782,11 +778,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                 let clause_id = ctx.sema.find_enclosing_function_clause(call.syntax())?;
                 let call_function = ctx.sema.to_expr(InFile::new(ctx.file_id(), &expr))?;
                 let clause = &call_function[clause_id];
-                let clause_vars = ScopeAnalysis::clause_vars_in_scope(
-                    &ctx.sema,
-                    &call_function.with_value(&clause),
-                );
-                clause_vars
+                ScopeAnalysis::clause_vars_in_scope(&ctx.sema, &call_function.with_value(clause))
             }()
             .unwrap_or_default();
 

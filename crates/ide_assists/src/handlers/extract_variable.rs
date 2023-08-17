@@ -105,7 +105,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             let offset = anchor.syntax().text_range().start();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snip = buf.replace(&format!("{}", var_name), &format!("$0{}", var_name));
+                    let snip = buf.replace(&var_name.to_string(), &format!("$0{}", var_name));
                     edit.insert_snippet(cap, offset, snip)
                 }
                 None => edit.insert(offset, buf),
@@ -125,10 +125,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
 /// extracted to a variable.  In general that's true for any
 /// expression, but in some cases that would produce invalid code.
 fn valid_extraction(node: &SyntaxNode) -> bool {
-    match node.kind() {
-        SyntaxKind::RECORD_FIELD => false,
-        _ => true,
-    }
+    node.kind() != SyntaxKind::RECORD_FIELD
 }
 
 #[derive(Debug)]

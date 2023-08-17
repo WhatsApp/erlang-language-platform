@@ -56,7 +56,7 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     let insert = prev_form_nodes(function.syntax())
-        .filter_map(|form| ast::Spec::cast(form))
+        .filter_map(ast::Spec::cast)
         .map(|spec| spec.syntax().text_range().start())
         .next()
         .unwrap_or_else(|| function.syntax().text_range().start());

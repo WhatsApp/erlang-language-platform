@@ -95,7 +95,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             let params = body.extracted_function_params(locals.free);
             let name = freshen_function_name(
                 ctx,
-                ctx.user_input_or(|| make_function_name(&ctx)),
+                ctx.user_input_or(|| make_function_name(ctx)),
                 params.len() as u32,
             );
             let fun = Function {
@@ -383,7 +383,7 @@ impl FunctionBody {
                     .syntax()
                     .ancestors()
                     .find_map(ast::ClauseBody::cast)
-                    .and_then(|body| Some(SpanParent::ClauseBody(body)));
+                    .map(SpanParent::ClauseBody);
                 if let Some(parent) = parent {
                     calculate_ret_values(
                         &parent,
@@ -409,11 +409,11 @@ impl FunctionBody {
     }
 }
 
-fn calculate_ret_values<'a>(
+fn calculate_ret_values(
     parent: &SpanParent,
     text_range: &TextRange,
     ctx: &AssistContext,
-    locals_bound_in_body: &'a FxHashSet<Resolution>,
+    locals_bound_in_body: &FxHashSet<Resolution>,
 ) -> Vec<Var> {
     let trailing: Vec<_> = parent
         .syntax()
@@ -445,10 +445,7 @@ fn calculate_ret_values<'a>(
 /// expression, but in some cases that would produce invalid code.
 fn valid_extraction(node: &SyntaxNode) -> bool {
     if let Some(n) = node.parent() {
-        match n.kind() {
-            SyntaxKind::RECORD_FIELD => false,
-            _ => true,
-        }
+        n.kind() != SyntaxKind::RECORD_FIELD
     } else {
         false
     }
@@ -466,12 +463,10 @@ fn overlaps(range_a: &TextRange, range_b: &TextRange) -> bool {
 /// Function should be put right after returned node
 fn node_to_insert_after(body: &FunctionBody) -> Option<SyntaxNode> {
     let node = body.node();
-    let mut ancestors = node.ancestors().peekable();
     let mut last_ancestor = None;
-    while let Some(next_ancestor) = ancestors.next() {
-        match next_ancestor.kind() {
-            SyntaxKind::SOURCE_FILE => break,
-            _ => (),
+    for next_ancestor in node.ancestors().peekable() {
+        if next_ancestor.kind() == SyntaxKind::SOURCE_FILE {
+            break;
         }
         last_ancestor = Some(next_ancestor);
     }
@@ -494,7 +489,7 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function) -> String {
             format_to!(buf, "{} = ", local.as_string(ctx.db().upcast()))
         }
         vars => {
-            buf.push_str("{");
+            buf.push('{');
             let bindings = vars.iter().format_with(", ", |local, f| {
                 f(&format_args!("{}", local.as_string(ctx.db().upcast())))
             });
@@ -518,12 +513,12 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function) -> String {
 
 fn ends_with_comma_then_trivia(node: &SyntaxNode, range: TextRange) -> Option<TextRange> {
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nends_with_comma_then_trivia"));
+    let _pctx = stdx::panic_context::enter("\nends_with_comma_then_trivia".to_string());
     let end_tok = node.token_at_offset(range.end());
     let end_tok = end_tok
         .left_biased()
         .and_then(|t| algo::skip_trivia_token(t, Direction::Prev));
-    end_tok.map_or(None, |it| {
+    end_tok.and_then(|it| {
         if it.kind() == SyntaxKind::ANON_COMMA {
             Some(it.text_range())
         } else {
@@ -559,14 +554,14 @@ impl Function {
 
         if let Some(ret_ty) = ret_ty {
             format_to!(fn_def, ",\n    {}", ret_ty);
-            fn_def.push_str(".");
+            fn_def.push('.');
         } else {
             // If the body ends with a comment, put the final `.` on a new
             // line.
             if ends_with_comment {
                 fn_def.push_str("\n    .");
             } else {
-                fn_def.push_str(".");
+                fn_def.push('.');
             }
         }
         fn_def
@@ -599,7 +594,7 @@ impl Function {
                 let mut parts = " ".repeat(old_indent.0 as usize);
                 parts = "\n".to_owned() + &parts;
 
-                let has_comma = ends_with_comma_then_trivia(&self.body.node(), *text_range);
+                let has_comma = ends_with_comma_then_trivia(self.body.node(), *text_range);
 
                 tokens(parent.syntax())
                     .filter(|it| {
@@ -626,7 +621,6 @@ impl Function {
 fn tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> {
     node.descendants_with_tokens()
         .filter_map(|element| element.into_token())
-        .filter_map(move |token| Some(token))
 }
 
 // ---------------------------------------------------------------------

@@ -106,12 +106,12 @@ pub(crate) fn implement_behaviour(acc: &mut Assists, ctx: &AssistContext) -> Opt
         Some(range) => max(range.end(), attr_range.end()),
         None => attr_range.end(),
     };
-    let insert_at = TextSize::from(insert_start + TextSize::from(1));
+    let insert_at = insert_start + TextSize::from(1);
 
     let mut implement_callbacks =
         ImplementCallbacks::new(ctx, &behaviour, attr_range, insert_at, acc);
 
-    if additions.len() != 0 {
+    if !additions.is_empty() {
         let id = AssistId("implement_callbacks", AssistKind::QuickFix);
         let message = format!(
             "Create callbacks for '{}'",
@@ -121,7 +121,7 @@ pub(crate) fn implement_behaviour(acc: &mut Assists, ctx: &AssistContext) -> Opt
         implement_callbacks.add_assist(id, additions, message, comment, existing_callback);
     }
 
-    if optional_additions.len() != 0 {
+    if !optional_additions.is_empty() {
         let id = AssistId("implement_optional_callbacks", AssistKind::QuickFix);
         let message = format!(
             "Create optional callbacks for '{}'",
@@ -189,7 +189,7 @@ impl<'a> ImplementCallbacks<'a> {
             export_builder.finish();
             builder.edit_file(self.ctx.frange.file_id);
             let mut text = texts.join("\n");
-            text.push_str("\n");
+            text.push('\n');
             builder.insert(self.insert_at, text)
         });
     }
@@ -202,7 +202,7 @@ fn build_assist(
 ) -> (Vec<NameArity>, Vec<String>) {
     let (funs, texts): (Vec<NameArity>, Vec<String>) = additions
         .into_iter()
-        .filter_map(|(idx, callback)| make_implementation(ctx, &behaviour, idx, callback))
+        .filter_map(|(idx, callback)| make_implementation(ctx, behaviour, idx, callback))
         .fold((vec![], vec![]), |(mut funs, mut msgs), (fun, msg)| {
             funs.push(fun);
             if let Some(msg) = msg {
@@ -227,7 +227,7 @@ fn make_implementation(
     match callback {
         Kind::CallBack(callback) => {
             let function_name = callback.name.name();
-            if let Some(sig) = callback_body.sigs.iter().next() {
+            if let Some(sig) = callback_body.sigs.first() {
                 let function_args =
                     ctx.create_function_args_from_types(&sig.args, &callback_body.body);
                 let addition = (

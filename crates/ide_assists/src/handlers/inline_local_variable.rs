@@ -46,13 +46,9 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         .and_then(|match_expr| inline_variable_definition(ctx, match_expr))
     {
         Some(data)
-    } else if let Some(data) = ctx
-        .find_node_at_offset::<ast::Var>()
-        .and_then(|var| inline_usage(ctx, var))
-    {
-        Some(data)
     } else {
-        None
+        ctx.find_node_at_offset::<ast::Var>()
+            .and_then(|var| inline_usage(ctx, var))
     }?;
 
     if !is_safe(ctx, lhs_var, &match_expr, &references) {
@@ -78,7 +74,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                     None => orig_range.end(),
                 };
                 // Temporary for  T148094436
-                let _pctx = stdx::panic_context::enter(format!("\ninline_local_variable"));
+                let _pctx = stdx::panic_context::enter("\ninline_local_variable".to_string());
                 TextRange::new(start, end)
             });
 
@@ -189,8 +185,8 @@ fn inline_usage(ctx: &AssistContext, var: ast::Var) -> Option<InlineData> {
 /// to the one given, but only if there is a single
 /// resolution. Variables having multiple binding sites, as arising
 /// from case clauses, cannot be inlined.
-fn find_local_usages<'a>(
-    sema: &Semantic<'a>,
+fn find_local_usages(
+    sema: &Semantic,
     db: &dyn MinDefDatabase,
     var: InFile<&ast::Var>,
 ) -> Option<Vec<ast::Var>> {
