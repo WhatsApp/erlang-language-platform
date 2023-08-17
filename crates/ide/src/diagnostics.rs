@@ -795,7 +795,7 @@ pub fn erlang_service_diagnostics(
     // Remove diagnostics already reported by ELP
     let diags: Vec<(FileId, Diagnostic)> = diags
         .into_iter()
-        .filter(|(_, d)| is_implemented_in_elp(&d.message))
+        .filter(|(_, d)| !is_implemented_in_elp(&d.code))
         .collect();
     if diags.is_empty() {
         // If there are no diagnostics reported, return an empty list
@@ -923,12 +923,14 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
 
 /// Match the message part of the diagnostics produced by erlang_ls or
 /// the erlang_service but already implemented natively in ELP
-pub fn is_implemented_in_elp(message: &str) -> bool {
-    #[allow(clippy::match_like_matches_macro)]
-    match message {
-        "head mismatch" => false,
-        "no module definition" => false,
-        _ => true,
+pub fn is_implemented_in_elp(code: &DiagnosticCode) -> bool {
+    match code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "P1700" => true, // "head mismatch"
+            "L1201" => true, // "no module definition"
+            _ => false,
+        },
+        _ => false,
     }
 }
 
@@ -1243,14 +1245,14 @@ baz(1)->4.
 
     #[test]
     fn filter_diagnostics() {
-        let diag1 = "head mismatch".to_string();
-        let diag2 = "no module definition".to_string();
-        let diagk = "another diagnostic".to_string();
+        let diag1 = DiagnosticCode::ErlangService("P1700".to_string());
+        let diag2 = DiagnosticCode::ErlangService("L1201".to_string());
+        let diagk = DiagnosticCode::ErlangService("another diagnostic".to_string());
         let diags = vec![diag1, diag2, diagk.clone()];
         assert_eq!(
             diags
                 .into_iter()
-                .filter(|d| is_implemented_in_elp(&d))
+                .filter(|d| !is_implemented_in_elp(&d))
                 .collect::<Vec<_>>(),
             vec![diagk]
         );
