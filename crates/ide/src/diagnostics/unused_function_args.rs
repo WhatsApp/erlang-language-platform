@@ -60,14 +60,14 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
                         &mut |(), ctx| {
                             if let Some(var) = ctx.pat.as_var() {
                                 if is_unused_var(
-                                    &sema,
+                                    sema,
                                     &def_fb,
                                     &body_map,
                                     &source_file,
                                     &ctx.pat_id,
                                 ) {
                                     let var_name = var.as_string(sema.db.upcast());
-                                    if !var_name.starts_with("_") {
+                                    if !var_name.starts_with('_') {
                                         unused_vars_with_wrong_name.insert(ctx.pat_id, var_name);
                                     }
                                 }
@@ -78,9 +78,9 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 
                 if !unused_vars_with_wrong_name.is_empty() {
                     if let Some(replacements) = pick_new_unused_var_names(
-                        &sema,
+                        sema,
                         &def_fb,
-                        &clause,
+                        clause,
                         &unused_vars_with_wrong_name,
                     ) {
                         for (pat_id, new_name) in replacements.iter() {
@@ -105,7 +105,7 @@ fn is_unused_var(
         Some(_var) => {
             if let Some(infile_ast_ptr) = body_map.pat(*pat_id) {
                 if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(ast_var))) =
-                    infile_ast_ptr.to_node(&source_file)
+                    infile_ast_ptr.to_node(source_file)
                 {
                     let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
                     if let Some(var_usages) = sema.find_local_usages(infile_ast_var) {
@@ -126,7 +126,7 @@ fn pick_new_unused_var_names(
     clause: &Clause,
     unused_var_names: &HashMap<PatId, String>,
 ) -> Option<HashMap<PatId, String>> {
-    let clause_vars = hir::ScopeAnalysis::clause_vars_in_scope(&sema, &def_fb.with_value(clause))?;
+    let clause_vars = hir::ScopeAnalysis::clause_vars_in_scope(sema, &def_fb.with_value(clause))?;
     let unused_vars: HashSet<hir::Var> = HashSet::from_iter(
         unused_var_names
             .keys()
@@ -138,7 +138,7 @@ fn pick_new_unused_var_names(
                 None
             } else {
                 let vname = v.as_string(sema.db.upcast());
-                if !vname.starts_with("_") {
+                if !vname.starts_with('_') {
                     None
                 } else {
                     Some(vname)

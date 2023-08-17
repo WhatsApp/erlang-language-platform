@@ -105,11 +105,11 @@ fn make_diagnostic(
     // meanings like `-record(foo, ...).` we would get "foo"
     let attr_name_range_with_hyphen = attr_form.name().unwrap().syntax().text_range();
     // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nmisspelled_attribute::make_diagnostic"));
+    let _pctx = stdx::panic_context::enter("\nmisspelled_attribute::make_diagnostic".to_string());
     let attr_name_range = TextRange::new(
         attr_name_range_with_hyphen
             .start()
-            .checked_add(TextSize::of('-').into())
+            .checked_add(TextSize::of('-'))
             .unwrap(),
         attr_name_range_with_hyphen.end(),
     );

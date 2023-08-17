@@ -57,13 +57,13 @@ pub(crate) fn unused_includes(
                 .text_range();
 
             let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(inc_text_rage.clone());
+            edit_builder.delete(inc_text_rage);
             let edit = edit_builder.finish();
 
             let diagnostic = Diagnostic::new(
                 DiagnosticCode::UnusedInclude,
                 format!("Unused file: {}", path),
-                inc_text_rage.clone(),
+                inc_text_rage,
             )
             .severity(Severity::Warning)
             .with_fixes(Some(vec![fix(
@@ -135,9 +135,9 @@ fn is_file_used(
             return true;
         }
 
-        for (_, fun_def) in def_map.get_functions() {
+        for fun_def in def_map.get_functions().values() {
             if SymbolDefinition::Function(fun_def.clone())
-                .usages(&sema)
+                .usages(sema)
                 .set_scope(&scope)
                 .at_least_one()
             {
@@ -146,9 +146,9 @@ fn is_file_used(
             }
         }
 
-        for (_, type_def) in def_map.get_types() {
+        for type_def in def_map.get_types().values() {
             if SymbolDefinition::Type(type_def.clone())
-                .usages(&sema)
+                .usages(sema)
                 .set_scope(&scope)
                 .at_least_one()
             {
@@ -157,9 +157,9 @@ fn is_file_used(
             }
         }
 
-        for (_, record_def) in def_map.get_records() {
+        for record_def in def_map.get_records().values() {
             if SymbolDefinition::Record(record_def.clone())
-                .usages(&sema)
+                .usages(sema)
                 .set_scope(&scope)
                 .at_least_one()
             {
@@ -168,9 +168,9 @@ fn is_file_used(
             }
         }
 
-        for (_, macro_def) in def_map.get_macros() {
+        for macro_def in def_map.get_macros().values() {
             if SymbolDefinition::Define(macro_def.clone())
-                .usages(&sema)
+                .usages(sema)
                 .set_scope(&scope)
                 .at_least_one()
             {
@@ -182,7 +182,7 @@ fn is_file_used(
         cache.insert(file_id, false);
     }
 
-    return false;
+    false
 }
 
 #[cfg(test)]

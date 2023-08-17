@@ -87,31 +87,28 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             function_id,
             (),
             &mut |acc, _clause_id, ctx| {
-                match &ctx.expr {
-                    Expr::Call { target, args } => {
-                        let arity = args.len() as u32;
-                        let body = &function_body.body();
-                        if let Some(call_def) = target.resolve_call(arity, &sema, file_id, body) {
-                            let mut nav = call_def.to_nav(db);
-                            if let Some(label) = target.label(arity, &sema, &body) {
-                                nav.name = label
-                            }
-                            if let Some(expr) = &function_body.get_body_map(db).expr(ctx.expr_id) {
-                                if let Some(node) = expr.to_node(&source_file) {
-                                    if let Some(call) = algo::find_node_at_offset::<ast::Call>(
-                                        &node.syntax(),
-                                        node.syntax().text_range().start(),
-                                    ) {
-                                        if let Some(expr) = call.expr() {
-                                            let range = expr.syntax().text_range();
-                                            calls.add(nav.clone(), range);
-                                        }
+                if let Expr::Call { target, args } = &ctx.expr {
+                    let arity = args.len() as u32;
+                    let body = &function_body.body();
+                    if let Some(call_def) = target.resolve_call(arity, &sema, file_id, body) {
+                        let mut nav = call_def.to_nav(db);
+                        if let Some(label) = target.label(arity, &sema, body) {
+                            nav.name = label
+                        }
+                        if let Some(expr) = &function_body.get_body_map(db).expr(ctx.expr_id) {
+                            if let Some(node) = expr.to_node(&source_file) {
+                                if let Some(call) = algo::find_node_at_offset::<ast::Call>(
+                                    node.syntax(),
+                                    node.syntax().text_range().start(),
+                                ) {
+                                    if let Some(expr) = call.expr() {
+                                        let range = expr.syntax().text_range();
+                                        calls.add(nav.clone(), range);
                                     }
                                 }
                             }
                         }
                     }
-                    _ => (),
                 }
                 acc
             },

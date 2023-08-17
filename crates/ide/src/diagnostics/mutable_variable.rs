@@ -65,24 +65,20 @@ pub(crate) fn mutable_variable_bug(
                     def_fb.fold_function(
                         (),
                         &mut |acc, _clause_id, ctx| {
-                            match ctx.expr {
-                                Expr::Match { lhs: _, rhs } => match &def_fb[rhs] {
-                                    Expr::Match { lhs, rhs: _ } => {
-                                        if bound_vars.contains(lhs) {
-                                            if let Some(range) =
-                                                def_fb.range_for_expr(sema.db, ctx.expr_id)
-                                            {
-                                                diags.push(Diagnostic::new(
-                                                    DiagnosticCode::MutableVarBug,
-                                                    "Possible mutable variable bug",
-                                                    range,
-                                                ));
-                                            }
+                            if let Expr::Match { lhs: _, rhs } = ctx.expr {
+                                if let Expr::Match { lhs, rhs: _ } = &def_fb[rhs] {
+                                    if bound_vars.contains(lhs) {
+                                        if let Some(range) =
+                                            def_fb.range_for_expr(sema.db, ctx.expr_id)
+                                        {
+                                            diags.push(Diagnostic::new(
+                                                DiagnosticCode::MutableVarBug,
+                                                "Possible mutable variable bug",
+                                                range,
+                                            ));
                                         }
                                     }
-                                    _ => {}
-                                },
-                                _ => {}
+                                }
                             };
                             acc
                         },

@@ -49,30 +49,23 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
     let mut def_fb = def.in_function_body(sema.db, def);
     def_fb.clone().fold_function(
         (),
-        &mut |_acc, _, ctx| match ctx.expr {
-            Expr::Match { lhs, rhs } => match &def_fb[lhs] {
-                Pat::Var(_) => match &def_fb[rhs] {
-                    Expr::Var(_) => {
-                        let cloned_lhs = lhs.clone();
-                        let cloned_rhs = rhs.clone();
+        &mut |_acc, _, ctx| {
+            if let Expr::Match { lhs, rhs } = ctx.expr {
+                if let Pat::Var(_) = &def_fb[lhs] {
+                    if let Expr::Var(_) = &def_fb[rhs] {
                         if let Some(diag) = is_var_assignment_to_unused_var(
-                            &sema,
+                            sema,
                             &mut def_fb,
                             def.file.file_id,
                             ctx.expr_id,
-                            cloned_lhs,
-                            cloned_rhs,
+                            lhs,
+                            rhs,
                         ) {
                             diags.push(diag);
                         }
                     }
-
-                    _ => {}
-                },
-
-                _ => (),
-            },
-            _ => (),
+                }
+            }
         },
         &mut |_acc, _, _| (),
     );
@@ -91,7 +84,7 @@ fn is_var_assignment_to_unused_var(
 
     let rhs_name = body_map.expr(rhs)?.to_node(&source_file)?.to_string();
 
-    let renamings = try_rename_usages(&sema, &body_map, &source_file, lhs, rhs_name)?;
+    let renamings = try_rename_usages(sema, &body_map, &source_file, lhs, rhs_name)?;
 
     let range = def_fb.range_for_expr(sema.db, expr_id)?;
 
@@ -120,19 +113,19 @@ fn try_rename_usages(
     new_name: String,
 ) -> Option<SourceChange> {
     let infile_ast_ptr = body_map.pat(pat_id)?;
-    let ast_node = infile_ast_ptr.to_node(&source_file)?;
+    let ast_node = infile_ast_ptr.to_node(source_file)?;
     if let ast::Expr::ExprMax(ast::ExprMax::Var(ast_var)) = ast_node {
         let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
         let def = sema.to_def(infile_ast_var)?;
 
-        let () = check_is_only_place_where_var_is_defined(sema, infile_ast_var)?;
-        let () = check_var_has_references(sema, infile_ast_var)?; // otherwise covered by trivial-match
+        check_is_only_place_where_var_is_defined(sema, infile_ast_var)?;
+        check_var_has_references(sema, infile_ast_var)?; // otherwise covered by trivial-match
 
         if let hir::DefinitionOrReference::Definition(var_def) = def {
             let sym_def = elp_ide_db::SymbolDefinition::Var(var_def);
             return sym_def
                 .rename(
-                    &sema,
+                    sema,
                     &|_| new_name.clone(),
                     elp_ide_db::rename::SafetyChecks::No,
                 )

@@ -357,7 +357,7 @@ impl Analysis {
                 assist_config,
                 resolve,
                 frange,
-                &context_diagnostics,
+                context_diagnostics,
                 user_input,
             );
 

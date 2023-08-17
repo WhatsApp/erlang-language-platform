@@ -33,14 +33,14 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<Fold> {
     let sema = Semantic::new(db);
     let def_map = sema.def_map(file_id);
     // Functions
-    for (_name, def) in def_map.get_functions() {
+    for def in def_map.get_functions().values() {
         folds.push(Fold {
             kind: FoldKind::Function,
             range: def.source(db).syntax().text_range(),
         })
     }
     // Records
-    for (_name, def) in def_map.get_records() {
+    for def in def_map.get_records().values() {
         folds.push(Fold {
             kind: FoldKind::Record,
             range: def.source(db).syntax().text_range(),

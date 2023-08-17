@@ -83,22 +83,19 @@ enum TestDef {
 
 pub fn unreachable_test(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     let exported_test_ranges = exported_test_ranges(sema, file_id);
-    match runnable_names(sema, file_id) {
-        Ok(runnable_names) => {
-            for (name, range) in exported_test_ranges {
-                if !runnable_names.contains(&name) {
-                    let d = Diagnostic::new(
-                        DiagnosticCode::UnreachableTest,
-                        format!("Unreachable test ({name})"),
-                        range,
-                    )
-                    .severity(Severity::Warning)
-                    .with_ignore_fix(sema, file_id);
-                    diagnostics.push(d);
-                }
+    if let Ok(runnable_names) = runnable_names(sema, file_id) {
+        for (name, range) in exported_test_ranges {
+            if !runnable_names.contains(&name) {
+                let d = Diagnostic::new(
+                    DiagnosticCode::UnreachableTest,
+                    format!("Unreachable test ({name})"),
+                    range,
+                )
+                .severity(Severity::Warning)
+                .with_ignore_fix(sema, file_id);
+                diagnostics.push(d);
             }
         }
-        Err(_) => (),
     }
 }
 
@@ -119,12 +116,10 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
     let def_map = sema.db.def_map(file_id);
     let functions = def_map.get_functions();
     for (name_arity, def) in functions {
-        if def.exported {
-            if !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity) {
-                if let Some(name) = def.source(sema.db.upcast()).name() {
-                    if name_arity.arity() == 1 {
-                        res.insert(name_arity.clone(), name.syntax().text_range());
-                    }
+        if def.exported && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity) {
+            if let Some(name) = def.source(sema.db.upcast()).name() {
+                if name_arity.arity() == 1 {
+                    res.insert(name_arity.clone(), name.syntax().text_range());
                 }
             }
         }
@@ -203,7 +198,7 @@ fn runnables_for_test_defs(
                         res,
                         sema,
                         file_id,
-                        &group_name,
+                        group_name,
                         group_names.clone(),
                         group_defs,
                     )
@@ -235,13 +230,10 @@ fn runnables_for_group_def(
     group_names: FxHashSet<GroupName>,
     group_defs: &FxHashMap<Name, GroupDef>,
 ) {
-    match group_defs.get(group_name) {
-        Some(GroupDef { name, content }) => {
-            let mut new_group_names = group_names.clone();
-            new_group_names.insert(GroupName::Name(name.clone()));
-            runnables_for_test_defs(res, sema, file_id, content, new_group_names, group_defs)
-        }
-        None => (),
+    if let Some(GroupDef { name, content }) = group_defs.get(group_name) {
+        let mut new_group_names = group_names.clone();
+        new_group_names.insert(GroupName::Name(name.clone()));
+        runnables_for_test_defs(res, sema, file_id, content, new_group_names, group_defs)
     }
 }
 

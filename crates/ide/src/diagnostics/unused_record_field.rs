@@ -35,7 +35,7 @@ pub(crate) fn unused_record_field(
             if def.file.file_id == file_id {
                 for (field_name, field_def) in def.fields(sema.db) {
                     if !SymbolDefinition::RecordField(field_def.clone())
-                        .usages(&sema)
+                        .usages(sema)
                         .at_least_one()
                     {
                         let combined_name = format!("{name}.{field_name}");

@@ -23,7 +23,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
     let source_file = sema.parse(position.file_id);
 
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nexternal_docs"));
+    let _pctx = stdx::panic_context::enter("\nexternal_docs".to_string());
     let token = source_file
         .value
         .syntax()

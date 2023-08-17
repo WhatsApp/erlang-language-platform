@@ -33,7 +33,7 @@ pub(super) fn hints(
         return None;
     }
     let def_map = sema.def_map(file_id);
-    for (_name, def) in def_map.get_functions() {
+    for def in def_map.get_functions().values() {
         if def.file.file_id == file_id {
             let def_fb = def.in_function_body(sema.db, def);
             let function_id = InFile::new(file_id, def.function_id);
@@ -42,43 +42,36 @@ pub(super) fn hints(
                 Strategy::Both,
                 (),
                 &mut |acc, _clause_id, ctx| {
-                    match ctx.expr {
-                        Expr::Call { target, args } => {
-                            // Do not produce hints if inside a macro
-                            if ctx.on == On::Entry && ctx.in_macro.is_none() {
-                                let arity = args.len() as u32;
-                                let body = &function_body.body();
-                                if let Some(call_def) =
-                                    target.resolve_call(arity, &sema, file_id, body)
-                                {
-                                    let param_names = call_def.function.param_names;
-                                    for (param_name, arg) in param_names.iter().zip(args) {
-                                        if should_hint(
-                                            sema.db.upcast(),
-                                            param_name,
-                                            &function_body[arg],
-                                        ) {
-                                            if let Some(arg_range) =
-                                                def_fb.range_for_expr(sema.db, arg)
+                    if let Expr::Call { target, args } = ctx.expr {
+                        // Do not produce hints if inside a macro
+                        if ctx.on == On::Entry && ctx.in_macro.is_none() {
+                            let arity = args.len() as u32;
+                            let body = &function_body.body();
+                            if let Some(call_def) = target.resolve_call(arity, sema, file_id, body)
+                            {
+                                let param_names = call_def.function.param_names;
+                                for (param_name, arg) in param_names.iter().zip(args) {
+                                    if should_hint(
+                                        sema.db.upcast(),
+                                        param_name,
+                                        &function_body[arg],
+                                    ) {
+                                        if let Some(arg_range) = def_fb.range_for_expr(sema.db, arg)
+                                        {
+                                            if range_limit.is_none()
+                                                || range_limit.unwrap().contains_range(arg_range)
                                             {
-                                                if range_limit.is_none()
-                                                    || range_limit
-                                                        .unwrap()
-                                                        .contains_range(arg_range)
-                                                {
-                                                    if let ParamName::Name(param_name) = param_name
-                                                    {
-                                                        let hint = InlayHint {
-                                                            range: arg_range,
-                                                            kind: InlayKind::Parameter,
-                                                            label: InlayHintLabel::simple(
-                                                                param_name.as_str(),
-                                                                None,
-                                                                None,
-                                                            ),
-                                                        };
-                                                        res.push(hint);
-                                                    }
+                                                if let ParamName::Name(param_name) = param_name {
+                                                    let hint = InlayHint {
+                                                        range: arg_range,
+                                                        kind: InlayKind::Parameter,
+                                                        label: InlayHintLabel::simple(
+                                                            param_name.as_str(),
+                                                            None,
+                                                            None,
+                                                        ),
+                                                    };
+                                                    res.push(hint);
                                                 }
                                             }
                                         }
@@ -86,7 +79,6 @@ pub(super) fn hints(
                                 }
                             }
                         }
-                        _ => {}
                     }
                     acc
                 },

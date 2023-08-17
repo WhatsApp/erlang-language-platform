@@ -77,16 +77,16 @@ pub fn replace_call_site_if_args_match(
                     acc,
                     sema,
                     def,
-                    &vec![(fm, ())],
+                    &[(fm, ())],
                     &args_match,
-                    move |sema, mut def_fb, target, args, extra_info, range| {
+                    move |sema, def_fb, target, args, extra_info, range| {
                         let mfa = to_mfa(fm, target, args.len() as u32, sema, &def_fb.body())?;
                         let mfa_str = mfa.label();
 
                         let diag = diagnostic_builder(&mfa, extra_info, range)?;
 
                         if let Some(edit) =
-                            replace_call(replacement, sema, &mut def_fb, file_id, args, &range)
+                            replace_call(replacement, sema, def_fb, file_id, args, &range)
                         {
                             Some(diag.with_fixes(Some(vec![fix(
                                 "replace_call_site",
@@ -105,15 +105,15 @@ pub fn replace_call_site_if_args_match(
 
 pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option<Diagnostic> {
     let mfa_str = mfa.label();
-    let sep = if extra_info.len() > 0 { " " } else { "" };
+    let sep = if extra_info.is_empty() { "" } else { " " };
     let diag = Diagnostic::new(
         DiagnosticCode::AdHoc(mfa_str.clone()),
         format!("'{}' called{}{}", &mfa_str, &sep, &extra_info),
-        range.clone(),
+        range,
     )
     .severity(Severity::WeakWarning)
     .experimental();
-    return Some(diag);
+    Some(diag)
 }
 
 #[allow(dead_code)]
@@ -183,9 +183,7 @@ pub fn remove_fun_ref_from_list(
                                         if let Some(statement_removal) =
                                             remove_statement(&list_elem_ast)
                                         {
-                                            if let Some(diag) =
-                                                diagnostic_builder(mfa, "", range.clone())
-                                            {
+                                            if let Some(diag) = diagnostic_builder(mfa, "", range) {
                                                 diags.push(diag.with_fixes(Some(vec![fix(
                                                     "remove_fun_ref_from_list",
                                                     "Remove noop fun ref from list",
@@ -216,36 +214,30 @@ fn match_fun_ref_in_list_in_call_arg(
 ) -> Vec<ExprId> {
     let mut result = vec![];
     let expr = &def_fb[*expr_id];
-    match expr {
-        Expr::Call { args, .. } => args.iter().for_each(|arg_id| {
+    if let Expr::Call { args, .. } = expr {
+        args.iter().for_each(|arg_id| {
             let arg = &def_fb[*arg_id];
-            match arg {
-                Expr::List { exprs, .. } => exprs.iter().for_each(|list_elem_id| {
+            if let Expr::List { exprs, .. } = arg {
+                exprs.iter().for_each(|list_elem_id| {
                     let list_elem = &def_fb[*list_elem_id];
-                    match list_elem {
-                        Expr::CaptureFun {
-                            target,
-                            arity: arity_expr_id,
-                        } => {
-                            if let Expr::Literal(Literal::Integer(arity)) = &def_fb[*arity_expr_id]
-                            {
-                                let target_label =
-                                    target.label(*arity as u32, sema, &def_fb.body());
-                                let funref_label = &funref_mfa.label();
-                                if target_label == Some(funref_label.into()) {
-                                    result.push(*list_elem_id);
-                                }
+                    if let Expr::CaptureFun {
+                        target,
+                        arity: arity_expr_id,
+                    } = list_elem
+                    {
+                        if let Expr::Literal(Literal::Integer(arity)) = &def_fb[*arity_expr_id] {
+                            let target_label = target.label(*arity as u32, sema, &def_fb.body());
+                            let funref_label = &funref_mfa.label();
+                            if target_label == Some(funref_label.into()) {
+                                result.push(*list_elem_id);
                             }
                         }
-                        _ => {}
                     }
-                }),
-                _ => {}
+                })
             }
-        }),
-        _ => {}
+        })
     }
-    return result;
+    result
 }
 
 fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {

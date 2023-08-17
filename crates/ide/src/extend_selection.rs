@@ -86,7 +86,7 @@ fn try_extend_selection(root: &SyntaxNode, frange: FileRange) -> Option<TextRang
     if range.is_empty() {
         let offset = range.start();
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\ntry_extend_selection"));
+        let _pctx = stdx::panic_context::enter("\ntry_extend_selection".to_string());
         let mut leaves = root.token_at_offset(offset);
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));
@@ -152,13 +152,14 @@ fn extend_single_word_in_comment_or_string(
     }
 
     let start_idx = before.rfind(non_word_char)? as u32;
+    #[allow(clippy::unnecessary_lazy_evaluations)]
     let end_idx = after.find(non_word_char).unwrap_or_else(|| after.len()) as u32;
 
     let from: TextSize = (start_idx + 1).into();
     let to: TextSize = (cursor_position + end_idx).into();
 
     // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nextend_single_word_in_comment_or_string"));
+    let _pctx = stdx::panic_context::enter("\nextend_single_word_in_comment_or_string".to_string());
     let range = TextRange::new(from, to);
     if range.is_empty() {
         None
@@ -170,7 +171,7 @@ fn extend_single_word_in_comment_or_string(
 fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange {
     let ws_text = ws.text();
     // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nextend_ws"));
+    let _pctx = stdx::panic_context::enter("\nextend_ws".to_string());
     let suffix = TextRange::new(offset, ws.text_range().end()) - ws.text_range().start();
     let prefix = TextRange::new(ws.text_range().start(), offset) - ws.text_range().start();
     let ws_suffix = &ws_text[suffix];
@@ -234,7 +235,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .unwrap_or(delimiter_node);
 
         // Temporary for  T148094436
-        let _pctx = stdx::panic_context::enter(format!("\nextend_list_item1"));
+        let _pctx = stdx::panic_context::enter("\nextend_list_item1".to_string());
         return Some(TextRange::new(
             node.text_range().start(),
             final_node.text_range().end(),
@@ -242,7 +243,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     }
     if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
         // Temporary for  T148094436
-        let _pctx = stdx::panic_context::enter(format!("\nextend_list_item2"));
+        let _pctx = stdx::panic_context::enter("\nextend_list_item2".to_string());
         return Some(TextRange::new(
             delimiter_node.text_range().start(),
             node.text_range().end(),

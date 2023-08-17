@@ -38,31 +38,30 @@ pub(crate) fn unused_macro(
         for (name, def) in def_map.get_macros() {
             // Only run the check for macros defined in the local module,
             // not in the included files.
-            if def.file.file_id == file_id {
-                if !SymbolDefinition::Define(def.clone())
-                    .usages(&sema)
+            if def.file.file_id == file_id
+                && !SymbolDefinition::Define(def.clone())
+                    .usages(sema)
                     .at_least_one()
+            {
+                let source = def.source(sema.db.upcast());
+                let macro_syntax = source.syntax();
+                // If after the macro there's a new line, drop it
+                let next_token = macro_syntax.last_token()?.next_token()?;
+                let macro_range = if next_token.kind() == SyntaxKind::WHITESPACE
+                    && next_token.text().starts_with('\n')
                 {
-                    let source = def.source(sema.db.upcast());
-                    let macro_syntax = source.syntax();
-                    // If after the macro there's a new line, drop it
-                    let next_token = macro_syntax.last_token()?.next_token()?;
-                    let macro_range = if next_token.kind() == SyntaxKind::WHITESPACE
-                        && next_token.text().starts_with("\n")
-                    {
-                        let start = macro_syntax.text_range().start();
-                        let end = macro_syntax.text_range().end() + TextSize::from(1);
-                        // Temporary for T148094436
-                        let _pctx =
-                            stdx::panic_context::enter(format!("\ndiagnostics::unused_macro"));
-                        TextRange::new(start, end)
-                    } else {
-                        macro_syntax.text_range()
-                    };
-                    let name_range = source.name()?.syntax().text_range();
-                    let d = make_diagnostic(file_id, macro_range, name_range, &name.to_string());
-                    acc.push(d);
-                }
+                    let start = macro_syntax.text_range().start();
+                    let end = macro_syntax.text_range().end() + TextSize::from(1);
+                    // Temporary for T148094436
+                    let _pctx =
+                        stdx::panic_context::enter("\ndiagnostics::unused_macro".to_string());
+                    TextRange::new(start, end)
+                } else {
+                    macro_syntax.text_range()
+                };
+                let name_range = source.name()?.syntax().text_range();
+                let d = make_diagnostic(file_id, macro_range, name_range, &name.to_string());
+                acc.push(d);
             }
         }
     }

@@ -37,8 +37,8 @@ pub enum RunnableKind {
 impl Runnable {
     pub fn label(&self, _target: Option<String>) -> String {
         match &self.kind {
-            RunnableKind::Test { .. } => format!("test"),
-            RunnableKind::Suite => format!("test"),
+            RunnableKind::Test { .. } => "test".to_string(),
+            RunnableKind::Suite => "test".to_string(),
         }
     }
     pub fn id(&self) -> String {
@@ -93,23 +93,23 @@ impl Runnable {
     pub fn run_title(&self) -> String {
         match &self.kind {
             RunnableKind::Test { group, .. } => match group {
-                common_test::GroupName::NoGroup => String::from(format!("▶\u{fe0e} Run Test")),
+                common_test::GroupName::NoGroup => "▶\u{fe0e} Run Test".to_string(),
                 common_test::GroupName::Name(name) => {
-                    String::from(format!("▶\u{fe0e} Run Test (in {})", name))
+                    format!("▶\u{fe0e} Run Test (in {})", name)
                 }
             },
-            RunnableKind::Suite => String::from(format!("▶\u{fe0e} Run All Tests")),
+            RunnableKind::Suite => "▶\u{fe0e} Run All Tests".to_string(),
         }
     }
     pub fn debug_title(&self) -> String {
         match &self.kind {
             RunnableKind::Test { group, .. } => match group {
-                common_test::GroupName::NoGroup => String::from(format!("▶\u{fe0e} Debug")),
+                common_test::GroupName::NoGroup => "▶\u{fe0e} Debug".to_string(),
                 common_test::GroupName::Name(name) => {
-                    String::from(format!("▶\u{fe0e} Debug (in {})", name))
+                    format!("▶\u{fe0e} Debug (in {})", name)
                 }
             },
-            RunnableKind::Suite => String::from(format!("▶\u{fe0e} Debug")),
+            RunnableKind::Suite => "▶\u{fe0e} Debug".to_string(),
         }
     }
 }

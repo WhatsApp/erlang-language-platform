@@ -62,19 +62,16 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
         (),
         &mut |_acc, _, ctx| {
             let expr = ctx.expr;
-            match expr {
-                Expr::Match { lhs, rhs } => {
-                    let rhs = &rhs.clone();
-                    if matches_trivially(&sema, &def_fb, &body_map, &source_file, &lhs, &rhs) {
-                        if let Some(range) = &def_fb.range_for_expr(sema.db, ctx.expr_id) {
-                            let rhs_ast = body_map
-                                .expr(*rhs)
-                                .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                            diags.push(make_diagnostic(def.file.file_id, range, rhs_ast));
-                        }
+            if let Expr::Match { lhs, rhs } = expr {
+                let rhs = &rhs.clone();
+                if matches_trivially(sema, &def_fb, &body_map, &source_file, &lhs, rhs) {
+                    if let Some(range) = &def_fb.range_for_expr(sema.db, ctx.expr_id) {
+                        let rhs_ast = body_map
+                            .expr(*rhs)
+                            .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
+                        diags.push(make_diagnostic(def.file.file_id, range, rhs_ast));
                     }
                 }
-                _ => (),
             }
         },
         &mut |_acc, _, _| (),
@@ -101,7 +98,7 @@ fn matches_trivially(
         Pat::Var(l) => {
             let ast_node = body_map
                 .pat(*pat_id)
-                .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
+                .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(source_file));
 
             if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(ast_var))) = ast_node {
                 let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
@@ -151,8 +148,8 @@ fn matches_trivially(
             } => match {} {
                 _ if pat_name != expr_name => false,
                 _ => {
-                    let pat_fields_map = pat_fields.iter().map(|p| *p).collect::<HashMap<_, _>>();
-                    let expr_fields_map = expr_fields.iter().map(|p| *p).collect::<HashMap<_, _>>();
+                    let pat_fields_map = pat_fields.iter().copied().collect::<HashMap<_, _>>();
+                    let expr_fields_map = expr_fields.iter().copied().collect::<HashMap<_, _>>();
                     pat_fields_map.iter().all(|(field, pat_val)| {
                         if let Some(expr_val) = expr_fields_map.get(field) {
                             matches_trivially(
@@ -160,7 +157,7 @@ fn matches_trivially(
                                 def_fb,
                                 body_map,
                                 source_file,
-                                &pat_val,
+                                pat_val,
                                 expr_val,
                             )
                         } else {
@@ -205,7 +202,7 @@ fn matches_trivially(
                                 def_fb,
                                 body_map,
                                 source_file,
-                                &pat_val,
+                                pat_val,
                                 expr_val,
                             )
                         } else {

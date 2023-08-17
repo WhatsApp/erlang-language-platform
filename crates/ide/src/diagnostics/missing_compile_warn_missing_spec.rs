@@ -73,7 +73,7 @@ pub(crate) fn missing_compile_warn_missing_spec(
         .collect::<Vec<_>>();
     if !attributes.iter().any(|(present, _)| *present) {
         // Report on first compile attribute only
-        if let Some((_, compile_attribute)) = attributes.iter().next() {
+        if let Some((_, compile_attribute)) = attributes.first() {
             let range = compile_attribute
                 .form_id
                 .get_ast(sema.db, file_id)
@@ -126,9 +126,7 @@ fn report_diagnostic(
     let edit = builder.finish();
     let d = Diagnostic::new(
         crate::diagnostics::DiagnosticCode::MissingCompileWarnMissingSpec,
-        format!(
-            "Please add \"-compile(warn_missing_spec).\" or \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced."
-        ),
+            "Please add \"-compile(warn_missing_spec).\" or \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced.".to_string(),
         range,
     ).with_fixes(Some(vec![fix("add_warn_missing_spec",
                                "Add compile option 'warn_missing_spec'",

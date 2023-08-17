@@ -46,7 +46,7 @@ impl BadEnvCall {
         arity
             .into_iter()
             .map(|a| BadEnvCall {
-                mfa: FunctionMatch::mfa(m.into(), f.into(), a),
+                mfa: FunctionMatch::mfa(m, f, a),
                 action: action.clone(),
             })
             .collect()
@@ -108,11 +108,11 @@ pub(crate) fn process_badmatches(
                             hir::Expr::Tuple { exprs } => {
                                 let key = exprs.get(0)?;
                                 let val = exprs.get(1)?;
-                                let key_name = def_fb.as_atom_name(sema.db, &key)?;
+                                let key_name = def_fb.as_atom_name(sema.db, key)?;
                                 if tag == key_name.as_str() {
                                     if let hir::Expr::Tuple { exprs } = &def_fb[*val] {
                                         let app = exprs.get(0)?;
-                                        check_valid_application(sema, def_fb, &app, def)
+                                        check_valid_application(sema, def_fb, app, def)
                                     } else {
                                         None
                                     }
@@ -128,9 +128,8 @@ pub(crate) fn process_badmatches(
             }
         },
         move |_sema, mut _def_fb, _target, _call_id, extra_info, range| {
-            let diag =
-                Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra_info, range.clone())
-                    .severity(Severity::Warning);
+            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra_info, range)
+                .severity(Severity::Warning);
             Some(diag)
         },
     );

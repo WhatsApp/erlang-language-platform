@@ -103,7 +103,7 @@ pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
 }
 
 pub(crate) fn var_name_starts_with_underscore(var: &ast::Var) -> bool {
-    var.syntax().to_string().starts_with("_")
+    var.syntax().to_string().starts_with('_')
 }
 
 pub(crate) fn is_only_place_where_var_is_defined(sema: &Semantic, var: InFile<&ast::Var>) -> bool {
@@ -165,7 +165,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
             FxHashMap::default();
         let mut labels_mf: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
         let mut labels_m: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
-        call.into_iter().for_each(|(c, t)| match c {
+        call.iter().for_each(|(c, t)| match c {
             FunctionMatch::MFA(mfa) => {
                 if mfa.module == "erlang" && in_erlang_module(&mfa.name, mfa.arity as usize) {
                     labels_full.insert(Some(mfa.label().into()), (*c, t));
@@ -212,6 +212,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum FunctionMatch {
     MFA(MFA),
     MF { module: String, name: String },
@@ -261,6 +262,7 @@ impl FunctionMatch {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct MFA {
     pub module: String,
     pub name: String,
@@ -317,33 +319,24 @@ pub(crate) fn find_call_in_function<T>(
         Strategy::TopDown,
         (),
         &mut |acc, _, ctx| {
-            match ctx.expr {
-                Expr::Call { target, args } => {
-                    if let Some((mfa, t)) = matcher.get_match(&target, &args, sema, &def_fb.body())
-                    {
-                        if let Some(match_descr) = check_call(mfa, t, &target, &args, &def_fb) {
-                            // Got one.
-                            let call_expr_id = if let Some(expr_id) = ctx.in_macro {
-                                expr_id
-                            } else {
-                                ctx.expr_id
-                            };
-                            if let Some(range) = &def_fb.range_for_expr(sema.db, call_expr_id) {
-                                if let Some(diag) = make_diag(
-                                    sema,
-                                    &mut def_fb,
-                                    &target,
-                                    &args,
-                                    &match_descr,
-                                    range.clone(),
-                                ) {
-                                    diags.push(diag)
-                                }
+            if let Expr::Call { target, args } = ctx.expr {
+                if let Some((mfa, t)) = matcher.get_match(&target, &args, sema, &def_fb.body()) {
+                    if let Some(match_descr) = check_call(mfa, t, &target, &args, &def_fb) {
+                        // Got one.
+                        let call_expr_id = if let Some(expr_id) = ctx.in_macro {
+                            expr_id
+                        } else {
+                            ctx.expr_id
+                        };
+                        if let Some(range) = &def_fb.range_for_expr(sema.db, call_expr_id) {
+                            if let Some(diag) =
+                                make_diag(sema, &mut def_fb, &target, &args, &match_descr, *range)
+                            {
+                                diags.push(diag)
                             }
                         }
                     }
                 }
-                _ => {}
             };
             acc
         },

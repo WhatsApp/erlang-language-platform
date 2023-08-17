@@ -134,6 +134,7 @@ fn has_no_effect(def_fb: &InFunctionBody<&FunctionDef>, expr_id: &ExprId) -> boo
     }
 }
 
+#[allow(clippy::match_like_matches_macro)]
 fn is_statement(expr: &ast::Expr) -> bool {
     let syntax = expr.syntax();
     match syntax.parent() {
@@ -167,7 +168,7 @@ fn is_followed_by(expected_kind: SyntaxKind, expr: &ast::Expr) -> bool {
             }
         }
     }
-    return false;
+    false
 }
 
 fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {

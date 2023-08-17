@@ -36,38 +36,36 @@ pub(crate) fn dependent_header(
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
         for (define_id, _define) in form_list.define_attributes() {
-            sema.db
+            if let Some((body, body_map)) = sema
+                .db
                 .define_body_with_source(InFile::new(file_id, define_id))
-                .map(|(body, body_map)| {
-                    body.body.fold_expr(
-                        Strategy::TopDown,
-                        body.expr,
-                        (),
-                        &mut |acc, ctx| {
-                            if let Some(name) = ctx.expr.as_record_name() {
-                                let record_name = sema.db.lookup_atom(*name);
-                                if def_map.get_record(&record_name).is_none() {
-                                    if let Some(in_file_ast_ptr) = body_map.expr(ctx.expr_id) {
-                                        if let Some(expr_ast) =
-                                            in_file_ast_ptr.to_node(&source_file)
+            {
+                body.body.fold_expr(
+                    Strategy::TopDown,
+                    body.expr,
+                    (),
+                    &mut |acc, ctx| {
+                        if let Some(name) = ctx.expr.as_record_name() {
+                            let record_name = sema.db.lookup_atom(*name);
+                            if def_map.get_record(&record_name).is_none() {
+                                if let Some(in_file_ast_ptr) = body_map.expr(ctx.expr_id) {
+                                    if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
+                                        let diagnostic_range = match extract_record_name(&expr_ast)
                                         {
-                                            let diagnostic_range =
-                                                match extract_record_name(&expr_ast) {
-                                                    Some(name) => name.syntax().text_range(),
-                                                    None => expr_ast.syntax().text_range(),
-                                                };
-                                            let d = make_diagnostic(diagnostic_range, record_name);
-                                            diagnostics.push(d);
-                                        }
+                                            Some(name) => name.syntax().text_range(),
+                                            None => expr_ast.syntax().text_range(),
+                                        };
+                                        let d = make_diagnostic(diagnostic_range, record_name);
+                                        diagnostics.push(d);
                                     }
                                 }
-                            };
-                            acc
-                        },
-                        &mut |acc, _| acc,
-                    );
-                });
-            ()
+                            }
+                        };
+                        acc
+                    },
+                    &mut |acc, _| acc,
+                );
+            };
         }
     }
     Some(())

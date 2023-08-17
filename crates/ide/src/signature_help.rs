@@ -60,7 +60,7 @@ impl SignatureHelp {
         self.signature.push_str(param);
         let end = TextSize::of(&self.signature);
         // Temporary for T148094436
-        let _pctx = stdx::panic_context::enter(format!("\nSignatureHelp::push_param"));
+        let _pctx = stdx::panic_context::enter("\nSignatureHelp::push_param".to_string());
         self.parameters.push(TextRange::new(start, end))
     }
 }
@@ -92,50 +92,47 @@ pub(crate) fn signature_help(
 
     let mut res = Vec::new();
 
-    match &call_expr[call_expr.value] {
-        hir::Expr::Call { target, args } => {
-            let arity = args.len() as u32;
-            match target {
-                CallTarget::Local { name } => {
-                    let fun_atom = &call_expr[name.clone()].as_atom()?;
-                    let fun_name = sema.db.lookup_atom(*fun_atom);
-                    signature_help_for_call(
-                        &mut res,
-                        sema,
-                        db,
-                        position.file_id,
-                        None,
-                        fun_name,
-                        arity,
-                        active_parameter,
-                    )
-                }
-                CallTarget::Remote { module, name } => {
-                    let module_atom = &call_expr[module.clone()].as_atom()?;
-                    let module_name = sema.db.lookup_atom(*module_atom);
-                    let fun_atom = &call_expr[name.clone()].as_atom()?;
-                    let fun_name = sema.db.lookup_atom(*fun_atom);
-                    let module =
-                        sema.resolve_module_name(position.file_id, module_name.as_str())?;
-                    signature_help_for_call(
-                        &mut res,
-                        sema,
-                        db,
-                        module.file.file_id,
-                        Some(module_name),
-                        fun_name,
-                        arity,
-                        active_parameter,
-                    )
-                }
+    if let hir::Expr::Call { target, args } = &call_expr[call_expr.value] {
+        let arity = args.len() as u32;
+        match target {
+            CallTarget::Local { name } => {
+                let fun_atom = &call_expr[*name].as_atom()?;
+                let fun_name = sema.db.lookup_atom(*fun_atom);
+                signature_help_for_call(
+                    &mut res,
+                    sema,
+                    db,
+                    position.file_id,
+                    None,
+                    fun_name,
+                    arity,
+                    active_parameter,
+                )
+            }
+            CallTarget::Remote { module, name } => {
+                let module_atom = &call_expr[*module].as_atom()?;
+                let module_name = sema.db.lookup_atom(*module_atom);
+                let fun_atom = &call_expr[*name].as_atom()?;
+                let fun_name = sema.db.lookup_atom(*fun_atom);
+                let module = sema.resolve_module_name(position.file_id, module_name.as_str())?;
+                signature_help_for_call(
+                    &mut res,
+                    sema,
+                    db,
+                    module.file.file_id,
+                    Some(module_name),
+                    fun_name,
+                    arity,
+                    active_parameter,
+                )
             }
         }
-        _ => (),
     };
 
     Some((res, active_parameter))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn signature_help_for_call(
     res: &mut Vec<SignatureHelp>,
     sema: Semantic,
@@ -202,7 +199,7 @@ fn build_signature_help(
     module_name: Option<Name>,
     fun_name: &Name,
 ) -> SignatureHelp {
-    let function_doc = get_function_doc(db, &sema, file_id, def);
+    let function_doc = get_function_doc(db, sema, file_id, def);
     let parameters_doc = get_parameters_doc(db, def);
     let mut help = SignatureHelp {
         function_doc,

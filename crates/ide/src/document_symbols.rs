@@ -87,7 +87,7 @@ impl ToDocumentSymbol for FunctionDef {
             children.push(symbol);
         }
         let selection_range = children.first().map_or(range, |c| c.selection_range);
-        let children = if children.len() > 0 {
+        let children = if !children.is_empty() {
             Some(children)
         } else {
             None
@@ -193,17 +193,17 @@ pub(crate) fn document_symbols(db: &RootDatabase, file_id: FileId) -> Vec<Docume
             res.push(symbol);
         }
     }
-    for (_name, def) in def_map.get_records() {
+    for def in def_map.get_records().values() {
         if def.file.file_id == file_id {
             res.push(def.to_document_symbol(db));
         }
     }
-    for (_name, def) in def_map.get_macros() {
+    for def in def_map.get_macros().values() {
         if def.file.file_id == file_id {
             res.push(def.to_document_symbol(db));
         }
     }
-    for (_name, def) in def_map.get_types() {
+    for def in def_map.get_types().values() {
         if def.file.file_id == file_id {
             res.push(def.to_document_symbol(db));
         }

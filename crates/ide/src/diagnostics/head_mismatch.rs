@@ -107,11 +107,11 @@ where
             let attr_loc = self.get_loc(head);
             match attrs.get(&attr) {
                 None => {
-                    attrs.insert(attr.clone(), vec![attr_loc.clone()]);
+                    attrs.insert(attr.clone(), vec![attr_loc]);
                 }
                 Some(ranges) => {
                     let mut ranges = ranges.clone();
-                    ranges.push(attr_loc.clone());
+                    ranges.push(attr_loc);
                     attrs.insert(attr.clone(), ranges);
                 }
             }
@@ -128,8 +128,8 @@ where
                         // Keep the one closet to the beginning
                         let mut locs = locations.clone();
                         let mut cur = cur_highest.clone();
-                        locs.sort_by(|a, b| a.start().cmp(&b.start()));
-                        cur.sort_by(|a, b| a.start().cmp(&b.start()));
+                        locs.sort_by_key(|a| a.start());
+                        cur.sort_by_key(|a| a.start());
                         if locs[0].start() < cur[0].start() {
                             highest = Some((attr.clone(), locations.clone()));
                         }
@@ -144,7 +144,7 @@ where
         // occurrence of highest
         let (hattr, hlocs) = highest?;
         let mut hlocs = hlocs.clone();
-        hlocs.sort_by(|a, b| a.start().cmp(&b.start()));
+        hlocs.sort_by_key(|a| a.start());
         let ref_loc = hlocs[0];
         for head in heads {
             let attr = self.get_attr(head);
@@ -169,7 +169,7 @@ impl Validate<String> for Name {
     }
 
     fn get_loc(self, head: &HeadInfo) -> TextRange {
-        head.1.clone()
+        head.1
     }
 
     fn make_diagnostic(
@@ -205,11 +205,11 @@ impl Validate<String> for Name {
 
 impl Validate<usize> for Arity {
     fn get_attr(self, head: &HeadInfo) -> usize {
-        head.2.clone()
+        head.2
     }
 
     fn get_loc(self, head: &HeadInfo) -> TextRange {
-        head.3.clone()
+        head.3
     }
 
     fn make_diagnostic(

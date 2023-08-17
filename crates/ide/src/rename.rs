@@ -80,7 +80,7 @@ fn find_definitions(
                             }
                             hir::DefinitionOrReference::Reference(defs) => Some(Ok(defs
                                 .into_iter()
-                                .map(|def| SymbolDefinition::Var(def))
+                                .map(SymbolDefinition::Var)
                                 .collect::<Vec<_>>())),
                         }
                     } else {
@@ -99,7 +99,7 @@ fn find_definitions(
                                 ReferenceClass::Definition(def) => Some(Ok(vec![def])),
                                 ReferenceClass::MultiVar(defs) => Some(Ok(defs
                                     .into_iter()
-                                    .map(|def| SymbolDefinition::Var(def))
+                                    .map(SymbolDefinition::Var)
                                     .collect::<Vec<_>>())),
                                 ReferenceClass::MultiMacro(_) => None,
                             },

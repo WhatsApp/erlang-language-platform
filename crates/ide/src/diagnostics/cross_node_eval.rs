@@ -72,7 +72,7 @@ pub(crate) fn process_badmatches(
             Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#.to_string())
         },
         move |_sema, def_fb, _target, _args, extra_info, range| {
-            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, extra_info, range.clone())
+            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, extra_info, range)
                 .severity(Severity::Error)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)

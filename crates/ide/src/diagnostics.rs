@@ -149,7 +149,7 @@ impl Diagnostic {
     }
 
     pub(crate) fn should_be_ignored(&self, line_index: &LineIndex, source: &SyntaxNode) -> bool {
-        match prev_line_comment_text(&line_index, source, self.range.start()) {
+        match prev_line_comment_text(line_index, source, self.range.start()) {
             Some(comment) => comment_contains_ignore_code(&comment, &self.code),
             None => false,
         }
@@ -358,13 +358,7 @@ impl DiagnosticCode {
             if let Some(code) = Self::is_adhoc(s) {
                 Some(DiagnosticCode::AdHoc(code))
             } else {
-                // Last resort, an ErlangService one.
-                // This is broad, so it can expand easily
-                if let Some(code) = Self::is_erlang_service(s) {
-                    Some(DiagnosticCode::ErlangService(code))
-                } else {
-                    None
-                }
+                Self::is_erlang_service(s).map(DiagnosticCode::ErlangService)
             }
         }
     }
@@ -416,13 +410,11 @@ impl fmt::Display for DiagnosticCode {
 }
 
 pub trait AdhocSemanticDiagnostics:
-    Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) -> () + std::panic::RefUnwindSafe + Sync
+    Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) + std::panic::RefUnwindSafe + Sync
 {
 }
 impl<F> AdhocSemanticDiagnostics for F where
-    F: Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) -> ()
-        + std::panic::RefUnwindSafe
-        + Sync
+    F: Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) + std::panic::RefUnwindSafe + Sync
 {
 }
 
@@ -601,7 +593,6 @@ fn form_missing_separator_diagnostics(parse: &Parse<ast::SourceFile>) -> Vec<Dia
     parse
         .tree()
         .forms()
-        .into_iter()
         .flat_map(|form: ast::Form| match form {
             ast::Form::ExportAttribute(f) => {
                 check_missing_sep(f.funs(), SyntaxKind::ANON_COMMA, ",", "missing_comma")
@@ -681,7 +672,7 @@ fn comment_contains_ignore_code(comment: &str, code: &DiagnosticCode) -> bool {
     let pattern = "% elp:ignore";
     match comment.find(pattern) {
         Some(start) => {
-            let comment = comment[start.into()..].to_string();
+            let comment = comment[start..].to_string();
             comment
                 .split_whitespace()
                 .any(|code_str| match DiagnosticCode::from_str(code_str) {
@@ -708,22 +699,20 @@ fn prev_line_comment_text(
     let current_line = line_index.line_col(offset).line;
     let prev_line = prev_line(line_index, current_line)?;
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nprev_line_comment_text"));
+    let _pctx = stdx::panic_context::enter("\nprev_line_comment_text".to_string());
     let token = source.token_at_offset(prev_line).left_biased()?;
     let prev_line_range = TextRange::new(prev_line, offset);
     let node_or_token = token
         .siblings_with_tokens(elp_syntax::Direction::Next)
         .filter(|node| prev_line_range.contains_range(node.text_range()))
-        .filter(|node| node.kind() == SyntaxKind::COMMENT)
-        .next()?;
+        .find(|node| node.kind() == SyntaxKind::COMMENT)?;
     Some(node_or_token.to_string())
 }
 
 fn non_whitespace_sibling_or_token(node: &SyntaxNode, dir: Direction) -> Option<NodeOrToken> {
     node.siblings_with_tokens(dir)
-        .skip(1) // starts with self
-        .filter(|node| node.kind() != SyntaxKind::WHITESPACE && node.kind() != SyntaxKind::COMMENT)
-        .next()
+        .skip(1)
+        .find(|node| node.kind() != SyntaxKind::WHITESPACE && node.kind() != SyntaxKind::COMMENT)
 }
 
 fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -> Diagnostic {
@@ -772,7 +761,7 @@ pub fn erlang_service_diagnostics(
         .into_iter()
         .map(|(file_id, start, end, code, msg)| {
             // Temporary for T148094436
-            let _pctx = stdx::panic_context::enter(format!("\nerlang_service_diagnostics:1"));
+            let _pctx = stdx::panic_context::enter("\nerlang_service_diagnostics:1".to_string());
             (
                 file_id,
                 Diagnostic::new(
@@ -789,7 +778,7 @@ pub fn erlang_service_diagnostics(
                 .map(|(file_id, start, end, code, msg)| {
                     // Temporary for T148094436
                     let _pctx =
-                        stdx::panic_context::enter(format!("\nerlang_service_diagnostics:2"));
+                        stdx::panic_context::enter("\nerlang_service_diagnostics:2".to_string());
                     (
                         file_id,
                         Diagnostic::new(
@@ -808,7 +797,7 @@ pub fn erlang_service_diagnostics(
         .into_iter()
         .filter(|(_, d)| is_implemented_in_elp(&d.message))
         .collect();
-    if diags.len() == 0 {
+    if diags.is_empty() {
         // If there are no diagnostics reported, return an empty list
         // against the `file_id` to clear the list of diagnostics for
         // the file.
@@ -882,7 +871,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
         .into_iter()
         .map(|(file_id, start, end, code, msg)| {
             // Temporary for T148094436
-            let _pctx = stdx::panic_context::enter(format!("\nedoc_diagnostics:1"));
+            let _pctx = stdx::panic_context::enter("\nedoc_diagnostics:1".to_string());
             (
                 file_id,
                 Diagnostic::new(
@@ -898,7 +887,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                 .into_iter()
                 .map(|(file_id, start, end, code, msg)| {
                     // Temporary for T148094436
-                    let _pctx = stdx::panic_context::enter(format!("\nedoc_diagnostics:2"));
+                    let _pctx = stdx::panic_context::enter("\nedoc_diagnostics:2".to_string());
                     (
                         file_id,
                         Diagnostic::new(
@@ -912,7 +901,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
         )
         .collect();
 
-    if diags.len() == 0 {
+    if diags.is_empty() {
         // If there are no diagnostics reported, return an empty list
         // against the `file_id` to clear the list of diagnostics for
         // the file.
@@ -934,8 +923,9 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
 
 /// Match the message part of the diagnostics produced by erlang_ls or
 /// the erlang_service but already implemented natively in ELP
-pub fn is_implemented_in_elp(message: &String) -> bool {
-    match message.as_str() {
+pub fn is_implemented_in_elp(message: &str) -> bool {
+    #[allow(clippy::match_like_matches_macro)]
+    match message {
         "head mismatch" => false,
         "no module definition" => false,
         _ => true,
@@ -951,23 +941,17 @@ fn parse_error_to_diagnostic_info(
         Some(DiagnosticLocation::Included {
             directive_location,
             error_location,
-        }) => {
-            // This diagnostic belongs to the file included at the
-            // `directive_location.
-            if let Some(included_file_id) =
-                included_file_file_id(db, file_id, Location::TextRange(directive_location))
-            {
-                Some((
+        }) => included_file_file_id(db, file_id, Location::TextRange(directive_location)).map(
+            |included_file_id| {
+                (
                     included_file_id,
                     error_location.start(),
                     error_location.end(),
                     parse_error.code.clone(),
                     parse_error.msg.clone(),
-                ))
-            } else {
-                None
-            }
-        }
+                )
+            },
+        ),
         Some(DiagnosticLocation::Normal(Location::TextRange(range))) => {
             let default_range = (
                 file_id,
@@ -1076,7 +1060,7 @@ fn location_range(location: Location, line_index: &LineIndex) -> TextRange {
                 col_utf16: column,
             };
             // Temporary for T147609435
-            let _pctx = stdx::panic_context::enter(format!("\ndiagnostics::location_range"));
+            let _pctx = stdx::panic_context::enter("\ndiagnostics::location_range".to_string());
             let pos = line_index.offset(line_col);
             TextRange::new(pos, pos)
         }
