@@ -793,9 +793,10 @@ pub fn erlang_service_diagnostics(
         .collect();
 
     // Remove diagnostics already reported by ELP
+    let file_kind = db.file_kind(file_id);
     let diags: Vec<(FileId, Diagnostic)> = diags
         .into_iter()
-        .filter(|(_, d)| !is_implemented_in_elp(&d.code))
+        .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
         .collect();
     if diags.is_empty() {
         // If there are no diagnostics reported, return an empty list
@@ -921,16 +922,21 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
     }
 }
 
-/// Match the message part of the diagnostics produced by erlang_ls or
-/// the erlang_service but already implemented natively in ELP
-pub fn is_implemented_in_elp(code: &DiagnosticCode) -> bool {
-    match code {
-        DiagnosticCode::ErlangService(s) => match s.as_str() {
-            "P1700" => true, // "head mismatch"
-            "L1201" => true, // "no module definition"
+/// Match the message part of the diagnostics produced by the
+/// erlang_service but already implemented natively in ELP
+pub fn is_implemented_in_elp(code: &DiagnosticCode, file_kind: FileKind) -> bool {
+    if file_kind == FileKind::Escript {
+        false
+    } else {
+        match code {
+            DiagnosticCode::ErlangService(s) => match s.as_str() {
+                "P1700" => true, // "head mismatch"
+                "L1201" => true, // "no module definition"
+                "P1711" => true, // Syntax error
+                _ => false,
+            },
             _ => false,
-        },
-        _ => false,
+        }
     }
 }
 
@@ -1247,14 +1253,31 @@ baz(1)->4.
     fn filter_diagnostics() {
         let diag1 = DiagnosticCode::ErlangService("P1700".to_string());
         let diag2 = DiagnosticCode::ErlangService("L1201".to_string());
+        let diag3 = DiagnosticCode::ErlangService("P1711".to_string());
         let diagk = DiagnosticCode::ErlangService("another diagnostic".to_string());
-        let diags = vec![diag1, diag2, diagk.clone()];
+        let diags = vec![diag1, diag2, diag3, diagk.clone()];
         assert_eq!(
             diags
                 .into_iter()
-                .filter(|d| !is_implemented_in_elp(&d))
+                .filter(|d| !is_implemented_in_elp(&d, FileKind::Module))
                 .collect::<Vec<_>>(),
             vec![diagk]
+        );
+    }
+
+    #[test]
+    fn filter_diagnostics_escript() {
+        let diag1 = DiagnosticCode::ErlangService("P1700".to_string());
+        let diag2 = DiagnosticCode::ErlangService("L1201".to_string());
+        let diag3 = DiagnosticCode::ErlangService("P1711".to_string());
+        let diagk = DiagnosticCode::ErlangService("another diagnostic".to_string());
+        let diags = vec![diag1.clone(), diag2.clone(), diag3.clone(), diagk.clone()];
+        assert_eq!(
+            diags
+                .into_iter()
+                .filter(|d| !is_implemented_in_elp(&d, FileKind::Escript))
+                .collect::<Vec<_>>(),
+            vec![diag1, diag2, diag3, diagk]
         );
     }
 

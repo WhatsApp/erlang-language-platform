@@ -19,7 +19,7 @@ usage() ->
   halt(1).
 
 fac(0) -> 1;
-fac(N) -> N * fac(N-1).
+faX(N) -> N * fac(N-1).
 
 func tion_with_error() ->
   ok.
