@@ -115,7 +115,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 pub fn type_name(arg_idx: usize, expr: ast::Expr) -> String {
     if let ast::Expr::ExprMax(ast::ExprMax::Var(var)) = expr {
-        format!("{} :: type{}()", var.text().to_string(), arg_idx)
+        format!("{} :: type{}()", var.text(), arg_idx)
     } else {
         format!("type{}()", arg_idx)
     }

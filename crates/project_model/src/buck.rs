@@ -630,7 +630,7 @@ pub fn targets_to_project_data(targets: &FxHashMap<TargetFullName, Target>) -> V
                         target_dir = dir;
                     }
                 }
-                result.unwrap_or_else(|| ProjectAppDataAcc::new())
+                result.unwrap_or_else(ProjectAppDataAcc::new)
             }
         };
 

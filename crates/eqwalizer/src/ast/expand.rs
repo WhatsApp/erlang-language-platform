@@ -233,7 +233,7 @@ impl Expander<'_> {
     fn check_unbound_type_var(
         &self,
         pos: &ast::Pos,
-        params: &Vec<SmolStr>,
+        params: &[SmolStr],
         ty_var: &VarExtType,
     ) -> Result<(), Invalid> {
         if !params.contains(&ty_var.name) {
@@ -509,14 +509,12 @@ impl Expander<'_> {
                         location: ty.location,
                         n: ty.name,
                     }))
+                } else if let Some(tp) = sub.get(&ty.name) {
+                    let mut stack2 = stack.clone();
+                    stack2.insert(ty.name);
+                    self.expand_constraints(tp.clone(), sub, &stack2)
                 } else {
-                    if let Some(tp) = sub.get(&ty.name) {
-                        let mut stack2 = stack.clone();
-                        stack2.insert(ty.name);
-                        self.expand_constraints(tp.clone(), sub, &stack2)
-                    } else {
-                        Ok(ExtType::VarExtType(ty))
-                    }
+                    Ok(ExtType::VarExtType(ty))
                 }
             }
             ExtType::BuiltinExtType(_)
@@ -608,20 +606,20 @@ impl StubExpander<'_> {
             ..ModuleStub::default()
         };
         let module_file = ast
-            .into_iter()
+            .iter()
             .find_map(|form| match form {
                 ExternalForm::File(f) => Some(f.file.clone()),
                 _ => None,
             })
             .unwrap();
         let current_file = module_file.clone();
-        return StubExpander {
+        StubExpander {
             expander,
             type_converter,
             stub,
             module_file,
             current_file,
-        };
+        }
     }
 
     fn add_type_decl(&mut self, t: ExternalTypeDecl) -> Result<(), TypeConversionError> {
@@ -728,65 +726,60 @@ impl StubExpander<'_> {
         Ok(())
     }
 
-    fn add_extra_types(&mut self) -> () {
-        match self.stub.module.as_str() {
-            "erlang" => {
-                let pos: ast::Pos = {
-                    if self
-                        .expander
-                        .db
-                        .from_beam(self.expander.project_id, ModuleName::new("erlang"))
-                    {
-                        LineAndColumn::fake().into()
-                    } else {
-                        TextRange::fake().into()
-                    }
-                };
-                Type::builtin_type_aliases("erlang")
-                    .into_iter()
-                    .for_each(|name| {
-                        let body = Type::builtin_type_alias_body(&name).unwrap();
-                        let id = ast::Id { name, arity: 0 };
-                        let decl = TypeDecl {
-                            location: pos.clone(),
-                            id: id.clone(),
-                            params: vec![],
-                            body,
-                        };
-                        self.stub.types.insert(id, decl);
-                    })
-            }
-            _ => (),
+    fn add_extra_types(&mut self) {
+        if let "erlang" = self.stub.module.as_str() {
+            let pos: ast::Pos = {
+                if self
+                    .expander
+                    .db
+                    .from_beam(self.expander.project_id, ModuleName::new("erlang"))
+                {
+                    LineAndColumn::fake().into()
+                } else {
+                    TextRange::fake().into()
+                }
+            };
+            Type::builtin_type_aliases("erlang")
+                .into_iter()
+                .for_each(|name| {
+                    let body = Type::builtin_type_alias_body(&name).unwrap();
+                    let id = ast::Id { name, arity: 0 };
+                    let decl = TypeDecl {
+                        location: pos.clone(),
+                        id: id.clone(),
+                        params: vec![],
+                        body,
+                    };
+                    self.stub.types.insert(id, decl);
+                })
         }
     }
 
     pub fn expand(&mut self, ast: AST) -> Result<(), TypeConversionError> {
-        ast.into_iter()
-            .map(|form| match form {
-                ExternalForm::File(f) => Ok(self.current_file = f.file),
-                ExternalForm::Export(e) => Ok(self.stub.exports.extend(e.funs)),
-                ExternalForm::Import(i) => Ok(i.funs.into_iter().for_each(|id| {
-                    self.stub.imports.insert(id, i.module.clone());
-                })),
-                ExternalForm::ExportType(e) => Ok(self.stub.export_types.extend(e.types)),
-                ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d),
-                ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d),
-                ExternalForm::ExternalFunSpec(s) => self.add_spec(s),
-                ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r),
-                ExternalForm::Behaviour(_) => Ok(()),
-                ExternalForm::ExternalCallback(cb) => self.add_callback(cb),
-                ExternalForm::ExternalOptionalCallbacks(ocb) => {
-                    Ok(self.stub.optional_callbacks.extend(ocb.ids))
-                }
-                ExternalForm::Module(_)
-                | ExternalForm::CompileExportAll(_)
-                | ExternalForm::FunDecl(_)
-                | ExternalForm::ElpMetadata(_)
-                | ExternalForm::EqwalizerUnlimitedRefinement(_)
-                | ExternalForm::EqwalizerNowarnFunction(_)
-                | ExternalForm::TypingAttribute(_) => Ok(()),
-            })
-            .collect::<Result<(), TypeConversionError>>()?;
+        ast.into_iter().try_for_each(|form| match form {
+            ExternalForm::File(f) => Ok(self.current_file = f.file),
+            ExternalForm::Export(e) => Ok(self.stub.exports.extend(e.funs)),
+            ExternalForm::Import(i) => Ok(i.funs.into_iter().for_each(|id| {
+                self.stub.imports.insert(id, i.module.clone());
+            })),
+            ExternalForm::ExportType(e) => Ok(self.stub.export_types.extend(e.types)),
+            ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d),
+            ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d),
+            ExternalForm::ExternalFunSpec(s) => self.add_spec(s),
+            ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r),
+            ExternalForm::Behaviour(_) => Ok(()),
+            ExternalForm::ExternalCallback(cb) => self.add_callback(cb),
+            ExternalForm::ExternalOptionalCallbacks(ocb) => {
+                Ok(self.stub.optional_callbacks.extend(ocb.ids))
+            }
+            ExternalForm::Module(_)
+            | ExternalForm::CompileExportAll(_)
+            | ExternalForm::FunDecl(_)
+            | ExternalForm::ElpMetadata(_)
+            | ExternalForm::EqwalizerUnlimitedRefinement(_)
+            | ExternalForm::EqwalizerNowarnFunction(_)
+            | ExternalForm::TypingAttribute(_) => Ok(()),
+        })?;
         self.add_extra_types();
         Ok(())
     }

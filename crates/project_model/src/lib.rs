@@ -66,9 +66,9 @@ pub struct DiscoverConfig {
 }
 
 impl DiscoverConfig {
-    pub fn new(rebar: bool, profile: &String) -> Self {
+    pub fn new(rebar: bool, profile: &str) -> Self {
         if rebar {
-            Self::rebar(Some(profile.clone()))
+            Self::rebar(Some(profile.to_owned()))
         } else {
             Self::buck()
         }

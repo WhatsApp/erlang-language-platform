@@ -60,10 +60,9 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         target,
         None,
         |builder| {
-            let first_sig = spec.sigs().into_iter().next().unwrap();
+            let first_sig = spec.sigs().next().unwrap();
             let arg_names = first_sig.args().map_or(Vec::new(), |args| {
                 args.args()
-                    .into_iter()
                     .enumerate()
                     .map(|(arg_idx, expr)| arg_name(arg_idx + 1, expr))
                     .collect()

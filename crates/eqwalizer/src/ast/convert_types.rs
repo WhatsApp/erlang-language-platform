@@ -113,7 +113,7 @@ impl TypeConverter {
         // Invalid declarations should only appear when converting record declarations
         let ft = self
             .convert_fun_type(&subst, cft.ty)?
-            .map_err(|e| TypeConversionError::ErrorInFunType(e))?;
+            .map_err(TypeConversionError::ErrorInFunType)?;
         Ok(FunType {
             forall: subst.into_values().collect(),
             ..ft
@@ -187,7 +187,7 @@ impl TypeConverter {
         let params = self.collect_vars(&decl.params);
         let result = self.convert_type(&sub, decl.body)?;
         // Invalid declarations should only appear when converting record declarations
-        let body = result.map_err(|e| TypeConversionError::ErrorInTypeDecl(e))?;
+        let body = result.map_err(TypeConversionError::ErrorInTypeDecl)?;
         Ok(TypeDecl {
             id: decl.id,
             params,
@@ -211,7 +211,7 @@ impl TypeConverter {
         let params = self.collect_vars(&decl.params);
         let result = self.convert_type(&sub, decl.body)?;
         // Invalid declarations should only appear when converting record declarations
-        let body = result.map_err(|e| TypeConversionError::ErrorInTypeDecl(e))?;
+        let body = result.map_err(TypeConversionError::ErrorInTypeDecl)?;
         Ok(TypeDecl {
             id: decl.id,
             params,
@@ -220,14 +220,14 @@ impl TypeConverter {
         })
     }
 
-    fn collect_substitution(&self, vars: &Vec<SmolStr>) -> FxHashMap<SmolStr, u32> {
+    fn collect_substitution(&self, vars: &[SmolStr]) -> FxHashMap<SmolStr, u32> {
         vars.iter()
             .enumerate()
             .map(|(n, name)| (name.clone(), n as u32))
             .collect()
     }
 
-    fn collect_vars(&self, vars: &Vec<SmolStr>) -> Vec<VarType> {
+    fn collect_vars(&self, vars: &[SmolStr]) -> Vec<VarType> {
         vars.iter()
             .enumerate()
             .map(|(n, name)| VarType {
@@ -274,7 +274,7 @@ impl TypeConverter {
             }
             ExtType::FunExtType(ft) => self
                 .convert_fun_type(sub, ft)
-                .map(|res| res.map(|ty| Type::FunType(ty))),
+                .map(|res| res.map(Type::FunType)),
             ExtType::AnyArityFunExtType(ft) => {
                 Ok(self.convert_type(sub, *ft.res_ty)?.map(|res_ty| {
                     Type::AnyArityFunType(AnyArityFunType {
@@ -304,7 +304,7 @@ impl TypeConverter {
                 .map(|arg_tys| Type::RemoteType(RemoteType { id: ty.id, arg_tys }))),
             ExtType::VarExtType(var) => match sub.get(&var.name) {
                 Some(id) => Ok(Ok(Type::VarType(VarType {
-                    n: id.clone(),
+                    n: *id,
                     name: var.name,
                 }))),
                 None if self.in_rec_decl => {
@@ -451,7 +451,7 @@ impl TypeConverter {
         }
     }
 
-    fn collect_all_var_names(&self, tys: &Vec<ExtType>) -> Vec<SmolStr> {
+    fn collect_all_var_names(&self, tys: &[ExtType]) -> Vec<SmolStr> {
         tys.iter()
             .flat_map(|ty| self.collect_var_names(ty))
             .collect()

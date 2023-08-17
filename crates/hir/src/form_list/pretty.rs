@@ -353,17 +353,17 @@ impl<'a> Printer<'a> {
     fn print_deprecated(&mut self, attribute: &DeprecatedAttribute) -> fmt::Result {
         match attribute {
             DeprecatedAttribute::Module { cond, .. } => {
-                writeln!(self, "-deprecated(module). %% cond: {:?}", raw_cond(&cond))
+                writeln!(self, "-deprecated(module). %% cond: {:?}", raw_cond(cond))
             }
             DeprecatedAttribute::Fa { fa, cond, .. } => {
-                writeln!(self, "-deprecated({}). %% cond: {:?}", fa, raw_cond(&cond))
+                writeln!(self, "-deprecated({}). %% cond: {:?}", fa, raw_cond(cond))
             }
             DeprecatedAttribute::Fas { fas, cond, .. } => {
                 writeln!(
                     self,
                     "-deprecated({}). %% cond: {:?}",
                     DeprecatedFas(fas),
-                    raw_cond(&cond)
+                    raw_cond(cond)
                 )
             }
         }

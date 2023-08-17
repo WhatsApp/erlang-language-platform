@@ -56,16 +56,9 @@ pub(crate) fn add_completions(
                 sema.resolve_module_name(file_position.file_id, module_name.text())
             {
                 let def_map = sema.def_map(module.file.file_id);
-                let completions = def_map
-                    .get_exported_functions()
-                    .into_iter()
-                    .filter_map(|na| {
-                        helpers::name_slash_arity_completion(
-                            na,
-                            function_prefix.text(),
-                            Kind::Function,
-                        )
-                    });
+                let completions = def_map.get_exported_functions().iter().filter_map(|na| {
+                    helpers::name_slash_arity_completion(na, function_prefix.text(), Kind::Function)
+                });
                 acc.extend(completions);
                 true
             } else {
@@ -146,21 +139,18 @@ fn complete_remote_function_call<'a>(
     || -> Option<_> {
         let module = sema.resolve_module_name(from_file, module_name)?;
         let def_map = sema.def_map(module.file.file_id);
-        let completions = def_map
-            .get_exported_functions()
-            .into_iter()
-            .filter_map(|na| {
-                let def = def_map.get_function(na);
-                let position = def.map(|def| {
-                    let fun_decl_ast = def.source(sema.db.upcast());
-                    FilePosition {
-                        file_id: def.file.file_id,
-                        offset: fun_decl_ast.syntax().text_range().start(),
-                    }
-                });
-                let deprecated = def_map.is_deprecated(na);
-                name_arity_to_call_completion(def, na, fun_prefix, position, deprecated)
+        let completions = def_map.get_exported_functions().iter().filter_map(|na| {
+            let def = def_map.get_function(na);
+            let position = def.map(|def| {
+                let fun_decl_ast = def.source(sema.db.upcast());
+                FilePosition {
+                    file_id: def.file.file_id,
+                    offset: fun_decl_ast.syntax().text_range().start(),
+                }
             });
+            let deprecated = def_map.is_deprecated(na);
+            name_arity_to_call_completion(def, na, fun_prefix, position, deprecated)
+        });
         acc.extend(completions);
         Some(())
     }();

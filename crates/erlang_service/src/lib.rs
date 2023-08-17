@@ -295,7 +295,7 @@ impl Connection {
                     ParseResult::error(ParseError {
                         path,
                         location: None,
-                        msg: format!("Could not parse, error: {}", error.to_string()),
+                        msg: format!("Could not parse, error: {}", error),
                         code: "L0001".to_string(),
                     })
                 }
@@ -309,7 +309,7 @@ impl Connection {
                 ParseResult::error(ParseError {
                     path,
                     location: None,
-                    msg: format!("Could not parse, error: {}", error.to_string()),
+                    msg: format!("Could not parse, error: {}", error),
                     code: "L0002".to_string(),
                 })
             }
@@ -439,7 +439,7 @@ fn reader_run(
             line_buf.clear();
             outstream.read_line(line_buf)?;
             let parts = line_buf.split_ascii_whitespace().collect::<Vec<_>>();
-            if parts.len() == 0 {
+            if parts.is_empty() {
                 break;
             }
             let size: usize = parts[1].parse()?;
@@ -588,7 +588,7 @@ fn writer_run(
 }
 
 fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
-    if buf.len() == 0 {
+    if buf.is_empty() {
         return Ok(vec![]);
     }
 
@@ -611,14 +611,14 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                     location: match position {
                         pattern::Union3::A((a, b)) => {
                             // Temporary for  T148094436
-                            let _pctx = stdx::panic_context::enter(format!("\ndecode_errors1"));
+                            let _pctx = stdx::panic_context::enter("\ndecode_errors1".to_string());
                             Some(DiagnosticLocation::Normal(Location::TextRange(
                                 TextRange::new(a.into(), b.into()),
                             )))
                         }
                         pattern::Union3::B(((a, b), (c, d))) => {
                             // Temporary for  T148094436
-                            let _pctx = stdx::panic_context::enter(format!("\ndecode_errors2"));
+                            let _pctx = stdx::panic_context::enter("\ndecode_errors2".to_string());
                             Some(DiagnosticLocation::Included {
                                 directive_location: TextRange::new(a.into(), b.into()),
                                 error_location: TextRange::new(c.into(), d.into()),

@@ -196,16 +196,16 @@ pub struct StubContractivityChecker<'d> {
 }
 
 impl StubContractivityChecker<'_> {
-    pub fn new<'d>(
-        db: &'d dyn EqwalizerASTDatabase,
+    pub fn new(
+        db: &dyn EqwalizerASTDatabase,
         project_id: ProjectId,
         module: SmolStr,
-    ) -> StubContractivityChecker<'d> {
-        return StubContractivityChecker {
+    ) -> StubContractivityChecker<'_> {
+        StubContractivityChecker {
             db,
             project_id,
             module,
-        };
+        }
     }
 
     fn check_type_decl(
@@ -247,14 +247,10 @@ impl StubContractivityChecker<'_> {
     }
 
     fn is_contractive(&self, t: &Type) -> Result<bool, ContractivityCheckError> {
-        self.is_foldable(t, &vec![])
+        self.is_foldable(t, &[])
     }
 
-    fn is_foldable(
-        &self,
-        ty: &Type,
-        history: &Vec<&Type>,
-    ) -> Result<bool, ContractivityCheckError> {
+    fn is_foldable(&self, ty: &Type, history: &[&Type]) -> Result<bool, ContractivityCheckError> {
         let mut produced = false;
         for &t in history.iter().rev() {
             if produced && t == ty {
@@ -262,7 +258,7 @@ impl StubContractivityChecker<'_> {
             }
             produced = produced || self.is_producer(t)?;
         }
-        let mut new_history = history.clone();
+        let mut new_history = history.to_owned();
         new_history.push(ty);
         match ty {
             Type::FunType(ft) => {
@@ -301,7 +297,7 @@ impl StubContractivityChecker<'_> {
     fn all_foldable<'a, I>(
         &self,
         tys: I,
-        history: &Vec<&Type>,
+        history: &[&Type],
     ) -> Result<bool, ContractivityCheckError>
     where
         I: Iterator<Item = &'a Type>,
@@ -333,7 +329,7 @@ impl StubContractivityChecker<'_> {
     fn type_decl_body(
         &self,
         id: &RemoteId,
-        args: &Vec<Type>,
+        args: &[Type],
     ) -> Result<Option<Type>, ContractivityCheckError> {
         let local_id = Id {
             name: id.name.clone(),
@@ -343,7 +339,7 @@ impl StubContractivityChecker<'_> {
             .db
             .expanded_stub(self.project_id, ModuleName::new(id.module.as_str()))
             .map_err(|_| ContractivityCheckError::UnexpectedID(id.clone()))?;
-        fn subst(decl: &TypeDecl, args: &Vec<Type>) -> Type {
+        fn subst(decl: &TypeDecl, args: &[Type]) -> Type {
             let sub: FxHashMap<u32, &Type> =
                 decl.params.iter().map(|v| v.n).zip(args.iter()).collect();
             Subst { sub }.apply(decl.body.clone())
@@ -359,7 +355,7 @@ impl StubContractivityChecker<'_> {
                     stub.public_opaques.get(&local_id).map(|_| {
                         Type::OpaqueType(OpaqueType {
                             id: id.clone(),
-                            arg_tys: args.clone(),
+                            arg_tys: args.to_owned(),
                         })
                     })
                 }
@@ -369,12 +365,12 @@ impl StubContractivityChecker<'_> {
     pub fn check(&self, stub: &ModuleStub) -> Result<ModuleStub, ContractivityCheckError> {
         let mut stub_result = stub.clone();
         stub.types
-            .iter()
-            .map(|(_, decl)| self.check_type_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_type_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.private_opaques
-            .iter()
-            .map(|(_, decl)| self.check_opaque_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         Ok(stub_result)
     }

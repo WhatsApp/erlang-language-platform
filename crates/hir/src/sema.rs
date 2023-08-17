@@ -327,7 +327,7 @@ impl<'db> Semantic<'db> {
         let (body, source_map) = self.db.function_body_with_source(infile_function_id);
         let expr_id_in = source_map.expr_id(InFile {
             file_id,
-            value: &expr,
+            value: expr,
         })?;
         self.free_vars(&InFunctionBody {
             body,
@@ -353,7 +353,7 @@ impl<'db> Semantic<'db> {
             FxHashSet::default(),
             &mut |acc, _| acc,
             &mut |mut acc, ctx| {
-                acc.insert(ctx.pat_id.clone());
+                acc.insert(ctx.pat_id);
                 acc
             },
         );
@@ -377,7 +377,7 @@ impl<'db> Semantic<'db> {
         Some(FoldCtx::fold_expr(
             &expr.body.body,
             Strategy::TopDown,
-            expr_id_in.clone(),
+            expr_id_in,
             ScopeAnalysis::new(),
             &mut |defs, ctx| match ctx.expr {
                 Expr::Var(var_id) => {
@@ -424,9 +424,9 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn find_vars_in_clause_ast(&self, expr: &InFile<&ast::Expr>) -> Option<FxHashSet<Var>> {
-        let clause = self.find_enclosing_function_clause(&expr.value.syntax())?;
+        let clause = self.find_enclosing_function_clause(expr.value.syntax())?;
         let in_function = self.to_expr(*expr)?;
-        ScopeAnalysis::clause_vars_in_scope(&self, &in_function.with_value(&in_function[clause]))
+        ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(&in_function[clause]))
     }
 
     /// Find all other variables within the function clause that resolve
@@ -541,7 +541,7 @@ impl<'db> Semantic<'db> {
     ) -> FxHashSet<(InFile<FunctionId>, PatId, ast::Var)> {
         let def_map = self.def_map(file_id);
         let mut res = FxHashSet::default();
-        for (_name, def) in def_map.get_functions() {
+        for def in def_map.get_functions().values() {
             if def.file.file_id == file_id {
                 let function_id = InFile::new(file_id, def.function_id);
 
@@ -551,7 +551,7 @@ impl<'db> Semantic<'db> {
                     &mut |acc, clause_id, ctx| {
                         if let Some(mut resolver) = self.clause_resolver(function_id, clause_id) {
                             let mut bound_vars =
-                                BoundVarsInPat::new(&self, &mut resolver, file_id, &mut res);
+                                BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
                             match ctx.expr {
                                 Expr::Match { lhs, rhs: _ } => {
                                     bound_vars.report_any_bound_vars(&lhs)
@@ -597,32 +597,22 @@ impl<'db> Semantic<'db> {
             FxHashSet::default(),
             &mut |acc, _| acc,
             &mut |mut acc, ctx| {
-                match &resolver[ctx.pat_id] {
-                    Pat::Var(var) => {
-                        if let Some(pat_ids) = resolver.value.resolve_pat_id(&var, ctx.pat_id) {
-                            pat_ids.iter().for_each(|def_pat_id| {
-                                if &ctx.pat_id != def_pat_id {
-                                    if let Some(pat_ptr) = body_map.pat(ctx.pat_id) {
-                                        if let Some(pat_ast) = pat_ptr.to_node(&parse) {
-                                            match pat_ast {
-                                                ast::Expr::ExprMax(ast::ExprMax::Var(var)) => {
-                                                    if var.syntax().text() != "_" {
-                                                        acc.insert((
-                                                            resolver.function_id,
-                                                            ctx.pat_id.clone(),
-                                                            var,
-                                                        ));
-                                                    }
-                                                }
-                                                _ => {}
-                                            }
-                                        };
+                if let Pat::Var(var) = &resolver[ctx.pat_id] {
+                    if let Some(pat_ids) = resolver.value.resolve_pat_id(var, ctx.pat_id) {
+                        pat_ids.iter().for_each(|def_pat_id| {
+                            if &ctx.pat_id != def_pat_id {
+                                if let Some(pat_ptr) = body_map.pat(ctx.pat_id) {
+                                    if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(var))) =
+                                        pat_ptr.to_node(&parse)
+                                    {
+                                        if var.syntax().text() != "_" {
+                                            acc.insert((resolver.function_id, ctx.pat_id, var));
+                                        }
                                     }
-                                }
-                            });
-                        }
+                                };
+                            }
+                        });
                     }
-                    _ => {}
                 };
                 acc
             },
@@ -703,7 +693,7 @@ impl<'a> BoundVarsInPat<'a> {
     fn report_any_bound_vars(&mut self, pat_id: &PatId) {
         let bound_vars = self
             .sema
-            .bound_vars_in_pat(&pat_id, self.resolver, self.file_id);
+            .bound_vars_in_pat(pat_id, self.resolver, self.file_id);
         bound_vars.into_iter().for_each(|v| {
             self.res.insert(v);
         });
@@ -718,7 +708,7 @@ impl<'a> BoundVarsInPat<'a> {
 
 // ---------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ScopeAnalysis {
     pub free: FxHashSet<Resolution>,
     pub bound: FxHashSet<Resolution>,

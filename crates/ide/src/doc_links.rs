@@ -31,7 +31,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
         .left_biased()?;
 
     let doc_links = SymbolClass::classify(&sema, InFile::new(position.file_id, token))?
-        .into_iter()
+        .iter()
         .filter_map(|def| doc_links(&sema, def))
         .flatten()
         .collect();

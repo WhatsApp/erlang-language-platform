@@ -24,7 +24,7 @@ pub(crate) fn goto_definition(
     let sema = Semantic::new(db);
     let token = find_best_token(&sema, position)?;
     let targets = SymbolClass::classify(&sema, token.clone())?
-        .into_iter()
+        .iter()
         .map(|def| def.to_nav(db))
         .collect();
     Some(RangeInfo::new(token.value.text_range(), targets))

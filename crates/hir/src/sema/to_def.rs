@@ -720,19 +720,17 @@ fn look_for_apply_call(
     if sema.db.lookup_atom(atom) == known::apply {
         if args.len() == 2 {
             // apply/2
-            let arity = arity_from_apply_args(args[1], &body)?;
-            let apply_target = CallTarget::Local {
-                name: args[0].clone(),
-            };
-            resolve_call_target(sema, &apply_target, arity, file_id, &body).map(CallDef::Function)
+            let arity = arity_from_apply_args(args[1], body)?;
+            let apply_target = CallTarget::Local { name: args[0] };
+            resolve_call_target(sema, &apply_target, arity, file_id, body).map(CallDef::Function)
         } else if args.len() == 3 {
             // apply/3
-            let arity = arity_from_apply_args(args[2], &body)?;
+            let arity = arity_from_apply_args(args[2], body)?;
             let apply_target = CallTarget::Remote {
-                module: args[0].clone(),
-                name: args[1].clone(),
+                module: args[0],
+                name: args[1],
             };
-            resolve_call_target(sema, &apply_target, arity, file_id, &body).map(CallDef::Function)
+            resolve_call_target(sema, &apply_target, arity, file_id, body).map(CallDef::Function)
         } else {
             None
         }

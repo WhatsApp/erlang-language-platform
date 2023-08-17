@@ -102,7 +102,7 @@ impl<'a> Subst<'a> {
         }
     }
 
-    fn subtract(&self, vars: &Vec<u32>) -> Subst {
+    fn subtract(&self, vars: &[u32]) -> Subst {
         let mut sub = self.sub.to_owned();
         vars.iter().for_each(|v| {
             sub.remove(v);

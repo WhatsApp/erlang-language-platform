@@ -356,7 +356,7 @@ fn compute_expr_scopes(
     vt: &mut VarTable,
 ) {
     scopes.set_scope_expr(expr, *scope);
-    match &UnexpandedIndex(&body)[expr] {
+    match &UnexpandedIndex(body)[expr] {
         crate::Expr::Missing => {}
         crate::Expr::Literal(_) => {}
         crate::Expr::Var(_) => {}

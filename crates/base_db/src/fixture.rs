@@ -454,16 +454,13 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
             if let Some(anno) = line.strip_prefix(TOP_OF_FILE_MARKER) {
                 res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
             }
-        } else {
-            if line.contains(TOP_OF_FILE_MARKER) {
-                assert!(
-                    false,
-                    "Annotation line {} is invalid here. \
+        } else if line.contains(TOP_OF_FILE_MARKER) {
+            panic!(
+                "Annotation line {} is invalid here. \
                      The top of file marker '{}' can only appear first in the file on the left margin.\n\
                      The offending line: {:?}",
-                    idx, TOP_OF_FILE_MARKER, line
-                );
-            }
+                idx, TOP_OF_FILE_MARKER, line
+            );
         }
         let mut this_line_annotations = Vec::new();
         let line_length = if let Some((prefix, suffix)) = line.split_once("%%") {

@@ -39,7 +39,7 @@ const PRAGMA_PREFIX: &str = "%% % ";
 // ```
 pub(crate) fn add_format(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let module = ctx.find_node_at_offset::<ast::ModuleAttribute>()?;
-    let already_has_format = prev_form_nodes(&module.syntax())
+    let already_has_format = prev_form_nodes(module.syntax())
         .filter_map(|comment| {
             let text = comment.text();
             let at = text.find_char('@')?;

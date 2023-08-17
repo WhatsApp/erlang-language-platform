@@ -33,7 +33,7 @@ impl ModuleName {
     }
 
     pub fn to_quoted_string(&self) -> String {
-        to_quoted_string(&self.as_str())
+        to_quoted_string(self.as_str())
     }
 }
 
@@ -143,11 +143,7 @@ impl ModuleIndex {
                 .chain(otp.mod2file.iter())
                 .map(|(m, _f)| m.clone())
                 .collect::<Vec<_>>(),
-            Some(_) | None => self
-                .mod2file
-                .iter()
-                .map(|(m, _f)| m.clone())
-                .collect::<Vec<_>>(),
+            Some(_) | None => self.mod2file.keys().cloned().collect::<Vec<_>>(),
         }
     }
 }

@@ -95,15 +95,13 @@ impl SymbolDefinition {
                 rename_error!("Cannot rename module")
             }
             SymbolDefinition::Function(fun) => {
-                if safety_check == SafetyChecks::Yes {
-                    if !is_valid_function_name(get_name(None)) {
-                        rename_error!("Invalid new function name: '{}'", get_name(None));
-                    }
+                if safety_check == SafetyChecks::Yes && !is_valid_function_name(get_name(None)) {
+                    rename_error!("Invalid new function name: '{}'", get_name(None));
                 }
 
                 let arity = fun.function.name.arity();
                 if safety_check == SafetyChecks::Yes
-                    && !is_safe_function(&sema, fun.file.file_id, &get_name(None), arity)
+                    && !is_safe_function(sema, fun.file.file_id, &get_name(None), arity)
                 {
                     rename_error!("Function '{}/{}' already in scope", get_name(None), arity);
                 } else {
@@ -129,10 +127,8 @@ impl SymbolDefinition {
                 rename_error!("Cannot rename header")
             }
             SymbolDefinition::Var(_) => {
-                if safety_check == SafetyChecks::Yes {
-                    if !is_valid_var_name(get_name(None)) {
-                        rename_error!("Invalid new variable name: '{}'", get_name(None));
-                    }
+                if safety_check == SafetyChecks::Yes && !is_valid_var_name(get_name(None)) {
+                    rename_error!("Invalid new variable name: '{}'", get_name(None));
                 }
 
                 self.rename_reference(sema, get_name, safety_check)
@@ -154,7 +150,7 @@ impl SymbolDefinition {
             }
             _ => None,
         };
-        return res;
+        res
     }
 
     fn rename_reference(
@@ -186,7 +182,7 @@ impl SymbolDefinition {
                     // now.
                     let arity = function.function.name.arity();
                     let mut problems = usages.iter().filter(|(file_id, _refs)| {
-                        !is_safe_function(&sema, *file_id, &get_name(None), arity)
+                        !is_safe_function(sema, *file_id, &get_name(None), arity)
                     });
                     // Report the first one only, an existence proof of problems
                     if let Some((file_id, _)) = problems.next() {
@@ -377,5 +373,5 @@ pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &String, ari
         .get_functions_in_scope()
         .all(|name| !(&name.name().to_string() == new_name && name.arity() == arity));
 
-    scope_ok && !in_erlang_module(&new_name, arity as usize)
+    scope_ok && !in_erlang_module(new_name, arity as usize)
 }

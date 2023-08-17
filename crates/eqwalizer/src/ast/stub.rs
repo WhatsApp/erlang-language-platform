@@ -40,6 +40,6 @@ pub struct ModuleStub {
 
 impl ModuleStub {
     pub fn to_bytes(&self) -> Vec<u8> {
-        return serde_json::to_vec(self).unwrap();
+        serde_json::to_vec(self).unwrap()
     }
 }

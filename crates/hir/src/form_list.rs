@@ -99,7 +99,7 @@ impl FormList {
     }
 
     pub(crate) fn data(&self) -> &FormListData {
-        &*self.data
+        &self.data
     }
 
     pub fn includes(&self) -> impl Iterator<Item = (IncludeAttributeId, &IncludeAttribute)> {
@@ -523,8 +523,8 @@ impl Deref for ParamName {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            ParamName::Name(name) => &name,
-            ParamName::Default(name) => &name,
+            ParamName::Name(name) => name,
+            ParamName::Default(name) => name,
         }
     }
 }

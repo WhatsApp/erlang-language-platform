@@ -72,7 +72,7 @@ impl RebarConfig {
             config.features.insert(RebarFeature::BuildInfo);
         }
 
-        return Ok(config);
+        Ok(config)
     }
 
     pub fn rebar3_command(&self) -> CommandProxy<'_> {
@@ -94,14 +94,14 @@ fn has_build_info(config: &RebarConfig) -> bool {
     let mut cmd = config.rebar3_command();
     cmd.arg("help");
     cmd.arg("build_info");
-    return match cmd.output() {
+    match cmd.output() {
         Ok(cmd) => cmd.status.success(),
         Err(error) => {
             warn!("rebar3 build_info is not available");
             debug!("rebar3 help build_info: {}", error);
             false
         }
-    };
+    }
 }
 
 impl RebarProject {

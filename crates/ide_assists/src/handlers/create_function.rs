@@ -49,15 +49,15 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 if let Expr::Call { target, args } = &call_expr[call_expr.value] {
                     let (module_name, function_name) = match &target {
                         hir::CallTarget::Local { name } => {
-                            let fun_atom = &call_expr[name.clone()].as_atom()?;
+                            let fun_atom = &call_expr[*name].as_atom()?;
                             let fun_name = ctx.sema.db.lookup_atom(*fun_atom).to_string();
                             (None, fun_name)
                         }
                         hir::CallTarget::Remote { module, name } => {
-                            let module = &call_expr[module.clone()].as_atom()?;
-                            let fun_atom = &call_expr[name.clone()].as_atom()?;
+                            let module = &call_expr[*module].as_atom()?;
+                            let fun_atom = &call_expr[*name].as_atom()?;
                             let fun_name = ctx.sema.db.lookup_atom(*fun_atom).to_string();
-                            (Some(module.clone()), fun_name)
+                            (Some(*module), fun_name)
                         }
                     };
                     let function_arity = args.len();
@@ -82,7 +82,7 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                         .syntax()
                         .text_range();
 
-                    let insert = TextSize::from(function_range.end() + TextSize::from(1));
+                    let insert = function_range.end() + TextSize::from(1);
 
                     let id = AssistId("create_function", AssistKind::QuickFix);
                     let message = format!("Create function `{function_name}/{function_arity}`");

@@ -286,7 +286,7 @@ pub fn from_bytes(bytes: &Vec<u8>) -> Result<AST, Error> {
             }
         }
     }
-    return Err(Error::ConversionError(ConversionError::InvalidDecode));
+    Err(Error::ConversionError(ConversionError::InvalidDecode))
 }
 
 pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
@@ -322,11 +322,11 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
             cursor.consume(((length + 3) & !3) as usize);
         }
     }
-    return Err(Error::InvalidBEAM);
+    Err(Error::InvalidBEAM)
 }
 
 pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
-    ast.into_iter()
+    ast.iter()
         .filter_map(|form| match form {
             ExternalForm::ExternalTypeDecl(d) => Some(d.id.clone()),
             ExternalForm::ExternalOpaqueDecl(d) => Some(d.id.clone()),
@@ -336,5 +336,5 @@ pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
 }
 
 pub fn to_bytes(ast: &AST) -> Vec<u8> {
-    return serde_json::to_vec(ast).unwrap();
+    serde_json::to_vec(ast).unwrap()
 }

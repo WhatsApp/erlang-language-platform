@@ -36,38 +36,38 @@ pub enum ExtType {
 }
 impl ExtType {
     pub fn int_ext_type(location: ast::Pos) -> ExtType {
-        return ExtType::BuiltinExtType(BuiltinExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "integer".into(),
-        });
+        })
     }
 
     pub fn any_ext_type(location: ast::Pos) -> ExtType {
-        return ExtType::BuiltinExtType(BuiltinExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "any".into(),
-        });
+        })
     }
 
     pub fn char_ext_type(location: ast::Pos) -> ExtType {
-        return ExtType::BuiltinExtType(BuiltinExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "char".into(),
-        });
+        })
     }
 
     pub fn tuple_ext_type(location: ast::Pos) -> ExtType {
-        return ExtType::BuiltinExtType(BuiltinExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "tuple".into(),
-        });
+        })
     }
 
     pub fn binary_ext_type(location: ast::Pos) -> ExtType {
-        return ExtType::BuiltinExtType(BuiltinExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "binary".into(),
-        });
+        })
     }
 
     pub fn eqwalizer_dynamic(location: ast::Pos) -> ExtType {
@@ -76,11 +76,11 @@ impl ExtType {
             name: "dynamic".into(),
             arity: 0,
         };
-        return ExtType::RemoteExtType(RemoteExtType {
+        ExtType::RemoteExtType(RemoteExtType {
             location,
             id,
             args: vec![],
-        });
+        })
     }
 
     pub fn visit<T>(&self, f: &dyn Fn(&ExtType) -> Result<(), T>) -> Result<(), T> {
@@ -89,22 +89,20 @@ impl ExtType {
             ExtType::FunExtType(ty) => ty
                 .res_ty
                 .visit(f)
-                .and_then(|()| ty.arg_tys.iter().map(|ty| ty.visit(f)).collect()),
+                .and_then(|()| ty.arg_tys.iter().try_for_each(|ty| ty.visit(f))),
             ExtType::AnyArityFunExtType(ty) => ty.res_ty.visit(f),
-            ExtType::TupleExtType(ty) => ty.arg_tys.iter().map(|ty| ty.visit(f)).collect(),
-            ExtType::UnionExtType(ty) => ty.tys.iter().map(|ty| ty.visit(f)).collect(),
+            ExtType::TupleExtType(ty) => ty.arg_tys.iter().try_for_each(|ty| ty.visit(f)),
+            ExtType::UnionExtType(ty) => ty.tys.iter().try_for_each(|ty| ty.visit(f)),
             ExtType::MapExtType(ty) => ty
                 .props
                 .iter()
-                .map(|prop| prop.key().visit(f).and_then(|()| prop.tp().visit(f)))
-                .collect(),
+                .try_for_each(|prop| prop.key().visit(f).and_then(|()| prop.tp().visit(f))),
             ExtType::ListExtType(ty) => ty.t.visit(f),
             ExtType::RecordRefinedExtType(ty) => ty
                 .refined_fields
                 .iter()
-                .map(|field| field.ty.visit(f))
-                .collect(),
-            ExtType::RemoteExtType(ty) => ty.args.iter().map(|ty| ty.visit(f)).collect(),
+                .try_for_each(|field| field.ty.visit(f)),
+            ExtType::RemoteExtType(ty) => ty.args.iter().try_for_each(|ty| ty.visit(f)),
             ExtType::AtomLitExtType(_)
             | ExtType::VarExtType(_)
             | ExtType::RecordExtType(_)

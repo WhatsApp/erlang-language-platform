@@ -161,7 +161,7 @@ impl SymbolDefinition {
                 FileKind::Header => {
                     let def_map = file.def_map(sema.db);
                     let included = def_map.get_included_files();
-                    let header = SymbolDefinition::Header(file.clone());
+                    let header = SymbolDefinition::Header(*file);
                     let usages = header.usages(sema).all();
                     let includers = usages.iter().map(|(file_id, _)| file_id);
                     SearchScope::files(iter::once(file.file_id).chain(included).chain(includers))
@@ -282,7 +282,7 @@ impl<'a> FindUsages<'a> {
                         match SymbolClass::classify(sema, InFile::new(file_id, token)) {
                             Some(SymbolClass::Definition(_)) => {}
                             Some(SymbolClass::Reference { refs, typ }) => {
-                                if refs.into_iter().any(|def| {
+                                if refs.iter().any(|def| {
                                     def == self.def
                                         && !(self.direct_only && typ != ReferenceType::Direct)
                                 }) {

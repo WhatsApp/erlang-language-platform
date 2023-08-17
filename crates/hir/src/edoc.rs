@@ -77,13 +77,10 @@ impl EdocHeader {
         }
         let mut res = FxHashMap::default();
         for source in self.sources_by_tag("param".to_string()) {
-            match RE.captures(&source) {
-                Some(captures) => {
-                    if captures.len() == 3 {
-                        res.insert(captures[1].to_string(), captures[2].to_string());
-                    }
+            if let Some(captures) = RE.captures(&source) {
+                if captures.len() == 3 {
+                    res.insert(captures[1].to_string(), captures[2].to_string());
                 }
-                None => (),
             }
         }
         res
@@ -119,7 +116,7 @@ pub fn file_edoc_comments_query(
 ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>> {
     let source = db.parse(file_id).tree();
     let mut res = FxHashMap::default();
-    source.forms().into_iter().for_each(|f| {
+    source.forms().for_each(|f| {
         if is_significant(f.syntax()) {
             let mut comments: Vec<_> = prev_form_nodes(f.syntax())
                 .filter(|syntax| {
@@ -140,10 +137,10 @@ pub fn file_edoc_comments_query(
 
 fn edoc_from_comments(
     form: InFileAstPtr<ast::Form>,
-    comments: &Vec<ast::Comment>,
+    comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
     let tags = comments
-        .into_iter()
+        .iter()
         .skip_while(|c| contains_edoc_tag(&c.syntax().text().to_string()).is_none())
         .map(|c| {
             (
@@ -161,14 +158,12 @@ fn edoc_from_comments(
                     name,
                     comments: vec![comment],
                 });
-            } else {
-                if !&acc.is_empty() {
-                    let mut t = acc[0].clone();
-                    t.comments.push(comment);
-                    acc[0] = EdocTag {
-                        name: t.name,
-                        comments: t.comments,
-                    }
+            } else if !&acc.is_empty() {
+                let mut t = acc[0].clone();
+                t.comments.push(comment);
+                acc[0] = EdocTag {
+                    name: t.name,
+                    comments: t.comments,
                 }
             }
             acc
@@ -193,10 +188,8 @@ fn only_comment_on_line(comment: &SyntaxNode) -> bool {
     loop {
         if let Some(node) = node.next() {
             if let Some(tok) = node.into_token() {
-                if tok.kind() == SyntaxKind::WHITESPACE {
-                    if tok.text().contains('\n') {
-                        return true;
-                    }
+                if tok.kind() == SyntaxKind::WHITESPACE && tok.text().contains('\n') {
+                    return true;
                 }
             } else {
                 return false;

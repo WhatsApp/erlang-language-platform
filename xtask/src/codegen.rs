@@ -689,7 +689,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
         })
         .collect::<Result<Vec<_>>>()?;
 
-    node_types.sort_by(|a, b| a.mapped_name().cmp(&b.mapped_name()));
+    node_types.sort_by_key(|a| a.mapped_name());
     Ok(node_types)
 }
 

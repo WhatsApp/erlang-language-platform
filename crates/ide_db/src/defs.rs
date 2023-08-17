@@ -62,7 +62,7 @@ pub enum ReferenceClass {
 }
 
 impl ReferenceClass {
-    pub fn into_iter(self) -> impl Iterator<Item = SymbolDefinition> {
+    pub fn iter(self) -> impl Iterator<Item = SymbolDefinition> {
         match self {
             ReferenceClass::Definition(def) => Either::Left(iter::once(def)),
             ReferenceClass::MultiVar(vars) => {
@@ -220,10 +220,10 @@ impl SymbolClass {
         }
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = SymbolDefinition> {
+    pub fn iter(self) -> impl Iterator<Item = SymbolDefinition> {
         match self {
             SymbolClass::Definition(def) => Either::Left(iter::once(def)),
-            SymbolClass::Reference { refs, typ: _ } => Either::Right(refs.into_iter()),
+            SymbolClass::Reference { refs, typ: _ } => Either::Right(refs.iter()),
         }
     }
 }
@@ -416,7 +416,7 @@ pub fn from_wrapper(
 ) -> Option<SymbolClass> {
     // Parent is nothing structured, it must be a raw atom or var literal
     if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
-        return reference_direct(sema.to_def(token.with_value(&atom)));
+        reference_direct(sema.to_def(token.with_value(&atom)))
     } else {
         classify_var(sema, token.file_id, wrapper)
     }

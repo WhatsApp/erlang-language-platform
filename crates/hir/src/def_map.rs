@@ -84,7 +84,7 @@ impl Deprecated {
         if self.fa.contains(fa) {
             return true;
         }
-        return false;
+        false
     }
 
     fn shrink_to_fit(&mut self) {
@@ -218,11 +218,11 @@ impl DefMap {
                         def_map.deprecated.all = true;
                     }
                     DeprecatedAttribute::Fa { fa, .. } => {
-                        Self::def_map_deprecated_attr(&mut def_map, &fa);
+                        Self::def_map_deprecated_attr(&mut def_map, fa);
                     }
                     DeprecatedAttribute::Fas { fas, .. } => {
                         for fa in fas {
-                            Self::def_map_deprecated_attr(&mut def_map, &fa);
+                            Self::def_map_deprecated_attr(&mut def_map, fa);
                         }
                     }
                 },
@@ -232,7 +232,7 @@ impl DefMap {
                         cond: _,
                         form_id: _,
                     } = &form_list[idx];
-                    entries.clone().into_iter().for_each(|fa| {
+                    entries.clone().for_each(|fa| {
                         def_map
                             .optional_callbacks
                             .insert(form_list[fa].name.clone());
@@ -344,7 +344,7 @@ impl DefMap {
     pub fn get_specd_functions(&self) -> FxHashMap<NameArity, SpecdFunctionDef> {
         let functions = self.get_functions();
         let specs = self.get_specs();
-        let name_arities = functions.keys().into_iter().chain(specs.keys().into_iter());
+        let name_arities = functions.keys().chain(specs.keys());
         name_arities
             .filter_map(|na| {
                 specs.get(na).zip(functions.get(na)).map(|(s, f)| {

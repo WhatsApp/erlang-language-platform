@@ -706,5 +706,5 @@ lazy_static! {
 }
 
 pub fn is_auto_imported(id: &ast::Id) -> bool {
-    return FUNS.contains(id);
+    FUNS.contains(id)
 }

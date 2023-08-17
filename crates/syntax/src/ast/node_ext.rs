@@ -51,7 +51,7 @@ impl nodes::MacroName {
 
 impl nodes::FunDecl {
     pub fn name(&self) -> Option<Name> {
-        match self.clauses().into_iter().next() {
+        match self.clauses().next() {
             Some(c) => match c {
                 nodes::FunctionOrMacroClause::FunctionClause(c) => c.name(),
                 nodes::FunctionOrMacroClause::MacroCallExpr(_) => None,
@@ -214,7 +214,7 @@ impl HasArity for super::Call {
 
 impl HasArity for super::Callback {
     fn arity_value(&self) -> Arity {
-        Some(self.sigs().into_iter().next()?.args()?.args().count())
+        Some(self.sigs().next()?.args()?.args().count())
     }
 }
 

@@ -85,7 +85,7 @@ fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<Hi
     match SymbolClass::classify(sema, token.clone()) {
         Some(SymbolClass::Definition(def)) => Some(search(def)),
         Some(SymbolClass::Reference { refs, typ: _ }) => {
-            Some(refs.into_iter().flat_map(search).collect())
+            Some(refs.iter().flat_map(search).collect())
         }
         None => {
             let atom = ast::Atom::cast(token.value.parent()?)?;

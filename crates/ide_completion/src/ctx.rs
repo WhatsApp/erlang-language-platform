@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use elp_syntax;
 use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
@@ -53,7 +52,7 @@ impl Ctx {
     }
     fn is_atom_colon(node: &SyntaxNode, offset: TextSize) -> bool {
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nis_atom_colon"));
+        let _pctx = stdx::panic_context::enter("\nis_atom_colon".to_string());
         if let Some(parent) = algo::ancestors_at_offset(node, offset).next() {
             match_ast! {
                     match parent {
@@ -90,7 +89,7 @@ impl Ctx {
     }
     fn is_pattern(node: &SyntaxNode, offset: TextSize) -> bool {
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nis_pattern"));
+        let _pctx = stdx::panic_context::enter("\nis_pattern".to_string());
         algo::ancestors_at_offset(node, offset).any(|n| {
             let is_match = |node: &SyntaxNode| node.text_range() == n.text_range();
             if let Some(parent) = n.parent() {
@@ -140,7 +139,7 @@ impl Ctx {
     fn is_expr(node: &SyntaxNode, offset: TextSize) -> bool {
         let mut in_expr = true;
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nis_expr"));
+        let _pctx = stdx::panic_context::enter("\nis_expr".to_string());
         let ancestor_offset = algo::ancestors_at_offset(node, offset)
             .map(|n| {
                 if n.kind() == SyntaxKind::TYPE_SIG {
@@ -157,16 +156,15 @@ impl Ctx {
             return false;
         }
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nCtx::is_expr"));
+        let _pctx = stdx::panic_context::enter("\nCtx::is_expr".to_string());
         if let Some(mut tok) = node.token_at_offset(offset).left_biased() {
             if tok.text_range().start() < ancestor_offset {
                 return false;
             }
             while let Some(prev) = tok.prev_token() {
                 tok = prev;
-                match tok.kind() {
-                    SyntaxKind::ANON_DASH_GT => return true,
-                    _ => (),
+                if tok.kind() == SyntaxKind::ANON_DASH_GT {
+                    return true;
                 }
             }
             false
@@ -177,7 +175,7 @@ impl Ctx {
 
     fn is_type(node: &SyntaxNode, offset: TextSize) -> bool {
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nis_type"));
+        let _pctx = stdx::panic_context::enter("\nis_type".to_string());
         for n in algo::ancestors_at_offset(node, offset) {
             match_ast! {
                 match n {
@@ -204,7 +202,7 @@ impl Ctx {
     }
     fn is_in_error(node: &SyntaxNode, offset: TextSize) -> bool {
         // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter(format!("\nis_in_error"));
+        let _pctx = stdx::panic_context::enter("\nis_in_error".to_string());
         algo::ancestors_at_offset(node, offset).any(|n| n.kind() == SyntaxKind::ERROR)
     }
     fn previous_non_trivia_sibling_or_token(node: &SyntaxNode) -> Option<SyntaxElement> {

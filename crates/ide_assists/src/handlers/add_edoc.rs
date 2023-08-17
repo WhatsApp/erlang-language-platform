@@ -43,7 +43,7 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let clause = ast::FunctionClause::cast(name.syntax().parent()?)?;
     let function = ast::FunDecl::cast(clause.syntax().parent()?)?;
 
-    let already_has_edoc = prev_form_nodes(&function.syntax())
+    let already_has_edoc = prev_form_nodes(function.syntax())
         .filter(|syntax| syntax.kind() == elp_syntax::SyntaxKind::COMMENT)
         .filter_map(|comment| {
             let text = comment.text();
@@ -55,7 +55,7 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
-    let insert = prev_form_nodes(&function.syntax())
+    let insert = prev_form_nodes(function.syntax())
         .filter_map(|form| ast::Spec::cast(form))
         .map(|spec| spec.syntax().text_range().start())
         .next()

@@ -80,7 +80,7 @@ pub struct Module {
 impl Module {
     pub fn module_attribute(&self, db: &dyn MinDefDatabase) -> Option<ModuleAttribute> {
         let forms = db.file_form_list(self.file.file_id);
-        forms.module_attribute().map(|a| a.clone())
+        forms.module_attribute().cloned()
     }
 
     pub fn name(&self, db: &dyn MinDefDatabase) -> Name {

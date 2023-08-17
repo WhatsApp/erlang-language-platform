@@ -177,11 +177,7 @@ impl<'a> Ctx<'a> {
             Some(desc) => match desc.desc() {
                 None => None,
                 Some(Desc::MultiString(desc_str)) => {
-                    if let Some(desc) = lower_string_like(&desc_str) {
-                        Some(DeprecatedDesc::Str(SmolStr::new(desc)))
-                    } else {
-                        None
-                    }
+                    lower_string_like(&desc_str).map(|desc| DeprecatedDesc::Str(SmolStr::new(desc)))
                 }
                 //https://www.erlang.org/doc/man/xref.html
                 //next_version or eventually

@@ -79,7 +79,7 @@ pub(crate) fn find_all_refs(
 
     match SymbolClass::classify(sema, token)? {
         SymbolClass::Definition(def) => Some(vec![search(def)]),
-        SymbolClass::Reference { refs, typ: _ } => Some(refs.into_iter().map(search).collect()),
+        SymbolClass::Reference { refs, typ: _ } => Some(refs.iter().map(search).collect()),
     }
 }
 

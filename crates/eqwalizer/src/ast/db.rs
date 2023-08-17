@@ -122,7 +122,7 @@ fn converted_ast(
     module: ModuleName,
 ) -> Result<Arc<AST>, Error> {
     let ast = db.get_erl_ast_bytes(project_id, module)?;
-    super::from_bytes(&ast).map(|conv_ast| Arc::new(conv_ast))
+    super::from_bytes(&ast).map(Arc::new)
 }
 
 fn converted_ast_bytes(
@@ -142,7 +142,7 @@ fn converted_stub(
     if db.from_beam(project_id, module.to_owned()) {
         if let Some(beam_path) = beam_path(db, project_id, module.to_owned()) {
             if let Ok(beam_contents) = std::fs::read(&beam_path) {
-                super::from_beam(&beam_contents).map(|conv_ast| Arc::new(conv_ast))
+                super::from_beam(&beam_contents).map(Arc::new)
             } else {
                 Err(Error::BEAMNotFound(beam_path.into()))
             }
@@ -151,7 +151,7 @@ fn converted_stub(
         }
     } else {
         let stub = db.get_erl_stub_bytes(project_id, module)?;
-        super::from_bytes(&stub).map(|conv_stub| Arc::new(conv_stub))
+        super::from_bytes(&stub).map(Arc::new)
     }
 }
 
@@ -196,7 +196,7 @@ fn expanded_stub(
     expander
         .expand(stub.to_vec())
         .map(|()| Arc::new(expander.stub))
-        .map_err(|e| Error::TypeConversionError(e))
+        .map_err(Error::TypeConversionError)
 }
 
 fn expanded_stub_bytes(
@@ -217,8 +217,8 @@ fn contractive_stub(
     let checker = StubContractivityChecker::new(db, project_id, module.as_str().into());
     checker
         .check(&stub)
-        .map(|stub| Arc::new(stub))
-        .map_err(|e| Error::ContractivityError(e))
+        .map(Arc::new)
+        .map_err(Error::ContractivityError)
 }
 
 fn contractive_stub_bytes(
@@ -239,8 +239,8 @@ fn covariant_stub(
     let checker = VarianceChecker::new(db, project_id);
     checker
         .check(&stub)
-        .map(|stub| Arc::new(stub))
-        .map_err(|e| Error::VarianceCheckError(e))
+        .map(Arc::new)
+        .map_err(Error::VarianceCheckError)
 }
 
 fn covariant_stub_bytes(
@@ -261,8 +261,8 @@ fn transitive_stub(
     let mut checker = TransitiveChecker::new(db, project_id, module.as_str().clone().into());
     checker
         .check(&stub)
-        .map(|stub| Arc::new(stub))
-        .map_err(|e| Error::TransitiveCheckError(e))
+        .map(Arc::new)
+        .map_err(Error::TransitiveCheckError)
 }
 
 fn transitive_stub_bytes(

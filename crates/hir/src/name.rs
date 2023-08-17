@@ -67,7 +67,7 @@ impl Name {
         if self == &Self::MISSING {
             self.to_string()
         } else {
-            to_quoted_string(&self.as_str())
+            to_quoted_string(self.as_str())
         }
     }
 

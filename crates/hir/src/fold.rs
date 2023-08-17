@@ -134,11 +134,7 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     fn in_macro(&self) -> Option<ExprId> {
-        if let Some(expr_id) = self.macro_stack.first() {
-            Some(*expr_id)
-        } else {
-            None
-        }
+        self.macro_stack.first().copied()
     }
 
     pub fn fold_expr_foldbody(
@@ -359,7 +355,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     r = guards
                         .iter()
                         .fold(r, |acc, exprs| self.fold_exprs(exprs, acc));
-                    self.fold_exprs(&exprs, r)
+                    self.fold_exprs(exprs, r)
                 },
             ),
             Expr::Maybe {
@@ -541,9 +537,8 @@ impl<'a, T> FoldCtx<'a, T> {
                 arity: _,
             } => acc,
             crate::Term::MacroCall { expansion, args: _ } => {
-                let r = self.do_fold_term(*expansion, acc);
                 // We ignore the args for now
-                r
+                self.do_fold_term(*expansion, acc)
             }
         };
         match self.strategy {

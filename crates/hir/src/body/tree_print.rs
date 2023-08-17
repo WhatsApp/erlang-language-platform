@@ -78,7 +78,7 @@ pub(crate) fn print_attribute(
 
     printer.indent();
     printer.print_term(&printer.body[body.value]);
-    writeln!(printer, "").ok();
+    writeln!(printer).ok();
     printer.dedent();
     write!(printer, ").").ok();
 
@@ -208,14 +208,14 @@ impl<'a> Printer<'a> {
                         this.print_bin_segment(seg, |this, expr| {
                             this.print_expr(&this.body[expr]);
                         });
-                        writeln!(this, "").ok();
+                        writeln!(this).ok();
                     });
                 });
             }
             Expr::UnaryOp { expr, op } => {
                 self.print_herald("Expr::UnaryOp", &mut |this| {
                     this.print_expr(&this.body[*expr]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
             }
@@ -293,7 +293,7 @@ impl<'a> Printer<'a> {
                         fields.iter().for_each(|(name, op, value)| {
                             this.print_expr(&this.body[*name]);
                             this.indent();
-                            writeln!(this, "").ok();
+                            writeln!(this).ok();
                             writeln!(this, "{:?}", op).ok();
                             this.print_expr(&this.body[*value]);
                             writeln!(this, ",").ok();
@@ -335,22 +335,22 @@ impl<'a> Printer<'a> {
                             ComprehensionBuilder::List(expr) => {
                                 this.print_herald("ComprehensionBuilder::List", &mut |this| {
                                     this.print_expr(&this.body[*expr]);
-                                    writeln!(this, "").ok();
+                                    writeln!(this).ok();
                                 });
                             }
                             ComprehensionBuilder::Binary(expr) => {
                                 this.print_herald("ComprehensionBuilder::Binary", &mut |this| {
                                     this.print_expr(&this.body[*expr]);
-                                    writeln!(this, "").ok();
+                                    writeln!(this).ok();
                                 });
                             }
                             ComprehensionBuilder::Map(expr1, expr2) => {
                                 this.print_herald("ComprehensionBuilder::Map", &mut |this| {
                                     this.print_expr(&this.body[*expr1]);
-                                    writeln!(this, "").ok();
+                                    writeln!(this).ok();
                                     writeln!(this, "=>").ok();
                                     this.print_expr(&this.body[*expr2]);
-                                    writeln!(this, "").ok();
+                                    writeln!(this).ok();
                                 });
                             }
                         };
@@ -364,9 +364,9 @@ impl<'a> Printer<'a> {
                                         "ComprehensionExpr::BinGenerator",
                                         &mut |this| {
                                             this.print_pat(&this.body[*pat]);
-                                            writeln!(this, "").ok();
+                                            writeln!(this).ok();
                                             this.print_expr(&this.body[*expr]);
-                                            writeln!(this, "").ok();
+                                            writeln!(this).ok();
                                         },
                                     );
                                 }
@@ -375,16 +375,16 @@ impl<'a> Printer<'a> {
                                         "ComprehensionExpr::ListGenerator",
                                         &mut |this| {
                                             this.print_pat(&this.body[*pat]);
-                                            writeln!(this, "").ok();
+                                            writeln!(this).ok();
                                             this.print_expr(&this.body[*expr]);
-                                            writeln!(this, "").ok();
+                                            writeln!(this).ok();
                                         },
                                     );
                                 }
                                 ComprehensionExpr::Expr(expr) => {
                                     this.print_herald("ComprehensionExpr::Expr", &mut |this| {
                                         this.print_expr(&this.body[*expr]);
-                                        writeln!(this, "").ok();
+                                        writeln!(this).ok();
                                     });
                                 }
                                 ComprehensionExpr::MapGenerator { key, value, expr } => {
@@ -396,7 +396,7 @@ impl<'a> Printer<'a> {
                                             this.print_pat(&this.body[*value]);
                                             writeln!(this, " <-").ok();
                                             this.print_expr(&this.body[*expr]);
-                                            writeln!(this, "").ok();
+                                            writeln!(this).ok();
                                         },
                                     );
                                 }
@@ -425,7 +425,7 @@ impl<'a> Printer<'a> {
                                 this.print_exprs(&clause.exprs)
                             });
                         });
-                        writeln!(this, "").ok();
+                        writeln!(this).ok();
                     });
                 });
             }
@@ -525,7 +525,7 @@ impl<'a> Printer<'a> {
                     this.print_labelled("name", false, &mut |this| {
                         if let Some(name) = name {
                             this.print_pat(&this.body[*name]);
-                            writeln!(this, "").ok();
+                            writeln!(this).ok();
                         }
                     });
                 });
@@ -599,14 +599,14 @@ impl<'a> Printer<'a> {
                 self.print_herald("Pat::Binary", &mut |this| {
                     segs.iter().for_each(|seg| {
                         this.print_bin_segment(seg, |this, pat| this.print_pat(&this.body[pat]));
-                        writeln!(this, "").ok();
+                        writeln!(this).ok();
                     });
                 });
             }
             Pat::UnaryOp { pat, op } => {
                 self.print_herald("Pat::UnaryOp", &mut |this| {
                     this.print_pat(&this.body[*pat]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
             }
@@ -826,7 +826,7 @@ impl<'a> Printer<'a> {
                     fields.iter().for_each(|(name, op, value)| {
                         this.print_type(&this.body[*name]);
                         this.indent();
-                        writeln!(this, "").ok();
+                        writeln!(this).ok();
                         writeln!(this, "{:?}", op).ok();
                         this.print_type(&this.body[*value]);
                         writeln!(this, ",").ok();
@@ -880,7 +880,7 @@ impl<'a> Printer<'a> {
             TypeExpr::UnaryOp { type_expr, op } => {
                 self.print_herald("TypeExpr::UnaryOp", &mut |this| {
                     this.print_type(&this.body[*type_expr]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
             }
@@ -934,7 +934,7 @@ impl<'a> Printer<'a> {
                 this.print_exprs(&clause.exprs);
             });
         });
-        writeln!(self, "").ok();
+        writeln!(self).ok();
     }
 
     fn print_catch_clause(&mut self, clause: &CatchClause) {
@@ -942,7 +942,7 @@ impl<'a> Printer<'a> {
             this.print_labelled("class", false, &mut |this| {
                 if let Some(class) = clause.class {
                     this.print_pat(&this.body[class]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                 }
             });
             this.print_labelled("reason", true, &mut |this| {
@@ -951,7 +951,7 @@ impl<'a> Printer<'a> {
             this.print_labelled("stack", false, &mut |this| {
                 if let Some(stack) = clause.stack {
                     this.print_pat(&this.body[stack]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                 }
             });
             this.print_labelled("guards", false, &mut |this| {
@@ -1009,7 +1009,7 @@ impl<'a> Printer<'a> {
         self.indent();
         print(self);
         if final_newline {
-            writeln!(self, "").ok();
+            writeln!(self).ok();
         }
         self.dedent();
     }
@@ -1019,7 +1019,7 @@ impl<'a> Printer<'a> {
             writeln!(this, "elem").ok();
             this.indent();
             print(this, seg.elem);
-            writeln!(this, "").ok();
+            writeln!(this).ok();
             this.dedent();
             writeln!(this, "size").ok();
             this.indent();
@@ -1051,15 +1051,15 @@ impl<'a> Printer<'a> {
             CallTarget::Local { name } => {
                 self.print_herald("CallTarget::Local", &mut |this| {
                     print(this, name);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                 });
             }
             CallTarget::Remote { module, name } => {
                 self.print_herald("CallTarget::Remote", &mut |this| {
                     print(this, module);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                     print(this, name);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                 });
             }
         }
@@ -1076,7 +1076,7 @@ impl<'a> Printer<'a> {
             MaybeExpr::Expr(expr) => {
                 self.print_herald_parens("MaybeExpr::Expr", &mut |this| {
                     this.print_expr(&this.body[*expr]);
-                    writeln!(this, "").ok();
+                    writeln!(this).ok();
                 });
             }
         }

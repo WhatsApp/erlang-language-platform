@@ -333,8 +333,7 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::Call(call) => {
                 let _ = self.lower_optional_pat(call.expr());
-                let _ = call
-                    .args()
+                call.args()
                     .iter()
                     .flat_map(|args| args.args())
                     .for_each(|expr| {
@@ -364,7 +363,7 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::MapExprUpdate(update) => {
                 let _ = self.lower_optional_pat(update.expr().map(Into::into));
-                let _ = update.fields().for_each(|field| {
+                update.fields().for_each(|field| {
                     let _ = self.lower_optional_expr(field.key());
                     let _ = self.lower_optional_expr(field.value());
                 });
@@ -417,7 +416,7 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::RecordUpdateExpr(update) => {
                 let _ = self.lower_optional_pat(update.expr().map(Into::into));
-                let _ = update
+                update
                     .fields()
                     .flat_map(|field| field.expr()?.expr())
                     .for_each(|expr| {
@@ -454,8 +453,8 @@ impl<'a> Ctx<'a> {
     fn lower_pat_max(&mut self, expr_max: &ast::ExprMax, expr: &ast::Expr) -> PatId {
         match expr_max {
             ast::ExprMax::AnonymousFun(fun) => {
-                let _ = fun.clauses().for_each(|clause| {
-                    let _ = clause
+                fun.clauses().for_each(|clause| {
+                    clause
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
@@ -484,7 +483,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::BlockExpr(block) => {
-                let _ = block.exprs().for_each(|expr| {
+                block.exprs().for_each(|expr| {
                     self.lower_expr(&expr);
                 });
                 self.alloc_pat(Pat::Missing, Some(expr))
@@ -524,8 +523,7 @@ impl<'a> Ctx<'a> {
             ast::ExprMax::FunType(fun) => {
                 if let Some(sig) = fun.sig() {
                     let _ = self.lower_optional_pat(sig.ty());
-                    let _ = sig
-                        .args()
+                    sig.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|pat| {
@@ -535,7 +533,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::IfExpr(if_expr) => {
-                let _ = if_expr.clauses().for_each(|clause| {
+                if_expr.clauses().for_each(|clause| {
                     let _ = self.lower_guards(clause.guard());
                     let _ = self.lower_clause_body(clause.body());
                 });
@@ -592,12 +590,10 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    let expr_id = self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr));
-                    expr_id
+                    self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {
@@ -614,7 +610,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::MaybeExpr(maybe) => {
-                let _ = maybe.exprs().for_each(|expr| {
+                maybe.exprs().for_each(|expr| {
                     self.lower_expr(&expr);
                 });
                 let _ = maybe
@@ -650,14 +646,14 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(value, Some(expr))
             }
             ast::ExprMax::TryExpr(try_expr) => {
-                let _ = try_expr.exprs().for_each(|expr| {
+                try_expr.exprs().for_each(|expr| {
                     self.lower_pat(&expr);
                 });
                 let _ = try_expr
                     .clauses()
                     .flat_map(|clause| self.lower_cr_clause(clause))
                     .last();
-                let _ = try_expr.catch().for_each(|clause| {
+                try_expr.catch().for_each(|clause| {
                     let _ = clause
                         .class()
                         .and_then(|class| class.class())
@@ -670,7 +666,7 @@ impl<'a> Ctx<'a> {
                     let _ = self.lower_guards(clause.guard());
                     let _ = self.lower_clause_body(clause.body());
                 });
-                let _ = try_expr
+                try_expr
                     .after()
                     .iter()
                     .flat_map(|after| after.exprs())
@@ -896,8 +892,7 @@ impl<'a> Ctx<'a> {
                 })
                 .flatten()
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {
@@ -1008,8 +1003,7 @@ impl<'a> Ctx<'a> {
             ast::ExprMax::FunType(fun) => {
                 if let Some(sig) = fun.sig() {
                     let _ = self.lower_optional_expr(sig.ty());
-                    let _ = sig
-                        .args()
+                    sig.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|pat| {
@@ -1108,12 +1102,10 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    let expr_id = self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr));
-                    expr_id
+                    self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {
@@ -1505,7 +1497,7 @@ impl<'a> Ctx<'a> {
             ast::Expr::RecordUpdateExpr(update) => {
                 let _ = self.lower_optional_type_expr(update.expr().map(Into::into));
                 update.fields().for_each(|field| {
-                    let _ = field.expr().iter().for_each(|field_expr| {
+                    field.expr().iter().for_each(|field_expr| {
                         self.lower_optional_type_expr(field_expr.expr());
                     });
                 });
@@ -1575,8 +1567,7 @@ impl<'a> Ctx<'a> {
                 })
                 .flatten()
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {
@@ -1713,13 +1704,10 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    let expr_id =
-                        self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr));
-                    expr_id
+                    self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {
@@ -1803,8 +1791,7 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::Call(call) => {
                 let _ = self.lower_optional_term(call.expr());
-                let _ = call
-                    .args()
+                call.args()
                     .iter()
                     .flat_map(|args| args.args())
                     .for_each(|expr| {
@@ -2006,8 +1993,7 @@ impl<'a> Ctx<'a> {
             ast::ExprMax::FunType(fun) => {
                 if let Some(sig) = fun.sig() {
                     let _ = self.lower_optional_term(sig.ty());
-                    let _ = sig
-                        .args()
+                    sig.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|pat| {
@@ -2055,12 +2041,10 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    let expr_id = self.alloc_term(Term::MacroCall { expansion, args }, Some(expr));
-                    expr_id
+                    self.alloc_term(Term::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    let _ = call
-                        .args()
+                    call.args()
                         .iter()
                         .flat_map(|args| args.args())
                         .for_each(|expr| {

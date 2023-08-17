@@ -38,7 +38,7 @@ pub fn ancestors_at_offset(
     offset: TextSize,
 ) -> impl Iterator<Item = SyntaxNode> {
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nancestors_at_offset"));
+    let _pctx = stdx::panic_context::enter("\nancestors_at_offset".to_string());
     node.token_at_offset(offset)
         .map(|token| token.parent_ancestors())
         .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
@@ -55,7 +55,7 @@ pub fn ancestors_at_offset(
 /// then the shorter node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nfind_node_at_offset"));
+    let _pctx = stdx::panic_context::enter("\nfind_node_at_offset".to_string());
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 

@@ -289,7 +289,7 @@ impl<'tree, 'text> Converter<'tree, 'text> {
 
 fn convert_range(range: Range<usize>) -> TextRange {
     // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nsyntax::convert_range"));
+    let _pctx = stdx::panic_context::enter("\nsyntax::convert_range".to_string());
     TextRange::new(
         range.start.try_into().unwrap(),
         range.end.try_into().unwrap(),

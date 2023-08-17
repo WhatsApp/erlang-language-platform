@@ -64,7 +64,7 @@ impl FindForm for ast::TypeName {
         let form_idx = form_list.find_form(&ast_form)?;
         let form = match form_idx {
             FormIdx::TypeAlias(idx) => {
-                if &form_list[idx].form_id().get(&source_file) == &ast_form {
+                if form_list[idx].form_id().get(&source_file) == ast_form {
                     Some(idx)
                 } else {
                     None

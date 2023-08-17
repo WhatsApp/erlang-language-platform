@@ -66,8 +66,8 @@ pub struct VarianceChecker<'d> {
 }
 
 impl VarianceChecker<'_> {
-    pub fn new<'d>(db: &'d dyn EqwalizerASTDatabase, project_id: ProjectId) -> VarianceChecker<'d> {
-        return VarianceChecker { db, project_id };
+    pub fn new(db: &dyn EqwalizerASTDatabase, project_id: ProjectId) -> VarianceChecker<'_> {
+        VarianceChecker { db, project_id }
     }
 
     fn check_opaque_decl(
@@ -89,11 +89,11 @@ impl VarianceChecker<'_> {
     ) -> Result<Option<(VarType, Vec<Type>)>, VarianceCheckError> {
         for tv in &decl.params {
             let expansion = self.find_contravariant_expansion(&decl.body, tv, true, &vec![])?;
-            if expansion.len() > 0 {
+            if !expansion.is_empty() {
                 return Ok(Some((tv.clone(), expansion)));
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn find_contravariant_expansion_in_tys<I>(
@@ -108,7 +108,7 @@ impl VarianceChecker<'_> {
     {
         if let Some(ty) = tys.next() {
             let expansion = self.find_contravariant_expansion(&ty, tv, positive, history)?;
-            if expansion.len() > 0 {
+            if !expansion.is_empty() {
                 Ok(expansion
                     .into_iter()
                     .map(|ty| {
@@ -144,7 +144,7 @@ impl VarianceChecker<'_> {
     {
         if let Some(prop) = props.next() {
             let expansion = self.find_contravariant_expansion(prop.tp(), tv, positive, history)?;
-            if expansion.len() > 0 {
+            if !expansion.is_empty() {
                 Ok(expansion
                     .into_iter()
                     .map(|tp| {
@@ -388,7 +388,7 @@ impl VarianceChecker<'_> {
     fn type_decl_body(
         &self,
         id: &RemoteId,
-        args: &Vec<Type>,
+        args: &[Type],
     ) -> Result<Option<Type>, VarianceCheckError> {
         let local_id = Id {
             name: id.name.clone(),
@@ -398,7 +398,7 @@ impl VarianceChecker<'_> {
             .db
             .contractive_stub(self.project_id, ModuleName::new(id.module.as_str()))
             .map_err(|_| VarianceCheckError::UnexpectedID(id.clone()))?;
-        fn subst(decl: &TypeDecl, args: &Vec<Type>) -> Type {
+        fn subst(decl: &TypeDecl, args: &[Type]) -> Type {
             let sub: FxHashMap<u32, &Type> =
                 decl.params.iter().map(|v| v.n).zip(args.iter()).collect();
             Subst { sub }.apply(decl.body.clone())
@@ -409,8 +409,8 @@ impl VarianceChecker<'_> {
     pub fn check(&self, stub: &ModuleStub) -> Result<ModuleStub, VarianceCheckError> {
         let mut stub_result = stub.clone();
         stub.private_opaques
-            .iter()
-            .map(|(_, decl)| self.check_opaque_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         Ok(stub_result)
     }

@@ -43,7 +43,7 @@ pub enum Type {
 }
 impl Type {
     pub const fn atom_lit_type(lit: SmolStr) -> Type {
-        return Type::AtomLitType(AtomLitType { atom: lit });
+        Type::AtomLitType(AtomLitType { atom: lit })
     }
 
     pub const FALSE_TYPE: Type = Type::atom_lit_type(SmolStr::new_inline("false"));
@@ -59,17 +59,17 @@ impl Type {
     pub const UNDEFINED: Type = Type::atom_lit_type(SmolStr::new_inline("undefined"));
 
     pub fn exn_class_type() -> Type {
-        return Type::UnionType(UnionType {
+        Type::UnionType(UnionType {
             tys: vec![
                 Type::atom_lit_type(SmolStr::new_inline("error")),
                 Type::atom_lit_type(SmolStr::new_inline("exit")),
                 Type::atom_lit_type(SmolStr::new_inline("throw")),
             ],
-        });
+        })
     }
 
     pub fn cls_exn_stack_type() -> Type {
-        return Type::UnionType(UnionType {
+        Type::UnionType(UnionType {
             tys: vec![
                 Type::exn_class_type(),
                 Type::AnyType,
@@ -77,11 +77,11 @@ impl Type {
                     t: Box::new(Type::AnyType),
                 }),
             ],
-        });
+        })
     }
 
     pub fn cls_exn_stack_type_dynamic() -> Type {
-        return Type::UnionType(UnionType {
+        Type::UnionType(UnionType {
             tys: vec![
                 Type::exn_class_type(),
                 Type::DynamicType,
@@ -89,7 +89,7 @@ impl Type {
                     t: Box::new(Type::DynamicType),
                 }),
             ],
-        });
+        })
     }
 
     pub fn builtin_type_aliases(module: &str) -> Vec<SmolStr> {
@@ -115,14 +115,12 @@ impl Type {
                     name: name.into(),
                     arity: 0,
                 };
-                return Some(RemoteType {
+                Some(RemoteType {
                     id,
                     arg_tys: vec![],
-                });
+                })
             }
-            _ => {
-                return None;
-            }
+            _ => None,
         }
     }
 
@@ -168,88 +166,58 @@ impl Type {
     }
 
     pub fn string_type() -> Type {
-        return Type::RemoteType(Type::builtin_type_alias("string").unwrap());
+        Type::RemoteType(Type::builtin_type_alias("string").unwrap())
     }
 
     pub fn boolean_type() -> Type {
-        return Type::RemoteType(Type::builtin_type_alias("boolean").unwrap());
+        Type::RemoteType(Type::builtin_type_alias("boolean").unwrap())
     }
 
     pub fn builtin_type(name: &str) -> Option<Type> {
         match name {
-            "any" | "term" => {
-                return Some(Type::AnyType);
-            }
-            "atom" | "module" | "node" => {
-                return Some(Type::AtomType);
-            }
+            "any" | "term" => Some(Type::AnyType),
+            "atom" | "module" | "node" => Some(Type::AtomType),
             "binary" | "bitstring" | "nonempty_binary" | "nonempty_bitstring" => {
-                return Some(Type::BinaryType);
+                Some(Type::BinaryType)
             }
-            "byte" => {
-                return Some(Type::BYTE_TYPE);
-            }
-            "char" => {
-                return Some(Type::CHAR_TYPE);
-            }
-            "float" => {
-                return Some(Type::FLOAT_TYPE);
-            }
-            "fun" | "function" => {
-                return Some(Type::AnyFunType);
-            }
+            "byte" => Some(Type::BYTE_TYPE),
+            "char" => Some(Type::CHAR_TYPE),
+            "float" => Some(Type::FLOAT_TYPE),
+            "fun" | "function" => Some(Type::AnyFunType),
             "maybe_improper_list" | "nonempty_maybe_improper_list" => {
-                return Some(Type::ListType(ListType {
+                Some(Type::ListType(ListType {
                     t: Box::new(Type::AnyType),
-                }));
+                }))
             }
             "pos_integer" | "neg_integer" | "non_neg_integer" | "integer" | "number" | "arity" => {
-                return Some(Type::NumberType);
+                Some(Type::NumberType)
             }
-            "nil" => {
-                return Some(Type::NilType);
-            }
-            "none" | "no_return" => {
-                return Some(Type::NoneType);
-            }
-            "pid" => {
-                return Some(Type::PidType);
-            }
-            "port" => {
-                return Some(Type::PortType);
-            }
-            "reference" => {
-                return Some(Type::ReferenceType);
-            }
-            "tuple" => {
-                return Some(Type::AnyTupleType);
-            }
-            "nonempty_string" => {
-                return Some(Type::string_type());
-            }
-            "dynamic" => {
-                return Some(Type::DynamicType);
-            }
-            _ => {
-                return Type::builtin_type_alias(name).map(|rt| Type::RemoteType(rt));
-            }
+            "nil" => Some(Type::NilType),
+            "none" | "no_return" => Some(Type::NoneType),
+            "pid" => Some(Type::PidType),
+            "port" => Some(Type::PortType),
+            "reference" => Some(Type::ReferenceType),
+            "tuple" => Some(Type::AnyTupleType),
+            "nonempty_string" => Some(Type::string_type()),
+            "dynamic" => Some(Type::DynamicType),
+            _ => Type::builtin_type_alias(name).map(Type::RemoteType),
         }
     }
 
     pub fn visit_children<T>(&self, f: &mut dyn FnMut(&Type) -> Result<(), T>) -> Result<(), T> {
         match self {
             Type::FunType(ty) => {
-                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().map(|ty| f(ty)).collect())
+                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(|ty| f(ty)))
             }
             Type::AnyArityFunType(ty) => f(&ty.res_ty),
-            Type::TupleType(ty) => ty.arg_tys.iter().map(|ty| f(ty)).collect(),
-            Type::UnionType(ty) => ty.tys.iter().map(|ty| f(ty)).collect(),
-            Type::RemoteType(ty) => ty.arg_tys.iter().map(|ty| f(ty)).collect(),
-            Type::OpaqueType(ty) => ty.arg_tys.iter().map(|ty| f(ty)).collect(),
-            Type::ShapeMap(ty) => ty.props.iter().map(|prop| f(prop.tp())).collect(),
+            Type::TupleType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
+            Type::UnionType(ty) => ty.tys.iter().try_for_each(|ty| f(ty)),
+            Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
+            Type::OpaqueType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
+            Type::ShapeMap(ty) => ty.props.iter().try_for_each(|prop| f(prop.tp())),
             Type::DictMap(ty) => f(&ty.v_type).and_then(|()| f(&ty.k_type)),
             Type::ListType(ty) => f(&ty.t),
-            Type::RefinedRecordType(ty) => ty.fields.iter().map(|(_, ty)| f(ty)).collect(),
+            Type::RefinedRecordType(ty) => ty.fields.iter().try_for_each(|(_, ty)| f(ty)),
             Type::AtomLitType(_)
             | Type::AnyType
             | Type::AnyFunType

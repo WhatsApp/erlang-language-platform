@@ -90,11 +90,7 @@ impl EqwalizerDiagnostics {
             EqwalizerDiagnostics::Error(_) => self,
             EqwalizerDiagnostics::Diagnostics(diags) => match other {
                 EqwalizerDiagnostics::Diagnostics(other_diags) => {
-                    diags.extend(
-                        other_diags
-                            .into_iter()
-                            .map(|(k, v)| (k.to_string(), v.to_vec())),
-                    );
+                    diags.extend(other_diags.iter().map(|(k, v)| (k.to_string(), v.to_vec())));
                     self
                 }
                 EqwalizerDiagnostics::Error(_) => other.clone(),
@@ -112,9 +108,9 @@ pub struct EqwalizerStats {
 }
 
 pub trait DbApi {
-    fn eqwalizing_start(&self, module: String) -> ();
-    fn eqwalizing_done(&self, module: String) -> ();
-    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>) -> ();
+    fn eqwalizing_start(&self, module: String);
+    fn eqwalizing_done(&self, module: String);
+    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>);
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
 }
 
@@ -145,7 +141,7 @@ where
 
     let range = RawTextRange::deserialize(deserializer)?;
     // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter(format!("\neqwalizer::deserialize_text_range"));
+    let _pctx = stdx::panic_context::enter("\neqwalizer::deserialize_text_range".to_string());
     Ok(TextRange::new(range.start.into(), range.end.into()))
 }
 
@@ -203,7 +199,7 @@ impl Default for Eqwalizer {
 
 impl Eqwalizer {
     // Return a smart pointer to bundle lifetime with the temp file's lifetime
-    pub fn cmd<'file>(&'file self) -> CommandProxy<'file> {
+    pub fn cmd(&self) -> CommandProxy<'_> {
         let mut cmd = Command::new(&self.cmd);
         cmd.args(&self.args);
         CommandProxy::new(cmd)
@@ -519,7 +515,7 @@ fn get_module_diagnostics(
             }
             MsgFromEqWAlizer::Dependencies { modules } => {
                 modules.iter().for_each(|module| {
-                    let module = ModuleName::new(&module);
+                    let module = ModuleName::new(module);
                     _ = db.transitive_stub_bytes(project_id, module);
                 });
             }
@@ -542,7 +538,7 @@ fn compute_eqwalizer_stats(
     let mut fixmes = 0;
     let mut ignores = 0;
     let mut nowarn = 0;
-    for form in ast.to_vec() {
+    for form in ast.iter().cloned() {
         match form {
             ExternalForm::ElpMetadata(meta) => {
                 for fixme in meta.fixmes {

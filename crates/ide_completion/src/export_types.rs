@@ -52,7 +52,7 @@ pub(crate) fn add_completions(
     let def_map = sema.def_map(file_position.file_id);
     let completions = def_map
         .get_types()
-        .into_iter()
+        .iter()
         .filter_map(|(na, _)| helpers::name_slash_arity_completion(na, prefix, Kind::Type));
 
     acc.extend(completions);

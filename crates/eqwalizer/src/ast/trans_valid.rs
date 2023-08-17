@@ -62,23 +62,23 @@ pub struct TransitiveChecker<'d> {
 }
 
 impl TransitiveChecker<'_> {
-    pub fn new<'d>(
-        db: &'d dyn EqwalizerASTDatabase,
+    pub fn new(
+        db: &dyn EqwalizerASTDatabase,
         project_id: ProjectId,
         module: SmolStr,
-    ) -> TransitiveChecker<'d> {
-        return TransitiveChecker {
+    ) -> TransitiveChecker<'_> {
+        TransitiveChecker {
             db,
             project_id,
             module,
             in_progress: FxHashSet::default(),
             invalid_refs: FxHashMap::default(),
-        };
+        }
     }
 
     fn show_invalids(&mut self, rref: &Ref) -> Vec<SmolStr> {
         self.invalid_refs
-            .get(&rref)
+            .get(rref)
             .unwrap()
             .iter()
             .map(|inv| self.show(inv))
@@ -383,28 +383,28 @@ impl TransitiveChecker<'_> {
         let mut stub_result = stub.clone();
         stub_result.callbacks = vec![];
         stub.types
-            .iter()
-            .map(|(_, decl)| self.check_type_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_type_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.private_opaques
-            .iter()
-            .map(|(_, decl)| self.check_private_opaque_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_private_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.public_opaques
-            .iter()
-            .map(|(_, decl)| self.check_public_opaque_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_public_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.records
-            .iter()
-            .map(|(_, decl)| self.check_record_decl(&mut stub_result, decl))
+            .values()
+            .map(|decl| self.check_record_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.specs
-            .iter()
-            .map(|(_, spec)| self.check_spec(&mut stub_result, spec))
+            .values()
+            .map(|spec| self.check_spec(&mut stub_result, spec))
             .collect::<Result<Vec<()>, _>>()?;
         stub.overloaded_specs
-            .iter()
-            .map(|(_, spec)| self.check_overloaded_spec(&mut stub_result, spec))
+            .values()
+            .map(|spec| self.check_overloaded_spec(&mut stub_result, spec))
             .collect::<Result<Vec<()>, _>>()?;
         stub.callbacks
             .iter()

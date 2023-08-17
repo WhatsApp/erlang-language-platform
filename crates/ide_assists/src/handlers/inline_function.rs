@@ -218,14 +218,12 @@ fn inline_single_function_clause(
 ) -> Option<(TextRange, String)> {
     if ast_clause.guard().is_some() {
         inline_function_as_case(ast_fun, call)
+    } else if ast_clause.body()?.exprs().count() == 1
+        && !has_vars_in_clause(sema, ast_fun.file_id, ast_clause)
+    {
+        inline_simple_function_clause(sema, file_id, ast_clause, call)
     } else {
-        if ast_clause.body()?.exprs().count() == 1
-            && !has_vars_in_clause(sema, ast_fun.file_id, ast_clause)
-        {
-            inline_simple_function_clause(sema, file_id, ast_clause, call)
-        } else {
-            inline_single_function_clause_with_begin(ast_clause, call, clause)
-        }
+        inline_single_function_clause_with_begin(ast_clause, call, clause)
     }
 }
 
@@ -671,7 +669,7 @@ fn can_inline_function(ctx: &AssistContext) -> Option<InlineData> {
             Some(SymbolDefinition::Function(fun))
         }
         SymbolClass::Reference { refs, typ: _ } => {
-            if let Some(SymbolDefinition::Function(fun)) = refs.into_iter().next() {
+            if let Some(SymbolDefinition::Function(fun)) = refs.iter().next() {
                 Some(SymbolDefinition::Function(fun))
             } else {
                 None

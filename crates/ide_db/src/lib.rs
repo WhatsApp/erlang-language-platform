@@ -10,6 +10,7 @@
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::panic::RefUnwindSafe;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -124,19 +125,19 @@ impl Default for RootDatabase {
 
 impl Upcast<dyn SourceDatabase> for RootDatabase {
     fn upcast(&self) -> &(dyn SourceDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn MinInternDatabase> for RootDatabase {
     fn upcast(&self) -> &(dyn MinInternDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn MinDefDatabase> for RootDatabase {
     fn upcast(&self) -> &(dyn MinDefDatabase + 'static) {
-        &*self
+        self
     }
 }
 
@@ -215,7 +216,7 @@ impl RootDatabase {
         &self.eqwalizer
     }
 
-    pub fn in_shell(&mut self) -> () {
+    pub fn in_shell(&mut self) {
         self.eqwalizer.shell = true
     }
 
@@ -246,23 +247,16 @@ impl RootDatabase {
         if includes.is_empty() {
             None
         } else {
-            if let Some(file) = Includes::app_file_path(self, file_id, root_abs) {
-                Some(Includes {
-                    file: path_as_string(&file),
-                    includes,
-                })
-            } else {
-                None
-            }
+            Includes::app_file_path(self, file_id, root_abs).map(|file| Includes {
+                file: path_as_string(&file),
+                includes,
+            })
         }
     }
 }
 
-fn path_as_string(p: &PathBuf) -> String {
-    p.as_path()
-        .to_str()
-        .map_or("not found", |it| it)
-        .to_string()
+fn path_as_string(p: &Path) -> String {
+    p.to_str().map_or("not found", |it| it).to_string()
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
@@ -272,7 +266,7 @@ pub trait LineIndexDatabase: SourceDatabase {
 
 fn file_line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
-    Arc::new(LineIndex::new(&*text))
+    Arc::new(LineIndex::new(&text))
 }
 
 // ---------------------------------------------------------------------
@@ -301,13 +295,13 @@ impl Includes {
         let app_data = db.app_data(root_id)?;
 
         let path = path.as_path()?;
-        if path.starts_with(&root_abs) {
-            path.strip_prefix(&root_abs)
+        if path.starts_with(root_abs) {
+            path.strip_prefix(root_abs)
                 .map(|rel| -> PathBuf { rel.as_ref().to_path_buf() })
         } else {
             let otp_root = PathBuf::from("/otp");
             let parent_dir = app_data.dir.parent()?;
-            let otp_root = otp_root.join(path.strip_prefix(&parent_dir)?);
+            let otp_root = otp_root.join(path.strip_prefix(parent_dir)?);
             Some(otp_root)
         }
     }
@@ -337,7 +331,7 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
         .map(|file| file.syntax().clone());
 
     // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter(format!("\nfind_best_token"));
+    let _pctx = stdx::panic_context::enter("\nfind_best_token".to_string());
     let token = syntax.with_value(pick_best_token(
         syntax.value.token_at_offset(position.offset),
         |kind| match kind {

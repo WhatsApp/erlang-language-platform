@@ -48,7 +48,7 @@ use crate::Assists;
 // ```
 pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let var: ast::Var = ctx.find_node_at_offset()?;
-    if let Some(number) = NumberedVar::from_var(&var.text().as_str()) {
+    if let Some(number) = NumberedVar::from_var(var.text().as_str()) {
         let variable_name = var.text();
         let variable_range = var.syntax().text_range();
         // We are on a numbered variable.  Check if there are any
@@ -106,11 +106,8 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                         }
                         SymbolClass::Definition(_) => {}
                         SymbolClass::Reference { refs, typ: _ } => {
-                            match refs {
-                                ReferenceClass::Definition(SymbolDefinition::Var(d)) => {
-                                    var_defs.push((SymbolDefinition::Var(d), nv));
-                                }
-                                _ => {}
+                            if let ReferenceClass::Definition(SymbolDefinition::Var(d)) = refs {
+                                var_defs.push((SymbolDefinition::Var(d), nv));
                             };
                         }
                     };

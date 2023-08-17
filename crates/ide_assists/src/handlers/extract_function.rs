@@ -90,11 +90,11 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             value: make_function_name(ctx), // Maybe just a constant, this is expensive
         }),
         move |builder| {
-            let locals = body.analyze(&ctx);
+            let locals = body.analyze(ctx);
             let outliving_locals = body.ret_values(ctx, &locals.bound);
             let params = body.extracted_function_params(locals.free);
             let name = freshen_function_name(
-                &ctx,
+                ctx,
                 ctx.user_input_or(|| make_function_name(&ctx)),
                 params.len() as u32,
             );
@@ -125,7 +125,7 @@ fn make_function_name(ctx: &AssistContext<'_>) -> String {
     let names_in_scope: FxHashSet<_> = def_map
         .get_functions()
         .keys()
-        .chain(def_map.get_imports().into_iter().map(|(na, _)| na))
+        .chain(def_map.get_imports().iter().map(|(na, _)| na))
         .map(|n| n.name().as_str().to_string())
         .collect();
     let default_name = "fun_name";
@@ -244,14 +244,12 @@ impl SpanParent {
 
 impl FunctionBody {
     fn from_expr(ctx: &AssistContext, expr: ast::Expr) -> Option<Self> {
-        if !valid_extraction(&expr.syntax()) {
+        if !valid_extraction(expr.syntax()) {
             return None;
         }
         ctx.sema
             .find_enclosing_function(ctx.file_id(), expr.syntax())
-            .map(|_| match expr {
-                expr => Self::Expr(expr),
-            })
+            .map(|_| Self::Expr(expr))
     }
 
     fn from_range_clause_body(parent: ast::ClauseBody, selected: TextRange) -> FunctionBody {

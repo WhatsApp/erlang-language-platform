@@ -136,7 +136,7 @@ impl LineIndex {
             .chain(iter::once(range.end()));
 
         // Temporary for T148094436
-        let _pctx = stdx::panic_context::enter(format!("\nLineIndex::lines"));
+        let _pctx = stdx::panic_context::enter("\nLineIndex::lines".to_string());
         all.clone()
             .zip(all.skip(1))
             .map(|(lo, hi)| TextRange::new(lo, hi))
@@ -144,8 +144,8 @@ impl LineIndex {
     }
 
     pub fn line_at(&self, line_num: usize) -> Option<TextSize> {
-        if line_num >= 0 as usize && line_num < self.newlines.len() {
-            Some(self.newlines[line_num as usize])
+        if line_num < self.newlines.len() {
+            Some(self.newlines[line_num])
         } else {
             None
         }

@@ -250,13 +250,10 @@ fn merge_descriptions_and_specs(
     descriptions: FxHashMap<NameArity, Doc>,
     specs: FxHashMap<NameArity, Doc>,
 ) -> FxHashMap<NameArity, Doc> {
-    let all_keys = descriptions
-        .keys()
-        .into_iter()
-        .chain(specs.keys().into_iter());
+    let all_keys = descriptions.keys().chain(specs.keys());
 
     all_keys
-        .map(|na| match (descriptions.get(&na), specs.get(&na)) {
+        .map(|na| match (descriptions.get(na), specs.get(na)) {
             (Some(desc), Some(spec)) => (
                 na.clone(),
                 Doc::new(format!(
@@ -275,7 +272,7 @@ fn merge_descriptions_and_specs(
         .collect::<FxHashMap<NameArity, Doc>>()
 }
 
-fn get_file_function_specs<'a>(
+fn get_file_function_specs(
     def_db: &dyn MinDefDatabase,
     file_id: FileId,
 ) -> FxHashMap<NameArity, Doc> {
@@ -291,7 +288,6 @@ fn get_file_function_specs<'a>(
                         .get(&def_db.parse(file_id).tree())
                         .syntax()
                         .text()
-                        .to_string()
                 )),
             )
         })

@@ -226,19 +226,19 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
 }
 
 impl elp_eqwalizer::DbApi for crate::RootDatabase {
-    fn eqwalizing_start(&self, module: String) -> () {
+    fn eqwalizing_start(&self, module: String) {
         if let Some(reporter) = self.eqwalizer_progress_reporter.lock().as_mut() {
             reporter.start_module(module)
         }
     }
 
-    fn eqwalizing_done(&self, module: String) -> () {
+    fn eqwalizing_done(&self, module: String) {
         if let Some(reporter) = self.eqwalizer_progress_reporter.lock().as_mut() {
             reporter.done_module(&module);
         }
     }
 
-    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>) -> () {
+    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>) {
         self.ipc_handles
             .write()
             .insert(module.as_str().into(), handle.clone());
@@ -247,7 +247,7 @@ impl elp_eqwalizer::DbApi for crate::RootDatabase {
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>> {
         self.ipc_handles
             .read()
-            .get(module.as_str().into())
+            .get(module.as_str())
             .map(|v| v.to_owned())
     }
 }

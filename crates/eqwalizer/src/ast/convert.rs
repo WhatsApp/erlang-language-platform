@@ -220,7 +220,7 @@ impl Converter {
             }
             _ => (),
         };
-        return Err(ConversionError::InvalidLocation);
+        Err(ConversionError::InvalidLocation)
     }
 
     fn convert_line(&self, line: &eetf::Term) -> Option<u32> {
@@ -231,26 +231,21 @@ impl Converter {
     }
 
     fn convert_id(&self, id: &eetf::Term) -> Result<ast::Id, ConversionError> {
-        match id {
-            Term::Tuple(tup) => {
-                if let [Term::Atom(name), Term::FixInteger(arity)] = &tup.elements[..] {
-                    return Ok(ast::Id {
-                        name: name.name.clone().into(),
-                        arity: arity.value as u32,
-                    });
-                }
-                if let [Term::Atom(_), Term::Atom(name), Term::FixInteger(arity)] =
-                    &tup.elements[..]
-                {
-                    return Ok(ast::Id {
-                        name: name.name.clone().into(),
-                        arity: arity.value as u32,
-                    });
-                }
+        if let Term::Tuple(tup) = id {
+            if let [Term::Atom(name), Term::FixInteger(arity)] = &tup.elements[..] {
+                return Ok(ast::Id {
+                    name: name.name.clone().into(),
+                    arity: arity.value as u32,
+                });
             }
-            _ => (),
+            if let [Term::Atom(_), Term::Atom(name), Term::FixInteger(arity)] = &tup.elements[..] {
+                return Ok(ast::Id {
+                    name: name.name.clone().into(),
+                    arity: arity.value as u32,
+                });
+            }
         };
-        return Err(ConversionError::InvalidID);
+        Err(ConversionError::InvalidID)
     }
 
     fn convert_ids(&self, ids: &eetf::List) -> Result<Vec<ast::Id>, ConversionError> {
@@ -265,14 +260,14 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidVarName);
+        Err(ConversionError::InvalidVarName)
     }
 
     fn convert_name(&self, t: &eetf::Term) -> Result<SmolStr, ConversionError> {
         if let Term::Atom(atom) = t {
             return Ok(atom.name.clone().into());
         }
-        return Err(ConversionError::InvalidName);
+        Err(ConversionError::InvalidName)
     }
 
     fn convert_attribute(
@@ -486,7 +481,7 @@ impl Converter {
             }
             _ => (),
         };
-        return Ok(None);
+        Ok(None)
     }
 
     fn convert_fixme(&self, fixme: &eetf::Term) -> Result<Fixme, ConversionError> {
@@ -515,14 +510,14 @@ impl Converter {
                 });
             }
         }
-        return Err(ConversionError::InvalidFixme);
+        Err(ConversionError::InvalidFixme)
     }
 
     fn is_export_all(&self, flag: &eetf::Term) -> bool {
         if let Term::Atom(flag) = flag {
             return flag.name == "export_all";
         }
-        return false;
+        false
     }
 
     fn convert_function(
@@ -541,11 +536,11 @@ impl Converter {
             .iter()
             .map(|c| self.convert_clause(c))
             .collect::<Result<Vec<_>, _>>()?;
-        return Ok(ExternalForm::FunDecl(FunDecl {
+        Ok(ExternalForm::FunDecl(FunDecl {
             id,
             clauses,
             location,
-        }));
+        }))
     }
 
     fn convert_clauses(&self, clauses: &eetf::List) -> Result<Vec<Clause>, ConversionError> {
@@ -588,7 +583,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidClause);
+        Err(ConversionError::InvalidClause)
     }
 
     fn convert_rec_field_form(
@@ -625,7 +620,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidRecordField);
+        Err(ConversionError::InvalidRecordField)
     }
 
     fn convert_atom_lit(&self, atom: &eetf::Term) -> Result<SmolStr, ConversionError> {
@@ -636,7 +631,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidAtomLit);
+        Err(ConversionError::InvalidAtomLit)
     }
 
     fn convert_int_lit(&self, atom: &eetf::Term) -> Result<i32, ConversionError> {
@@ -647,7 +642,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidIntLit);
+        Err(ConversionError::InvalidIntLit)
     }
 
     fn convert_cons(&self, expr: &eetf::Term) -> Result<Expr, ConversionError> {
@@ -820,20 +815,19 @@ impl Converter {
                         if let Term::Tuple(call) = expr {
                             match &call.elements[..] {
                                 [Term::Atom(remote), _, m, f] if remote.name == "remote" => {
-                                    match (self.convert_atom_lit(m), self.convert_atom_lit(f)) {
-                                        (Ok(m), Ok(f)) => {
-                                            let id = RemoteId {
-                                                module: m,
-                                                name: f,
-                                                arity,
-                                            };
-                                            return Ok(Expr::RemoteCall(RemoteCall {
-                                                location,
-                                                id,
-                                                args,
-                                            }));
-                                        }
-                                        _ => (),
+                                    if let (Ok(m), Ok(f)) =
+                                        (self.convert_atom_lit(m), self.convert_atom_lit(f))
+                                    {
+                                        let id = RemoteId {
+                                            module: m,
+                                            name: f,
+                                            arity,
+                                        };
+                                        return Ok(Expr::RemoteCall(RemoteCall {
+                                            location,
+                                            id,
+                                            args,
+                                        }));
                                     }
                                 }
                                 [Term::Atom(atom), _, Term::Atom(fname)] if atom.name == "atom" => {
@@ -1136,7 +1130,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidExpr);
+        Err(ConversionError::InvalidExpr)
     }
 
     fn convert_create_kv(&self, kv: &eetf::Term) -> Result<(Expr, Expr), ConversionError> {
@@ -1147,7 +1141,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidMapAssoc);
+        Err(ConversionError::InvalidMapAssoc)
     }
 
     fn convert_kv(&self, kv: &eetf::Term) -> Result<(Expr, Expr), ConversionError> {
@@ -1156,7 +1150,7 @@ impl Converter {
                 return Ok((self.convert_expr(exp1)?, self.convert_expr(exp2)?));
             }
         }
-        return Err(ConversionError::InvalidKV);
+        Err(ConversionError::InvalidKV)
     }
 
     fn convert_rec_field_expr(&self, field: &eetf::Term) -> Result<RecordField, ConversionError> {
@@ -1179,7 +1173,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidRecordFieldExpr);
+        Err(ConversionError::InvalidRecordFieldExpr)
     }
 
     fn convert_rec_field_name(
@@ -1197,7 +1191,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidRecordFieldName);
+        Err(ConversionError::InvalidRecordFieldName)
     }
 
     fn convert_binary_elem(&self, elem: &eetf::Term) -> Result<BinaryElem, ConversionError> {
@@ -1221,7 +1215,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidBinaryElem);
+        Err(ConversionError::InvalidBinaryElem)
     }
 
     fn convert_pat(&self, pat: &eetf::Term) -> Result<Pat, ConversionError> {
@@ -1325,7 +1319,7 @@ impl Converter {
                             .into_iter()
                             .flatten()
                             .next()
-                            .map(|pat| Box::new(pat));
+                            .map(Box::new);
                         return Ok(Pat::PatRecord(PatRecord {
                             location,
                             rec_name: name.name.clone().into(),
@@ -1354,7 +1348,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidPattern);
+        Err(ConversionError::InvalidPattern)
     }
 
     fn convert_pat_binary_elem(&self, pat: &eetf::Term) -> Result<PatBinaryElem, ConversionError> {
@@ -1381,7 +1375,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidPatBinaryElem);
+        Err(ConversionError::InvalidPatBinaryElem)
     }
 
     fn convert_pat_record_field(
@@ -1399,7 +1393,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidPatRecordFieldNamed);
+        Err(ConversionError::InvalidPatRecordFieldNamed)
     }
 
     fn convert_pat_record_field_gen(
@@ -1418,7 +1412,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidPatRecordFieldGen);
+        Err(ConversionError::InvalidPatRecordFieldGen)
     }
 
     fn convert_pat_kv(&self, pat: &eetf::Term) -> Result<(Test, Pat), ConversionError> {
@@ -1432,7 +1426,7 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidKVPattern);
+        Err(ConversionError::InvalidKVPattern)
     }
 
     fn convert_guard(&self, guard: &eetf::Term) -> Result<Guard, ConversionError> {
@@ -1445,7 +1439,7 @@ impl Converter {
                     .collect::<Result<Vec<_>, _>>()?,
             });
         }
-        return Err(ConversionError::InvalidGuard);
+        Err(ConversionError::InvalidGuard)
     }
 
     fn convert_test(&self, test: &eetf::Term) -> Result<Test, ConversionError> {
@@ -1617,7 +1611,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidTest);
+        Err(ConversionError::InvalidTest)
     }
 
     fn convert_test_record_field(
@@ -1645,7 +1639,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidRecordFieldTest);
+        Err(ConversionError::InvalidRecordFieldTest)
     }
 
     fn convert_test_kv(&self, term: &eetf::Term) -> Result<(Test, Test), ConversionError> {
@@ -1654,7 +1648,7 @@ impl Converter {
                 return Ok((self.convert_test(t1)?, self.convert_test(t2)?));
             }
         }
-        return Err(ConversionError::InvalidKVTest);
+        Err(ConversionError::InvalidKVTest)
     }
 
     fn convert_qualifier(&self, term: &eetf::Term) -> Result<Qualifier, ConversionError> {
@@ -1686,9 +1680,9 @@ impl Converter {
                 _ => (),
             }
         }
-        return Ok(Qualifier::Filter(Filter {
+        Ok(Qualifier::Filter(Filter {
             expr: self.convert_expr(term)?,
-        }));
+        }))
     }
 
     fn convert_specifier(&self, term: &eetf::Term) -> Specifier {
@@ -1715,14 +1709,11 @@ impl Converter {
                 _ => false,
             }
         };
-        let spec = {
-            if signed && unsigned_spec == Specifier::UnsignedIntegerSpecifier {
-                Specifier::SignedIntegerSpecifier
-            } else {
-                unsigned_spec
-            }
-        };
-        return spec;
+        if signed && unsigned_spec == Specifier::UnsignedIntegerSpecifier {
+            Specifier::SignedIntegerSpecifier
+        } else {
+            unsigned_spec
+        }
     }
 
     fn convert_fun_spec(&self, spec: &eetf::Term) -> Result<ConstrainedFunType, ConversionError> {
@@ -1778,7 +1769,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidFunSpec);
+        Err(ConversionError::InvalidFunSpec)
     }
 
     fn convert_constraint(&self, cons: &eetf::Term) -> Result<Constraint, ConversionError> {
@@ -1788,7 +1779,7 @@ impl Converter {
                     if let [v, t] = &vt.elements[..] {
                         if ty.name == "type"
                             && cs.name == "constraint"
-                            && self.convert_atom_lit(is_sub)? == "is_subtype".to_string()
+                            && self.convert_atom_lit(is_sub)? == *"is_subtype"
                         {
                             let location = self.convert_pos(pos)?;
                             let t_var = self.convert_varname(v)?;
@@ -1803,7 +1794,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidFunConstraint);
+        Err(ConversionError::InvalidFunConstraint)
     }
 
     fn convert_prop_type(&self, prop: &eetf::Term) -> Result<ExtProp, ConversionError> {
@@ -1854,7 +1845,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidPropType);
+        Err(ConversionError::InvalidPropType)
     }
 
     fn convert_refined_field(&self, field: &eetf::Term) -> Result<RefinedField, ConversionError> {
@@ -1876,14 +1867,14 @@ impl Converter {
                 _ => (),
             }
         }
-        return Err(ConversionError::InvalidRecordRefinedField);
+        Err(ConversionError::InvalidRecordRefinedField)
     }
 
     fn convert_type(&self, ty: &eetf::Term) -> Result<ExtType, ConversionError> {
         if let Term::Tuple(ty) = ty {
             if let [Term::Atom(kind), pos, def @ ..] = &ty.elements[..] {
                 let location = self.convert_pos(pos)?;
-                match (kind.name.as_str(), &def[..]) {
+                match (kind.name.as_str(), def) {
                     ("ann_type", [Term::List(ty)]) => {
                         if let [_, tp] = &ty.elements[..] {
                             return self.convert_type(tp);
@@ -1910,7 +1901,7 @@ impl Converter {
                                     }));
                                 }
                                 if dom_ty.name == "type" && dom_kind.name == "product" {
-                                    if let [Term::List(args)] = &args[..] {
+                                    if let [Term::List(args)] = args {
                                         let arg_tys = args
                                             .elements
                                             .iter()
@@ -1973,7 +1964,7 @@ impl Converter {
                                 }
                             }
                             return Ok(ExtType::MapExtType(MapExtType {
-                                props: vec![self.convert_prop_type(&hd)?],
+                                props: vec![self.convert_prop_type(hd)?],
                                 location,
                             }));
                         }
@@ -2125,10 +2116,7 @@ impl Converter {
                     ("type", [Term::Atom(kind), Term::List(args)]) if args.is_nil() => {
                         let builtin = Type::builtin_type(kind.name.as_str());
                         if builtin.is_none() {
-                            return Err(ConversionError::UnknownBuiltin(
-                                kind.name.clone().into(),
-                                0,
-                            ));
+                            return Err(ConversionError::UnknownBuiltin(kind.name.clone(), 0));
                         } else {
                             return Ok(ExtType::BuiltinExtType(BuiltinExtType {
                                 location,
@@ -2143,16 +2131,13 @@ impl Converter {
                     }
                     ("type", [Term::Atom(name), Term::List(params)]) => {
                         let arity = params.elements.len();
-                        return Err(ConversionError::UnknownBuiltin(
-                            name.name.clone().into(),
-                            arity,
-                        ));
+                        return Err(ConversionError::UnknownBuiltin(name.name.clone(), arity));
                     }
                     _ => (),
                 }
             }
         }
-        return Err(ConversionError::InvalidType);
+        Err(ConversionError::InvalidType)
     }
 
     fn convert_form(&self, term: &eetf::Term) -> Result<Option<ExternalForm>, ConversionError> {
@@ -2187,7 +2172,7 @@ impl Converter {
                 }
             }
         }
-        return Err(ConversionError::InvalidForm);
+        Err(ConversionError::InvalidForm)
     }
 
     fn extract_no_auto_import(&self, term: &eetf::Term) -> Option<Vec<ast::Id>> {
@@ -2208,7 +2193,7 @@ impl Converter {
                 }
             }
         }
-        return None;
+        None
     }
 }
 
@@ -2243,5 +2228,5 @@ pub fn convert_forms(
             .flatten()
             .collect());
     }
-    return Err(ConversionError::InvalidForms);
+    Err(ConversionError::InvalidForms)
 }

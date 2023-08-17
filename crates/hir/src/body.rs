@@ -160,7 +160,7 @@ impl Body {
     pub fn expr_id(&self, expr: &Expr) -> Option<ExprId> {
         self.exprs
             .iter()
-            .find_map(|(k, v)| if v == expr { Some(k.clone()) } else { None })
+            .find_map(|(k, v)| if v == expr { Some(k) } else { None })
     }
 
     pub fn fold_expr<'a, T>(
@@ -171,7 +171,7 @@ impl Body {
         for_expr: ExprCallBack<'a, T>,
         for_pat: PatCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_expr(&self, strategy, expr_id, initial, for_expr, for_pat)
+        FoldCtx::fold_expr(self, strategy, expr_id, initial, for_expr, for_pat)
     }
 
     pub fn fold_pat<'a, T>(
@@ -182,7 +182,7 @@ impl Body {
         for_expr: ExprCallBack<'a, T>,
         for_pat: PatCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_pat(&self, strategy, pat_id, initial, for_expr, for_pat)
+        FoldCtx::fold_pat(self, strategy, pat_id, initial, for_expr, for_pat)
     }
 }
 
@@ -488,7 +488,7 @@ impl<T: AstNode> InFileAstPtr<T> {
 
     pub fn to_node(&self, parse: &InFile<ast::SourceFile>) -> Option<T> {
         if self.0.file_id == parse.file_id {
-            Some(self.0.value.to_node(&parse.value.syntax()))
+            Some(self.0.value.to_node(parse.value.syntax()))
         } else {
             None
         }

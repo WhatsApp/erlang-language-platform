@@ -77,7 +77,7 @@ pub(crate) fn freshen_variable_name(
                 if is_safe(&name) {
                     return name;
                 }
-                i = i + 1;
+                i += 1;
             }
         }
     } else {
@@ -98,7 +98,7 @@ pub(crate) fn freshen_function_name(ctx: &AssistContext, name: String, arity: u3
             if is_safe_function(&ctx.sema, ctx.file_id(), &candidate_name, arity) {
                 return candidate_name;
             }
-            i = i + 1;
+            i += 1;
         }
     }
 }
@@ -130,8 +130,7 @@ pub(crate) fn skip_trailing_separator(node: &SyntaxNode) -> Option<TextRange> {
 pub(crate) fn find_next_token(node: &SyntaxNode, delimiter: SyntaxKind) -> Option<TextRange> {
     node.children_with_tokens()
         .filter_map(|it| it.into_token())
-        .filter(|it| it.kind() == delimiter)
-        .next()
+        .find(|it| it.kind() == delimiter)
         .map(|t| t.text_range())
 }
 
@@ -141,7 +140,7 @@ pub(crate) fn skip_trailing_newline(node: &SyntaxNode) -> Option<TextRange> {
     });
     for element in elements {
         if let Some(t) = &SyntaxElement::into_token(element) {
-            if t.kind() == SyntaxKind::WHITESPACE && t.text().contains("\n") {
+            if t.kind() == SyntaxKind::WHITESPACE && t.text().contains('\n') {
                 return Some(t.text_range());
             }
         } else {
@@ -204,29 +203,25 @@ pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRan
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {
     let indent_str = " ".repeat(delta_indent.abs() as usize);
-    if str.contains("\n") {
+    if str.contains('\n') {
         // Only change indentation if the new string has more than one line.
-        str.split("\n")
+        str.split('\n')
             .enumerate()
             .map(|(idx, s)| {
-                if idx == 0 && s != "" {
+                if idx == 0 && !s.is_empty() {
                     // No leading newline, trim leading whitespace
                     s.trim_start().to_string()
-                } else {
-                    if delta_indent >= 0 {
-                        if s != "" {
-                            format!("{}{}", indent_str, s)
-                        } else {
-                            s.to_owned()
-                        }
+                } else if delta_indent >= 0 {
+                    if !s.is_empty() {
+                        format!("{}{}", indent_str, s)
                     } else {
-                        if let Some(s) = s.strip_prefix(indent_str.as_str()) {
-                            s.to_string()
-                        } else {
-                            // Do not lose useful characters, but remove all leading whitespace
-                            s.trim_start().to_string()
-                        }
+                        s.to_owned()
                     }
+                } else if let Some(s) = s.strip_prefix(indent_str.as_str()) {
+                    s.to_string()
+                } else {
+                    // Do not lose useful characters, but remove all leading whitespace
+                    s.trim_start().to_string()
                 }
             })
             .map(|s| s.trim_end().to_string())
@@ -244,7 +239,7 @@ pub(crate) fn simple_param_vars(clause: &InFunctionBody<&Clause>) -> Option<FxHa
     let mut acc = FxHashSet::default();
     clause.value.pats.iter().for_each(|p| match &clause[*p] {
         hir::Pat::Var(v) => {
-            acc.insert(v.clone());
+            acc.insert(*v);
         }
         _ => {}
     });
@@ -277,10 +272,10 @@ pub(crate) fn ranges_for_delete_function(
     // Look for a possible spec, and delete it too.
     let function_def = match ctx.classify_offset()? {
         SymbolClass::Definition(SymbolDefinition::Function(fun_def)) => Some(fun_def),
-        SymbolClass::Reference { refs, typ: _ } => match refs {
-            ReferenceClass::Definition(SymbolDefinition::Function(fun_def)) => Some(fun_def),
-            _ => None,
-        },
+        SymbolClass::Reference {
+            refs: ReferenceClass::Definition(SymbolDefinition::Function(fun_def)),
+            typ: _,
+        } => Some(fun_def),
         _ => None,
     }?;
 
@@ -325,7 +320,7 @@ fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
         None => orig_range.end(),
     };
     // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nextend_form_range_for_delete"));
+    let _pctx = stdx::panic_context::enter("\nextend_form_range_for_delete".to_string());
     TextRange::new(start, end)
 }
 
@@ -345,30 +340,28 @@ pub fn add_compile_option<'a>(
     if form_list.compile_attributes().count() == 0 {
         new_compile_attribute(&form_list, &source, option, insert_at, builder);
         Some(())
+    } else if form_list.compile_attributes().count() == 1 {
+        // One existing compile attribute, add the option to it.
+        let (_, co) = form_list.compile_attributes().next()?;
+        add_to_compile_attribute(co, &source, option, builder)
     } else {
-        if form_list.compile_attributes().count() == 1 {
-            // One existing compile attribute, add the option to it.
-            let (_, co) = form_list.compile_attributes().next()?;
-            add_to_compile_attribute(co, &source, option, builder)
-        } else {
-            // Multiple, make a new one
-            new_compile_attribute(&form_list, &source, option, insert_at, builder);
-            Some(())
-        }
+        // Multiple, make a new one
+        new_compile_attribute(&form_list, &source, option, insert_at, builder);
+        Some(())
     }
 }
 
-fn new_compile_attribute<'a>(
+fn new_compile_attribute(
     form_list: &FormList,
     source: &SourceFile,
     option: &str,
     insert_at: Option<TextSize>,
-    builder: &'a mut SourceChangeBuilder,
+    builder: &mut SourceChangeBuilder,
 ) {
     let insert = insert_at.unwrap_or_else(|| {
         if let Some(module_attr) = form_list.module_attribute() {
-            let module_attr_range = module_attr.form_id.get(&source).syntax().text_range();
-            TextSize::from(module_attr_range.end() + TextSize::from(1))
+            let module_attr_range = module_attr.form_id.get(source).syntax().text_range();
+            module_attr_range.end() + TextSize::from(1)
         } else {
             TextSize::from(0)
         }
@@ -376,11 +369,11 @@ fn new_compile_attribute<'a>(
     builder.insert(insert, format!("\n-compile([{option}]).\n"))
 }
 
-fn add_to_compile_attribute<'a>(
+fn add_to_compile_attribute(
     co: &CompileOption,
     source: &SourceFile,
     option: &str,
-    builder: &'a mut SourceChangeBuilder,
+    builder: &mut SourceChangeBuilder,
 ) -> Option<()> {
     let export_ast = co.form_id.get(source);
     match &export_ast.options()? {
@@ -469,7 +462,6 @@ impl<'a> ExportBuilder<'a> {
                     let (_, export) = form_list.exports().find(|(_, e)| {
                         e.entries
                             .clone()
-                            .into_iter()
                             .any(|fa| &form_list[fa].name == group_with)
                     })?;
                     add_to_export(export, &source, &export_text)
@@ -478,27 +470,25 @@ impl<'a> ExportBuilder<'a> {
                 } else {
                     self.new_export(form_list, source, export_text)
                 }
+            } else if self.with_comment.is_some() {
+                // Preceding comment for export, always make a fresh one
+                self.new_export(form_list, source, export_text)
             } else {
-                if self.with_comment.is_some() {
-                    // Preceding comment for export, always make a fresh one
-                    self.new_export(form_list, source, export_text)
-                } else {
-                    if let Some((insert, text)) = || -> Option<_> {
-                        if form_list.exports().count() == 1 {
-                            // One existing export, add the function to it.
+                if let Some((insert, text)) = || -> Option<_> {
+                    if form_list.exports().count() == 1 {
+                        // One existing export, add the function to it.
 
-                            let (_, export) = form_list.exports().next()?;
-                            add_to_export(export, &source, &export_text)
-                        } else {
-                            // Multiple
-                            None
-                        }
-                    }() {
-                        (insert, text)
+                        let (_, export) = form_list.exports().next()?;
+                        add_to_export(export, &source, &export_text)
                     } else {
-                        // Zero or multiple existing exports, create a fresh one
-                        self.new_export(form_list, source, export_text)
+                        // Multiple
+                        None
                     }
+                }() {
+                    (insert, text)
+                } else {
+                    // Zero or multiple existing exports, create a fresh one
+                    self.new_export(form_list, source, export_text)
                 }
             }
         };
@@ -516,7 +506,7 @@ impl<'a> ExportBuilder<'a> {
         let insert = self.insert_at.unwrap_or_else(|| {
             if let Some(module_attr) = form_list.module_attribute() {
                 let module_attr_range = module_attr.form_id.get(&source).syntax().text_range();
-                TextSize::from(module_attr_range.end() + TextSize::from(1))
+                module_attr_range.end() + TextSize::from(1)
             } else {
                 TextSize::from(0)
             }

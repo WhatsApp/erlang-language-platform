@@ -103,7 +103,7 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
             code: "L0003".to_string(),
         }));
     };
-    let metadata = elp_metadata(db, file_id).into();
+    let metadata = elp_metadata(db, file_id);
     Arc::new(db.load_ast(
         app_data.project_id,
         path,
