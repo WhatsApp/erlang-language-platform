@@ -23,11 +23,11 @@ use crate::Result;
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineCol {
-        line: position.line as u32,
-        col_utf16: position.character as u32,
+        line: position.line,
+        col_utf16: position.character,
     };
     // Temporary for T147609435
-    let _pctx = stdx::panic_context::enter(format!("\nfrom_proto::offset"));
+    let _pctx = stdx::panic_context::enter("\nfrom_proto::offset".to_string());
     line_index.offset(line_col)
 }
 
@@ -35,7 +35,7 @@ pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Tex
     let start = offset(line_index, range.start);
     let end = offset(line_index, range.end);
     // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nfrom_proto::text_range"));
+    let _pctx = stdx::panic_context::enter("\nfrom_proto::text_range".to_string());
     TextRange::new(start, end)
 }
 
@@ -44,8 +44,8 @@ pub(crate) fn safe_offset(
     position: lsp_types::Position,
 ) -> Option<TextSize> {
     let line_col = LineCol {
-        line: position.line as u32,
-        col_utf16: position.character as u32,
+        line: position.line,
+        col_utf16: position.character,
     };
     line_index.safe_offset(line_col)
 }
@@ -70,7 +70,7 @@ pub(crate) fn safe_text_range(
         return None;
     };
     // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter(format!("\nfrom_proto::safe_text_range"));
+    let _pctx = stdx::panic_context::enter("\nfrom_proto::safe_text_range".to_string());
     if start <= end {
         Some(TextRange::new(start, end))
     } else {

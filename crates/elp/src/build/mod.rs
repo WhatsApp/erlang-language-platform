@@ -17,14 +17,11 @@ use crate::build::types::LoadResult;
 use crate::cli::Cli;
 
 pub fn compile_deps(loaded: &LoadResult, cli: &dyn Cli) -> Result<()> {
-    match loaded.project.project_build_data {
-        Rebar(_) => {
-            let pb = cli.spinner("Compiling dependencies");
-            loaded.project.compile_deps()?;
-            loaded.update_erlang_service_paths();
-            pb.finish();
-        }
-        _ => (),
+    if let Rebar(_) = loaded.project.project_build_data {
+        let pb = cli.spinner("Compiling dependencies");
+        loaded.project.compile_deps()?;
+        loaded.update_erlang_service_paths();
+        pb.finish();
     }
     Ok(())
 }

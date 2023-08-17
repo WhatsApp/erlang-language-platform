@@ -9,6 +9,7 @@
 
 use std::fmt;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -62,7 +63,7 @@ impl Watchman {
         Command::new("watchman")
     }
 
-    fn new(project: &PathBuf) -> Result<Self> {
+    fn new(project: &Path) -> Result<Self> {
         let mut cmd = Self::cmd();
         cmd.arg("watch-project");
         cmd.arg(project.as_os_str());
@@ -124,7 +125,7 @@ impl ShellCommand {
         let tokens: Vec<&str> = line.split_ascii_whitespace().collect();
         if let [cmd, args @ ..] = &tokens[..] {
             let (options, args): (Vec<&str>, Vec<_>) =
-                args.into_iter().partition(|&&arg| arg.starts_with("-"));
+                args.iter().partition(|&&arg| arg.starts_with('-'));
             match *cmd {
                 "help" => return Ok(Some(ShellCommand::Help)),
                 "eqwalize" => {
@@ -269,7 +270,8 @@ fn update_changes(
         if !file.exists {
             vfs.set_file_contents(vfs_path, None);
         } else {
-            let contents = fs::read(&path).expect(&format!("Cannot read created file {:?}", path));
+            let contents =
+                fs::read(&path).unwrap_or_else(|_| panic!("Cannot read created file {:?}", path));
             vfs.set_file_contents(vfs_path, Some(contents));
         }
     });
@@ -282,7 +284,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli) -> Result<()> {
         .map_err(|_err| anyhow::Error::msg(
             "Could not find project. Are you in an Erlang project directory, or is one specified using --project?"
         ))?;
-    let config = DiscoverConfig::new(false, &"test".to_string());
+    let config = DiscoverConfig::new(false, "test");
     let mut loaded = load::load_project_at(cli, &shell.project, config, IncludeOtp::Yes)?;
     loaded.analysis_host.raw_database_mut().in_shell();
     let mut rl = rustyline::DefaultEditor::new()?;
@@ -325,5 +327,5 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli) -> Result<()> {
             }
         }
     }
-    return Ok(());
+    Ok(())
 }

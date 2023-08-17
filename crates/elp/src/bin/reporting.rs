@@ -146,7 +146,7 @@ impl<'a> Reporter for PrettyReporter<'a> {
 
     fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()> {
         let (reporting_files, reporting_id) = self.get_reporting_data(file_id)?;
-        let label = Label::primary(reporting_id, 1..2).with_message(&description);
+        let label = Label::primary(reporting_id, 1..2).with_message(description);
         let d: ReportingDiagnostic<usize> = ReportingDiagnostic::note()
             .with_message("advice")
             .with_labels(vec![label]);

@@ -134,7 +134,7 @@ pub(crate) fn handle_code_action_resolve(
     let file_id = snap.url_to_file_id(&params.code_action_params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     // Temporary for T147609435
-    let _pctx = stdx::panic_context::enter(format!("\nhandle_code_action_resolve"));
+    let _pctx = stdx::panic_context::enter("\nhandle_code_action_resolve".to_string());
     let range = from_proto::text_range(&line_index, params.code_action_params.range);
     let frange = FileRange { file_id, range };
 
@@ -763,7 +763,7 @@ pub(crate) fn handle_external_docs(
     Ok(docs.map(|links| {
         links
             .iter()
-            .filter_map(|link| Url::parse(&link).ok())
+            .filter_map(|link| Url::parse(link).ok())
             .collect()
     }))
 }

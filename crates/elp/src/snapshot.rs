@@ -194,7 +194,7 @@ impl Snapshot {
             EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
             EqwalizerDiagnostics::Error(err) => {
                 log::error!("EqWAlizer failed for {:?}: {}", file_id, err);
-                return Some(vec![]);
+                Some(vec![])
             }
         }
     }
@@ -209,7 +209,7 @@ impl Snapshot {
 
         Some(
             diags
-                .into_iter()
+                .iter()
                 .map(|(file_id, ds)| {
                     (
                         *file_id,
@@ -235,7 +235,7 @@ impl Snapshot {
 
         Some(
             diags
-                .into_iter()
+                .iter()
                 .map(|(file_id, ds)| {
                     (
                         *file_id,

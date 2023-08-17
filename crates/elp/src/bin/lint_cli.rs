@@ -242,11 +242,8 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                     for (_name, file_id, diags) in &diags {
                         if args.print_diags {
                             for diag in diags {
-                                match diag.severity {
-                                    diagnostics::Severity::Error => {
-                                        err_in_diag = true;
-                                    }
-                                    _ => {}
+                                if let diagnostics::Severity::Error = diag.severity {
+                                    err_in_diag = true;
                                 };
                                 let vfs_path = loaded.vfs.file_path(*file_id);
                                 let analysis = loaded.analysis();
@@ -261,7 +258,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                                     diag,
                                     &analysis,
                                     *file_id,
-                                    &relative_path,
+                                    relative_path,
                                     cli,
                                 )?;
                             }
@@ -274,11 +271,8 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         writeln!(cli, "  {}: {}", name, diags.len())?;
                         if args.print_diags {
                             for diag in diags {
-                                match diag.severity {
-                                    diagnostics::Severity::Error => {
-                                        err_in_diag = true;
-                                    }
-                                    _ => {}
+                                if let diagnostics::Severity::Error = diag.severity {
+                                    err_in_diag = true;
                                 };
                                 print_diagnostic(diag, &loaded.analysis(), *file_id, cli)?;
                             }
@@ -352,14 +346,15 @@ fn filter_diagnostics<'a>(
     diagnostic_code: Option<&'a String>,
     line_from: Option<u32>,
     line_to: Option<u32>,
-    diags: &'a Vec<(
+    diags: &'a [(
         String,
         FileId,
         Vec<diagnostics::Diagnostic>,
         Vec<ChangeRange>,
-    )>,
+    )],
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     Ok(diags
+        .to_owned()
         .clone()
         .into_iter()
         .filter_map(|(m, file_id, ds, changes)| {
@@ -388,11 +383,8 @@ fn filter_diagnostics<'a>(
         .collect::<Vec<_>>())
 }
 
-fn diagnostic_is_allowed<'a>(
-    d: &diagnostics::Diagnostic,
-    diagnostic_code: Option<&'a String>,
-) -> bool {
-    if !diagnostic_code.is_none() {
+fn diagnostic_is_allowed(d: &diagnostics::Diagnostic, diagnostic_code: Option<&String>) -> bool {
+    if diagnostic_code.is_some() {
         Some(&d.code.to_string()) == diagnostic_code
     } else {
         d.has_category(diagnostics::Category::SimplificationRule)
@@ -441,6 +433,7 @@ struct FixResult {
 const LINT_APPLICATION_RECURSION_LIMIT: i32 = 10;
 
 impl<'a> Lints<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         analysis_host: &'a mut AnalysisHost,
         cfg: &'a DiagnosticsConfig,
@@ -469,7 +462,7 @@ impl<'a> Lints<'a> {
         let mut recursion_limit = LINT_APPLICATION_RECURSION_LIMIT;
         loop {
             let changes = self.apply_diagnostics_fixes(format_normal, cli)?;
-            if recursion_limit <= 0 || *(&changes.is_empty()) {
+            if recursion_limit <= 0 || changes.is_empty() {
                 if recursion_limit < 0 {
                     bail!(
                         "Hit recursion limit ({}) while applying fixes",
@@ -510,7 +503,7 @@ impl<'a> Lints<'a> {
 
                         do_parse_one(
                             &self.analysis_host.analysis(),
-                            &self.cfg,
+                            self.cfg,
                             file_id,
                             &name,
                             self.include_generated,
@@ -520,7 +513,7 @@ impl<'a> Lints<'a> {
                 )
                 .collect::<Result<Vec<Option<_>>>>()?
                 .into_iter()
-                .filter_map(|x| x)
+                .flatten()
                 .collect::<Vec<_>>();
             self.diags = filter_diagnostics(
                 &self.analysis_host.analysis(),
@@ -595,7 +588,7 @@ impl<'a> Lints<'a> {
     }
 
     /// Apply a single assist
-    fn apply_one_fix(&self, fix: &Assist, name: &String) -> Option<FixResult> {
+    fn apply_one_fix(&self, fix: &Assist, name: &str) -> Option<FixResult> {
         let source_change = fix.source_change.as_ref()?;
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
         let mut actual = self
@@ -619,7 +612,7 @@ impl<'a> Lints<'a> {
 
         Some(FixResult {
             file_id,
-            name: name.clone(),
+            name: name.to_owned(),
             source: actual,
             changes,
             diff: unified,
@@ -627,20 +620,19 @@ impl<'a> Lints<'a> {
     }
 
     fn write_fix_result(&self, file_id: FileId, name: &String, actual: &String) -> Option<()> {
-        Some(if self.in_place {
+        if self.in_place {
             let file_path = self.vfs.file_path(file_id);
             let to_path = file_path.as_path()?;
             let mut output = File::create(to_path).ok()?;
             write!(output, "{actual}").ok()?;
+        } else if let Some(to) = self.to {
+            let to_path = to.join(format!("{}.erl", name));
+            let mut output = File::create(to_path).ok()?;
+            write!(output, "{actual}").ok()?;
         } else {
-            if let Some(to) = self.to {
-                let to_path = to.join(format!("{}.erl", name));
-                let mut output = File::create(to_path).ok()?;
-                write!(output, "{actual}").ok()?;
-            } else {
-                return None;
-            }
-        })
+            return None;
+        };
+        Some(())
     }
 }
 

@@ -48,9 +48,9 @@ impl ProjectLoader {
             path_it = path;
         }
         let conf = DiscoverConfig::buck();
-        let manifest = match ProjectManifest::discover_single(&path, &conf) {
+        let manifest = match ProjectManifest::discover_single(path, &conf) {
             Ok(manifest) => Ok(manifest),
-            Err(buck_err) => ProjectManifest::discover_single(&path, &conf.to_rebar())
+            Err(buck_err) => ProjectManifest::discover_single(path, &conf.to_rebar())
                 .map_err(|rebar_err| (buck_err, rebar_err)),
         };
 

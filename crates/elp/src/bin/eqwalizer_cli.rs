@@ -77,10 +77,10 @@ pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cl
     let file_id = analysis
         .module_file_id(loaded.project_id, &args.module)?
         .with_context(|| format!("Module {} not found", &args.module))?;
-    let reporter = &mut reporting::PrettyReporter::new(analysis, &loaded, cli);
+    let reporter = &mut reporting::PrettyReporter::new(analysis, loaded, cli);
     eqwalize(EqwalizerInternalArgs {
         analysis,
-        loaded: &loaded,
+        loaded,
         file_ids: vec![file_id],
         reporter,
     })
@@ -118,19 +118,19 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
 
     let reporter: &mut dyn Reporter = match args.format {
         None => {
-            pretty_reporter = reporting::PrettyReporter::new(analysis, &loaded, cli);
+            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
         Some(_) => {
-            json_reporter = reporting::JsonReporter::new(analysis, &loaded, cli);
+            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
             &mut json_reporter
         }
     };
 
-    advise_on_suite_modules_that_should_not_be_opted_in(&loaded, analysis, reporter)?;
+    advise_on_suite_modules_that_should_not_be_opted_in(loaded, analysis, reporter)?;
     eqwalize(EqwalizerInternalArgs {
         analysis,
-        loaded: &loaded,
+        loaded,
         file_ids,
         reporter,
     })
@@ -159,10 +159,10 @@ pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cl
             }
         })
         .collect();
-    let mut reporter = reporting::PrettyReporter::new(analysis, &loaded, cli);
+    let mut reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
     eqwalize(EqwalizerInternalArgs {
         analysis,
-        loaded: &loaded,
+        loaded,
         file_ids,
         reporter: &mut reporter,
     })
@@ -178,13 +178,13 @@ pub fn eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
     };
     let (_, target) = args.target.split_once("//").unwrap_or(("", &args.target));
     let buck_target = target.strip_suffix("/...").unwrap_or(target);
-    let buck_target = buck_target.strip_suffix(":").unwrap_or(buck_target);
+    let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
     let analysis = &loaded.analysis();
     let include_generated = args.include_generated;
     let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
-    let exact_match = buck_target.contains(":");
+    let exact_match = buck_target.contains(':');
     for (name, target) in &buck.target_info.targets {
         let (_, name) = name.split_once("//").unwrap();
         let matches = if exact_match {
@@ -293,7 +293,7 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
         .flatten()
         .collect();
     pb.finish();
-    cli.write(serde_json::to_string(&stats)?.as_bytes())?;
+    let _ = cli.write(serde_json::to_string(&stats)?.as_bytes())?;
     Ok(())
 }
 
@@ -330,7 +330,7 @@ fn eqwalize(
                         .expect("cancelled")
                 })
                 .fold(EqwalizerDiagnostics::default, |acc, output| {
-                    acc.combine(&*output)
+                    acc.combine(&output)
                 })
                 .reduce(EqwalizerDiagnostics::default, |acc, other| {
                     acc.combine(&other)

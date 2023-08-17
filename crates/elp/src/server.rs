@@ -195,6 +195,7 @@ pub struct Server {
 }
 
 impl Server {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         connection: Connection,
         vfs_loader: VfsHandle,
@@ -1092,7 +1093,7 @@ impl Server {
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
-                if let Err(_) = snapshot.analysis.def_map(file_id) {
+                if snapshot.analysis.def_map(file_id).is_err() {
                     //got canceled
                     files.push(file_id);
                     break;

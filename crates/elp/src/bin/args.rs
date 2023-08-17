@@ -399,6 +399,7 @@ struct ModuleConfig {
 
 const MODULES_TILE: &str = ".modules.toml";
 
+#[allow(clippy::ptr_arg)]
 fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
     let mut modules = vec![];
     let curr = env::current_dir().unwrap();
@@ -435,6 +436,7 @@ fn format_guard(format: &Option<String>) -> bool {
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn shell_completer(shell: &String) -> Vec<(String, Option<String>)> {
     let completions = match shell.to_lowercase().chars().next() {
         Some('b') => vec!["bash"],
@@ -448,6 +450,7 @@ fn shell_completer(shell: &String) -> Vec<(String, Option<String>)> {
         .collect()
 }
 
+#[allow(clippy::match_like_matches_macro)]
 fn shell_guard(shell: &String) -> bool {
     match shell.as_ref() {
         "bash" => true,
@@ -457,7 +460,7 @@ fn shell_guard(shell: &String) -> bool {
     }
 }
 
-fn get_suggesions(input: &String, modules: Vec<String>) -> Vec<(String, Option<String>)> {
+fn get_suggesions(input: &str, modules: Vec<String>) -> Vec<(String, Option<String>)> {
     const MAX_RESULTS: usize = 10;
 
     modules

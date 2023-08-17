@@ -387,7 +387,7 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
             Contents::SameAsLabel => None,
         },
         command,
-        tags: if tags.len() > 0 { Some(tags) } else { None },
+        tags: if !tags.is_empty() { Some(tags) } else { None },
         label_details: None,
     }
 }
@@ -470,15 +470,12 @@ pub(crate) fn signature_information(call_info: SignatureHelp) -> lsp_types::Sign
         .parameter_labels()
         .map(|label| lsp_types::ParameterInformation {
             label: lsp_types::ParameterLabel::Simple(label.to_string()),
-            documentation: match call_info.parameters_doc.get(label) {
-                Some(doc) => Some(lsp_types::Documentation::MarkupContent(
-                    lsp_types::MarkupContent {
-                        kind: lsp_types::MarkupKind::Markdown,
-                        value: format!("`{}`: {}", label, doc.clone()),
-                    },
-                )),
-                None => None,
-            },
+            documentation: call_info.parameters_doc.get(label).map(|doc| {
+                lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                    kind: lsp_types::MarkupKind::Markdown,
+                    value: format!("`{}`: {}", label, doc.clone()),
+                })
+            }),
         })
         .collect::<Vec<_>>();
 
@@ -525,7 +522,7 @@ pub(crate) fn semantic_tokens(
         for mut text_range in line_index.lines(highlight_range.range) {
             if text[text_range].ends_with('\n') {
                 // Temporary for T148094436
-                let _pctx = stdx::panic_context::enter(format!("\nto_proto::semantic_tokens"));
+                let _pctx = stdx::panic_context::enter("\nto_proto::semantic_tokens".to_string());
                 text_range =
                     TextRange::new(text_range.start(), text_range.end() - TextSize::of('\n'));
             }
@@ -591,7 +588,7 @@ pub(crate) fn runnable(
     runnable: Runnable,
     project_build_data: Option<ProjectBuildData>,
 ) -> Result<lsp_ext::Runnable, String> {
-    let file_id = runnable.nav.file_id.clone();
+    let file_id = runnable.nav.file_id;
     let file_path = snap.file_id_to_path(file_id);
     match project_build_data {
         Some(elp_project_model::ProjectBuildData::Buck(buck_project)) => match file_path {
@@ -646,7 +643,7 @@ pub(crate) fn code_lens(
                 Ok(r) => {
                     let lens_config = snap.config.lens();
                     if lens_config.run {
-                        let run_command = command::run_single(&r, &run_title);
+                        let run_command = command::run_single(&r, run_title);
                         acc.push(lsp_types::CodeLens {
                             range: annotation_range,
                             command: Some(run_command),
@@ -654,7 +651,7 @@ pub(crate) fn code_lens(
                         });
                     }
                     if lens_config.debug {
-                        let debug_command = command::debug_single(&r, &debug_title);
+                        let debug_command = command::debug_single(&r, debug_title);
                         acc.push(lsp_types::CodeLens {
                             range: annotation_range,
                             command: Some(debug_command),
@@ -664,7 +661,6 @@ pub(crate) fn code_lens(
                 }
                 Err(e) => {
                     log::warn!("Error while extracting runnables {e}");
-                    ()
                 }
             };
         }
@@ -813,15 +809,12 @@ pub(crate) fn document_symbol(
     };
     let selection_range = range(line_index, symbol.selection_range);
     let range = range(line_index, symbol.range);
-    let children = match &symbol.children {
-        None => None,
-        Some(children) => Some(
-            children
-                .into_iter()
-                .map(|c| document_symbol(line_index, c))
-                .collect(),
-        ),
-    };
+    let children = symbol.children.as_ref().map(|children| {
+        children
+            .iter()
+            .map(|c| document_symbol(line_index, c))
+            .collect()
+    });
     lsp_types::DocumentSymbol {
         name: symbol.name.clone(),
         detail: symbol.detail.clone(),
