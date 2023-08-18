@@ -42,7 +42,6 @@ use lsp_types::Diagnostic;
 use lsp_types::DocumentSymbol;
 use lsp_types::FoldingRange;
 use lsp_types::FoldingRangeParams;
-use lsp_types::Hover;
 use lsp_types::HoverParams;
 use lsp_types::RenameParams;
 use lsp_types::SemanticTokensDeltaParams;
@@ -484,13 +483,17 @@ fn to_assist_context_diagnostics(
         .collect()
 }
 
-pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option<Hover>> {
+pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
 
     let docs = snap.analysis.get_docs_at_position(position)?;
 
-    to_proto::hover_response(&snap, docs)
+    let hover_actions_config = snap.config.hover_actions();
+    let actions = snap
+        .analysis
+        .hover_actions(position, &hover_actions_config)?;
+    to_proto::hover_response(&snap, docs, actions)
 }
 
 pub(crate) fn handle_folding_range(

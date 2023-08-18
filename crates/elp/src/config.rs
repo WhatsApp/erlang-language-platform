@@ -14,6 +14,7 @@ use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
+use elp_ide::HoverActionsConfig;
 use elp_ide::InlayHintsConfig;
 use fxhash::FxHashSet;
 use lsp_types::ClientCapabilities;
@@ -37,6 +38,11 @@ config_data! {
       diagnostics_enableExperimental: bool = json! { false },
       /// List of ELP diagnostics to disable.
       diagnostics_disabled: FxHashSet<String> = json! { [] },
+      /// Whether to show Hover Actions.
+      hoverActions_enable: bool = json! { false },
+      /// Whether to show Hover Actions of type 'docs'. Only applies when
+      /// `#elp.hoverActions.enable#` is set.
+      hoverActions_docLinks_enable: bool = json! { false },
       /// Whether to show function parameter name inlay hints at the call
       /// site.
       inlayHints_parameterHints_enable: bool = json! { false },
@@ -202,6 +208,12 @@ impl Config {
         LensConfig {
             run: self.data.lens_enable && self.data.lens_run_enable,
             debug: self.data.lens_enable && self.data.lens_debug_enable,
+        }
+    }
+
+    pub fn hover_actions(&self) -> HoverActionsConfig {
+        HoverActionsConfig {
+            doc_links: self.data.hoverActions_enable && self.data.hoverActions_docLinks_enable,
         }
     }
 
@@ -420,7 +432,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"#]]
+        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -441,6 +453,16 @@ mod tests {
             "elp.diagnostics.enableExperimental": {
               "default": false,
               "markdownDescription": "Whether to show experimental ELP diagnostics that might\nhave more false positives than usual.",
+              "type": "boolean"
+            },
+            "elp.hoverActions.docLinks.enable": {
+              "default": false,
+              "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
+              "type": "boolean"
+            },
+            "elp.hoverActions.enable": {
+              "default": false,
+              "markdownDescription": "Whether to show Hover Actions.",
               "type": "boolean"
             },
             "elp.inlayHints.parameterHints.enable": {

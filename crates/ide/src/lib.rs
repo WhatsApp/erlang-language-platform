@@ -75,6 +75,7 @@ mod expand_macro;
 mod extend_selection;
 mod folding_ranges;
 mod handlers;
+mod hover;
 mod inlay_hints;
 mod navigation_target;
 mod rename;
@@ -106,6 +107,8 @@ pub use folding_ranges::Fold;
 pub use folding_ranges::FoldKind;
 pub use handlers::references::ReferenceSearchResult;
 pub use highlight_related::HighlightedRange;
+pub use hover::HoverAction;
+pub use hover::HoverActionsConfig;
 pub use inlay_hints::InlayHint;
 pub use inlay_hints::InlayHintLabel;
 pub use inlay_hints::InlayHintLabelPart;
@@ -418,6 +421,15 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<(Doc, FileRange)>> {
         self.with_db(|db| get_docs::get_doc_at_position(db, position))
+    }
+
+    /// Returns available hover actions (rendered as buttons)
+    pub fn hover_actions(
+        &self,
+        position: FilePosition,
+        config: &HoverActionsConfig,
+    ) -> Cancellable<Vec<HoverAction>> {
+        self.with_db(|db| hover::actions(db, position, config))
     }
 
     /// Finds all usages of the reference at point.

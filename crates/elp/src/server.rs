@@ -477,7 +477,7 @@ impl Server {
             .on::<request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<request::WorkspaceSymbol>(handlers::handle_workspace_symbol)
             .on::<request::Rename>(handlers::handle_rename)
-            .on::<request::HoverRequest>(handlers::handle_hover)
+            .on::<lsp_ext::HoverRequest>(handlers::handle_hover)
             .on::<request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<request::DocumentHighlightRequest>(handlers::handle_document_highlight)
             .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)

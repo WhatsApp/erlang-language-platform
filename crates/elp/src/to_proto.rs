@@ -35,6 +35,7 @@ use elp_ide::Highlight;
 use elp_ide::HlMod;
 use elp_ide::HlRange;
 use elp_ide::HlTag;
+use elp_ide::HoverAction;
 use elp_ide::InlayHintLabel;
 use elp_ide::InlayHintLabelPart;
 use elp_ide::InlayKind;
@@ -278,7 +279,8 @@ pub(crate) fn goto_definition_response(
 pub(crate) fn hover_response(
     snap: &Snapshot,
     maybe_doc: Option<(Doc, FileRange)>,
-) -> Result<Option<lsp_types::Hover>> {
+    actions: Vec<HoverAction>,
+) -> Result<Option<lsp_ext::Hover>> {
     let (markup, id_range) = match maybe_doc {
         Some((doc, src_range)) => (doc.markdown_text().to_string(), Some(src_range)),
         None => return Result::Ok(None),
@@ -295,10 +297,31 @@ pub(crate) fn hover_response(
         }
         None => None,
     };
-    Result::Ok(Some(Hover {
+    let hover = Hover {
         contents: hover_contents,
         range: hover_selection_range,
-    }))
+    };
+    let actions = actions
+        .iter()
+        .filter_map(|it| match it {
+            HoverAction::DocLink(url) => doc_link(url),
+        })
+        .collect();
+    let hover_ext = lsp_ext::Hover { hover, actions };
+    Result::Ok(Some(hover_ext))
+}
+
+fn doc_link(url: &str) -> Option<lsp_ext::CommandLinkGroup> {
+    let command = command::open_uri(url, "Documentation");
+    let command_link = lsp_ext::CommandLink {
+        tooltip: Some(url.to_string()),
+        command,
+    };
+    let group = lsp_ext::CommandLinkGroup {
+        title: Some("Erlang/OTP:".to_string()),
+        commands: vec![command_link],
+    };
+    Some(group)
 }
 
 pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
@@ -686,6 +709,14 @@ pub(crate) mod command {
             title: title.to_string(),
             command: "elp.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn open_uri(uri: &str, title: &str) -> lsp_types::Command {
+        lsp_types::Command {
+            title: title.to_string(),
+            command: "elp.openUri".into(),
+            arguments: Some(vec![to_value(uri).unwrap()]),
         }
     }
 
