@@ -96,6 +96,7 @@ mod highlight_related;
 pub use annotations::Annotation;
 pub use annotations::AnnotationKind;
 pub use common_test::GroupName;
+pub use doc_links::DocLink;
 pub use document_symbols::DocumentSymbol;
 pub use elp_ide_assists;
 pub use elp_ide_completion;
@@ -530,7 +531,7 @@ impl Analysis {
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.
-    pub fn external_docs(&self, position: FilePosition) -> Cancellable<Option<Vec<String>>> {
+    pub fn external_docs(&self, position: FilePosition) -> Cancellable<Option<Vec<DocLink>>> {
         self.with_db(|db| doc_links::external_docs(db, &position))
     }
 

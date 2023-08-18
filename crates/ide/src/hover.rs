@@ -11,6 +11,7 @@ use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
 
 use crate::doc_links::external_docs;
+use crate::doc_links::DocLink;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverActionsConfig {
@@ -19,7 +20,7 @@ pub struct HoverActionsConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HoverAction {
-    DocLink(String),
+    DocLink(DocLink),
 }
 
 pub(crate) fn actions(
@@ -44,6 +45,7 @@ fn doc_links_actions(res: &mut Vec<HoverAction>, db: &RootDatabase, position: Fi
 #[cfg(test)]
 mod tests {
 
+    use crate::doc_links::DocLink;
     use crate::fixture;
     use crate::HoverAction;
     use crate::HoverActionsConfig;
@@ -74,9 +76,10 @@ reverse([]) -> [].
 main() ->
   list~s:reverse([]).
     "#,
-            vec![HoverAction::DocLink(
-                "https://erlang.org/doc/man/lists.html".to_string(),
-            )],
+            vec![HoverAction::DocLink(DocLink {
+                title: "lists".to_string(),
+                uri: "https://erlang.org/doc/man/lists.html".to_string(),
+            })],
         );
     }
 }

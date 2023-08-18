@@ -17,8 +17,14 @@ use hir::Semantic;
 
 const OTP_BASE_URL: &str = "https://erlang.org";
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocLink {
+    pub uri: String,
+    pub title: String,
+}
+
 /// Retrieve a link to documentation for the given symbol.
-pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<Vec<String>> {
+pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<Vec<DocLink>> {
     let sema = Semantic::new(db);
     let source_file = sema.parse(position.file_id);
 
@@ -38,27 +44,31 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
     Some(doc_links)
 }
 
-fn doc_links(sema: &Semantic, def: SymbolDefinition) -> Option<Vec<String>> {
+fn doc_links(sema: &Semantic, def: SymbolDefinition) -> Option<Vec<DocLink>> {
     match def {
         SymbolDefinition::Module(module) => {
             if module.is_in_otp(sema.db) {
-                let url = format!("{}/doc/man/{}.html", OTP_BASE_URL, module.name(sema.db));
-                Some(vec![url])
+                let name = module.name(sema.db);
+                let uri = format!("{}/doc/man/{}.html", OTP_BASE_URL, name);
+                Some(vec![DocLink {
+                    title: name.to_string(),
+                    uri,
+                }])
             } else {
                 None
             }
         }
         SymbolDefinition::Function(function_def) => {
             if function_def.is_in_otp(sema.db) {
-                let module_name = sema.module_name(function_def.file.file_id)?;
-                let url = format!(
+                let module_name = sema.module_name(function_def.file.file_id)?.to_string();
+                let function_name = function_def.function.name.name();
+                let function_arity = function_def.function.name.arity();
+                let title = format!("{module_name}:{function_name}/{function_arity}");
+                let uri = format!(
                     "{}/doc/man/{}.html#{}-{}",
-                    OTP_BASE_URL,
-                    module_name.as_str(),
-                    function_def.function.name.name(),
-                    function_def.function.name.arity()
+                    OTP_BASE_URL, module_name, function_name, function_arity
                 );
-                Some(vec![url])
+                Some(vec![DocLink { title, uri }])
             } else {
                 None
             }
@@ -73,7 +83,14 @@ mod tests {
 
     fn check(fixture: &str, expected_links: Vec<&str>) {
         let (analysis, position) = fixture::position(fixture);
-        let actual_links = analysis.external_docs(position).ok().unwrap().unwrap();
+        let actual_links: Vec<String> = analysis
+            .external_docs(position)
+            .ok()
+            .unwrap()
+            .unwrap()
+            .iter()
+            .map(|link| link.uri.clone())
+            .collect();
         assert_eq!(actual_links, expected_links);
     }
 

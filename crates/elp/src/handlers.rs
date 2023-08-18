@@ -766,7 +766,7 @@ pub(crate) fn handle_external_docs(
     Ok(docs.map(|links| {
         links
             .iter()
-            .filter_map(|link| Url::parse(link).ok())
+            .filter_map(|link| Url::parse(&link.uri).ok())
             .collect()
     }))
 }

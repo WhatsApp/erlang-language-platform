@@ -29,6 +29,7 @@ use elp_ide::elp_ide_db::ReferenceCategory;
 use elp_ide::elp_ide_db::SymbolKind;
 use elp_ide::AnnotationKind;
 use elp_ide::Cancellable;
+use elp_ide::DocLink;
 use elp_ide::Fold;
 use elp_ide::FoldKind;
 use elp_ide::Highlight;
@@ -304,21 +305,21 @@ pub(crate) fn hover_response(
     let actions = actions
         .iter()
         .filter_map(|it| match it {
-            HoverAction::DocLink(url) => doc_link(url),
+            HoverAction::DocLink(link) => doc_link(link),
         })
         .collect();
     let hover_ext = lsp_ext::Hover { hover, actions };
     Result::Ok(Some(hover_ext))
 }
 
-fn doc_link(url: &str) -> Option<lsp_ext::CommandLinkGroup> {
-    let command = command::open_uri(url, "Documentation");
+fn doc_link(link: &DocLink) -> Option<lsp_ext::CommandLinkGroup> {
+    let command = command::open_uri(&link.uri, &link.title);
     let command_link = lsp_ext::CommandLink {
-        tooltip: Some(url.to_string()),
+        tooltip: Some(link.uri.to_string()),
         command,
     };
     let group = lsp_ext::CommandLinkGroup {
-        title: Some("Erlang/OTP:".to_string()),
+        title: Some("Go To Docs:".to_string()),
         commands: vec![command_link],
     };
     Some(group)
