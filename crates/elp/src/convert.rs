@@ -117,12 +117,16 @@ pub fn eqwalizer_to_lsp_diagnostic(
         explanation,
         d.uri
     );
+    let code_description = match lsp_types::Url::parse(&d.uri) {
+        Ok(href) => Some(lsp_types::CodeDescription { href }),
+        Err(_) => None,
+    };
     lsp_types::Diagnostic {
         range,
         severity: Some(severity),
-        code: Some(lsp_types::NumberOrString::String("eqwalizer".to_string())),
-        code_description: None,
-        source: Some("elp".into()),
+        code: Some(lsp_types::NumberOrString::String(d.code.to_string())),
+        code_description,
+        source: Some("eqWAlizer".into()),
         message,
         related_information: None,
         tags: None,
