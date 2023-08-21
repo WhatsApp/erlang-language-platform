@@ -24,7 +24,7 @@ mod module_index;
 // Public API
 
 pub mod fixture;
-mod meta_only;
+// @fb-only: mod meta_only;
 pub mod test_fixture;
 pub mod test_utils;
 pub use change::Change;
