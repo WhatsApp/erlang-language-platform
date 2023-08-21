@@ -461,7 +461,8 @@ fn has_vars_in_clause(sema: &Semantic, file_id: FileId, fun_clause: &ast::Functi
     let clause = || -> Option<InFunctionBody<Clause>> {
         let ast_expr = fun_clause.body()?.exprs().next()?;
         let expr = sema.to_expr(InFile::new(file_id, &ast_expr))?;
-        let clause_id = sema.find_enclosing_function_clause(ast_expr.syntax())?;
+        let ast_clause_id = sema.find_enclosing_function_clause(ast_expr.syntax())?;
+        let clause_id = expr.valid_clause_id(ast_clause_id)?;
         let clause = &expr[clause_id];
         Some(expr.with_value(clause.clone()))
     }();
@@ -775,7 +776,8 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
 
             let expr = ast::Expr::Call(call.clone());
             let clause_vars = || -> Option<FxHashSet<Var>> {
-                let clause_id = ctx.sema.find_enclosing_function_clause(call.syntax())?;
+                let ast_clause_id = ctx.sema.find_enclosing_function_clause(call.syntax())?;
+                let clause_id = function_body.valid_clause_id(ast_clause_id)?;
                 let call_function = ctx.sema.to_expr(InFile::new(ctx.file_id(), &expr))?;
                 let clause = &call_function[clause_id];
                 ScopeAnalysis::clause_vars_in_scope(&ctx.sema, &call_function.with_value(clause))

@@ -442,7 +442,8 @@ impl ToDef for ast::Var {
         let (body, body_map) = sema
             .db
             .function_body_with_source(ast.with_value(function_id));
-        let clause_id = sema.find_enclosing_function_clause(ast.value.syntax())?;
+        let ast_clause_id = sema.find_enclosing_function_clause(ast.value.syntax())?;
+        let clause_id = body.valid_clause_id(ast_clause_id)?;
         let scopes = sema.db.function_scopes(InFile {
             file_id: ast.file_id,
             value: function_id,

@@ -220,6 +220,20 @@ pub enum MaybeExpr {
 
 pub type ClauseId = Idx<Clause>;
 
+/// There should be a 1:1 mapping between the clause number as
+/// extracted from the low-level `ast` and the HIR one. Under some
+/// circumstances it is invalid, so tag it so we can de-reference to
+/// an Option<Clause>
+pub struct AstClauseId {
+    pub(crate) clause_id: ClauseId,
+}
+
+impl AstClauseId {
+    pub(crate) fn new(clause_id: ClauseId) -> AstClauseId {
+        AstClauseId { clause_id }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Clause {
     pub pats: Vec<PatId>,

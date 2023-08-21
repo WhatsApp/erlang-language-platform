@@ -753,9 +753,9 @@ mod tests {
             file_id,
             value: function,
         });
-        let clause_id = sema.find_enclosing_function_clause(var.syntax()).unwrap();
+        let ast_clause_id = sema.find_enclosing_function_clause(var.syntax()).unwrap();
 
-        let (_body, source_map) = db.function_body_with_source(InFile::new(file_id, function));
+        let (body, source_map) = db.function_body_with_source(InFile::new(file_id, function));
 
         let expr_id = source_map
             .expr_id(InFile {
@@ -763,6 +763,7 @@ mod tests {
                 value: &marker,
             })
             .unwrap();
+        let clause_id = body.valid_clause_id(ast_clause_id).unwrap();
         let clause_scope = scopes.get(clause_id).unwrap();
         let scope = clause_scope.scope_for_expr(expr_id);
 

@@ -33,6 +33,7 @@ use crate::body::scope::ScopeId;
 use crate::body::UnexpandedIndex;
 use crate::db::MinDefDatabase;
 use crate::edoc::EdocHeader;
+use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::ExprCallBack;
 use crate::fold::ExprCallBackCtx;
@@ -182,8 +183,8 @@ impl<'db> Semantic<'db> {
 
     pub fn resolve_var_to_pats(&self, var_in: InFile<&ast::Var>) -> Option<Vec<PatId>> {
         let function_id = self.find_enclosing_function(var_in.file_id, var_in.value.syntax())?;
-        let clause_id = self.find_enclosing_function_clause(var_in.value.syntax())?;
-        let resolver = self.clause_resolver(var_in.with_value(function_id), clause_id)?;
+        let ast_clause_id = self.find_enclosing_function_clause(var_in.value.syntax())?;
+        let resolver = self.ast_clause_resolver(var_in.with_value(function_id), ast_clause_id)?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
         if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
             let var = resolver[expr_id].as_var()?;
@@ -205,8 +206,8 @@ impl<'db> Semantic<'db> {
 
     pub fn scope_for(&self, var_in: InFile<&ast::Var>) -> Option<(Resolver, ScopeId)> {
         let function_id = self.find_enclosing_function(var_in.file_id, var_in.value.syntax())?;
-        let clause_id = self.find_enclosing_function_clause(var_in.value.syntax())?;
-        let resolver = self.clause_resolver(var_in.with_value(function_id), clause_id)?;
+        let ast_clause_id = self.find_enclosing_function_clause(var_in.value.syntax())?;
+        let resolver = self.ast_clause_resolver(var_in.with_value(function_id), ast_clause_id)?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
         if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
             let scope = resolver.value.scopes.scope_for_expr(expr_id)?;
@@ -288,7 +289,7 @@ impl<'db> Semantic<'db> {
         }
     }
 
-    pub fn find_enclosing_function_clause(&self, syntax: &SyntaxNode) -> Option<ClauseId> {
+    pub fn find_enclosing_function_clause(&self, syntax: &SyntaxNode) -> Option<AstClauseId> {
         // ClauseId's are allocated sequentially. Find the one we need.
         let fun = syntax.ancestors().find_map(ast::FunDecl::cast)?;
         let idx = fun.clauses().enumerate().find_map(|(idx, clause)| {
@@ -302,7 +303,9 @@ impl<'db> Semantic<'db> {
                 None
             }
         })?;
-        Some(ClauseId::from_raw(RawIdx::from(idx as u32)))
+        Some(AstClauseId::new(ClauseId::from_raw(RawIdx::from(
+            idx as u32,
+        ))))
     }
 
     pub fn find_enclosing_spec(&self, file_id: FileId, syntax: &SyntaxNode) -> Option<SpecId> {
@@ -402,8 +405,26 @@ impl<'db> Semantic<'db> {
         syntax: &SyntaxNode,
     ) -> Option<InFunctionBody<Resolver>> {
         let function_id = self.find_enclosing_function(file_id, syntax)?;
-        let clause_id = self.find_enclosing_function_clause(syntax)?;
-        self.clause_resolver(InFile::new(file_id, function_id), clause_id)
+        let ast_clause_id = self.find_enclosing_function_clause(syntax)?;
+        self.ast_clause_resolver(InFile::new(file_id, function_id), ast_clause_id)
+    }
+
+    pub fn ast_clause_resolver(
+        &self,
+        function_id: InFile<FunctionId>,
+        ast_clause_id: AstClauseId,
+    ) -> Option<InFunctionBody<Resolver>> {
+        let body = self.db.function_body(function_id);
+        let scopes = self.db.function_scopes(function_id);
+        let clause_id = body.valid_clause_id(ast_clause_id)?;
+        let clause_scopes = scopes.get(clause_id)?;
+        let resolver = Resolver::new(clause_scopes);
+        Some(InFunctionBody {
+            body,
+            function_id,
+            body_map: None.into(), // We may not need it, do not get it now
+            value: resolver,
+        })
     }
 
     pub fn clause_resolver(
@@ -426,7 +447,8 @@ impl<'db> Semantic<'db> {
     pub fn find_vars_in_clause_ast(&self, expr: &InFile<&ast::Expr>) -> Option<FxHashSet<Var>> {
         let clause = self.find_enclosing_function_clause(expr.value.syntax())?;
         let in_function = self.to_expr(*expr)?;
-        ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(&in_function[clause]))
+        let clause_id = in_function.valid_clause_id(clause)?;
+        ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(&in_function[clause_id]))
     }
 
     /// Find all other variables within the function clause that resolve
@@ -838,6 +860,10 @@ impl<T> InFunctionBody<T> {
     ) -> Option<Expr> {
         let expr_id = self.expr_id_ast(db, expr)?;
         Some(self.body.body[expr_id].clone())
+    }
+
+    pub fn valid_clause_id(&self, ast_clause_id: AstClauseId) -> Option<ClauseId> {
+        self.body.valid_clause_id(ast_clause_id)
     }
 
     pub fn clause_id(&self, expr_id: &ExprId) -> Option<ClauseId> {

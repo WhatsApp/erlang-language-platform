@@ -18,9 +18,11 @@ use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::ArenaMap;
+use la_arena::RawIdx;
 
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
+use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::ExprCallBack;
 use crate::fold::PatCallBack;
@@ -207,6 +209,14 @@ impl FunctionBody {
 
     pub fn tree_print(&self, db: &dyn MinInternDatabase) -> String {
         tree_print::print_function(db, self)
+    }
+
+    pub fn valid_clause_id(&self, ast_clause_id: AstClauseId) -> Option<ClauseId> {
+        if ast_clause_id.clause_id.into_raw() < RawIdx::from(self.clauses.len() as u32) {
+            Some(ast_clause_id.clause_id)
+        } else {
+            None
+        }
     }
 }
 
