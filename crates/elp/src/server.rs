@@ -704,14 +704,14 @@ impl Server {
                 self.line_ending_map
                     .write()
                     .insert(file.file_id, line_ending);
-                raw_database.set_file_text(file.file_id, Arc::new(text));
+                raw_database.set_file_text(file.file_id, Arc::from(text));
                 // causes us to remove stale squiggles from the UI
                 self.diagnostics.set_eqwalizer(file.file_id, vec![]);
             } else {
                 // TODO (T105975906): Clean up stale .etf files
 
                 // We can't actually delete things from salsa, just set it to empty
-                raw_database.set_file_text(file.file_id, Default::default());
+                raw_database.set_file_text(file.file_id, Arc::from(""));
             };
         }
 

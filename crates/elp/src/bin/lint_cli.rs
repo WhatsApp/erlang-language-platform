@@ -499,7 +499,7 @@ impl<'a> Lints<'a> {
 
                         self.analysis_host.apply_change(Change {
                             roots: None,
-                            files_changed: vec![(file_id, Some(Arc::new(source)))],
+                            files_changed: vec![(file_id, Some(Arc::from(source)))],
                             app_structure: None,
                         });
 

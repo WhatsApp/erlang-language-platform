@@ -103,7 +103,7 @@ pub enum FileKind {
 
 pub trait FileLoader {
     /// Text of the file.
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -253,14 +253,14 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
 #[salsa::query_group(SourceDatabaseExtStorage)]
 pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
 }
 
 /// Silly workaround for cyclic deps between the traits
 pub struct FileLoaderDelegate<T>(pub T);
 
 impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
-    fn file_text(&self, file_id: FileId) -> Arc<String> {
+    fn file_text(&self, file_id: FileId) -> Arc<str> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
 }

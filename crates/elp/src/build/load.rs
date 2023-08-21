@@ -147,15 +147,15 @@ fn load_database(
             let contents = vfs.file_contents(file.file_id).to_vec();
             match String::from_utf8(contents) {
                 Ok(text) => {
-                    db.set_file_text(file.file_id, Arc::new(text));
+                    db.set_file_text(file.file_id, Arc::from(text));
                 }
                 Err(err) => {
                     // Fall back to lossy latin1 loading of files.
                     // This should only affect files from yaws, and
                     // possibly OTP that are latin1 encoded.
                     let contents = err.into_bytes();
-                    let text = contents.into_iter().map(|byte| byte as char).collect();
-                    db.set_file_text(file.file_id, Arc::new(text));
+                    let text: String = contents.into_iter().map(|byte| byte as char).collect();
+                    db.set_file_text(file.file_id, Arc::from(text));
                 }
             }
         }

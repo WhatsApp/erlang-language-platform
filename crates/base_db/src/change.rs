@@ -24,7 +24,7 @@ use crate::SourceRootId;
 #[derive(Clone, Default)]
 pub struct Change {
     pub roots: Option<Vec<SourceRoot>>,
-    pub files_changed: Vec<(FileId, Option<Arc<String>>)>,
+    pub files_changed: Vec<(FileId, Option<Arc<str>>)>,
     pub app_structure: Option<AppStructure>,
 }
 
@@ -53,7 +53,7 @@ impl Change {
         self.roots = Some(roots);
     }
 
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<String>>) {
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
         self.files_changed.push((file_id, new_text))
     }
 
@@ -80,7 +80,7 @@ impl Change {
         let mut res = vec![];
         for (file_id, text) in self.files_changed {
             // XXX: can't actually remove the file, just reset the text
-            let text = text.unwrap_or_default();
+            let text = text.unwrap_or_else(|| Arc::from(""));
             db.set_file_text(file_id, text);
             res.push(file_id);
         }

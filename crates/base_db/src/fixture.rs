@@ -131,7 +131,7 @@ impl ChangeFixture {
                 }
             };
 
-            change.change_file(file_id, Some(Arc::new(text)));
+            change.change_file(file_id, Some(Arc::from(text)));
 
             let path = VfsPath::new_real_path(entry.path);
             app_files.insert(app_name, file_id, path);

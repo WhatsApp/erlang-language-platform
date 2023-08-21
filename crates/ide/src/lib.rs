@@ -311,7 +311,7 @@ impl Analysis {
     }
 
     /// Returns the contents of a file
-    pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<String>> {
+    pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
         self.with_db(|db| db.file_text(file_id))
     }
 

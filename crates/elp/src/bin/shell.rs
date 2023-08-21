@@ -232,9 +232,9 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
         if file.exists() {
             let bytes = loaded.vfs.file_contents(file.file_id).to_vec();
             let document = Document::from_bytes(bytes);
-            raw_database.set_file_text(file.file_id, Arc::new(document.content));
+            raw_database.set_file_text(file.file_id, Arc::from(document.content));
         } else {
-            raw_database.set_file_text(file.file_id, Default::default());
+            raw_database.set_file_text(file.file_id, Arc::from(""));
         };
     }
 
