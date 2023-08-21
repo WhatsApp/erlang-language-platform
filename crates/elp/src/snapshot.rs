@@ -14,6 +14,7 @@ use anyhow::Context;
 use anyhow::Result;
 use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
+use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
@@ -143,7 +144,7 @@ impl Snapshot {
         Ok(ai_completion.complete(prefix.to_string()))
     }
 
-    pub fn native_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+    pub fn native_diagnostics(&self, file_id: FileId) -> Option<LabeledDiagnostics<Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
@@ -154,9 +155,7 @@ impl Snapshot {
             self.analysis
                 .diagnostics(&self.config.diagnostics(), file_id, false)
                 .ok()?
-                .into_iter()
-                .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &url, &d))
-                .collect(),
+                .convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d)),
         )
     }
 
@@ -225,7 +224,7 @@ impl Snapshot {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
-    ) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
+    ) -> Option<Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics { file_url });
         let url = file_id_to_url(&self.vfs.read(), file_id);
@@ -239,9 +238,7 @@ impl Snapshot {
                 .map(|(file_id, ds)| {
                     (
                         *file_id,
-                        ds.iter()
-                            .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d))
-                            .collect(),
+                        ds.convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d)),
                     )
                 })
                 .collect(),

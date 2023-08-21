@@ -21,7 +21,10 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
 use elp::server::file_id_to_url;
+use elp_ide::diagnostics;
+use elp_ide::diagnostics::attach_related_diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
@@ -30,18 +33,26 @@ use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::Includes;
+use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::Analysis;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use indicatif::ParallelProgressIterator;
 use indicatif::ProgressIterator;
-use lsp_types::Diagnostic;
 use lsp_types::DiagnosticSeverity;
 use lsp_types::NumberOrString;
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 
 use crate::args::ParseAllElp;
+
+#[derive(Debug)]
+struct ParseResult {
+    name: String,
+    file_id: FileId,
+    native: LabeledDiagnostics<diagnostics::Diagnostic>,
+    erlang_service: LabeledDiagnostics<diagnostics::Diagnostic>,
+}
 
 pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
@@ -105,17 +116,27 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
         dump_includes_resolutions(cli, &loaded, &args.to)?;
     }
 
+    let db = loaded.analysis_host.raw_database();
+
+    // We need a `Url` for converting to the lsp_types::Diagnostic for
+    // printing, but do not print it out. So just create a dummy value
+    let url = lsp_types::Url::parse("file:///unused_url").ok().unwrap();
+
     if res.is_empty() {
         writeln!(cli, "No errors reported")?;
         Ok(())
     } else {
         writeln!(cli, "Diagnostics reported in {} modules:", res.len())?;
-        res.sort_by(|(a, _), (b, _)| a.cmp(b));
+        res.sort_by(|a, b| a.name.cmp(&b.name));
         let mut err_in_diag = false;
-        for (name, diags) in res {
-            writeln!(cli, "  {}: {}", name, diags.len())?;
+        for diags in res {
+            let mut combined = attach_related_diagnostics(diags.native, &diags.erlang_service);
+            writeln!(cli, "  {}: {}", diags.name, combined.len())?;
             if args.print_diags {
-                for diag in diags {
+                let line_index = db.file_line_index(diags.file_id);
+                combined.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
+                for diag in combined {
+                    let diag = convert::ide_to_lsp_diagnostic(&line_index, &url, &diag);
                     let severity = match diag.severity {
                         None => DiagnosticSeverity::ERROR,
                         Some(sev) => {
@@ -161,7 +182,7 @@ fn do_parse_all_par(
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
     include_generated: bool,
-) -> Result<Vec<(String, Vec<Diagnostic>)>> {
+) -> Result<Vec<ParseResult>> {
     let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
     let module_iter = module_index.iter_own();
 
@@ -203,7 +224,7 @@ fn do_parse_all_seq(
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
     include_generated: bool,
-) -> Result<Vec<(String, Vec<Diagnostic>)>> {
+) -> Result<Vec<ParseResult>> {
     let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
     let module_iter = module_index.iter_own();
 
@@ -234,6 +255,7 @@ fn do_parse_all_seq(
         })
         .collect())
 }
+
 fn do_parse_one(
     db: &Analysis,
     vfs: &Vfs,
@@ -242,37 +264,41 @@ fn do_parse_one(
     file_id: FileId,
     name: &str,
     include_generated: bool,
-) -> Result<Option<(String, Vec<Diagnostic>)>> {
+) -> Result<Option<ParseResult>> {
     let url = file_id_to_url(vfs, file_id);
-    let mut diagnostics = db.diagnostics(config, file_id, include_generated)?;
+    let diagnostics = db.diagnostics(config, file_id, include_generated)?;
     let erlang_service_diagnostics = db.erlang_service_diagnostics(file_id)?;
-    diagnostics.extend(
-        erlang_service_diagnostics
-            .into_iter()
-            // Should we return the included file diagnostics as well? Not doing so now.
-            .filter_map(|(f, diags)| if f == file_id { Some(diags) } else { None })
-            .flatten(),
-    );
     let line_index = db.line_index(file_id)?;
+
+    let native = diagnostics;
+
+    // Should we return the included file diagnostics as well? Not doing so now.
+    let erlang_service = erlang_service_diagnostics
+        .into_iter()
+        .find(|(f, _diags)| f == &file_id)
+        .map(|(_, diags)| diags)
+        .unwrap_or(LabeledDiagnostics::default());
 
     if let Some(to) = to {
         let to_path = to.join(format!("{}.diag", name));
         let mut output = File::create(to_path)?;
 
-        for diagnostic in diagnostics.iter() {
-            writeln!(
-                output,
-                "{:?}",
-                convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic)
-            )?;
+        for diagnostic in native.iter() {
+            let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
+            writeln!(output, "{:?}", diagnostic)?;
+        }
+        for diagnostic in erlang_service.iter() {
+            let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
+            writeln!(output, "{:?}", diagnostic)?;
         }
     }
-    let lsp_diagnostics = diagnostics
-        .iter()
-        .map(|diagnostic| convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic))
-        .collect::<Vec<_>>();
-    if !diagnostics.is_empty() {
-        let res = (name.to_string(), lsp_diagnostics);
+    if !(native.is_empty() && erlang_service.is_empty()) {
+        let res = ParseResult {
+            name: name.to_string(),
+            file_id,
+            native,
+            erlang_service,
+        };
         Ok(Some(res))
     } else {
         Ok(None)

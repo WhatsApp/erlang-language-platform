@@ -129,6 +129,10 @@ impl NameArity {
     pub fn arity(&self) -> u32 {
         self.1
     }
+
+    pub fn as_label(&self) -> String {
+        format!("{}", self)
+    }
 }
 
 /// `MacroName` is a wrapper around `Name` with optional arity attached,

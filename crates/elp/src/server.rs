@@ -18,6 +18,7 @@ use crossbeam_channel::select;
 use crossbeam_channel::Receiver;
 use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
+use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -98,10 +99,10 @@ enum Event {
 pub enum Task {
     Response(lsp_server::Response),
     FetchProject(Result<Project>),
-    NativeDiagnostics(Vec<(FileId, Vec<Diagnostic>)>),
+    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
-    ErlangServiceDiagnostics(Vec<(FileId, Vec<Diagnostic>)>),
+    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
@@ -416,7 +417,7 @@ impl Server {
 
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read(), file_id);
-                let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let diagnostics = self.diagnostics.diagnostics_for(file_id, &url);
                 let version = convert::vfs_path(&url)
                     .map(|path| self.open_document_versions.read().get(&path).cloned())
                     .unwrap_or_default();
@@ -755,7 +756,10 @@ impl Server {
         });
     }
 
-    fn native_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
+    fn native_diagnostics_completed(
+        &mut self,
+        diags: Vec<(FileId, LabeledDiagnostics<Diagnostic>)>,
+    ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_native(file_id, diagnostics);
         }
@@ -846,8 +850,11 @@ impl Server {
         });
     }
 
-    fn erlang_service_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
-        for (file_id, diagnostics) in diags.clone() {
+    fn erlang_service_diagnostics_completed(
+        &mut self,
+        diags: Vec<(FileId, LabeledDiagnostics<Diagnostic>)>,
+    ) {
+        for (file_id, diagnostics) in diags {
             self.diagnostics.set_erlang_service(file_id, diagnostics);
         }
     }

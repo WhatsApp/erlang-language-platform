@@ -25,6 +25,7 @@ use elp::document::Document;
 use elp::otp_file_to_ignore;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
 use elp_ide::elp_ide_assists::Assist;
@@ -77,7 +78,7 @@ fn do_parse_all(
     Vec<(
         String,
         FileId,
-        Vec<diagnostics::Diagnostic>,
+        LabeledDiagnostics<diagnostics::Diagnostic>,
         Vec<ChangeRange>,
     )>,
 > {
@@ -129,7 +130,7 @@ fn do_parse_one(
     Option<(
         String,
         FileId,
-        Vec<diagnostics::Diagnostic>,
+        LabeledDiagnostics<diagnostics::Diagnostic>,
         Vec<ChangeRange>,
     )>,
 > {
@@ -349,7 +350,7 @@ fn filter_diagnostics<'a>(
     diags: &'a [(
         String,
         FileId,
-        Vec<diagnostics::Diagnostic>,
+        LabeledDiagnostics<diagnostics::Diagnostic>,
         Vec<ChangeRange>,
     )],
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
@@ -361,7 +362,7 @@ fn filter_diagnostics<'a>(
             let line_index = db.line_index(file_id).ok()?;
             if module.is_none() || &Some(m.to_string()) == module {
                 let ds2 = ds
-                    .into_iter()
+                    .iter()
                     .filter(|d| {
                         let range = convert::range(&line_index, d.range);
                         let line = range.start.line;
@@ -370,9 +371,10 @@ fn filter_diagnostics<'a>(
                             && check(&line_to, |l| &line <= l)
                             && check_changes(&changes, line)
                     })
+                    .cloned()
                     .collect::<Vec<diagnostics::Diagnostic>>();
                 if !ds2.is_empty() {
-                    Some((m, file_id, ds2))
+                    Some((m.clone(), file_id, ds2))
                 } else {
                     None
                 }
@@ -472,7 +474,7 @@ impl<'a> Lints<'a> {
                 break;
             }
             recursion_limit -= 1;
-            let new_diags: Vec<_> = changes
+            let new_diags = changes
                 .into_iter()
                 .map(
                     |FixResult {
@@ -486,7 +488,7 @@ impl<'a> Lints<'a> {
                         Option<(
                             String,
                             FileId,
-                            Vec<diagnostics::Diagnostic>,
+                            LabeledDiagnostics<diagnostics::Diagnostic>,
                             Vec<ChangeRange>,
                         )>,
                     > {

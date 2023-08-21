@@ -33,10 +33,12 @@ use elp_syntax::ast;
 use elp_syntax::ast::edit::start_of_line;
 use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::ast::AstNode;
+use elp_syntax::ast::HasLabel;
 use elp_syntax::label::Label;
 use elp_syntax::Direction;
 use elp_syntax::NodeOrToken;
 use elp_syntax::Parse;
+use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
@@ -46,6 +48,7 @@ use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
 use hir::InFile;
 use hir::Semantic;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
@@ -112,6 +115,13 @@ impl Diagnostic {
     ) -> Diagnostic {
         self.related_info = related_info;
         self
+    }
+
+    pub(crate) fn as_related(&self) -> RelatedInformation {
+        RelatedInformation {
+            range: self.range,
+            message: self.message.clone(),
+        }
     }
 
     fn error(code: DiagnosticCode, range: TextRange, message: String) -> Self {
@@ -403,6 +413,15 @@ impl FromStr for DiagnosticCode {
         }
     }
 }
+impl From<&str> for DiagnosticCode {
+    fn from(str: &str) -> Self {
+        match DiagnosticCode::from_str(str) {
+            Ok(c) => c,
+            Err(err) => panic!("{err}"),
+        }
+    }
+}
+
 impl fmt::Display for DiagnosticCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_code())
@@ -444,12 +463,59 @@ impl<'a> DiagnosticsConfig<'a> {
     }
 }
 
+pub type Labeled<T> = FxHashMap<Option<Label>, Vec<T>>;
+
+#[derive(Debug, Default, Clone)]
+pub struct LabeledDiagnostics<D> {
+    pub normal: Vec<D>,
+    pub labeled: Labeled<D>,
+}
+
+impl<D> LabeledDiagnostics<D> {
+    pub fn default() -> LabeledDiagnostics<D> {
+        LabeledDiagnostics {
+            normal: vec![],
+            labeled: FxHashMap::default(),
+        }
+    }
+
+    pub fn new(diagnostics: Vec<D>) -> LabeledDiagnostics<D> {
+        LabeledDiagnostics {
+            normal: diagnostics,
+            labeled: FxHashMap::default(),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &D> + '_ {
+        self.normal.iter().chain(self.labeled.values().flatten())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.normal.is_empty() && self.labeled.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.normal.len() + self.labeled.len()
+    }
+
+    pub fn convert<T>(&self, convert: &dyn Fn(&D) -> T) -> LabeledDiagnostics<T> {
+        LabeledDiagnostics {
+            normal: self.normal.iter().map(convert).collect_vec(),
+            labeled: FxHashMap::from_iter(
+                self.labeled
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.iter().map(convert).collect_vec())),
+            ),
+        }
+    }
+}
+
 pub fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
     file_id: FileId,
     include_generated: bool,
-) -> Vec<Diagnostic> {
+) -> LabeledDiagnostics<Diagnostic> {
     lazy_static! {
         static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
     };
@@ -463,7 +529,7 @@ pub fn diagnostics(
 
     let mut res = Vec::new();
 
-    if report_diagnostics {
+    let syntax_errors_by_function = if report_diagnostics {
         let is_erl_module = file_kind == FileKind::Module;
         let sema = Semantic::new(db);
 
@@ -496,22 +562,69 @@ pub fn diagnostics(
         );
         syntax_diagnostics(db, &parse, &mut res, file_id);
 
-        res.extend(parse.errors().iter().take(128).map(|err| {
+        let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             Diagnostic::error(
                 DiagnosticCode::SyntaxError,
-                err.range(),
+                widen_range(err.range()),
                 format!("Syntax Error: {}", err),
             )
-        }));
-    }
+        });
+        let source_file = db.parse(file_id).tree();
+        group_syntax_errors(&source_file, parse_diagnostics)
+    } else {
+        FxHashMap::default()
+    };
     let line_index = db.file_line_index(file_id);
+    // TODO: can we  ever disable DiagnosticCode::SyntaxError?
+    //       In which case we must check syntax_errors_by_function
     res.retain(|d| {
         !config.disabled.contains(&d.code)
             && !(config.disable_experimental && d.has_category(Category::Experimental))
             && !d.should_be_ignored(&line_index, &parse.syntax_node())
     });
 
-    res
+    LabeledDiagnostics {
+        normal: res,
+        labeled: syntax_errors_by_function,
+    }
+}
+
+fn group_syntax_errors(
+    source_file: &SourceFile,
+    diagnostics: impl Iterator<Item = Diagnostic>,
+) -> Labeled<Diagnostic> {
+    let mut map: Labeled<Diagnostic> = FxHashMap::default();
+    diagnostics.for_each(|d| {
+        map.entry(function_label(&d, source_file))
+            .or_default()
+            .push(d);
+    });
+    map
+}
+
+fn function_label(d: &Diagnostic, source_file: &SourceFile) -> Option<Label> {
+    if d.code == DiagnosticCode::SyntaxError {
+        if let Some(syntax) = source_file
+            .syntax()
+            .token_at_offset(d.range.start())
+            .right_biased()
+            .and_then(|t| t.parent())
+        {
+            let fun_decl = syntax.ancestors().find_map(ast::FunDecl::cast)?;
+            let fun_label = fun_decl.label()?;
+            return Some(fun_label);
+        };
+    }
+    None
+}
+
+/// Promote a zero-width `TextRange` to have width one
+fn widen_range(range: TextRange) -> TextRange {
+    if range.start() == range.end() {
+        TextRange::new(range.start(), range.end() + TextSize::from(1))
+    } else {
+        range
+    }
 }
 
 pub fn semantic_diagnostics(
@@ -731,7 +844,7 @@ fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -
 pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
-) -> Vec<(FileId, Vec<Diagnostic>)> {
+) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry
     let format = erlang_service::Format::OffsetEtf;
 
@@ -798,7 +911,7 @@ pub fn erlang_service_diagnostics(
         .into_iter()
         .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
         .collect();
-    if diags.is_empty() {
+    let diags = if diags.is_empty() {
         // If there are no diagnostics reported, return an empty list
         // against the `file_id` to clear the list of diagnostics for
         // the file.
@@ -815,7 +928,33 @@ pub fn erlang_service_diagnostics(
             .into_iter()
             .map(|(file_id, ds)| (file_id, ds))
             .collect()
-    }
+    };
+    label_erlang_service_diagnostics(diags)
+}
+
+/// We label erlang service diagnostics with any references to
+/// undefined function or undefined spec.  This is so we can tie them
+/// up to ELP native parse errors occurring in a function that has the
+/// same label.
+fn label_erlang_service_diagnostics(
+    diagnostics: Vec<(FileId, Vec<Diagnostic>)>,
+) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
+    diagnostics
+        .into_iter()
+        .map(|(file_id, ds)| {
+            let mut labeled: Labeled<Diagnostic> = FxHashMap::default();
+            ds.into_iter().for_each(|d| {
+                labeled.entry(erlang_service_label(&d)).or_default().push(d);
+            });
+            (
+                file_id.clone(),
+                LabeledDiagnostics {
+                    normal: Vec::default(),
+                    labeled,
+                },
+            )
+        })
+        .collect_vec()
 }
 
 pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<Diagnostic>)> {
@@ -1075,6 +1214,78 @@ fn location_range(location: Location, line_index: &LineIndex) -> TextRange {
     }
 }
 
+/// Combine the ELP and erlang_service diagnostics.  In particular,
+/// flatten any cascading diagnostics if possible.
+pub fn attach_related_diagnostics(
+    native: LabeledDiagnostics<Diagnostic>,
+    erlang_service: &LabeledDiagnostics<Diagnostic>,
+) -> Vec<Diagnostic> {
+    // `native` is labelled with the MFA of functions having syntax
+    // errors in them. `erlang_service` is labelled with the MFA of
+    // undefined functions.  For each labeled one in `native`, add the
+    // corresponding ones from `erlang_service`, remember the label,
+    // and when done delete all `erlang_service` diagnostics with that
+    // label.
+
+    let mut to_remove: FxHashSet<&Option<Label>> = FxHashSet::default();
+    let updated = native
+        .labeled
+        .iter()
+        .flat_map(|(label, diags)| {
+            if let Some(related) = erlang_service.labeled.get(label) {
+                to_remove.insert(label);
+                let related_info = related.iter().map(|d| d.as_related()).collect_vec();
+                let updated = diags
+                    .iter()
+                    .map(|d| d.clone().with_related(Some(related_info.clone())))
+                    .collect_vec();
+                updated
+            } else {
+                diags.to_vec()
+            }
+        })
+        .collect_vec();
+
+    let mut es = erlang_service.labeled.clone();
+    es.retain(|k, _v| !to_remove.contains(k));
+
+    native
+        .normal
+        .into_iter()
+        .chain(updated)
+        .chain(erlang_service.normal.iter().cloned())
+        .chain(es.values().flatten().cloned())
+        .collect_vec()
+}
+
+fn erlang_service_label(diagnostic: &Diagnostic) -> Option<Label> {
+    match &diagnostic.code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "L1227" => {
+                function_undefined_from_message(&diagnostic.message).map(|l| Label::new_raw(l))
+            }
+            "L1308" => spec_for_undefined_function_from_message(&diagnostic.message)
+                .map(|l| Label::new_raw(l)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+pub fn function_undefined_from_message(s: &str) -> Option<String> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^function ([^\s]+) undefined$").unwrap();
+    }
+    RE.captures_iter(s).next().map(|c| c[1].to_string())
+}
+
+pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^spec for undefined function ([^\s]+)$").unwrap();
+    }
+    RE.captures_iter(s).next().map(|c| c[1].to_string())
+}
+
 // ---------------------------------------------------------------------
 
 // To run the tests via cargo
@@ -1089,6 +1300,7 @@ mod tests {
     use crate::codemod_helpers::MFA;
     use crate::tests::check_diagnostics;
     use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_diagnostics_with_config_and_extra;
 
     #[test]
     fn fun_decl_missing_semi_no_warning() {
@@ -1473,6 +1685,74 @@ baz(1)->4.
              %%^^^^^^^ 💡 warning: match is redundant
                ok.
              "#,
+        );
+    }
+
+    #[test]
+    fn group_related_diagnostics() {
+        let labeled = FxHashMap::from_iter([(
+            Some(Label::new_raw("foo/0")),
+            vec![
+                Diagnostic {
+                    message: "function foo/0 undefined".to_string(),
+                    range: TextRange::new(21.into(), 43.into()),
+                    severity: Severity::Error,
+                    categories: HashSet::default(),
+                    fixes: None,
+                    related_info: None,
+                    code: "L1227".into(),
+                },
+                Diagnostic {
+                    message: "function foo/0 undefined".to_string(),
+                    range: TextRange::new(74.into(), 79.into()),
+                    severity: Severity::Error,
+                    categories: HashSet::default(),
+                    fixes: None,
+                    related_info: None,
+                    code: "L1227".into(),
+                },
+                Diagnostic {
+                    message: "spec for undefined function foo/0".to_string(),
+                    range: TextRange::new(82.into(), 99.into()),
+                    severity: Severity::Error,
+                    categories: HashSet::default(),
+                    fixes: None,
+                    related_info: None,
+                    code: "L1308".into(),
+                },
+            ],
+        )]);
+        let extra_diags = LabeledDiagnostics {
+            normal: vec![Diagnostic {
+                message: "syntax error before: '->'".to_string(),
+                range: TextRange::new(106.into(), 108.into()),
+                severity: Severity::Error,
+                categories: HashSet::default(),
+                fixes: None,
+                related_info: None,
+                code: "P1711".into(),
+            }],
+            labeled,
+        };
+
+        let config =
+            DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        check_diagnostics_with_config_and_extra(
+            config,
+            &extra_diags,
+            r#"
+             -module(main).
+
+             -export([foo/0,bar/0]).
+
+             -spec bar() -> ok.
+             bar() -> foo().
+
+             -spec foo() -> ok.
+             foo( -> ok. %%
+             %%  ^ error: Syntax Error: Missing )
+             %%        ^^ error: syntax error before: '->'
+            "#,
         );
     }
 }

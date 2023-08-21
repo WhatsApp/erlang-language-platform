@@ -12,24 +12,34 @@
 use std::mem;
 use std::str::FromStr;
 
+use elp_ide::diagnostics;
+use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::LineIndex;
+use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use itertools::Itertools;
 use lsp_types::Diagnostic;
+use lsp_types::DiagnosticRelatedInformation;
+use lsp_types::Location;
+use lsp_types::Url;
+
+use crate::convert;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    pub(crate) native: FxHashMap<FileId, Vec<Diagnostic>>,
-    pub(crate) erlang_service: FxHashMap<FileId, Vec<Diagnostic>>,
+    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
 
 impl DiagnosticCollection {
-    pub fn set_native(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
-        if !are_all_diagnostics_equal(&self.native, file_id, &diagnostics) {
-            set_diagnostics(&mut self.native, file_id, diagnostics);
+    pub fn set_native(&mut self, file_id: FileId, diagnostics: LabeledDiagnostics<Diagnostic>) {
+        if !are_all_labeled_diagnostics_equal(&self.native, file_id, &diagnostics) {
+            set_labeled_diagnostics(&mut self.native, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
@@ -48,19 +58,28 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_erlang_service(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
-        if !are_all_diagnostics_equal(&self.erlang_service, file_id, &diagnostics) {
-            set_diagnostics(&mut self.erlang_service, file_id, diagnostics);
+    pub fn set_erlang_service(
+        &mut self,
+        file_id: FileId,
+        diagnostics: LabeledDiagnostics<Diagnostic>,
+    ) {
+        if !are_all_labeled_diagnostics_equal(&self.erlang_service, file_id, &diagnostics) {
+            set_labeled_diagnostics(&mut self.erlang_service, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
 
-    pub fn diagnostics_for(&self, file_id: FileId) -> impl Iterator<Item = &Diagnostic> {
-        let native = self.native.get(&file_id).into_iter().flatten();
-        let erlang_service = self.erlang_service.get(&file_id).into_iter().flatten();
-        let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten();
-        let edoc = self.edoc.get(&file_id).into_iter().flatten();
-        native.chain(erlang_service).chain(eqwalizer).chain(edoc)
+    pub fn diagnostics_for<'a>(&'a mut self, file_id: FileId, url: &'a Url) -> Vec<Diagnostic> {
+        let empty_diags = LabeledDiagnostics::default();
+        let native = self.native.get(&file_id).unwrap_or(&empty_diags);
+        let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
+        let mut combined = attach_related_diagnostics(url, native, erlang_service);
+
+        let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
+        let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
+        combined.extend(eqwalizer);
+        combined.extend(edoc);
+        combined
     }
 
     pub fn take_changes(&mut self) -> Option<FxHashSet<FileId>> {
@@ -85,6 +104,21 @@ fn are_all_diagnostics_equal(
             .all(|(left, right)| are_diagnostics_equal(left, right))
 }
 
+fn are_all_labeled_diagnostics_equal(
+    map: &FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    file_id: FileId,
+    new: &LabeledDiagnostics<Diagnostic>,
+) -> bool {
+    let empty_diags = LabeledDiagnostics::default();
+    let existing = map.get(&file_id).unwrap_or(&empty_diags);
+
+    existing.len() == new.len()
+        && new
+            .iter()
+            .zip(existing.iter())
+            .all(|(left, right)| are_diagnostics_equal(left, right))
+}
+
 fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
     left.source == right.source
         && left.severity == right.severity
@@ -96,6 +130,18 @@ fn set_diagnostics(
     map: &mut FxHashMap<FileId, Vec<Diagnostic>>,
     file_id: FileId,
     new: Vec<Diagnostic>,
+) {
+    if new.is_empty() {
+        map.remove(&file_id);
+    } else {
+        map.insert(file_id, new);
+    }
+}
+
+fn set_labeled_diagnostics(
+    map: &mut FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    file_id: FileId,
+    new: LabeledDiagnostics<Diagnostic>,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
@@ -120,46 +166,259 @@ impl FromStr for DiagnosticSource {
 }
 
 // ---------------------------------------------------------------------
+
+/// Combine the ELP and erlang_service diagnostics.  In particular,
+/// flatten any cascading diagnostics if possible.
+pub fn attach_related_diagnostics(
+    url: &Url,
+    native: &LabeledDiagnostics<lsp_types::Diagnostic>,
+    erlang_service: &LabeledDiagnostics<lsp_types::Diagnostic>,
+) -> Vec<lsp_types::Diagnostic> {
+    // `native` is labeled with the MFA of functions having syntax
+    // errors in them. `erlang_service` is labeled with the MFA of
+    // undefined functions.  For each labeled one in `native`, add the
+    // corresponding ones from `erlang_service`, remember the label,
+    // and when done delete all `erlang_service` diagnostics with that
+    // label.
+
+    // There is a many-to-many relationship between syntax errors and
+    // related info, because there can be more than one syntax error
+    // in a given function.  So we have to keep the original lookup
+    // intact, then remove ones that are used at least once at the
+    // end.
+    let mut to_remove: FxHashSet<&Option<Label>> = FxHashSet::default();
+    let updated = native
+        .labeled
+        .iter()
+        .flat_map(|(label, diags)| {
+            if let Some(related) = erlang_service.labeled.get(label) {
+                to_remove.insert(label);
+                let related_info = related.iter().map(|d| as_related(d, url)).collect_vec();
+                diags
+                    .iter()
+                    .map(|d| with_related(d.clone(), related_info.clone()))
+                    .collect_vec()
+            } else {
+                diags.to_vec()
+            }
+        })
+        .collect_vec();
+
+    let es = erlang_service
+        .labeled
+        .iter()
+        .filter(|(k, _)| !to_remove.contains(k))
+        .flat_map(|(_, v)| v)
+        .cloned();
+
+    native
+        .normal
+        .clone()
+        .into_iter()
+        .chain(updated)
+        .chain(erlang_service.normal.iter().cloned())
+        .chain(es)
+        .collect_vec()
+}
+
+// ---------------------------------------------------------------------
+
+fn with_related(
+    mut diagnostic: Diagnostic,
+    related: Vec<DiagnosticRelatedInformation>,
+) -> Diagnostic {
+    diagnostic.related_information = Some(related);
+    diagnostic
+}
+
+fn as_related(diagnostic: &Diagnostic, url: &Url) -> DiagnosticRelatedInformation {
+    DiagnosticRelatedInformation {
+        location: Location::new(url.clone(), diagnostic.range),
+        message: diagnostic.message.clone(),
+    }
+}
+
+// ---------------------------------------------------------------------
+
+pub fn convert_labeled(
+    diagnostics: &LabeledDiagnostics<diagnostics::Diagnostic>,
+    line_index: &LineIndex,
+    url: &Url,
+) -> LabeledDiagnostics<lsp_types::Diagnostic> {
+    let normal = diagnostics
+        .normal
+        .iter()
+        .map(|d| convert::ide_to_lsp_diagnostic(line_index, url, d))
+        .collect_vec();
+    let labeled = diagnostics
+        .labeled
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                v.iter()
+                    .map(|d| convert::ide_to_lsp_diagnostic(line_index, url, d))
+                    .collect_vec(),
+            )
+        })
+        .collect();
+    LabeledDiagnostics { normal, labeled }
+}
+
+// ---------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
 
+    use elp_ide::diagnostics;
+    use elp_ide::diagnostics::DiagnosticCode;
+    use elp_ide::diagnostics::DiagnosticsConfig;
+    use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
+    use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
+    use elp_ide::elp_ide_db::elp_base_db::FileLoader;
+    use elp_ide::elp_ide_db::LineIndexDatabase;
+    use elp_ide::elp_ide_db::RootDatabase;
+    use lsp_types::DiagnosticSeverity;
+    use lsp_types::NumberOrString;
+    use lsp_types::Position;
+    use lsp_types::Range;
+
     use super::*;
+    use crate::convert::ide_to_lsp_diagnostic;
+    use crate::from_proto;
 
     #[test]
     fn does_not_mark_change_from_empty_to_empty() {
+        let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
+        let (_db, file_id) = RootDatabase::with_single_file(
+            r#"
+            -module(test).
+            "#,
+        );
         let mut diagnostics = DiagnosticCollection::default();
-        let file_id = FileId(0);
 
         diagnostics.set_eqwalizer(file_id, vec![]);
-        diagnostics.set_native(file_id, vec![]);
+        diagnostics.set_native(file_id, LabeledDiagnostics::default());
 
         assert_eq!(diagnostics.take_changes(), None);
-        assert_eq!(diagnostics.diagnostics_for(file_id).next(), None);
+        assert_eq!(diagnostics.diagnostics_for(file_id, &url).len(), 0);
     }
 
     #[test]
     fn resets_diagnostics() {
+        let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
+        let (_db, file_id) = RootDatabase::with_single_file(
+            r#"
+            -module(test).
+            "#,
+        );
         let mut diagnostics = DiagnosticCollection::default();
-        let file_id = FileId(0);
 
         let diagnostic = Diagnostic::default();
 
         // Set some diagnostic initially
-        diagnostics.set_native(file_id, vec![diagnostic.clone()]);
+        diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![diagnostic.clone()]));
 
         let changes = diagnostics.take_changes();
         let mut expected_changes = FxHashSet::default();
         expected_changes.insert(file_id);
         assert_eq!(changes.as_ref(), Some(&expected_changes));
 
-        let stored = diagnostics.diagnostics_for(file_id).collect::<Vec<_>>();
-        assert_eq!(stored, vec![&diagnostic]);
+        let stored = diagnostics.diagnostics_for(file_id, &url);
+        assert_eq!(stored, vec![diagnostic]);
 
         // Reset to empty
-        diagnostics.set_native(file_id, vec![]);
+        diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![]));
 
         let changes = diagnostics.take_changes();
         assert_eq!(changes.as_ref(), Some(&expected_changes));
-        assert_eq!(diagnostics.diagnostics_for(file_id).next(), None);
+        assert_eq!(diagnostics.diagnostics_for(file_id, &url).len(), 0);
+    }
+
+    // -----------------------------------------------------------------
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics_with_config_and_extra(
+        config: DiagnosticsConfig,
+        extra_diags: &LabeledDiagnostics<Diagnostic>,
+        elp_fixture: &str,
+    ) {
+        let (db, files) = RootDatabase::with_many_files(elp_fixture);
+        let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
+        for file_id in files {
+            let line_index = db.file_line_index(file_id);
+            let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
+            let diagnostics = diagnostics.convert(&|d| ide_to_lsp_diagnostic(&line_index, &url, d));
+
+            let combined = attach_related_diagnostics(&url, &diagnostics, &extra_diags);
+            let expected = extract_annotations(&*db.file_text(file_id));
+            let mut actual = combined
+                .into_iter()
+                .map(|d| {
+                    let mut annotation = String::new();
+                    annotation.push_str(match d.severity {
+                        Some(DiagnosticSeverity::ERROR) => "error",
+                        Some(DiagnosticSeverity::WARNING) => "warning",
+                        Some(DiagnosticSeverity::INFORMATION) => "information",
+                        Some(DiagnosticSeverity::HINT) => "hint",
+                        _ => "unknown",
+                    });
+                    annotation.push_str(": ");
+                    annotation.push_str(&d.message);
+                    (from_proto::text_range(&line_index, d.range), annotation)
+                })
+                .collect::<Vec<_>>();
+            actual.sort_by_key(|(range, _)| range.start());
+            assert_eq!(expected, actual);
+        }
+    }
+
+    fn make_diag(message: &str, code: &str, line: u32, cols: u32, cole: u32) -> Diagnostic {
+        Diagnostic {
+            message: message.to_string(),
+            range: Range::new(Position::new(line, cols), Position::new(line, cole)),
+            severity: Some(DiagnosticSeverity::ERROR),
+            code: Some(NumberOrString::String(code.into())),
+            code_description: None,
+            source: None,
+            related_information: None,
+            tags: None,
+            data: None,
+        }
+    }
+
+    #[test]
+    fn group_related_diagnostics() {
+        let labeled = FxHashMap::from_iter([(
+            Some(Label::new_raw("foo/0")),
+            vec![
+                make_diag("function foo/0 undefined", "L1227", 3, 1, 2),
+                make_diag("function foo/0 undefined", "L1227", 3, 6, 7),
+                make_diag("spec for undefined function foo/0", "L1308", 8, 1, 2),
+            ],
+        )]);
+        let extra_diags = LabeledDiagnostics {
+            normal: vec![make_diag("syntax error before: '->'", "P1711", 8, 10, 12)],
+            labeled,
+        };
+
+        let config =
+            DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        check_diagnostics_with_config_and_extra(
+            config,
+            &extra_diags,
+            r#"
+             -module(main).
+
+             -export([foo/0,bar/0]).
+
+             -spec bar() -> ok.
+             bar() -> foo().
+
+             -spec foo() -> ok.
+             foo( -> ok. %%
+             %%  ^ error: Syntax Error: Missing )
+             %%        ^^ error: syntax error before: '->'
+            "#,
+        );
     }
 }

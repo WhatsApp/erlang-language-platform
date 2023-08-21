@@ -9,6 +9,8 @@
 
 //! See [`Label`]
 use std::fmt;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 /// A type to specify UI label, like an entry in the list of assists. Enforces
 /// proper casing:
@@ -16,9 +18,22 @@ use std::fmt;
 ///    Frobnicate bar
 ///
 /// Note the upper-case first letter and the absence of `.` at the end.
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub struct Label(String);
 
+// Explicit implementation otherwise clippy errors because of
+// explicit PartialEq implementations.
+impl Hash for Label {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl PartialEq for Label {
+    fn eq(&self, other: &Label) -> bool {
+        self.0 == other.0
+    }
+}
 impl PartialEq<str> for Label {
     fn eq(&self, other: &str) -> bool {
         self.0 == other
@@ -28,6 +43,12 @@ impl PartialEq<str> for Label {
 impl PartialEq<&'_ str> for Label {
     fn eq(&self, other: &&str) -> bool {
         self == *other
+    }
+}
+
+impl PartialEq<String> for Label {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == *other
     }
 }
 
@@ -41,6 +62,12 @@ impl Label {
     pub fn new(label: impl Into<String>) -> Label {
         let label = label.into();
         assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
+        Label(label)
+    }
+
+    // Used for ast::HasLabel trait
+    pub fn new_raw(label: impl Into<String>) -> Label {
+        let label = label.into();
         Label(label)
     }
 }

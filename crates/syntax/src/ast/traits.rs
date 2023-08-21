@@ -20,7 +20,7 @@ use crate::label::Label;
 pub trait HasLabel: AstNode {
     fn label(&self) -> Option<Label> {
         let name: ast::Name = support::child(self.syntax(), 0)?;
-        name.text().map(Label::new)
+        name.text().map(Label::new_raw)
     }
 }
 
@@ -28,22 +28,22 @@ impl HasLabel for ast::FunDecl {
     fn label(&self) -> Option<Label> {
         let name = self.name()?.text()?;
         let arity = self.arity_value()?;
-        Some(Label::new(format!("{}/{}", name, arity)))
+        Some(Label::new_raw(format!("{}/{}", name, arity)))
     }
 }
 impl HasLabel for ast::RecordDecl {}
 impl HasLabel for ast::TypeAlias {
     fn label(&self) -> Option<Label> {
-        self.name()?.name()?.text().map(Label::new)
+        self.name()?.name()?.text().map(Label::new_raw)
     }
 }
 impl HasLabel for ast::PpDefine {
     fn label(&self) -> Option<Label> {
         let name = self.name()?.text()?;
         if let Some(arity) = self.arity_value() {
-            Some(Label::new(format!("{}/{}", name, arity)))
+            Some(Label::new_raw(format!("{}/{}", name, arity)))
         } else {
-            Some(Label::new(name))
+            Some(Label::new_raw(name))
         }
     }
 }

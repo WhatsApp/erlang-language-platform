@@ -21,7 +21,9 @@ use elp_ide_db::RootDatabase;
 use fxhash::FxHashSet;
 
 use crate::diagnostics;
+use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::LabeledDiagnostics;
 use crate::diagnostics::Severity;
 use crate::fixture;
 use crate::Analysis;
@@ -56,8 +58,10 @@ fn check_nth_fix(nth: usize, fixture_before: &str, fixture_after: &str, config: 
 
     let (db, file_position) = RootDatabase::with_position(fixture_before);
     let diagnostic = diagnostics::diagnostics(&db, &config, file_position.file_id, true)
-        .pop()
-        .expect("no diagnostics");
+        .iter()
+        .last()
+        .expect("no diagnostics")
+        .clone();
     let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
@@ -87,10 +91,21 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
 
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
+    check_diagnostics_with_config_and_extra(config, &LabeledDiagnostics::default(), elp_fixture)
+}
+
+#[track_caller]
+pub(crate) fn check_diagnostics_with_config_and_extra(
+    config: DiagnosticsConfig,
+    extra_diags: &LabeledDiagnostics<Diagnostic>,
+    elp_fixture: &str,
+) {
     let (db, files) = RootDatabase::with_many_files(elp_fixture);
     for file_id in files {
         let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
+        let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
 
+        // diagnostics.extend(new_extra_diags.into_iter());
         let expected = extract_annotations(&*db.file_text(file_id));
         let mut actual = diagnostics
             .into_iter()

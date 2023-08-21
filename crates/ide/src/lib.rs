@@ -14,6 +14,7 @@ use anyhow::Result;
 use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
+use diagnostics::LabeledDiagnostics;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -202,7 +203,7 @@ impl Analysis {
         config: &DiagnosticsConfig,
         file_id: FileId,
         include_generated: bool,
-    ) -> Cancellable<Vec<Diagnostic>> {
+    ) -> Cancellable<LabeledDiagnostics<Diagnostic>> {
         self.with_db(|db| diagnostics::diagnostics(db, config, file_id, include_generated))
     }
 
@@ -232,7 +233,7 @@ impl Analysis {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
-    ) -> Cancellable<Vec<(FileId, Vec<Diagnostic>)>> {
+    ) -> Cancellable<Vec<(FileId, LabeledDiagnostics<Diagnostic>)>> {
         self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id))
     }
 
@@ -349,8 +350,9 @@ impl Analysis {
         self.with_db(|db| {
             let diagnostic_assists = if include_fixes {
                 diagnostics::diagnostics(db, diagnostics_config, frange.file_id, false)
-                    .into_iter()
-                    .flat_map(|it| it.fixes.unwrap_or_default())
+                    .iter()
+                    .filter_map(|it| it.fixes.clone())
+                    .flat_map(|it| it)
                     .filter(|it| it.target.intersect(frange.range).is_some())
                     .collect()
             } else {

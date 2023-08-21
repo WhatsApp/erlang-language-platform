@@ -380,6 +380,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_related(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "cascading",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_diagnostics_cascading.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_hrl(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp",],
