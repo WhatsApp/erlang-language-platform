@@ -24,7 +24,8 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
 pub(crate) fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) {
+    if sema.db.is_generated(file_id) || Some(true) == sema.db.is_test_suite_or_test_helper(file_id)
+    {
         return;
     }
     sema.def_map(file_id)
