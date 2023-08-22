@@ -1779,7 +1779,7 @@ impl Converter {
                     if let [v, t] = &vt.elements[..] {
                         if ty.name == "type"
                             && cs.name == "constraint"
-                            && self.convert_atom_lit(is_sub)? == *"is_subtype"
+                            && self.convert_atom_lit(is_sub)? == "is_subtype"
                         {
                             let location = self.convert_pos(pos)?;
                             let t_var = self.convert_varname(v)?;
