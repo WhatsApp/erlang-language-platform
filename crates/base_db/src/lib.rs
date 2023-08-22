@@ -211,11 +211,13 @@ fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
 }
 
 lazy_static! {
-static ref IGNORED_SOURCES: Vec<Regex> =
-    vec![
+static ref IGNORED_SOURCES: Vec<Regex> = {
+    let regexes: Vec<Vec<Regex>> = vec![
         //ignore sources goes here
         // @fb-only: meta_only::ignored_sources_regexes()
-    ].into_iter().flatten().collect::<Vec<Regex>>();
+    ];
+    regexes.into_iter().flatten().collect::<Vec<Regex>>()
+   };
 }
 
 fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
