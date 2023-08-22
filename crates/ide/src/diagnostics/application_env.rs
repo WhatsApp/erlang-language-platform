@@ -16,10 +16,12 @@ use elp_ide_db::elp_base_db::FileId;
 use hir::ExprId;
 use hir::FunctionDef;
 use hir::Semantic;
+use lazy_static::lazy_static;
 
 use super::Diagnostic;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
+// @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
@@ -31,7 +33,7 @@ pub(crate) fn application_env(diags: &mut Vec<Diagnostic>, sema: &Semantic, file
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct BadEnvCall {
+pub struct BadEnvCall {
     mfa: FunctionMatch,
     action: BadEnvCallAction,
 }
@@ -70,17 +72,20 @@ pub(crate) enum BadEnvCallAction {
 }
 
 pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    let bad_matches = vec![BadEnvCall::new(
-        "application",
-        "get_env",
-        vec![2, 3],
-        BadEnvCallAction::AppArg(0),
-    )]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>();
+    lazy_static! {
+        static ref BAD_MATCHES: Vec<BadEnvCall> = vec![BadEnvCall::new(
+            "application",
+            "get_env",
+            vec![2, 3],
+            BadEnvCallAction::AppArg(0)),
+            // @fb-only: diagnostics::meta_only::application_env_bad_matches(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    }
 
-    process_badmatches(diags, sema, def, &bad_matches);
+    process_badmatches(diags, sema, def, &BAD_MATCHES);
 }
 
 pub(crate) fn process_badmatches(
