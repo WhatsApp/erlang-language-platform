@@ -215,7 +215,7 @@ static ref IGNORED_SOURCES: Vec<Regex> =
     vec![
         //ignore sources goes here
         // @fb-only: meta_only::ignored_sources_regexes()
-    ].into_iter().flatten().collect();
+    ].into_iter().flatten().collect::<Vec<Regex>>();
 }
 
 fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
