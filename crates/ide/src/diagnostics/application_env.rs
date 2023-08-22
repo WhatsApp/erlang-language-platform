@@ -20,6 +20,7 @@ use lazy_static::lazy_static;
 
 use super::Diagnostic;
 use crate::codemod_helpers::find_call_in_function;
+use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 // @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
@@ -100,7 +101,9 @@ pub(crate) fn process_badmatches(
         sema,
         def,
         &mfas,
-        &move |_mfa, action, _target, args, def_fb| match action {
+        &move |CheckCallCtx {
+                   t, args, def_fb, ..
+               }: CheckCallCtx<'_, &BadEnvCallAction>| match t {
             BadEnvCallAction::AppArg(arg_index) => {
                 let arg = args.get(*arg_index)?;
                 check_valid_application(sema, def_fb, arg, def)

@@ -32,6 +32,7 @@ use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::statement_range;
 use crate::codemod_helpers::CheckCall;
+use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
@@ -50,7 +51,7 @@ pub fn replace_call_site(
 ) {
     replace_call_site_if_args_match(
         mfa,
-        &|_mfa, _, _target, _args, _def_fb| Some("".to_string()),
+        &|_ctx| Some("".to_string()),
         replacement,
         diagnostic_builder,
         acc,
@@ -381,7 +382,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 2,
                     }),
-                    &|_, _, _target, args, def_fb| match &def_fb[args[1]] {
+                    &|CheckCallCtx { args, def_fb, .. }: CheckCallCtx<()>| match def_fb[args[1]] {
                         Expr::Literal(Literal::Integer(42)) => Some("with 42".to_string()),
                         _ => None,
                     },

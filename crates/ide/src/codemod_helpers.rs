@@ -287,15 +287,17 @@ impl MFA {
     }
 }
 
+pub struct CheckCallCtx<'a, T> {
+    pub mfa: &'a FunctionMatch,
+    pub target: &'a CallTarget<ExprId>,
+    pub t: &'a T,
+    pub args: &'a [ExprId],
+    pub def_fb: &'a InFunctionBody<&'a FunctionDef>,
+}
+
 /// Check a specific call instance, and return the contents of a
 /// diagnostic if needed.
-pub type CheckCall<'a, T> = &'a dyn Fn(
-    &FunctionMatch,
-    &T,
-    &CallTarget<ExprId>,
-    &[ExprId],
-    &InFunctionBody<&FunctionDef>,
-) -> Option<String>;
+pub type CheckCall<'a, T> = &'a dyn Fn(CheckCallCtx<T>) -> Option<String>;
 
 pub(crate) fn find_call_in_function<T>(
     diags: &mut Vec<Diagnostic>,
@@ -321,7 +323,14 @@ pub(crate) fn find_call_in_function<T>(
         &mut |acc, _, ctx| {
             if let Expr::Call { target, args } = ctx.expr {
                 if let Some((mfa, t)) = matcher.get_match(&target, &args, sema, &def_fb.body()) {
-                    if let Some(match_descr) = check_call(mfa, t, &target, &args, &def_fb) {
+                    let context = CheckCallCtx {
+                        mfa,
+                        t,
+                        target: &target,
+                        args: &args,
+                        def_fb: &def_fb,
+                    };
+                    if let Some(match_descr) = check_call(context) {
                         // Got one.
                         let call_expr_id = if let Some(expr_id) = ctx.in_macro {
                             expr_id
@@ -401,7 +410,7 @@ mod tests {
             sema,
             def,
             &mfas,
-            &move |_mfa, _, _target, _args, _def_fb| Some("Diagnostic Message".to_string()),
+            &move |_ctx| Some("Diagnostic Message".to_string()),
             move |_sema, def_fb, __target, _args, extra_info, range| {
                 let diag = Diagnostic::new(
                     DiagnosticCode::AdHoc("test".to_string()),
