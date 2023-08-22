@@ -20,6 +20,7 @@ use lazy_static::lazy_static;
 use super::Diagnostic;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
+// @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
@@ -48,6 +49,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
             FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]),
             FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]),
             FunctionMatch::mfas("sys", "install", vec![2, 3]),
+            // @fb-only: diagnostics::meta_only::cross_node_eval_bad_matches(),
         ]
         .into_iter()
         .flatten()
