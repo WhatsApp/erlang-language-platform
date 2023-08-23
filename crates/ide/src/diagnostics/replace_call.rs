@@ -32,7 +32,6 @@ use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::statement_range;
 use crate::codemod_helpers::CheckCall;
-use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
@@ -276,6 +275,7 @@ mod tests {
     use hir::Literal;
 
     use super::*;
+    use crate::codemod_helpers::CheckCallCtx;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
     use crate::DiagnosticsConfig;
