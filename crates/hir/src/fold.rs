@@ -83,6 +83,9 @@ pub struct FoldCtx<'a, T> {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Strategy {
+    /// Fold over HIR, but do not call back for macro expansions, only
+    /// their arguments.
+    SurfaceOnly,
     TopDown,
     BottomUp,
     Both,
@@ -185,7 +188,9 @@ impl<'a, T> FoldCtx<'a, T> {
             expr: expr.clone(),
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.for_expr)(initial, ctx),
+            Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
+                (self.for_expr)(initial, ctx)
+            }
             _ => initial,
         };
         let r = match expr {
@@ -248,10 +253,15 @@ impl<'a, T> FoldCtx<'a, T> {
                 })
             }
             crate::Expr::Catch { expr } => self.do_fold_expr(*expr, acc),
-            crate::Expr::MacroCall { expansion, args: _ } => {
-                self.macro_stack.push(expr_id);
-                let r = self.do_fold_expr(*expansion, acc);
-                self.macro_stack.pop();
+            crate::Expr::MacroCall { expansion, args } => {
+                let r = if self.strategy == Strategy::SurfaceOnly {
+                    self.fold_exprs(args, acc)
+                } else {
+                    self.macro_stack.push(expr_id);
+                    let e = self.do_fold_expr(*expansion, acc);
+                    self.macro_stack.pop();
+                    e
+                };
                 r
             }
             crate::Expr::Call { target, args } => {
@@ -801,6 +811,7 @@ bar() ->
     #[track_caller]
     fn check_macros(
         with_macros: WithMacros,
+        strategy: Strategy,
         fixture_str: &str,
         tree_expect: Expect,
         r_expect: Expect,
@@ -830,7 +841,7 @@ bar() ->
         };
         let r = FoldCtx::fold_expr_foldbody(
             &fold_body,
-            Strategy::TopDown,
+            strategy,
             compiler_options.clauses[idx].exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.expr {
@@ -857,9 +868,10 @@ bar() ->
     }
 
     #[test]
-    fn macro_aware() {
+    fn macro_aware_full_traversal() {
         check_macros(
             WithMacros::Yes,
+            Strategy::TopDown,
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -895,9 +907,49 @@ bar() ->
     }
 
     #[test]
+    fn macro_aware_surface_traversal() {
+        check_macros(
+            WithMacros::Yes,
+            Strategy::SurfaceOnly,
+            r#"
+             -define(AA(X), {X,foo}).
+             bar() ->
+               begin %% clause.exprs[0]
+                 ?AA(f~oo),
+                 {foo}
+               end.
+            "#,
+            expect![[r#"
+
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr::Block {
+                        Expr::Tuple {
+                            Literal(Atom('foo')),
+                            Literal(Atom('foo')),
+                        },
+                        Expr::Tuple {
+                            Literal(Atom('foo')),
+                        },
+                    },
+            }.
+        "#]],
+            expect![[r#"
+            (
+                0,
+                2,
+            )
+        "#]],
+        )
+    }
+
+    #[test]
     fn ignore_macros() {
         check_macros(
             WithMacros::No,
+            Strategy::TopDown,
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
