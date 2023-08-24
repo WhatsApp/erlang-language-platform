@@ -397,7 +397,7 @@ struct ModuleConfig {
     modules: Vec<String>,
 }
 
-const MODULES_TILE: &str = ".modules.toml";
+const MODULES_FILE: &str = ".modules.toml";
 
 #[allow(clippy::ptr_arg)]
 fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
@@ -405,7 +405,7 @@ fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
     let curr = env::current_dir().unwrap();
     let mut potential_path = Some(curr.as_path());
     while let Some(path) = potential_path {
-        let file_path = path.join(MODULES_TILE);
+        let file_path = path.join(MODULES_FILE);
 
         if !file_path.is_file() {
             potential_path = path.parent();
