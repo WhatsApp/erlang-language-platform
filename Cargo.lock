@@ -472,12 +472,14 @@ dependencies = [
  "log",
  "profile",
  "regex",
+ "serde",
  "smallvec",
  "stdx",
  "strsim",
  "strum",
  "strum_macros",
  "text-edit",
+ "toml",
  "triple_accel",
 ]
 

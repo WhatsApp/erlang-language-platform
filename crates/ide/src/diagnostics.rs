@@ -51,6 +51,9 @@ use hir::Semantic;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::de;
+use serde::Deserialize;
+use serde::Deserializer;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use text_edit::TextEdit;
@@ -290,6 +293,25 @@ pub enum DiagnosticCode {
     AdHoc(String),
     // @fb-only: MetaOnly(MetaOnlyDiagnosticCode),
     DependentHeader,
+}
+
+impl<'de> Deserialize<'de> for DiagnosticCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(de::Error::custom)
+    }
+}
+
+impl serde::Serialize for DiagnosticCode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_code().as_str())
+    }
 }
 
 impl Default for DiagnosticCode {
@@ -1754,5 +1776,43 @@ baz(1)->4.
              %%        ^^ error: syntax error before: '->'
             "#,
         );
+    }
+
+    #[test]
+    fn serde_serialize_diagnostic_code() {
+        assert_eq!(
+            toml::to_string::<DiagnosticCode>(&DiagnosticCode::CrossNodeEval),
+            Ok("\"W0014\"".to_string())
+        );
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct Config {
+        #[allow(dead_code)]
+        enabled: DiagnosticCode,
+    }
+
+    #[test]
+    fn serde_deserialize_diagnostic_code_1() {
+        let config: Config = toml::from_str(r#"enabled = 'W0014'"#).unwrap();
+
+        expect![[r#"
+            Config {
+                enabled: CrossNodeEval,
+            }
+        "#]]
+        .assert_debug_eq(&config);
+    }
+
+    #[test]
+    fn serde_deserialize_diagnostic_code_2() {
+        let config: Config = toml::from_str(r#"enabled = 'cross_node_eval'"#).unwrap();
+
+        expect![[r#"
+            Config {
+                enabled: CrossNodeEval,
+            }
+        "#]]
+        .assert_debug_eq(&config);
     }
 }
