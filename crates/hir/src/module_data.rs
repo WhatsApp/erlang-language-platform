@@ -21,6 +21,7 @@ use elp_syntax::SyntaxNode;
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
 use crate::edoc::EdocHeader;
+use crate::form_list::DeprecatedDesc;
 use crate::Callback;
 use crate::DefMap;
 use crate::Define;
@@ -98,6 +99,7 @@ pub struct FunctionDef {
     pub file: File,
     pub exported: bool,
     pub deprecated: bool,
+    pub deprecated_desc: Option<DeprecatedDesc>,
     pub function: Function,
     pub function_id: FunctionId,
 }

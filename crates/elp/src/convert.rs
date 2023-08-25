@@ -67,11 +67,18 @@ pub fn ide_to_lsp_diagnostic(
     url: &Url,
     d: &Diagnostic,
 ) -> lsp_types::Diagnostic {
+    let code_description = match &d.uri {
+        Some(uri) => match lsp_types::Url::parse(uri) {
+            Ok(href) => Some(lsp_types::CodeDescription { href }),
+            Err(_) => None,
+        },
+        None => None,
+    };
     lsp_types::Diagnostic {
         range: range(line_index, d.range),
         severity: Some(diagnostic_severity(d.severity)),
         code: Some(lsp_types::NumberOrString::String(d.code.to_string())),
-        code_description: None,
+        code_description,
         source: Some("elp".into()),
         message: d.message.clone(),
         related_information: from_related(line_index, url, &d.related_info),

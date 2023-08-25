@@ -28,6 +28,7 @@ use profile::Count;
 
 use crate::db::MinDefDatabase;
 use crate::form_list::DeprecatedAttribute;
+use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
 use crate::known;
 use crate::module_data::SpecDef;
@@ -69,8 +70,8 @@ pub struct DefMap {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Deprecated {
     all: bool,
-    functions: FxHashSet<Name>,
-    fa: FxHashSet<NameArity>,
+    functions: FxHashMap<Name, Option<DeprecatedDesc>>,
+    fa: FxHashMap<NameArity, Option<DeprecatedDesc>>,
 }
 
 impl Deprecated {
@@ -78,13 +79,23 @@ impl Deprecated {
         if self.all {
             return true;
         }
-        if self.functions.contains(fa.name()) {
+        if self.functions.contains_key(fa.name()) {
             return true;
         }
-        if self.fa.contains(fa) {
+        if self.fa.contains_key(fa) {
             return true;
         }
         false
+    }
+
+    fn deprecation_desc(&self, fa: &NameArity) -> Option<DeprecatedDesc> {
+        if let Some(desc) = self.functions.get(fa.name()) {
+            return desc.clone();
+        }
+        if let Some(desc) = self.fa.get(fa) {
+            return desc.clone();
+        }
+        None
     }
 
     fn shrink_to_fit(&mut self) {
@@ -115,6 +126,7 @@ impl DefMap {
                             file,
                             exported: false,
                             deprecated: false,
+                            deprecated_desc: None,
                             function,
                             function_id: idx,
                         },
@@ -254,12 +266,13 @@ impl DefMap {
         if fa.name == "_" {
             def_map.deprecated.all = true;
         }
+        let desc = fa.desc.clone();
         match fa.arity {
             Some(arity) => def_map
                 .deprecated
                 .fa
-                .insert(NameArity::new(fa.name.clone(), arity)),
-            None => def_map.deprecated.functions.insert(fa.name.clone()),
+                .insert(NameArity::new(fa.name.clone(), arity), desc),
+            None => def_map.deprecated.functions.insert(fa.name.clone(), desc),
         };
     }
 
@@ -464,12 +477,20 @@ impl DefMap {
                 .map(|(name, def)| (name.clone(), def.clone())),
         );
         self.deprecated.all |= other.deprecated.all;
-        self.deprecated
-            .functions
-            .extend(other.deprecated.functions.iter().cloned());
-        self.deprecated
-            .fa
-            .extend(other.deprecated.fa.iter().cloned());
+        self.deprecated.functions.extend(
+            other
+                .deprecated
+                .functions
+                .iter()
+                .map(|(name, desc)| (name.clone(), desc.clone())),
+        );
+        self.deprecated.fa.extend(
+            other
+                .deprecated
+                .fa
+                .iter()
+                .map(|(name, desc)| (name.clone(), desc.clone())),
+        );
     }
 
     fn fixup_exports(&mut self) {
@@ -488,7 +509,11 @@ impl DefMap {
 
     fn fixup_deprecated(&mut self) {
         for (name, fun_def) in self.functions.iter_mut() {
-            fun_def.deprecated |= self.deprecated.is_deprecated(name)
+            let is_deprecated = self.deprecated.is_deprecated(name);
+            fun_def.deprecated |= is_deprecated;
+            if is_deprecated {
+                fun_def.deprecated_desc = self.deprecated.deprecation_desc(name);
+            }
         }
     }
 

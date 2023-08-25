@@ -153,14 +153,14 @@ fn is_definition<D, R>(def: hir::DefinitionOrReference<D, R>) -> bool {
 }
 
 #[derive(Debug, Clone)]
-struct FunctionMatcher<'a, T> {
+pub struct FunctionMatcher<'a, T> {
     labels_full: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_mf: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_m: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
 }
 
 impl<'a, T> FunctionMatcher<'a, T> {
-    fn new(call: &'a [(&'a FunctionMatch, T)]) -> FunctionMatcher<'a, T> {
+    pub fn new(call: &'a [(&'a FunctionMatch, T)]) -> FunctionMatcher<'a, T> {
         let mut labels_full: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> =
             FxHashMap::default();
         let mut labels_mf: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
@@ -189,7 +189,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
         }
     }
 
-    fn get_match(
+    pub fn get_match(
         &self,
         target: &CallTarget<ExprId>,
         args: &Vec<ExprId>,

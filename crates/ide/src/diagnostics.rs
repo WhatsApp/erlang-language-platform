@@ -66,6 +66,7 @@ use crate::SourceDatabase;
 mod application_env;
 mod cross_node_eval;
 mod dependent_header;
+mod deprecated_function;
 mod effect_free_statement;
 mod head_mismatch;
 // @fb-only: mod meta_only;
@@ -92,6 +93,7 @@ pub struct Diagnostic {
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
+    pub uri: Option<String>,
 }
 
 impl Diagnostic {
@@ -109,6 +111,7 @@ impl Diagnostic {
             categories: HashSet::new(),
             fixes: None,
             related_info: None,
+            uri: None,
         }
     }
 
@@ -137,6 +140,11 @@ impl Diagnostic {
 
     pub(crate) fn severity(mut self, severity: Severity) -> Diagnostic {
         self.severity = severity;
+        self
+    }
+
+    pub(crate) fn with_uri(mut self, uri: Option<String>) -> Diagnostic {
+        self.uri = uri;
         self
     }
 
@@ -286,13 +294,14 @@ pub enum DiagnosticCode {
     MissingCompileWarnMissingSpec,
     MisspelledAttribute,
     CrossNodeEval,
+    DependentHeader,
+    DeprecatedFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
     // Used for ad-hoc diagnostics via lints/codemods
     AdHoc(String),
     // @fb-only: MetaOnly(MetaOnlyDiagnosticCode),
-    DependentHeader,
 }
 
 impl<'de> Deserialize<'de> for DiagnosticCode {
@@ -344,6 +353,7 @@ impl DiagnosticCode {
             DiagnosticCode::MisspelledAttribute => "W0013".to_string(), // misspelled-attribute
             DiagnosticCode::CrossNodeEval => "W0014".to_string(),       // cross-node-eval
             DiagnosticCode::DependentHeader => "W0015".to_string(),     // dependent-header
+            DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
@@ -376,6 +386,7 @@ impl DiagnosticCode {
             DiagnosticCode::MisspelledAttribute => "misspelled_attribute".to_string(),
             DiagnosticCode::CrossNodeEval => "cross_node_eval".to_string(),
             DiagnosticCode::DependentHeader => "dependent_header".to_string(),
+            DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
@@ -671,6 +682,7 @@ pub fn semantic_diagnostics(
     missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
     cross_node_eval::cross_node_eval(res, sema, file_id);
     dependent_header::dependent_header(res, sema, file_id, file_kind);
+    deprecated_function::deprecated_function(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(
@@ -703,6 +715,7 @@ fn no_module_definition_diagnostic(
             fixes: None,
             related_info: None,
             code: DiagnosticCode::MissingModule,
+            uri: None,
         });
     };
     for form in parse.tree().forms() {
@@ -860,6 +873,7 @@ fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -
         fixes: None,
         related_info: None,
         code: DiagnosticCode::Missing(code),
+        uri: None,
     }
 }
 
@@ -1723,6 +1737,7 @@ baz(1)->4.
                     fixes: None,
                     related_info: None,
                     code: "L1227".into(),
+                    uri: None,
                 },
                 Diagnostic {
                     message: "function foo/0 undefined".to_string(),
@@ -1732,6 +1747,7 @@ baz(1)->4.
                     fixes: None,
                     related_info: None,
                     code: "L1227".into(),
+                    uri: None,
                 },
                 Diagnostic {
                     message: "spec for undefined function foo/0".to_string(),
@@ -1741,6 +1757,7 @@ baz(1)->4.
                     fixes: None,
                     related_info: None,
                     code: "L1308".into(),
+                    uri: None,
                 },
             ],
         )]);
@@ -1753,6 +1770,7 @@ baz(1)->4.
                 fixes: None,
                 related_info: None,
                 code: "P1711".into(),
+                uri: None,
             }],
             labeled,
         };
