@@ -236,6 +236,8 @@ pub struct Lint {
     /// Filter out all reported diagnostics after this line. Valid only for single file
     #[bpaf(argument("LINE_TO"))]
     pub line_to: Option<u32>,
+    /// Get some configuration from a .elp_lint.toml file instead in the project root
+    pub read_config: bool,
     /// Rest of args are space separated list of apps to ignore
     #[bpaf(positional("IGNORED_APPS"))]
     pub ignore_apps: Vec<String>,

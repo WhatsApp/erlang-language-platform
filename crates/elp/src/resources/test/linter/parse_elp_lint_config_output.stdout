@@ -1,0 +1,11 @@
+Diagnostics reported in 4 modules:
+  app_a: 3
+      8:5-8:6::[Warning] [W0010] this variable is unused
+      4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
+      8:0-8:4::[Error] [P1700] head mismatch 'fooX' vs 'food'
+  app_a_unused_param: 1
+      4:4-4:5::[Warning] [W0010] this variable is unused
+  app_b: 1
+      4:4-4:34::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
+  app_b_unused_param: 1
+      4:4-4:5::[Warning] [W0010] this variable is unused

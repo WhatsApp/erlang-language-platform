@@ -24,6 +24,7 @@ use elp::convert;
 use elp::document::Document;
 use elp::otp_file_to_ignore;
 use elp_ide::diagnostics;
+use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diff::diff_from_textedit;
@@ -48,6 +49,8 @@ use fxhash::FxHashSet;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::args::Lint;
 use crate::reporting;
@@ -145,6 +148,14 @@ fn do_parse_one(
 
 // ---------------------------------------------------------------------
 
+/// Configuration file format for lints. Deserialized from .toml
+/// initially.  But could by anything supported by serde.
+#[derive(Deserialize, Serialize, Default, Debug)]
+struct LintConfig {
+    enabled_lints: Vec<DiagnosticCode>,
+    disabled_lints: Vec<DiagnosticCode>,
+}
+
 pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Result<()> {
     // First check if we are doing a codemod. We need to have a whole
     // bunch of args set
@@ -152,14 +163,44 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
         Lint {
             recursive,
             in_place,
-            diagnostic_filter: Some(diagnostic_filter),
+            diagnostic_filter,
             line_from,
             line_to,
             ignore_apps,
+            read_config,
+            project,
             ..
         } => {
+            let cfg_from_file = if *read_config {
+                config_file(project)
+            } else {
+                LintConfig::default()
+            };
+            let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = cfg_from_file
+                .enabled_lints
+                .into_iter()
+                .collect::<FxHashSet<_>>();
+            let mut disabled_diagnostics: FxHashSet<DiagnosticCode> =
+                cfg_from_file.disabled_lints.into_iter().collect();
+
+            if let Some(diagnostic_filter) = diagnostic_filter {
+                let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
+                // Make sure we do not mask the one we explicitly asked for
+                disabled_diagnostics.remove(&diagnostic_filter);
+
+                allowed_diagnostics.insert(diagnostic_filter);
+            }
+
+            // Make sure the enabled ones win out over disabled if a lint appears in both
+            disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
+
+            if allowed_diagnostics.is_empty() {
+                bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
+            }
+
             let mut cfg = DiagnosticsConfig::default();
             cfg.disable_experimental = args.experimental_diags;
+            cfg.disabled = disabled_diagnostics;
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;
             let mut diags = {
@@ -226,7 +267,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                 filter_diagnostics(
                     &analysis,
                     &args.module,
-                    Some(diagnostic_filter),
+                    Some(&allowed_diagnostics),
                     *line_from,
                     *line_to,
                     &res,
@@ -306,8 +347,29 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             }
             Ok(())
         }
-        _ => bail!("Expecting --diagnostic-filter"),
     }
+}
+
+const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
+
+fn config_file(project: &PathBuf) -> LintConfig {
+    let mut potential_path = Some(project.as_path());
+    while let Some(path) = potential_path {
+        let file_path = path.join(LINT_CONFIG_FILE);
+
+        if !file_path.is_file() {
+            potential_path = path.parent();
+            continue;
+        } else {
+            if let Ok(content) = fs::read_to_string(file_path) {
+                if let Ok(config) = toml::from_str::<LintConfig>(&content) {
+                    return config;
+                }
+            }
+        }
+        break;
+    }
+    LintConfig::default()
 }
 
 fn print_diagnostic(
@@ -344,7 +406,7 @@ fn print_diagnostic_json(
 fn filter_diagnostics<'a>(
     db: &Analysis,
     module: &'a Option<String>,
-    diagnostic_code: Option<&'a String>,
+    allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
     line_from: Option<u32>,
     line_to: Option<u32>,
     diags: &'a [(
@@ -366,7 +428,7 @@ fn filter_diagnostics<'a>(
                     .filter(|d| {
                         let range = convert::range(&line_index, d.range);
                         let line = range.start.line;
-                        diagnostic_is_allowed(d, diagnostic_code)
+                        diagnostic_is_allowed(d, allowed_diagnostics)
                             && check(&line_from, |l| &line >= l)
                             && check(&line_to, |l| &line <= l)
                             && check_changes(&changes, line)
@@ -385,9 +447,12 @@ fn filter_diagnostics<'a>(
         .collect::<Vec<_>>())
 }
 
-fn diagnostic_is_allowed(d: &diagnostics::Diagnostic, diagnostic_code: Option<&String>) -> bool {
-    if diagnostic_code.is_some() {
-        Some(&d.code.to_string()) == diagnostic_code
+fn diagnostic_is_allowed(
+    d: &diagnostics::Diagnostic,
+    diagnostic_code: Option<&FxHashSet<DiagnosticCode>>,
+) -> bool {
+    if let Some(allowed_codes) = diagnostic_code {
+        allowed_codes.contains(&d.code)
     } else {
         d.has_category(diagnostics::Category::SimplificationRule)
     }
@@ -659,4 +724,32 @@ fn form_range_from_diff(
     let start_line = line_index.line_col(range.start()).line;
     let end_line = line_index.line_col(range.end()).line;
     Some((start_line, end_line))
+}
+
+#[cfg(test)]
+mod tests {
+    use expect_test::expect;
+
+    use super::LintConfig;
+
+    #[test]
+    fn serde_deserialize_lint_config() {
+        let lint_config: LintConfig = toml::from_str(
+            r#"enabled_lints =['W0014', 'trivial_match']
+               disabled_lints = []
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            LintConfig {
+                enabled_lints: [
+                    CrossNodeEval,
+                    TrivialMatch,
+                ],
+                disabled_lints: [],
+            }
+        "#]]
+        .assert_debug_eq(&lint_config);
+    }
 }

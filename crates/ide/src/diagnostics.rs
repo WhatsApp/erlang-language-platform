@@ -462,7 +462,7 @@ impl<F> AdhocSemanticDiagnostics for F where
 #[derive(Default, Clone)]
 pub struct DiagnosticsConfig<'a> {
     pub disable_experimental: bool,
-    disabled: FxHashSet<DiagnosticCode>,
+    pub disabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
 }
 

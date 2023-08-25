@@ -557,6 +557,48 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_config_file_used(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--diagnostic-filter",
+                "W0010",
+                "--experimental",
+                "--read-config"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_config_output.stdout"),
+            101,
+            buck,
+            None,
+            &tmp_path,
+            Path::new("../resources/test/lint/lint_recursive"),
+            &[],
+            false,
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_no_diagnostics_enabled(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        simple_snapshot_expect_stderror(
+            args_vec!["lint", "--experimental",],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_no_lint_output.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_json_output(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
@@ -779,6 +821,28 @@ mod tests {
                 code, stdout, stderr
             );
             assert_normalised_file(expected, &stdout, path);
+        }
+    }
+
+    fn simple_snapshot_expect_stderror(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        buck: bool,
+        file: Option<&str>,
+    ) {
+        if !buck || cfg!(feature = "buck") {
+            let (mut args, path) = add_project(args, project, file);
+            if !buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, 101,
+                "Expected exit code 101, got: {}\nstdout:\n{}\nstderr:\n{}",
+                code, stdout, stderr
+            );
+            assert_normalised_file(expected, &stderr, path);
         }
     }
 
