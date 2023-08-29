@@ -40,6 +40,7 @@ pub struct DeprecationDetails {
     message: Option<String>,
 }
 
+// @oss-only #[allow(dead_code)]
 impl DeprecationDetails {
     pub fn new() -> Self {
         DeprecationDetails {
@@ -72,7 +73,7 @@ pub(crate) fn deprecated_function(
 ) {
     lazy_static! {
         static ref DEPRECATED_FUNCTIONS: Vec<(FunctionMatch, DeprecationDetails)> = {
-            let matches = vec![
+            let matches: Vec<Vec<(FunctionMatch, DeprecationDetails)>>  = vec![
                 // @fb-only: diagnostics::meta_only::deprecated_function_matches(),
             ];
             matches.into_iter()
