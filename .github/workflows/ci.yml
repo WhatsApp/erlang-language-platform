@@ -56,6 +56,26 @@ jobs:
         with:
           name: eqwalizer.jar
           path: eqwalizer/eqwalizer/target/scala-2.13/eqwalizer.jar
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - name: Upload Extension
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: elp-linux-${{ matrix.otp }}.vsix
+          path: editors/code/erlang-language-platform-*.vsix
   macos-ci:
     needs:
       - linux-ci
@@ -95,6 +115,26 @@ jobs:
         run: "export PATH=$GITHUB_WORKSPACE/rebar3:/usr/local/opt/${{matrix.brew_erlang}}/bin:$PATH ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace"
       - name: Assemble elp
         run: "export PATH=$GITHUB_WORKSPACE/rebar3:/usr/local/opt/${{matrix.brew_erlang}}/bin:$PATH ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - name: Upload Extension
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: elp-macos-otp-25.vsix
+          path: editors/code/erlang-language-platform-*.vsix
 name: erlang-language-platform CI
 on:
   push: {}

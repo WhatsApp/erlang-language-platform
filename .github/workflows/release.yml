@@ -73,6 +73,33 @@ jobs:
           asset_name: elp-linux.tar.gz
           asset_path: elp-linux.tar.gz
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload Extension Package
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-linux-otp-25.vsix
+          asset_path: editors/code/erlang-language-platform-*.vsix
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Publish extension to marketplace
+        working-directory: editors/code
+        run: vsce publish -p ${{ secrets.VSCE_PAT }}
   linux-release-otp-23:
     needs:
       - linux-release-otp-25
@@ -138,6 +165,30 @@ jobs:
           asset_name: elp-linux-otp-23.tar.gz
           asset_path: elp-linux-otp-23.tar.gz
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload Extension Package
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-linux-otp-23.vsix
+          asset_path: editors/code/erlang-language-platform-*.vsix
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
   macos-release-otp-25:
     needs:
       - linux-release-otp-25
@@ -190,6 +241,30 @@ jobs:
           asset_name: elp-macos.tar.gz
           asset_path: elp-macos.tar.gz
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload Extension Package
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-macos-otp-25.vsix
+          asset_path: editors/code/erlang-language-platform-*.vsix
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
   macos-release-otp-23:
     needs:
       - linux-release-otp-25
@@ -241,6 +316,30 @@ jobs:
           asset_content_type: application/octet-stream
           asset_name: elp-macos-otp-23.tar.gz
           asset_path: elp-macos-otp-23.tar.gz
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload Extension Package
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-macos-otp-23.vsix
+          asset_path: editors/code/erlang-language-platform-*.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
 name: erlang-language-platform release
 on:

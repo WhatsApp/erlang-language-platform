@@ -3,7 +3,7 @@
 	"description": "Erlang language server",
 	"author": "Meta Platforms, Inc",
 	"license": "Apache2",
-	"version": "1.0.0",
+	"version": "0.3.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/WhatsApp/erlang-language-platform"
