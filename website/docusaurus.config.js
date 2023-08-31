@@ -75,6 +75,12 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
             label: 'Erlang Error Index',
           },
           {
+            type: 'doc',
+            docId: 'contributing/contributing',
+            position: 'left',
+            label: 'Contributing',
+          },
+          {
             href: 'https://github.com/whatsapp/erlang-language-platform',
             label: 'GitHub',
             position: 'right',
