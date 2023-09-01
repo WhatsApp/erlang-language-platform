@@ -88,6 +88,8 @@ jobs:
       - name: Package Extension
         working-directory: editors/code
         run: vsce package
+      - name: Rename Package
+        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
@@ -95,7 +97,7 @@ jobs:
         with:
           asset_content_type: application/octet-stream
           asset_name: elp-linux-otp-25.vsix
-          asset_path: editors/code/erlang-language-platform-*.vsix
+          asset_path: editors/code/erlang-language-platform.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Publish extension to marketplace
         working-directory: editors/code
@@ -180,6 +182,8 @@ jobs:
       - name: Package Extension
         working-directory: editors/code
         run: vsce package
+      - name: Rename Package
+        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
@@ -187,7 +191,7 @@ jobs:
         with:
           asset_content_type: application/octet-stream
           asset_name: elp-linux-otp-23.vsix
-          asset_path: editors/code/erlang-language-platform-*.vsix
+          asset_path: editors/code/erlang-language-platform.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
   macos-release-otp-25:
     needs:
@@ -256,6 +260,8 @@ jobs:
       - name: Package Extension
         working-directory: editors/code
         run: vsce package
+      - name: Rename Package
+        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
@@ -263,7 +269,7 @@ jobs:
         with:
           asset_content_type: application/octet-stream
           asset_name: elp-macos-otp-25.vsix
-          asset_path: editors/code/erlang-language-platform-*.vsix
+          asset_path: editors/code/erlang-language-platform.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
   macos-release-otp-23:
     needs:
@@ -332,6 +338,8 @@ jobs:
       - name: Package Extension
         working-directory: editors/code
         run: vsce package
+      - name: Rename Package
+        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
@@ -339,7 +347,7 @@ jobs:
         with:
           asset_content_type: application/octet-stream
           asset_name: elp-macos-otp-23.vsix
-          asset_path: editors/code/erlang-language-platform-*.vsix
+          asset_path: erlang-language-platform.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
 name: erlang-language-platform release
 on:
