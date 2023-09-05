@@ -89,7 +89,8 @@ jobs:
         working-directory: editors/code
         run: vsce package
       - name: Rename Package
-        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
+        working-directory: editors/code
+        run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
@@ -183,7 +184,8 @@ jobs:
         working-directory: editors/code
         run: vsce package
       - name: Rename Package
-        run: mv editors/code/erlang-language-platform-*.vsix erlang-language-platform.vsix
+        working-directory: editors/code
+        run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         name: Upload Extension Package
