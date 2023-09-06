@@ -3455,4 +3455,61 @@ foo() ->
 "#,
         )
     }
+
+    #[test]
+    fn built_in_macro_function_name_1() {
+        check(
+            r#"
+         //- /src/main.erl
+            -module(main).
+
+            foo() ->
+         %% ^^^
+               ?FUNCT~ION_NAME().
+            "#,
+        )
+    }
+
+    #[test]
+    fn built_in_macro_function_name_2() {
+        check_unresolved(
+            r#"
+         //- /src/main.erl
+            -module(main).
+
+            foo() ->
+               ?FUNCT~ION_NAME.
+            "#,
+        )
+    }
+
+    #[test]
+    fn built_in_macro_function_name_3() {
+        check_unresolved(
+            r#"
+         //- /src/main.erl
+            -module(main).
+
+            foo(X) ->
+               ?FUNCT~ION_NAME(X,1).
+            "#,
+        )
+    }
+
+    #[test]
+    fn built_in_macro_function_name_4() {
+        check(
+            r#"
+         //- /src/main.erl
+            -module(main).
+
+            foo(X) ->
+               ?FUNCT~ION_NAME(X,1).
+
+            foo(X,Y) ->
+         %% ^^^
+               {X,Y}.
+            "#,
+        )
+    }
 }

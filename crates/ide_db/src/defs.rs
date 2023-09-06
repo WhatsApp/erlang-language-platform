@@ -28,6 +28,7 @@ use hir::FaDef;
 use hir::File;
 use hir::FunctionDef;
 use hir::InFile;
+use hir::MacroCallDef;
 use hir::Module;
 use hir::RecordDef;
 use hir::RecordFieldDef;
@@ -335,6 +336,15 @@ impl From<CallDef> for SymbolDefinition {
         match it {
             CallDef::Function(function) => function.into(),
             CallDef::Type(alias) => alias.into(),
+        }
+    }
+}
+
+impl From<MacroCallDef> for SymbolDefinition {
+    fn from(it: MacroCallDef) -> Self {
+        match it {
+            MacroCallDef::Macro(m) => m.into(),
+            MacroCallDef::Call(c) => c.into(),
         }
     }
 }

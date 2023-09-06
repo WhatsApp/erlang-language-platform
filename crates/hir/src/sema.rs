@@ -28,6 +28,7 @@ use self::find::FindForm;
 pub use self::to_def::CallDef;
 pub use self::to_def::DefinitionOrReference;
 pub use self::to_def::FaDef;
+pub use self::to_def::MacroCallDef;
 use self::to_def::ToDef;
 use crate::body::scope::ScopeId;
 use crate::body::UnexpandedIndex;

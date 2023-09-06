@@ -14,6 +14,7 @@ use elp_syntax::AstNode;
 
 use crate::known;
 use crate::macro_exp;
+use crate::macro_exp::BuiltInMacro;
 use crate::macro_exp::MacroExpCtx;
 use crate::resolver::Resolver;
 use crate::AnyExprRef;
@@ -271,14 +272,38 @@ impl ToDef for ast::RecordField {
 
 // ---------------------------------------------------------------------
 
+#[derive(Debug)]
+pub enum MacroCallDef {
+    Macro(DefineDef),
+    Call(CallDef),
+}
+
 impl ToDef for ast::MacroCallExpr {
-    type Def = DefineDef;
+    type Def = MacroCallDef;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let name = macro_exp::macro_name(ast.value)?;
         let resolved = match sema.db.resolve_macro(ast.file_id, name.clone()) {
             Some(ResolvedMacro::User(resolved)) => resolved,
-            Some(ResolvedMacro::BuiltIn(_)) => return None,
+            Some(ResolvedMacro::BuiltIn(BuiltInMacro::FUNCTION_NAME)) => {
+                if let Some(args) = ast.value.args() {
+                    // We have args, this represents
+                    // actual function call, to name of the enclosing function.
+                    // But we need to resolve against the arity, may be a related function.
+                    let arity = args.args().count();
+                    let idx = sema.find_enclosing_function(ast.file_id, ast.value.syntax())?;
+                    let form_list = sema.form_list(ast.file_id);
+                    let name = &form_list[idx].name;
+                    let name = NameArity::new(name.name().clone(), arity as u32);
+                    let call = sema.db.def_map(ast.file_id).get_function(&name).cloned()?;
+                    return Some(MacroCallDef::Call(CallDef::Function(call)));
+                } else {
+                    return None;
+                }
+            }
+            Some(ResolvedMacro::BuiltIn(_)) => {
+                return None;
+            }
             None => {
                 let name = name.with_arity(None);
                 match sema.db.resolve_macro(ast.file_id, name) {
@@ -292,7 +317,7 @@ impl ToDef for ast::MacroCallExpr {
         let file = File {
             file_id: resolved.file_id,
         };
-        Some(DefineDef { file, define })
+        Some(MacroCallDef::Macro(DefineDef { file, define }))
     }
 }
 

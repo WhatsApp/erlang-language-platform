@@ -136,6 +136,7 @@ pub use sema::CallDef;
 pub use sema::DefinitionOrReference;
 pub use sema::FaDef;
 pub use sema::InFunctionBody;
+pub use sema::MacroCallDef;
 pub use sema::ScopeAnalysis;
 pub use sema::Semantic;
 
