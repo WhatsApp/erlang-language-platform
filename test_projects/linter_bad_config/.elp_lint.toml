@@ -1,0 +1,8 @@
+# @lint-ignore-every TOMLSYNTAX
+enabled_lints =[
+   'L1268',
+   'W0011',
+   'P1700'
+   syntax error
+   ]
+disabled_lints = ['W0010']

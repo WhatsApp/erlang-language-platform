@@ -140,7 +140,9 @@ mod tests {
 
     use bpaf::Args;
     use elp::cli::Fake;
+    use expect_test::expect;
     use expect_test::expect_file;
+    use expect_test::Expect;
     use expect_test::ExpectFile;
     use tempfile::Builder;
     use tempfile::TempDir;
@@ -584,6 +586,30 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_config_file_parse_error(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix_stderr(
+            args_vec!["lint", "--experimental", "--read-config"],
+            "linter_bad_config",
+            expect_file!("../resources/test/linter/parse_elp_lint_bad_config_output.stdout"),
+            101,
+            buck,
+            None,
+            &tmp_path,
+            Path::new("../resources/test/lint/lint_recursive"),
+            &[],
+            false,
+            Some(expect![[r#"
+                failed to read "../../test_projects/linter_bad_config/.elp_lint.toml":expected a right bracket, found an identifier at line 6 column 4
+            "#]]),
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_enabled(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
@@ -858,6 +884,34 @@ mod tests {
         files: &[(&str, &str)],
         backup_files: bool,
     ) -> Result<()> {
+        check_lint_fix_stderr(
+            args,
+            project,
+            expected,
+            expected_code,
+            buck,
+            file,
+            actual_dir,
+            expected_dir,
+            files,
+            backup_files,
+            None,
+        )
+    }
+
+    fn check_lint_fix_stderr(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        expected_code: i32,
+        buck: bool,
+        file: Option<&str>,
+        actual_dir: &Path,
+        expected_dir: &Path,
+        files: &[(&str, &str)],
+        backup_files: bool,
+        expected_stderr: Option<Expect>,
+    ) -> Result<()> {
         if !buck || cfg!(feature = "buck") {
             let (mut args, path) = add_project(args, project, file);
             if !buck {
@@ -876,6 +930,9 @@ mod tests {
                 "Expected exit code {expected_code}, got: {}\nstdout:\n{}\nstderr:\n{}",
                 code, stdout, stderr
             );
+            if let Some(expected_stderr) = expected_stderr {
+                expected_stderr.assert_eq(&stderr);
+            }
             assert_normalised_file(expected, &stdout, path);
             for (expected_file, file) in files {
                 let expected = expect_file!(expected_dir.join(expected_file));

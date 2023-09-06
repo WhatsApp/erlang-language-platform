@@ -172,7 +172,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             ..
         } => {
             let cfg_from_file = if *read_config {
-                config_file(project)
+                config_file(project)?
             } else {
                 LintConfig::default()
             };
@@ -352,7 +352,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
 
 const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
-fn config_file(project: &PathBuf) -> LintConfig {
+fn config_file(project: &PathBuf) -> Result<LintConfig> {
     let mut potential_path = Some(project.as_path());
     while let Some(path) = potential_path {
         let file_path = path.join(LINT_CONFIG_FILE);
@@ -361,15 +361,16 @@ fn config_file(project: &PathBuf) -> LintConfig {
             potential_path = path.parent();
             continue;
         } else {
-            if let Ok(content) = fs::read_to_string(file_path) {
-                if let Ok(config) = toml::from_str::<LintConfig>(&content) {
-                    return config;
+            if let Ok(content) = fs::read_to_string(file_path.clone()) {
+                match toml::from_str::<LintConfig>(&content) {
+                    Ok(config) => return Ok(config),
+                    Err(err) => bail!("failed to read {:?}:{err}", file_path),
                 }
             }
         }
         break;
     }
-    LintConfig::default()
+    Ok(LintConfig::default())
 }
 
 fn print_diagnostic(
