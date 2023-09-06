@@ -2156,7 +2156,20 @@ impl<'a> Ctx<'a> {
         match self.db.resolve_macro(self.original_file_id, name.clone()) {
             Some(res @ ResolvedMacro::BuiltIn(built_in)) => {
                 self.record_macro_resolution(call, res);
-                Some(cb(self, source, MacroReplacement::BuiltIn(built_in)))
+                match built_in {
+                    BuiltInMacro::FUNCTION_NAME => {
+                        if let Some(args) = call.args() {
+                            Some(cb(
+                                self,
+                                source,
+                                MacroReplacement::BuiltInArgs(built_in, args),
+                            ))
+                        } else {
+                            Some(cb(self, source, MacroReplacement::BuiltIn(built_in)))
+                        }
+                    }
+                    _ => Some(cb(self, source, MacroReplacement::BuiltIn(built_in))),
+                }
             }
             Some(res @ ResolvedMacro::User(def_idx)) => {
                 self.record_macro_resolution(call, res);

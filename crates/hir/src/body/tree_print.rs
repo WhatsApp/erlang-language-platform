@@ -309,10 +309,14 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Expr::MacroCall {
-                expansion: _,
-                args: _,
-            } => todo!(),
+            Expr::MacroCall { expansion, args } => {
+                self.print_herald("Expr::MacroCall", &mut |this| {
+                    this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("expansion", true, &mut |this| {
+                        this.print_expr(&this.body[*expansion])
+                    });
+                });
+            }
             Expr::Call { target, args } => {
                 self.print_herald("Expr::Call", &mut |this| {
                     this.print_labelled("target", true, &mut |this1| {
@@ -649,10 +653,14 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Pat::MacroCall {
-                expansion: _,
-                args: _,
-            } => todo!(),
+            Pat::MacroCall { expansion, args } => {
+                self.print_herald("Pat::MacroCall", &mut |this| {
+                    this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("expansion", true, &mut |this| {
+                        this.print_pat(&this.body[*expansion])
+                    });
+                });
+            }
         }
     }
 

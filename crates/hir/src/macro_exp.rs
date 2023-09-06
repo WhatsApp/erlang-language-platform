@@ -103,11 +103,16 @@ fn resolve_built_in(name: &MacroName) -> Option<Option<BuiltInMacro>> {
         _ => None,
     };
 
-    if built_in.is_some() {
-        if name.arity().is_none() {
-            return Some(built_in);
-        } else {
-            return Some(None);
+    match built_in {
+        Some(BuiltInMacro::FUNCTION_NAME) => return Some(built_in),
+        _ => {
+            if built_in.is_some() {
+                if name.arity().is_none() {
+                    return Some(built_in);
+                } else {
+                    return Some(None);
+                }
+            }
         }
     }
 
