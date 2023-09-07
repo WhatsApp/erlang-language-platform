@@ -74,9 +74,19 @@ pub fn eqwalize_module(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
 
 pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cli) -> Result<()> {
     let analysis = &loaded.analysis();
+    let suggest_name = Path::new(&args.module)
+        .file_stem()
+        .and_then(|name| name.to_str());
+    let context_str = match suggest_name {
+        Some(name) if name != args.module => format!(
+            "Module {} not found. Did you mean elp eqwalize {}?",
+            &args.module, name
+        ),
+        _ => format!("Module {} not found", &args.module),
+    };
     let file_id = analysis
         .module_file_id(loaded.project_id, &args.module)?
-        .with_context(|| format!("Module {} not found", &args.module))?;
+        .with_context(|| context_str)?;
     let reporter = &mut reporting::PrettyReporter::new(analysis, loaded, cli);
     eqwalize(EqwalizerInternalArgs {
         analysis,
