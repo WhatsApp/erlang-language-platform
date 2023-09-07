@@ -286,17 +286,27 @@ impl ToDef for ast::MacroCallExpr {
         let resolved = match sema.db.resolve_macro(ast.file_id, name.clone()) {
             Some(ResolvedMacro::User(resolved)) => resolved,
             Some(ResolvedMacro::BuiltIn(BuiltInMacro::FUNCTION_NAME)) => {
-                if let Some(args) = ast.value.args() {
-                    // We have args, this represents
-                    // actual function call, to name of the enclosing function.
-                    // But we need to resolve against the arity, may be a related function.
-                    let arity = args.args().count();
-                    let idx = sema.find_enclosing_function(ast.file_id, ast.value.syntax())?;
-                    let form_list = sema.form_list(ast.file_id);
-                    let name = &form_list[idx].name;
-                    let name = NameArity::new(name.name().clone(), arity as u32);
-                    let call = sema.db.def_map(ast.file_id).get_function(&name).cloned()?;
-                    return Some(MacroCallDef::Call(CallDef::Function(call)));
+                if ast.value.args().is_some() {
+                    // We have args, this represents a function call,
+                    // to the name of the enclosing function, but with
+                    // arity from the args.  Extract the lowered
+                    // value, which deals with this.
+
+                    let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+                    let expr = ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ast.value.clone()));
+                    let expr_id = body_map.expr_id(InFile::new(ast.file_id, &expr))?;
+                    match &body[expr_id] {
+                        Expr::Call { target, args } => {
+                            if let Some(call) =
+                                target.resolve_call(args.len() as u32, sema, ast.file_id, &body)
+                            {
+                                return Some(MacroCallDef::Call(CallDef::Function(call)));
+                            } else {
+                                return None;
+                            }
+                        }
+                        _ => return None,
+                    }
                 } else {
                     return None;
                 }
