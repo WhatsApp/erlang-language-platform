@@ -1,140 +1,149 @@
-jobs:
-  linux-ci:
-    runs-on: ubuntu-20.04
-    name: Linux CI (OTP ${{matrix.otp}})
-    strategy:
-      matrix:
-        otp: ['26.0', '25.3']
-    steps:
-      - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
-        with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install musl-tools for rust toolchain
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: musl-tools
-          version: 1.0
-      - name: Set up rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: x86_64-unknown-linux-musl
-      - name: Install OTP
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          install-rebar: false
-          install-hex: false
-      - name: Install rebar3
-        run: "curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3 && chmod +x rebar3"
-      - name: "add rebar3 to path"
-        run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
-      - name: Assemble eqwalizer.jar
-        run: "cd eqwalizer/eqwalizer; sbt assembly"
-      - name: Assemble eqwalizer binary
-        run: "cd eqwalizer/eqwalizer && native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer"
-      - name: Test elp
-        run: "export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace --target x86_64-unknown-linux-musl"
-      - name: Assemble elp
-        run: "export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release --target x86_64-unknown-linux-musl"
-      - name: Add elp to path
-        run: 'echo "$GITHUB_WORKSPACE/target/x86_64-unknown-linux-musl/release" >> $GITHUB_PATH'
-      - name: Test eqwalizer
-        run: 'cd eqwalizer/eqwalizer && sbt test'
-      - name: Upload eqwalizer.jar
-        if: matrix.otp == '25.3'
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: eqwalizer.jar
-          path: eqwalizer/eqwalizer/target/scala-2.13/eqwalizer.jar
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install VSCE
-        run: npm install -g vsce
-      - name: npm install
-        working-directory: editors/code
-        run: npm install
-      - name: npm run compile
-        working-directory: editors/code
-        run: npm run compile
-      - name: Package Extension
-        working-directory: editors/code
-        run: vsce package
-      - name: Upload Extension
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: elp-linux-${{ matrix.otp }}.vsix
-          path: editors/code/erlang-language-platform-*.vsix
-  macos-ci:
-    needs:
-      - linux-ci
-    runs-on: macos-latest
-    name: MacOS CI (${{matrix.brew_erlang}})
-    strategy:
-      matrix:
-        brew_erlang: ['erlang@25']
-    steps:
-      - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
-        with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Erlang
-        run: brew install ${{matrix.brew_erlang}}
-      - name: Install rebar3
-        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
-      - name: Set up rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Download eqwalizer.jar
-        uses: "actions/download-artifact@v2"
-        with:
-          name: eqwalizer.jar
-          path: eqwalizer/eqwalizer/target/scala-2.13
-      - name: Assemble eqwalizer binary
-        run: "cd eqwalizer/eqwalizer && native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer"
-      - name: Test elp
-        run: "export PATH=$GITHUB_WORKSPACE/rebar3:/usr/local/opt/${{matrix.brew_erlang}}/bin:$PATH ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace"
-      - name: Assemble elp
-        run: "export PATH=$GITHUB_WORKSPACE/rebar3:/usr/local/opt/${{matrix.brew_erlang}}/bin:$PATH ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release"
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install VSCE
-        run: npm install -g vsce
-      - name: npm install
-        working-directory: editors/code
-        run: npm install
-      - name: npm run compile
-        working-directory: editors/code
-        run: npm run compile
-      - name: Package Extension
-        working-directory: editors/code
-        run: vsce package
-      - name: Upload Extension
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: elp-macos-otp-25.vsix
-          path: editors/code/erlang-language-platform-*.vsix
-name: erlang-language-platform CI
+name: ELP CI
 on:
   push: {}
+  release:
+    types: [published]
+jobs:
+  ci:
+    strategy:
+      matrix:
+        platform: [ubuntu-20.04, macos-latest]
+        otp-version: [25.3, 26.0]
+        include:
+          # Homebrew does not allow to pin the minor version
+          - otp-version: 25.3
+            brew-otp-version: 25
+          - platform: ubuntu-20.04
+            os: linux
+          - platform: macos-latest
+            os: macos
+          - otp-version: 25.3
+            vscode-publish: true
+        exclude:
+          # Formula not available yet (2023-09-06)
+          - platform: macos-latest
+            otp-version: 26.0
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout erlang-language-platform
+        uses: "actions/checkout@v3"
+      - name: Checkout eqwalizer
+        uses: "actions/checkout@v3"
+        with:
+          repository: WhatsApp/eqwalizer
+          path: eqwalizer
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '17'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Erlang/OTP (Linux Only)
+        if: matrix.os == 'linux'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp-version }}
+          install-rebar: false
+          install-hex: false
+      - name: Install Erlang/OTP (MacOS Only)
+        if: matrix.os == 'macos'
+        run: brew install erlang@${{ matrix.brew-otp-version }}
+      - name: Add erl to path (MacOS Only)
+        if: matrix.os == 'macos'
+        run: "echo '/usr/local/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH"
+      - name: Verify Erlang version
+        run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+      - name: Install rebar3
+        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+      - name: Add rebar3 to path
+        run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
+      - name: Verify rebar3 version
+        run: rebar3 version
+      - name: Assemble eqwalizer.jar
+        working-directory: eqwalizer/eqwalizer
+        run: "sbt assembly"
+      - name: Assemble eqwalizer binary
+        working-directory: eqwalizer/eqwalizer
+        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
+      - name: Test elp
+        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace'
+      - name: Build elp
+        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release'
+      - name: Add elp to path
+        run: 'echo "$GITHUB_WORKSPACE/target/release" >> $GITHUB_PATH'
+      - name: Upload elp binary
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}
+          path: target/release/elp
+      - name: Test eqwalizer
+        working-directory: eqwalizer
+        run: 'sbt test'
+      - name: Upload eqwalizer native binary
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: eqwalizer-${{ matrix.os }}-otp-${{ matrix.otp-version }}
+          path: ./eqwalizer/eqwalizer/eqwalizer
+      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/release/ elp'
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        id: get_release_url
+        name: Get release url
+        if: ${{ github.event_name == 'release' }}
+        uses: "bruceadams/get-release@v1.3.2"
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload release elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+        if: ${{ github.event_name == 'release' }}
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+          asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install VSCE
+        run: npm install -g vsce
+      - name: Prepare VS Code Extension to host binaries
+        run: mkdir -p editors/code/bin
+      - name: Package eqWAlizer binary into VS Code Extension
+        run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
+      - name: Package ELP binary into VS Code Extension
+        run: cp target/release/elp editors/code/bin
+      - name: npm install
+        working-directory: editors/code
+        run: npm install
+      - name: npm run compile
+        working-directory: editors/code
+        run: npm run compile
+      - name: Package Extension
+        working-directory: editors/code
+        run: vsce package
+      - name: Rename Package
+        working-directory: editors/code
+        run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
+      - name: Upload Extension
+        uses: "actions/upload-artifact@v3"
+        with:
+          name: elp-${{ matrix.os}}-${{ matrix.otp-version }}.vsix
+          path: editors/code/erlang-language-platform.vsix
+      - env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: Upload Extension Package
+        if: ${{ github.event_name == 'release' }}
+        uses: "actions/upload-release-asset@v1.0.2"
+        with:
+          asset_content_type: application/octet-stream
+          asset_name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.vsix
+          asset_path: editors/code/erlang-language-platform.vsix
+          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: Publish extension to marketplace
+        working-directory: editors/code
+        if: ${{ github.event_name == 'release' && matrix.vscode-publish }}
+        run: vsce publish -p ${{ secrets.VSCE_PAT }}
