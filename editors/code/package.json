@@ -25,34 +25,34 @@
 	"contributes": {
 		"languages": [
 			{
-			  "id": "erlang",
-			  "aliases": [
-				"Erlang"
-			  ],
-			  "extensions": [
-				".erl",
-				".hrl",
-				".app.src",
-				".app",
-				".escript",
-				"rebar.config",
-				"rebar.lock",
-				"rebar.config.script",
-				"sys.config",
-				"sys.config.src",
-				"sys.ct.config",
-				"sys.shell.config",
-				".yrl",
-				".xrl"
-			  ],
-			  "configuration": "./language-configuration.json"
+				"id": "erlang",
+				"aliases": [
+					"Erlang"
+				],
+				"extensions": [
+					".erl",
+					".hrl",
+					".app.src",
+					".app",
+					".escript",
+					"rebar.config",
+					"rebar.lock",
+					"rebar.config.script",
+					"sys.config",
+					"sys.config.src",
+					"sys.ct.config",
+					"sys.shell.config",
+					".yrl",
+					".xrl"
+				],
+				"configuration": "./language-configuration.json"
 			}
 		],
 		"grammars": [
 			{
-			  "language": "erlang",
-			  "scopeName": "source.erlang",
-			  "path": "./third-party/grammar/Erlang.plist"
+				"language": "erlang",
+				"scopeName": "source.erlang",
+				"path": "./third-party/grammar/Erlang.plist"
 			}
 		],
 		"configuration": {
@@ -87,7 +87,44 @@
 					"default": "server"
 				}
 			}
-		}
+		},
+		"semanticTokenTypes": [],
+		"semanticTokenModifiers": [
+			{
+				"id": "bound",
+				"description": "Style for bound variables in patterns"
+			},
+			{
+				"id": "exported_function",
+				"description": "Style for exported function declaration names"
+			},
+			{
+				"id": "deprecated_function",
+				"description": "Style for deprecated function declaration names"
+			}
+		],
+		"semanticTokenScopes": [
+			{
+				"language": "erlang",
+				"scopes": {
+					"function": [
+						"entity.name.function.erlang"
+					],
+					"variable": [
+						"variable.other.erlang"
+					],
+					"*.bound": [
+						"markup.underline"
+					],
+					"*.exported_function": [
+						"markup.underline"
+					],
+					"*.deprecated_function": [
+						"markup.strikethrough"
+					]
+				}
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
