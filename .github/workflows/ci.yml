@@ -116,6 +116,8 @@ jobs:
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
       - name: Package ELP binary into VS Code Extension
         run: cp target/release/elp editors/code/bin
+      - name: Ensure binaries are executable
+        run: chmod +x editors/code/bin/*
       - name: npm install
         working-directory: editors/code
         run: npm install
