@@ -7,29 +7,32 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform: [ubuntu-20.04, macos-latest]
+        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm]
         otp-version: [25.3, 26.0]
         include:
-          # Homebrew does not allow to pin the minor version
           - otp-version: 25.3
             brew-otp-version: 25
-          - platform: ubuntu-20.04
+            vscode-publish: true
+          - platform-arch: ubuntu-20.04-x64
+            platform: ubuntu-20.04
             os: linux
             target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
-          - platform: macos-latest
+          - platform-arch: macos-latest-x64
+            platform: macos-latest
             os: macos
             target: x86_64-apple-darwin
             vscode-target: darwin-x64
-          - platform: macos-latest
+          - platform-arch: macos-latest-arm
+            platform: macos-latest
             os: macos
             target: aarch64-apple-darwin
             vscode-target: darwin-arm64
-          - otp-version: 25.3
-            vscode-publish: true
         exclude:
           # Formula not available yet (2023-09-06)
-          - platform: macos-latest
+          - platform-arch: macos-latest-x64
+            otp-version: 26.0
+          - platform-arch: macos-latest-arm
             otp-version: 26.0
     runs-on: ${{ matrix.platform }}
     steps:
@@ -78,6 +81,8 @@ jobs:
         working-directory: eqwalizer/eqwalizer
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
       - name: Test elp
+        # Do not run the tests in case of cross-compilation
+        if: matrix.platform-arch != 'macos-latest-arm'
         run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace --target ${{ matrix.target }}'
       - name: Build elp
         run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release  --target ${{ matrix.target }}'
