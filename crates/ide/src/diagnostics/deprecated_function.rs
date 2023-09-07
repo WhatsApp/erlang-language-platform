@@ -119,7 +119,8 @@ pub(crate) fn check_function(
                 if let Some(target_def) =
                     target.resolve_call(arity, &sema, def_fb.file_id(), &def_fb.body())
                 {
-                    let match_result = matcher.get_match(&target, &args, sema, &def_fb.body());
+                    let match_result =
+                        matcher.get_match(&target, args.len() as u32, sema, &def_fb.body());
                     let details = match_result.map(|(_match, details)| details.clone());
                     if target_def.deprecated || match_result.is_some() {
                         let expr_id = if let Some(expr_id) = ctx.in_macro {

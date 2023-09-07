@@ -33,6 +33,7 @@ use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::statement_range;
 use crate::codemod_helpers::CheckCall;
 use crate::codemod_helpers::FunctionMatch;
+use crate::codemod_helpers::FunctionMatcher;
 use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
@@ -152,12 +153,14 @@ fn replace_call(
 
 #[allow(dead_code)]
 pub fn remove_fun_ref_from_list(
-    mfa: &MFA,
+    fm: &FunctionMatch,
     diagnostic_builder: DiagnosticBuilder,
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
 ) {
+    let matches = vec![(fm, ())];
+    let matcher = FunctionMatcher::new(&matches);
     sema.def_map(file_id)
         .get_functions()
         .iter()
@@ -167,38 +170,53 @@ pub fn remove_fun_ref_from_list(
                 def_fb.clone().fold_function(
                     (),
                     &mut |_acc, _, ctx| {
-                        let matches =
-                            match_fun_ref_in_list_in_call_arg(mfa, sema, &def_fb, &ctx.expr_id);
-                        matches.iter().for_each(|matched_funref_id| {
-                            if let Some(range) =
-                                def_fb.clone().range_for_expr(sema.db, *matched_funref_id)
-                            {
-                                let body_map = def_fb.clone().get_body_map(sema.db);
+                        let matches = match_fun_ref_in_list_in_call_arg(
+                            &matcher,
+                            sema,
+                            &def_fb,
+                            &ctx.expr_id,
+                        );
+                        matches
+                            .iter()
+                            .for_each(|(matched_funref_id, target, arity)| {
+                                if let Some(range) =
+                                    def_fb.clone().range_for_expr(sema.db, *matched_funref_id)
+                                {
+                                    let body_map = def_fb.clone().get_body_map(sema.db);
 
-                                if let Some(in_file_ast_ptr) = body_map.expr(*matched_funref_id) {
-                                    let source_file = sema.parse(file_id);
-                                    if let Some(list_elem_ast) =
-                                        in_file_ast_ptr.to_node(&source_file)
+                                    if let Some(in_file_ast_ptr) = body_map.expr(*matched_funref_id)
                                     {
-                                        if let Some(statement_removal) =
-                                            remove_statement(&list_elem_ast)
+                                        let source_file = sema.parse(file_id);
+                                        if let Some(list_elem_ast) =
+                                            in_file_ast_ptr.to_node(&source_file)
                                         {
-                                            if let Some(diag) = diagnostic_builder(mfa, "", range) {
-                                                diags.push(diag.with_fixes(Some(vec![fix(
-                                                    "remove_fun_ref_from_list",
-                                                    "Remove noop fun ref from list",
-                                                    SourceChange::from_text_edit(
-                                                        file_id,
-                                                        statement_removal,
-                                                    ),
-                                                    range,
-                                                )])));
+                                            if let Some(statement_removal) =
+                                                remove_statement(&list_elem_ast)
+                                            {
+                                                if let Some(mfa) =
+                                                    to_mfa(fm, target, *arity, sema, &def_fb.body())
+                                                {
+                                                    if let Some(diag) =
+                                                        diagnostic_builder(&mfa, "", range)
+                                                    {
+                                                        diags.push(diag.with_fixes(Some(vec![
+                                                            fix(
+                                                                "remove_fun_ref_from_list",
+                                                                "Remove noop fun ref from list",
+                                                                SourceChange::from_text_edit(
+                                                                    file_id,
+                                                                    statement_removal,
+                                                                ),
+                                                                range,
+                                                            ),
+                                                        ])));
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        });
+                            });
                     },
                     &mut |acc, _, _| acc,
                 );
@@ -206,12 +224,12 @@ pub fn remove_fun_ref_from_list(
         })
 }
 
-fn match_fun_ref_in_list_in_call_arg(
-    funref_mfa: &MFA,
+fn match_fun_ref_in_list_in_call_arg<T>(
+    matcher: &FunctionMatcher<T>,
     sema: &Semantic,
     def_fb: &InFunctionBody<&FunctionDef>,
     expr_id: &ExprId,
-) -> Vec<ExprId> {
+) -> Vec<(ExprId, CallTarget<ExprId>, u32)> {
     let mut result = vec![];
     let expr = &def_fb[*expr_id];
     if let Expr::Call { args, .. } = expr {
@@ -226,10 +244,11 @@ fn match_fun_ref_in_list_in_call_arg(
                     } = list_elem
                     {
                         if let Expr::Literal(Literal::Integer(arity)) = &def_fb[*arity_expr_id] {
-                            let target_label = target.label(*arity as u32, sema, &def_fb.body());
-                            let funref_label = &funref_mfa.label();
-                            if target_label == Some(funref_label.into()) {
-                                result.push(*list_elem_id);
+                            if matcher
+                                .get_match(&target, *arity as u32, sema, &def_fb.body())
+                                .is_some()
+                            {
+                                result.push((*list_elem_id, target.clone(), *arity as u32));
                             }
                         }
                     }
@@ -423,11 +442,11 @@ mod tests {
         let mut config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &MFA {
+                    &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
                         name: "fire_bombs".into(),
                         arity: 1,
-                    },
+                    }),
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -476,11 +495,11 @@ mod tests {
         let mut config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &MFA {
+                    &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
                         name: "fire_bombs".into(),
                         arity: 1,
-                    },
+                    }),
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -529,11 +548,11 @@ mod tests {
         let mut config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &MFA {
+                    &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
                         name: "fire_bombs".into(),
                         arity: 1,
-                    },
+                    }),
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -582,11 +601,11 @@ mod tests {
         let mut config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &MFA {
+                    &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
                         name: "fire_bombs".into(),
                         arity: 1,
-                    },
+                    }),
                     &adhoc_diagnostic,
                     acc,
                     sema,

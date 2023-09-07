@@ -192,12 +192,12 @@ impl<'a, T> FunctionMatcher<'a, T> {
     pub fn get_match(
         &self,
         target: &CallTarget<ExprId>,
-        args: &Vec<ExprId>,
+        arity: u32,
         sema: &Semantic,
         body: &Body,
     ) -> Option<(&'a FunctionMatch, &'a T)> {
         self.labels_full
-            .get(&target.label(args.len() as u32, sema, body))
+            .get(&target.label(arity, sema, body))
             .copied()
             .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
             .or_else(|| match target {
@@ -322,7 +322,9 @@ pub(crate) fn find_call_in_function<T>(
         (),
         &mut |acc, _, ctx| {
             if let Expr::Call { target, args } = ctx.expr {
-                if let Some((mfa, t)) = matcher.get_match(&target, &args, sema, &def_fb.body()) {
+                if let Some((mfa, t)) =
+                    matcher.get_match(&target, args.len() as u32, sema, &def_fb.body())
+                {
                     let context = CheckCallCtx {
                         mfa,
                         t,
