@@ -238,6 +238,9 @@ pub struct Lint {
     pub line_to: Option<u32>,
     /// Get some configuration from a .elp_lint.toml file instead in the project root
     pub read_config: bool,
+    /// Override normal configuration file. When set, acts as if READ_CONFIG is true.
+    #[bpaf(argument("CONFIG_FILE"))]
+    pub config_file: Option<String>,
     /// Rest of args are space separated list of apps to ignore
     #[bpaf(positional("IGNORED_APPS"))]
     pub ignore_apps: Vec<String>,

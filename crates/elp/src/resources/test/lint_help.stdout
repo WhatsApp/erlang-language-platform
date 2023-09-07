@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--apply-fix] [--recursive] [--in-place] [--diagnostic-filter FILTER] [--line-from LINE_FROM] [--line-to LINE_TO] [--read-config] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--apply-fix] [--recursive] [--in-place] [--diagnostic-filter FILTER] [--line-from LINE_FROM] [--line-to LINE_TO] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -23,4 +23,5 @@ Available options:
         --line-from <LINE_FROM>       Filter out all reported diagnostics before this line. Valid only for single file
         --line-to <LINE_TO>           Filter out all reported diagnostics after this line. Valid only for single file
         --read-config                 Get some configuration from a .elp_lint.toml file instead in the project root
+        --config-file <CONFIG_FILE>   Override normal configuration file. When set, acts as if READ_CONFIG is true.
     -h, --help                        Prints help information

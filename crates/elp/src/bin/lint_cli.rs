@@ -168,11 +168,12 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             line_to,
             ignore_apps,
             read_config,
+            config_file,
             project,
             ..
         } => {
-            let cfg_from_file = if *read_config {
-                config_file(project)?
+            let cfg_from_file = if *read_config || config_file.is_some() {
+                read_config_file(project, config_file)?
             } else {
                 LintConfig::default()
             };
@@ -352,23 +353,36 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
 
 const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
-fn config_file(project: &PathBuf) -> Result<LintConfig> {
-    let mut potential_path = Some(project.as_path());
-    while let Some(path) = potential_path {
-        let file_path = path.join(LINT_CONFIG_FILE);
-
-        if !file_path.is_file() {
-            potential_path = path.parent();
-            continue;
-        } else {
-            if let Ok(content) = fs::read_to_string(file_path.clone()) {
-                match toml::from_str::<LintConfig>(&content) {
-                    Ok(config) => return Ok(config),
-                    Err(err) => bail!("failed to read {:?}:{err}", file_path),
-                }
+fn read_config_file(project: &PathBuf, config_file: &Option<String>) -> Result<LintConfig> {
+    if let Some(file_name) = config_file {
+        let file_path: PathBuf = file_name.into();
+        match fs::read_to_string(file_path.clone()) {
+            Ok(content) => match toml::from_str::<LintConfig>(&content) {
+                Ok(config) => return Ok(config),
+                Err(err) => bail!("errors parsing {:?}: {err}", file_path),
+            },
+            Err(err) => {
+                bail!("unable to read {:?}: {err}", file_path)
             }
         }
-        break;
+    } else {
+        let mut potential_path = Some(project.as_path());
+        while let Some(path) = potential_path {
+            let file_path = path.join(LINT_CONFIG_FILE);
+
+            if !file_path.is_file() {
+                potential_path = path.parent();
+                continue;
+            } else {
+                if let Ok(content) = fs::read_to_string(file_path.clone()) {
+                    match toml::from_str::<LintConfig>(&content) {
+                        Ok(config) => return Ok(config),
+                        Err(err) => bail!("failed to read {:?}:{err}", file_path),
+                    }
+                }
+            }
+            break;
+        }
     }
     Ok(LintConfig::default())
 }

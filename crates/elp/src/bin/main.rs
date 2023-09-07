@@ -586,6 +586,61 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_custom_config_file_invalid(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix_stderr(
+            args_vec![
+                "lint",
+                "--experimental",
+                "--config-file",
+                "../../test_projects/linter/does_not_exist.toml"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_custom_config_invalid_output.stdout"),
+            101,
+            buck,
+            None,
+            &tmp_path,
+            Path::new("../resources/test/lint/lint_recursive"),
+            &[],
+            false,
+            Some(expect![[r#"
+                unable to read "../../test_projects/linter/does_not_exist.toml": No such file or directory (os error 2)
+            "#]]),
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_custom_config_file_used(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--experimental",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_test1.toml"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_custom_config_output.stdout"),
+            0,
+            buck,
+            None,
+            &tmp_path,
+            Path::new("../resources/test/lint/lint_recursive"),
+            &[],
+            false,
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_config_file_parse_error(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
