@@ -15,8 +15,16 @@ jobs:
             brew-otp-version: 25
           - platform: ubuntu-20.04
             os: linux
+            target: x86_64-unknown-linux-gnu
+            vscode-target: linux-x64
           - platform: macos-latest
             os: macos
+            target: x86_64-apple-darwin
+            vscode-target: darwin-x64
+          - platform: macos-latest
+            os: macos
+            target: aarch64-apple-darwin
+            vscode-target: darwin-arm64
           - otp-version: 25.3
             vscode-publish: true
         exclude:
@@ -27,8 +35,6 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - name: Check architecture
-        run: uname -a
       - name: Checkout eqwalizer
         uses: "actions/checkout@v3"
         with:
@@ -42,6 +48,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
       - name: Install Erlang/OTP (Linux Only)
         if: matrix.os == 'linux'
         uses: erlef/setup-beam@v1
@@ -70,16 +78,16 @@ jobs:
         working-directory: eqwalizer/eqwalizer
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
       - name: Test elp
-        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace'
+        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace --target ${{ matrix.target }}'
       - name: Build elp
-        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release'
+        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release  --target ${{ matrix.target }}'
       - name: Add elp to path
-        run: 'echo "$GITHUB_WORKSPACE/target/release" >> $GITHUB_PATH'
+        run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
       - name: Upload elp binary
         uses: "actions/upload-artifact@v3"
         with:
           name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}
-          path: target/release/elp
+          path: target/${{ matrix.target}}/release/elp
       - name: Test eqwalizer
         working-directory: eqwalizer
         run: 'sbt test'
@@ -89,7 +97,7 @@ jobs:
           name: eqwalizer-${{ matrix.os }}-otp-${{ matrix.otp-version }}
           path: ./eqwalizer/eqwalizer/eqwalizer
       - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/release/ elp'
+        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         id: get_release_url
@@ -117,7 +125,7 @@ jobs:
       - name: Package eqWAlizer binary into VS Code Extension
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
       - name: Package ELP binary into VS Code Extension
-        run: cp target/release/elp editors/code/bin
+        run: cp target/${{ matrix.target}}/release/elp editors/code/bin
       - name: Ensure binaries are executable
         run: chmod +x editors/code/bin/*
       - name: npm install
@@ -128,7 +136,7 @@ jobs:
         run: npm run compile
       - name: Package Extension
         working-directory: editors/code
-        run: vsce package
+        run: vsce package --target ${{ matrix.vscode-target }}
       - name: Rename Package
         working-directory: editors/code
         run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
