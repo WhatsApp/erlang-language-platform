@@ -1,6 +1,6 @@
 # Erlang Language Platform
 
-Provides support for the [Erlang](https://www.erlang.org/) Programming Language.
+Provide support for the [Erlang](https://www.erlang.org/) Programming Language.
 
 ## Features
 

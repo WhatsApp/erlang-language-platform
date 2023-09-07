@@ -9,6 +9,7 @@
 
 // Based on the Microsoft template code at https://github.com/Microsoft/vscode-extension-samples
 import { workspace, ExtensionContext } from 'vscode';
+import * as path from 'path';
 
 import {
 	LanguageClient,
@@ -24,10 +25,16 @@ export function activate(context: ExtensionContext) {
 
 	// Options to control the language server
 	const config = workspace.getConfiguration(ELP);
-	const serverCommand = config.get<string>("serverCommand", "elp");
+	let serverPath = config.get<string>("serverPath");
+	if (serverPath === "") {
+        serverPath = context.asAbsolutePath(
+            path.join('bin', 'elp')
+        );
+    }
+	const serverArgs = config.get<string>("serverArgs", "server");
 	const serverOptions: ServerOptions = {
-		command: serverCommand,
-		args: ["server"]
+		command: serverPath,
+		args: serverArgs.split(" "),
 	};
 
 	// Options to control the language client

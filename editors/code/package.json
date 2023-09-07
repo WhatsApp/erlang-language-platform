@@ -76,10 +76,15 @@
 					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
 				},
-				"elp.serverCommand": {
+				"elp.serverPath": {
 					"type": "string",
-					"description": "The command to start the ELP language server",
-					"default": "elp"
+					"description": "The path to the ELP executable. If empty, uses the binary included in the extension",
+					"default": ""
+				},
+				"elp.serverArgs": {
+					"type": "string",
+					"description": "The arguments to invoke the language server with",
+					"default": "server"
 				}
 			}
 		}
