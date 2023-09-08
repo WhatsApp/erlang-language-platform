@@ -70,15 +70,15 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
           },
           {
             type: 'doc',
-            docId: 'erlang-error-index',
-            position: 'left',
-            label: 'Erlang Error Index',
-          },
-          {
-            type: 'doc',
             docId: 'contributing/contributing',
             position: 'left',
             label: 'Contributing',
+          },
+          {
+            type: 'doc',
+            docId: 'erlang-error-index/erlang-error-index',
+            position: 'left',
+            label: 'Erlang Error Index',
           },
           {
             href: 'https://github.com/whatsapp/erlang-language-platform',
@@ -147,6 +147,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
+        additionalLanguages: ['erlang'],
       },
     }),
 });
