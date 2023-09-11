@@ -1,6 +1,7 @@
 [workspace]
 members = ["crates/*", "xtask"]
 default-members = ["crates/*", "xtask"]
+resolver = "2"
 
 [workspace.package]
 edition = "2021"
