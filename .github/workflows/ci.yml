@@ -91,7 +91,7 @@ jobs:
       - name: Upload elp binary
         uses: "actions/upload-artifact@v3"
         with:
-          name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}
+          name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target/${{ matrix.target}}/release/elp
       - name: Test eqwalizer
         working-directory: eqwalizer
@@ -99,7 +99,7 @@ jobs:
       - name: Upload eqwalizer native binary
         uses: "actions/upload-artifact@v3"
         with:
-          name: eqwalizer-${{ matrix.os }}-otp-${{ matrix.otp-version }}
+          name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: ./eqwalizer/eqwalizer/eqwalizer
       - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
         run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
@@ -116,7 +116,7 @@ jobs:
         uses: "actions/upload-release-asset@v1.0.2"
         with:
           asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
           asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Setup Node
@@ -148,7 +148,7 @@ jobs:
       - name: Upload Extension
         uses: "actions/upload-artifact@v3"
         with:
-          name: elp-${{ matrix.os}}-${{ matrix.otp-version }}.vsix
+          name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           path: editors/code/erlang-language-platform.vsix
       - env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -157,7 +157,7 @@ jobs:
         uses: "actions/upload-release-asset@v1.0.2"
         with:
           asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.vsix
+          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           asset_path: editors/code/erlang-language-platform.vsix
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Publish extension to marketplace
