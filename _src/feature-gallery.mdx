@@ -2,13 +2,38 @@
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Feature Gallery
 
 ## Syntax Highlighting
 
+<Tabs groupId="editors">
+  <TabItem value="vscode" label="VS Code" default>
+    <img src={require('../static/img/feature-gallery/vscode/syntax-highlighting.png').default}
+  alt="Syntax Highlighting"
+/>
+  </TabItem>
+</Tabs>
+
 ## Semantic Syntax Highlighting
 
 In addition to traditional _syntax highlighting_, ELP can highlight the code _semantically_. As an example, _exported_ functions can be rendered differently from un-exported ones and _deprecated_ functions are clearly marked via a strikethrough.
+
+<Tabs groupId="editors">
+  <TabItem value="vscode" label="VS Code" default>
+    <img src={require('../static/img/feature-gallery/vscode/semantic-bound.png').default}
+  alt="Semantic Higlighting - Bound Variables"
+/>
+    <img src={require('../static/img/feature-gallery/vscode/semantic-deprecated.png').default}
+  alt="Semantic Higlighting - Deprecated Functions"
+/>
+    <img src={require('../static/img/feature-gallery/vscode/semantic-exported.png').default}
+  alt="Semantic Higlighting - Exported Functions"
+/>
+  </TabItem>
+</Tabs>
 
 We currently support the following token _modifiers_:
 
@@ -36,11 +61,27 @@ Navigate to the definition of a given identifier. Currently supported for:
 
 Show/peek references to the item at the cursor location.
 
+<Tabs groupId="editors">
+  <TabItem value="vscode" label="VS Code" default>
+    <img src={require('../static/img/feature-gallery/vscode/find-references.png').default}
+  alt="Find References"
+/>
+  </TabItem>
+</Tabs>
+
 Currently supported for all items listed in the [Go To Definition](#go-to-definition) section.
 
 ## Workspace Symbols
 
 Quickly navigate to a symnol in the workspace.
+
+<Tabs groupId="editors">
+  <TabItem value="vscode" label="VS Code" default>
+    <img src={require('../static/img/feature-gallery/vscode/workspace-symbols.png').default}
+  alt="Workspace Symbols"
+/>
+  </TabItem>
+</Tabs>
 
 Currently supported for:
 
