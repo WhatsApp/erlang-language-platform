@@ -6,9 +6,15 @@ sidebar_position: 2
 
 ## Syntax Highlighting
 
+![Syntax Higlighting](../static/img/feature-gallery/syntax-highlighting.png)
+
 ## Semantic Syntax Highlighting
 
 In addition to traditional _syntax highlighting_, ELP can highlight the code _semantically_. As an example, _exported_ functions can be rendered differently from un-exported ones and _deprecated_ functions are clearly marked via a strikethrough.
+
+![Semantic Higlighting - Bound Variables](../static/img/feature-gallery/semantic-bound.png)
+![Semantic Higlighting - Exported Functions](../static/img/feature-gallery/semantic-exported.png)
+![Semantic Higlighting - Deprecated Functions](../static/img/feature-gallery/semantic-deprecated.png)
 
 We currently support the following token _modifiers_:
 
@@ -36,11 +42,15 @@ Navigate to the definition of a given identifier. Currently supported for:
 
 Show/peek references to the item at the cursor location.
 
+![Find References](../static/img/feature-gallery/find-references.png)
+
 Currently supported for all items listed in the [Go To Definition](#go-to-definition) section.
 
 ## Workspace Symbols
 
 Quickly navigate to a symnol in the workspace.
+
+![Workspace Symbols](../static/img/feature-gallery/workspace-symbols.png)
 
 Currently supported for:
 
