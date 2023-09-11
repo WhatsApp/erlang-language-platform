@@ -30,12 +30,13 @@ use elp_ide_db::LineIndex;
 use elp_ide_db::LineIndexDatabase;
 use elp_syntax::algo;
 use elp_syntax::ast;
+use elp_syntax::ast::edit;
 use elp_syntax::ast::edit::start_of_line;
 use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::HasLabel;
 use elp_syntax::label::Label;
-use elp_syntax::Direction;
+use elp_syntax::ted::Element;
 use elp_syntax::NodeOrToken;
 use elp_syntax::Parse;
 use elp_syntax::SourceFile;
@@ -786,7 +787,7 @@ fn check_missing_sep<Node: AstNode + std::fmt::Debug>(
 
     for node in nodes.skip(1) {
         let syntax = node.syntax();
-        if let Some(previous) = non_whitespace_sibling_or_token(syntax, Direction::Prev) {
+        if let Some(previous) = non_whitespace_prev_token(syntax) {
             if previous.kind() != separator {
                 diagnostics.push(make_missing_diagnostic(
                     previous.text_range(),
@@ -802,7 +803,7 @@ fn check_missing_sep<Node: AstNode + std::fmt::Debug>(
 
 fn record_decl_check_missing_comma(record: ast::RecordDecl) -> Vec<Diagnostic> {
     if let Some(name) = record.name() {
-        if let Some(next) = non_whitespace_sibling_or_token(name.syntax(), Direction::Next) {
+        if let Some(next) = non_whitespace_next_token(name.syntax()) {
             if next.kind() != SyntaxKind::ANON_COMMA {
                 return vec![make_missing_diagnostic(
                     name.syntax().text_range(),
@@ -857,10 +858,28 @@ fn prev_line_comment_text(
     Some(node_or_token.to_string())
 }
 
-fn non_whitespace_sibling_or_token(node: &SyntaxNode, dir: Direction) -> Option<NodeOrToken> {
-    node.siblings_with_tokens(dir)
-        .skip(1)
-        .find(|node| node.kind() != SyntaxKind::WHITESPACE && node.kind() != SyntaxKind::COMMENT)
+fn non_whitespace_next_token(node: &SyntaxNode) -> Option<NodeOrToken> {
+    let tok = node.last_token()?;
+    let r = edit::next_tokens(tok).skip(1).find(|tok| {
+        if let Some(node) = tok.syntax_element().as_token() {
+            node.kind() != SyntaxKind::WHITESPACE && node.kind() != SyntaxKind::COMMENT
+        } else {
+            false
+        }
+    });
+    r.map(NodeOrToken::Token)
+}
+
+fn non_whitespace_prev_token(node: &SyntaxNode) -> Option<NodeOrToken> {
+    let tok = node.first_token()?;
+    let r = edit::prev_tokens(tok).skip(1).find(|tok| {
+        if let Some(node) = tok.syntax_element().as_token() {
+            node.kind() != SyntaxKind::WHITESPACE && node.kind() != SyntaxKind::COMMENT
+        } else {
+            false
+        }
+    });
+    r.map(NodeOrToken::Token)
 }
 
 fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -> Diagnostic {
@@ -1357,13 +1376,26 @@ mod tests {
     }
 
     #[test]
-    fn fun_decl_missing_semi() {
+    fn fun_decl_missing_semi_1() {
         check_diagnostics(
             r#"
    -module(main).
    foo(1)->2
-%% ^^^^^^^^^ warning: Missing ';'
+        %% ^ warning: Missing ';'
    foo(2)->3.
+"#,
+        );
+    }
+
+    #[test]
+    fn fun_decl_missing_semi_2() {
+        check_diagnostics(
+            r#"
+   -module(main).
+   foo(1)->2;
+   foo(2)->3
+        %% ^ warning: Missing ';'
+   foo(3)->4.
 "#,
         );
     }
@@ -1374,7 +1406,7 @@ mod tests {
             r#"
 -module(main).
 -export([foo/0 bar/1]).
-    %%   ^^^^^ warning: Missing ','
+    %%       ^ warning: Missing ','
 "#,
         );
     }
@@ -1385,7 +1417,7 @@ mod tests {
             r#"
 -module(main).
 -export_type([foo/0 bar/1]).
-         %%   ^^^^^ warning: Missing ','
+         %%       ^ warning: Missing ','
 "#,
         );
     }
@@ -1396,7 +1428,7 @@ mod tests {
             r#"
 -module(main).
 -import(bb, [foo/0 bar/1]).
-         %%  ^^^^^ warning: Missing ','
+         %%      ^ warning: Missing ','
 "#,
         );
     }

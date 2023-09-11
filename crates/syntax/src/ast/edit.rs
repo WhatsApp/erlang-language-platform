@@ -154,7 +154,11 @@ pub fn start_of_line(token: &SyntaxToken) -> TextSize {
     token.text_range().start()
 }
 
-fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+pub fn next_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+    iter::successors(Some(token), |token| token.next_token())
+}
+
+pub fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.prev_token())
 }
 
