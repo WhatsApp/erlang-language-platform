@@ -187,12 +187,7 @@ impl Diagnostic {
             .right_biased()
         {
             let indent = IndentLevel::from_token(&token);
-            let text = format!(
-                "\n{}% elp:ignore {} ({})",
-                indent,
-                self.code.as_code(),
-                self.code.as_label()
-            );
+            let text = format!("\n{}% elp:ignore {}", indent, self.code.as_labeled_code(),);
 
             let offset = start_of_line(&token);
             builder.insert(offset, text);
@@ -392,6 +387,10 @@ impl DiagnosticCode {
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
         }
+    }
+
+    pub fn as_labeled_code(&self) -> String {
+        format!("{} ({})", self.as_code(), self.as_label())
     }
 
     pub fn maybe_from_string(s: &String) -> Option<DiagnosticCode> {

@@ -277,7 +277,7 @@ pub fn ide_to_arc_diagnostic(
         line_num,
         character,
         ide_to_arc_severity(diagnostic.severity),
-        diagnostic.code.as_label(),
+        diagnostic.code.as_labeled_code(),
         diagnostic.message.clone(),
         None,
     )
