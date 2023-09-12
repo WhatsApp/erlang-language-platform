@@ -11,7 +11,7 @@
 		"url": "https://github.com/WhatsApp/erlang-language-platform"
 	},
 	"publisher": "erlang-language-platform",
-	"categories": [],
+	"categories": ["Debuggers", "Formatters", "Linters", "Programming Languages", "Snippets", "Testing"],
 	"keywords": [
 		"elp"
 	],
