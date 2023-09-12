@@ -163,4 +163,4 @@ jobs:
       - name: Publish extension to marketplace
         working-directory: editors/code
         if: ${{ github.event_name == 'release' && matrix.vscode-publish }}
-        run: vsce publish -p ${{ secrets.VSCE_PAT }}
+        run: vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath erlang-language-platform.vsix
