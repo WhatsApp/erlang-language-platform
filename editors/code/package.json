@@ -13,7 +13,7 @@
 	"publisher": "erlang-language-platform",
 	"categories": [],
 	"keywords": [
-		"multi-root ready"
+		"elp"
 	],
 	"engines": {
 		"vscode": "^1.75.0"
