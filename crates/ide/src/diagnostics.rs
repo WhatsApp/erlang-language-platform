@@ -97,8 +97,8 @@ pub struct Diagnostic {
     pub uri: Option<String>,
 }
 
-// @fb-only: pub const BASE_URL: &str = "https://www.internalfb.com/intern/staticdocs/elp/docs";
-// @oss-only pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs";
+// @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
+pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
 
 impl Diagnostic {
     pub(crate) fn new(
