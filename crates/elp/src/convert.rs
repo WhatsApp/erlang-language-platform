@@ -272,13 +272,18 @@ pub fn ide_to_arc_diagnostic(
     let pos = position(line_index, diagnostic.range.start());
     let line_num = pos.line + 1;
     let character = Some(pos.character + 1);
+    let message = diagnostic.message.clone();
+    let description = match diagnostic.code.as_uri() {
+        Some(uri) => format!("{message}\n\nFor more information see: {uri}"),
+        None => message,
+    };
     arc_types::Diagnostic::new(
         path,
         line_num,
         character,
         ide_to_arc_severity(diagnostic.severity),
         diagnostic.code.as_labeled_code(),
-        diagnostic.message.clone(),
+        description,
         None,
     )
 }
