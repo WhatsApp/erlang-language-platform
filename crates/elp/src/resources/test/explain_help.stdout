@@ -1,0 +1,5 @@
+Usage: --code CODE
+
+Available options:
+        --code <CODE>  Error code to explain
+    -h, --help         Prints help information

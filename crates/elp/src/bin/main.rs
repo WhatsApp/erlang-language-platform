@@ -28,6 +28,7 @@ mod build_info_cli;
 mod elp_parse_cli;
 mod eqwalizer_cli;
 mod erlang_service_cli;
+mod explain_cli;
 mod lint_cli;
 mod reporting;
 mod shell;
@@ -86,6 +87,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             let help = batteries::get_usage(args::args());
             writeln!(cli, "{}", help)?
         }
+        args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
     }
 
     log::logger().flush();
@@ -140,6 +142,7 @@ mod tests {
 
     use bpaf::Args;
     use elp::cli::Fake;
+    use elp_ide::diagnostics::BASE_URL;
     use expect_test::expect;
     use expect_test::expect_file;
     use expect_test::Expect;
@@ -853,6 +856,36 @@ mod tests {
         let expected = expect_file!["../resources/test/lint_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn explain_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["explain", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/explain_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn explain_code() {
+        let args = args_vec!["explain", "--code", "W0005"];
+        let (stdout, stderr, code) = elp(args);
+        let expected = expect_file!["../resources/test/explain_code.stdout"];
+        expected.assert_eq(&stdout.strip_prefix(BASE_URL).unwrap());
+        assert!(stderr.is_empty());
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn explain_unknown_code() {
+        let args = args_vec!["explain", "--code", "does_not_exist"];
+        let (stdout, stderr, code) = elp(args);
+        let expected = expect_file!["../resources/test/explain_unkwnown_code.stdout"];
+        expected.assert_eq(&stdout);
+        assert!(stderr.is_empty());
+        assert_eq!(code, 0);
     }
 
     fn simple_snapshot(

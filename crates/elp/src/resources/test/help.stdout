@@ -20,3 +20,4 @@ Available commands:
     version               Print version
     shell                 Starts an interactive ELP shell
     eqwalize-stats        Return statistics about code quality for eqWAlizer
+    explain               Explain a diagnostic code

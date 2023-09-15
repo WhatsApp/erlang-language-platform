@@ -97,6 +97,9 @@ pub struct Diagnostic {
     pub uri: Option<String>,
 }
 
+// @fb-only: pub const BASE_URL: &str = "https://www.internalfb.com/intern/staticdocs/elp/docs";
+// @oss-only pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs";
+
 impl Diagnostic {
     pub(crate) fn new(
         code: DiagnosticCode,
@@ -105,14 +108,14 @@ impl Diagnostic {
     ) -> Diagnostic {
         let message = message.into();
         Diagnostic {
-            code,
+            code: code.clone(),
             message,
             range,
             severity: Severity::Error,
             categories: HashSet::new(),
             fixes: None,
             related_info: None,
-            uri: None,
+            uri: code.as_uri(),
         }
     }
 
@@ -404,6 +407,30 @@ impl DiagnosticCode {
                 Self::is_erlang_service(s).map(DiagnosticCode::ErlangService)
             }
         }
+    }
+
+    pub fn namespace(code: &String) -> Option<String> {
+        let first = code.to_string().chars().next()?;
+        Some(first.to_lowercase().to_string())
+    }
+
+    pub fn as_namespace(&self) -> Option<String> {
+        match self {
+            DiagnosticCode::DefaultCodeForEnumIter => None,
+            DiagnosticCode::AdHoc(_) => None,
+            // @fb-only: DiagnosticCode::MetaOnly(_) => None,
+            DiagnosticCode::ErlangService(code) => Self::namespace(code),
+            _ => Self::namespace(&self.as_code()),
+        }
+    }
+
+    pub fn as_uri(&self) -> Option<String> {
+        let namespace = self.as_namespace()?;
+        let code = self.as_code();
+        Some(format!(
+            "{}/erlang-error-index/{namespace}/{code}",
+            BASE_URL.to_string()
+        ))
     }
 
     /// Check if the diagnostic label is for an AdHoc one.
@@ -707,16 +734,9 @@ fn no_module_definition_diagnostic(
     parse: &Parse<ast::SourceFile>,
 ) {
     let mut report = |range| {
-        diagnostics.push(Diagnostic {
-            message: "no module definition".to_string(),
-            range,
-            severity: Severity::Error,
-            categories: HashSet::new(),
-            fixes: None,
-            related_info: None,
-            code: DiagnosticCode::MissingModule,
-            uri: None,
-        });
+        let diagnostic =
+            Diagnostic::new(DiagnosticCode::MissingModule, "no module definition", range);
+        diagnostics.push(diagnostic);
     };
     for form in parse.tree().forms() {
         match form {
@@ -883,16 +903,7 @@ fn non_whitespace_prev_token(node: &SyntaxNode) -> Option<NodeOrToken> {
 
 fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -> Diagnostic {
     let message = format!("Missing '{}'", item);
-    Diagnostic {
-        message,
-        range,
-        severity: Severity::Warning,
-        categories: HashSet::new(),
-        fixes: None,
-        related_info: None,
-        code: DiagnosticCode::Missing(code),
-        uri: None,
-    }
+    Diagnostic::new(DiagnosticCode::Missing(code), message, range).severity(Severity::Warning)
 }
 
 pub fn erlang_service_diagnostics(

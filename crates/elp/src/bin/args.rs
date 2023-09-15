@@ -247,6 +247,13 @@ pub struct Lint {
 }
 
 #[derive(Clone, Debug, Bpaf)]
+pub struct Explain {
+    /// Error code to explain
+    #[bpaf(argument("CODE"))]
+    pub code: String,
+}
+
+#[derive(Clone, Debug, Bpaf)]
 pub struct Shell {
     /// Path to directory with project (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
@@ -269,6 +276,7 @@ pub enum Command {
     Lint(Lint),
     Version(Version),
     Shell(Shell),
+    Explain(Explain),
     Help(),
 }
 
@@ -366,6 +374,12 @@ pub fn command() -> impl Parser<Command> {
         .command("shell")
         .help("Starts an interactive ELP shell");
 
+    let explain = explain()
+        .map(Command::Explain)
+        .to_options()
+        .command("explain")
+        .help("Explain a diagnostic code");
+
     construct!([
         eqwalize,
         eqwalize_all,
@@ -381,6 +395,7 @@ pub fn command() -> impl Parser<Command> {
         version,
         shell,
         eqwalize_stats,
+        explain,
     ])
     .fallback(Help())
 }
