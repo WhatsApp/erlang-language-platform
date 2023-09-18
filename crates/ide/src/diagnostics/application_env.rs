@@ -63,7 +63,7 @@ pub(crate) enum BadEnvCallAction {
     /// The `tag` must match, and we check the `index`th part of the
     /// second tuple element
     /// e.g. `our_mod:a_fun(Context, Location, [..., {cfg, {Application, Flag}}, ...], Format, Args)
-    // @oss-only #[allow(dead_code)]
+    #[allow(dead_code)] // @oss-only
     OptionsArg {
         /// Which argument contains the list of options to be checked
         arg_index: usize,
