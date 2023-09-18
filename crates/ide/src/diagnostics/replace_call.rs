@@ -104,6 +104,7 @@ pub fn replace_call_site_if_args_match(
         });
 }
 
+#[allow(dead_code)] // @oss-only
 pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option<Diagnostic> {
     let mfa_str = mfa.label();
     let sep = if extra_info.is_empty() { "" } else { " " };

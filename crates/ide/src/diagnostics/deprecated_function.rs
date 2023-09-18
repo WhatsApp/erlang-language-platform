@@ -46,7 +46,7 @@ pub struct DeprecationDetails {
     message: Option<String>,
 }
 
-// @oss-only #[allow(dead_code)]
+#[allow(dead_code)] // @oss-only
 impl DeprecationDetails {
     pub fn new() -> Self {
         DeprecationDetails {
