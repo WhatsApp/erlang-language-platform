@@ -52,7 +52,7 @@ pub fn replace_call_site(
     replace_call_site_if_args_match(
         mfa,
         &|_ctx| Some("".to_string()),
-        replacement,
+        &replacement,
         diagnostic_builder,
         acc,
         sema,
@@ -63,7 +63,7 @@ pub fn replace_call_site(
 pub fn replace_call_site_if_args_match(
     fm: &FunctionMatch,
     args_match: CheckCall<()>,
-    replacement: Replacement,
+    replacement: &Replacement,
     diagnostic_builder: DiagnosticBuilder,
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
@@ -87,7 +87,7 @@ pub fn replace_call_site_if_args_match(
                         let diag = diagnostic_builder(&mfa, extra_info, range)?;
 
                         if let Some(edit) =
-                            replace_call(replacement, sema, def_fb, file_id, args, &range)
+                            replace_call(&replacement, sema, def_fb, file_id, args, target, &range)
                         {
                             Some(diag.with_fixes(Some(vec![fix(
                                 "replace_call_site",
@@ -119,37 +119,106 @@ pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Replacement {
     UseOk,
     UseCallArg(u32),
+    Invocation(String),
+    ArgsPermutation(Vec<Vec<u32>>),
+    Compo(Box<Replacement>, Box<Replacement>),
 }
 
 fn replace_call(
-    replacement: Replacement,
+    replacement: &Replacement,
     sema: &Semantic,
     def_fb: &mut InFunctionBody<&FunctionDef>,
     file_id: FileId,
     args: &[ExprId],
+    target: &CallTarget<ExprId>,
     call_loc: &TextRange,
 ) -> Option<TextEdit> {
-    let opt_replacement_str = match replacement {
-        Replacement::UseOk => Some("ok".to_string()),
+    let mut edit_builder = TextEdit::builder();
+    match replacement {
+        Replacement::UseOk => {
+            edit_builder.replace(*call_loc, "ok".to_owned());
+            Some(edit_builder.finish())
+        }
         Replacement::UseCallArg(n) => {
-            let &nth = args.get(n as usize)?;
+            let &nth = args.get(*n as usize)?;
 
             let body_map = def_fb.get_body_map(sema.db);
             let source_file = sema.parse(file_id);
 
             let nth_str = body_map.expr(nth)?.to_node(&source_file)?.to_string();
-            Some(nth_str)
+            edit_builder.replace(*call_loc, nth_str);
+            Some(edit_builder.finish())
         }
-    };
-    opt_replacement_str.map(|replacement_str| {
-        let mut edit_builder = TextEdit::builder();
-        edit_builder.replace(*call_loc, replacement_str);
-        edit_builder.finish()
-    })
+        Replacement::Invocation(replacement) => {
+            let range: TextRange = match target {
+                CallTarget::Local { name } => def_fb
+                    .range_for_expr(sema.db, name.to_owned())
+                    .expect("name in local call not found in function body."),
+                CallTarget::Remote { module, name } => {
+                    let range_module = def_fb
+                        .range_for_expr(sema.db, module.to_owned())
+                        .expect("module in remote call not found in function body.");
+                    let range_name = def_fb
+                        .range_for_expr(sema.db, name.to_owned())
+                        .expect("name in remote call not found in function body.");
+                    TextRange::new(range_module.start(), range_name.end())
+                }
+            };
+            edit_builder.replace(range, replacement.to_owned());
+            Some(edit_builder.finish())
+        }
+        Replacement::ArgsPermutation(cycles) => {
+            let body_map = def_fb.get_body_map(sema.db);
+            let source_file = sema.parse(file_id);
+            let opt_args_str: Option<Vec<String>> = args
+                .iter()
+                .map(|expr| {
+                    body_map
+                        .expr(*expr)
+                        .map(|expr| expr.to_node(&source_file))
+                        .flatten()
+                        .map(|source| source.to_string())
+                })
+                .collect();
+            if let Some(args_str) = opt_args_str {
+                let mut permuted_args: Vec<&String> = args_str.iter().collect();
+                cycles.iter().for_each(|perm| {
+                    if perm.len() > 1 {
+                        permuted_args[perm[perm.len() - 1] as usize] = &args_str[perm[0] as usize];
+                    }
+                    for i in 1..perm.len() {
+                        permuted_args[perm[i - 1] as usize] = &args_str[perm[i] as usize];
+                    }
+                });
+                args.iter().enumerate().for_each(|(index, &id)| {
+                    let range_arg = def_fb
+                        .range_for_expr(sema.db, id)
+                        .expect("arg in permutation not found in function body.");
+                    edit_builder.replace(range_arg, permuted_args[index].to_owned())
+                });
+            } else {
+            }
+            Some(edit_builder.finish())
+        }
+        Replacement::Compo(r1, r2) => {
+            let text_edit_r1 = replace_call(r1, sema, def_fb, file_id, args, target, call_loc);
+            let text_edit_r2 = replace_call(r2, sema, def_fb, file_id, args, target, call_loc);
+            if let Some(mut r1_edits) = text_edit_r1 {
+                if let Some(r2_edits) = text_edit_r2 {
+                    r1_edits.union(r2_edits).expect("compound replace failed");
+                    Some(r1_edits)
+                } else {
+                    Some(r1_edits)
+                }
+            } else {
+                text_edit_r2
+            }
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -361,7 +430,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
-            fire_bombs(Config, MissilesCode) ->
+            fire_bombs(FooConfig, MissilesCode) ->
                 boom.
             "#,
             r#"
@@ -388,7 +457,7 @@ mod tests {
                         Expr::Literal(Literal::Integer(42)) => Some("with 42".to_string()),
                         _ => None,
                     },
-                    Replacement::UseOk,
+                    &Replacement::UseOk,
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -626,5 +695,99 @@ mod tests {
                 some:clearner_helper([], Config).
             "#,
         );
+    }
+
+    #[test]
+    fn check_fix_replace_call_replace_call() {
+        let mut config = DiagnosticsConfig {
+            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+                replace_call_site(
+                    &FunctionMatch::MFA(MFA {
+                        module: "foo".into(),
+                        name: "fire_bombs".into(),
+                        arity: 2,
+                    }),
+                    Replacement::Invocation("blah:drop_water".to_owned()),
+                    &adhoc_diagnostic,
+                    acc,
+                    sema,
+                    file_id,
+                )
+            }],
+            ..DiagnosticsConfig::default()
+        };
+        config
+            .disabled
+            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+
+        check_fix_with_config(
+            config,
+            r#"
+            //- /src/blah_SUITE.erl
+            -module(blah_SUITE).
+
+            end_per_suite(Config) ->
+                Message = ~foo:fire_bombs(Config, qwerty),
+                transmit(Message).
+            //- /src/foo.erl
+            -module(foo).
+            fire_bombs(Config, MissilesCode) ->
+                boom.
+            "#,
+            r#"
+            -module(blah_SUITE).
+
+            end_per_suite(Config) ->
+                Message = blah:drop_water(Config, qwerty),
+                transmit(Message).
+            "#,
+        )
+    }
+
+    #[test]
+    fn check_fix_replace_call_permutation() {
+        let mut config = DiagnosticsConfig {
+            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+                replace_call_site(
+                    &FunctionMatch::MFA(MFA {
+                        module: "foo".into(),
+                        name: "fire_bombs".into(),
+                        arity: 5,
+                    }),
+                    Replacement::ArgsPermutation(vec![vec![1, 3, 2]]),
+                    &adhoc_diagnostic,
+                    acc,
+                    sema,
+                    file_id,
+                )
+            }],
+            ..DiagnosticsConfig::default()
+        };
+        config
+            .disabled
+            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+
+        check_fix_with_config(
+            config,
+            r#"
+            //- /src/blah_SUITE.erl
+            -module(blah_SUITE).
+
+            end_per_suite(_Config) ->
+                Message = ~foo:fire_bombs(Zeroth, First, Second, Third, Fourth),
+                transmit(Message).
+            //- /src/foo.erl
+            -module(foo).
+            fire_bombs(_Config, _MissilesCode, 1, 3, 3, 4) ->
+                boom.
+            "#,
+            r#"
+            -module(blah_SUITE).
+
+            end_per_suite(_Config) ->
+                Message = foo:fire_bombs(Zeroth, Third, First, Second, Fourth),
+                transmit(Message).
+            "#,
+        )
     }
 }
