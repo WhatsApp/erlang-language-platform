@@ -1035,7 +1035,10 @@ mod tests {
 
     fn assert_normalised_file(expected: ExpectFile, actual: &str, project_path: PathBuf) {
         let project_path: &str = &project_path.to_string_lossy();
-        let normalised = actual.replace(project_path, "{project_path}");
+        let normalised = actual
+            .replace(project_path, "{project_path}")
+            .replace(BASE_URL, "");
+
         expected.assert_eq(&normalised);
     }
 
