@@ -593,14 +593,14 @@ impl<'a> Ctx<'a> {
                     self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    call.args()
+                    let expansion = self.alloc_pat(Pat::Missing, Some(expr));
+                    let args = call
+                        .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .for_each(|expr| {
-                            let _ = self.lower_optional_pat(expr.expr());
-                            let _ = self.lower_optional_pat(expr.guard());
-                        });
-                    self.alloc_pat(Pat::Missing, Some(expr))
+                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .collect();
+                    self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr))
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_pat(Pat::Missing, Some(expr)),
             ExprMax::MapComprehension(map_comp) => {
@@ -1105,14 +1105,14 @@ impl<'a> Ctx<'a> {
                     self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    call.args()
+                    let expansion = self.alloc_expr(Expr::Missing, Some(expr));
+                    let args = call
+                        .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .for_each(|expr| {
-                            let _ = self.lower_optional_expr(expr.expr());
-                            let _ = self.lower_optional_expr(expr.guard());
-                        });
-                    self.alloc_expr(Expr::Missing, Some(expr))
+                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .collect();
+                    self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr))
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_expr(Expr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
@@ -1707,14 +1707,14 @@ impl<'a> Ctx<'a> {
                     self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    call.args()
+                    let expansion = self.alloc_type_expr(TypeExpr::Missing, Some(expr));
+                    let args = call
+                        .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .for_each(|expr| {
-                            let _ = self.lower_optional_type_expr(expr.expr());
-                            let _ = self.lower_optional_type_expr(expr.guard());
-                        });
-                    self.alloc_type_expr(TypeExpr::Missing, Some(expr))
+                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .collect();
+                    self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr))
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
@@ -2044,14 +2044,14 @@ impl<'a> Ctx<'a> {
                     self.alloc_term(Term::MacroCall { expansion, args }, Some(expr))
                 })
                 .unwrap_or_else(|| {
-                    call.args()
+                    let expansion = self.alloc_term(Term::Missing, Some(expr));
+                    let args = call
+                        .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .for_each(|expr| {
-                            let _ = self.lower_optional_term(expr.expr());
-                            let _ = self.lower_optional_term(expr.guard());
-                        });
-                    self.alloc_term(Term::Missing, Some(expr))
+                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .collect();
+                    self.alloc_term(Term::MacroCall { expansion, args }, Some(expr))
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_term(Term::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {

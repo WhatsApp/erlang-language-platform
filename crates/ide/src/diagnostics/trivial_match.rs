@@ -467,4 +467,35 @@ mod tests {
             "#,
         )
     }
+
+    #[test]
+    fn macro_arg_uses_variable_no_expansion() {
+        check_diagnostics(
+            r#"
+            -module(main).
+
+            ok() -> ok.
+            %% -define(
+            foo() ->
+                A = ok(),
+                ?assertMatch(A, ok()).
+            "#,
+        )
+    }
+
+    #[test]
+    fn macro_arg_uses_variable_with_expansion() {
+        check_diagnostics(
+            r#"
+            -module(main).
+
+            ok() -> ok.
+            -define(assertMatch(X,Y), {X,Y}).
+
+            foo() ->
+                A = ok(),
+                ?assertMatch(A, ok()).
+            "#,
+        )
+    }
 }
