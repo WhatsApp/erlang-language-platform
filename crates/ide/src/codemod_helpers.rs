@@ -154,6 +154,7 @@ fn is_definition<D, R>(def: hir::DefinitionOrReference<D, R>) -> bool {
 
 #[derive(Debug, Clone)]
 pub struct FunctionMatcher<'a, T> {
+    match_any: Option<(&'a FunctionMatch, &'a T)>,
     labels_full: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_mf: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_m: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
@@ -165,7 +166,12 @@ impl<'a, T> FunctionMatcher<'a, T> {
             FxHashMap::default();
         let mut labels_mf: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
         let mut labels_m: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
+        let mut match_any = None;
+
         call.iter().for_each(|(c, t)| match c {
+            FunctionMatch::Any => {
+                match_any = Some((*c, t));
+            }
             FunctionMatch::MFA(mfa) => {
                 if mfa.module == "erlang" && in_erlang_module(&mfa.name, mfa.arity as usize) {
                     labels_full.insert(Some(mfa.label().into()), (*c, t));
@@ -183,6 +189,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
             }
         });
         FunctionMatcher {
+            match_any,
             labels_full,
             labels_mf,
             labels_m,
@@ -196,9 +203,12 @@ impl<'a, T> FunctionMatcher<'a, T> {
         sema: &Semantic,
         body: &Body,
     ) -> Option<(&'a FunctionMatch, &'a T)> {
-        self.labels_full
-            .get(&target.label(arity, sema, body))
-            .copied()
+        self.match_any
+            .or_else(|| {
+                self.labels_full
+                    .get(&target.label(arity, sema, body))
+                    .copied()
+            })
             .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
             .or_else(|| match target {
                 CallTarget::Local { name: _ } => None,
@@ -214,9 +224,17 @@ impl<'a, T> FunctionMatcher<'a, T> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum FunctionMatch {
+    // FunctionMatch::Any is not used yet, see later diffs
+    #[allow(dead_code)]
+    Any,
     MFA(MFA),
-    MF { module: String, name: String },
-    M { module: String },
+    MF {
+        module: String,
+        name: String,
+    },
+    M {
+        module: String,
+    },
 }
 
 impl FunctionMatch {
@@ -511,8 +529,9 @@ mod tests {
             %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
                 foo:bar(x),
             %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
-                foo:bar(x,y).
+                foo:bar(x,y),
             %%  ^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+                baz:bar().
             "#,
         )
     }
@@ -530,6 +549,25 @@ mod tests {
                 baz:bar(x),
                 foo:florgle(x,y).
             %%  ^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            "#,
+        )
+    }
+
+    #[test]
+    fn find_call_any() {
+        check_adhoc_function_match(
+            &vec![vec![FunctionMatch::Any]],
+            r#"
+            -module(main).
+
+            bar() ->
+                foo:bar(),
+            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+                baz:bar(x),
+            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
+                local(x,y).
+            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
+            local(A,B) -> {A,B}.
             "#,
         )
     }
