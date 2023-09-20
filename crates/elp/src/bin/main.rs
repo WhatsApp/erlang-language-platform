@@ -449,6 +449,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_otp_fix(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "otp_7655",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_otp_7655.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_1(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["lint", "--module", "lints", "--diagnostic-filter", "P1700",],

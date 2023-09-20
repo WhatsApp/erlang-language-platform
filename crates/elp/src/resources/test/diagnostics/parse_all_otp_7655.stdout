@@ -1,0 +1,4 @@
+module specified: otp_7655
+Diagnostics reported in 1 modules:
+  otp_7655: 1
+      4:0-4:27::[Error] [L1201] no module definition
