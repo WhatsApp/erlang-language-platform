@@ -210,6 +210,13 @@ fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
     Some(app_data.name.clone())
 }
 
+pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleName> {
+    let source_root_id = db.file_source_root(file_id);
+    let app_data = db.app_data(source_root_id)?;
+    let module_index = db.module_index(app_data.project_id);
+    module_index.module_for_file(file_id).cloned()
+}
+
 lazy_static! {
 static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![

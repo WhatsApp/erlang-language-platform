@@ -251,14 +251,6 @@ impl FunctionMatch {
     pub fn m(m: &str) -> FunctionMatch {
         FunctionMatch::M { module: m.into() }
     }
-
-    pub fn module(self: &FunctionMatch) -> String {
-        match self {
-            FunctionMatch::MFA(mfa) => mfa.module.clone(),
-            FunctionMatch::MF { module, name: _ } => module.to_string(),
-            FunctionMatch::M { module } => module.to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,14 +262,6 @@ pub struct MFA {
 }
 
 impl MFA {
-    pub fn new(m: &str, n: &str, arity: u32) -> MFA {
-        MFA {
-            module: m.into(),
-            name: n.into(),
-            arity,
-        }
-    }
-
     pub fn label(&self) -> String {
         format!("{}:{}/{}", self.module, self.name, self.arity)
     }

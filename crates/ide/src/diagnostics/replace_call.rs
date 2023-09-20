@@ -81,7 +81,7 @@ pub fn replace_call_site_if_args_match(
                     &[(fm, ())],
                     &args_match,
                     move |sema, def_fb, target, args, extra_info, range| {
-                        let mfa = to_mfa(fm, target, args.len() as u32, sema, &def_fb.body())?;
+                        let mfa = to_mfa(file_id, target, args.len() as u32, sema, &def_fb.body())?;
                         let mfa_str = mfa.label();
 
                         let diag = diagnostic_builder(&mfa, extra_info, range)?;
@@ -255,7 +255,8 @@ pub fn remove_fun_ref_from_list(
                                     let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
                                     let list_elem_ast = in_file_ast_ptr.to_node(&source_file)?;
                                     let statement_removal = remove_statement(&list_elem_ast)?;
-                                    let mfa = to_mfa(fm, target, *arity, sema, &def_fb.body())?;
+                                    let mfa =
+                                        to_mfa(file_id, target, *arity, sema, &def_fb.body())?;
                                     let range = def_fb
                                         .clone()
                                         .range_for_expr(sema.db, *matched_funref_id)?;
@@ -320,23 +321,20 @@ fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
 }
 
 fn to_mfa(
-    fm: &FunctionMatch,
+    file_id: FileId,
     target: &CallTarget<ExprId>,
     arity: u32,
     sema: &Semantic,
     body: &Body,
 ) -> Option<MFA> {
-    match target {
-        CallTarget::Local { name } => {
-            let name = sema.db.lookup_atom(body[*name].as_atom()?);
-            return Some(MFA::new(fm.module().as_str(), name.as_str(), arity));
-        }
-        CallTarget::Remote { module, name } => {
-            let module = sema.db.lookup_atom(body[*module].as_atom()?);
-            let name = sema.db.lookup_atom(body[*name].as_atom()?);
-            return Some(MFA::new(module.as_str(), name.as_str(), arity));
-        }
-    }
+    let call_target = target.resolve_call(arity, sema, file_id, body)?;
+    let call_module = call_target.module?;
+    let na = call_target.function.name;
+    Some(MFA {
+        module: call_module.to_quoted_string(),
+        name: na.name().to_quoted_string(),
+        arity: na.arity(),
+    })
 }
 
 #[cfg(test)]
@@ -485,6 +483,7 @@ mod tests {
                 foo:fire_bombs(Config, 40).
             //- /src/foo.erl
             -module(foo).
+            fire_bombs(A,B) -> {A,B}.
             "#,
         )
     }
@@ -778,7 +777,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
-            fire_bombs(_Config, _MissilesCode, 1, 3, 3, 4) ->
+            fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
                 boom.
             "#,
             r#"

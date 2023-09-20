@@ -13,6 +13,7 @@ use std::ops::Index;
 use std::sync::Arc;
 use std::vec::IntoIter;
 
+use elp_base_db::module_name;
 use elp_base_db::FileId;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
@@ -151,11 +152,7 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn module_name(&self, file_id: FileId) -> Option<ModuleName> {
-        let source_root_id = self.db.file_source_root(file_id);
-        let project_id = self.db.app_data(source_root_id)?.project_id;
-        let module_index = self.db.module_index(project_id);
-        let module_name = module_index.module_for_file(file_id)?;
-        Some(module_name.clone())
+        module_name(self.db.upcast(), file_id)
     }
 
     pub fn resolve_module_name(&self, file_id: FileId, name: &str) -> Option<Module> {

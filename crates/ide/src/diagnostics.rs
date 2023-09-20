@@ -1609,6 +1609,7 @@ baz(1)->4.
               X.
             //- /src/foo.erl
             -module(foo).
+            bar() -> ok.
             "#,
         );
         check_diagnostics_with_config(

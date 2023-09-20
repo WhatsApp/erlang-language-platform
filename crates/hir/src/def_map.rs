@@ -18,6 +18,7 @@
 
 use std::sync::Arc;
 
+use elp_base_db::module_name;
 use elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
@@ -108,6 +109,7 @@ impl DefMap {
     pub(crate) fn local_def_map_query(db: &dyn MinDefDatabase, file_id: FileId) -> Arc<DefMap> {
         let mut def_map = Self::default();
         let file = File { file_id };
+        let module = module_name(db.upcast(), file_id);
 
         // Type (and to some extent function) definitions & export attributes
         // can come in any order, we initially store types/functions as unexported, non-deprecated
@@ -127,6 +129,7 @@ impl DefMap {
                             exported: false,
                             deprecated: false,
                             deprecated_desc: None,
+                            module: module.clone(),
                             function,
                             function_id: idx,
                         },

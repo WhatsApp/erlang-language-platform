@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
+use elp_base_db::ModuleName;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
@@ -100,6 +101,7 @@ pub struct FunctionDef {
     pub exported: bool,
     pub deprecated: bool,
     pub deprecated_desc: Option<DeprecatedDesc>,
+    pub module: Option<ModuleName>,
     pub function: Function,
     pub function_id: FunctionId,
 }
