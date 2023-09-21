@@ -36,6 +36,7 @@ use crate::Behaviour;
 use crate::Callback;
 use crate::CompileOption;
 use crate::Define;
+use crate::DefineId;
 use crate::Diagnostic;
 use crate::DiagnosticMessage;
 use crate::Export;
@@ -65,6 +66,7 @@ pub struct Ctx<'a> {
     source_file: &'a ast::SourceFile,
     id_map: FormIdMap,
     map_back: FxHashMap<AstPtr<ast::Form>, FormIdx>,
+    define_id_map: FxHashMap<DefineId, FormIdx>,
     data: Box<FormListData>,
     diagnostics: Vec<Diagnostic>,
     conditions: Vec<PPConditionId>,
@@ -77,6 +79,7 @@ impl<'a> Ctx<'a> {
             source_file,
             id_map: FormIdMap::from_source_file(source_file),
             map_back: FxHashMap::default(),
+            define_id_map: FxHashMap::default(),
             data: Box::default(),
             diagnostics: Vec::new(),
             conditions: Vec::new(),
@@ -123,6 +126,7 @@ impl<'a> Ctx<'a> {
             forms,
             diagnostics: self.diagnostics,
             map_back: self.map_back,
+            define_id_map: self.define_id_map,
         }
     }
 
@@ -317,7 +321,9 @@ impl<'a> Ctx<'a> {
             .data
             .pp_directives
             .alloc(PPDirective::Define(define_idx));
-        Some(FormIdx::PPDirective(idx))
+        let form_id = FormIdx::PPDirective(idx);
+        self.define_id_map.insert(define_idx, form_id);
+        Some(form_id)
     }
 
     fn lower_undef(&mut self, undef: &ast::PpUndef) -> Option<FormIdx> {

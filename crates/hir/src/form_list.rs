@@ -84,6 +84,7 @@ pub struct FormList {
     diagnostics: Vec<Diagnostic>,
     // Map from the range of a form to its index
     map_back: FxHashMap<AstPtr<ast::Form>, FormIdx>,
+    define_id_map: FxHashMap<DefineId, FormIdx>,
 }
 
 impl FormList {
@@ -157,6 +158,10 @@ impl FormList {
 
     pub fn find_form(&self, form: &ast::Form) -> Option<FormIdx> {
         self.map_back.get(&AstPtr::new(form)).copied()
+    }
+
+    pub fn find_define_form(&self, define: &DefineId) -> Option<FormIdx> {
+        self.define_id_map.get(define).copied()
     }
 
     pub fn pretty_print(&self) -> String {
