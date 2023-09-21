@@ -74,6 +74,23 @@ struct GroupDef {
     content: Vec<TestDef>,
 }
 
+impl GroupDef {
+    pub(crate) fn new(
+        sema: &Semantic,
+        body: &Body,
+        group_name: ExprId,
+        group_content: ExprId,
+    ) -> Option<Self> {
+        let group_name = &body[group_name].as_atom()?;
+        let group_name = sema.db.lookup_atom(*group_name);
+        let group_content = parse_group_content(sema, body, group_content).ok()?;
+        Some(GroupDef {
+            name: group_name,
+            content: group_content,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 enum TestDef {
     TestName(Name),
@@ -412,14 +429,9 @@ fn parse_group(sema: &Semantic, body: &Body, expr_id: ExprId) -> Option<GroupDef
     match &body[expr_id] {
         Expr::Tuple { exprs } => match exprs[..] {
             [group_name, _properties, group_content] => {
-                let group_name = &body[group_name].as_atom()?;
-                let group_name = sema.db.lookup_atom(*group_name);
-                let group_content = parse_group_content(sema, body, group_content).ok()?;
-                Some(GroupDef {
-                    name: group_name,
-                    content: group_content,
-                })
+                GroupDef::new(sema, body, group_name, group_content)
             }
+            [group_name, group_content] => GroupDef::new(sema, body, group_name, group_content),
             _ => None,
         },
         _ => None,

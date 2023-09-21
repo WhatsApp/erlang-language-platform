@@ -415,4 +415,33 @@ mod tests {
     "#,
         );
     }
+
+    #[test]
+    fn runnables_undocumented_group_definition() {
+        // While Common Test does not explicitly allow a group config such as:
+        //  {GroupName, GroupsAndTestcase}
+        // The above pattern works in practice and it is used by several test suites.
+        // See https://www.erlang.org/doc/apps/common_test/write_test_chapter#test_case_groups
+        check_runnables(
+            r#"
+ //- /my_app/test/my_common_test_SUITE.erl
+    ~
+    -module(my_common_test_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -export([all/0, groups/0]).
+    -export([a/1, b/1, c/1]).
+    all() -> [a, b, {group, gc1}].
+    groups() -> [{gc1, [c, {gc2, [], [d]}]}].
+    a(_Config) ->
+ %% ^ Run Test
+      ok.
+    b(_Config) ->
+ %% ^ Run Test
+      ok.
+    c(_Config) ->
+ %% ^ Run Test (in gc1)
+      ok.
+    "#,
+        );
+    }
 }
