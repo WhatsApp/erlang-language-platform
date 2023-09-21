@@ -15,6 +15,7 @@ use elp_syntax::ast::{self};
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
+use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::Semantic;
@@ -83,37 +84,32 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         let function_id_idx = sema.find_enclosing_function(file_id, function.syntax())?;
         let function_id = InFile::new(file_id, function_id_idx);
         let function_body = sema.to_function_body(function_id);
-        sema.fold_function(
-            function_id,
-            (),
-            &mut |acc, _clause_id, ctx| {
-                if let Expr::Call { target, args } = &ctx.expr {
-                    let arity = args.len() as u32;
-                    let body = &function_body.body();
-                    if let Some(call_def) = target.resolve_call(arity, &sema, file_id, body) {
-                        let mut nav = call_def.to_nav(db);
-                        if let Some(label) = target.label(arity, &sema, body) {
-                            nav.name = label
-                        }
-                        if let Some(expr) = &function_body.get_body_map(db).expr(ctx.expr_id) {
-                            if let Some(node) = expr.to_node(&source_file) {
-                                if let Some(call) = algo::find_node_at_offset::<ast::Call>(
-                                    node.syntax(),
-                                    node.syntax().text_range().start(),
-                                ) {
-                                    if let Some(expr) = call.expr() {
-                                        let range = expr.syntax().text_range();
-                                        calls.add(nav.clone(), range);
-                                    }
+        sema.fold_function(function_id, (), &mut |acc, _clause_id, ctx| {
+            if let AnyExpr::Expr(Expr::Call { target, args }) = &ctx.item {
+                let arity = args.len() as u32;
+                let body = &function_body.body();
+                if let Some(call_def) = target.resolve_call(arity, &sema, file_id, body) {
+                    let mut nav = call_def.to_nav(db);
+                    if let Some(label) = target.label(arity, &sema, body) {
+                        nav.name = label
+                    }
+                    if let Some(expr) = &function_body.get_body_map(db).any(ctx.item_id) {
+                        if let Some(node) = expr.to_node(&source_file) {
+                            if let Some(call) = algo::find_node_at_offset::<ast::Call>(
+                                node.syntax(),
+                                node.syntax().text_range().start(),
+                            ) {
+                                if let Some(expr) = call.expr() {
+                                    let range = expr.syntax().text_range();
+                                    calls.add(nav.clone(), range);
                                 }
                             }
                         }
                     }
                 }
-                acc
-            },
-            &mut |acc, _, _| acc,
-        )
+            }
+            acc
+        })
     }
     Some(calls.into_items())
 }

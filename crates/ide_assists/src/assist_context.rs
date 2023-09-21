@@ -30,6 +30,7 @@ use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
 use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
+use hir::AnyExpr;
 use hir::Body;
 use hir::Expr;
 use hir::ExprId;
@@ -239,18 +240,17 @@ impl<'a> AssistContext<'a> {
                     *arg,
                     Vec::default(),
                     &mut |mut acc, ctx| {
-                        match &ctx.expr {
-                            Expr::Var(var) => {
+                        match &ctx.item {
+                            AnyExpr::Expr(Expr::Var(var)) => {
                                 acc.push(var.as_string(self.db().upcast()));
                             }
-                            Expr::Literal(_) => {
+                            AnyExpr::Expr(Expr::Literal(_)) => {
                                 acc.push("N".to_string());
                             }
                             _ => {}
                         };
                         acc
                     },
-                    &mut |acc, _| acc,
                 );
                 vars_and_literals.join("")
             })

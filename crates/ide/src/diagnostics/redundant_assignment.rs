@@ -16,6 +16,8 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
+use hir::AnyExpr;
+use hir::AnyExprId;
 use hir::BodySourceMap;
 use hir::Expr;
 use hir::ExprId;
@@ -47,28 +49,30 @@ pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let mut def_fb = def.in_function_body(sema.db, def);
-    def_fb.clone().fold_function(
-        (),
-        &mut |_acc, _, ctx| {
-            if let Expr::Match { lhs, rhs } = ctx.expr {
-                if let Pat::Var(_) = &def_fb[lhs] {
-                    if let Expr::Var(_) = &def_fb[rhs] {
-                        if let Some(diag) = is_var_assignment_to_unused_var(
-                            sema,
-                            &mut def_fb,
-                            def.file.file_id,
-                            ctx.expr_id,
-                            lhs,
-                            rhs,
-                        ) {
-                            diags.push(diag);
+    def_fb
+        .clone()
+        .fold_function((), &mut |_acc, _, ctx| match ctx.item_id {
+            AnyExprId::Expr(expr_id) => {
+                if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+                    if let Pat::Var(_) = &def_fb[lhs] {
+                        if let Expr::Var(_) = &def_fb[rhs] {
+                            if let Some(diag) = is_var_assignment_to_unused_var(
+                                sema,
+                                &mut def_fb,
+                                def.file.file_id,
+                                expr_id,
+                                lhs,
+                                rhs,
+                            ) {
+                                diags.push(diag);
+                            }
                         }
                     }
                 }
             }
-        },
-        &mut |_acc, _, _| (),
-    );
+
+            _ => {}
+        });
 }
 
 fn is_var_assignment_to_unused_var(

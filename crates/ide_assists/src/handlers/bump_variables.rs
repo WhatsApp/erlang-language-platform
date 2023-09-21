@@ -18,6 +18,7 @@ use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
 use fxhash::FxHashSet;
+use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::Pat;
@@ -67,20 +68,17 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             infile_function,
             clause_id,
             FxHashSet::default(),
-            &mut |mut acc, ctx| match ctx.expr {
-                Expr::Var(v) => {
-                    if let Some(expr) = body_map.expr(ctx.expr_id) {
+            &mut |mut acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Var(v)) => {
+                    if let Some(expr) = body_map.any(ctx.item_id) {
                         if expr.file_id() == file_id {
                             acc.insert((v, expr));
                         }
                     }
                     acc
                 }
-                _ => acc,
-            },
-            &mut |mut acc, ctx| match ctx.pat {
-                Pat::Var(v) => {
-                    if let Some(pat) = body_map.pat(ctx.pat_id) {
+                AnyExpr::Pat(Pat::Var(v)) => {
+                    if let Some(pat) = body_map.any(ctx.item_id) {
                         if pat.file_id() == file_id {
                             acc.insert((v, pat));
                         }

@@ -23,12 +23,20 @@ use crate::RecordFieldId;
 use crate::Semantic;
 use crate::Var;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum AnyExprId {
     Expr(ExprId),
     Pat(PatId),
     TypeExpr(TypeExprId),
     Term(TermId),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AnyExpr {
+    Expr(Expr),
+    Pat(Pat),
+    TypeExpr(TypeExpr),
+    Term(Term),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

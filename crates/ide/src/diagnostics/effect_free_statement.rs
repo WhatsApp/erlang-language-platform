@@ -21,6 +21,7 @@ use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
+use hir::AnyExprId;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
@@ -45,23 +46,22 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
 
                 let def_fb = def.in_function_body(sema.db, def);
                 let body_map = def_fb.get_body_map(sema.db);
-                def_fb.fold_function(
-                    (),
-                    &mut |_acc, _, ctx| {
-                        if let Some(in_file_ast_ptr) = body_map.expr(ctx.expr_id) {
+                def_fb.fold_function((), &mut |_acc, _, ctx| match ctx.item_id {
+                    AnyExprId::Expr(expr_id) => {
+                        if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
                             if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
                                 if is_statement(&expr_ast)
                                     && !is_macro_usage(&expr_ast)
-                                    && has_no_effect(&def_fb, &ctx.expr_id)
+                                    && has_no_effect(&def_fb, &expr_id)
                                     && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
                                 {
                                     diags.push(make_diagnostic(file_id, &expr_ast));
                                 }
                             }
                         }
-                    },
-                    &mut |_acc, _, _| (),
-                );
+                    }
+                    _ => {}
+                });
             }
         });
 }

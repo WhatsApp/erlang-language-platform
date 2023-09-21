@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileKind;
 use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
 use elp_syntax::AstNode;
+use hir::AnyExpr;
 use hir::InFile;
 use hir::Name;
 use hir::Semantic;
@@ -40,15 +41,15 @@ pub(crate) fn dependent_header(
                 .db
                 .define_body_with_source(InFile::new(file_id, define_id))
             {
-                body.body.fold_expr(
-                    Strategy::TopDown,
-                    body.expr,
-                    (),
-                    &mut |acc, ctx| {
-                        if let Some(name) = ctx.expr.as_record_name() {
-                            let record_name = sema.db.lookup_atom(*name);
+                body.body
+                    .fold_expr(Strategy::TopDown, body.expr, (), &mut |acc, ctx| {
+                        if let Some(name) = match ctx.item {
+                            AnyExpr::Expr(expr) => expr.as_record_name().cloned(),
+                            _ => None,
+                        } {
+                            let record_name = sema.db.lookup_atom(name);
                             if def_map.get_record(&record_name).is_none() {
-                                if let Some(in_file_ast_ptr) = body_map.expr(ctx.expr_id) {
+                                if let Some(in_file_ast_ptr) = body_map.any(ctx.item_id) {
                                     if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
                                         let diagnostic_range = match extract_record_name(&expr_ast)
                                         {
@@ -62,9 +63,7 @@ pub(crate) fn dependent_header(
                             }
                         };
                         acc
-                    },
-                    &mut |acc, _| acc,
-                );
+                    });
             };
         }
     }

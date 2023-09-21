@@ -19,6 +19,8 @@ use std::collections::HashSet;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
+use hir::AnyExpr;
+use hir::AnyExprId;
 use hir::Clause;
 use hir::FunctionDef;
 use hir::InFile;
@@ -52,28 +54,31 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
                 let mut unused_vars_with_wrong_name = HashMap::new();
 
                 for clause_arg_pat_id in pats.iter() {
-                    def_fb.fold_pat(
-                        Strategy::TopDown,
-                        *clause_arg_pat_id,
-                        (),
-                        &mut |(), _| {},
-                        &mut |(), ctx| {
-                            if let Some(var) = ctx.pat.as_var() {
-                                if is_unused_var(
-                                    sema,
-                                    &def_fb,
-                                    &body_map,
-                                    &source_file,
-                                    &ctx.pat_id,
-                                ) {
-                                    let var_name = var.as_string(sema.db.upcast());
-                                    if !var_name.starts_with('_') {
-                                        unused_vars_with_wrong_name.insert(ctx.pat_id, var_name);
+                    def_fb.fold_pat(Strategy::TopDown, *clause_arg_pat_id, (), &mut |(), ctx| {
+                        match ctx.item_id {
+                            AnyExprId::Pat(pat_id) => {
+                                // if let Some(var) = ctx.pat.as_var() {
+                                if let Some(var) = match ctx.item {
+                                    AnyExpr::Pat(pat) => pat.as_var(),
+                                    _ => None,
+                                } {
+                                    if is_unused_var(
+                                        sema,
+                                        &def_fb,
+                                        &body_map,
+                                        &source_file,
+                                        &pat_id,
+                                    ) {
+                                        let var_name = var.as_string(sema.db.upcast());
+                                        if !var_name.starts_with('_') {
+                                            unused_vars_with_wrong_name.insert(pat_id, var_name);
+                                        }
                                     }
                                 }
                             }
-                        },
-                    );
+                            _ => {}
+                        }
+                    });
                 }
 
                 if !unused_vars_with_wrong_name.is_empty() {

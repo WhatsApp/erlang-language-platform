@@ -17,6 +17,7 @@ use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use hir::AnyExpr;
 use hir::CallTarget;
 use hir::DefMap;
 use hir::Expr;
@@ -112,14 +113,31 @@ fn deprecated_func_highlight(
         if def.file.file_id == file_id {
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
-            sema.fold_function(
-                function_id,
-                (),
-                &mut |acc, _clause_id, ctx| {
-                    if let Expr::Call { target, args } = ctx.expr {
-                        let arity = args.len() as u32;
-                        match target {
-                            CallTarget::Local { name } => {
+            sema.fold_function(function_id, (), &mut |acc, _clause_id, ctx| {
+                if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
+                    let arity = args.len() as u32;
+                    match target {
+                        CallTarget::Local { name } => {
+                            if let Some(range) = find_deprecated_range(
+                                sema,
+                                &def_map,
+                                &name,
+                                arity,
+                                range_to_highlight,
+                                &function_body,
+                            ) {
+                                hl.add(HlRange {
+                                    range,
+                                    highlight,
+                                    binding_hash: None,
+                                })
+                            }
+                        }
+                        CallTarget::Remote { module, name } => {
+                            if let Some(file_id) =
+                                find_remote_module_file_id(sema, file_id, &module, &function_body)
+                            {
+                                let def_map = sema.def_map(file_id);
                                 if let Some(range) = find_deprecated_range(
                                     sema,
                                     &def_map,
@@ -135,36 +153,11 @@ fn deprecated_func_highlight(
                                     })
                                 }
                             }
-                            CallTarget::Remote { module, name } => {
-                                if let Some(file_id) = find_remote_module_file_id(
-                                    sema,
-                                    file_id,
-                                    &module,
-                                    &function_body,
-                                ) {
-                                    let def_map = sema.def_map(file_id);
-                                    if let Some(range) = find_deprecated_range(
-                                        sema,
-                                        &def_map,
-                                        &name,
-                                        arity,
-                                        range_to_highlight,
-                                        &function_body,
-                                    ) {
-                                        hl.add(HlRange {
-                                            range,
-                                            highlight,
-                                            binding_hash: None,
-                                        })
-                                    }
-                                }
-                            }
                         }
                     }
-                    acc
-                },
-                &mut |acc, _, _| acc,
-            );
+                }
+                acc
+            });
         }
     }
 }

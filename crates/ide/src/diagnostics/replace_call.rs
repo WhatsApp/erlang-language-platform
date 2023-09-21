@@ -17,6 +17,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::TextRange;
+use hir::AnyExprId;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -239,40 +240,42 @@ pub fn remove_fun_ref_from_list(
                 let def_fb = def.in_function_body(sema.db, def);
                 let body_map = def_fb.clone().get_body_map(sema.db);
                 let source_file = sema.parse(file_id);
-                def_fb.clone().fold_function(
-                    (),
-                    &mut |_acc, _, ctx| {
-                        let matches = match_fun_ref_in_list_in_call_arg(
-                            &matcher,
-                            sema,
-                            &def_fb,
-                            &ctx.expr_id,
-                        );
-                        matches
-                            .iter()
-                            .for_each(|(matched_funref_id, target, arity)| {
-                                || -> Option<()> {
-                                    let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
-                                    let list_elem_ast = in_file_ast_ptr.to_node(&source_file)?;
-                                    let statement_removal = remove_statement(&list_elem_ast)?;
-                                    let mfa =
-                                        to_mfa(file_id, target, *arity, sema, &def_fb.body())?;
-                                    let range = def_fb
-                                        .clone()
-                                        .range_for_expr(sema.db, *matched_funref_id)?;
-                                    let diag = diagnostic_builder(&mfa, "", range)?;
-                                    diags.push(diag.with_fixes(Some(vec![fix(
-                                        "remove_fun_ref_from_list",
-                                        "Remove noop fun ref from list",
-                                        SourceChange::from_text_edit(file_id, statement_removal),
-                                        range,
-                                    )])));
-                                    Some(())
-                                }();
-                            });
-                    },
-                    &mut |acc, _, _| acc,
-                );
+                def_fb
+                    .clone()
+                    .fold_function((), &mut |_acc, _, ctx| match ctx.item_id {
+                        AnyExprId::Expr(expr_id) => {
+                            let matches = match_fun_ref_in_list_in_call_arg(
+                                &matcher, sema, &def_fb, &expr_id,
+                            );
+                            matches
+                                .iter()
+                                .for_each(|(matched_funref_id, target, arity)| {
+                                    || -> Option<()> {
+                                        let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
+                                        let list_elem_ast =
+                                            in_file_ast_ptr.to_node(&source_file)?;
+                                        let statement_removal = remove_statement(&list_elem_ast)?;
+                                        let mfa =
+                                            to_mfa(file_id, target, *arity, sema, &def_fb.body())?;
+                                        let range = def_fb
+                                            .clone()
+                                            .range_for_expr(sema.db, *matched_funref_id)?;
+                                        let diag = diagnostic_builder(&mfa, "", range)?;
+                                        diags.push(diag.with_fixes(Some(vec![fix(
+                                            "remove_fun_ref_from_list",
+                                            "Remove noop fun ref from list",
+                                            SourceChange::from_text_edit(
+                                                file_id,
+                                                statement_removal,
+                                            ),
+                                            range,
+                                        )])));
+                                        Some(())
+                                    }();
+                                });
+                        }
+                        _ => {}
+                    });
             }
         })
 }

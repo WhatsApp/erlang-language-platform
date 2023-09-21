@@ -21,6 +21,7 @@ use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::AstNode;
+use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionDef;
 use hir::Semantic;
@@ -110,11 +111,10 @@ pub(crate) fn check_function(
 ) {
     let matcher = FunctionMatcher::new(&matches);
     let def_fb = def.in_function_body(sema.db, def);
-    def_fb.clone().fold_function_with_macros(
-        Strategy::TopDown,
-        (),
-        &mut |acc, _, ctx| {
-            if let Expr::Call { target, args } = ctx.expr {
+    def_fb
+        .clone()
+        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, _, ctx| {
+            if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 let arity = args.len() as u32;
                 if let Some(target_def) =
                     target.resolve_call(arity, &sema, def_fb.file_id(), &def_fb.body())
@@ -126,9 +126,9 @@ pub(crate) fn check_function(
                         let expr_id = if let Some(expr_id) = ctx.in_macro {
                             expr_id
                         } else {
-                            ctx.expr_id
+                            ctx.item_id
                         };
-                        if let Some(range) = def_fb.range_for_expr(sema.db, expr_id) {
+                        if let Some(range) = def_fb.range_for_any(sema.db, expr_id) {
                             let range2 = range.clone();
                             let d = make_diagnostic(range, &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
@@ -144,9 +144,7 @@ pub(crate) fn check_function(
                 }
             };
             acc
-        },
-        &mut |acc, _, _| acc,
-    );
+        });
 }
 
 fn make_diagnostic(

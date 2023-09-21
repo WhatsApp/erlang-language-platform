@@ -43,6 +43,7 @@ pub use body::TypeBody;
 pub use def_map::DefMap;
 pub use diagnostics::Diagnostic;
 pub use diagnostics::DiagnosticMessage;
+pub use expr::AnyExpr;
 pub use expr::AnyExprId;
 pub use expr::AnyExprRef;
 pub use expr::BinarySeg;

@@ -35,19 +35,19 @@ use crate::body::scope::ScopeId;
 use crate::body::UnexpandedIndex;
 use crate::db::MinDefDatabase;
 use crate::edoc::EdocHeader;
+use crate::expr::AnyExpr;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
-use crate::fold::ExprCallBack;
-use crate::fold::ExprCallBackCtx;
+use crate::fold::AnyCallBack;
+use crate::fold::AnyCallBackCtx;
 use crate::fold::FoldBody;
 use crate::fold::FoldCtx;
-use crate::fold::PatCallBack;
-use crate::fold::PatCallBackCtx;
 use crate::fold::Strategy;
 pub use crate::intern::MinInternDatabase;
 pub use crate::intern::MinInternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
+use crate::AnyExprId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
@@ -352,9 +352,13 @@ impl<'db> Semantic<'db> {
             Strategy::TopDown,
             expr_id_in,
             FxHashSet::default(),
-            &mut |acc, _| acc,
             &mut |mut acc, ctx| {
-                acc.insert(ctx.pat_id);
+                match ctx.item_id {
+                    AnyExprId::Pat(pat_id) => {
+                        acc.insert(pat_id);
+                    }
+                    _ => {}
+                };
                 acc
             },
         );
@@ -380,16 +384,17 @@ impl<'db> Semantic<'db> {
             Strategy::TopDown,
             expr_id_in,
             ScopeAnalysis::new(),
-            &mut |defs, ctx| match ctx.expr {
-                Expr::Var(var_id) => {
-                    update_vars(defs, var_id, resolver.resolve_expr_id(&var_id, ctx.expr_id))
-                }
-                _ => defs,
-            },
-            &mut |defs, ctx| match ctx.pat {
-                Pat::Var(var_id) => {
-                    update_vars(defs, var_id, resolver.resolve_pat_id(&var_id, ctx.pat_id))
-                }
+            &mut |defs, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Var(var_id)) => update_vars(
+                    defs,
+                    var_id,
+                    resolver.resolve_any_expr_id(&var_id, ctx.item_id),
+                ),
+                AnyExpr::Pat(Pat::Var(var_id)) => update_vars(
+                    defs,
+                    var_id,
+                    resolver.resolve_any_expr_id(&var_id, ctx.item_id),
+                ),
                 _ => defs,
             },
         ))
@@ -517,8 +522,7 @@ impl<'db> Semantic<'db> {
         &self,
         function_id: InFile<FunctionId>,
         initial: T,
-        for_expr: FunctionExprCallBack<'a, T>,
-        for_pat: FunctionPatCallBack<'a, T>,
+        callback: FunctionAnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
         fold_function_body(
@@ -526,8 +530,7 @@ impl<'db> Semantic<'db> {
             &function_body,
             Strategy::TopDown,
             initial,
-            for_expr,
-            for_pat,
+            callback,
         )
     }
 
@@ -536,8 +539,7 @@ impl<'db> Semantic<'db> {
         function_id: InFile<FunctionId>,
         clause_id: ClauseId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
         function_body[clause_id]
@@ -549,8 +551,7 @@ impl<'db> Semantic<'db> {
                     Strategy::TopDown,
                     *expr_id,
                     acc_inner,
-                    for_expr,
-                    for_pat,
+                    callback,
                 )
             })
     }
@@ -565,38 +566,33 @@ impl<'db> Semantic<'db> {
             if def.file.file_id == file_id {
                 let function_id = InFile::new(file_id, def.function_id);
 
-                self.fold_function(
-                    function_id,
-                    (),
-                    &mut |acc, clause_id, ctx| {
-                        if let Some(mut resolver) = self.clause_resolver(function_id, clause_id) {
-                            let mut bound_vars =
-                                BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
-                            match ctx.expr {
-                                Expr::Match { lhs, rhs: _ } => {
-                                    bound_vars.report_any_bound_vars(&lhs)
-                                }
-                                Expr::Case { expr: _, clauses } => {
-                                    bound_vars.cr_clauses(&clauses);
-                                }
-                                Expr::Try {
-                                    exprs: _,
-                                    of_clauses,
-                                    catch_clauses,
-                                    after: _,
-                                } => {
-                                    bound_vars.cr_clauses(&of_clauses);
-                                    catch_clauses.iter().for_each(|clause| {
-                                        bound_vars.report_any_bound_vars(&clause.reason);
-                                    })
-                                }
-                                _ => {}
+                self.fold_function(function_id, (), &mut |acc, clause_id, ctx| {
+                    if let Some(mut resolver) = self.clause_resolver(function_id, clause_id) {
+                        let mut bound_vars =
+                            BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
+                        match ctx.item {
+                            AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
+                                bound_vars.report_any_bound_vars(&lhs)
                             }
-                        };
-                        acc
-                    },
-                    &mut |acc, _, _| acc,
-                );
+                            AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
+                                bound_vars.cr_clauses(&clauses);
+                            }
+                            AnyExpr::Expr(Expr::Try {
+                                exprs: _,
+                                of_clauses,
+                                catch_clauses,
+                                after: _,
+                            }) => {
+                                bound_vars.cr_clauses(&of_clauses);
+                                catch_clauses.iter().for_each(|clause| {
+                                    bound_vars.report_any_bound_vars(&clause.reason);
+                                })
+                            }
+                            _ => {}
+                        }
+                    };
+                    acc
+                });
             }
         }
         res
@@ -615,25 +611,31 @@ impl<'db> Semantic<'db> {
             Strategy::TopDown,
             *pat_id,
             FxHashSet::default(),
-            &mut |acc, _| acc,
+            // &mut |acc, _| acc,
             &mut |mut acc, ctx| {
-                if let Pat::Var(var) = &resolver[ctx.pat_id] {
-                    if let Some(pat_ids) = resolver.value.resolve_pat_id(var, ctx.pat_id) {
-                        pat_ids.iter().for_each(|def_pat_id| {
-                            if &ctx.pat_id != def_pat_id {
-                                if let Some(pat_ptr) = body_map.pat(ctx.pat_id) {
-                                    if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(var))) =
-                                        pat_ptr.to_node(&parse)
-                                    {
-                                        if var.syntax().text() != "_" {
-                                            acc.insert((resolver.function_id, ctx.pat_id, var));
-                                        }
+                match ctx.item_id {
+                    AnyExprId::Pat(pat_id) => {
+                        if let Pat::Var(var) = &resolver[pat_id] {
+                            if let Some(pat_ids) = resolver.value.resolve_pat_id(var, pat_id) {
+                                pat_ids.iter().for_each(|def_pat_id| {
+                                    if &pat_id != def_pat_id {
+                                        if let Some(pat_ptr) = body_map.pat(pat_id) {
+                                            if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(
+                                                var,
+                                            ))) = pat_ptr.to_node(&parse)
+                                            {
+                                                if var.syntax().text() != "_" {
+                                                    acc.insert((resolver.function_id, pat_id, var));
+                                                }
+                                            }
+                                        };
                                     }
-                                };
+                                });
                             }
-                        });
+                        };
                     }
-                };
+                    _ => {}
+                }
                 acc
             },
         )
@@ -647,8 +649,7 @@ impl<'db> Semantic<'db> {
     }
 }
 
-pub type FunctionExprCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, ExprCallBackCtx) -> T;
-pub type FunctionPatCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, PatCallBackCtx) -> T;
+pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WithMacros {
@@ -661,8 +662,7 @@ fn fold_function_body<'a, T>(
     function_body: &FunctionBody,
     strategy: Strategy,
     initial: T,
-    for_expr: FunctionExprCallBack<'a, T>,
-    for_pat: FunctionPatCallBack<'a, T>,
+    callback: FunctionAnyCallBack<'a, T>,
 ) -> T {
     function_body
         .clauses
@@ -679,8 +679,7 @@ fn fold_function_body<'a, T>(
                     strategy,
                     *expr_id,
                     acc_inner,
-                    &mut |acc, ctx| for_expr(acc, clause_id, ctx),
-                    &mut |acc, ctx| for_pat(acc, clause_id, ctx),
+                    &mut |acc, ctx| callback(acc, clause_id, ctx),
                 )
             })
         })
@@ -874,8 +873,7 @@ impl<T> InFunctionBody<T> {
                     Strategy::TopDown,
                     *expr,
                     false,
-                    &mut |acc, ctx| acc || expr_id == &ctx.expr_id,
-                    &mut |acc, _| acc,
+                    &mut |acc, ctx| acc || AnyExprId::Expr(*expr_id) == ctx.item_id,
                 )
             }) {
                 Some(idx)
@@ -899,17 +897,9 @@ impl<T> InFunctionBody<T> {
         strategy: Strategy,
         expr_id: ExprId,
         initial: R,
-        for_expr: ExprCallBack<'a, R>,
-        for_pat: PatCallBack<'a, R>,
+        callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_expr(
-            &self.body.body,
-            strategy,
-            expr_id,
-            initial,
-            for_expr,
-            for_pat,
-        )
+        FoldCtx::fold_expr(&self.body.body, strategy, expr_id, initial, callback)
     }
 
     pub fn fold_pat<'a, R>(
@@ -917,32 +907,18 @@ impl<T> InFunctionBody<T> {
         strategy: Strategy,
         pat_id: PatId,
         initial: R,
-        for_expr: ExprCallBack<'a, R>,
-        for_pat: PatCallBack<'a, R>,
+        callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_pat(
-            &self.body.body,
-            strategy,
-            pat_id,
-            initial,
-            for_expr,
-            for_pat,
-        )
+        FoldCtx::fold_pat(&self.body.body, strategy, pat_id, initial, callback)
     }
 
-    pub fn fold_function<'a, R>(
-        &self,
-        initial: R,
-        for_expr: FunctionExprCallBack<'a, R>,
-        for_pat: FunctionPatCallBack<'a, R>,
-    ) -> R {
+    pub fn fold_function<'a, R>(&self, initial: R, callback: FunctionAnyCallBack<'a, R>) -> R {
         fold_function_body(
             WithMacros::No,
             &self.body,
             Strategy::TopDown,
             initial,
-            for_expr,
-            for_pat,
+            callback,
         )
     }
 
@@ -950,22 +926,20 @@ impl<T> InFunctionBody<T> {
         &self,
         strategy: Strategy,
         initial: R,
-        for_expr: FunctionExprCallBack<'a, R>,
-        for_pat: FunctionPatCallBack<'a, R>,
+        callback: FunctionAnyCallBack<'a, R>,
     ) -> R {
-        fold_function_body(
-            WithMacros::Yes,
-            &self.body,
-            strategy,
-            initial,
-            for_expr,
-            for_pat,
-        )
+        fold_function_body(WithMacros::Yes, &self.body, strategy, initial, callback)
     }
 
     pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {
         let body_map = self.get_body_map(db);
         let ast = body_map.expr(expr_id)?;
+        Some(ast.range())
+    }
+
+    pub fn range_for_any(&self, db: &dyn MinDefDatabase, id: AnyExprId) -> Option<TextRange> {
+        let body_map = self.get_body_map(db);
+        let ast = body_map.any(id)?;
         Some(ast.range())
     }
 

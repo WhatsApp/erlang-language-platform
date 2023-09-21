@@ -12,7 +12,9 @@
 use std::ops::Index;
 
 use crate::body::UnexpandedIndex;
+use crate::expr::AnyExpr;
 use crate::expr::MaybeExpr;
+use crate::AnyExprId;
 use crate::Body;
 use crate::CRClause;
 use crate::CallTarget;
@@ -58,27 +60,20 @@ pub struct TermCallBackCtx {
     pub term: Term,
 }
 
-pub type ExprCallBack<'a, T> = &'a mut dyn FnMut(T, ExprCallBackCtx) -> T;
-pub type PatCallBack<'a, T> = &'a mut dyn FnMut(T, PatCallBackCtx) -> T;
-pub type TermCallBack<'a, T> = &'a mut dyn FnMut(T, TermCallBackCtx) -> T;
-
-fn noop_expr_callback<T>(acc: T, _ctx: ExprCallBackCtx) -> T {
-    acc
+#[derive(Debug)]
+pub struct AnyCallBackCtx {
+    pub on: On,
+    pub in_macro: Option<AnyExprId>,
+    pub item_id: AnyExprId,
+    pub item: AnyExpr,
 }
-fn noop_pat_callback<T>(acc: T, _ctx: PatCallBackCtx) -> T {
-    acc
-}
-fn noop_term_callback<T>(acc: T, _ctx: TermCallBackCtx) -> T {
-    acc
-}
+pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;
 
 pub struct FoldCtx<'a, T> {
     body: &'a FoldBody<'a>,
     strategy: Strategy,
-    macro_stack: Vec<ExprId>,
-    for_expr: ExprCallBack<'a, T>,
-    for_pat: PatCallBack<'a, T>,
-    for_term: TermCallBack<'a, T>,
+    macro_stack: Vec<AnyExprId>,
+    callback: AnyCallBack<'a, T>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -103,16 +98,13 @@ impl<'a, T> FoldCtx<'a, T> {
         strategy: Strategy,
         expr_id: ExprId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
-            for_expr,
-            for_pat,
-            for_term: &mut noop_term_callback,
+            callback,
         }
         .do_fold_expr(expr_id, initial)
     }
@@ -122,21 +114,18 @@ impl<'a, T> FoldCtx<'a, T> {
         strategy: Strategy,
         pat_id: PatId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
-            for_expr,
-            for_pat,
-            for_term: &mut noop_term_callback,
+            callback,
         }
         .do_fold_pat(pat_id, initial)
     }
 
-    fn in_macro(&self) -> Option<ExprId> {
+    fn in_macro(&self) -> Option<AnyExprId> {
         self.macro_stack.first().copied()
     }
 
@@ -145,16 +134,13 @@ impl<'a, T> FoldCtx<'a, T> {
         strategy: Strategy,
         expr_id: ExprId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
             body,
             strategy,
             macro_stack: Vec::default(),
-            for_expr,
-            for_pat,
-            for_term: &mut noop_term_callback,
+            callback,
         }
         .do_fold_expr(expr_id, initial)
     }
@@ -164,15 +150,13 @@ impl<'a, T> FoldCtx<'a, T> {
         strategy: Strategy,
         term_id: TermId,
         initial: T,
-        for_term: TermCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
-            for_expr: &mut noop_expr_callback,
-            for_pat: &mut noop_pat_callback,
-            for_term,
+            callback,
         }
         .do_fold_term(term_id, initial)
     }
@@ -181,15 +165,15 @@ impl<'a, T> FoldCtx<'a, T> {
 
     fn do_fold_expr(&mut self, expr_id: ExprId, initial: T) -> T {
         let expr = &self.body[expr_id];
-        let ctx = ExprCallBackCtx {
+        let ctx = AnyCallBackCtx {
             on: On::Entry,
             in_macro: self.in_macro(),
-            expr_id,
-            expr: expr.clone(),
+            item_id: AnyExprId::Expr(expr_id),
+            item: AnyExpr::Expr(expr.clone()),
         };
         let acc = match self.strategy {
             Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
-                (self.for_expr)(initial, ctx)
+                (self.callback)(initial, ctx)
             }
             _ => initial,
         };
@@ -257,7 +241,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = if self.strategy == Strategy::SurfaceOnly {
                     self.fold_exprs(args, acc)
                 } else {
-                    self.macro_stack.push(expr_id);
+                    self.macro_stack.push(AnyExprId::Expr(expr_id));
                     let e = self.do_fold_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
@@ -384,13 +368,13 @@ impl<'a, T> FoldCtx<'a, T> {
         };
         match self.strategy {
             Strategy::BottomUp | Strategy::Both => {
-                let ctx = ExprCallBackCtx {
+                let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
-                    expr_id,
-                    expr: expr.clone(),
+                    item_id: AnyExprId::Expr(expr_id),
+                    item: AnyExpr::Expr(expr.clone()),
                 };
-                (self.for_expr)(r, ctx)
+                (self.callback)(r, ctx)
             }
             _ => r,
         }
@@ -398,14 +382,14 @@ impl<'a, T> FoldCtx<'a, T> {
 
     fn do_fold_pat(&mut self, pat_id: PatId, initial: T) -> T {
         let pat = &self.body[pat_id];
-        let ctx = PatCallBackCtx {
+        let ctx = AnyCallBackCtx {
             on: On::Entry,
             in_macro: self.in_macro(),
-            pat_id,
-            pat: pat.clone(),
+            item_id: AnyExprId::Pat(pat_id),
+            item: AnyExpr::Pat(pat.clone()),
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.for_pat)(initial, ctx),
+            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match &pat {
@@ -452,13 +436,13 @@ impl<'a, T> FoldCtx<'a, T> {
 
         match self.strategy {
             Strategy::BottomUp | Strategy::Both => {
-                let ctx = PatCallBackCtx {
+                let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
-                    pat_id,
-                    pat: pat.clone(),
+                    item_id: AnyExprId::Pat(pat_id),
+                    item: AnyExpr::Pat(pat.clone()),
                 };
-                (self.for_pat)(r, ctx)
+                (self.callback)(r, ctx)
             }
             _ => r,
         }
@@ -514,14 +498,14 @@ impl<'a, T> FoldCtx<'a, T> {
 
     pub fn do_fold_term(&mut self, term_id: TermId, initial: T) -> T {
         let term = &self.body[term_id];
-        let ctx = TermCallBackCtx {
+        let ctx = AnyCallBackCtx {
             on: On::Entry,
             in_macro: self.in_macro(),
-            term_id,
-            term: term.clone(),
+            item_id: AnyExprId::Term(term_id),
+            item: AnyExpr::Term(term.clone()),
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.for_term)(initial, ctx),
+            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match &term {
@@ -553,13 +537,13 @@ impl<'a, T> FoldCtx<'a, T> {
         };
         match self.strategy {
             Strategy::BottomUp | Strategy::Both => {
-                let ctx = TermCallBackCtx {
+                let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
-                    term_id,
-                    term: term.clone(),
+                    item_id: AnyExprId::Term(term_id),
+                    item: AnyExpr::Term(term.clone()),
                 };
-                (self.for_term)(r, ctx)
+                (self.callback)(r, ctx)
             }
             _ => r,
         }
@@ -634,6 +618,7 @@ mod tests {
 
     use super::FoldBody;
     use crate::body::UnexpandedIndex;
+    use crate::expr::AnyExpr;
     use crate::expr::ClauseId;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
@@ -718,18 +703,15 @@ bar() ->
             Strategy::TopDown,
             body.clauses[idx].exprs[0],
             0,
-            &mut |acc, ctx| match ctx.expr {
-                crate::Expr::Var(v) => {
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Var(v)) => {
                     if &v == hir_var {
                         acc + 1
                     } else {
                         acc
                     }
                 }
-                _ => acc,
-            },
-            &mut |acc, ctx| match ctx.pat {
-                crate::Pat::Var(v) => {
+                AnyExpr::Pat(Pat::Var(v)) => {
                     if &v == hir_var {
                         acc + 1
                     } else {
@@ -781,8 +763,8 @@ bar() ->
             Strategy::TopDown,
             compiler_options.value,
             0,
-            &mut |acc, ctx| match &ctx.term {
-                crate::Term::Literal(Literal::Atom(atom)) => {
+            &mut |acc, ctx| match &ctx.item {
+                AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
                     if atom == &hir_atom {
                         acc + 1
                     } else {
@@ -844,8 +826,8 @@ bar() ->
             strategy,
             compiler_options.clauses[idx].exprs[0],
             (0, 0),
-            &mut |(in_macro, not_in_macro), ctx| match ctx.expr {
-                crate::Expr::Literal(Literal::Atom(atom)) => {
+            &mut |(in_macro, not_in_macro), ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
                     if atom == hir_atom {
                         if ctx.in_macro.is_some() {
                             (in_macro + 1, not_in_macro)
@@ -856,9 +838,6 @@ bar() ->
                         (in_macro, not_in_macro)
                     }
                 }
-                _ => (in_macro, not_in_macro),
-            },
-            &mut |(in_macro, not_in_macro), ctx| match ctx.pat {
                 _ => (in_macro, not_in_macro),
             },
         );

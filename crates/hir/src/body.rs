@@ -24,8 +24,7 @@ use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
-use crate::fold::ExprCallBack;
-use crate::fold::PatCallBack;
+use crate::fold::AnyCallBack;
 use crate::AnyExprId;
 use crate::AnyExprRef;
 use crate::Attribute;
@@ -170,10 +169,9 @@ impl Body {
         strategy: Strategy,
         expr_id: ExprId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_expr(self, strategy, expr_id, initial, for_expr, for_pat)
+        FoldCtx::fold_expr(self, strategy, expr_id, initial, callback)
     }
 
     pub fn fold_pat<'a, T>(
@@ -181,10 +179,9 @@ impl Body {
         strategy: Strategy,
         pat_id: PatId,
         initial: T,
-        for_expr: ExprCallBack<'a, T>,
-        for_pat: PatCallBack<'a, T>,
+        callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_pat(self, strategy, pat_id, initial, for_expr, for_pat)
+        FoldCtx::fold_pat(self, strategy, pat_id, initial, callback)
     }
 }
 
@@ -576,6 +573,15 @@ impl BodySourceMap {
                     .map(AnyExprId::TypeExpr)
             })
             .or_else(|| self.term_map.get(&ptr).copied().map(AnyExprId::Term))
+    }
+
+    pub fn any(&self, id: AnyExprId) -> Option<ExprSource> {
+        match id {
+            AnyExprId::Expr(expr_id) => self.expr_map_back.get(expr_id).copied(),
+            AnyExprId::Pat(pat_id) => self.pat_map_back.get(pat_id).copied(),
+            AnyExprId::TypeExpr(_) => None,
+            AnyExprId::Term(_) => None,
+        }
     }
 
     pub fn resolved_macro(&self, call: InFile<&ast::MacroCallExpr>) -> Option<ResolvedMacro> {

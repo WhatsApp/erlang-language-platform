@@ -21,6 +21,7 @@ use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
 use hir::known;
+use hir::AnyExpr;
 use hir::FoldCtx;
 use hir::InFile;
 use hir::Literal;
@@ -56,8 +57,8 @@ pub(crate) fn missing_compile_warn_missing_spec(
                 Strategy::TopDown,
                 co.value,
                 false,
-                &mut |acc, ctx| match &ctx.term {
-                    Term::Literal(Literal::Atom(atom)) => {
+                &mut |acc, ctx| match &ctx.item {
+                    AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
                         let name = sema.db.lookup_atom(*atom);
                         if MISSING_SPEC_OPTIONS.contains(&name) {
                             true

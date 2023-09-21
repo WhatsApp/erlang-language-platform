@@ -20,6 +20,7 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
+use hir::AnyExpr;
 use hir::BinarySeg;
 use hir::BodySourceMap;
 use hir::Expr;
@@ -58,24 +59,19 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
     let body_map = def_fb.get_body_map(sema.db);
     let source_file = sema.parse(def.file.file_id);
 
-    def_fb.fold_function(
-        (),
-        &mut |_acc, _, ctx| {
-            let expr = ctx.expr;
-            if let Expr::Match { lhs, rhs } = expr {
-                let rhs = &rhs.clone();
-                if matches_trivially(sema, &def_fb, &body_map, &source_file, &lhs, rhs) {
-                    if let Some(range) = &def_fb.range_for_expr(sema.db, ctx.expr_id) {
-                        let rhs_ast = body_map
-                            .expr(*rhs)
-                            .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                        diags.push(make_diagnostic(def.file.file_id, range, rhs_ast));
-                    }
+    def_fb.fold_function((), &mut |_acc, _, ctx| {
+        if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+            let rhs = &rhs.clone();
+            if matches_trivially(sema, &def_fb, &body_map, &source_file, &lhs, rhs) {
+                if let Some(range) = &def_fb.range_for_any(sema.db, ctx.item_id) {
+                    let rhs_ast = body_map
+                        .expr(*rhs)
+                        .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
+                    diags.push(make_diagnostic(def.file.file_id, range, rhs_ast));
                 }
             }
-        },
-        &mut |_acc, _, _| (),
-    );
+        }
+    });
 }
 
 fn matches_trivially(

@@ -10,6 +10,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
 use hir::db::MinInternDatabase;
+use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::On;
@@ -42,7 +43,7 @@ pub(super) fn hints(
                 Strategy::Both,
                 (),
                 &mut |acc, _clause_id, ctx| {
-                    if let Expr::Call { target, args } = ctx.expr {
+                    if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                         // Do not produce hints if inside a macro
                         if ctx.on == On::Entry && ctx.in_macro.is_none() {
                             let arity = args.len() as u32;
@@ -82,7 +83,6 @@ pub(super) fn hints(
                     }
                     acc
                 },
-                &mut |acc, _, _| acc,
             );
         }
     }

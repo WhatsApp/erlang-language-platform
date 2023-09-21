@@ -13,6 +13,7 @@ use fxhash::FxHashSet;
 
 use crate::body::scope::ExprScopes;
 use crate::body::scope::ScopeId;
+use crate::AnyExprId;
 use crate::ExprId;
 use crate::PatId;
 use crate::Var;
@@ -28,6 +29,15 @@ impl Resolver {
     pub fn new(expr_scopes: ExprScopes) -> Resolver {
         Resolver {
             scopes: expr_scopes,
+        }
+    }
+
+    pub fn resolve_any_expr_id(&self, var: &Var, id: AnyExprId) -> Option<&Vec<PatId>> {
+        match id {
+            AnyExprId::Expr(expr_id) => self.resolve_expr_id(var, expr_id),
+            AnyExprId::Pat(pat_id) => self.resolve_pat_id(var, pat_id),
+            AnyExprId::TypeExpr(_) => None,
+            AnyExprId::Term(_) => None,
         }
     }
 

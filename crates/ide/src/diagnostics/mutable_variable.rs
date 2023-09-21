@@ -28,6 +28,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionId;
 use hir::PatId;
@@ -62,28 +63,23 @@ pub(crate) fn mutable_variable_bug(
             if def.file.file_id == file_id {
                 if let Some(bound_vars) = bound_vars_by_function.get(&def.function_id) {
                     let def_fb = def.in_function_body(sema.db, def);
-                    def_fb.fold_function(
-                        (),
-                        &mut |acc, _clause_id, ctx| {
-                            if let Expr::Match { lhs: _, rhs } = ctx.expr {
-                                if let Expr::Match { lhs, rhs: _ } = &def_fb[rhs] {
-                                    if bound_vars.contains(lhs) {
-                                        if let Some(range) =
-                                            def_fb.range_for_expr(sema.db, ctx.expr_id)
-                                        {
-                                            diags.push(Diagnostic::new(
-                                                DiagnosticCode::MutableVarBug,
-                                                "Possible mutable variable bug",
-                                                range,
-                                            ));
-                                        }
+                    def_fb.fold_function((), &mut |acc, _clause_id, ctx| {
+                        if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
+                            if let Expr::Match { lhs, rhs: _ } = &def_fb[rhs] {
+                                if bound_vars.contains(lhs) {
+                                    if let Some(range) = def_fb.range_for_any(sema.db, ctx.item_id)
+                                    {
+                                        diags.push(Diagnostic::new(
+                                            DiagnosticCode::MutableVarBug,
+                                            "Possible mutable variable bug",
+                                            range,
+                                        ));
                                     }
                                 }
-                            };
-                            acc
-                        },
-                        &mut |acc, _, _| acc,
-                    );
+                            }
+                        };
+                        acc
+                    });
                 }
             }
         });

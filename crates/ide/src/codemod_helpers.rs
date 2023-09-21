@@ -17,6 +17,7 @@ use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
+use hir::AnyExpr;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -319,11 +320,10 @@ pub(crate) fn find_call_in_function<T>(
 ) -> Option<()> {
     let mut def_fb = def.in_function_body(sema.db, def);
     let matcher = FunctionMatcher::new(call);
-    def_fb.clone().fold_function_with_macros(
-        Strategy::TopDown,
-        (),
-        &mut |acc, _, ctx| {
-            if let Expr::Call { target, args } = ctx.expr {
+    def_fb
+        .clone()
+        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, _, ctx| {
+            if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 if let Some((mfa, t)) =
                     matcher.get_match(&target, args.len() as u32, sema, &def_fb.body())
                 {
@@ -339,9 +339,9 @@ pub(crate) fn find_call_in_function<T>(
                         let call_expr_id = if let Some(expr_id) = ctx.in_macro {
                             expr_id
                         } else {
-                            ctx.expr_id
+                            ctx.item_id
                         };
-                        if let Some(range) = &def_fb.range_for_expr(sema.db, call_expr_id) {
+                        if let Some(range) = &def_fb.range_for_any(sema.db, call_expr_id) {
                             if let Some(diag) =
                                 make_diag(sema, &mut def_fb, &target, &args, &match_descr, *range)
                             {
@@ -352,9 +352,7 @@ pub(crate) fn find_call_in_function<T>(
                 }
             };
             acc
-        },
-        &mut |acc, _, _| acc,
-    );
+        });
     Some(())
 }
 
