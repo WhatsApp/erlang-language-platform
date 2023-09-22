@@ -19,6 +19,7 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use fxhash::FxHashSet;
+use itertools::Itertools;
 
 use crate::diagnostics;
 use crate::diagnostics::Diagnostic;
@@ -63,6 +64,63 @@ fn check_nth_fix(nth: usize, fixture_before: &str, fixture_after: &str, config: 
         .expect("no diagnostics")
         .clone();
     let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
+    let actual = {
+        let source_change = fix.source_change.as_ref().unwrap();
+        let file_id = *source_change.source_file_edits.keys().next().unwrap();
+        let mut actual = db.file_text(file_id).to_string();
+
+        for edit in source_change.source_file_edits.values() {
+            edit.apply(&mut actual);
+        }
+        actual
+    };
+    assert!(
+        fix.target.contains_inclusive(file_position.offset),
+        "diagnostic fix range {:?} does not touch cursor position {:?}",
+        fix.target,
+        file_position.offset
+    );
+    assert_eq_text!(&after, &actual);
+}
+
+/// Takes a multi-file input fixture with annotated cursor positions,
+/// and checks that:
+///  * a diagnostic is produced
+///  * the first diagnostic fix trigger range touches the input cursor position
+///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
+#[track_caller]
+pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: &str) {
+    let config =
+        DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+    check_specific_fix_with_config(Some(assist_label), 0, fixture_before, fixture_after, config);
+}
+
+#[track_caller]
+pub(crate) fn check_specific_fix_with_config(
+    assist_label: Option<&str>,
+    nth: usize,
+    fixture_before: &str,
+    fixture_after: &str,
+    config: DiagnosticsConfig,
+) {
+    let after = trim_indent(fixture_after);
+
+    let (db, file_position) = RootDatabase::with_position(fixture_before);
+    let diagnostics = diagnostics::diagnostics(&db, &config, file_position.file_id, true);
+    let diagnostic: &Diagnostic = if let Some(label) = assist_label {
+        if let Some(diagnostic) = diagnostics.iter().find(|d| d.message == label) {
+            diagnostic
+        } else {
+            panic!(
+                "Expecting \"{}\", but not found in {:?}",
+                label,
+                diagnostics.iter().map(|d| d.message.clone()).collect_vec()
+            );
+        }
+    } else {
+        diagnostics.iter().next().expect("no diagnostics")
+    };
+    let fix = &diagnostic.clone().fixes.expect("diagnostic misses fixes")[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();

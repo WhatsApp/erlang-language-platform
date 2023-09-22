@@ -1366,6 +1366,7 @@ mod tests {
     use crate::tests::check_diagnostics;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_diagnostics_with_config_and_extra;
+    use crate::tests::check_specific_fix;
 
     #[test]
     fn fun_decl_missing_semi_no_warning() {
@@ -1875,5 +1876,48 @@ baz(1)->4.
             }
         "#]]
         .assert_debug_eq(&config);
+    }
+
+    #[test]
+    fn check_specific_fix_works() {
+        check_specific_fix(
+            "match is redundant",
+            r#"
+             -module(main).
+
+             baz()->
+               Fo~o = 1.
+             %%^^^^^^^ 💡 warning: match is redundant
+             "#,
+            r#"
+             -module(main).
+
+             baz()->
+               1.
+             %%^^^^^^^ 💡 warning: match is redundant
+             "#,
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_specific_fix_mismatch() {
+        check_specific_fix(
+            "mismatched diagnostic message",
+            r#"
+             -module(main).
+
+             baz()->
+               Fo~o = 1.
+             %%^^^^^^^ 💡 warning: match is redundant
+             "#,
+            r#"
+             -module(main).
+
+             baz()->
+               1.
+             %%^^^^^^^ 💡 warning: match is redundant
+             "#,
+        );
     }
 }
