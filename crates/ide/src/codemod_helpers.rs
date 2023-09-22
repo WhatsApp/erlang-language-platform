@@ -162,14 +162,14 @@ pub struct FunctionMatcher<'a, T> {
 }
 
 impl<'a, T> FunctionMatcher<'a, T> {
-    pub fn new(call: &'a [(&'a FunctionMatch, T)]) -> FunctionMatcher<'a, T> {
+    pub fn new(mfas: &'a [(&'a FunctionMatch, T)]) -> FunctionMatcher<'a, T> {
         let mut labels_full: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> =
             FxHashMap::default();
         let mut labels_mf: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
         let mut labels_m: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
         let mut match_any = None;
 
-        call.iter().for_each(|(c, t)| match c {
+        mfas.iter().for_each(|(c, t)| match c {
             FunctionMatch::Any => {
                 match_any = Some((*c, t));
             }
@@ -306,7 +306,7 @@ pub(crate) fn find_call_in_function<T>(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
-    call: &[(&FunctionMatch, T)],
+    mfas: &[(&FunctionMatch, T)],
     check_call: CheckCall<T>,
     make_diag: impl FnOnce(
         &Semantic,
@@ -319,7 +319,7 @@ pub(crate) fn find_call_in_function<T>(
     + Copy,
 ) -> Option<()> {
     let mut def_fb = def.in_function_body(sema.db, def);
-    let matcher = FunctionMatcher::new(call);
+    let matcher = FunctionMatcher::new(mfas);
     def_fb
         .clone()
         .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, _, ctx| {

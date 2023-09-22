@@ -230,8 +230,8 @@ pub fn remove_fun_ref_from_list(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = vec![(fm, ())];
-    let matcher = FunctionMatcher::new(&matches);
+    let mfas = vec![(fm, ())];
+    let matcher = FunctionMatcher::new(&mfas);
     sema.def_map(file_id)
         .get_functions()
         .values()
