@@ -175,11 +175,9 @@ impl<'a, T> FunctionMatcher<'a, T> {
             }
             FunctionMatch::MFA(mfa) => {
                 if mfa.module == "erlang" && in_erlang_module(&mfa.name, mfa.arity as usize) {
-                    labels_full.insert(Some(mfa.label().into()), (*c, t));
                     labels_full.insert(Some(mfa.short_label().into()), (*c, t));
-                } else {
-                    labels_full.insert(Some(mfa.label().into()), (*c, t));
                 }
+                labels_full.insert(Some(mfa.label().into()), (*c, t));
             }
             FunctionMatch::MF { module, name } => {
                 let label = format!("{}:{}", module, name);
