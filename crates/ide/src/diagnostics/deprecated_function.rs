@@ -129,13 +129,12 @@ pub(crate) fn check_function(
                             ctx.item_id
                         };
                         if let Some(range) = def_fb.range_for_any(sema.db, expr_id) {
-                            let range2 = range.clone();
-                            let d = make_diagnostic(range, &target_def, details)
+                            let d = make_diagnostic(range.clone(), &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
                                     sema,
                                     def_fb.file_id(),
                                     &target_def,
-                                    range2,
+                                    range,
                                 )]))
                                 .with_ignore_fix(sema, def_fb.file_id());
                             diagnostics.push(d)
