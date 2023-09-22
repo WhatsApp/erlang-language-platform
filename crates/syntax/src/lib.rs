@@ -161,10 +161,15 @@ impl<'tree, 'text> Converter<'tree, 'text> {
                 // node is of kind SOURCE_FILE.  We are aborting after
                 // adding this node, so make sure this is the case
                 self.start_node(SyntaxKind::SOURCE_FILE, range.start, root);
-                // This is an aberrant case, do not bother inserting
-                // the structure from the ERROR node
-                self.token(kind, &range, root);
-                self.finish_node(range.end, root);
+
+                // Make sure we capture whatever structure is wrapped
+                // inside the ERROR node.
+                if node.child_count() == 0 {
+                    self.token(kind, &range, root);
+                } else {
+                    self.start_node(kind, range.start, root);
+                    ret = true;
+                };
             } else if node.child_count() == 0 {
                 self.token(kind, &range, root);
             } else {
@@ -845,11 +850,8 @@ mod tests {
 "#;
 
         let parse = ast::SourceFile::parse_text(source_code);
-        assert_eq!(
-            format!("{:?}", parse.errors()),
-            "[SyntaxError(\"Error: ignoring\", 1..195)]"
-        );
-        expect![[r#"SourceFile { syntax: SOURCE_FILE@0..195 }"#]]
+        expect![[r#"[SyntaxError("Error: ignoring", 1..195), SyntaxError("Error: ignoring", 94..96), SyntaxError("Error: ignoring", 102..103), SyntaxError("Error: ignoring", 184..186)]"#]].assert_eq(&format!("{:?}", parse.errors()));
+        expect!["SourceFile { syntax: SOURCE_FILE@0..194 }"]
             .assert_eq(format!("{:?}", parse.tree()).as_str());
     }
 }
