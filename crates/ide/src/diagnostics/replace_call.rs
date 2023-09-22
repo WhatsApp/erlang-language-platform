@@ -114,7 +114,7 @@ pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option
         format!("'{}' called{}{}", &mfa_str, &sep, &extra_info),
         range,
     )
-    .severity(Severity::WeakWarning)
+    .with_severity(Severity::WeakWarning)
     .experimental();
     Some(diag)
 }

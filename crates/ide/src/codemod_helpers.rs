@@ -419,7 +419,7 @@ mod tests {
                     extra_info,
                     range.clone(),
                 )
-                .severity(Severity::Warning)
+                .with_severity(Severity::Warning)
                 .with_ignore_fix(sema, def_fb.file_id());
                 Some(diag)
             },

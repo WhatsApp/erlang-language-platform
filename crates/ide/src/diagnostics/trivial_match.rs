@@ -259,7 +259,7 @@ fn make_diagnostic(
     maybe_replacement: Option<ast::Expr>,
 ) -> Diagnostic {
     let diag = Diagnostic::new(DiagnosticCode::TrivialMatch, "match is redundant", *range)
-        .severity(Severity::Warning)
+        .with_severity(Severity::Warning)
         .add_categories([Category::SimplificationRule]);
 
     if let Some(replacement_ast) = maybe_replacement {

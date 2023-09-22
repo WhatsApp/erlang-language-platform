@@ -175,7 +175,7 @@ fn make_diagnostic(
         None => (Severity::Warning, None, base_message),
     };
     Diagnostic::new(DiagnosticCode::DeprecatedFunction, message, range)
-        .severity(severity)
+        .with_severity(severity)
         .with_uri(uri)
         .experimental()
         .add_categories([Category::SimplificationRule])

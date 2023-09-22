@@ -187,7 +187,7 @@ fn make_diagnostic(file_id: FileId, expr: &ast::Expr) -> Diagnostic {
         "this statement has no effect",
         range,
     )
-    .severity(Severity::Warning)
+    .with_severity(Severity::Warning)
     .add_categories([Category::SimplificationRule]);
 
     if let Some(statement_removal) = remove_statement(expr) {

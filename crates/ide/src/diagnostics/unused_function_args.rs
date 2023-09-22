@@ -173,7 +173,7 @@ fn make_diagnostic(file_id: FileId, range: TextRange, new_name: String) -> Diagn
         "this variable is unused",
         range,
     )
-    .severity(Severity::Warning)
+    .with_severity(Severity::Warning)
     .add_categories([
         // Marking as EXPERIMENTAL since it currently conflicts with handlers::ignore_variable https://fburl.com/code/rkm52yfj
         Category::Experimental,

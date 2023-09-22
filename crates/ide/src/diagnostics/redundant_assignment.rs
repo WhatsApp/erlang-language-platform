@@ -97,7 +97,7 @@ fn is_var_assignment_to_unused_var(
         "assignment is redundant",
         range,
     )
-    .severity(Severity::WeakWarning)
+    .with_severity(Severity::WeakWarning)
     .add_categories([Category::SimplificationRule])
     .with_fixes(Some(vec![fix(
         "remove_redundant_assignment",

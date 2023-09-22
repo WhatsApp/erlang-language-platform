@@ -135,14 +135,14 @@ impl Diagnostic {
     }
 
     fn error(code: DiagnosticCode, range: TextRange, message: String) -> Self {
-        Self::new(code, message, range).severity(Severity::Error)
+        Self::new(code, message, range).with_severity(Severity::Error)
     }
 
     fn warning(code: DiagnosticCode, range: TextRange, message: String) -> Self {
-        Self::new(code, message, range).severity(Severity::Warning)
+        Self::new(code, message, range).with_severity(Severity::Warning)
     }
 
-    pub(crate) fn severity(mut self, severity: Severity) -> Diagnostic {
+    pub(crate) fn with_severity(mut self, severity: Severity) -> Diagnostic {
         self.severity = severity;
         self
     }
@@ -903,7 +903,7 @@ fn non_whitespace_prev_token(node: &SyntaxNode) -> Option<NodeOrToken> {
 
 fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -> Diagnostic {
     let message = format!("Missing '{}'", item);
-    Diagnostic::new(DiagnosticCode::Missing(code), message, range).severity(Severity::Warning)
+    Diagnostic::new(DiagnosticCode::Missing(code), message, range).with_severity(Severity::Warning)
 }
 
 pub fn erlang_service_diagnostics(
@@ -947,7 +947,7 @@ pub fn erlang_service_diagnostics(
                     msg,
                     TextRange::new(start, end),
                 )
-                .severity(Severity::Error),
+                .with_severity(Severity::Error),
             )
         })
         .chain(
@@ -964,7 +964,7 @@ pub fn erlang_service_diagnostics(
                             msg,
                             TextRange::new(start, end),
                         )
-                        .severity(Severity::Warning),
+                        .with_severity(Severity::Warning),
                     )
                 }),
         )
@@ -1084,7 +1084,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                     msg,
                     TextRange::new(start, end),
                 )
-                .severity(Severity::WeakWarning),
+                .with_severity(Severity::WeakWarning),
             )
         })
         .chain(
@@ -1100,7 +1100,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                             msg,
                             TextRange::new(start, end),
                         )
-                        .severity(Severity::WeakWarning),
+                        .with_severity(Severity::WeakWarning),
                     )
                 }),
         )

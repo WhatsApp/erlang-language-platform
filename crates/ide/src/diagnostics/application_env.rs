@@ -137,7 +137,7 @@ pub(crate) fn process_badmatches(
         },
         move |_sema, mut _def_fb, _target, _call_id, extra_info, range| {
             let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra_info, range)
-                .severity(Severity::Warning);
+                .with_severity(Severity::Warning);
             Some(diag)
         },
     );

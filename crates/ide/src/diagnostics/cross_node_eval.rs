@@ -76,7 +76,7 @@ pub(crate) fn process_badmatches(
         },
         move |_sema, def_fb, _target, _args, extra_info, range| {
             let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, extra_info, range)
-                .severity(Severity::Error)
+                .with_severity(Severity::Error)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)
         },

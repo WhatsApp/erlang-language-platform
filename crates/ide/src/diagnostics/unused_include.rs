@@ -65,7 +65,7 @@ pub(crate) fn unused_includes(
                 format!("Unused file: {}", path),
                 inc_text_rage,
             )
-            .severity(Severity::Warning)
+            .with_severity(Severity::Warning)
             .with_fixes(Some(vec![fix(
                 "remove_unused_include",
                 "Remove unused include",
