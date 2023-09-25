@@ -422,7 +422,7 @@ impl Analysis {
     pub fn get_docs_at_position(
         &self,
         position: FilePosition,
-    ) -> Cancellable<Option<(Doc, FileRange)>> {
+    ) -> Cancellable<Option<(Doc, Option<FileRange>)>> {
         self.with_db(|db| get_docs::get_doc_at_position(db, position))
     }
 

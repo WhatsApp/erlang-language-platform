@@ -19,6 +19,7 @@ use elp_ide::elp_ide_assists::SingleResolve;
 use elp_ide::elp_ide_completion::Completion;
 use elp_ide::elp_ide_completion::Kind;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
+use elp_ide::elp_ide_db::docs::Doc;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
@@ -487,13 +488,51 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
 
-    let docs = snap.analysis.get_docs_at_position(position)?;
+    let mut docs: Vec<(Doc, Option<FileRange>)> = Vec::default();
+    if let Some(hover) = snap.analysis.get_docs_at_position(position)? {
+        docs.push(hover);
+    }
+
+    if let Some(macro_expansion) = snap.analysis.expand_macro(position)? {
+        let hover_info = (
+            Doc::new(format!(
+                "{}\n\n```erlang{}```\n",
+                macro_expansion.name, macro_expansion.expansion
+            )),
+            None,
+        );
+        docs.push(hover_info);
+    }
 
     let hover_actions_config = snap.config.hover_actions();
     let actions = snap
         .analysis
         .hover_actions(position, &hover_actions_config)?;
-    to_proto::hover_response(&snap, docs, actions)
+    to_proto::hover_response(&snap, combine_docs(&docs), actions)
+}
+
+fn combine_docs(docs: &[(Doc, Option<FileRange>)]) -> Option<(Doc, Option<FileRange>)> {
+    match docs {
+        [] => None,
+        [(doc, src_range)] => Some((doc.clone(), src_range.clone())),
+        many => Some((
+            Doc::new(
+                many.iter()
+                    .map(|d| d.0.markdown_text())
+                    .collect_vec()
+                    .join("\n"),
+            ),
+            many.iter().fold(None, |acc, (_, mr)| match (acc, mr) {
+                (None, None) => None,
+                (None, Some(_)) => mr.clone(),
+                (Some(_), None) => acc,
+                (Some(a), Some(b)) => Some(FileRange {
+                    file_id: a.file_id,
+                    range: a.range.cover(b.range),
+                }),
+            }),
+        )),
+    }
 }
 
 pub(crate) fn handle_folding_range(

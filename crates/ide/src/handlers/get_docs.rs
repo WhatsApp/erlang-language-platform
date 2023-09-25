@@ -17,7 +17,7 @@ use hir::Semantic;
 pub(crate) fn get_doc_at_position(
     db: &RootDatabase,
     position: FilePosition,
-) -> Option<(Doc, FileRange)> {
+) -> Option<(Doc, Option<FileRange>)> {
     let sema = Semantic::new(db);
     let docs = elp_ide_db::docs::Documentation::new(db, &sema);
     let token = find_best_token(&sema, position)?;
@@ -27,5 +27,5 @@ pub(crate) fn get_doc_at_position(
         range: token.value.text_range(),
     };
     let doc = Doc::from_reference(&docs, &token);
-    doc.map(|d| (d, range))
+    doc.map(|d| (d, Some(range)))
 }

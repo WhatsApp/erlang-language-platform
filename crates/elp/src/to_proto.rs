@@ -279,11 +279,11 @@ pub(crate) fn goto_definition_response(
 
 pub(crate) fn hover_response(
     snap: &Snapshot,
-    maybe_doc: Option<(Doc, FileRange)>,
+    maybe_doc: Option<(Doc, Option<FileRange>)>,
     actions: Vec<HoverAction>,
 ) -> Result<Option<lsp_ext::Hover>> {
     let (markup, id_range) = match maybe_doc {
-        Some((doc, src_range)) => (doc.markdown_text().to_string(), Some(src_range)),
+        Some((doc, src_range)) => (doc.markdown_text().to_string(), src_range),
         None => return Result::Ok(None),
     };
     let markup_kind = MarkupKind::Markdown;
