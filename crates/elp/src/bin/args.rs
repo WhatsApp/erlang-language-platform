@@ -227,8 +227,11 @@ pub struct Lint {
     pub recursive: bool,
     /// When applying a fix, modify the original file.
     pub in_place: bool,
-    /// Filter out all reported diagnostics except this one
-    #[bpaf(argument("FILTER"))]
+    /// Ignore the specified diagnostic, by code or label
+    #[bpaf(argument("CODE"))]
+    pub diagnostic_ignore: Option<String>,
+    /// Filter out all reported diagnostics except this one, by code or label
+    #[bpaf(argument("CODE"))]
     pub diagnostic_filter: Option<String>,
     /// Filter out all reported diagnostics before this line. Valid only for single file
     #[bpaf(argument("LINE_FROM"))]

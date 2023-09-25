@@ -656,6 +656,25 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_diagnostic_ignore(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--experimental",
+                "--diagnostic-ignore",
+                "W0011",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_test_ignore.toml"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_ignore.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_config_file_parse_error(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();

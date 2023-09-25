@@ -163,6 +163,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
         Lint {
             recursive,
             in_place,
+            diagnostic_ignore,
             diagnostic_filter,
             line_from,
             line_to,
@@ -184,11 +185,17 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             let mut disabled_diagnostics: FxHashSet<DiagnosticCode> =
                 cfg_from_file.disabled_lints.into_iter().collect();
 
+            if let Some(diagnostic_ignore) = diagnostic_ignore {
+                let diagnostic_ignore = DiagnosticCode::from(diagnostic_ignore.as_str());
+                // Make sure we do not mask the one we explicitly asked for
+                allowed_diagnostics.remove(&diagnostic_ignore);
+                disabled_diagnostics.insert(diagnostic_ignore);
+            }
+
             if let Some(diagnostic_filter) = diagnostic_filter {
                 let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
                 // Make sure we do not mask the one we explicitly asked for
                 disabled_diagnostics.remove(&diagnostic_filter);
-
                 allowed_diagnostics.insert(diagnostic_filter);
             }
 

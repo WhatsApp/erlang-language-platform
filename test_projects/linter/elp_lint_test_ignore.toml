@@ -1,0 +1,2 @@
+enabled_lints =['L1268', 'W0010', 'W0011']
+disabled_lints = []
