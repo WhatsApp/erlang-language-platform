@@ -8,10 +8,12 @@
  */
 
 use std::convert::TryInto;
+use std::iter;
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Arc;
 
+use itertools::Either;
 use num_traits::FromPrimitive;
 use rowan::GreenNodeBuilder;
 use rowan::Language;
@@ -317,6 +319,26 @@ impl SourceFile {
             _ty: PhantomData,
         }
     }
+
+    /// If a single form has an error in it, the grammar may introduce
+    /// an ERROR node that spans the entire top of the tree, but which
+    /// nevertheless contains all the correctly parsed forms bar the
+    /// erroneous one.  In this case, look into the ERROR node and
+    /// return the valid forms found.
+    pub fn forms(&self) -> impl Iterator<Item = ast::Form> {
+        if self.syntax().first_child().map(|n| n.kind()) == Some(SyntaxKind::ERROR) {
+            if let Some(child) = self.syntax().first_child() {
+                Either::Left(
+                    iter::successors(child.first_child(), |n| n.next_sibling())
+                        .filter_map(|n| ast::Form::cast(n)),
+                )
+            } else {
+                Either::Right(self.forms_only())
+            }
+        } else {
+            Either::Right(self.forms_only())
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -485,6 +507,63 @@ mod tests {
                       ATOM@9..11 "ok"
                     ANON_RPAREN@11..12 ")"
                     ANON_DOT@12..13 ".""#]],
+        )
+    }
+
+    #[test]
+    fn error_nodes_3() {
+        let input = r#"
+            -module(foo).
+
+            test(Y, X) ->
+                try ok of
+                    X ->"#;
+        let parse = ast::SourceFile::parse_text(input);
+
+        assert_eq!(parse.errors().len(), 1);
+
+        // Check that the ERROR node contains what was parsed, even
+        // though the end result was error.
+        check_node(
+            input,
+            expect![[r#"
+                SOURCE_FILE@0..104
+                  WHITESPACE@0..13 "\n            "
+                  MODULE_ATTRIBUTE@13..26
+                    ANON_DASH@13..14 "-"
+                    ANON_MODULE@14..20 "module"
+                    ANON_LPAREN@20..21 "("
+                    ATOM@21..24
+                      ATOM@21..24 "foo"
+                    ANON_RPAREN@24..25 ")"
+                    ANON_DOT@25..26 "."
+                  WHITESPACE@26..40 "\n\n            "
+                  ERROR@40..104
+                    ATOM@40..44
+                      ATOM@40..44 "test"
+                    EXPR_ARGS@44..50
+                      ANON_LPAREN@44..45 "("
+                      VAR@45..46
+                        VAR@45..46 "Y"
+                      ANON_COMMA@46..47 ","
+                      WHITESPACE@47..48 " "
+                      VAR@48..49
+                        VAR@48..49 "X"
+                      ANON_RPAREN@49..50 ")"
+                    WHITESPACE@50..51 " "
+                    ANON_DASH_GT@51..53 "->"
+                    WHITESPACE@53..70 "\n                "
+                    ANON_TRY@70..73 "try"
+                    WHITESPACE@73..74 " "
+                    ATOM@74..76
+                      ATOM@74..76 "ok"
+                    WHITESPACE@76..77 " "
+                    ANON_OF@77..79 "of"
+                    WHITESPACE@79..100 "\n                    "
+                    VAR@100..101
+                      VAR@100..101 "X"
+                    WHITESPACE@101..102 " "
+                    ANON_DASH_GT@102..104 "->""#]],
         )
     }
 

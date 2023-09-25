@@ -5478,7 +5478,7 @@ pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
 impl SourceFile {
-    pub fn forms(&self) -> AstChildren<Form> {
+    pub fn forms_only(&self) -> AstChildren<Form> {
         support::children(&self.syntax)
     }
 }
