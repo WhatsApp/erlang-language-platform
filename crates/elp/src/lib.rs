@@ -97,7 +97,10 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
                  "piqirun_props",
                  "yaws_server", "yaws_appmod_dav", "yaws_runmod_lock",
                  "jsonrpc",
-                 "redbug_dtop"
+                 "redbug_dtop",
+
+                 // This causes a timout in CI. Disable until T165009382 resolved
+                 "smax_check_biz"
                  ]
                 .iter()
                 .map(SmolStr::new)
