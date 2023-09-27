@@ -100,7 +100,7 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
                  "redbug_dtop",
 
                  // This causes a timout in CI. Disable until T165009382 resolved
-                 "smax_check_biz"
+                 "smax_check_biz", "smax_check_message_deliver"
                  ]
                 .iter()
                 .map(SmolStr::new)
