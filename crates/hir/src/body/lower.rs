@@ -46,6 +46,7 @@ use crate::ExprId;
 use crate::ExprSource;
 use crate::FunType;
 use crate::FunctionBody;
+use crate::FunctionId;
 use crate::IfClause;
 use crate::InFile;
 use crate::ListType;
@@ -130,14 +131,25 @@ impl<'a> Ctx<'a> {
         (Arc::new(self.body), self.source_map)
     }
 
-    pub fn lower_function(mut self, function: &ast::FunDecl) -> (FunctionBody, BodySourceMap) {
+    pub fn lower_function(
+        mut self,
+        function_id: InFile<FunctionId>,
+        function: &ast::FunDecl,
+    ) -> (FunctionBody, BodySourceMap) {
         let clauses = function
             .clauses()
             .flat_map(|clause| self.lower_clause_or_macro(clause))
             .collect();
         let (body, source_map) = self.finish();
 
-        (FunctionBody { body, clauses }, source_map)
+        (
+            FunctionBody {
+                function_id,
+                body,
+                clauses,
+            },
+            source_map,
+        )
     }
 
     pub fn lower_type_alias(self, type_alias: &ast::TypeAlias) -> (TypeBody, BodySourceMap) {

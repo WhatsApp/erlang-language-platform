@@ -38,6 +38,7 @@ use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
 use crate::FoldCtx;
+use crate::FormIdx;
 use crate::FormList;
 use crate::Function;
 use crate::FunctionId;
@@ -81,6 +82,7 @@ pub struct UnexpandedIndex<'a>(pub &'a Body);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
+    pub function_id: InFile<FunctionId>,
     pub body: Arc<Body>,
     pub clauses: Arena<Clause>,
 }
@@ -196,8 +198,12 @@ impl FunctionBody {
 
         let mut ctx = lower::Ctx::new(db, function_id.file_id);
         ctx.set_function_info(&function.name);
-        let (body, source_map) = ctx.lower_function(&function_ast);
+        let (body, source_map) = ctx.lower_function(function_id, &function_ast);
         (Arc::new(body), Arc::new(source_map))
+    }
+
+    pub fn form_id(&self) -> FormIdx {
+        FormIdx::Function(self.function_id.value)
     }
 
     pub fn print(&self, db: &dyn MinInternDatabase, form: &Function) -> String {

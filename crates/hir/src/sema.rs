@@ -827,6 +827,14 @@ impl<T> InFunctionBody<T> {
         self.function_id.file_id
     }
 
+    pub fn form_id(&self) -> FormIdx {
+        FormIdx::Function(self.function_id.value)
+    }
+
+    pub fn function_id(&self) -> FunctionId {
+        self.function_id.value
+    }
+
     pub fn get_body_map(&self, db: &dyn MinDefDatabase) -> Arc<BodySourceMap> {
         if let Some(body_map) = &self.body_map.borrow().as_ref() {
             //return explicitly here because borrow is still held in else statement
