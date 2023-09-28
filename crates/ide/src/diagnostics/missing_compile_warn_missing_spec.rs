@@ -20,6 +20,7 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
+use hir::FormIdx;
 use hir::known;
 use hir::AnyExpr;
 use hir::FoldCtx;
@@ -55,6 +56,7 @@ pub(crate) fn missing_compile_warn_missing_spec(
             let is_present = FoldCtx::fold_term(
                 &co.body,
                 Strategy::TopDown,
+                FormIdx::CompileOption(idx),
                 co.value,
                 false,
                 &mut |acc, ctx| match &ctx.item {

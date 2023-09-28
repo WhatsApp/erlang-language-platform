@@ -169,21 +169,23 @@ impl Body {
     pub fn fold_expr<'a, T>(
         &self,
         strategy: Strategy,
+        form_id: FormIdx,
         expr_id: ExprId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_expr(self, strategy, expr_id, initial, callback)
+        FoldCtx::fold_expr(self, strategy, form_id, expr_id, initial, callback)
     }
 
     pub fn fold_pat<'a, T>(
         &self,
         strategy: Strategy,
+        form_id: FormIdx,
         pat_id: PatId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_pat(self, strategy, pat_id, initial, callback)
+        FoldCtx::fold_pat(self, strategy, form_id, pat_id, initial, callback)
     }
 }
 

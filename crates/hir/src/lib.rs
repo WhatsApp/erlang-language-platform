@@ -188,3 +188,13 @@ impl<T> InFile<Option<T>> {
         self.value.map(|value| InFile::new(self.file_id, value))
     }
 }
+
+// ---------------------------------------------------------------------
+
+/// HIR index.  Uniquely identifies any specific HIR item in a file
+/// file. Use globally as `InFile<HirIdx>`.
+#[derive(Debug, Clone, Copy)]
+pub struct HirIdx {
+    pub form_id: FormIdx,
+    pub idx: AnyExprId,
+}

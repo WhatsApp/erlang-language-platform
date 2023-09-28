@@ -341,6 +341,7 @@ impl<'db> Semantic<'db> {
     /// Return the free and bound variables in a given expression.
     pub fn free_vars(&self, expr: &InFunctionBody<ExprId>) -> Option<ScopeAnalysis> {
         let function = expr.function_id;
+        let form_id = FormIdx::Function(function.value);
         let scopes = self.db.function_scopes(function);
         let expr_id_in = expr.value;
         let clause_id = expr.clause_id(&expr_id_in)?;
@@ -350,6 +351,7 @@ impl<'db> Semantic<'db> {
         let inside_pats = FoldCtx::fold_expr(
             &expr.body.body,
             Strategy::TopDown,
+            form_id,
             expr_id_in,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
@@ -382,6 +384,7 @@ impl<'db> Semantic<'db> {
         Some(FoldCtx::fold_expr(
             &expr.body.body,
             Strategy::TopDown,
+            form_id,
             expr_id_in,
             ScopeAnalysis::new(),
             &mut |defs, ctx| match ctx.item {
@@ -549,6 +552,7 @@ impl<'db> Semantic<'db> {
                 FoldCtx::fold_expr(
                     &function_body.body,
                     Strategy::TopDown,
+                    function_body.form_id(),
                     *expr_id,
                     acc_inner,
                     callback,
@@ -609,6 +613,7 @@ impl<'db> Semantic<'db> {
         FoldCtx::fold_pat(
             &resolver.body.body,
             Strategy::TopDown,
+            FormIdx::Function(resolver.function_id.value),
             *pat_id,
             FxHashSet::default(),
             // &mut |acc, _| acc,
@@ -677,6 +682,7 @@ fn fold_function_body<'a, T>(
                 FoldCtx::fold_expr_foldbody(
                     &fold_body,
                     strategy,
+                    function_body.form_id(),
                     *expr_id,
                     acc_inner,
                     &mut |acc, ctx| callback(acc, clause_id, ctx),
@@ -879,6 +885,7 @@ impl<T> InFunctionBody<T> {
                 FoldCtx::fold_expr(
                     &self.body.body,
                     Strategy::TopDown,
+                    self.form_id(),
                     *expr,
                     false,
                     &mut |acc, ctx| acc || AnyExprId::Expr(*expr_id) == ctx.item_id,
@@ -907,7 +914,14 @@ impl<T> InFunctionBody<T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_expr(&self.body.body, strategy, expr_id, initial, callback)
+        FoldCtx::fold_expr(
+            &self.body.body,
+            strategy,
+            self.form_id(),
+            expr_id,
+            initial,
+            callback,
+        )
     }
 
     pub fn fold_pat<'a, R>(
@@ -917,7 +931,14 @@ impl<T> InFunctionBody<T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_pat(&self.body.body, strategy, pat_id, initial, callback)
+        FoldCtx::fold_pat(
+            &self.body.body,
+            strategy,
+            self.form_id(),
+            pat_id,
+            initial,
+            callback,
+        )
     }
 
     pub fn fold_function<'a, R>(&self, initial: R, callback: FunctionAnyCallBack<'a, R>) -> R {

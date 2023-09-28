@@ -35,6 +35,8 @@ use hir::Body;
 use hir::Expr;
 use hir::ExprId;
 use hir::FormId;
+use hir::FormIdx;
+use hir::FunctionId;
 use hir::InFile;
 use hir::InFileAstPtr;
 use hir::Semantic;
@@ -228,7 +230,12 @@ impl<'a> AssistContext<'a> {
     /// Given a list of `hir::ExprId`, create a set of function
     /// arguments as a comma-separated string, with names derived from
     /// the expressions in a user-meaningful way.
-    pub(crate) fn create_function_args(&self, args: &[ExprId], body: &Body) -> String {
+    pub(crate) fn create_function_args(
+        &self,
+        function_id: FunctionId,
+        args: &[ExprId],
+        body: &Body,
+    ) -> String {
         args.iter()
             .map(|arg| {
                 // IntelliJ seems to turn (numeric)
@@ -237,6 +244,7 @@ impl<'a> AssistContext<'a> {
                 // called as `X + 1 + Y` becomes `XNY`.
                 let vars_and_literals = body.fold_expr(
                     Strategy::TopDown,
+                    FormIdx::Function(function_id),
                     *arg,
                     Vec::default(),
                     &mut |mut acc, ctx| {

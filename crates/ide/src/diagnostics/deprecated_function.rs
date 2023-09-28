@@ -124,7 +124,7 @@ pub(crate) fn check_function(
                     let details = match_result.map(|(_match, details)| details.clone());
                     if target_def.deprecated || match_result.is_some() {
                         let expr_id = if let Some(expr_id) = ctx.in_macro {
-                            expr_id
+                            expr_id.idx
                         } else {
                             ctx.item_id
                         };

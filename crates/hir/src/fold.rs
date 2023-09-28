@@ -23,6 +23,8 @@ use crate::ComprehensionBuilder;
 use crate::ComprehensionExpr;
 use crate::Expr;
 use crate::ExprId;
+use crate::FormIdx;
+use crate::HirIdx;
 use crate::Pat;
 use crate::PatId;
 use crate::Term;
@@ -39,16 +41,18 @@ pub enum On {
 #[derive(Debug)]
 pub struct AnyCallBackCtx {
     pub on: On,
-    pub in_macro: Option<AnyExprId>,
+    pub in_macro: Option<HirIdx>,
     pub item_id: AnyExprId,
     pub item: AnyExpr,
 }
+
 pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;
 
 pub struct FoldCtx<'a, T> {
+    form_id: FormIdx,
     body: &'a FoldBody<'a>,
     strategy: Strategy,
-    macro_stack: Vec<AnyExprId>,
+    macro_stack: Vec<HirIdx>,
     callback: AnyCallBack<'a, T>,
 }
 
@@ -72,11 +76,13 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_expr(
         body: &'a Body,
         strategy: Strategy,
+        form_id: FormIdx,
         expr_id: ExprId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
+            form_id,
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
@@ -88,11 +94,13 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_pat(
         body: &'a Body,
         strategy: Strategy,
+        form_id: FormIdx,
         pat_id: PatId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
+            form_id,
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
@@ -101,18 +109,20 @@ impl<'a, T> FoldCtx<'a, T> {
         .do_fold_pat(pat_id, initial)
     }
 
-    fn in_macro(&self) -> Option<AnyExprId> {
+    fn in_macro(&self) -> Option<HirIdx> {
         self.macro_stack.first().copied()
     }
 
     pub fn fold_expr_foldbody(
         body: &'a FoldBody<'a>,
         strategy: Strategy,
+        form_id: FormIdx,
         expr_id: ExprId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
+            form_id,
             body,
             strategy,
             macro_stack: Vec::default(),
@@ -124,11 +134,13 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_term(
         body: &'a Body,
         strategy: Strategy,
+        form_id: FormIdx,
         term_id: TermId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         FoldCtx {
+            form_id,
             body: &FoldBody::Body(body),
             strategy,
             macro_stack: Vec::default(),
@@ -217,7 +229,10 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = if self.strategy == Strategy::SurfaceOnly {
                     self.fold_exprs(args, acc)
                 } else {
-                    self.macro_stack.push(AnyExprId::Expr(expr_id));
+                    self.macro_stack.push(HirIdx {
+                        form_id: self.form_id,
+                        idx: AnyExprId::Expr(expr_id),
+                    });
                     let e = self.do_fold_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
@@ -603,6 +618,7 @@ mod tests {
     use crate::AnyExprRef;
     use crate::Atom;
     use crate::Expr;
+    use crate::FormIdx;
     use crate::FunctionBody;
     use crate::InFile;
     use crate::Literal;
@@ -677,6 +693,7 @@ bar() ->
         let r: u32 = FoldCtx::fold_expr(
             &body.body,
             Strategy::TopDown,
+            body.form_id(),
             body.clauses[idx].exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
@@ -737,6 +754,7 @@ bar() ->
         let r = FoldCtx::fold_term(
             &compiler_options.body,
             Strategy::TopDown,
+            FormIdx::CompileOption(idx),
             compiler_options.value,
             0,
             &mut |acc, ctx| match &ctx.item {
@@ -787,20 +805,21 @@ bar() ->
         let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
 
         let form_list = sema.form_list(file_id);
-        let (idx, _) = form_list.functions().next().unwrap();
-        let compiler_options = sema.db.function_body(InFile::new(file_id, idx));
+        let (function_idx, _) = form_list.functions().next().unwrap();
+        let function_body = sema.db.function_body(InFile::new(file_id, function_idx));
 
         let idx = ClauseId::from_raw(RawIdx::from(0));
 
         let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&compiler_options.body))
+            FoldBody::UnexpandedIndex(UnexpandedIndex(&function_body.body))
         } else {
-            FoldBody::Body(&compiler_options.body)
+            FoldBody::Body(&function_body.body)
         };
         let r = FoldCtx::fold_expr_foldbody(
             &fold_body,
             strategy,
-            compiler_options.clauses[idx].exprs[0],
+            function_body.form_id(),
+            function_body.clauses[idx].exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
@@ -817,7 +836,7 @@ bar() ->
                 _ => (in_macro, not_in_macro),
             },
         );
-        tree_expect.assert_eq(&compiler_options.tree_print(&db));
+        tree_expect.assert_eq(&function_body.tree_print(&db));
 
         r_expect.assert_debug_eq(&r);
     }

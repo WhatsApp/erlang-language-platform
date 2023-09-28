@@ -335,7 +335,7 @@ pub(crate) fn find_call_in_function<T>(
                     if let Some(match_descr) = check_call(context) {
                         // Got one.
                         let call_expr_id = if let Some(expr_id) = ctx.in_macro {
-                            expr_id
+                            expr_id.idx
                         } else {
                             ctx.item_id
                         };
