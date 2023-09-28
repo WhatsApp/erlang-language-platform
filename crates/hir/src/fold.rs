@@ -37,30 +37,6 @@ pub enum On {
 }
 
 #[derive(Debug)]
-pub struct ExprCallBackCtx {
-    pub on: On,
-    pub in_macro: Option<ExprId>,
-    pub expr_id: ExprId,
-    pub expr: Expr,
-}
-
-#[derive(Debug)]
-pub struct PatCallBackCtx {
-    pub on: On,
-    pub in_macro: Option<ExprId>,
-    pub pat_id: PatId,
-    pub pat: Pat,
-}
-
-#[derive(Debug)]
-pub struct TermCallBackCtx {
-    pub on: On,
-    pub in_macro: Option<ExprId>,
-    pub term_id: TermId,
-    pub term: Term,
-}
-
-#[derive(Debug)]
 pub struct AnyCallBackCtx {
     pub on: On,
     pub in_macro: Option<AnyExprId>,
