@@ -87,6 +87,18 @@ impl SourceChange {
         self.is_snippet |= other.is_snippet;
         self
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.source_file_edits.is_empty() && self.file_system_edits.is_empty()
+    }
+
+    pub fn text_range(&self, file_id: FileId) -> Option<TextRange> {
+        let edit = self.source_file_edits.get(&file_id)?;
+        Some(
+            edit.iter()
+                .fold(TextRange::empty(0.into()), |acc, r| acc.cover(r.delete)),
+        )
+    }
 }
 
 impl Extend<(FileId, TextEdit)> for SourceChange {
