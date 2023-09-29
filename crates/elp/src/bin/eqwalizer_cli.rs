@@ -19,6 +19,7 @@ use elp::build;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -67,7 +68,7 @@ struct EqwalizerInternalArgs<'a> {
 
 pub fn eqwalize_module(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_module(args, &loaded, cli)
 }
@@ -98,7 +99,7 @@ pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cl
 
 pub fn eqwalize_all(args: &EqwalizeAll, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_all(args, &loaded, cli)
 }
@@ -148,7 +149,7 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
 
 pub fn eqwalize_app(args: &EqwalizeApp, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_app(args, &loaded, cli)
 }
@@ -180,7 +181,7 @@ pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cl
 
 pub fn eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::buck();
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
 
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
@@ -241,7 +242,7 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
 
 pub fn eqwalize_passthrough(args: &EqwalizePassthrough, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
 
     let ast_dir = loaded.project.root().join("_build").join("elp").join("ast");
@@ -279,7 +280,7 @@ pub fn eqwalize_passthrough(args: &EqwalizePassthrough, cli: &mut dyn Cli) -> Re
 
 pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
@@ -361,7 +362,7 @@ fn eqwalize(
                     .with_context(|| format!("module {} not found", module))?;
                 reporter.write_eqwalizer_diagnostics(file_id, &diagnostics)?;
             }
-            if analysis.eqwalizer().shell {
+            if analysis.eqwalizer().mode == Mode::Shell {
                 reporter.write_stats(eqwalized, files_count as u64)?;
             }
             reporter.write_error_count()?;

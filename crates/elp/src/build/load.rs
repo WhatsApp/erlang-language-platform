@@ -42,6 +42,7 @@ pub fn load_project_at(
     root: &Path,
     conf: DiscoverConfig,
     include_otp: IncludeOtp,
+    eqwalizer_mode: elp_eqwalizer::Mode,
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert(root);
@@ -52,10 +53,15 @@ pub fn load_project_at(
     let project = Project::load(manifest)?;
     pb.finish();
 
-    load_project(cli, project, include_otp)
+    load_project(cli, project, include_otp, eqwalizer_mode)
 }
 
-fn load_project(cli: &dyn Cli, project: Project, include_otp: IncludeOtp) -> Result<LoadResult> {
+fn load_project(
+    cli: &dyn Cli,
+    project: Project,
+    include_otp: IncludeOtp,
+    eqwalizer_mode: elp_eqwalizer::Mode,
+) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let mut vfs = Vfs::default();
@@ -82,6 +88,7 @@ fn load_project(cli: &dyn Cli, project: Project, include_otp: IncludeOtp) -> Res
         &folders.file_set_config,
         &mut vfs,
         &receiver,
+        eqwalizer_mode,
     )?;
     Ok(LoadResult::new(
         analysis_host,
@@ -98,8 +105,13 @@ fn load_database(
     file_set_config: &FileSetConfig,
     vfs: &mut Vfs,
     receiver: &Receiver<loader::Message>,
+    eqwalizer_mode: elp_eqwalizer::Mode,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
+    analysis_host
+        .raw_database_mut()
+        .set_eqwalizer_mode(eqwalizer_mode);
+
     let db = analysis_host.raw_database_mut();
 
     let pb = cli.progress(0, "Loading applications");

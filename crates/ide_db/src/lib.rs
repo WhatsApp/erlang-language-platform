@@ -25,6 +25,7 @@ use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_eqwalizer::ipc::IpcHandle;
+use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
@@ -216,8 +217,8 @@ impl RootDatabase {
         &self.eqwalizer
     }
 
-    pub fn in_shell(&mut self) {
-        self.eqwalizer.shell = true
+    pub fn set_eqwalizer_mode(&mut self, mode: Mode) {
+        self.eqwalizer.mode = mode
     }
 
     pub fn resolved_includes(&self, file_id: FileId) -> Option<Includes> {

@@ -34,10 +34,12 @@ mod tests {
         let cli = Fake::default();
 
         let conf = DiscoverConfig::buck();
-        let result = load::load_project_at(&cli, &path, conf, IncludeOtp::No).expect(&format!(
-            "Can't load project from path {}",
-            &path.to_string_lossy()
-        ));
+        let result =
+            load::load_project_at(&cli, &path, conf, IncludeOtp::No, elp_eqwalizer::Mode::Cli)
+                .expect(&format!(
+                    "Can't load project from path {}",
+                    &path.to_string_lossy()
+                ));
         let analisys = &result.analysis();
         let modules = vec![
             ("test_elp", true),

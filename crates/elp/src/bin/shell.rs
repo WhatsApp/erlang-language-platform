@@ -19,6 +19,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::document::Document;
+use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -285,8 +286,8 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli) -> Result<()> {
             "Could not find project. Are you in an Erlang project directory, or is one specified using --project?"
         ))?;
     let config = DiscoverConfig::new(false, "test");
-    let mut loaded = load::load_project_at(cli, &shell.project, config, IncludeOtp::Yes)?;
-    loaded.analysis_host.raw_database_mut().in_shell();
+    let mut loaded =
+        load::load_project_at(cli, &shell.project, config, IncludeOtp::Yes, Mode::Shell)?;
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
     loop {

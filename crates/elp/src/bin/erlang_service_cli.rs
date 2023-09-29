@@ -19,6 +19,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::LineCol;
@@ -39,7 +40,7 @@ use crate::reporting::ParseDiagnostic;
 
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No, Mode::Cli)?;
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;
     let format = erlang_service::Format::OffsetEtf;

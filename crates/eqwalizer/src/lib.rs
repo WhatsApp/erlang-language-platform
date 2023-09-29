@@ -46,12 +46,28 @@ use crate::ipc::EqWAlizerASTFormat;
 
 pub mod ast;
 
+#[derive(Clone, Eq, PartialEq)]
+pub enum Mode {
+    Cli,
+    Server,
+    Shell,
+}
+impl Mode {
+    fn to_env_var(&self) -> &str {
+        match self {
+            Mode::Cli => "elp_cli",
+            Mode::Server => "elp_ide",
+            Mode::Shell => "shell",
+        }
+    }
+}
+
 // Bundle file with command to make sure it's not removed too early
 #[derive(Clone)]
 pub struct Eqwalizer {
     cmd: OsString,
     args: Vec<OsString>,
-    pub shell: bool,
+    pub mode: Mode,
     // Used only for the Drop implementation
     _file: Option<Arc<TempPath>>,
 }
@@ -191,7 +207,7 @@ impl Default for Eqwalizer {
         Self {
             cmd,
             args,
-            shell: false,
+            mode: Mode::Server,
             _file: temp_file.map(Arc::new),
         }
     }
@@ -215,14 +231,10 @@ impl Eqwalizer {
         let mut cmd = self.cmd();
         cmd.arg("ipc");
         cmd.args(modules);
-        cmd.env("EQWALIZER_IPC", "true");
-        cmd.env("EQWALIZER_USE_ELP_CONVERTED_AST", "true");
-        if self.shell {
-            cmd.env("EQWALIZER_ELP_SHELL", "true");
-        }
+        cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
         add_env(&mut cmd, build_info_path, None);
 
-        if self.shell {
+        if self.mode == Mode::Shell {
             match shell_typecheck(cmd, db, project_id) {
                 Ok(diags) => diags,
                 Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
@@ -243,6 +255,7 @@ impl Eqwalizer {
     ) -> Result<ExitStatus> {
         let mut cmd = self.cmd();
         cmd.args(args);
+        cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
         add_env(&mut cmd, build_info_path, Some(elp_ast_dir));
         cmd.status()
             .with_context(|| "Error in eqwalizer passthrough")

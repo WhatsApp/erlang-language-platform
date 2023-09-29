@@ -21,6 +21,7 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
 use elp::server::file_id_to_url;
+use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::attach_related_diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
@@ -58,7 +59,7 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes)?;
+    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
 
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
