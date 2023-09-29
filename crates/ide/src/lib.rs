@@ -15,6 +15,7 @@ use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
+use elp_eqwalizer::ast::types::Type;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -222,6 +223,14 @@ impl Analysis {
         file_id: FileId,
     ) -> Cancellable<Option<Arc<EqwalizerStats>>> {
         self.with_db(|db| db.eqwalizer_stats(project_id, file_id))
+    }
+
+    pub fn type_at_position(
+        &self,
+        project_id: ProjectId,
+        position: FilePosition,
+    ) -> Cancellable<Option<Arc<(Type, FileRange)>>> {
+        self.with_db(|db| db.type_at_position(project_id, position))
     }
 
     /// Computes the set of EDoc diagnostics for the given file.

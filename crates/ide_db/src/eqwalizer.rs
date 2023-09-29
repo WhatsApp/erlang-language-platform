@@ -12,6 +12,8 @@ use std::sync::Arc;
 use elp_base_db::salsa;
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
+use elp_base_db::FilePosition;
+use elp_base_db::FileRange;
 use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
@@ -19,7 +21,9 @@ use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRootId;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
+use elp_eqwalizer::ast::types::Type;
 use elp_eqwalizer::ast::Error;
+use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
@@ -73,6 +77,11 @@ pub trait EqwalizerDatabase:
         project_id: ProjectId,
         file_id: FileId,
     ) -> Option<Arc<EqwalizerStats>>;
+    fn type_at_position(
+        &self,
+        project_id: ProjectId,
+        position: FilePosition,
+    ) -> Option<Arc<(Type, FileRange)>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
@@ -104,6 +113,40 @@ fn eqwalizer_stats(
     let module_index = db.module_index(project_id);
     let module_name: &str = module_index.module_for_file(file_id)?.as_str();
     db.compute_eqwalizer_stats(project_id, ModuleName::new(module_name))
+}
+
+fn type_at_position(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    position: FilePosition,
+) -> Option<Arc<(Type, FileRange)>> {
+    if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
+        &(*db.eqwalizer_diagnostics(project_id, vec![position.file_id]))
+    {
+        let offset: u32 = position.offset.into();
+        let module_index = db.module_index(project_id);
+        let module = module_index.module_for_file(position.file_id)?;
+        let file_types = type_info.get(&module.to_string())?;
+        let (text_range, ty) = file_types
+            .iter()
+            .filter_map(|(pos, ty)| match pos {
+                Pos::TextRange(r) => {
+                    if r.start_byte > offset || r.end_byte < offset {
+                        None
+                    } else {
+                        Some((r, ty))
+                    }
+                }
+                _ => None,
+            })
+            .min_by_key(|(range, _)| range.end_byte - range.start_byte)?;
+        let range = FileRange {
+            file_id: position.file_id,
+            range: text_range.clone().into(),
+        };
+        return Some(Arc::new((ty.clone(), range)));
+    }
+    None
 }
 
 fn is_eqwalizer_enabled(

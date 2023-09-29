@@ -4,6 +4,7 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+elp_eqwalizer.workspace = true
 elp_ide_assists.workspace = true
 elp_ide_completion.workspace = true
 elp_ide_db.workspace = true

@@ -180,8 +180,8 @@ impl Snapshot {
             .eqwalizer_diagnostics(project_id, vec![file_id])
             .ok()?;
         match &*diags {
-            EqwalizerDiagnostics::Diagnostics(diags) => Some(
-                diags
+            EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
+                errors
                     .iter()
                     .flat_map(|(_, diags)| {
                         diags.iter().map(|d| {

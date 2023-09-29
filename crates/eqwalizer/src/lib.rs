@@ -26,7 +26,9 @@ use std::time::Instant;
 use anyhow::Context;
 use anyhow::Result;
 use ast::form::ExternalForm;
+use ast::types::Type;
 use ast::Error;
+use ast::Pos;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::TextRange;
@@ -74,14 +76,22 @@ pub struct Eqwalizer {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum EqwalizerDiagnostics {
-    Diagnostics(FxHashMap<String, Vec<EqwalizerDiagnostic>>),
-    NoAst { module: String },
+    Diagnostics {
+        errors: FxHashMap<String, Vec<EqwalizerDiagnostic>>,
+        type_info: FxHashMap<String, Vec<(Pos, Type)>>,
+    },
+    NoAst {
+        module: String,
+    },
     Error(String),
 }
 
 impl Default for EqwalizerDiagnostics {
     fn default() -> Self {
-        EqwalizerDiagnostics::Diagnostics(Default::default())
+        EqwalizerDiagnostics::Diagnostics {
+            errors: Default::default(),
+            type_info: Default::default(),
+        }
     }
 }
 
@@ -100,13 +110,17 @@ pub struct EqwalizerDiagnostic {
 }
 
 impl EqwalizerDiagnostics {
-    pub fn combine(mut self, other: &Self) -> Self {
+    pub fn combine(mut self, other: Self) -> Self {
         match &mut self {
             EqwalizerDiagnostics::NoAst { .. } => self,
             EqwalizerDiagnostics::Error(_) => self,
-            EqwalizerDiagnostics::Diagnostics(diags) => match other {
-                EqwalizerDiagnostics::Diagnostics(other_diags) => {
-                    diags.extend(other_diags.iter().map(|(k, v)| (k.to_string(), v.to_vec())));
+            EqwalizerDiagnostics::Diagnostics { errors, type_info } => match other {
+                EqwalizerDiagnostics::Diagnostics {
+                    errors: other_errors,
+                    type_info: other_type_info,
+                } => {
+                    errors.extend(other_errors.into_iter());
+                    type_info.extend(other_type_info.into_iter());
                     self
                 }
                 EqwalizerDiagnostics::Error(_) => other.clone(),
@@ -353,12 +367,18 @@ fn do_typecheck(
             }
             MsgFromEqWAlizer::EqwalizingStart { module } => db.eqwalizing_start(module),
             MsgFromEqWAlizer::EqwalizingDone { module } => db.eqwalizing_done(module),
-            MsgFromEqWAlizer::Done { diagnostics } => {
+            MsgFromEqWAlizer::Done {
+                diagnostics,
+                type_info,
+            } => {
                 log::debug!(
                     "received from eqwalizer: Done with diagnostics length {}",
                     diagnostics.len()
                 );
-                return Ok(EqwalizerDiagnostics::Diagnostics(diagnostics));
+                return Ok(EqwalizerDiagnostics::Diagnostics {
+                    errors: diagnostics,
+                    type_info,
+                });
             }
             msg => {
                 log::warn!(
@@ -390,7 +410,7 @@ fn shell_typecheck(
                 db.set_module_ipc_handle(ModuleName::new(&module), handle.clone());
                 let diags = db.module_diagnostics(project_id, module).0;
                 handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
-                diagnostics = diagnostics.combine(&diags);
+                diagnostics = diagnostics.combine((*diags).clone());
             }
             MsgFromEqWAlizer::Done { .. } => {
                 return Ok(diagnostics);
@@ -519,12 +539,18 @@ fn get_module_diagnostics(
             }
             MsgFromEqWAlizer::EqwalizingStart { module } => db.eqwalizing_start(module),
             MsgFromEqWAlizer::EqwalizingDone { module } => db.eqwalizing_done(module),
-            MsgFromEqWAlizer::Done { diagnostics } => {
+            MsgFromEqWAlizer::Done {
+                diagnostics,
+                type_info,
+            } => {
                 log::debug!(
                     "received from eqwalizer: Done with diagnostics length {}",
                     diagnostics.len()
                 );
-                return Ok(EqwalizerDiagnostics::Diagnostics(diagnostics));
+                return Ok(EqwalizerDiagnostics::Diagnostics {
+                    errors: diagnostics,
+                    type_info,
+                });
             }
             MsgFromEqWAlizer::Dependencies { modules } => {
                 modules.iter().for_each(|module| {

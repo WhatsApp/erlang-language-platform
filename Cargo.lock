@@ -458,6 +458,7 @@ name = "elp_ide"
 version = "1.1.0"
 dependencies = [
  "anyhow",
+ "elp_eqwalizer",
  "elp_ide_assists",
  "elp_ide_completion",
  "elp_ide_db",

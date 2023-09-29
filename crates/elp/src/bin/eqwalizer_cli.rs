@@ -341,17 +341,20 @@ fn eqwalize(
                         .expect("cancelled")
                 })
                 .fold(EqwalizerDiagnostics::default, |acc, output| {
-                    acc.combine(&output)
+                    acc.combine((*output).clone())
                 })
                 .reduce(EqwalizerDiagnostics::default, |acc, other| {
-                    acc.combine(&other)
+                    acc.combine(other)
                 })
         })
     });
     let eqwalized = pb.position();
     pb.finish();
     match output {
-        EqwalizerDiagnostics::Diagnostics(diagnostics_by_module) => {
+        EqwalizerDiagnostics::Diagnostics {
+            errors: diagnostics_by_module,
+            ..
+        } => {
             for (module, diagnostics) in diagnostics_by_module
                 .into_iter()
                 .sorted_by(|(name1, _), (name2, _)| Ord::cmp(name1, name2))

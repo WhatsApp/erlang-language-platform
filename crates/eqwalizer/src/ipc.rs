@@ -26,6 +26,8 @@ use stdx::JodChild;
 use timeout_readwrite::TimeoutReader;
 use timeout_readwrite::TimeoutWriter;
 
+use crate::ast::types::Type;
+use crate::ast::Pos;
 use crate::EqwalizerDiagnostic;
 
 #[derive(Deserialize, Debug)]
@@ -61,6 +63,7 @@ pub enum MsgFromEqWAlizer {
     },
     Done {
         diagnostics: FxHashMap<String, Vec<EqwalizerDiagnostic>>,
+        type_info: FxHashMap<String, Vec<(Pos, Type)>>,
     },
 }
 
