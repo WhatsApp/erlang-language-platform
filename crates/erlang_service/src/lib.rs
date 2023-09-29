@@ -176,6 +176,7 @@ pub struct ParseError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DocDiagnostic {
+    pub code: String,
     pub severity: String,
     pub line: u32,
     pub message: String,
@@ -433,7 +434,7 @@ fn reader_run(
             Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
 
         let doc_diagnostic_regex =
-            Regex::new(r"^(?P<severity>\S+) (?P<line>\d+) (?P<message>.*)$").unwrap();
+            Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>.*)$").unwrap();
 
         for _ in 0..num {
             line_buf.clear();
@@ -491,10 +492,12 @@ fn reader_run(
                         }
                     };
                     if let Some(caps) = doc_diagnostic_regex.captures(&text) {
+                        let code = caps.name("code").unwrap().as_str().to_string();
                         let severity = caps.name("severity").unwrap().as_str().to_string();
                         let line = caps.name("line").unwrap().as_str().parse::<u32>()?;
                         let message = caps.name("message").unwrap().as_str().to_string();
                         edoc_diagnostics.push(DocDiagnostic {
+                            code,
                             severity,
                             line,
                             message,

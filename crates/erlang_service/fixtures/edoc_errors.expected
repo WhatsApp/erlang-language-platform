@@ -7,6 +7,7 @@ FUNCTION_DOCS
 EDOC_DIAGNOSTICS
 [
     DocDiagnostic {
+        code: "O0005",
         severity: "error",
         line: 2,
         message: "`-quote ended unexpectedly at line 2",

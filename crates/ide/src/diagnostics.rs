@@ -1041,7 +1041,6 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
 
     let res = db.file_doc(file_id);
     let line_index = db.file_line_index(file_id);
-    let code = "EDOC000".to_string();
 
     res.diagnostics.iter().for_each(|d| {
         // While line number in EDoc diagnostics are 1 based,
@@ -1060,7 +1059,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
             .safe_offset(LineCol { line, col_utf16: 0 })
             .unwrap_or(TextSize::from(0));
         let message = &d.message;
-        let val = (file_id, start, end, code.clone(), message.clone());
+        let val = (file_id, start, end, d.code.clone(), message.clone());
         match d.severity.as_str() {
             "error" => {
                 error_info.insert(val);

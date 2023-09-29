@@ -330,7 +330,7 @@ get_docs_for_src_file(FileName, Origin) ->
 
 fetch_diagnostics_from_dict() ->
     [
-        {Line,
+        {Line, make_code(edoc, Format),
             unicode:characters_to_binary(
                 io_lib:format(Format, Args)
             ),
@@ -483,9 +483,9 @@ serialize_function_doc({{Name, Arity}, Doc}) when
 
 -spec serialize_edoc_diagnostic({Line :: pos_integer(), Message :: binary(), Severity :: severity()}) ->
     binary().
-serialize_edoc_diagnostic({Line, Message, Severity}) ->
+serialize_edoc_diagnostic({Line, Code, Message, Severity}) ->
     unicode:characters_to_binary(
-        io_lib:format("~ts ~tp ~ts", [Severity, Line, Message])
+        io_lib:format("~ts ~ts ~tp ~ts", [Code, Severity, Line, Message])
     ).
 
 format_errors(Forms, OriginalPath, Warnings) ->
@@ -1006,6 +1006,102 @@ make_code(elp_parse, "bad " ++ _Str) ->
     "P1798";
 make_code(elp_parse, _Other) ->
     "P1799";
+%% Erlang EDoc
+make_code(edoc, "XML parse error: ~p.") ->
+    "O0001";
+make_code(edoc, "error in XML parser: ~P.") ->
+    "O0002";
+make_code(edoc, "nocatch in XML parser: ~P.") ->
+    "O0003";
+make_code(edoc, "heading end marker mismatch: ~s...~s") ->
+    "O0004";
+make_code(edoc, "`-quote ended unexpectedly at line ~w") ->
+    "O0005";
+make_code(edoc, "``-quote ended unexpectedly at line ~w") ->
+    "O0006";
+make_code(edoc, "```-quote ended unexpectedly at line ~w") ->
+    "O0007";
+make_code(edoc, "reference '[~ts:...' ended unexpectedly") ->
+    "O0008";
+make_code(edoc, "cannot handle guard") ->
+    "O0009";
+make_code(edoc, "error reading file '~ts': ~w") ->
+    "O0010";
+make_code(edoc, "file not found: ~ts") ->
+    "O0011";
+make_code(edoc, "expected file name as a string") ->
+    "O0012";
+make_code(edoc, "@spec arity does not match.") ->
+    "O0013";
+make_code(edoc, "@spec name does not match.") ->
+    "O0014";
+make_code(edoc, "must specify name or e-mail.") ->
+    "O0015";
+make_code(edoc, "redefining built-in type '~w'.") ->
+    "O0016";
+make_code(edoc, "multiple '<...>' sections.") ->
+    "O0017";
+make_code(edoc, "multiple '[...]' sections.") ->
+    "O0018";
+make_code(edoc, "missing '~c'.") ->
+    "O0019";
+make_code(edoc, "unexpected end of expression.") ->
+    "O0020";
+make_code(edoc, "multiple @~s tag.") ->
+    "O0021";
+make_code(edoc, "tag @~s not allowed here.") ->
+    "O0022";
+make_code(edoc, "bad macro definition: ~P.") ->
+    "O0023";
+make_code(edoc, "cannot find application directory for '~s'.") ->
+    "O0024";
+make_code(edoc, "recursive macro expansion of {@~s}.") ->
+    "O0025";
+make_code(edoc, "undefined macro {@~s}.") ->
+    "O0026";
+make_code(edoc, "unexpected end of macro.") ->
+    "O0027";
+make_code(edoc, "missing macro name.") ->
+    "O0028";
+make_code(edoc, "bad macro name: '@~s...'.") ->
+    "O0029";
+make_code(edoc, "reference to untyped record ~w") ->
+    "O0030";
+make_code(edoc, "'~s' is not allowed - skipping tag, extracting content") ->
+    "O0031";
+make_code(edoc,
+    "cannot handle spec with constraints - arity mismatch.\n"
+    "This is a bug in EDoc spec formatter - please report it at "
+    "https://bugs.erlang.org/\n"
+    "Identified arguments: ~p\n"
+    "Original spec: ~s\n"
+) ->
+    "O0032";
+make_code(edoc,
+    "cannot annotate spec: "
+    "function and spec clause numbers do not match\n"
+) ->
+    "O0033";
+make_code(edoc,
+    "EDoc @spec tags are deprecated. "
+    "Please use -spec attributes instead."
+) ->
+    "O0034";
+make_code(edoc,
+    "EDoc @type tags are deprecated. "
+    "Please use -type attributes instead."
+) ->
+    "O0035";
+make_code(edoc, "redefining built-in type '~w'.") ->
+    "O0036";
+make_code(edoc, "duplicated type ~w~s") ->
+    "O0037";
+make_code(edoc, "missing type ~w~s") ->
+    "O0038";
+make_code(edoc, "tag @~s not recognized.") ->
+    "O0039";
+make_code(edoc, _NoCategory) ->
+    "O0000";
 make_code(Module, _Reason) ->
     unicode:characters_to_list(
         io_lib:format("~p", [Module])

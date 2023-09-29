@@ -22,6 +22,7 @@ Are we missing a tool? Reserve a namespace by [making a Pull Request](https://gi
 |[Erlang EPP Dodger](./d/about)|`D`|
 |[Erlang Pre-processor](./e/about)|`E`|
 |[Erlang Linter](./l/about)|`L`|
+|[Erlang EDoc](./o/about)|`O`|
 |[Erlang Parser](./p/about)|`P`|
 |[Erlang Scanner](./s/about)|`S`|
 |[WhatsApp ELP](./w/about)|`W`|

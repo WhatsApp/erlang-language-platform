@@ -12,11 +12,13 @@ FUNCTION_DOCS
 EDOC_DIAGNOSTICS
 [
     DocDiagnostic {
+        code: "O0039",
         severity: "warning",
         line: 1,
         message: "tag @docc not recognized.",
     },
     DocDiagnostic {
+        code: "O0039",
         severity: "warning",
         line: 8,
         message: "tag @docc not recognized.",
