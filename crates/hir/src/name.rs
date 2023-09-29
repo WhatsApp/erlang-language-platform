@@ -226,6 +226,7 @@ pub mod known {
         export_all,
         parse_transform,
         // Common Test framework
+        suite,
         all,
         group,
         groups,

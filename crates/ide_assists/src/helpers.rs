@@ -26,9 +26,11 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use fxhash::FxHashSet;
+use hir::known;
 use hir::Clause;
 use hir::CompileOption;
 use hir::FormList;
+use hir::FunctionDef;
 use hir::InFileAstPtr;
 use hir::InFunctionBody;
 use hir::NameArity;
@@ -321,6 +323,140 @@ fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
     // Temporary for  T148094436
     let _pctx = stdx::panic_context::enter("\nextend_form_range_for_delete".to_string());
     TextRange::new(start, end)
+}
+
+// ---------------------------------------------------------------------
+
+/// Add an option to the `suite/0` function in a test suite.
+pub fn add_suite_0_option<'a>(
+    sema: &'a Semantic<'a>,
+    file_id: FileId,
+    key: &str,
+    value: &str,
+    insert_at: Option<TextSize>,
+    builder: &'a mut SourceChangeBuilder,
+) -> Option<()> {
+    let source = sema.parse(file_id).value;
+    let form_list = sema.form_list(file_id);
+    let def_map = sema.def_map(file_id);
+    let name_arity = NameArity::new(known::suite, 0);
+    if let Some(fun) = def_map.get_function(&name_arity) {
+        add_to_suite_0(sema, file_id, &fun, &source, key, value, builder);
+    } else {
+        new_suite_0(
+            sema, file_id, &form_list, &source, key, value, insert_at, builder,
+        );
+    };
+    Some(())
+}
+
+fn new_suite_0(
+    sema: &Semantic,
+    file_id: FileId,
+    form_list: &FormList,
+    source: &SourceFile,
+    key: &str,
+    value: &str,
+    insert_at: Option<TextSize>,
+    builder: &mut SourceChangeBuilder,
+) {
+    export_suite_0(sema, file_id, builder);
+    let insert = first_function_insert_location(insert_at, form_list, source);
+    builder.insert(insert, format!("\nsuite() ->\n    [{{{key}, {value}}}].\n"))
+}
+
+/// Find the first location in a .erl file to be able to insert a
+/// function. This is after all the standard headers, such as module
+/// attributes and exports.
+pub fn first_function_insert_location(
+    insert_at: Option<TextSize>,
+    form_list: &FormList,
+    source: &SourceFile,
+) -> TextSize {
+    let insert = insert_at.unwrap_or_else(|| {
+        if let Some(module_attr) = form_list.module_attribute() {
+            let module_attr_range = module_attr.form_id.get(source).syntax().text_range();
+            module_attr_range.end() + TextSize::from(1)
+        } else {
+            TextSize::from(0)
+        }
+    });
+    let insert = if let Some((_, export_attr)) = form_list.exports().last() {
+        let export_attr_range = export_attr.form_id.get(source).syntax().text_range();
+        export_attr_range.end() + TextSize::from(1)
+    } else {
+        insert
+    };
+    insert
+}
+
+fn add_to_suite_0(
+    sema: &Semantic,
+    file_id: FileId,
+    fun_def: &FunctionDef,
+    source: &SourceFile,
+    key: &str,
+    value: &str,
+    builder: &mut SourceChangeBuilder,
+) -> Option<()> {
+    let fun_ast = fun_def.function.form_id.get(source);
+    let clause = match fun_ast.clauses().next()? {
+        ast::FunctionOrMacroClause::FunctionClause(clause) => clause,
+        ast::FunctionOrMacroClause::MacroCallExpr(_) => return None,
+    };
+    let expr = clause.body()?.exprs().next()?;
+    let option = format!("{{{key}, {value}}}");
+    match expr {
+        ast::Expr::ExprMax(ast::ExprMax::List(list)) => {
+            add_or_update_list(&list, key, value, builder);
+        }
+        ast::Expr::ExprMax(ast::ExprMax::Atom(e)) => {
+            let r = e.syntax().text_range();
+            builder.replace(r, format!("[{}, {option}]", e.syntax().text()));
+        }
+        ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) => {
+            let r = e.syntax().text_range();
+            builder.replace(r, format!("[{}, {option}]", e.syntax().text()));
+        }
+        _ => return None,
+    };
+    if !fun_def.exported {
+        export_suite_0(sema, file_id, builder);
+    }
+    Some(())
+}
+
+fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBuilder) {
+    let name_arity = NameArity::new(known::suite, 0);
+    ExportBuilder::new(sema, file_id, &[name_arity.clone()], builder)
+        .group_with(NameArity::new(known::all, 0))
+        .finish();
+}
+
+fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut SourceChangeBuilder) {
+    let option = format!("{{{key}, {value}}}");
+    let mut done = false;
+    list.exprs().for_each(|e| {
+        match e {
+            ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) => {
+                if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next() {
+                    if a.text() == Some(key.to_string()) {
+                        // We found an existing key, replace the tuple with the new one
+                        builder.replace(e.syntax().text_range(), format!("{option}"));
+                        done = true;
+                    }
+                }
+            }
+            _ => {}
+        };
+    });
+    if !done {
+        // No existing key, insert at the end of the list.
+        // Skip the trailing "]"
+        let mut r = list.syntax().text_range().end();
+        r -= TextSize::from(1);
+        builder.insert(r, format!(", {option}"));
+    }
 }
 
 // ---------------------------------------------------------------------

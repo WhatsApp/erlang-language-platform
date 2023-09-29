@@ -115,6 +115,7 @@ impl From<FxHashMap<FileId, TextEdit>> for SourceChange {
 
 // ---------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct SourceChangeBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
@@ -124,6 +125,7 @@ pub struct SourceChangeBuilder {
     mutated_tree: Option<TreeMutator>,
 }
 
+#[derive(Debug)]
 pub struct TreeMutator {
     immutable: SyntaxNode,
     mutable_clone: SyntaxNode,

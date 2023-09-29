@@ -23,6 +23,7 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::helpers::SnippetCap;
 use elp_ide_db::source_change::FileSystemEdit;
+use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
@@ -33,6 +34,7 @@ use expect_test::expect;
 use expect_test::Expect;
 use hir::Expr;
 use hir::InFile;
+use hir::Semantic;
 use stdx::format_to;
 
 use crate::handlers::Handler;
@@ -702,4 +704,250 @@ fn export_into_specific_pre_existing_2() {
             bar() -> ok.
         "#]],
     )
+}
+
+#[test]
+fn add_compile_option_1() {
+    let before = r#"
+             -module(foo_SUITE).
+
+             bar() -> ok.
+             "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_compile_option(&sema, file_id, "blah", None, &mut builder);
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -compile([blah]).
+
+        bar() -> ok.
+    "#]]
+    .assert_eq(&changed);
+}
+
+#[test]
+fn add_to_suite_basic() {
+    let before = r#"
+           -module(foo_SUITE).
+
+           bar() -> ok.
+          "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_suite_0_option(
+        &sema,
+        file_id,
+        "timetrap",
+        "{seconds, 10}",
+        None,
+        &mut builder,
+    );
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -export([suite/0]).
+
+        suite() ->
+            [{timetrap, {seconds, 10}}].
+
+        bar() -> ok.
+    "#]]
+    .assert_eq(&changed);
+}
+
+#[test]
+fn add_to_suite_existing_no_match() {
+    let before = r#"
+           -module(foo_SUITE).
+
+           suite() ->
+               [{timetrap, {seconds, 10}}].
+
+           bar() -> ok.
+          "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_suite_0_option(&sema, file_id, "require", "foo", None, &mut builder);
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    // Note: also adds the missing export
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -export([suite/0]).
+
+        suite() ->
+            [{timetrap, {seconds, 10}}, {require, foo}].
+
+        bar() -> ok.
+    "#]]
+    .assert_eq(&changed);
+}
+
+#[test]
+fn add_to_suite_existing_with_match() {
+    let before = r#"
+           -module(foo_SUITE).
+
+           -export([suite/0]).
+
+           suite() ->
+               [{timetrap, {seconds, 10}}].
+
+           bar() -> ok.
+          "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_suite_0_option(
+        &sema,
+        file_id,
+        "timetrap",
+        "{seconds, 30}",
+        None,
+        &mut builder,
+    );
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    // Note: also adds the missing export
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -export([suite/0]).
+
+        suite() ->
+            [{timetrap, {seconds, 30}}].
+
+        bar() -> ok.
+    "#]]
+    .assert_eq(&changed);
+}
+
+#[test]
+fn add_to_suite_existing_with_comment() {
+    let before = r#"
+           -module(foo_SUITE).
+
+           -export([suite/0]).
+
+           suite() ->
+               %% we do this because ...
+               [{timetrap, {seconds, 10}}].
+
+           bar() -> ok.
+          "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_suite_0_option(
+        &sema,
+        file_id,
+        "timetrap",
+        "{seconds, 30}",
+        None,
+        &mut builder,
+    );
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    // Note: also adds the missing export
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -export([suite/0]).
+
+        suite() ->
+            %% we do this because ...
+            [{timetrap, {seconds, 30}}].
+
+        bar() -> ok.
+    "#]]
+    .assert_eq(&changed);
+}
+
+#[test]
+fn add_to_suite_grouped_export() {
+    let before = r#"
+           -module(foo_SUITE).
+
+           -export([other/0]).
+
+           -export([all/0]).
+
+           all() -> [].
+
+           other() -> ok.
+          "#;
+
+    let (db, file_id) = RootDatabase::with_single_file(before);
+    let sema = Semantic::new(&db);
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    helpers::add_suite_0_option(
+        &sema,
+        file_id,
+        "timetrap",
+        "{seconds, 30}",
+        None,
+        &mut builder,
+    );
+    let source_change = builder.finish();
+    let mut changed = db.file_text(file_id).to_string();
+    for edit in source_change.source_file_edits.values() {
+        edit.apply(&mut changed);
+    }
+
+    // Note: also adds the missing export
+    expect![[r#"
+        -module(foo_SUITE).
+
+        -export([other/0]).
+
+        -export([all/0, suite/0]).
+
+        suite() ->
+            [{timetrap, {seconds, 30}}].
+
+        all() -> [].
+
+        other() -> ok.
+    "#]]
+    .assert_eq(&changed);
 }
