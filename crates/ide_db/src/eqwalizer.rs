@@ -31,6 +31,7 @@ use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::EqwalizerStats;
 use elp_syntax::ast;
+use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
@@ -236,19 +237,19 @@ fn has_eqwalizer_ignore_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> b
         })
 }
 
-fn markdown_link_for_id(
+fn path_to_decl(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    type_id: &RemoteId,
+    module: ModuleName,
+    pos: &Pos,
+    file: SmolStr,
 ) -> Option<String> {
-    let module = ModuleName::new(type_id.module.as_str());
     let module_index = db.module_index(project_id);
-    let file_id = module_index.file_for_module(&module)?;
-    let source_root_id = db.file_source_root(file_id);
+    let module_file_id = module_index.file_for_module(&module)?;
+    let source_root_id = db.file_source_root(module_file_id);
     let source_root = db.source_root(source_root_id);
+    let file_id = source_root.relative_path(module_file_id, file.as_str())?;
     let path = source_root.path_for_file(&file_id)?;
-    let stub = db.transitive_stub(project_id, module).ok()?;
-    let pos = &stub.types.get(&type_id.to_owned().into())?.location;
     let line_info = {
         match pos {
             Pos::LineAndColumn(lc) => format!("#L{}", lc.line),
@@ -260,7 +261,19 @@ fn markdown_link_for_id(
             }
         }
     };
-    Some(format!("[{}]({}{})", type_id, path, line_info))
+    Some(format!("{}{}", path, line_info))
+}
+
+fn markdown_link_for_id(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    type_id: &RemoteId,
+) -> Option<String> {
+    let module = ModuleName::new(type_id.module.as_str());
+    let stub = db.transitive_stub(project_id, module.clone()).ok()?;
+    let decl = stub.types.get(&type_id.to_owned().into())?;
+    let path = path_to_decl(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    Some(format!("[{}]({})", type_id, path))
 }
 
 fn markdown_link_for_record(
@@ -269,28 +282,10 @@ fn markdown_link_for_record(
     record: &RecordType,
 ) -> Option<String> {
     let module = ModuleName::new(record.module.as_str());
-    let module_index = db.module_index(project_id);
-    let file_id = module_index.file_for_module(&module)?;
-    let source_root_id = db.file_source_root(file_id);
-    let source_root = db.source_root(source_root_id);
-    let path = source_root.path_for_file(&file_id)?;
-    let stub = db.transitive_stub(project_id, module).ok()?;
-    let pos = &stub.records.get(&record.name)?.location;
-    let line_info = {
-        match pos {
-            Pos::LineAndColumn(lc) => format!("#L{}", lc.line),
-            Pos::TextRange(tr) => {
-                let line_index = db.file_line_index(file_id);
-                let start = line_index.line_col(tr.start_byte.into()).line + 1;
-                let end = line_index.line_col(tr.end_byte.into()).line + 1;
-                format!("#L{}-{}", start, end)
-            }
-        }
-    };
-    Some(format!(
-        "[#{}:{}]({}{})",
-        record.module, record.name, path, line_info
-    ))
+    let stub = db.transitive_stub(project_id, module.clone()).ok()?;
+    let decl = stub.records.get(&record.name)?;
+    let path = path_to_decl(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    Some(format!("[#{}:{}]({})", record.module, record.name, path))
 }
 
 fn collect_links(
