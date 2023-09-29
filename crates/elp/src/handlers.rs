@@ -489,6 +489,20 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
 
     let mut docs: Vec<(Doc, Option<FileRange>)> = Vec::default();
+
+    if snap.config.types_on_hover() {
+        if let Some(project_id) = snap.analysis.project_id(position.file_id)? {
+            if let Some((type_docs, goto_docs, range)) =
+                snap.analysis.type_docs_at_position(project_id, position)?
+            {
+                docs.push((type_docs, Some(range)));
+                if let Some(goto_docs) = goto_docs {
+                    docs.push((goto_docs, None));
+                }
+            }
+        }
+    }
+
     if let Some(hover) = snap.analysis.get_docs_at_position(position)? {
         docs.push(hover);
     }
@@ -520,7 +534,7 @@ fn combine_docs(docs: &[(Doc, Option<FileRange>)]) -> Option<(Doc, Option<FileRa
                 many.iter()
                     .map(|d| d.0.markdown_text())
                     .collect_vec()
-                    .join("\n"),
+                    .join("\n\n---\n\n"),
             ),
             many.iter().fold(None, |acc, (_, mr)| match (acc, mr) {
                 (None, None) => None,

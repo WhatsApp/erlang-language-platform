@@ -21,16 +21,20 @@ use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRootId;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
+use elp_eqwalizer::ast::types::RecordType;
 use elp_eqwalizer::ast::types::Type;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
+use elp_eqwalizer::ast::RemoteId;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::EqwalizerStats;
 use elp_syntax::ast;
+use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
+use crate::docs::Doc;
 use crate::ErlAstDatabase;
 
 pub trait EqwalizerLoader {
@@ -230,6 +234,123 @@ fn has_eqwalizer_ignore_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> b
                 .map(is_ignore_or_fixme_atom)
                 .unwrap_or_default()
         })
+}
+
+fn markdown_link_for_id(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    type_id: &RemoteId,
+) -> Option<String> {
+    let module = ModuleName::new(type_id.module.as_str());
+    let module_index = db.module_index(project_id);
+    let file_id = module_index.file_for_module(&module)?;
+    let source_root_id = db.file_source_root(file_id);
+    let source_root = db.source_root(source_root_id);
+    let path = source_root.path_for_file(&file_id)?;
+    let stub = db.transitive_stub(project_id, module).ok()?;
+    let pos = &stub.types.get(&type_id.to_owned().into())?.location;
+    let line_info = {
+        match pos {
+            Pos::LineAndColumn(lc) => format!("#L{}", lc.line),
+            Pos::TextRange(tr) => {
+                let line_index = db.file_line_index(file_id);
+                let start = line_index.line_col(tr.start_byte.into()).line + 1;
+                let end = line_index.line_col(tr.end_byte.into()).line + 1;
+                format!("#L{}-{}", start, end)
+            }
+        }
+    };
+    Some(format!("[{}]({}{})", type_id, path, line_info))
+}
+
+fn markdown_link_for_record(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    record: &RecordType,
+) -> Option<String> {
+    let module = ModuleName::new(record.module.as_str());
+    let module_index = db.module_index(project_id);
+    let file_id = module_index.file_for_module(&module)?;
+    let source_root_id = db.file_source_root(file_id);
+    let source_root = db.source_root(source_root_id);
+    let path = source_root.path_for_file(&file_id)?;
+    let stub = db.transitive_stub(project_id, module).ok()?;
+    let pos = &stub.records.get(&record.name)?.location;
+    let line_info = {
+        match pos {
+            Pos::LineAndColumn(lc) => format!("#L{}", lc.line),
+            Pos::TextRange(tr) => {
+                let line_index = db.file_line_index(file_id);
+                let start = line_index.line_col(tr.start_byte.into()).line + 1;
+                let end = line_index.line_col(tr.end_byte.into()).line + 1;
+                format!("#L{}-{}", start, end)
+            }
+        }
+    };
+    Some(format!(
+        "[#{}:{}]({}{})",
+        record.module, record.name, path, line_info
+    ))
+}
+
+fn collect_links(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    ty: &Type,
+    links: &mut FxHashSet<String>,
+) -> () {
+    match ty {
+        Type::RemoteType(rt) => {
+            if let Some(link) = markdown_link_for_id(db, project_id, &rt.id) {
+                links.insert(link);
+            };
+        }
+        Type::OpaqueType(ot) => {
+            if let Some(link) = markdown_link_for_id(db, project_id, &ot.id) {
+                links.insert(link);
+            };
+        }
+        Type::RecordType(rt) => {
+            if let Some(link) = markdown_link_for_record(db, project_id, rt) {
+                links.insert(link);
+            };
+        }
+        Type::RefinedRecordType(rt) => {
+            if let Some(link) = markdown_link_for_record(db, project_id, &rt.rec_type) {
+                links.insert(link);
+            };
+            return;
+        }
+        _ => (),
+    }
+    ty.visit_children::<()>(&mut |ty| Ok(collect_links(db, project_id, ty, links)))
+        .ok();
+}
+
+fn goto_docs_for_type(db: &dyn EqwalizerDatabase, project_id: ProjectId, ty: &Type) -> Option<Doc> {
+    let mut links: FxHashSet<String> = FxHashSet::default();
+    collect_links(db, project_id, ty, &mut links);
+    if links.is_empty() {
+        None
+    } else {
+        Some(Doc::new(format!(
+            "Go to: {}",
+            links.into_iter().collect::<Vec<String>>().join(" | ")
+        )))
+    }
+}
+
+pub fn type_docs_at_position(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    position: FilePosition,
+) -> Option<(Doc, Option<Doc>, FileRange)> {
+    let type_info = db.type_at_position(project_id, position)?;
+    let (ty, range) = &*type_info;
+    let text = &db.file_text(range.file_id)[range.range];
+    let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
+    let goto_doc = goto_docs_for_type(db, project_id, ty);
+    Some((type_doc, goto_doc, range.clone()))
 }
 
 impl EqwalizerErlASTStorage for crate::RootDatabase {

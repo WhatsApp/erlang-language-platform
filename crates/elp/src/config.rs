@@ -58,6 +58,8 @@ config_data! {
       log: String = json! { "error" },
       /// Whether to show Signature Help.
       signatureHelp_enable: bool = json! { false },
+      /// Display types when hovering over expressions.
+      typesOnHover_enable: bool = json! { false },
   }
 }
 
@@ -219,6 +221,10 @@ impl Config {
 
     pub fn signature_help(&self) -> bool {
         self.data.signatureHelp_enable
+    }
+
+    pub fn types_on_hover(&self) -> bool {
+        self.data.typesOnHover_enable
     }
 
     pub fn assist(&self) -> AssistConfig {
@@ -432,7 +438,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"#]]
+        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -493,6 +499,11 @@ mod tests {
             "elp.signatureHelp.enable": {
               "default": false,
               "markdownDescription": "Whether to show Signature Help.",
+              "type": "boolean"
+            },
+            "elp.typesOnHover.enable": {
+              "default": false,
+              "markdownDescription": "Display types when hovering over expressions.",
               "type": "boolean"
             },
         "#]].assert_eq(schema.as_str());

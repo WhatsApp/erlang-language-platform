@@ -38,6 +38,7 @@ use elp_ide_db::elp_base_db::ProjectData;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
+use elp_ide_db::eqwalizer::type_docs_at_position;
 use elp_ide_db::erlang_service::ParseResult;
 use elp_ide_db::rename::RenameError;
 use elp_ide_db::source_change::SourceChange;
@@ -231,6 +232,14 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<Arc<(Type, FileRange)>>> {
         self.with_db(|db| db.type_at_position(project_id, position))
+    }
+
+    pub fn type_docs_at_position(
+        &self,
+        project_id: ProjectId,
+        position: FilePosition,
+    ) -> Cancellable<Option<(Doc, Option<Doc>, FileRange)>> {
+        self.with_db(|db| type_docs_at_position(db, project_id, position))
     }
 
     /// Computes the set of EDoc diagnostics for the given file.

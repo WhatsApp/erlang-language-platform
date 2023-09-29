@@ -59,6 +59,15 @@ impl fmt::Display for Id {
     }
 }
 
+impl From<RemoteId> for Id {
+    fn from(remote_id: RemoteId) -> Self {
+        Id {
+            name: remote_id.name,
+            arity: remote_id.arity,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteId {
     pub module: SmolStr,
