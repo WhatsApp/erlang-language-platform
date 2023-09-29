@@ -763,6 +763,14 @@ mod tests {
     }
 
     #[test]
+    fn edoc_scan_errors() {
+        expect_docs(
+            "fixtures/edoc_scan_errors.erl".into(),
+            expect_file!["../fixtures/edoc_scan_errors.expected"],
+        );
+    }
+
+    #[test]
     fn edoc_warnings() {
         expect_docs(
             "fixtures/edoc_warnings.erl".into(),

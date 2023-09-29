@@ -1,0 +1,16 @@
+MODULE_DOC
+
+
+FUNCTION_DOCS
+{}
+
+EDOC_DIAGNOSTICS
+[
+    DocDiagnostic {
+        severity: "error",
+        line: 1,
+        message: "{endtag_does_not_match,{was,doc,should_have_been,tag}}",
+    },
+]
+
+

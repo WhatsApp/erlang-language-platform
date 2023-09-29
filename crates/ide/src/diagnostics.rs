@@ -1084,7 +1084,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                     msg,
                     TextRange::new(start, end),
                 )
-                .with_severity(Severity::WeakWarning),
+                .with_severity(Severity::Warning),
             )
         })
         .chain(
@@ -1100,7 +1100,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                             msg,
                             TextRange::new(start, end),
                         )
-                        .with_severity(Severity::WeakWarning),
+                        .with_severity(Severity::Warning),
                     )
                 }),
         )

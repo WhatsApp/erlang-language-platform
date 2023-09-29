@@ -1,4 +1,13 @@
-%%
+%% =============================================================================
+%% An ELP fork of Erlang/OTP's xmerl_scan
+%% =============================================================================
+%% The main reasons for the fork:
+%%   * xmerl_scan outputs errors using the error_logger
+%%   * It is not possible to use xmerl_scan in quiet mode via EDoc
+%%     (erlang/otp#6650)
+%% This fork (ab)uses the process dictionary to be able to report EDoc issues
+%% in the IDE.
+%% =============================================================================
 %% %CopyrightBegin%
 %%
 %% Copyright Ericsson AB 2003-2022. All Rights Reserved.
@@ -149,13 +158,14 @@
 
 -type xmlElement() :: #xmlElement{}.
 
+-define(DICT_KEY, edoc_diagnostics).
 -define(fatal(Reason, S),
 	if
 	    S#xmerl_scanner.quiet ->
-		ok;
+		    ok;
 	    true ->
-		error_logger:error_msg("~p- fatal: ~p~n", [?LINE, Reason]),
-		ok
+            put(?DICT_KEY, [{S#xmerl_scanner.line, [], "~p", [Reason], error} | get(?DICT_KEY)]),
+		    ok
 	end,
 	fatal(Reason, S)).
 
