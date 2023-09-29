@@ -43,6 +43,7 @@ pub mod subst;
 pub mod trans_valid;
 pub mod types;
 pub mod variance_check;
+pub mod visitor;
 
 pub type AST = Vec<form::ExternalForm>;
 
