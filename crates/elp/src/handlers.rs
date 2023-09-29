@@ -496,7 +496,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     if let Some(macro_expansion) = snap.analysis.expand_macro(position)? {
         let hover_info = (
             Doc::new(format!(
-                "{}\n\n```erlang{}```\n",
+                "{}\n\n```erlang\n{}```\n",
                 macro_expansion.name, macro_expansion.expansion
             )),
             None,
