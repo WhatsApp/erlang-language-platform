@@ -7,13 +7,16 @@
  * of this source tree.
  */
 
+use core::fmt;
+
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
+use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ast;
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     AtomLitType(AtomLitType),
     AnyFunType,
@@ -242,80 +245,175 @@ impl Type {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Type::AtomLitType(a) => write!(f, "{}", a.atom.as_str()),
+            Type::AnyType => write!(f, "term()"),
+            Type::AnyFunType => write!(f, "fun()"),
+            Type::AnyTupleType => write!(f, "tuple()"),
+            Type::AtomType => write!(f, "atom()"),
+            Type::NilType => write!(f, "[]"),
+            Type::RecordType(rec) => write!(f, "#{}{{}}", rec.name.as_str()),
+            Type::VarType(v) => write!(f, "{}", v.name.as_str()),
+            Type::BinaryType => write!(f, "binary()"),
+            Type::NoneType => write!(f, "none()"),
+            Type::DynamicType => write!(f, "dynamic()"),
+            Type::PidType => write!(f, "pid()"),
+            Type::PortType => write!(f, "port()"),
+            Type::ReferenceType => write!(f, "reference()"),
+            Type::NumberType => write!(f, "number()"),
+            Type::FunType(ty) => write!(
+                f,
+                "fun(({}) -> {})",
+                ty.arg_tys
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                ty.res_ty
+            ),
+            Type::AnyArityFunType(ty) => write!(f, "fun((...) -> {})", ty.res_ty),
+            Type::TupleType(ty) => write!(
+                f,
+                "{{{}}}",
+                ty.arg_tys
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::UnionType(ty) => {
+                write!(
+                    f,
+                    "{}",
+                    ty.tys
+                        .iter()
+                        .map(|ty| ty.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" | ")
+                )
+            }
+            Type::RemoteType(ty) => write!(
+                f,
+                "{}:{}({})",
+                ty.id.module,
+                ty.id.name,
+                ty.arg_tys
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::OpaqueType(ty) => write!(
+                f,
+                "{}:{}({})",
+                ty.id.module,
+                ty.id.name,
+                ty.arg_tys
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::ShapeMap(ty) => write!(
+                f,
+                "#S{{{}}}",
+                ty.props
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::DictMap(ty) => write!(f, "#D{{{} => {}}}", ty.k_type, ty.v_type),
+            Type::ListType(ty) => write!(f, "[{}]", ty.t),
+            Type::RefinedRecordType(ty) => write!(f, "#{}{{}}", ty.rec_type.name.as_str()),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLitType {
     pub atom: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FunType {
+    #[serde(default)]
     pub forall: Vec<u32>,
+    #[serde(default)]
     pub arg_tys: Vec<Type>,
     pub res_ty: Box<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AnyArityFunType {
     pub res_ty: Box<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TupleType {
+    #[serde(default)]
     pub arg_tys: Vec<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ListType {
     pub t: Box<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnionType {
+    #[serde(default)]
     pub tys: Vec<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteType {
     pub id: ast::RemoteId,
+    #[serde(default)]
     pub arg_tys: Vec<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OpaqueType {
     pub id: ast::RemoteId,
+    #[serde(default)]
     pub arg_tys: Vec<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VarType {
     pub n: u32,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordType {
     pub name: SmolStr,
     pub module: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedRecordType {
     pub rec_type: RecordType,
+    #[serde(default)]
     pub fields: FxHashMap<SmolStr, Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DictMap {
     pub k_type: Box<Type>,
     pub v_type: Box<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ShapeMap {
+    #[serde(default)]
     pub props: Vec<Prop>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Prop {
     ReqProp(ReqProp),
     OptProp(OptProp),
@@ -336,13 +434,22 @@ impl Prop {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+impl fmt::Display for Prop {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Prop::ReqProp(req) => write!(f, "{} := {}", req.key, req.tp),
+            Prop::OptProp(opt) => write!(f, "{} => {}", opt.key, opt.tp),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReqProp {
     pub key: SmolStr,
     pub tp: Type,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OptProp {
     pub key: SmolStr,
     pub tp: Type,

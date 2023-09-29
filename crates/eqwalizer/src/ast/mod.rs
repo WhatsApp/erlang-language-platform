@@ -17,6 +17,7 @@ use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
+use serde::Deserialize;
 use serde::Serialize;
 use serde_with::SerializeDisplay;
 
@@ -57,7 +58,7 @@ impl fmt::Display for Id {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteId {
     pub module: SmolStr,
     pub name: SmolStr,
@@ -70,7 +71,7 @@ impl fmt::Display for RemoteId {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Pos {
     TextRange(TextRange),
     LineAndColumn(LineAndColumn),
@@ -86,7 +87,7 @@ impl From<TextRange> for Pos {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TextRange {
     pub start_byte: u32,
     pub end_byte: u32,
@@ -100,7 +101,7 @@ impl TextRange {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LineAndColumn {
     pub line: u32,
     pub column: u32,
