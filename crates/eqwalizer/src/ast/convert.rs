@@ -166,6 +166,7 @@ struct Converter {
     no_auto_imports: FxHashSet<ast::Id>,
     from_beam: bool,
     filter_stub: bool,
+    current_file: Option<SmolStr>,
 }
 
 fn get_specifier(name: &str) -> Option<Specifier> {
@@ -271,7 +272,7 @@ impl Converter {
     }
 
     fn convert_attribute(
-        &self,
+        &mut self,
         kind: &eetf::Atom,
         args: &eetf::Term,
         location: ast::Pos,
@@ -315,22 +316,25 @@ impl Converter {
                             .map(|f| self.convert_rec_field_form(f))
                             .collect::<Result<Vec<_>, _>>()?,
                         location,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
             ("file", Term::Tuple(file)) => {
                 if let [Term::List(name), line] = &file.elements[..] {
                     if let Some(line) = self.convert_line(line) {
-                        let filename: String = name
+                        let filename: SmolStr = name
                             .elements
                             .iter()
                             .flat_map(|v| match v {
                                 Term::FixInteger(i) => char::from_u32(i.value as u32),
                                 _ => None,
                             })
-                            .collect();
+                            .collect::<String>()
+                            .into();
+                        self.current_file = Some(filename.clone());
                         return Ok(Some(ExternalForm::File(FileAttr {
-                            file: filename.into(),
+                            file: filename,
                             start: line,
                             location,
                         })));
@@ -379,6 +383,7 @@ impl Converter {
                         id,
                         params,
                         body,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
@@ -399,6 +404,7 @@ impl Converter {
                         id,
                         params,
                         body,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
@@ -2140,7 +2146,7 @@ impl Converter {
         Err(ConversionError::InvalidType)
     }
 
-    fn convert_form(&self, term: &eetf::Term) -> Result<Option<ExternalForm>, ConversionError> {
+    fn convert_form(&mut self, term: &eetf::Term) -> Result<Option<ExternalForm>, ConversionError> {
         if let Term::Tuple(tuple) = term {
             if let [Term::Atom(atom), _] = &tuple.elements[..] {
                 if atom.name == "eof" {
@@ -2207,6 +2213,7 @@ pub fn convert_forms(
             no_auto_imports: FxHashSet::default(),
             from_beam,
             filter_stub,
+            current_file: None,
         };
         let no_auto_imports: FxHashSet<ast::Id> = forms
             .elements
@@ -2214,10 +2221,11 @@ pub fn convert_forms(
             .flat_map(|f| dummy_converter.extract_no_auto_import(f))
             .flatten()
             .collect();
-        let converter = Converter {
+        let converter = &mut Converter {
             no_auto_imports,
             from_beam,
             filter_stub,
+            current_file: None,
         };
         return Ok(forms
             .elements

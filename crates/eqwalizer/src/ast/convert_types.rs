@@ -138,6 +138,7 @@ impl TypeConverter {
                     fields,
                     refinable,
                     location: decl.location,
+                    file: decl.file,
                 }))
             }
             Err(e) => Ok(Err(InvalidConvertTypeInRecDecl {
@@ -193,6 +194,7 @@ impl TypeConverter {
             params,
             body,
             location: decl.location,
+            file: decl.file,
         })
     }
 
@@ -200,6 +202,7 @@ impl TypeConverter {
         OpaqueTypeDecl {
             location: decl.location,
             id: decl.id,
+            file: decl.file,
         }
     }
 
@@ -217,6 +220,7 @@ impl TypeConverter {
             params,
             body,
             location: decl.location,
+            file: decl.file,
         })
     }
 
