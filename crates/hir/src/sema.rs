@@ -72,6 +72,7 @@ use crate::PatId;
 use crate::SpecId;
 use crate::Term;
 use crate::TermId;
+use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
@@ -558,6 +559,23 @@ impl<'db> Semantic<'db> {
                     callback,
                 )
             })
+    }
+
+    pub fn fold_type_alias<'a, T>(
+        &self,
+        type_alias_id: InFile<TypeAliasId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.type_body(type_alias_id);
+        FoldCtx::fold_type_expr(
+            &body.body,
+            Strategy::TopDown,
+            FormIdx::TypeAlias(type_alias_id.value),
+            body.ty,
+            initial,
+            callback,
+        )
     }
 
     pub fn bound_vars_in_pattern_diagnostic(

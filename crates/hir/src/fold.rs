@@ -58,8 +58,10 @@ pub fn fold_file<'a, T>(
                 r,
                 &mut |acc, _clause, ctx| callback(acc, ctx),
             ),
-            FormIdx::TypeAlias(_type_alias_id) => {
-                todo!()
+            FormIdx::TypeAlias(type_alias_id) => {
+                sema.fold_type_alias(InFile::new(file_id, type_alias_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
             FormIdx::Spec(_spec_id) => {
                 todo!()
@@ -1488,6 +1490,13 @@ bar() ->
                     acc
                 }
             }
+            AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
+                if atom == hir_atom {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
             _ => acc,
         });
 
@@ -1510,5 +1519,14 @@ bar() ->
                  end.
                "#;
         count_atom_foo(fixture_str, 4);
+    }
+
+    #[test]
+    fn traverse_type_alias() {
+        let fixture_str = r#"
+               -module(foo).
+               -type epp_handle() :: fo~o().
+               "#;
+        count_atom_foo(fixture_str, 1);
     }
 }
