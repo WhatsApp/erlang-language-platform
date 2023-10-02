@@ -11,6 +11,8 @@
 
 use std::ops::Index;
 
+use elp_base_db::FileId;
+
 use crate::body::UnexpandedIndex;
 use crate::expr::AnyExpr;
 use crate::expr::MaybeExpr;
@@ -26,13 +28,63 @@ use crate::ExprId;
 use crate::FormIdx;
 use crate::FunType;
 use crate::HirIdx;
+use crate::InFile;
 use crate::ListType;
 use crate::Pat;
 use crate::PatId;
+use crate::Semantic;
 use crate::Term;
 use crate::TermId;
 use crate::TypeExpr;
 use crate::TypeExprId;
+
+// ---------------------------------------------------------------------
+
+/// Fold over the contents of a file.
+#[allow(dead_code)] // Until the balance of the stack lands and it gets used
+pub fn fold_file<'a, T>(
+    sema: &Semantic,
+    file_id: FileId,
+    initial: T,
+    callback: AnyCallBack<'a, T>,
+) -> T {
+    let form_list = sema.form_list(file_id);
+    let r = form_list
+        .forms()
+        .iter()
+        .fold(initial, |r, &form_idx| match form_idx {
+            FormIdx::Function(function_id) => sema.fold_function(
+                InFile::new(file_id, function_id),
+                r,
+                &mut |acc, _clause, ctx| callback(acc, ctx),
+            ),
+            FormIdx::TypeAlias(_type_alias_id) => {
+                todo!()
+            }
+            FormIdx::Spec(_spec_id) => {
+                todo!()
+            }
+            FormIdx::Callback(_callback_id) => {
+                todo!()
+            }
+            FormIdx::Record(_record_id) => {
+                todo!()
+            }
+            FormIdx::Attribute(_attribute_id) => {
+                todo!()
+            }
+            FormIdx::CompileOption(_attribute_id) => {
+                todo!()
+            }
+            _ => {
+                // Will have to do some time?
+                r
+            }
+        });
+    r
+}
+
+// ---------------------------------------------------------------------
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum On {
@@ -743,6 +795,7 @@ mod tests {
     use la_arena::Idx;
     use la_arena::RawIdx;
 
+    use super::fold_file;
     use super::FoldBody;
     use crate::body::UnexpandedIndex;
     use crate::expr::AnyExpr;
@@ -1403,4 +1456,59 @@ bar() ->
 
     // end of testing type expression traversals
     // -----------------------------------------------------------------
+
+    #[track_caller]
+    fn count_atom_foo(fixture_str: &str, n: u32) {
+        let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+        let offset = match range_or_offset {
+            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
+            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+        };
+        let in_file = sema.parse(file_id);
+        let source_file = in_file.value;
+
+        let ast_atom =
+            algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
+        expect![[r#"foo"#]].assert_eq(&ast_atom.raw_text());
+        let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
+
+        let r: u32 = fold_file(&sema, file_id, 0, &mut |acc, ctx| match ctx.item {
+            AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                if atom == hir_atom {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
+            AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
+                if atom == hir_atom {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
+            _ => acc,
+        });
+
+        // Count of the occurrences of the atom 'foo' in the code example
+        assert_eq!(r, n);
+    }
+
+    #[test]
+    fn traverse_file_function_1() {
+        let fixture_str = r#"
+               -module(foo).
+               -export([bar/1]).
+               bar(0) ->
+                 foo;
+               bar(X) ->
+                 case X of
+                   foo -> bar;
+                   baz -> 'foo';
+                   _ -> f~oo
+                 end.
+               "#;
+        count_atom_foo(fixture_str, 4);
+    }
 }
