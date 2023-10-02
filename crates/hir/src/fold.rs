@@ -151,6 +151,24 @@ impl<'a, T> FoldCtx<'a, T> {
         .do_fold_term(term_id, initial)
     }
 
+    pub fn fold_type_expr_foldbody(
+        body: &'a FoldBody<'a>,
+        strategy: Strategy,
+        form_id: FormIdx,
+        type_expr_id: TypeExprId,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx {
+            form_id,
+            body,
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        }
+        .do_fold_type_expr(type_expr_id, initial)
+    }
+
     pub fn fold_type_expr(
         body: &'a Body,
         strategy: Strategy,
@@ -575,7 +593,9 @@ impl<'a, T> FoldCtx<'a, T> {
             item: AnyExpr::TypeExpr(type_expr.clone()),
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
+            Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
+                (self.callback)(initial, ctx)
+            }
             _ => initial,
         };
         let r = match &type_expr {
@@ -958,7 +978,7 @@ bar() ->
     }
 
     #[test]
-    fn macro_aware_full_traversal() {
+    fn macro_aware_full_traversal_expr() {
         check_macros_expr(
             WithMacros::Yes,
             Strategy::TopDown,
@@ -997,7 +1017,7 @@ bar() ->
     }
 
     #[test]
-    fn macro_aware_surface_traversal() {
+    fn macro_aware_surface_traversal_expr() {
         check_macros_expr(
             WithMacros::Yes,
             Strategy::SurfaceOnly,
@@ -1036,7 +1056,7 @@ bar() ->
     }
 
     #[test]
-    fn ignore_macros() {
+    fn ignore_macros_expr() {
         check_macros_expr(
             WithMacros::No,
             Strategy::TopDown,
@@ -1226,4 +1246,161 @@ bar() ->
                  "#;
         check_traverse_type(fixture_str, 1)
     }
+
+    // -----------------------------------------------------------------
+    // type expression macro traversals
+
+    #[track_caller]
+    fn check_macros_type_expr(
+        with_macros: WithMacros,
+        strategy: Strategy,
+        fixture_str: &str,
+        tree_expect: Expect,
+        r_expect: Expect,
+    ) {
+        let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+        let offset = match range_or_offset {
+            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
+            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+        };
+        let in_file = sema.parse(file_id);
+        let source_file = in_file.value;
+        let ast_atom =
+            algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
+        let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
+
+        let form_list = sema.form_list(file_id);
+        let (idx, type_alias) = form_list.type_aliases().next().unwrap();
+        let type_alias_body = sema.db.type_body(InFile::new(file_id, idx));
+
+        let fold_body = if with_macros == WithMacros::Yes {
+            FoldBody::UnexpandedIndex(UnexpandedIndex(&type_alias_body.body))
+        } else {
+            FoldBody::Body(&type_alias_body.body)
+        };
+        let r = FoldCtx::fold_type_expr_foldbody(
+            &fold_body,
+            strategy,
+            FormIdx::TypeAlias(idx),
+            type_alias_body.ty,
+            (0, 0),
+            &mut |(in_macro, not_in_macro), ctx| match ctx.item {
+                AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
+                    if atom == hir_atom {
+                        if ctx.in_macro.is_some() {
+                            (in_macro + 1, not_in_macro)
+                        } else {
+                            (in_macro, not_in_macro + 1)
+                        }
+                    } else {
+                        (in_macro, not_in_macro)
+                    }
+                }
+                AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                    // For macro args
+                    if atom == hir_atom {
+                        if ctx.in_macro.is_some() {
+                            (in_macro + 1, not_in_macro)
+                        } else {
+                            (in_macro, not_in_macro + 1)
+                        }
+                    } else {
+                        (in_macro, not_in_macro)
+                    }
+                }
+                _ => (in_macro, not_in_macro),
+            },
+        );
+        tree_expect.assert_eq(&type_alias_body.tree_print(&db, type_alias));
+
+        r_expect.assert_debug_eq(&r);
+    }
+
+    #[test]
+    fn macro_aware_full_traversal_type_expr() {
+        check_macros_type_expr(
+            WithMacros::Yes,
+            Strategy::TopDown,
+            r#"
+             -define(AA(X), {X,foo}).
+             -type baz() :: {fo~o, ?AA(foo)}.
+            "#,
+            expect![[r#"
+
+                -type baz() :: TypeExpr::Tuple {
+                    Literal(Atom('foo')),
+                    TypeExpr::Tuple {
+                        Literal(Atom('foo')),
+                        Literal(Atom('foo')),
+                    },
+                }.
+            "#]],
+            expect![[r#"
+                (
+                    2,
+                    1,
+                )
+            "#]],
+        )
+    }
+
+    #[test]
+    fn macro_aware_surface_traversal_type_expr() {
+        check_macros_type_expr(
+            WithMacros::Yes,
+            Strategy::SurfaceOnly,
+            r#"
+             -define(AA(X), {X,foo}).
+             -type baz() :: {fo~o, ?AA(foo)}.
+            "#,
+            expect![[r#"
+
+                -type baz() :: TypeExpr::Tuple {
+                    Literal(Atom('foo')),
+                    TypeExpr::Tuple {
+                        Literal(Atom('foo')),
+                        Literal(Atom('foo')),
+                    },
+                }.
+        "#]],
+            expect![[r#"
+            (
+                0,
+                2,
+            )
+        "#]],
+        )
+    }
+
+    #[test]
+    fn ignore_macros_type_expr() {
+        check_macros_type_expr(
+            WithMacros::No,
+            Strategy::TopDown,
+            r#"
+             -define(AA(X), {X,foo}).
+             -type baz() :: {fo~o, ?AA(foo)}.
+            "#,
+            expect![[r#"
+
+                -type baz() :: TypeExpr::Tuple {
+                    Literal(Atom('foo')),
+                    TypeExpr::Tuple {
+                        Literal(Atom('foo')),
+                        Literal(Atom('foo')),
+                    },
+                }.
+        "#]],
+            expect![[r#"
+            (
+                0,
+                3,
+            )
+        "#]],
+        )
+    }
+
+    // end of testing type expression traversals
+    // -----------------------------------------------------------------
 }
