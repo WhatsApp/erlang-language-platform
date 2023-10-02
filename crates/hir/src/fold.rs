@@ -24,7 +24,9 @@ use crate::ComprehensionExpr;
 use crate::Expr;
 use crate::ExprId;
 use crate::FormIdx;
+use crate::FunType;
 use crate::HirIdx;
+use crate::ListType;
 use crate::Pat;
 use crate::PatId;
 use crate::Term;
@@ -147,6 +149,24 @@ impl<'a, T> FoldCtx<'a, T> {
             callback,
         }
         .do_fold_term(term_id, initial)
+    }
+
+    pub fn fold_type_expr(
+        body: &'a Body,
+        strategy: Strategy,
+        form_id: FormIdx,
+        type_expr_id: TypeExprId,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx {
+            form_id,
+            body: &FoldBody::Body(body),
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        }
+        .do_fold_type_expr(type_expr_id, initial)
     }
 
     // -----------------------------------------------------------------
@@ -545,6 +565,102 @@ impl<'a, T> FoldCtx<'a, T> {
             .iter()
             .fold(initial, |acc, expr_id| self.do_fold_term(*expr_id, acc))
     }
+
+    pub fn do_fold_type_expr(&mut self, type_expr_id: TypeExprId, initial: T) -> T {
+        let type_expr = &self.body[type_expr_id];
+        let ctx = AnyCallBackCtx {
+            on: On::Entry,
+            in_macro: self.in_macro(),
+            item_id: AnyExprId::TypeExpr(type_expr_id),
+            item: AnyExpr::TypeExpr(type_expr.clone()),
+        };
+        let acc = match self.strategy {
+            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
+            _ => initial,
+        };
+        let r = match &type_expr {
+            TypeExpr::Missing => acc,
+            TypeExpr::AnnType { var: _, ty } => self.do_fold_type_expr(*ty, acc),
+            TypeExpr::BinaryOp { lhs, rhs, op: _ } => {
+                let r = self.do_fold_type_expr(*lhs, acc);
+                self.do_fold_type_expr(*rhs, r)
+            }
+            TypeExpr::Call { target, args } => {
+                let r = match target {
+                    CallTarget::Local { name } => self.do_fold_type_expr(*name, acc),
+                    CallTarget::Remote { module, name } => {
+                        let r = self.do_fold_type_expr(*module, acc);
+                        self.do_fold_type_expr(*name, r)
+                    }
+                };
+                args.iter()
+                    .fold(r, |acc, arg| self.do_fold_type_expr(*arg, acc))
+            }
+            TypeExpr::Fun(fun) => match fun {
+                FunType::Any => acc,
+                FunType::AnyArgs { result } => self.do_fold_type_expr(*result, acc),
+                FunType::Full { params, result } => {
+                    let r = self.do_fold_type_exprs(params, acc);
+                    self.do_fold_type_expr(*result, r)
+                }
+            },
+            TypeExpr::List(list_type) => match list_type {
+                ListType::Empty => todo!(),
+                ListType::Regular(ty) => self.do_fold_type_expr(*ty, acc),
+                ListType::NonEmpty(ty) => self.do_fold_type_expr(*ty, acc),
+            },
+            TypeExpr::Literal(_) => acc,
+            TypeExpr::Map { fields } => fields.iter().fold(acc, |acc, (k, _o, v)| {
+                let r = self.do_fold_type_expr(*k, acc);
+                self.do_fold_type_expr(*v, r)
+            }),
+            TypeExpr::Union { types } => self.do_fold_type_exprs(types, acc),
+            TypeExpr::Range { lhs, rhs } => {
+                let r = self.do_fold_type_expr(*lhs, acc);
+                self.do_fold_type_expr(*rhs, r)
+            }
+            TypeExpr::Record { name: _, fields } => fields
+                .iter()
+                .fold(acc, |acc, (_, field)| self.do_fold_type_expr(*field, acc)),
+            TypeExpr::Tuple { args } => args
+                .iter()
+                .fold(acc, |acc, ty| self.do_fold_type_expr(*ty, acc)),
+            TypeExpr::UnaryOp { type_expr, op: _ } => self.do_fold_type_expr(*type_expr, acc),
+            TypeExpr::Var(_) => acc,
+            TypeExpr::MacroCall { expansion, args } => {
+                let r = if self.strategy == Strategy::SurfaceOnly {
+                    self.fold_exprs(args, acc)
+                } else {
+                    self.macro_stack.push(HirIdx {
+                        form_id: self.form_id,
+                        idx: AnyExprId::TypeExpr(type_expr_id),
+                    });
+                    let e = self.do_fold_type_expr(*expansion, acc);
+                    self.macro_stack.pop();
+                    e
+                };
+                r
+            }
+        };
+        match self.strategy {
+            Strategy::BottomUp | Strategy::Both => {
+                let ctx = AnyCallBackCtx {
+                    on: On::Exit,
+                    in_macro: self.in_macro(),
+                    item_id: AnyExprId::TypeExpr(type_expr_id),
+                    item: AnyExpr::TypeExpr(type_expr.clone()),
+                };
+                (self.callback)(r, ctx)
+            }
+            _ => r,
+        }
+    }
+
+    fn do_fold_type_exprs(&mut self, types: &[TypeExprId], initial: T) -> T {
+        types.iter().fold(initial, |acc, type_expr_id| {
+            self.do_fold_type_expr(*type_expr_id, acc)
+        })
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -785,7 +901,7 @@ bar() ->
     }
 
     #[track_caller]
-    fn check_macros(
+    fn check_macros_expr(
         with_macros: WithMacros,
         strategy: Strategy,
         fixture_str: &str,
@@ -843,7 +959,7 @@ bar() ->
 
     #[test]
     fn macro_aware_full_traversal() {
-        check_macros(
+        check_macros_expr(
             WithMacros::Yes,
             Strategy::TopDown,
             r#"
@@ -882,7 +998,7 @@ bar() ->
 
     #[test]
     fn macro_aware_surface_traversal() {
-        check_macros(
+        check_macros_expr(
             WithMacros::Yes,
             Strategy::SurfaceOnly,
             r#"
@@ -921,7 +1037,7 @@ bar() ->
 
     #[test]
     fn ignore_macros() {
-        check_macros(
+        check_macros_expr(
             WithMacros::No,
             Strategy::TopDown,
             r#"
@@ -956,5 +1072,158 @@ bar() ->
             )
         "#]],
         )
+    }
+
+    // -----------------------------------------------------------------
+    // type expressions
+
+    #[track_caller]
+    fn check_traverse_type(fixture_str: &str, n: u32) {
+        let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+        let offset = match range_or_offset {
+            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
+            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+        };
+        let in_file = sema.parse(file_id);
+        let source_file = in_file.value;
+        let ast_atom =
+            algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
+        let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
+
+        let form_list = sema.form_list(file_id);
+        let (idx, _) = form_list.type_aliases().next().unwrap();
+        let type_alias = sema.db.type_body(InFile::new(file_id, idx));
+        let r =
+            FoldCtx::fold_type_expr(
+                &type_alias.body,
+                Strategy::TopDown,
+                FormIdx::TypeAlias(idx),
+                type_alias.ty,
+                0,
+                &mut |acc, ctx| match &ctx.item {
+                    AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
+                        if atom == &hir_atom { acc + 1 } else { acc }
+                    }
+                    _ => acc,
+                },
+            );
+
+        // Number of occurrences of the atom 'foo' in the code example
+        assert_eq!(n, r);
+        expect![[r#"foo"#]].assert_eq(&ast_atom.raw_text());
+    }
+
+    #[test]
+    fn traverse_type_call() {
+        let fixture_str = r#"
+                 -type bar() :: f~oo().
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_ann() {
+        let fixture_str = r#"
+                 -type bar() :: A :: f~oo().
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_binary_op() {
+        let fixture_str = r#"
+                 -type bar() :: f~oo + foo.
+                 "#;
+        check_traverse_type(fixture_str, 2)
+    }
+
+    #[test]
+    fn traverse_type_fun_1() {
+        let fixture_str = r#"
+                 -type foo1() :: fun() + fo~o.
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_fun_2() {
+        let fixture_str = r#"
+                 -type foo3() :: fun((...) -> f~oo).
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_fun_3() {
+        let fixture_str = r#"
+                 -type foo3() :: fun((a, f~oo) -> foo).
+                 "#;
+        check_traverse_type(fixture_str, 2)
+    }
+
+    #[test]
+    fn traverse_type_list_1() {
+        let fixture_str = r#"
+                 -type foo3() :: [f~oo()].
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_list_2() {
+        let fixture_str = r#"
+                 -type foo3() :: [f~oo(),...].
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_map_1() {
+        let fixture_str = r#"
+                 -type foo() :: #{a => foo, fo~o := d}.
+                 "#;
+        check_traverse_type(fixture_str, 2)
+    }
+
+    #[test]
+    fn traverse_type_union_1() {
+        let fixture_str = r#"
+                 -type foo() :: a | f~oo.
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_range_1() {
+        let fixture_str = r#"
+                 -type foo() :: fo~o | 1..100.
+                 "#;
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_record_1() {
+        let fixture_str = r#"
+                 -type foo2(B) :: #record{a :: foo(), fo~o :: B}.
+                 "#;
+        // Note: traversal does not look into the record field names
+        check_traverse_type(fixture_str, 1)
+    }
+
+    #[test]
+    fn traverse_type_tuple_1() {
+        let fixture_str = r#"
+                 -type bar() :: {fo~o, bar, foo()}.
+                 "#;
+        check_traverse_type(fixture_str, 2)
+    }
+
+    #[test]
+    fn traverse_type_unary_op() {
+        let fixture_str = r#"
+                 -type bar() :: {-1, f~oo}.
+                 "#;
+        check_traverse_type(fixture_str, 1)
     }
 }

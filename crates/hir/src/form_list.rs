@@ -156,6 +156,11 @@ impl FormList {
         self.data.compile_options.iter()
     }
 
+    /// Returns an iterator over the -compile attributes in the file
+    pub fn type_aliases(&self) -> impl Iterator<Item = (TypeAliasId, &TypeAlias)> {
+        self.data.type_aliases.iter()
+    }
+
     pub fn find_form(&self, form: &ast::Form) -> Option<FormIdx> {
         self.map_back.get(&AstPtr::new(form)).copied()
     }
