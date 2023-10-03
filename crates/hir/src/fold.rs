@@ -30,6 +30,7 @@ use crate::FunType;
 use crate::HirIdx;
 use crate::InFile;
 use crate::ListType;
+use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
 use crate::RecordFieldBody;
@@ -89,6 +90,18 @@ pub fn fold_file<'a, T>(
                 sema.fold_compile_option(InFile::new(file_id, attribute_id), r, &mut |acc, ctx| {
                     callback(acc, ctx)
                 })
+            }
+            FormIdx::PPDirective(idx) => {
+                if let PPDirective::Define(define_id) = &form_list[idx] {
+                    sema.fold_define(
+                        form_idx,
+                        InFile::new(file_id, *define_id),
+                        r,
+                        &mut |acc, ctx| callback(acc, ctx),
+                    )
+                } else {
+                    r
+                }
             }
             _ => {
                 // Will have to do some time?
@@ -1664,6 +1677,15 @@ bar() ->
         let fixture_str = r#"
                -module(foo).
                -compile([fo~o, export_all, {foo, nowarn_export_all}]).
+               "#;
+        count_atom_foo(fixture_str, 2);
+    }
+
+    #[test]
+    fn traverse_define() {
+        let fixture_str = r#"
+               -module(foo).
+               -define(FOO(X), foo(X,fo~o)).
                "#;
         count_atom_foo(fixture_str, 2);
     }

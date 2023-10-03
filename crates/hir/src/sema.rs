@@ -56,6 +56,7 @@ use crate::CallbackId;
 use crate::Clause;
 use crate::CompileOptionId;
 use crate::DefMap;
+use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
 use crate::File;
@@ -671,6 +672,27 @@ impl<'db> Semantic<'db> {
             initial,
             callback,
         )
+    }
+
+    pub fn fold_define<'a, T>(
+        &self,
+        form_id: FormIdx,
+        attribute_id: InFile<DefineId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        if let Some(body) = self.db.define_body(attribute_id) {
+            FoldCtx::fold_expr(
+                &body.body,
+                Strategy::TopDown,
+                form_id,
+                body.expr,
+                initial,
+                callback,
+            )
+        } else {
+            initial
+        }
     }
 
     pub fn bound_vars_in_pattern_diagnostic(
