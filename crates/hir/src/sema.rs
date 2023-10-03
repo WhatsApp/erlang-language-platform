@@ -70,6 +70,7 @@ use crate::Name;
 use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
+use crate::RecordId;
 use crate::SpecId;
 use crate::Term;
 use crate::TermId;
@@ -610,6 +611,25 @@ impl<'db> Semantic<'db> {
                 &body.body,
                 Strategy::TopDown,
                 FormIdx::Callback(callback_id.value),
+                spec_sig,
+                acc,
+                callback,
+            )
+        })
+    }
+
+    pub fn fold_record<'a, T>(
+        &self,
+        record_id: InFile<RecordId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.record_body(record_id);
+        body.fields.iter().fold(initial, |acc, spec_sig| {
+            FoldCtx::fold_record_field_body(
+                &body.body,
+                Strategy::TopDown,
+                FormIdx::Record(record_id.value),
                 spec_sig,
                 acc,
                 callback,

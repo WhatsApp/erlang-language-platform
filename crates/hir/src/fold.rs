@@ -32,6 +32,7 @@ use crate::InFile;
 use crate::ListType;
 use crate::Pat;
 use crate::PatId;
+use crate::RecordFieldBody;
 use crate::Semantic;
 use crate::SpecSig;
 use crate::Term;
@@ -74,8 +75,10 @@ pub fn fold_file<'a, T>(
                     callback(acc, ctx)
                 })
             }
-            FormIdx::Record(_record_id) => {
-                todo!()
+            FormIdx::Record(record_id) => {
+                sema.fold_record(InFile::new(file_id, record_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
             FormIdx::Attribute(_attribute_id) => {
                 todo!()
@@ -287,6 +290,35 @@ impl<'a, T> FoldCtx<'a, T> {
             ctx.macro_stack = Vec::default();
             ctx.do_fold_type_expr(*type_expr_id, acc)
         });
+        r
+    }
+
+    pub fn fold_record_field_body(
+        body: &'a Body,
+        strategy: Strategy,
+        form_id: FormIdx,
+        record_field_body: &RecordFieldBody,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let mut ctx = FoldCtx {
+            form_id,
+            body: &FoldBody::Body(body),
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        };
+        ctx.macro_stack = Vec::default();
+        let r = if let Some(expr_id) = record_field_body.expr {
+            ctx.do_fold_expr(expr_id, initial)
+        } else {
+            initial
+        };
+        let r = if let Some(type_expr_id) = record_field_body.ty {
+            ctx.do_fold_type_expr(type_expr_id, r)
+        } else {
+            r
+        };
         r
     }
 
@@ -1595,5 +1627,15 @@ bar() ->
                -callback fff() -> fo~o() | foo.
                "#;
         count_atom_foo(fixture_str, 2);
+    }
+
+    #[test]
+    fn traverse_record() {
+        let fixture_str = r#"
+               -module(foo).
+               -record(r1, {f1 :: f~oo(), foo}).
+               "#;
+        // Note: fold does not look into field names
+        count_atom_foo(fixture_str, 1);
     }
 }
