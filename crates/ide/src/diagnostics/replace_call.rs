@@ -126,7 +126,6 @@ pub enum Replacement {
     UseCallArg(u32),
     Invocation(String),
     ArgsPermutation(Vec<Vec<u32>>),
-    Compo(Box<Replacement>, Box<Replacement>),
 }
 
 fn replace_call(
@@ -204,20 +203,6 @@ fn replace_call(
             } else {
             }
             Some(edit_builder.finish())
-        }
-        Replacement::Compo(r1, r2) => {
-            let text_edit_r1 = replace_call(r1, sema, def_fb, file_id, args, target, call_loc);
-            let text_edit_r2 = replace_call(r2, sema, def_fb, file_id, args, target, call_loc);
-            if let Some(mut r1_edits) = text_edit_r1 {
-                if let Some(r2_edits) = text_edit_r2 {
-                    r1_edits.union(r2_edits).expect("compound replace failed");
-                    Some(r1_edits)
-                } else {
-                    Some(r1_edits)
-                }
-            } else {
-                text_edit_r2
-            }
         }
     }
 }
