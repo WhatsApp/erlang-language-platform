@@ -48,6 +48,7 @@ pub use crate::intern::MinInternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 use crate::AnyExprId;
+use crate::AttributeId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
@@ -635,6 +636,23 @@ impl<'db> Semantic<'db> {
                 callback,
             )
         })
+    }
+
+    pub fn fold_attribute<'a, T>(
+        &self,
+        attribute_id: InFile<AttributeId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.attribute_body(attribute_id);
+        FoldCtx::fold_term(
+            &body.body,
+            Strategy::TopDown,
+            FormIdx::Attribute(attribute_id.value),
+            body.value,
+            initial,
+            callback,
+        )
     }
 
     pub fn bound_vars_in_pattern_diagnostic(

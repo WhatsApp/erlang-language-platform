@@ -80,8 +80,10 @@ pub fn fold_file<'a, T>(
                     callback(acc, ctx)
                 })
             }
-            FormIdx::Attribute(_attribute_id) => {
-                todo!()
+            FormIdx::Attribute(attribute_id) => {
+                sema.fold_attribute(InFile::new(file_id, attribute_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
             FormIdx::CompileOption(_attribute_id) => {
                 todo!()
@@ -1578,6 +1580,13 @@ bar() ->
                     acc
                 }
             }
+            AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                if atom == hir_atom {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
             _ => acc,
         });
 
@@ -1636,6 +1645,15 @@ bar() ->
                -record(r1, {f1 :: f~oo(), foo}).
                "#;
         // Note: fold does not look into field names
+        count_atom_foo(fixture_str, 1);
+    }
+
+    #[test]
+    fn traverse_attribute() {
+        let fixture_str = r#"
+               -module(foo).
+               -wild(r1, {f1, f~oo}).
+               "#;
         count_atom_foo(fixture_str, 1);
     }
 }
