@@ -51,6 +51,7 @@ use crate::AnyExprId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
+use crate::CallbackId;
 use crate::Clause;
 use crate::DefMap;
 use crate::Expr;
@@ -576,6 +577,44 @@ impl<'db> Semantic<'db> {
             initial,
             callback,
         )
+    }
+
+    pub fn fold_spec<'a, T>(
+        &self,
+        spec_id: InFile<SpecId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.spec_body(spec_id);
+        body.sigs.iter().fold(initial, |acc, spec_sig| {
+            FoldCtx::fold_type_spec_sig(
+                &body.body,
+                Strategy::TopDown,
+                FormIdx::Spec(spec_id.value),
+                spec_sig,
+                acc,
+                callback,
+            )
+        })
+    }
+
+    pub fn fold_callback<'a, T>(
+        &self,
+        callback_id: InFile<CallbackId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.callback_body(callback_id);
+        body.sigs.iter().fold(initial, |acc, spec_sig| {
+            FoldCtx::fold_type_spec_sig(
+                &body.body,
+                Strategy::TopDown,
+                FormIdx::Callback(callback_id.value),
+                spec_sig,
+                acc,
+                callback,
+            )
+        })
     }
 
     pub fn bound_vars_in_pattern_diagnostic(

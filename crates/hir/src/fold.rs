@@ -33,6 +33,7 @@ use crate::ListType;
 use crate::Pat;
 use crate::PatId;
 use crate::Semantic;
+use crate::SpecSig;
 use crate::Term;
 use crate::TermId;
 use crate::TypeExpr;
@@ -63,11 +64,15 @@ pub fn fold_file<'a, T>(
                     callback(acc, ctx)
                 })
             }
-            FormIdx::Spec(_spec_id) => {
-                todo!()
+            FormIdx::Spec(spec_id) => {
+                sema.fold_spec(InFile::new(file_id, spec_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
-            FormIdx::Callback(_callback_id) => {
-                todo!()
+            FormIdx::Callback(callback_id) => {
+                sema.fold_callback(InFile::new(file_id, callback_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
             FormIdx::Record(_record_id) => {
                 todo!()
@@ -239,6 +244,50 @@ impl<'a, T> FoldCtx<'a, T> {
             callback,
         }
         .do_fold_type_expr(type_expr_id, initial)
+    }
+
+    pub fn fold_type_exprs(
+        body: &'a Body,
+        strategy: Strategy,
+        form_id: FormIdx,
+        type_expr_ids: &[TypeExprId],
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx {
+            form_id,
+            body: &FoldBody::Body(body),
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        }
+        .do_fold_type_exprs(type_expr_ids, initial)
+    }
+
+    pub fn fold_type_spec_sig(
+        body: &'a Body,
+        strategy: Strategy,
+        form_id: FormIdx,
+        spec_sig: &SpecSig,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let mut ctx = FoldCtx {
+            form_id,
+            body: &FoldBody::Body(body),
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        };
+        let r = ctx.do_fold_type_exprs(&spec_sig.args, initial);
+        ctx.macro_stack = Vec::default();
+        let r = ctx.do_fold_type_expr(spec_sig.result, r);
+
+        let r = spec_sig.guards.iter().fold(r, |acc, (_, type_expr_id)| {
+            ctx.macro_stack = Vec::default();
+            ctx.do_fold_type_expr(*type_expr_id, acc)
+        });
+        r
     }
 
     // -----------------------------------------------------------------
@@ -1528,5 +1577,23 @@ bar() ->
                -type epp_handle() :: fo~o().
                "#;
         count_atom_foo(fixture_str, 1);
+    }
+
+    #[test]
+    fn traverse_spec() {
+        let fixture_str = r#"
+               -module(foo).
+               -spec fff() -> fo~o() | foo.
+               "#;
+        count_atom_foo(fixture_str, 2);
+    }
+
+    #[test]
+    fn traverse_callback() {
+        let fixture_str = r#"
+               -module(foo).
+               -callback fff() -> fo~o() | foo.
+               "#;
+        count_atom_foo(fixture_str, 2);
     }
 }
