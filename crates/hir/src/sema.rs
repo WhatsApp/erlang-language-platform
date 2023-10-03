@@ -54,6 +54,7 @@ use crate::BodySourceMap;
 use crate::CRClause;
 use crate::CallbackId;
 use crate::Clause;
+use crate::CompileOptionId;
 use crate::DefMap;
 use crate::Expr;
 use crate::ExprId;
@@ -649,6 +650,23 @@ impl<'db> Semantic<'db> {
             &body.body,
             Strategy::TopDown,
             FormIdx::Attribute(attribute_id.value),
+            body.value,
+            initial,
+            callback,
+        )
+    }
+
+    pub fn fold_compile_option<'a, T>(
+        &self,
+        attribute_id: InFile<CompileOptionId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        let body = self.db.compile_body(attribute_id);
+        FoldCtx::fold_term(
+            &body.body,
+            Strategy::TopDown,
+            FormIdx::CompileOption(attribute_id.value),
             body.value,
             initial,
             callback,

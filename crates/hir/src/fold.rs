@@ -85,8 +85,10 @@ pub fn fold_file<'a, T>(
                     callback(acc, ctx)
                 })
             }
-            FormIdx::CompileOption(_attribute_id) => {
-                todo!()
+            FormIdx::CompileOption(attribute_id) => {
+                sema.fold_compile_option(InFile::new(file_id, attribute_id), r, &mut |acc, ctx| {
+                    callback(acc, ctx)
+                })
             }
             _ => {
                 // Will have to do some time?
@@ -1655,5 +1657,14 @@ bar() ->
                -wild(r1, {f1, f~oo}).
                "#;
         count_atom_foo(fixture_str, 1);
+    }
+
+    #[test]
+    fn traverse_compile_option() {
+        let fixture_str = r#"
+               -module(foo).
+               -compile([fo~o, export_all, {foo, nowarn_export_all}]).
+               "#;
+        count_atom_foo(fixture_str, 2);
     }
 }
