@@ -26,6 +26,7 @@ use hir::FunctionDef;
 use hir::InFunctionBody;
 use hir::Literal;
 use hir::Semantic;
+use itertools::Itertools;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
@@ -125,7 +126,13 @@ pub enum Replacement {
     UseOk,
     UseCallArg(u32),
     Invocation(String),
-    ArgsPermutation(Vec<Vec<u32>>),
+    /// List of re-arrangements to be made to the argument list.
+    /// The first applies to the the first argument, the second to the second, etc.
+    /// Each gives the number of the original argument that should be placed there.
+    /// Replacement counting starts from 0 for the first argument.
+    /// The arity of the changed function will be determined by the
+    /// number of entries in the permutation.
+    ArgsPermutation(Vec<u32>),
 }
 
 fn replace_call(
@@ -171,7 +178,7 @@ fn replace_call(
             edit_builder.replace(range, replacement.to_owned());
             Some(edit_builder.finish())
         }
-        Replacement::ArgsPermutation(cycles) => {
+        Replacement::ArgsPermutation(perm) => {
             let body_map = def_fb.get_body_map(sema.db);
             let source_file = sema.parse(file_id);
             let opt_args_str: Option<Vec<String>> = args
@@ -185,21 +192,35 @@ fn replace_call(
                 })
                 .collect();
             if let Some(args_str) = opt_args_str {
-                let mut permuted_args: Vec<&String> = args_str.iter().collect();
-                cycles.iter().for_each(|perm| {
-                    if perm.len() > 1 {
-                        permuted_args[perm[perm.len() - 1] as usize] = &args_str[perm[0] as usize];
-                    }
-                    for i in 1..perm.len() {
-                        permuted_args[perm[i - 1] as usize] = &args_str[perm[i] as usize];
+                if !args_str.is_empty() {
+                    let mut permuted_args: Vec<&String> = Vec::default();
+                    perm.iter().for_each(|new| {
+                    let new = *new as usize;
+                    if new < args_str.len() {
+                        permuted_args.push(&args_str[new]);
+                    } else {
+                        log::warn!(
+                            "replace_call: permutation not applicable: {:?}, args.len()={}, so valid is [0..{}]",
+                            perm,
+                            args_str.len(),
+                            args_str.len() - 1
+                        );
                     }
                 });
-                args.iter().enumerate().for_each(|(index, &id)| {
-                    let range_arg = def_fb
-                        .range_for_expr(sema.db, id)
-                        .expect("arg in permutation not found in function body.");
-                    edit_builder.replace(range_arg, permuted_args[index].to_owned())
-                });
+                    let replacement = permuted_args.iter().join(", ");
+                    if let Some(range_args) = args
+                        .iter()
+                        .map(|&id| {
+                            def_fb
+                                .range_for_expr(sema.db, id)
+                                .expect("arg in permutation not found in function body.")
+                        })
+                        .reduce(|a, b| a.cover(b))
+                    {
+                        edit_builder.replace(range_args, replacement);
+                    }
+                } else {
+                }
             } else {
             }
             Some(edit_builder.finish())
@@ -741,7 +762,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 5,
                     }),
-                    Replacement::ArgsPermutation(vec![vec![1, 3, 2]]),
+                    Replacement::ArgsPermutation(vec![1, 3, 2]),
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -772,7 +793,54 @@ mod tests {
             -module(blah_SUITE).
 
             end_per_suite(_Config) ->
-                Message = foo:fire_bombs(Zeroth, Third, First, Second, Fourth),
+                Message = foo:fire_bombs(First, Third, Second),
+                transmit(Message).
+            "#,
+        )
+    }
+
+    #[test]
+    fn check_fix_replace_call_permutation_expand_arity() {
+        let mut config = DiagnosticsConfig {
+            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+                replace_call_site(
+                    &FunctionMatch::MFA(MFA {
+                        module: "foo".into(),
+                        name: "fire_bombs".into(),
+                        arity: 5,
+                    }),
+                    Replacement::ArgsPermutation(vec![3, 2, 1, 2, 2, 3, 3]),
+                    &adhoc_diagnostic,
+                    acc,
+                    sema,
+                    file_id,
+                )
+            }],
+            ..DiagnosticsConfig::default()
+        };
+        config
+            .disabled
+            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+
+        check_fix_with_config(
+            config,
+            r#"
+            //- /src/blah_SUITE.erl
+            -module(blah_SUITE).
+
+            end_per_suite(_Config) ->
+                Message = ~foo:fire_bombs(Zeroth, First, Second, Third, Fourth),
+                transmit(Message).
+            //- /src/foo.erl
+            -module(foo).
+            fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
+                boom.
+            "#,
+            r#"
+            -module(blah_SUITE).
+
+            end_per_suite(_Config) ->
+                Message = foo:fire_bombs(Third, Second, First, Second, Second, Third, Third),
                 transmit(Message).
             "#,
         )
