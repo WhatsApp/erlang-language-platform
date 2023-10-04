@@ -492,11 +492,30 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
 
     if snap.config.types_on_hover() {
         if let Some(project_id) = snap.analysis.project_id(position.file_id)? {
-            if let Some((type_docs, goto_docs, range)) =
-                snap.analysis.type_docs_at_position(project_id, position)?
-            {
-                docs.push((type_docs, Some(range)));
-                if let Some(goto_docs) = goto_docs {
+            if let Some(type_info) = snap.analysis.type_at_position(project_id, position)? {
+                let (ty, range) = &*type_info;
+                let text = &snap.analysis.file_text(range.file_id)?[range.range];
+                let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
+                docs.push((type_doc, Some(range.to_owned())));
+                let refs = snap.analysis.type_references(project_id, ty)?;
+                if !refs.is_empty() {
+                    let goto_list = refs
+                        .into_iter()
+                        .flat_map(|(name, range)| {
+                            to_proto::location(&snap, range)
+                                .map(|loc| {
+                                    format!(
+                                        "[{}]({}#L{}-{})",
+                                        name,
+                                        loc.uri,
+                                        loc.range.start.line + 1,
+                                        loc.range.end.line + 1
+                                    )
+                                })
+                                .ok()
+                        })
+                        .join(" | ");
+                    let goto_docs = Doc::new(format!("Go to: {}", goto_list));
                     docs.push((goto_docs, None));
                 }
             }

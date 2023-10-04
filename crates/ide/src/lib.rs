@@ -38,7 +38,7 @@ use elp_ide_db::elp_base_db::ProjectData;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
-use elp_ide_db::eqwalizer::type_docs_at_position;
+use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
 use elp_ide_db::rename::RenameError;
 use elp_ide_db::source_change::SourceChange;
@@ -57,6 +57,7 @@ use elp_syntax::algo::ancestors_at_offset;
 use elp_syntax::ast;
 use elp_syntax::label::Label;
 use elp_syntax::AstNode;
+use elp_syntax::SmolStr;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
 use handlers::goto_definition;
@@ -234,12 +235,12 @@ impl Analysis {
         self.with_db(|db| db.type_at_position(project_id, position))
     }
 
-    pub fn type_docs_at_position(
+    pub fn type_references(
         &self,
         project_id: ProjectId,
-        position: FilePosition,
-    ) -> Cancellable<Option<(Doc, Option<Doc>, FileRange)>> {
-        self.with_db(|db| type_docs_at_position(db, project_id, position))
+        ty: &Type,
+    ) -> Cancellable<Vec<(SmolStr, FileRange)>> {
+        self.with_db(|db| type_references(db, project_id, ty))
     }
 
     /// Computes the set of EDoc diagnostics for the given file.

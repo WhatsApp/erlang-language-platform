@@ -35,8 +35,8 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
-use crate::docs::Doc;
 use crate::ErlAstDatabase;
+use crate::LineCol;
 
 pub trait EqwalizerLoader {
     fn typecheck(
@@ -237,115 +237,101 @@ fn has_eqwalizer_ignore_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> b
         })
 }
 
-fn path_to_decl(
+fn decl_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     module: ModuleName,
     pos: &Pos,
     file: SmolStr,
-) -> Option<String> {
+) -> Option<FileRange> {
     let module_index = db.module_index(project_id);
     let module_file_id = module_index.file_for_module(&module)?;
     let source_root_id = db.file_source_root(module_file_id);
     let source_root = db.source_root(source_root_id);
     let file_id = source_root.relative_path(module_file_id, file.as_str())?;
-    let path = source_root.path_for_file(&file_id)?;
-    let line_info = {
+    let range: elp_syntax::TextRange = {
         match pos {
-            Pos::LineAndColumn(lc) => format!("#L{}", lc.line),
-            Pos::TextRange(tr) => {
+            Pos::LineAndColumn(lc) => {
                 let line_index = db.file_line_index(file_id);
-                let start = line_index.line_col(tr.start_byte.into()).line + 1;
-                let end = line_index.line_col(tr.end_byte.into()).line + 1;
-                format!("#L{}-{}", start, end)
+                let line_col = LineCol {
+                    line: lc.line - 1,
+                    col_utf16: lc.column - 1,
+                };
+                let offset = line_index.offset(line_col);
+                elp_syntax::TextRange::empty(offset)
             }
+            Pos::TextRange(tr) => tr.to_owned().into(),
         }
     };
-    Some(format!("{}{}", path, line_info))
+    Some(FileRange { file_id, range })
 }
 
-fn markdown_link_for_id(
+fn id_name_and_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     type_id: &RemoteId,
-) -> Option<String> {
+) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(type_id.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.types.get(&type_id.to_owned().into())?;
-    let path = path_to_decl(db, project_id, module, &decl.location, decl.file.clone()?)?;
-    Some(format!("[{}]({})", type_id, path))
+    let loc = decl_location(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    Some((type_id.to_string().into(), loc))
 }
 
-fn markdown_link_for_record(
+fn record_name_and_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     record: &RecordType,
-) -> Option<String> {
+) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(record.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.records.get(&record.name)?;
-    let path = path_to_decl(db, project_id, module, &decl.location, decl.file.clone()?)?;
-    Some(format!("[#{}:{}]({})", record.module, record.name, path))
+    let loc = decl_location(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    Some((format!("#{}:{}", record.module, record.name).into(), loc))
 }
 
-fn collect_links(
+fn collect_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     ty: &Type,
-    links: &mut FxHashSet<String>,
+    links: &mut FxHashSet<(SmolStr, FileRange)>,
 ) -> () {
     match ty {
         Type::RemoteType(rt) => {
-            if let Some(link) = markdown_link_for_id(db, project_id, &rt.id) {
+            if let Some(link) = id_name_and_location(db, project_id, &rt.id) {
                 links.insert(link);
             };
         }
         Type::OpaqueType(ot) => {
-            if let Some(link) = markdown_link_for_id(db, project_id, &ot.id) {
+            if let Some(link) = id_name_and_location(db, project_id, &ot.id) {
                 links.insert(link);
             };
         }
         Type::RecordType(rt) => {
-            if let Some(link) = markdown_link_for_record(db, project_id, rt) {
+            if let Some(link) = record_name_and_location(db, project_id, rt) {
                 links.insert(link);
             };
         }
         Type::RefinedRecordType(rt) => {
-            if let Some(link) = markdown_link_for_record(db, project_id, &rt.rec_type) {
+            if let Some(link) = record_name_and_location(db, project_id, &rt.rec_type) {
                 links.insert(link);
             };
             return;
         }
         _ => (),
     }
-    ty.visit_children::<()>(&mut |ty| Ok(collect_links(db, project_id, ty, links)))
+    ty.visit_children::<()>(&mut |ty| Ok(collect_references(db, project_id, ty, links)))
         .ok();
 }
 
-fn goto_docs_for_type(db: &dyn EqwalizerDatabase, project_id: ProjectId, ty: &Type) -> Option<Doc> {
-    let mut links: FxHashSet<String> = FxHashSet::default();
-    collect_links(db, project_id, ty, &mut links);
-    if links.is_empty() {
-        None
-    } else {
-        Some(Doc::new(format!(
-            "Go to: {}",
-            links.into_iter().collect::<Vec<String>>().join(" | ")
-        )))
-    }
-}
-
-pub fn type_docs_at_position(
+pub fn type_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    position: FilePosition,
-) -> Option<(Doc, Option<Doc>, FileRange)> {
-    let type_info = db.type_at_position(project_id, position)?;
-    let (ty, range) = &*type_info;
-    let text = &db.file_text(range.file_id)[range.range];
-    let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
-    let goto_doc = goto_docs_for_type(db, project_id, ty);
-    Some((type_doc, goto_doc, range.clone()))
+    ty: &Type,
+) -> Vec<(SmolStr, FileRange)> {
+    let mut links = FxHashSet::default();
+    collect_references(db, project_id, ty, &mut links);
+    links.into_iter().collect()
 }
 
 impl EqwalizerErlASTStorage for crate::RootDatabase {
