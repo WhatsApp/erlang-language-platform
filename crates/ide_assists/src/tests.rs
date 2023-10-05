@@ -940,7 +940,7 @@ fn add_to_suite_grouped_export() {
 
         -export([other/0]).
 
-        -export([all/0, suite/0]).
+        -export([suite/0, all/0]).
 
         suite() ->
             [{timetrap, {seconds, 30}}].

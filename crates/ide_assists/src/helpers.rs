@@ -430,6 +430,7 @@ fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBu
     let name_arity = NameArity::new(known::suite, 0);
     ExportBuilder::new(sema, file_id, &[name_arity.clone()], builder)
         .group_with(NameArity::new(known::all, 0))
+        .export_list_pos(ExportListPosition::First)
         .finish();
 }
 
@@ -535,6 +536,12 @@ fn add_to_compile_attribute(
 
 // ---------------------------------------------------------------------
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum ExportListPosition {
+    First,
+    Last,
+}
+
 pub(crate) struct ExportBuilder<'a> {
     sema: &'a Semantic<'a>,
     file_id: FileId,
@@ -542,6 +549,7 @@ pub(crate) struct ExportBuilder<'a> {
     // `group_with`: Add `funs` to the same export as this, if found.
     // If it is added to the existing export, the comment is not used.
     group_with: Option<NameArity>,
+    export_list_pos: ExportListPosition,
     insert_at: Option<TextSize>,
     with_comment: Option<String>,
     builder: &'a mut SourceChangeBuilder,
@@ -559,6 +567,7 @@ impl<'a> ExportBuilder<'a> {
             file_id,
             funs,
             group_with: None,
+            export_list_pos: ExportListPosition::Last,
             insert_at: None,
             with_comment: None,
             builder,
@@ -567,6 +576,11 @@ impl<'a> ExportBuilder<'a> {
 
     pub(crate) fn group_with(mut self, name: NameArity) -> ExportBuilder<'a> {
         self.group_with = Some(name);
+        self
+    }
+
+    pub(crate) fn export_list_pos(mut self, pos: ExportListPosition) -> ExportBuilder<'a> {
+        self.export_list_pos = pos;
         self
     }
 
@@ -601,7 +615,7 @@ impl<'a> ExportBuilder<'a> {
                             .clone()
                             .any(|fa| &form_list[fa].name == group_with)
                     })?;
-                    add_to_export(export, &source, &export_text)
+                    self.add_to_export(export, &source, &export_text)
                 }() {
                     (insert, text)
                 } else {
@@ -615,7 +629,7 @@ impl<'a> ExportBuilder<'a> {
                     // One existing export, add the function to it.
 
                     let (_, export) = form_list.exports().next()?;
-                    add_to_export(export, &source, &export_text)
+                    self.add_to_export(export, &source, &export_text)
                 } else {
                     // Multiple
                     None
@@ -654,19 +668,32 @@ impl<'a> ExportBuilder<'a> {
             None => (insert, format!("\n-export([{export_text}]).\n")),
         }
     }
-}
 
-fn add_to_export(
-    export: &hir::Export,
-    source: &elp_syntax::SourceFile,
-    export_text: &String,
-) -> Option<(TextSize, String)> {
-    let export_ast = export.form_id.get(source);
-    if let Some(fa) = export_ast.funs().last() {
-        Some((fa.syntax().text_range().end(), format!(", {export_text}")))
-    } else {
-        // Empty export list
-        let range = find_next_token(export_ast.syntax(), SyntaxKind::ANON_LBRACK)?;
-        Some((range.end(), export_text.clone()))
+    fn add_to_export(
+        &self,
+        export: &hir::Export,
+        source: &elp_syntax::SourceFile,
+        export_text: &String,
+    ) -> Option<(TextSize, String)> {
+        let export_ast = export.form_id.get(source);
+
+        let maybe_added = match self.export_list_pos {
+            ExportListPosition::First => export_ast
+                .funs()
+                .next()
+                .map(|fa| (fa.syntax().text_range().start(), format!("{export_text}, "))),
+            ExportListPosition::Last => export_ast
+                .funs()
+                .last()
+                .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}"))),
+        };
+        match maybe_added {
+            Some(result) => Some(result),
+            None => {
+                // Empty export list
+                let range = find_next_token(export_ast.syntax(), SyntaxKind::ANON_LBRACK)?;
+                Some((range.end(), export_text.clone()))
+            }
+        }
     }
 }
