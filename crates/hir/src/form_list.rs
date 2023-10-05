@@ -169,6 +169,27 @@ impl FormList {
         self.define_id_map.get(define).copied()
     }
 
+    pub fn get(&self, idx: FormIdx) -> Form {
+        match idx {
+            FormIdx::ModuleAttribute(idx) => Form::ModuleAttribute(&self[idx]),
+            FormIdx::Function(idx) => Form::Function(&self[idx]),
+            FormIdx::PPDirective(idx) => Form::PPDirective(&self[idx]),
+            FormIdx::PPCondition(idx) => Form::PPCondition(&self[idx]),
+            FormIdx::Export(idx) => Form::Export(&self[idx]),
+            FormIdx::Import(idx) => Form::Import(&self[idx]),
+            FormIdx::TypeExport(idx) => Form::TypeExport(&self[idx]),
+            FormIdx::Behaviour(idx) => Form::Behaviour(&self[idx]),
+            FormIdx::TypeAlias(idx) => Form::TypeAlias(&self[idx]),
+            FormIdx::Spec(idx) => Form::Spec(&self[idx]),
+            FormIdx::Callback(idx) => Form::Callback(&self[idx]),
+            FormIdx::OptionalCallbacks(idx) => Form::OptionalCallbacks(&self[idx]),
+            FormIdx::Record(idx) => Form::Record(&self[idx]),
+            FormIdx::Attribute(idx) => Form::Attribute(&self[idx]),
+            FormIdx::CompileOption(idx) => Form::CompileOption(&self[idx]),
+            FormIdx::DeprecatedAttribute(idx) => Form::DeprecatedAttribute(&self[idx]),
+        }
+    }
+
     pub fn pretty_print(&self) -> String {
         pretty::print(self)
     }
@@ -266,6 +287,26 @@ pub enum FormIdx {
     Attribute(AttributeId),
     CompileOption(CompileOptionId),
     DeprecatedAttribute(DeprecatedAttributeId),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Form<'a> {
+    ModuleAttribute(&'a ModuleAttribute),
+    Function(&'a Function),
+    PPDirective(&'a PPDirective),
+    PPCondition(&'a PPCondition),
+    Export(&'a Export),
+    Import(&'a Import),
+    TypeExport(&'a TypeExport),
+    Behaviour(&'a Behaviour),
+    TypeAlias(&'a TypeAlias),
+    Spec(&'a Spec),
+    Callback(&'a Callback),
+    OptionalCallbacks(&'a OptionalCallbacks),
+    Record(&'a Record),
+    Attribute(&'a Attribute),
+    CompileOption(&'a CompileOption),
+    DeprecatedAttribute(&'a DeprecatedAttribute),
 }
 
 pub type ModuleAttributeId = Idx<ModuleAttribute>;
