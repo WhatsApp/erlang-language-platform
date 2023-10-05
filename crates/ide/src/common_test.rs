@@ -27,6 +27,7 @@
 // those functions before processing them.
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::ModuleName;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
@@ -116,7 +117,7 @@ pub fn unreachable_test(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file
     }
 }
 
-fn runnable_names(sema: &Semantic, file_id: FileId) -> Result<FxHashSet<NameArity>, ()> {
+pub fn runnable_names(sema: &Semantic, file_id: FileId) -> Result<FxHashSet<NameArity>, ()> {
     runnables(sema, file_id).map(|runnables| {
         runnables
             .into_iter()
@@ -158,7 +159,7 @@ lazy_static! {
 pub fn runnables(sema: &Semantic, file_id: FileId) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
     if let Some(module_name) = sema.module_name(file_id) {
-        if module_name.ends_with(SUFFIX) {
+        if is_suite(module_name) {
             // Add a runnable for the entire test suite
             if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
                 res.push(suite_runnable);
@@ -491,6 +492,10 @@ fn parse_group_content_entry(
         _ => return Err(()),
     };
     Ok(())
+}
+
+pub fn is_suite(module_name: ModuleName) -> bool {
+    module_name.ends_with(SUFFIX)
 }
 
 #[cfg(test)]
