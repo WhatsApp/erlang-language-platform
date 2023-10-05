@@ -202,12 +202,12 @@ pub fn fold_file<'a, T>(
     file_id: FileId,
     initial: T,
     callback: AnyCallBack<'a, T>,
+    form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
 ) -> T {
     let form_list = sema.form_list(file_id);
-    let r = form_list
-        .forms()
-        .iter()
-        .fold(initial, |r, &form_idx| match form_idx {
+    let r = form_list.forms().iter().fold(initial, |r, &form_idx| {
+        let r = form_callback(r, On::Entry, form_idx);
+        let r = match form_idx {
             FormIdx::Function(function_id) => sema.fold_function(
                 InFile::new(file_id, function_id),
                 r,
@@ -256,7 +256,9 @@ pub fn fold_file<'a, T>(
                 // Will have to do some time?
                 r
             }
-        });
+        };
+        form_callback(r, On::Exit, form_idx)
+    });
     r
 }
 
@@ -1051,6 +1053,7 @@ mod tests {
     use crate::expr::ClauseId;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
+    use crate::form_list::Form;
     use crate::sema::WithMacros;
     use crate::test_db::TestDB;
     use crate::AnyExprRef;
@@ -1060,6 +1063,7 @@ mod tests {
     use crate::FunctionBody;
     use crate::InFile;
     use crate::Literal;
+    use crate::On;
     use crate::Pat;
     use crate::Semantic;
     use crate::Term;
@@ -1721,38 +1725,74 @@ bar() ->
             algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
         expect![[r#"foo"#]].assert_eq(&ast_atom.raw_text());
         let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
+        let hir_atom_str = ast_atom.raw_text();
 
-        let r: u32 = fold_file(&sema, file_id, 0, &mut |acc, ctx| match ctx.item {
-            AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
-                if atom == hir_atom {
-                    acc + 1
-                } else {
-                    acc
-                }
-            }
-            AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
-                if atom == hir_atom {
-                    acc + 1
-                } else {
-                    acc
-                }
-            }
-            AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
-                if atom == hir_atom {
-                    acc + 1
-                } else {
-                    acc
-                }
-            }
-            AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
-                if atom == hir_atom {
-                    acc + 1
-                } else {
-                    acc
-                }
-            }
-            _ => acc,
-        });
+        let form_list = sema.db.file_form_list(file_id);
+        // let record = &form_list[record_id.value];
+
+        let r: u32 =
+            fold_file(
+                &sema,
+                file_id,
+                0,
+                &mut |acc, ctx| match ctx.item {
+                    AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                        if atom == hir_atom {
+                            acc + 1
+                        } else {
+                            acc
+                        }
+                    }
+                    AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
+                        if atom == hir_atom {
+                            acc + 1
+                        } else {
+                            acc
+                        }
+                    }
+                    AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
+                        if atom == hir_atom { acc + 1 } else { acc }
+                    }
+                    AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                        if atom == hir_atom {
+                            acc + 1
+                        } else {
+                            acc
+                        }
+                    }
+                    _ => acc,
+                },
+                &mut |acc, on, form_id: FormIdx| {
+                    if on == On::Entry {
+                        match form_list.get(form_id) {
+                            Form::ModuleAttribute(ma) => {
+                                if ma.name.as_str() == hir_atom_str.as_str() {
+                                    acc + 1
+                                } else {
+                                    acc
+                                }
+                            }
+                            Form::Function(_) => acc,
+                            Form::PPDirective(_) => acc,
+                            Form::PPCondition(_) => acc,
+                            Form::Export(_) => acc,
+                            Form::Import(_) => acc,
+                            Form::TypeExport(_) => acc,
+                            Form::Behaviour(_) => acc,
+                            Form::TypeAlias(_) => acc,
+                            Form::Spec(_) => acc,
+                            Form::Callback(_) => acc,
+                            Form::OptionalCallbacks(_) => acc,
+                            Form::Record(_) => acc,
+                            Form::Attribute(_) => acc,
+                            Form::CompileOption(_) => acc,
+                            Form::DeprecatedAttribute(_) => acc,
+                        }
+                    } else {
+                        acc
+                    }
+                },
+            );
 
         // Count of the occurrences of the atom 'foo' in the code example
         assert_eq!(r, n);
@@ -1772,7 +1812,7 @@ bar() ->
                    _ -> f~oo
                  end.
                "#;
-        count_atom_foo(fixture_str, 4);
+        count_atom_foo(fixture_str, 5);
     }
 
     #[test]
@@ -1781,7 +1821,7 @@ bar() ->
                -module(foo).
                -type epp_handle() :: fo~o().
                "#;
-        count_atom_foo(fixture_str, 1);
+        count_atom_foo(fixture_str, 2);
     }
 
     #[test]
@@ -1790,7 +1830,7 @@ bar() ->
                -module(foo).
                -spec fff() -> fo~o() | foo.
                "#;
-        count_atom_foo(fixture_str, 2);
+        count_atom_foo(fixture_str, 3);
     }
 
     #[test]
@@ -1799,7 +1839,7 @@ bar() ->
                -module(foo).
                -callback fff() -> fo~o() | foo.
                "#;
-        count_atom_foo(fixture_str, 2);
+        count_atom_foo(fixture_str, 3);
     }
 
     #[test]
@@ -1809,7 +1849,7 @@ bar() ->
                -record(r1, {f1 :: f~oo(), foo}).
                "#;
         // Note: fold does not look into field names
-        count_atom_foo(fixture_str, 1);
+        count_atom_foo(fixture_str, 2);
     }
 
     #[test]
@@ -1818,7 +1858,7 @@ bar() ->
                -module(foo).
                -wild(r1, {f1, f~oo}).
                "#;
-        count_atom_foo(fixture_str, 1);
+        count_atom_foo(fixture_str, 2);
     }
 
     #[test]
@@ -1827,7 +1867,7 @@ bar() ->
                -module(foo).
                -compile([fo~o, export_all, {foo, nowarn_export_all}]).
                "#;
-        count_atom_foo(fixture_str, 2);
+        count_atom_foo(fixture_str, 3);
     }
 
     #[test]
@@ -1836,6 +1876,6 @@ bar() ->
                -module(foo).
                -define(FOO(X), foo(X,fo~o)).
                "#;
-        count_atom_foo(fixture_str, 2);
+        count_atom_foo(fixture_str, 3);
     }
 }
