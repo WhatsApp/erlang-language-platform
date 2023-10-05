@@ -2303,6 +2303,42 @@ impl std::fmt::Display for Fa {
 }
 #[doc = r" Via NodeType::Node 2 struct inner"]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FeatureAttribute {
+    pub(crate) syntax: SyntaxNode,
+}
+impl FeatureAttribute {
+    pub fn feature(&self) -> Option<Expr> {
+        support::child(&self.syntax, 0usize)
+    }
+    pub fn flag(&self) -> Option<Expr> {
+        support::child(&self.syntax, 1usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for FeatureAttribute {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == FEATURE_ATTRIBUTE
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for FeatureAttribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2440,6 +2476,7 @@ pub enum Form {
     DeprecatedAttribute(DeprecatedAttribute),
     ExportAttribute(ExportAttribute),
     ExportTypeAttribute(ExportTypeAttribute),
+    FeatureAttribute(FeatureAttribute),
     FileAttribute(FileAttribute),
     FunDecl(FunDecl),
     ImportAttribute(ImportAttribute),
@@ -2471,6 +2508,7 @@ impl AstNode for Form {
             | DEPRECATED_ATTRIBUTE
             | EXPORT_ATTRIBUTE
             | EXPORT_TYPE_ATTRIBUTE
+            | FEATURE_ATTRIBUTE
             | FILE_ATTRIBUTE
             | FUN_DECL
             | IMPORT_ATTRIBUTE
@@ -2503,6 +2541,7 @@ impl AstNode for Form {
             EXPORT_TYPE_ATTRIBUTE => {
                 Some(Form::ExportTypeAttribute(ExportTypeAttribute { syntax }))
             }
+            FEATURE_ATTRIBUTE => Some(Form::FeatureAttribute(FeatureAttribute { syntax })),
             FILE_ATTRIBUTE => Some(Form::FileAttribute(FileAttribute { syntax })),
             FUN_DECL => Some(Form::FunDecl(FunDecl { syntax })),
             IMPORT_ATTRIBUTE => Some(Form::ImportAttribute(ImportAttribute { syntax })),
@@ -2527,6 +2566,7 @@ impl AstNode for Form {
             Form::DeprecatedAttribute(it) => it.syntax(),
             Form::ExportAttribute(it) => it.syntax(),
             Form::ExportTypeAttribute(it) => it.syntax(),
+            Form::FeatureAttribute(it) => it.syntax(),
             Form::FileAttribute(it) => it.syntax(),
             Form::FunDecl(it) => it.syntax(),
             Form::ImportAttribute(it) => it.syntax(),
@@ -2574,6 +2614,11 @@ impl From<ExportAttribute> for Form {
 impl From<ExportTypeAttribute> for Form {
     fn from(node: ExportTypeAttribute) -> Form {
         Form::ExportTypeAttribute(node)
+    }
+}
+impl From<FeatureAttribute> for Form {
+    fn from(node: FeatureAttribute) -> Form {
+        Form::FeatureAttribute(node)
     }
 }
 impl From<FileAttribute> for Form {

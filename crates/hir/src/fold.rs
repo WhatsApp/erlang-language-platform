@@ -1787,6 +1787,7 @@ bar() ->
                             Form::Attribute(_) => acc,
                             Form::CompileOption(_) => acc,
                             Form::DeprecatedAttribute(_) => acc,
+                            Form::FeatureAttribute(_) => acc,
                         }
                     } else {
                         acc

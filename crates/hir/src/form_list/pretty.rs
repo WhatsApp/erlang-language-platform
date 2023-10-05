@@ -14,6 +14,7 @@ use std::fmt::Write as _;
 use la_arena::IdxRange;
 use la_arena::RawIdx;
 
+use super::FeatureAttribute;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -77,6 +78,7 @@ impl<'a> Printer<'a> {
             FormIdx::Record(idx) => self.print_record(&self.forms[idx])?,
             FormIdx::CompileOption(idx) => self.print_compile(&self.forms[idx])?,
             FormIdx::Attribute(idx) => self.print_attribute(&self.forms[idx])?,
+            FormIdx::FeatureAttribute(idx) => self.print_feature_attribute(&self.forms[idx])?,
             FormIdx::DeprecatedAttribute(idx) => self.print_deprecated(&self.forms[idx])?,
         }
         writeln!(self)
@@ -350,6 +352,15 @@ impl<'a> Printer<'a> {
             raw_cond(&attribute.cond)
         )
     }
+
+    fn print_feature_attribute(&mut self, attribute: &FeatureAttribute) -> fmt::Result {
+        writeln!(
+            self,
+            "-feature(...). %% cond: {:?}",
+            raw_cond(&attribute.cond)
+        )
+    }
+
     fn print_deprecated(&mut self, attribute: &DeprecatedAttribute) -> fmt::Result {
         match attribute {
             DeprecatedAttribute::Module { cond, .. } => {

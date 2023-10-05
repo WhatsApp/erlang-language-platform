@@ -54,6 +54,18 @@ fn include_attribute() {
 }
 
 #[test]
+fn feature_attribute() {
+    check(
+        r#"
+-feature(maybe_expr, enable).
+"#,
+        expect![[r#"
+            -feature(...). %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn function() {
     check(
         r#"

@@ -22,6 +22,7 @@ use la_arena::RawIdx;
 use profile::Count;
 
 use super::form_id::FormIdMap;
+use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
 use super::ParamName;
@@ -100,6 +101,9 @@ impl<'a> Ctx<'a> {
                     ast::Form::CompileOptionsAttribute(copt) => self.lower_compile(copt),
                     ast::Form::ExportAttribute(export) => self.lower_export(export),
                     ast::Form::ExportTypeAttribute(export) => self.lower_type_export(export),
+                    ast::Form::FeatureAttribute(attribute) => {
+                        self.lower_feature_attribute(attribute)
+                    }
                     ast::Form::FileAttribute(_) => None,
                     ast::Form::ImportAttribute(import) => self.lower_import(import),
                     ast::Form::Opaque(opaque) => self.lower_opaque(opaque),
@@ -613,6 +617,15 @@ impl<'a> Ctx<'a> {
             name,
         };
         Some(FormIdx::Attribute(self.data.attributes.alloc(res)))
+    }
+
+    fn lower_feature_attribute(&mut self, attribute: &ast::FeatureAttribute) -> Option<FormIdx> {
+        let cond = self.conditions.last().copied();
+        let form_id = self.id_map.get_id(attribute);
+        let res = FeatureAttribute { cond, form_id };
+        Some(FormIdx::FeatureAttribute(
+            self.data.feature_attributes.alloc(res),
+        ))
     }
 
     fn resolve_name(&mut self, name: &ast::Name) -> Name {
