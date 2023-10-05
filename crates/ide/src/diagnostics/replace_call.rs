@@ -18,7 +18,6 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::TextRange;
 use hir::AnyExprId;
-use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
@@ -83,7 +82,13 @@ pub fn replace_call_site_if_args_match(
                     &[(fm, ())],
                     &args_match,
                     move |sema, def_fb, target, args, extra_info, range| {
-                        let mfa = to_mfa(file_id, target, args.len() as u32, sema, &def_fb.body())?;
+                        let mfa = MFA::from_call_target(
+                            target,
+                            args.len() as u32,
+                            sema,
+                            &def_fb.body(),
+                            file_id,
+                        )?;
                         let mfa_str = mfa.label();
 
                         let diag = diagnostic_builder(&mfa, extra_info, range)?;
@@ -261,8 +266,13 @@ pub fn remove_fun_ref_from_list(
                                         let list_elem_ast =
                                             in_file_ast_ptr.to_node(&source_file)?;
                                         let statement_removal = remove_statement(&list_elem_ast)?;
-                                        let mfa =
-                                            to_mfa(file_id, target, *arity, sema, &def_fb.body())?;
+                                        let mfa = MFA::from_call_target(
+                                            target,
+                                            *arity,
+                                            sema,
+                                            &def_fb.body(),
+                                            file_id,
+                                        )?;
                                         let range = def_fb
                                             .clone()
                                             .range_for_expr(sema.db, *matched_funref_id)?;
@@ -327,23 +337,6 @@ fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
     let mut edit_builder = TextEdit::builder();
     edit_builder.delete(range);
     Some(edit_builder.finish())
-}
-
-fn to_mfa(
-    file_id: FileId,
-    target: &CallTarget<ExprId>,
-    arity: u32,
-    sema: &Semantic,
-    body: &Body,
-) -> Option<MFA> {
-    let call_target = target.resolve_call(arity, sema, file_id, body)?;
-    let call_module = call_target.module?;
-    let na = call_target.function.name;
-    Some(MFA {
-        module: call_module.to_quoted_string(),
-        name: na.name().to_quoted_string(),
-        arity: na.arity(),
-    })
 }
 
 #[cfg(test)]

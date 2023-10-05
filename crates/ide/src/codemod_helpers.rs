@@ -29,6 +29,7 @@ use hir::Semantic;
 use hir::Strategy;
 
 use crate::diagnostics::Diagnostic;
+use crate::FileId;
 
 // Given an expression that represents a statement, return a text range that covers
 // the statement in full. This means:
@@ -279,6 +280,23 @@ pub struct MFA {
 }
 
 impl MFA {
+    pub fn from_call_target(
+        target: &CallTarget<ExprId>,
+        arity: u32,
+        sema: &Semantic,
+        body: &Body,
+        file_id: FileId,
+    ) -> Option<MFA> {
+        let call_target = target.resolve_call(arity, sema, file_id, body)?;
+        let call_module = call_target.module?;
+        let na = call_target.function.name;
+        Some(MFA {
+            module: call_module.to_quoted_string(),
+            name: na.name().to_quoted_string(),
+            arity: na.arity(),
+        })
+    }
+
     pub fn label(&self) -> String {
         format!("{}:{}/{}", self.module, self.name, self.arity)
     }
