@@ -40,6 +40,7 @@ use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
+use crate::fold::Fold;
 use crate::fold::FoldBody;
 use crate::fold::FoldCtx;
 use crate::fold::Strategy;
@@ -48,15 +49,11 @@ pub use crate::intern::MinInternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 use crate::AnyExprId;
-use crate::AttributeId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
-use crate::CallbackId;
 use crate::Clause;
-use crate::CompileOptionId;
 use crate::DefMap;
-use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
 use crate::File;
@@ -73,11 +70,9 @@ use crate::Name;
 use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
-use crate::RecordId;
 use crate::SpecId;
 use crate::Term;
 use crate::TermId;
-use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
@@ -527,6 +522,13 @@ impl<'db> Semantic<'db> {
         if vars.is_empty() { None } else { Some(vars) }
     }
 
+    // -----------------------------------------------------------------
+    // Folds
+
+    pub fn fold<'a, F: Fold, T>(&self, id: F::Id, initial: T, callback: AnyCallBack<'a, T>) -> T {
+        F::fold(self, id, initial, callback)
+    }
+
     pub fn fold_function<'a, T>(
         &self,
         function_id: InFile<FunctionId>,
@@ -566,134 +568,8 @@ impl<'db> Semantic<'db> {
             })
     }
 
-    pub fn fold_type_alias<'a, T>(
-        &self,
-        type_alias_id: InFile<TypeAliasId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.type_body(type_alias_id);
-        FoldCtx::fold_type_expr(
-            &body.body,
-            Strategy::TopDown,
-            FormIdx::TypeAlias(type_alias_id.value),
-            body.ty,
-            initial,
-            callback,
-        )
-    }
-
-    pub fn fold_spec<'a, T>(
-        &self,
-        spec_id: InFile<SpecId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.spec_body(spec_id);
-        body.sigs.iter().fold(initial, |acc, spec_sig| {
-            FoldCtx::fold_type_spec_sig(
-                &body.body,
-                Strategy::TopDown,
-                FormIdx::Spec(spec_id.value),
-                spec_sig,
-                acc,
-                callback,
-            )
-        })
-    }
-
-    pub fn fold_callback<'a, T>(
-        &self,
-        callback_id: InFile<CallbackId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.callback_body(callback_id);
-        body.sigs.iter().fold(initial, |acc, spec_sig| {
-            FoldCtx::fold_type_spec_sig(
-                &body.body,
-                Strategy::TopDown,
-                FormIdx::Callback(callback_id.value),
-                spec_sig,
-                acc,
-                callback,
-            )
-        })
-    }
-
-    pub fn fold_record<'a, T>(
-        &self,
-        record_id: InFile<RecordId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.record_body(record_id);
-        body.fields.iter().fold(initial, |acc, spec_sig| {
-            FoldCtx::fold_record_field_body(
-                &body.body,
-                Strategy::TopDown,
-                FormIdx::Record(record_id.value),
-                spec_sig,
-                acc,
-                callback,
-            )
-        })
-    }
-
-    pub fn fold_attribute<'a, T>(
-        &self,
-        attribute_id: InFile<AttributeId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.attribute_body(attribute_id);
-        FoldCtx::fold_term(
-            &body.body,
-            Strategy::TopDown,
-            FormIdx::Attribute(attribute_id.value),
-            body.value,
-            initial,
-            callback,
-        )
-    }
-
-    pub fn fold_compile_option<'a, T>(
-        &self,
-        attribute_id: InFile<CompileOptionId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let body = self.db.compile_body(attribute_id);
-        FoldCtx::fold_term(
-            &body.body,
-            Strategy::TopDown,
-            FormIdx::CompileOption(attribute_id.value),
-            body.value,
-            initial,
-            callback,
-        )
-    }
-
-    pub fn fold_define<'a, T>(
-        &self,
-        form_id: FormIdx,
-        attribute_id: InFile<DefineId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        if let Some(body) = self.db.define_body(attribute_id) {
-            FoldCtx::fold_expr(
-                &body.body,
-                Strategy::TopDown,
-                form_id,
-                body.expr,
-                initial,
-                callback,
-            )
-        } else {
-            initial
-        }
-    }
+    // Folds end
+    // -----------------------------------------------------------------
 
     pub fn bound_vars_in_pattern_diagnostic(
         &self,
