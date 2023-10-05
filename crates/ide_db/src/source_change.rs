@@ -130,6 +130,7 @@ impl From<FxHashMap<FileId, TextEdit>> for SourceChange {
 #[derive(Debug)]
 pub struct SourceChangeBuilder {
     edit: TextEditBuilder,
+    edits_count: usize,
     file_id: FileId,
     source_change: SourceChange,
 
@@ -149,6 +150,7 @@ impl SourceChangeBuilder {
     pub fn new(file_id: FileId) -> SourceChangeBuilder {
         SourceChangeBuilder {
             edit: TextEdit::builder(),
+            edits_count: 0,
             file_id,
             source_change: SourceChange::default(),
             mutated_tree: None,
@@ -172,6 +174,7 @@ impl SourceChangeBuilder {
     }
 
     pub fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
+        self.edits_count += 1;
         self.edit.insert(offset, text.into())
     }
     /// Append specified `snippet` at the given `offset`
@@ -187,11 +190,17 @@ impl SourceChangeBuilder {
 
     /// Remove specified `range` of text.
     pub fn delete(&mut self, range: TextRange) {
+        self.edits_count += 1;
         self.edit.delete(range)
     }
     /// Replaces specified `range` of text with a given string.
     pub fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
+        self.edits_count += 1;
         self.edit.replace(range, replace_with.into())
+    }
+
+    pub fn edits_count(&self) -> usize {
+        self.edits_count
     }
 
     pub fn finish(mut self) -> SourceChange {
