@@ -441,8 +441,10 @@ fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut So
             ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) => {
                 if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next() {
                     if a.text() == Some(key.to_string()) {
-                        // We found an existing key, replace the tuple with the new one
-                        builder.replace(e.syntax().text_range(), format!("{option}"));
+                        if e.syntax().text().to_string() != option {
+                            // We found an existing key, with different value, replace the tuple with the new one
+                            builder.replace(e.syntax().text_range(), format!("{option}"));
+                        };
                         done = true;
                     }
                 }
