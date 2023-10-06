@@ -28,6 +28,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
 use elp_ide::elp_ide_assists::Assist;
@@ -154,7 +155,10 @@ fn do_parse_one(
 #[derive(Deserialize, Serialize, Default, Debug)]
 struct LintConfig {
     enabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
     disabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
+    ad_hoc_lints: LintsFromConfig,
 }
 
 pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Result<()> {
@@ -210,6 +214,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             let mut cfg = DiagnosticsConfig::default();
             cfg.disable_experimental = args.experimental_diags;
             cfg.disabled = disabled_diagnostics;
+            let cfg = cfg.from_config(&cfg_from_file.ad_hoc_lints);
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;
             let mut diags = {
@@ -751,9 +756,46 @@ fn form_range_from_diff(
 
 #[cfg(test)]
 mod tests {
+    use elp_ide::diagnostics::DiagnosticCode;
+    use elp_ide::diagnostics::Lint;
+    use elp_ide::diagnostics::LintsFromConfig;
+    use elp_ide::diagnostics::ReplaceCall;
+    use elp_ide::diagnostics::Replacement;
+    use elp_ide::FunctionMatch;
     use expect_test::expect;
 
     use super::LintConfig;
+
+    #[test]
+    fn serde_serialize_lint_config() {
+        let result = toml::to_string::<LintConfig>(&LintConfig {
+            ad_hoc_lints: LintsFromConfig {
+                lints: vec![Lint::ReplaceCall(ReplaceCall {
+                    matcher: FunctionMatch::mf("mod_a", "func"),
+                    replacement: Replacement::UseOk,
+                })],
+            },
+            enabled_lints: vec![DiagnosticCode::HeadMismatch],
+            disabled_lints: vec![],
+        })
+        .unwrap();
+
+        expect![[r#"
+            enabled_lints = ["P1700"]
+            disabled_lints = []
+            [[ad_hoc_lints.lints]]
+            type = "ReplaceCall"
+
+            [ad_hoc_lints.lints.matcher]
+            type = "MF"
+            module = "mod_a"
+            name = "func"
+
+            [ad_hoc_lints.lints.replacement]
+            type = "UseOk"
+        "#]]
+        .assert_eq(&result);
+    }
 
     #[test]
     fn serde_deserialize_lint_config() {
@@ -771,6 +813,9 @@ mod tests {
                     TrivialMatch,
                 ],
                 disabled_lints: [],
+                ad_hoc_lints: LintsFromConfig {
+                    lints: [],
+                },
             }
         "#]]
         .assert_debug_eq(&lint_config);

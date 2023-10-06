@@ -19,9 +19,9 @@ use super::replace_call::Replacement;
 use super::Diagnostic;
 use crate::codemod_helpers::FunctionMatch;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct LintsFromConfig {
-    lints: Vec<Lint>,
+    pub lints: Vec<Lint>,
 }
 
 impl LintsFromConfig {
@@ -48,8 +48,8 @@ impl Lint {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ReplaceCall {
-    matcher: FunctionMatch,
-    replacement: Replacement,
+    pub matcher: FunctionMatch,
+    pub replacement: Replacement,
 }
 
 impl ReplaceCall {

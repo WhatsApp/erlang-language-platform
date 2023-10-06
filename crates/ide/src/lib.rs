@@ -99,6 +99,8 @@ mod highlight_related;
 
 pub use annotations::Annotation;
 pub use annotations::AnnotationKind;
+pub use codemod_helpers::FunctionMatch;
+pub use codemod_helpers::MFA;
 pub use common_test::GroupName;
 pub use doc_links::DocLink;
 pub use document_symbols::DocumentSymbol;

@@ -87,6 +87,7 @@ mod unused_record_field;
 pub use from_config::Lint;
 pub use from_config::LintsFromConfig;
 pub use from_config::ReplaceCall;
+pub use replace_call::Replacement;
 
 #[derive(Debug, Clone)]
 // For the doc please refer to
@@ -507,6 +508,7 @@ pub struct DiagnosticsConfig<'a> {
     pub disable_experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub lints_from_config: LintsFromConfig,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
@@ -519,11 +521,17 @@ impl<'a> DiagnosticsConfig<'a> {
             disable_experimental,
             disabled,
             adhoc_semantic_diagnostics,
+            lints_from_config: LintsFromConfig::default(),
         }
     }
 
     pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
         self.disabled.insert(code);
+        self
+    }
+
+    pub fn from_config(mut self, lints_from_config: &LintsFromConfig) -> DiagnosticsConfig<'a> {
+        self.lints_from_config = lints_from_config.clone();
         self
     }
 }
@@ -1595,6 +1603,7 @@ baz(1)->4.
                     file_id,
                 )
             }],
+            lints_from_config: LintsFromConfig::default(),
         };
         config
             .disabled

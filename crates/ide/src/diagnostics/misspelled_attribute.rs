@@ -144,6 +144,7 @@ mod tests {
 
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
+    use crate::diagnostics::LintsFromConfig;
     use crate::fixture;
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
@@ -181,6 +182,7 @@ mod tests {
             disable_experimental: true,
             disabled: FxHashSet::default(),
             adhoc_semantic_diagnostics: vec![],
+            lints_from_config: LintsFromConfig::default(),
         };
         config
             .disabled
@@ -209,6 +211,7 @@ mod tests {
             disable_experimental: true,
             disabled: FxHashSet::default(),
             adhoc_semantic_diagnostics: vec![],
+            lints_from_config: LintsFromConfig::default(),
         };
         config
             .disabled
