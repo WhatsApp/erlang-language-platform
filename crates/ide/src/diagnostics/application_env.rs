@@ -135,8 +135,8 @@ pub(crate) fn process_badmatches(
                 }
             }
         },
-        move |_sema, mut _def_fb, _target, _call_id, extra_info, range| {
-            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra_info, range)
+        move |_sema, mut _def_fb, _target, _call_id, diag_extra, _fix_extra, range| {
+            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, diag_extra, range)
                 .with_severity(Severity::Warning);
             Some(diag)
         },
@@ -148,7 +148,7 @@ fn check_valid_application(
     def_fb: &hir::InFunctionBody<&FunctionDef>,
     arg: &ExprId,
     def: &FunctionDef,
-) -> Option<String> {
+) -> Option<(String, String)> {
     let arg_name = def_fb.as_atom_name(sema.db, arg)?;
     let form_list = sema.form_list(def.file.file_id);
     // We need the app from the calling function location.
@@ -159,8 +159,9 @@ fn check_valid_application(
     } else {
         let module_attribute = form_list.module_attribute()?;
         let module = module_attribute.name.clone();
-        Some(format!(
-            "module `{module}` belongs to app `{app}`, but reads env for `{arg_name}`"
+        Some((
+            format!("module `{module}` belongs to app `{app}`, but reads env for `{arg_name}`"),
+            "".to_string(),
         ))
     }
 }

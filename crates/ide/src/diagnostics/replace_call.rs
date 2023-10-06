@@ -33,6 +33,7 @@ use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::statement_range;
 use crate::codemod_helpers::CheckCall;
+use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
 use crate::codemod_helpers::MFA;
@@ -52,7 +53,7 @@ pub fn replace_call_site(
 ) {
     replace_call_site_if_args_match(
         mfa,
-        &|_ctx| Some("".to_string()),
+        &|ctx| Some(("".to_string(), replacement.extra_info(&ctx))),
         &replacement,
         diagnostic_builder,
         acc,
@@ -81,7 +82,7 @@ pub fn replace_call_site_if_args_match(
                     def,
                     &[(fm, ())],
                     &args_match,
-                    move |sema, def_fb, target, args, extra_info, range| {
+                    move |sema, def_fb, target, args, extra_info, fix_info, range| {
                         let mfa = MFA::from_call_target(
                             target,
                             args.len() as u32,
@@ -98,7 +99,7 @@ pub fn replace_call_site_if_args_match(
                         {
                             Some(diag.with_fixes(Some(vec![fix(
                                 "replace_call_site",
-                                &format!("Replace call to '{:?}'", &mfa_str),
+                                &format!("Replace call to '{:?}' {}", &mfa_str, fix_info),
                                 SourceChange::from_text_edit(file_id, edit),
                                 range,
                             )])))
@@ -138,6 +139,18 @@ pub enum Replacement {
     /// The arity of the changed function will be determined by the
     /// number of entries in the permutation.
     ArgsPermutation(Vec<u32>),
+}
+
+impl Replacement {
+    /// Provide extra info describing the change for use in a diagnostic
+    fn extra_info<T>(&self, _ctx: &CheckCallCtx<T>) -> String {
+        match self {
+            Replacement::UseOk => "with ok".to_string(),
+            Replacement::UseCallArg(n) => format!("with argument {n}"),
+            Replacement::Invocation(s) => format!("with '{s}'"),
+            Replacement::ArgsPermutation(perm) => format!("with arguments permuted {:?}", perm),
+        }
+    }
 }
 
 fn replace_call(
@@ -454,7 +467,9 @@ mod tests {
                         arity: 2,
                     }),
                     &|CheckCallCtx { args, def_fb, .. }: CheckCallCtx<()>| match def_fb[args[1]] {
-                        Expr::Literal(Literal::Integer(42)) => Some("with 42".to_string()),
+                        Expr::Literal(Literal::Integer(42)) => {
+                            Some(("with 42".to_string(), "for fix".to_string()))
+                        }
                         _ => None,
                     },
                     &Replacement::UseOk,

@@ -314,9 +314,9 @@ pub struct CheckCallCtx<'a, T> {
     pub def_fb: &'a InFunctionBody<&'a FunctionDef>,
 }
 
-/// Check a specific call instance, and return the contents of a
-/// diagnostic if needed.
-pub type CheckCall<'a, T> = &'a dyn Fn(CheckCallCtx<T>) -> Option<String>;
+/// Check a specific call instance, and return extra info for a
+/// diagnostic and fix if needed.
+pub type CheckCall<'a, T> = &'a dyn Fn(CheckCallCtx<T>) -> Option<(String, String)>;
 
 pub(crate) fn find_call_in_function<T>(
     diags: &mut Vec<Diagnostic>,
@@ -329,6 +329,7 @@ pub(crate) fn find_call_in_function<T>(
         &mut InFunctionBody<&FunctionDef>,
         &CallTarget<ExprId>,
         &[ExprId],
+        &str,
         &str,
         TextRange,
     ) -> Option<Diagnostic>
@@ -350,7 +351,7 @@ pub(crate) fn find_call_in_function<T>(
                         args: &args,
                         def_fb: &def_fb,
                     };
-                    if let Some(match_descr) = check_call(context) {
+                    if let Some((match_descr, fix_descr)) = check_call(context) {
                         // Got one.
                         let call_expr_id = if let Some(expr_id) = ctx.in_macro {
                             expr_id.idx
@@ -358,9 +359,15 @@ pub(crate) fn find_call_in_function<T>(
                             ctx.item_id
                         };
                         if let Some(range) = &def_fb.range_for_any(sema.db, call_expr_id) {
-                            if let Some(diag) =
-                                make_diag(sema, &mut def_fb, &target, &args, &match_descr, *range)
-                            {
+                            if let Some(diag) = make_diag(
+                                sema,
+                                &mut def_fb,
+                                &target,
+                                &args,
+                                &match_descr,
+                                &fix_descr,
+                                *range,
+                            ) {
                                 diags.push(diag)
                             }
                         }
@@ -428,8 +435,8 @@ mod tests {
             sema,
             def,
             &mfas,
-            &move |_ctx| Some("Diagnostic Message".to_string()),
-            move |_sema, def_fb, __target, _args, extra_info, range| {
+            &move |_ctx| Some(("Diagnostic Message".to_string(), "".to_string())),
+            move |_sema, def_fb, __target, _args, extra_info, _fix_info, range| {
                 let diag = Diagnostic::new(
                     DiagnosticCode::AdHoc("test".to_string()),
                     extra_info,
