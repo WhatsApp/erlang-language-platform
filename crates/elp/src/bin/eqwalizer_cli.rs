@@ -242,7 +242,13 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
 
 pub fn eqwalize_passthrough(args: &EqwalizePassthrough, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::No,
+        Mode::Passthrough,
+    )?;
     build::compile_deps(&loaded, cli)?;
 
     let ast_dir = loaded.project.root().join("_build").join("elp").join("ast");

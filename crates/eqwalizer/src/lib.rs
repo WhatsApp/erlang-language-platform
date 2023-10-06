@@ -53,6 +53,7 @@ pub enum Mode {
     Cli,
     Server,
     Shell,
+    Passthrough,
 }
 impl Mode {
     fn to_env_var(&self) -> &str {
@@ -60,6 +61,7 @@ impl Mode {
             Mode::Cli => "elp_cli",
             Mode::Server => "elp_ide",
             Mode::Shell => "shell",
+            Mode::Passthrough => "standalone",
         }
     }
 }
