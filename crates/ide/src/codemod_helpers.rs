@@ -27,6 +27,8 @@ use hir::InFile;
 use hir::InFunctionBody;
 use hir::Semantic;
 use hir::Strategy;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::diagnostics::Diagnostic;
 use crate::FileId;
@@ -221,7 +223,8 @@ impl<'a, T> FunctionMatcher<'a, T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "type")]
 #[allow(clippy::upper_case_acronyms)]
 pub enum FunctionMatch {
     // FunctionMatch::Any is not used yet, see later diffs
@@ -271,7 +274,7 @@ impl FunctionMatch {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct MFA {
     pub module: String,
@@ -295,6 +298,15 @@ impl MFA {
             name: na.name().to_quoted_string(),
             arity: na.arity(),
         })
+    }
+
+    #[cfg(test)]
+    pub fn new(m: &str, f: &str, arity: u32) -> MFA {
+        MFA {
+            module: m.to_string(),
+            name: f.to_string(),
+            arity,
+        }
     }
 
     pub fn label(&self) -> String {

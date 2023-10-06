@@ -26,6 +26,8 @@ use hir::InFunctionBody;
 use hir::Literal;
 use hir::Semantic;
 use itertools::Itertools;
+use serde::Deserialize;
+use serde::Serialize;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
@@ -42,7 +44,6 @@ use crate::fix;
 
 pub type DiagnosticBuilder<'a> = &'a dyn Fn(&MFA, &str, TextRange) -> Option<Diagnostic>;
 
-#[allow(dead_code)]
 pub fn replace_call_site(
     mfa: &FunctionMatch,
     replacement: Replacement,
@@ -127,18 +128,25 @@ pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Replacement {
     UseOk,
-    UseCallArg(u32),
-    Invocation(String),
+    UseCallArg {
+        n: u32,
+    },
+    Invocation {
+        replacement: String,
+    },
     /// List of re-arrangements to be made to the argument list.
     /// The first applies to the the first argument, the second to the second, etc.
     /// Each gives the number of the original argument that should be placed there.
     /// Replacement counting starts from 0 for the first argument.
     /// The arity of the changed function will be determined by the
     /// number of entries in the permutation.
-    ArgsPermutation(Vec<u32>),
+    ArgsPermutation {
+        perm: Vec<u32>,
+    },
 }
 
 impl Replacement {
@@ -146,9 +154,9 @@ impl Replacement {
     fn extra_info<T>(&self, _ctx: &CheckCallCtx<T>) -> String {
         match self {
             Replacement::UseOk => "with ok".to_string(),
-            Replacement::UseCallArg(n) => format!("with argument {n}"),
-            Replacement::Invocation(s) => format!("with '{s}'"),
-            Replacement::ArgsPermutation(perm) => format!("with arguments permuted {:?}", perm),
+            Replacement::UseCallArg { n } => format!("with argument {n}"),
+            Replacement::Invocation { replacement } => format!("with '{replacement}'"),
+            Replacement::ArgsPermutation { perm } => format!("with arguments permuted {:?}", perm),
         }
     }
 }
@@ -168,7 +176,7 @@ fn replace_call(
             edit_builder.replace(*call_loc, "ok".to_owned());
             Some(edit_builder.finish())
         }
-        Replacement::UseCallArg(n) => {
+        Replacement::UseCallArg { n } => {
             let &nth = args.get(*n as usize)?;
 
             let body_map = def_fb.get_body_map(sema.db);
@@ -178,7 +186,7 @@ fn replace_call(
             edit_builder.replace(*call_loc, nth_str);
             Some(edit_builder.finish())
         }
-        Replacement::Invocation(replacement) => {
+        Replacement::Invocation { replacement } => {
             let range: TextRange = match target {
                 CallTarget::Local { name } => def_fb
                     .range_for_expr(sema.db, name.to_owned())
@@ -196,7 +204,7 @@ fn replace_call(
             edit_builder.replace(range, replacement.to_owned());
             Some(edit_builder.finish())
         }
-        Replacement::ArgsPermutation(perm) => {
+        Replacement::ArgsPermutation { perm } => {
             let body_map = def_fb.get_body_map(sema.db);
             let source_file = sema.parse(file_id);
             let opt_args_str: Option<Vec<String>> = args
@@ -419,7 +427,7 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 2,
                     }),
-                    Replacement::UseCallArg(1),
+                    Replacement::UseCallArg { n: 1 },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -723,7 +731,9 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 2,
                     }),
-                    Replacement::Invocation("blah:drop_water".to_owned()),
+                    Replacement::Invocation {
+                        replacement: "blah:drop_water".to_owned(),
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -770,7 +780,9 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 5,
                     }),
-                    Replacement::ArgsPermutation(vec![1, 3, 2]),
+                    Replacement::ArgsPermutation {
+                        perm: vec![1, 3, 2],
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -817,7 +829,9 @@ mod tests {
                         name: "fire_bombs".into(),
                         arity: 5,
                     }),
-                    Replacement::ArgsPermutation(vec![3, 2, 1, 2, 2, 3, 3]),
+                    Replacement::ArgsPermutation {
+                        perm: vec![3, 2, 1, 2, 2, 3, 3],
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,

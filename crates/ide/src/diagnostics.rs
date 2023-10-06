@@ -69,6 +69,7 @@ mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
 mod effect_free_statement;
+mod from_config;
 mod head_mismatch;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
@@ -82,6 +83,10 @@ mod unused_function_args;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
+
+pub use from_config::Lint;
+pub use from_config::LintsFromConfig;
+pub use from_config::ReplaceCall;
 
 #[derive(Debug, Clone)]
 // For the doc please refer to
