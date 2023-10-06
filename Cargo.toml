@@ -91,7 +91,7 @@ timeout-readwrite = "0.3.3"
 toml = "0.5"
 tree-sitter = "0.20.10"
 # @fb-only: tree-sitter-erlang = { path = "./tree-sitter-erlang" }
-tree-sitter-erlang = "0.1.0" # @oss-only
+tree-sitter-erlang = "0.2.0" # @oss-only
 vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
 vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
 walkdir = "2.3.3"
