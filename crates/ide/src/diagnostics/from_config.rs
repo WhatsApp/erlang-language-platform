@@ -49,19 +49,29 @@ impl Lint {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ReplaceCall {
     pub matcher: FunctionMatch,
-    pub replacement: Replacement,
+    pub action: ReplaceCallAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "action")]
+pub enum ReplaceCallAction {
+    Replace(Replacement),
+    RemoveFromList,
 }
 
 impl ReplaceCall {
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-        replace_call::replace_call_site(
-            &self.matcher,
-            self.replacement.clone(),
-            &replace_call::adhoc_diagnostic,
-            acc,
-            sema,
-            file_id,
-        );
+        match &self.action {
+            ReplaceCallAction::Replace(replacement) => replace_call::replace_call_site(
+                &self.matcher,
+                replacement.clone(),
+                &replace_call::adhoc_diagnostic,
+                acc,
+                sema,
+                file_id,
+            ),
+            ReplaceCallAction::RemoveFromList => todo!(),
+        }
     }
 }
 
@@ -74,6 +84,7 @@ mod tests {
     use super::Lint;
     use super::LintsFromConfig;
     use super::ReplaceCall;
+    use super::ReplaceCallAction;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
     use crate::diagnostics::replace_call::Replacement;
@@ -110,13 +121,14 @@ mod tests {
             module = "mod_a"
             name = "func"
 
-            [replacement]
+            [action]
+            action = "Replace"
             type = "UseOk"
         "#]]
         .assert_eq(
             &toml::to_string::<ReplaceCall>(&ReplaceCall {
                 matcher: FunctionMatch::mf("mod_a", "func"),
-                replacement: Replacement::UseOk,
+                action: ReplaceCallAction::Replace(Replacement::UseOk),
             })
             .unwrap(),
         );
@@ -131,7 +143,8 @@ mod tests {
                 module = "mod_a"
                 name = "func"
 
-                [replacement]
+                [action]
+                action = "Replace"
                 type = "UseOk"
              "#,
         )
@@ -143,7 +156,9 @@ mod tests {
                     module: "mod_a",
                     name: "func",
                 },
-                replacement: UseOk,
+                action: Replace(
+                    UseOk,
+                ),
             }
         "#]]
         .assert_debug_eq(&replace_call);
@@ -156,14 +171,15 @@ mod tests {
             type = "M"
             module = "mod_a"
 
-            [replacement]
+            [action]
+            action = "Replace"
             type = "UseCallArg"
             n = 5
         "#]]
         .assert_eq(
             &toml::to_string::<ReplaceCall>(&ReplaceCall {
                 matcher: FunctionMatch::m("mod_a"),
-                replacement: Replacement::UseCallArg { n: 5 },
+                action: ReplaceCallAction::Replace(Replacement::UseCallArg { n: 5 }),
             })
             .unwrap(),
         );
@@ -176,16 +192,17 @@ mod tests {
             type = "M"
             module = "mod_a"
 
-            [replacement]
+            [action]
+            action = "Replace"
             type = "Invocation"
             replacement = "modu:fn"
         "#]]
         .assert_eq(
             &toml::to_string::<ReplaceCall>(&ReplaceCall {
                 matcher: FunctionMatch::m("mod_a"),
-                replacement: Replacement::Invocation {
+                action: ReplaceCallAction::Replace(Replacement::Invocation {
                     replacement: "modu:fn".to_owned(),
-                },
+                }),
             })
             .unwrap(),
         );
@@ -198,16 +215,17 @@ mod tests {
             type = "M"
             module = "mod_a"
 
-            [replacement]
+            [action]
+            action = "Replace"
             type = "ArgsPermutation"
             perm = [1, 2, 3]
         "#]]
         .assert_eq(
             &toml::to_string::<ReplaceCall>(&ReplaceCall {
                 matcher: FunctionMatch::m("mod_a"),
-                replacement: Replacement::ArgsPermutation {
+                action: ReplaceCallAction::Replace(Replacement::ArgsPermutation {
                     perm: vec![1, 2, 3],
-                },
+                }),
             })
             .unwrap(),
         );
@@ -218,7 +236,7 @@ mod tests {
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
             lints: vec![Lint::ReplaceCall(ReplaceCall {
                 matcher: FunctionMatch::mf("mod_a", "func"),
-                replacement: Replacement::UseOk,
+                action: ReplaceCallAction::Replace(Replacement::UseOk),
             })],
         })
         .unwrap();
@@ -231,7 +249,8 @@ mod tests {
             module = "mod_a"
             name = "func"
 
-            [lints.replacement]
+            [lints.action]
+            action = "Replace"
             type = "UseOk"
         "#]]
         .assert_eq(&result);
@@ -249,7 +268,8 @@ mod tests {
             module = "mod_a"
             name = "func"
 
-            [lints.replacement]
+            [lints.action]
+            action = "Replace"
             type = "UseOk"
              "#,
         )
@@ -264,7 +284,9 @@ mod tests {
                                 module: "mod_a",
                                 name: "func",
                             },
-                            replacement: UseOk,
+                            action: Replace(
+                                UseOk,
+                            ),
                         },
                     ),
                 ],

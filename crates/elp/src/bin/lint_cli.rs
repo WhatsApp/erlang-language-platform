@@ -760,6 +760,7 @@ mod tests {
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
     use elp_ide::diagnostics::ReplaceCall;
+    use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
     use elp_ide::FunctionMatch;
     use expect_test::expect;
@@ -772,7 +773,7 @@ mod tests {
             ad_hoc_lints: LintsFromConfig {
                 lints: vec![Lint::ReplaceCall(ReplaceCall {
                     matcher: FunctionMatch::mf("mod_a", "func"),
-                    replacement: Replacement::UseOk,
+                    action: ReplaceCallAction::Replace(Replacement::UseOk),
                 })],
             },
             enabled_lints: vec![DiagnosticCode::HeadMismatch],
@@ -791,7 +792,8 @@ mod tests {
             module = "mod_a"
             name = "func"
 
-            [ad_hoc_lints.lints.replacement]
+            [ad_hoc_lints.lints.action]
+            action = "Replace"
             type = "UseOk"
         "#]]
         .assert_eq(&result);

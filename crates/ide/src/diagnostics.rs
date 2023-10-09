@@ -87,6 +87,7 @@ mod unused_record_field;
 pub use from_config::Lint;
 pub use from_config::LintsFromConfig;
 pub use from_config::ReplaceCall;
+pub use from_config::ReplaceCallAction;
 pub use replace_call::Replacement;
 
 #[derive(Debug, Clone)]
