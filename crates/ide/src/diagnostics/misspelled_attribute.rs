@@ -140,6 +140,8 @@ fn make_diagnostic(
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use fxhash::FxHashSet;
 
     use crate::diagnostics::DiagnosticCode;
@@ -182,7 +184,7 @@ mod tests {
             disable_experimental: true,
             disabled: FxHashSet::default(),
             adhoc_semantic_diagnostics: vec![],
-            lints_from_config: LintsFromConfig::default(),
+            lints_from_config: Arc::new(LintsFromConfig::default()),
         };
         config
             .disabled
@@ -211,7 +213,7 @@ mod tests {
             disable_experimental: true,
             disabled: FxHashSet::default(),
             adhoc_semantic_diagnostics: vec![],
-            lints_from_config: LintsFromConfig::default(),
+            lints_from_config: Arc::new(LintsFromConfig::default()),
         };
         config
             .disabled

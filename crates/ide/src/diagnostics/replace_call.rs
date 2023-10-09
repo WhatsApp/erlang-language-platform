@@ -362,6 +362,8 @@ fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use hir::Expr;
     use hir::Literal;
 
@@ -881,7 +883,7 @@ mod tests {
             action: crate::diagnostics::ReplaceCallAction::RemoveFromList,
         })];
         let mut config = DiagnosticsConfig {
-            lints_from_config: LintsFromConfig { lints },
+            lints_from_config: Arc::new(LintsFromConfig { lints }),
             ..DiagnosticsConfig::default()
         };
 

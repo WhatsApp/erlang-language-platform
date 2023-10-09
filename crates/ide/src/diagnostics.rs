@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
@@ -509,7 +510,7 @@ pub struct DiagnosticsConfig<'a> {
     pub disable_experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
-    pub lints_from_config: LintsFromConfig,
+    pub lints_from_config: Arc<LintsFromConfig>,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
@@ -517,7 +518,7 @@ impl<'a> DiagnosticsConfig<'a> {
         disable_experimental: bool,
         disabled: FxHashSet<DiagnosticCode>,
         adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
-        lints_from_config: LintsFromConfig,
+        lints_from_config: Arc<LintsFromConfig>,
     ) -> DiagnosticsConfig<'a> {
         DiagnosticsConfig {
             disable_experimental,
@@ -532,7 +533,10 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
-    pub fn from_config(mut self, lints_from_config: &LintsFromConfig) -> DiagnosticsConfig<'a> {
+    pub fn from_config(
+        mut self,
+        lints_from_config: &Arc<LintsFromConfig>,
+    ) -> DiagnosticsConfig<'a> {
         self.lints_from_config = lints_from_config.clone();
         self
     }
@@ -585,6 +589,7 @@ impl<D> LabeledDiagnostics<D> {
     }
 }
 
+/// Main entry point to calculate ELP-native diagnostics for a file
 pub fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
@@ -1608,7 +1613,7 @@ baz(1)->4.
                     file_id,
                 )
             }],
-            lints_from_config: LintsFromConfig::default(),
+            lints_from_config: Arc::new(LintsFromConfig::default()),
         };
         config
             .disabled

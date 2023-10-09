@@ -10,6 +10,8 @@
 // To run the tests via cargo
 // cargo test --package elp_ide --lib
 
+use std::sync::Arc;
+
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
@@ -195,7 +197,7 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
         true,
         FxHashSet::default(),
         vec![],
-        LintsFromConfig::default(),
+        Arc::new(LintsFromConfig::default()),
     )
     .disable(DiagnosticCode::MissingCompileWarnMissingSpec);
     let diags = analysis.diagnostics(&config, file_id, true).unwrap();

@@ -15,6 +15,7 @@ use anyhow::Result;
 use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
@@ -77,6 +78,7 @@ pub type SharedMap<Key, Value> = Arc<RwLock<FxHashMap<Key, Value>>>;
 /// An immutable snapshot of the world's state at a point in time.
 pub struct Snapshot {
     pub(crate) config: Arc<Config>,
+    pub(crate) ad_hoc_lints: Arc<LintsFromConfig>,
     // Note: Analysis is a salsa::Snapshot.  According to the docs,
     // any attempt to `set` an input will block.
     pub(crate) analysis: Analysis,
@@ -91,6 +93,7 @@ pub struct Snapshot {
 impl Snapshot {
     pub fn new(
         config: Arc<Config>,
+        ad_hoc_lints: Arc<LintsFromConfig>,
         analysis: Analysis,
         vfs: Arc<RwLock<Vfs>>,
         open_document_versions: Arc<RwLock<FxHashMap<VfsPath, i32>>>,
@@ -100,6 +103,7 @@ impl Snapshot {
     ) -> Self {
         Snapshot {
             config,
+            ad_hoc_lints,
             analysis,
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs,
@@ -153,7 +157,11 @@ impl Snapshot {
 
         Some(
             self.analysis
-                .diagnostics(&self.config.diagnostics(), file_id, false)
+                .diagnostics(
+                    &self.config.diagnostics(self.ad_hoc_lints.clone()),
+                    file_id,
+                    false,
+                )
                 .ok()?
                 .convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d)),
         )

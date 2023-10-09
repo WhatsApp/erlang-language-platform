@@ -8,6 +8,7 @@
  */
 
 use std::iter;
+use std::sync::Arc;
 
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
@@ -183,7 +184,11 @@ impl Config {
         )
     }
 
-    pub fn diagnostics(&self) -> DiagnosticsConfig {
+    pub fn disable_experimental(&self) -> bool {
+        !self.data.diagnostics_enableExperimental
+    }
+
+    pub fn diagnostics(&self, lints_from_config: Arc<LintsFromConfig>) -> DiagnosticsConfig {
         // Look up disabled diagnostics using both label and code.
         DiagnosticsConfig::new(
             !self.data.diagnostics_enableExperimental,
@@ -193,7 +198,7 @@ impl Config {
                 .filter_map(DiagnosticCode::maybe_from_string)
                 .collect(),
             vec![],
-            LintsFromConfig::default(),
+            lints_from_config,
         )
     }
 

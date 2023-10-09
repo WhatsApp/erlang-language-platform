@@ -202,7 +202,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             let mut cfg = DiagnosticsConfig::default();
             cfg.disable_experimental = args.experimental_diags;
             cfg.disabled = disabled_diagnostics;
-            let cfg = cfg.from_config(&cfg_from_file.ad_hoc_lints);
+            let cfg = cfg.from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;
             let mut diags = {

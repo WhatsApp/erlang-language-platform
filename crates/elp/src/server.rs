@@ -19,6 +19,7 @@ use crossbeam_channel::Receiver;
 use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
 use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -182,6 +183,7 @@ pub struct Server {
     file_set_config: FileSetConfig,
     line_ending_map: SharedMap<FileId, LineEndings>,
     config: Arc<Config>,
+    ad_hoc_lints: Arc<LintsFromConfig>,
     analysis_host: AnalysisHost,
     status: Status,
     projects: Arc<Vec<Project>>,
@@ -222,6 +224,7 @@ impl Server {
             file_set_config: FileSetConfig::default(),
             line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
+            ad_hoc_lints: Arc::new(LintsFromConfig::default()),
             analysis_host: AnalysisHost::default(),
             status: Status::Initialising,
             projects: Arc::new(vec![]),
@@ -241,6 +244,7 @@ impl Server {
     pub fn snapshot(&self) -> Snapshot {
         Snapshot::new(
             Arc::clone(&self.config),
+            Arc::clone(&self.ad_hoc_lints),
             self.analysis_host.analysis(),
             Arc::clone(&self.vfs),
             Arc::clone(&self.open_document_versions),
@@ -960,6 +964,11 @@ impl Server {
         self.logger
             .reconfigure(LOGGER_NAME, self.config.log_filter());
         self.logger.reconfigure("default", self.config.log_filter());
+
+        if !self.config.disable_experimental() {
+            // Read the lint config file
+            // TODO, next diff
+        }
     }
 
     fn transition(&mut self, status: Status) {

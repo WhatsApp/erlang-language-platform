@@ -395,6 +395,8 @@ pub(crate) fn find_call_in_function<T>(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use elp_ide_db::elp_base_db::FileId;
     use fxhash::FxHashSet;
     use hir::FunctionDef;
@@ -469,7 +471,7 @@ mod tests {
                 false,
                 FxHashSet::default(),
                 vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
-                LintsFromConfig::default(),
+                Arc::new(LintsFromConfig::default()),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::CrossNodeEval),
@@ -488,7 +490,7 @@ mod tests {
                 false,
                 FxHashSet::default(),
                 vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
-                LintsFromConfig::default(),
+                Arc::new(LintsFromConfig::default()),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::CrossNodeEval),

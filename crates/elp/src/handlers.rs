@@ -100,7 +100,7 @@ pub(crate) fn handle_code_action(
     let assist_context_diagnostics = to_assist_context_diagnostics(&line_index, diagnostics);
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
-        &snap.config.diagnostics(),
+        &snap.config.diagnostics(snap.ad_hoc_lints.clone()),
         resolve,
         frange,
         &assist_context_diagnostics,
@@ -163,7 +163,7 @@ pub(crate) fn handle_code_action_resolve(
     let assist_context_diagnostics = to_assist_context_diagnostics(&line_index, diagnostics);
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
-        &snap.config.diagnostics(),
+        &snap.config.diagnostics(snap.ad_hoc_lints.clone()),
         AssistResolveStrategy::Single(assist_resolve),
         frange,
         &assist_context_diagnostics,
