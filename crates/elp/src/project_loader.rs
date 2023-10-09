@@ -19,7 +19,7 @@ use elp_project_model::ProjectManifest;
 use fxhash::FxHashSet;
 
 pub struct ProjectLoader {
-    project_roots: FxHashSet<AbsPathBuf>,
+    pub(crate) project_roots: FxHashSet<AbsPathBuf>,
     start: Instant,
     initialized: bool,
 }

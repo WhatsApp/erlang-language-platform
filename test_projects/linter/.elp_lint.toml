@@ -1,2 +1,25 @@
 enabled_lints =['L1268', 'W0011', 'P1700']
 disabled_lints = ['W0010']
+
+[[ad_hoc_lints.lints]]
+type = "ReplaceCall"
+
+[ad_hoc_lints.lints.matcher]
+type = "M"
+module = "app_b"
+
+[ad_hoc_lints.lints.action]
+action = "Replace"
+type = "UseOk"
+
+[[ad_hoc_lints.lints]]
+type = "ReplaceCall"
+
+[ad_hoc_lints.lints.matcher]
+type = "M"
+module = "app_a"
+
+[ad_hoc_lints.lints.action]
+action = "Replace"
+type = "ArgsPermutation"
+perm = [1, 0]

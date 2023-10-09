@@ -9,6 +9,7 @@
 
 use std::fmt;
 use std::mem;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use always_assert::always;
@@ -73,6 +74,7 @@ use crate::handlers;
 use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::project_loader::ProjectLoader;
+use crate::read_lint_config_file;
 use crate::reload::ProjectFolders;
 use crate::snapshot::SharedMap;
 use crate::snapshot::Snapshot;
@@ -967,7 +969,15 @@ impl Server {
 
         if !self.config.disable_experimental() {
             // Read the lint config file
-            // TODO, next diff
+            let loader = self.project_loader.clone();
+            let loader = loader.lock();
+            if let Some(path) = loader.project_roots.iter().next() {
+                let ppp: PathBuf = path.clone().into();
+                if let Ok(lint_config) = read_lint_config_file(&ppp, &None) {
+                    log::warn!("update_configuration: read lint file: {:?}", lint_config);
+                    self.ad_hoc_lints = Arc::new(lint_config.ad_hoc_lints);
+                }
+            }
         }
     }
 

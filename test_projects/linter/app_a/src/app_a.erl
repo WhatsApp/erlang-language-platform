@@ -8,3 +8,9 @@ food(0) ->
     ok;
 fooX(X) ->
     no.
+
+bar() ->
+    app_a:baz(b, a),
+    app_b:application_env_error().
+
+baz(A,B) -> {A,B}.

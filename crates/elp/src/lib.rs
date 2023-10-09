@@ -171,3 +171,67 @@ pub fn read_lint_config_file(
     }
     Ok(LintConfig::default())
 }
+
+#[cfg(test)]
+mod tests {
+    use elp_ide::diagnostics::DiagnosticCode;
+    use elp_ide::diagnostics::Lint;
+    use elp_ide::diagnostics::LintsFromConfig;
+    use elp_ide::diagnostics::ReplaceCall;
+    use elp_ide::diagnostics::ReplaceCallAction;
+    use elp_ide::diagnostics::Replacement;
+    use elp_ide::FunctionMatch;
+    use expect_test::expect;
+
+    use crate::LintConfig;
+
+    #[test]
+    fn serde_serialize_lint_config() {
+        let lint_config = LintConfig {
+            enabled_lints: vec![DiagnosticCode::ApplicationGetEnv],
+            disabled_lints: vec![],
+            ad_hoc_lints: LintsFromConfig {
+                lints: vec![
+                    Lint::ReplaceCall(ReplaceCall {
+                        matcher: FunctionMatch::mf("mod_a", "func"),
+                        action: ReplaceCallAction::Replace(Replacement::UseOk),
+                    }),
+                    Lint::ReplaceCall(ReplaceCall {
+                        matcher: FunctionMatch::m("foo"),
+                        action: ReplaceCallAction::Replace(Replacement::ArgsPermutation {
+                            perm: vec![1, 2],
+                        }),
+                    }),
+                ],
+            },
+        };
+        expect![[r#"
+            enabled_lints = ["W0011"]
+            disabled_lints = []
+            [[ad_hoc_lints.lints]]
+            type = "ReplaceCall"
+
+            [ad_hoc_lints.lints.matcher]
+            type = "MF"
+            module = "mod_a"
+            name = "func"
+
+            [ad_hoc_lints.lints.action]
+            action = "Replace"
+            type = "UseOk"
+
+            [[ad_hoc_lints.lints]]
+            type = "ReplaceCall"
+
+            [ad_hoc_lints.lints.matcher]
+            type = "M"
+            module = "foo"
+
+            [ad_hoc_lints.lints.action]
+            action = "Replace"
+            type = "ArgsPermutation"
+            perm = [1, 2]
+        "#]]
+        .assert_eq(&toml::to_string::<LintConfig>(&&lint_config).unwrap());
+    }
+}
