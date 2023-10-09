@@ -300,7 +300,7 @@ impl MFA {
         })
     }
 
-    #[cfg(test)]
+    #[cfg(test)] // @oss-only
     pub fn new(m: &str, f: &str, arity: u32) -> MFA {
         MFA {
             module: m.to_string(),
