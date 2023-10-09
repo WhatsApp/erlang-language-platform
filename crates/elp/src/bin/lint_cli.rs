@@ -23,12 +23,13 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::document::Document;
 use elp::otp_file_to_ignore;
+use elp::read_lint_config_file;
+use elp::LintConfig;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
-use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
 use elp_ide::elp_ide_assists::Assist;
@@ -51,8 +52,6 @@ use fxhash::FxHashSet;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::args::Lint;
 use crate::reporting;
@@ -150,17 +149,6 @@ fn do_parse_one(
 
 // ---------------------------------------------------------------------
 
-/// Configuration file format for lints. Deserialized from .toml
-/// initially.  But could by anything supported by serde.
-#[derive(Deserialize, Serialize, Default, Debug)]
-struct LintConfig {
-    enabled_lints: Vec<DiagnosticCode>,
-    #[serde(default)]
-    disabled_lints: Vec<DiagnosticCode>,
-    #[serde(default)]
-    ad_hoc_lints: LintsFromConfig,
-}
-
 pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Result<()> {
     // First check if we are doing a codemod. We need to have a whole
     // bunch of args set
@@ -179,7 +167,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             ..
         } => {
             let cfg_from_file = if *read_config || config_file.is_some() {
-                read_config_file(project, config_file)?
+                read_lint_config_file(project, config_file)?
             } else {
                 LintConfig::default()
             };
@@ -362,42 +350,6 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             Ok(())
         }
     }
-}
-
-const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
-
-fn read_config_file(project: &PathBuf, config_file: &Option<String>) -> Result<LintConfig> {
-    if let Some(file_name) = config_file {
-        let file_path: PathBuf = file_name.into();
-        match fs::read_to_string(file_path.clone()) {
-            Ok(content) => match toml::from_str::<LintConfig>(&content) {
-                Ok(config) => return Ok(config),
-                Err(err) => bail!("errors parsing {:?}: {err}", file_path),
-            },
-            Err(err) => {
-                bail!("unable to read {:?}: {err}", file_path)
-            }
-        }
-    } else {
-        let mut potential_path = Some(project.as_path());
-        while let Some(path) = potential_path {
-            let file_path = path.join(LINT_CONFIG_FILE);
-
-            if !file_path.is_file() {
-                potential_path = path.parent();
-                continue;
-            } else {
-                if let Ok(content) = fs::read_to_string(file_path.clone()) {
-                    match toml::from_str::<LintConfig>(&content) {
-                        Ok(config) => return Ok(config),
-                        Err(err) => bail!("failed to read {:?}:{err}", file_path),
-                    }
-                }
-            }
-            break;
-        }
-    }
-    Ok(LintConfig::default())
 }
 
 fn print_diagnostic(

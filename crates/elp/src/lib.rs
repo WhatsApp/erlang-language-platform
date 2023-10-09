@@ -8,15 +8,22 @@
  */
 
 use std::fmt;
+use std::fs;
+use std::path::PathBuf;
 
 use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Result;
+use elp_ide::diagnostics::DiagnosticCode;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::Analysis;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
+use serde::Serialize;
 pub use server::setup::ServerSetup;
 
 pub mod arc_types;
@@ -111,4 +118,56 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
     } else {
         false
     }
+}
+
+// ---------------------------------------------------------------------
+
+/// Configuration file format for lints. Deserialized from .toml
+/// initially.  But could by anything supported by serde.
+#[derive(Deserialize, Serialize, Default, Debug)]
+pub struct LintConfig {
+    pub enabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
+    pub disabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
+    pub ad_hoc_lints: LintsFromConfig,
+}
+
+pub const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
+
+pub fn read_lint_config_file(
+    project: &PathBuf,
+    config_file: &Option<String>,
+) -> Result<LintConfig> {
+    if let Some(file_name) = config_file {
+        let file_path: PathBuf = file_name.into();
+        match fs::read_to_string(file_path.clone()) {
+            Ok(content) => match toml::from_str::<LintConfig>(&content) {
+                Ok(config) => return Ok(config),
+                Err(err) => bail!("errors parsing {:?}: {err}", file_path),
+            },
+            Err(err) => {
+                bail!("unable to read {:?}: {err}", file_path)
+            }
+        }
+    } else {
+        let mut potential_path = Some(project.as_path());
+        while let Some(path) = potential_path {
+            let file_path = path.join(LINT_CONFIG_FILE);
+
+            if !file_path.is_file() {
+                potential_path = path.parent();
+                continue;
+            } else {
+                if let Ok(content) = fs::read_to_string(file_path.clone()) {
+                    match toml::from_str::<LintConfig>(&content) {
+                        Ok(config) => return Ok(config),
+                        Err(err) => bail!("failed to read {:?}:{err}", file_path),
+                    }
+                }
+            }
+            break;
+        }
+    }
+    Ok(LintConfig::default())
 }
