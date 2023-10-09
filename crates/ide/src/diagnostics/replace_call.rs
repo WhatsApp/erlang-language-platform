@@ -254,7 +254,6 @@ fn replace_call(
     }
 }
 
-#[allow(dead_code)]
 pub fn remove_fun_ref_from_list(
     fm: &FunctionMatch,
     diagnostic_builder: DiagnosticBuilder,
@@ -368,6 +367,9 @@ mod tests {
 
     use super::*;
     use crate::codemod_helpers::CheckCallCtx;
+    use crate::diagnostics::Lint;
+    use crate::diagnostics::LintsFromConfig;
+    use crate::diagnostics::ReplaceCall;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
     use crate::DiagnosticsConfig;
@@ -866,5 +868,50 @@ mod tests {
                 transmit(Message).
             "#,
         )
+    }
+
+    #[test]
+    fn check_fix_remove_fun_ref_from_list_singleton_via_config() {
+        let lints = vec![Lint::ReplaceCall(ReplaceCall {
+            matcher: FunctionMatch::MFA(MFA {
+                module: "foo".into(),
+                name: "fire_bombs".into(),
+                arity: 1,
+            }),
+            action: crate::diagnostics::ReplaceCallAction::RemoveFromList,
+        })];
+        let mut config = DiagnosticsConfig {
+            lints_from_config: LintsFromConfig { lints },
+            ..DiagnosticsConfig::default()
+        };
+
+        config
+            .disabled
+            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+
+        check_fix_with_config(
+            config,
+            r#"
+            //- /src/blah_SUITE.erl
+            -module(blah_SUITE).
+
+            end_per_suite(Config) ->
+                some:clearner_helper([
+                    f~un foo:fire_bombs/1
+                ], Config).
+            //- /src/foo.erl
+            -module(foo).
+            -export([fire_bombs/1, regret_it/1, too_late_now_think_twice_next_time/2]).
+            fire_bombs(Config) -> boom.
+            regret_it(Config) -> oops.
+            too_late_now_think_twice_next_time(Config) -> 'oh well'.
+            "#,
+            r#"
+            -module(blah_SUITE).
+
+            end_per_suite(Config) ->
+                some:clearner_helper([], Config).
+            "#,
+        );
     }
 }

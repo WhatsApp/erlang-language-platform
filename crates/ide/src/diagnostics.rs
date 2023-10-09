@@ -627,6 +627,9 @@ pub fn diagnostics(
             .adhoc_semantic_diagnostics
             .iter()
             .for_each(|f| f(&mut res, &sema, file_id, file_kind));
+        config
+            .lints_from_config
+            .get_diagnostics(&mut res, &sema, file_id);
         semantic_diagnostics(
             &mut res,
             &sema,

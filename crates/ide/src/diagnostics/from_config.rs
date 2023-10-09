@@ -70,7 +70,13 @@ impl ReplaceCall {
                 sema,
                 file_id,
             ),
-            ReplaceCallAction::RemoveFromList => todo!(),
+            ReplaceCallAction::RemoveFromList => replace_call::remove_fun_ref_from_list(
+                &self.matcher,
+                &replace_call::adhoc_diagnostic,
+                acc,
+                sema,
+                file_id,
+            ),
         }
     }
 }
