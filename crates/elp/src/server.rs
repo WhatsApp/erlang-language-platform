@@ -659,6 +659,8 @@ impl Server {
             self.transition(Status::Running);
             self.schedule_compile_deps();
             self.schedule_cache();
+            // Not all clients send config in the `initialize` message, request it
+            self.refresh_config();
         }
     }
 
