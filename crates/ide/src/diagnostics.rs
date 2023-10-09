@@ -517,12 +517,13 @@ impl<'a> DiagnosticsConfig<'a> {
         disable_experimental: bool,
         disabled: FxHashSet<DiagnosticCode>,
         adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+        lints_from_config: LintsFromConfig,
     ) -> DiagnosticsConfig<'a> {
         DiagnosticsConfig {
             disable_experimental,
             disabled,
             adhoc_semantic_diagnostics,
-            lints_from_config: LintsFromConfig::default(),
+            lints_from_config,
         }
     }
 

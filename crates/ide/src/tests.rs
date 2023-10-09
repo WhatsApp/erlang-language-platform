@@ -25,6 +25,7 @@ use crate::diagnostics;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::LabeledDiagnostics;
+use crate::diagnostics::LintsFromConfig;
 use crate::diagnostics::Severity;
 use crate::fixture;
 use crate::Analysis;
@@ -190,8 +191,13 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
 #[track_caller]
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
-    let config = DiagnosticsConfig::new(true, FxHashSet::default(), vec![])
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+    let config = DiagnosticsConfig::new(
+        true,
+        FxHashSet::default(),
+        vec![],
+        LintsFromConfig::default(),
+    )
+    .disable(DiagnosticCode::MissingCompileWarnMissingSpec);
     let diags = analysis.diagnostics(&config, file_id, true).unwrap();
     assert!(
         diags.is_empty(),

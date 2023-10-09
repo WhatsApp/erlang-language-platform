@@ -405,6 +405,7 @@ mod tests {
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
+    use crate::diagnostics::LintsFromConfig;
     use crate::diagnostics::Severity;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
@@ -468,6 +469,7 @@ mod tests {
                 false,
                 FxHashSet::default(),
                 vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
+                LintsFromConfig::default(),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::CrossNodeEval),
@@ -486,6 +488,7 @@ mod tests {
                 false,
                 FxHashSet::default(),
                 vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
+                LintsFromConfig::default(),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::CrossNodeEval),

@@ -11,6 +11,7 @@ use std::iter;
 
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
@@ -192,6 +193,7 @@ impl Config {
                 .filter_map(DiagnosticCode::maybe_from_string)
                 .collect(),
             vec![],
+            LintsFromConfig::default(),
         )
     }
 
