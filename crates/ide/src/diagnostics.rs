@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
+use elp_ide_assists::GroupLabel;
 use elp_ide_db::assists::Assist;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
@@ -107,6 +108,10 @@ pub struct Diagnostic {
 
 // @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
 pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
+
+pub fn group_label_ignore() -> GroupLabel {
+    GroupLabel("ignore".into())
+}
 
 impl Diagnostic {
     pub(crate) fn new(
@@ -207,7 +212,7 @@ impl Diagnostic {
             let ignore_fix = Assist {
                 id: AssistId("ignore_problem", AssistKind::QuickFix),
                 label: Label::new("Ignore problem"),
-                group: None,
+                group: Some(group_label_ignore()),
                 target: self.range,
                 source_change: Some(source_change),
                 user_input: None,

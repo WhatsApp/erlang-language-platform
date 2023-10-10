@@ -166,7 +166,7 @@ impl FromStr for AssistContextDiagnosticCode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GroupLabel(pub String);
 
 #[derive(Clone, Debug)]

@@ -27,6 +27,7 @@ use elp::read_lint_config_file;
 use elp::LintConfig;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
+use elp_ide::diagnostics::group_label_ignore;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -612,23 +613,31 @@ impl<'a> Lints<'a> {
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
         if let Some(fixes) = &diagnostic.fixes {
-            if format_normal {
-                writeln!(cli, "---------------------------------------------\n")?;
-                writeln!(cli, "Applying fix in module '{name}' for")?;
-                print_diagnostic(diagnostic, &self.analysis_host.analysis(), file_id, cli)?;
+            let fixes: Vec<_> = fixes
+                .into_iter()
+                .filter(|f| f.group != Some(group_label_ignore()))
+                .collect();
+            if !fixes.is_empty() {
+                if format_normal {
+                    writeln!(cli, "---------------------------------------------\n")?;
+                    writeln!(cli, "Applying fix in module '{name}' for")?;
+                    print_diagnostic(diagnostic, &self.analysis_host.analysis(), file_id, cli)?;
+                }
+                let changed = fixes
+                    .iter()
+                    .filter_map(|fix| self.apply_one_fix(fix, name))
+                    .collect::<Vec<FixResult>>();
+                if format_normal {
+                    changed.iter().for_each(|r| {
+                        if let Some(unified) = &r.diff {
+                            _ = writeln!(cli, "{unified}");
+                        }
+                    });
+                }
+                Ok(changed)
+            } else {
+                bail!("Only 'ignore' fixes in {:?}", diagnostic);
             }
-            let changed = fixes
-                .iter()
-                .filter_map(|fix| self.apply_one_fix(fix, name))
-                .collect::<Vec<FixResult>>();
-            if format_normal {
-                changed.iter().for_each(|r| {
-                    if let Some(unified) = &r.diff {
-                        _ = writeln!(cli, "{unified}");
-                    }
-                });
-            }
-            Ok(changed)
         } else {
             bail!("No fixes in {:?}", diagnostic);
         }
