@@ -11,8 +11,8 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::WildAttribute;
-use hir::db::MinDefDatabase;
 use hir::Attribute;
+use hir::Semantic;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
@@ -34,18 +34,24 @@ use crate::TextSize;
 // -include_lib("/foo/bar/baz.hrl").
 // ```
 pub(crate) fn misspelled_attribute(
+    sema: &Semantic,
     diagnostics: &mut Vec<Diagnostic>,
-    db: &dyn MinDefDatabase,
     file_id: FileId,
 ) {
-    let form_list = db.file_form_list(file_id);
+    let form_list = sema.db.file_form_list(file_id);
     let potential_misspellings = form_list.attributes().filter_map(|(id, attr)| {
         looks_like_misspelling(attr).map(|suggested_rename| (id, attr, suggested_rename))
     });
     potential_misspellings.for_each(|(_id, attr, suggested_rename)| {
-        let parsed_file = db.parse(file_id);
+        let parsed_file = sema.db.parse(file_id);
         let attr_form = attr.form_id.get(&parsed_file.tree());
-        diagnostics.push(make_diagnostic(file_id, attr, attr_form, suggested_rename))
+        diagnostics.push(make_diagnostic(
+            &sema,
+            file_id,
+            attr,
+            attr_form,
+            suggested_rename,
+        ))
     })
 }
 
@@ -95,6 +101,7 @@ fn looks_like_misspelling(attr: &Attribute) -> Option<&str> {
 }
 
 fn make_diagnostic(
+    sema: &Semantic,
     file_id: FileId,
     attr: &Attribute,
     attr_form: WildAttribute,
@@ -134,6 +141,7 @@ fn make_diagnostic(
         SourceChange::from_text_edit(file_id, edit),
         attr_name_range,
     )]))
+    .with_ignore_fix(sema, file_id)
 }
 
 // To run the tests via cargo

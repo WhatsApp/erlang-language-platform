@@ -643,7 +643,7 @@ pub fn diagnostics(
             file_kind,
             config.disable_experimental,
         );
-        syntax_diagnostics(db, &parse, &mut res, file_id);
+        syntax_diagnostics(&sema, &parse, &mut res, file_id);
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             Diagnostic::error(
@@ -736,15 +736,15 @@ pub fn semantic_diagnostics(
 }
 
 pub fn syntax_diagnostics(
-    db: &RootDatabase,
+    sema: &Semantic,
     parse: &Parse<ast::SourceFile>,
     res: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    misspelled_attribute::misspelled_attribute(res, db, file_id);
+    misspelled_attribute::misspelled_attribute(sema, res, file_id);
     for node in parse.tree().syntax().descendants() {
         head_mismatch::head_mismatch(res, file_id, &node);
-        module_mismatch::module_mismatch(res, db, file_id, &node);
+        module_mismatch::module_mismatch(sema, res, file_id, &node);
     }
 }
 

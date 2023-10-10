@@ -13,27 +13,26 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::RootDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use hir::Semantic;
 use text_edit::TextEdit;
 
 use crate::fix;
 use crate::Diagnostic;
 
 pub(crate) fn module_mismatch(
+    sema: &Semantic,
     acc: &mut Vec<Diagnostic>,
-    db: &RootDatabase,
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
     let module_name = ast::ModuleAttribute::cast(node.clone())?.name()?;
-    let root_id = db.file_source_root(file_id);
-    let root = db.source_root(root_id);
+    let root_id = sema.db.file_source_root(file_id);
+    let root = sema.db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap();
     let filename = path.name_and_extension().unwrap_or_default().0;
     let loc = module_name.syntax().text_range();
