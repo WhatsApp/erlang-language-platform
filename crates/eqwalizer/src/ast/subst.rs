@@ -10,6 +10,7 @@
 use fxhash::FxHashMap;
 
 use super::types::AnyArityFunType;
+use super::types::BoundedDynamicType;
 use super::types::DictMap;
 use super::types::FunType;
 use super::types::ListType;
@@ -80,6 +81,9 @@ impl<'a> Subst<'a> {
                     .into_iter()
                     .map(|(k, v)| (k, self.apply(v)))
                     .collect(),
+            }),
+            Type::BoundedDynamicType(bd) => Type::BoundedDynamicType(BoundedDynamicType {
+                bound: Box::new(self.apply(*bd.bound)),
             }),
             _ => t,
         }

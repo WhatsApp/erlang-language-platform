@@ -38,6 +38,7 @@ pub enum Type {
     AnyType,
     AtomType,
     DynamicType,
+    BoundedDynamicType(BoundedDynamicType),
     NoneType,
     PidType,
     PortType,
@@ -221,6 +222,7 @@ impl Type {
             Type::DictMap(ty) => f(&ty.v_type).and_then(|()| f(&ty.k_type)),
             Type::ListType(ty) => f(&ty.t),
             Type::RefinedRecordType(ty) => ty.fields.iter().try_for_each(|(_, ty)| f(ty)),
+            Type::BoundedDynamicType(ty) => f(&ty.bound),
             Type::AtomLitType(_)
             | Type::AnyType
             | Type::AnyFunType
@@ -328,6 +330,7 @@ impl fmt::Display for Type {
             Type::DictMap(ty) => write!(f, "#D{{{} => {}}}", ty.k_type, ty.v_type),
             Type::ListType(ty) => write!(f, "[{}]", ty.t),
             Type::RefinedRecordType(ty) => write!(f, "#{}{{}}", ty.rec_type.name.as_str()),
+            Type::BoundedDynamicType(ty) => write!(f, "dynamic({})", ty.bound),
         }
     }
 }
@@ -453,4 +456,9 @@ pub struct ReqProp {
 pub struct OptProp {
     pub key: SmolStr,
     pub tp: Type,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct BoundedDynamicType {
+    pub bound: Box<Type>,
 }

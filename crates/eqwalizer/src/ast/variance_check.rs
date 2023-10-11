@@ -367,7 +367,8 @@ impl VarianceChecker<'_> {
             | Type::PidType
             | Type::PortType
             | Type::ReferenceType
-            | Type::NumberType => Ok(vec![]),
+            | Type::NumberType
+            | Type::BoundedDynamicType(_) => Ok(vec![]),
         }
     }
 
