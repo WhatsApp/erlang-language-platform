@@ -12,10 +12,8 @@
 use std::mem;
 use std::str::FromStr;
 
-use elp_ide::diagnostics;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::LineIndex;
 use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -24,8 +22,6 @@ use lsp_types::Diagnostic;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;
-
-use crate::convert;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
@@ -236,33 +232,6 @@ fn as_related(diagnostic: &Diagnostic, url: &Url) -> DiagnosticRelatedInformatio
         location: Location::new(url.clone(), diagnostic.range),
         message: diagnostic.message.clone(),
     }
-}
-
-// ---------------------------------------------------------------------
-
-pub fn convert_labeled(
-    diagnostics: &LabeledDiagnostics<diagnostics::Diagnostic>,
-    line_index: &LineIndex,
-    url: &Url,
-) -> LabeledDiagnostics<lsp_types::Diagnostic> {
-    let normal = diagnostics
-        .normal
-        .iter()
-        .map(|d| convert::ide_to_lsp_diagnostic(line_index, url, d))
-        .collect_vec();
-    let labeled = diagnostics
-        .labeled
-        .iter()
-        .map(|(k, v)| {
-            (
-                k.clone(),
-                v.iter()
-                    .map(|d| convert::ide_to_lsp_diagnostic(line_index, url, d))
-                    .collect_vec(),
-            )
-        })
-        .collect();
-    LabeledDiagnostics { normal, labeled }
 }
 
 // ---------------------------------------------------------------------
