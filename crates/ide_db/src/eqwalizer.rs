@@ -125,6 +125,9 @@ fn type_at_position(
     project_id: ProjectId,
     position: FilePosition,
 ) -> Option<Arc<(Type, FileRange)>> {
+    if !db.is_eqwalizer_enabled(position.file_id, true) {
+        return None;
+    }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
         &(*db.eqwalizer_diagnostics(project_id, vec![position.file_id]))
     {
