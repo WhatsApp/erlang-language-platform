@@ -189,10 +189,13 @@ pub fn attach_related_diagnostics(
         .flat_map(|(label, diags)| {
             if let Some(related) = erlang_service.labeled.get(label) {
                 to_remove.insert(label);
-                let related_info = related.iter().map(|d| as_related(d, url)).collect_vec();
+                let related_info = related
+                    .iter()
+                    .map(|(_, d)| as_related(d, url))
+                    .collect_vec();
                 diags
                     .iter()
-                    .map(|d| with_related(d.clone(), related_info.clone()))
+                    .map(|(r, d)| (r.clone(), with_related(d.clone(), related_info.clone())))
                     .collect_vec()
             } else {
                 diags.to_vec()
@@ -212,8 +215,9 @@ pub fn attach_related_diagnostics(
         .clone()
         .into_iter()
         .chain(updated)
-        .chain(erlang_service.normal.iter().cloned())
+        .chain(erlang_service.normal.clone().into_iter())
         .chain(es)
+        .map(|(_, d)| d.clone())
         .collect_vec()
 }
 
@@ -235,6 +239,7 @@ fn as_related(diagnostic: &Diagnostic, url: &Url) -> DiagnosticRelatedInformatio
 }
 
 // ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
 
@@ -251,6 +256,7 @@ mod tests {
     use lsp_types::Position;
     use lsp_types::Range;
     use range_set::RangeSet;
+    use text_edit::TextRange;
 
     use super::*;
     use crate::convert::ide_to_lsp_diagnostic;
@@ -284,9 +290,13 @@ mod tests {
         let mut diagnostics = DiagnosticCollection::default();
 
         let diagnostic = Diagnostic::default();
+        let text_range = TextRange::new(0.into(), 0.into());
 
         // Set some diagnostic initially
-        diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![diagnostic.clone()]));
+        diagnostics.set_native(
+            file_id,
+            LabeledDiagnostics::new(vec![(text_range, diagnostic.clone())]),
+        );
 
         let changes = diagnostics.take_changes();
         let mut expected_changes = FxHashSet::default();
@@ -342,18 +352,27 @@ mod tests {
         }
     }
 
-    fn make_diag(message: &str, code: &str, line: u32, cols: u32, cole: u32) -> Diagnostic {
-        Diagnostic {
-            message: message.to_string(),
-            range: Range::new(Position::new(line, cols), Position::new(line, cole)),
-            severity: Some(DiagnosticSeverity::ERROR),
-            code: Some(NumberOrString::String(code.into())),
-            code_description: None,
-            source: None,
-            related_information: None,
-            tags: None,
-            data: None,
-        }
+    fn make_diag(
+        message: &str,
+        code: &str,
+        line: u32,
+        cols: u32,
+        cole: u32,
+    ) -> (TextRange, Diagnostic) {
+        (
+            TextRange::new(0.into(), 0.into()),
+            Diagnostic {
+                message: message.to_string(),
+                range: Range::new(Position::new(line, cols), Position::new(line, cole)),
+                severity: Some(DiagnosticSeverity::ERROR),
+                code: Some(NumberOrString::String(code.into())),
+                code_description: None,
+                source: None,
+                related_information: None,
+                tags: None,
+                data: None,
+            },
+        )
     }
 
     #[test]

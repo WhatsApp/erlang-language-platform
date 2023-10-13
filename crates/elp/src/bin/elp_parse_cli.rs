@@ -135,8 +135,8 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
             writeln!(cli, "  {}: {}", diags.name, combined.len())?;
             if args.print_diags {
                 let line_index = db.file_line_index(diags.file_id);
-                combined.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
-                for diag in combined {
+                combined.sort_by(|a, b| a.1.range.start().cmp(&b.1.range.start()));
+                for (_, diag) in combined {
                     let diag = convert::ide_to_lsp_diagnostic(&line_index, &url, &diag);
                     let severity = match diag.severity {
                         None => DiagnosticSeverity::ERROR,

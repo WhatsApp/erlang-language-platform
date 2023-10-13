@@ -170,7 +170,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
         let expected = extract_annotations(&*db.file_text(file_id));
         let mut actual = diagnostics
             .into_iter()
-            .map(|d| {
+            .map(|(r, d)| {
                 let mut annotation = String::new();
                 if let Some(fixes) = &d.fixes {
                     assert!(!fixes.is_empty());
@@ -183,7 +183,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
                 });
                 annotation.push_str(": ");
                 annotation.push_str(&d.message);
-                (d.range, annotation)
+                (r, annotation)
             })
             .collect::<Vec<_>>();
         actual.sort_by_key(|(range, _)| range.start());
