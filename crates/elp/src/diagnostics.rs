@@ -12,6 +12,7 @@
 use std::mem;
 use std::str::FromStr;
 
+use elp_ide::diagnostics::already_reported;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_syntax::label::Label;
@@ -195,7 +196,7 @@ pub fn attach_related_diagnostics(
                     .collect_vec();
                 diags
                     .iter()
-                    .map(|(r, d)| (r.clone(), with_related(d.clone(), related_info.clone())))
+                    .map(|(r, d)| (*r, with_related(d.clone(), related_info.clone())))
                     .collect_vec()
             } else {
                 diags.to_vec()
@@ -208,6 +209,7 @@ pub fn attach_related_diagnostics(
         .iter()
         .filter(|(k, _)| !to_remove.contains(k))
         .flat_map(|(_, v)| v)
+        .filter(|(r, _)| !already_reported(&native.syntax_error_form_ranges, r))
         .cloned();
 
     native
@@ -215,7 +217,6 @@ pub fn attach_related_diagnostics(
         .clone()
         .into_iter()
         .chain(updated)
-        .chain(erlang_service.normal.clone().into_iter())
         .chain(es)
         .map(|(_, d)| d.clone())
         .collect_vec()
@@ -407,7 +408,6 @@ mod tests {
              -spec foo() -> ok.
              foo( -> ok. %%
              %%  ^ error: Syntax Error: Missing )
-             %%        ^^ error: syntax error before: '->'
             "#,
         );
     }

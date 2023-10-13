@@ -397,6 +397,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_syntax_errors(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "syntax",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_diagnostics_syntax.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_hrl(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp",],

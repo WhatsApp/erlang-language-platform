@@ -1,5 +1,4 @@
 module specified: cascading
 Diagnostics reported in 1 modules:
-  cascading: 2
+  cascading: 1
       8:4-8:5::[Error] [P1711] Syntax Error: Missing )
-      8:5-8:7::[Error] [P1711] syntax error before: '->'

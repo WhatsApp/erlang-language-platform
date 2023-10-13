@@ -613,7 +613,7 @@ impl<D> LabeledDiagnostics<D> {
     }
 
     pub fn convert<T>(&self, convert: &dyn Fn(&D) -> T) -> LabeledDiagnostics<T> {
-        let do_convert = |(text_range, d): &(TextRange, D)| (text_range.clone(), convert(d));
+        let do_convert = |(text_range, d): &(TextRange, D)| (*text_range, convert(d));
         LabeledDiagnostics {
             syntax_error_form_ranges: self.syntax_error_form_ranges.clone(),
             normal: self.normal.iter().map(do_convert).collect_vec(),
@@ -626,16 +626,7 @@ impl<D> LabeledDiagnostics<D> {
     }
 }
 
-pub fn make_syntax_error_form_ranges(labeled: &LabeledDiagnostics<Diagnostic>) -> TextRangeSet {
-    let mut ranges: TextRangeSet = RangeSet::from_elements(vec![]);
-    labeled.iter().for_each(|d| {
-        if let Some(range) = d.form_range {
-            ranges.insert_range(to_range(&range));
-        }
-    });
-    ranges
-}
-
+/// Convert a `TextRange` into a form suitable for a `TextRangeSet`
 fn to_range(range: &TextRange) -> RangeInclusive<u32> {
     RangeInclusive::new(range.start().into(), range.end().into())
 }
@@ -660,7 +651,7 @@ pub fn diagnostics(
 
     let mut res = Vec::new();
 
-    let syntax_errors_by_function = if report_diagnostics {
+    let (syntax_errors_by_function, form_ranges) = if report_diagnostics {
         let is_erl_module = file_kind == FileKind::Module;
         let sema = Semantic::new(db);
 
@@ -707,7 +698,7 @@ pub fn diagnostics(
         let source_file = db.parse(file_id).tree();
         group_syntax_errors(&source_file, parse_diagnostics)
     } else {
-        FxHashMap::default()
+        (FxHashMap::default(), RangeSet::from_elements(vec![]))
     };
     let line_index = db.file_line_index(file_id);
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
@@ -719,7 +710,7 @@ pub fn diagnostics(
     });
 
     LabeledDiagnostics {
-        syntax_error_form_ranges: RangeSet::from_elements(vec![]),
+        syntax_error_form_ranges: form_ranges,
         normal: res.into_iter().map(|d| (d.range, d)).collect(),
         labeled: syntax_errors_by_function,
     }
@@ -734,14 +725,18 @@ fn get_form_range(syntax: &SyntaxNode, range: TextRange) -> Option<TextRange> {
 fn group_syntax_errors(
     source_file: &SourceFile,
     diagnostics: impl Iterator<Item = Diagnostic>,
-) -> Labeled<Diagnostic> {
+) -> (Labeled<Diagnostic>, TextRangeSet) {
     let mut map: Labeled<Diagnostic> = FxHashMap::default();
+    let mut ranges = RangeSet::from_elements(vec![]);
     diagnostics.for_each(|d| {
+        if let Some(range) = d.form_range {
+            ranges.insert_range(to_range(&range));
+        }
         map.entry(function_label(&d, source_file))
             .or_default()
             .push((d.range, d));
     });
-    map
+    (map, ranges)
 }
 
 fn function_label(d: &Diagnostic, source_file: &SourceFile) -> Option<Label> {
@@ -1097,7 +1092,7 @@ fn label_erlang_service_diagnostics(
                     .push((d.range, d));
             });
             (
-                file_id.clone(),
+                file_id,
                 LabeledDiagnostics {
                     syntax_error_form_ranges: RangeSet::from_elements(vec![]),
                     normal: Vec::default(),
@@ -1386,6 +1381,11 @@ pub fn attach_related_diagnostics(
     // and when done delete all `erlang_service` diagnostics with that
     // label.
 
+    // There is a many-to-many relationship between syntax errors and
+    // related info, because there can be more than one syntax error
+    // in a given function.  So we have to keep the original lookup
+    // intact, then remove ones that are used at least once at the
+    // end.
     let mut to_remove: FxHashSet<&Option<Label>> = FxHashSet::default();
     let updated = native
         .labeled
@@ -1394,40 +1394,50 @@ pub fn attach_related_diagnostics(
             if let Some(related) = erlang_service.labeled.get(label) {
                 to_remove.insert(label);
                 let related_info = related.iter().map(|(_, d)| d.as_related()).collect_vec();
-                let updated = diags
+                diags
                     .iter()
-                    .map(|(r, d)| {
-                        (
-                            r.clone(),
-                            d.clone().with_related(Some(related_info.clone())),
-                        )
-                    })
-                    .collect_vec();
-                updated
+                    .map(|(r, d)| (*r, d.clone().with_related(Some(related_info.clone()))))
+                    .collect_vec()
             } else {
                 diags.to_vec()
             }
         })
         .collect_vec();
 
-    let mut es = erlang_service.labeled.clone();
-    es.retain(|k, _v| !to_remove.contains(k));
+    let es = erlang_service
+        .labeled
+        .iter()
+        .filter(|(k, _)| !to_remove.contains(k))
+        .flat_map(|(_, v)| v)
+        .filter(|(r, _)| !already_reported(&native.syntax_error_form_ranges, r));
 
     native
         .normal
         .into_iter()
         .chain(updated)
-        .chain(erlang_service.normal.iter().cloned())
-        .chain(es.values().flatten().cloned())
+        .chain(es.cloned())
         .collect_vec()
+}
+
+/// Both ELP and the erlang_service produce syntax errors. However,
+/// the ELP grammar is deliberately more permissive, to allow
+/// analysing even slightly broken code.  This means it does not
+/// report all errors.
+/// But when ELP does report errors, they are generally more informative.
+/// We solve this problem by
+/// * recording the `TextRange` of the form containing each ELP syntax
+///   error.
+/// * Combining all of these into a `RangeSet`
+/// * Recording the originating `TextRange` of every `diagnostics::Diagnostic`
+/// * Filter out any `erlang_service` ones that are in one of the ELP form ranges.
+pub fn already_reported(syntax_error_form_ranges: &TextRangeSet, range: &TextRange) -> bool {
+    syntax_error_form_ranges.contains((*range).start().into())
 }
 
 fn erlang_service_label(diagnostic: &Diagnostic) -> Option<Label> {
     match &diagnostic.code {
         DiagnosticCode::ErlangService(s) => match s.as_str() {
-            "L1227" => {
-                function_undefined_from_message(&diagnostic.message).map(|l| Label::new_raw(l))
-            }
+            "L1227" => function_undefined_from_message(&diagnostic.message).map(Label::new_raw),
             "L1308" => spec_for_undefined_function_from_message(&diagnostic.message)
                 .map(|l| Label::new_raw(l)),
             _ => None,
@@ -1869,7 +1879,7 @@ baz(1)->4.
     }
 
     #[test]
-    fn group_related_diagnostics() {
+    fn group_related_diagnostics_1() {
         let labeled = FxHashMap::from_iter([(
             Some(Label::new_raw("foo/0")),
             vec![
@@ -1952,7 +1962,21 @@ baz(1)->4.
              -spec foo() -> ok.
              foo( -> ok. %%
              %%  ^ error: Syntax Error: Missing )
-             %%        ^^ error: syntax error before: '->'
+            "#,
+        );
+    }
+
+    #[test]
+    fn group_related_diagnostics_elp_only() {
+        // Demonstrate that ELP does not pick up a syntax error in the
+        // spec, same code as in test_projects/diagnostics/app_a/src/syntax.erl
+        check_diagnostics(
+            r#"
+             -module(main).
+
+             -spec blah(Pred :: fun ((T) -> erlang:boolean), List :: [T]) -> erlang:boolean().
+             blah(0, _Y) -> 1;
+             blah(X, _Y) -> X + 1.
             "#,
         );
     }
