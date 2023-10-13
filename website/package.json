@@ -44,5 +44,9 @@
   },
   "devDependencies": {
     "yarn-audit-fix": "^9.3.10"
+  },
+  "resolutions": {
+    "got": ">=11.8.5",
+    "trim": ">=0.0.3"
   }
 }
