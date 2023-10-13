@@ -20,6 +20,7 @@ lazy_static.workspace = true
 log.workspace = true
 profile.workspace = true
 regex.workspace = true
+range-set.workspace = true
 serde.workspace = true
 smallvec.workspace = true
 stdx.workspace = true

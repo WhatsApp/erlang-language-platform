@@ -38,6 +38,7 @@ lsp-types.workspace = true
 parking_lot.workspace = true
 pico-args.workspace = true
 profile.workspace = true
+range-set.workspace = true
 rayon.workspace = true
 regex.workspace = true
 rustyline.workspace = true

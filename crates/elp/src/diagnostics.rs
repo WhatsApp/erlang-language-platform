@@ -250,6 +250,7 @@ mod tests {
     use lsp_types::NumberOrString;
     use lsp_types::Position;
     use lsp_types::Range;
+    use range_set::RangeSet;
 
     use super::*;
     use crate::convert::ide_to_lsp_diagnostic;
@@ -366,6 +367,7 @@ mod tests {
             ],
         )]);
         let extra_diags = LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![make_diag("syntax error before: '->'", "P1711", 8, 10, 12)],
             labeled,
         };

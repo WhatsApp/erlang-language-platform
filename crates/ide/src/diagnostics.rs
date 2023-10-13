@@ -10,6 +10,7 @@
 use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::fmt;
+use std::ops::RangeInclusive;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -53,6 +54,7 @@ use hir::InFile;
 use hir::Semantic;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use range_set::RangeSet;
 use regex::Regex;
 use serde::de;
 use serde::Deserialize;
@@ -104,6 +106,10 @@ pub struct Diagnostic {
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
     pub uri: Option<String>,
+    // Used to combine syntax errors with erlang_service ones. If we
+    // have a syntax error in the range, we filter out erlang_service
+    // ones in the same range. We set it to the range of the enclosing form.
+    pub form_range: Option<TextRange>,
 }
 
 // @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
@@ -129,6 +135,7 @@ impl Diagnostic {
             fixes: None,
             related_info: None,
             uri: code.as_uri(),
+            form_range: None,
         }
     }
 
@@ -167,6 +174,11 @@ impl Diagnostic {
 
     pub(crate) fn with_fixes(mut self, fixes: Option<Vec<Assist>>) -> Diagnostic {
         self.fixes = fixes;
+        self
+    }
+
+    pub(crate) fn with_form_range(mut self, form_range: Option<TextRange>) -> Diagnostic {
+        self.form_range = form_range;
         self
     }
 
@@ -549,15 +561,29 @@ impl<'a> DiagnosticsConfig<'a> {
 
 pub type Labeled<T> = FxHashMap<Option<Label>, Vec<T>>;
 
-#[derive(Debug, Default, Clone)]
+pub type TextRangeSet = RangeSet<[RangeInclusive<u32>; 1]>;
+
+#[derive(Debug, Clone)]
 pub struct LabeledDiagnostics<D> {
+    pub syntax_error_form_ranges: TextRangeSet,
     pub normal: Vec<D>,
     pub labeled: Labeled<D>,
+}
+
+impl<D: Default> Default for LabeledDiagnostics<D> {
+    fn default() -> Self {
+        Self {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
+            normal: Default::default(),
+            labeled: Default::default(),
+        }
+    }
 }
 
 impl<D> LabeledDiagnostics<D> {
     pub fn default() -> LabeledDiagnostics<D> {
         LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
             labeled: FxHashMap::default(),
         }
@@ -565,6 +591,7 @@ impl<D> LabeledDiagnostics<D> {
 
     pub fn new(diagnostics: Vec<D>) -> LabeledDiagnostics<D> {
         LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: diagnostics,
             labeled: FxHashMap::default(),
         }
@@ -584,6 +611,7 @@ impl<D> LabeledDiagnostics<D> {
 
     pub fn convert<T>(&self, convert: &dyn Fn(&D) -> T) -> LabeledDiagnostics<T> {
         LabeledDiagnostics {
+            syntax_error_form_ranges: self.syntax_error_form_ranges.clone(),
             normal: self.normal.iter().map(convert).collect_vec(),
             labeled: FxHashMap::from_iter(
                 self.labeled
@@ -592,6 +620,20 @@ impl<D> LabeledDiagnostics<D> {
             ),
         }
     }
+}
+
+pub fn make_syntax_error_form_ranges(labeled: &LabeledDiagnostics<Diagnostic>) -> TextRangeSet {
+    let mut ranges: TextRangeSet = RangeSet::from_elements(vec![]);
+    labeled.iter().for_each(|d| {
+        if let Some(range) = d.form_range {
+            ranges.insert_range(to_range(&range));
+        }
+    });
+    ranges
+}
+
+fn to_range(range: &TextRange) -> RangeInclusive<u32> {
+    RangeInclusive::new(range.start().into(), range.end().into())
 }
 
 /// Main entry point to calculate ELP-native diagnostics for a file
@@ -656,6 +698,7 @@ pub fn diagnostics(
                 widen_range(err.range()),
                 format!("Syntax Error: {}", err),
             )
+            .with_form_range(get_form_range(&parse.syntax_node(), err.range()))
         });
         let source_file = db.parse(file_id).tree();
         group_syntax_errors(&source_file, parse_diagnostics)
@@ -672,9 +715,16 @@ pub fn diagnostics(
     });
 
     LabeledDiagnostics {
+        syntax_error_form_ranges: RangeSet::from_elements(vec![]),
         normal: res,
         labeled: syntax_errors_by_function,
     }
+}
+
+/// Get the range of the form enclosing the passed-in range, if there
+/// is one.
+fn get_form_range(syntax: &SyntaxNode, range: TextRange) -> Option<TextRange> {
+    algo::find_node_at_offset::<ast::Form>(syntax, range.start()).map(|n| n.syntax().text_range())
 }
 
 fn group_syntax_errors(
@@ -1042,6 +1092,7 @@ fn label_erlang_service_diagnostics(
             (
                 file_id.clone(),
                 LabeledDiagnostics {
+                    syntax_error_form_ranges: RangeSet::from_elements(vec![]),
                     normal: Vec::default(),
                     labeled,
                 },
@@ -1163,11 +1214,20 @@ pub fn is_implemented_in_elp(code: &DiagnosticCode, file_kind: FileKind) -> bool
             DiagnosticCode::ErlangService(s) => match s.as_str() {
                 "P1700" => true, // "head mismatch"
                 "L1201" => true, // "no module definition"
-                "P1711" => true, // Syntax error
                 _ => false,
             },
             _ => false,
         }
+    }
+}
+
+pub fn is_erlang_service_syntax_error(code: &DiagnosticCode) -> bool {
+    match code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "P1711" => true, // Syntax error
+            _ => false,
+        },
+        _ => false,
     }
 }
 
@@ -1573,13 +1633,13 @@ baz(1)->4.
         let diag2 = DiagnosticCode::ErlangService("L1201".to_string());
         let diag3 = DiagnosticCode::ErlangService("P1711".to_string());
         let diagk = DiagnosticCode::ErlangService("another diagnostic".to_string());
-        let diags = vec![diag1, diag2, diag3, diagk.clone()];
+        let diags = vec![diag1, diag2, diag3.clone(), diagk.clone()];
         assert_eq!(
             diags
                 .into_iter()
                 .filter(|d| !is_implemented_in_elp(&d, FileKind::Module))
                 .collect::<Vec<_>>(),
-            vec![diagk]
+            vec![diag3, diagk]
         );
     }
 
@@ -1810,6 +1870,7 @@ baz(1)->4.
                     related_info: None,
                     code: "L1227".into(),
                     uri: None,
+                    form_range: None,
                 },
                 Diagnostic {
                     message: "function foo/0 undefined".to_string(),
@@ -1820,6 +1881,7 @@ baz(1)->4.
                     related_info: None,
                     code: "L1227".into(),
                     uri: None,
+                    form_range: None,
                 },
                 Diagnostic {
                     message: "spec for undefined function foo/0".to_string(),
@@ -1830,10 +1892,12 @@ baz(1)->4.
                     related_info: None,
                     code: "L1308".into(),
                     uri: None,
+                    form_range: None,
                 },
             ],
         )]);
         let extra_diags = LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![Diagnostic {
                 message: "syntax error before: '->'".to_string(),
                 range: TextRange::new(106.into(), 108.into()),
@@ -1843,6 +1907,7 @@ baz(1)->4.
                 related_info: None,
                 code: "P1711".into(),
                 uri: None,
+                form_range: None,
             }],
             labeled,
         };

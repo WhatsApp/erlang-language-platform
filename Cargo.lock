@@ -361,6 +361,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pico-args",
  "profile",
+ "range-set",
  "rayon",
  "regex",
  "rustyline",
@@ -473,6 +474,7 @@ dependencies = [
  "lazy_static",
  "log",
  "profile",
+ "range-set",
  "regex",
  "serde",
  "smallvec",
@@ -1444,6 +1446,16 @@ checksum = "c069c179fcdc6a2fe24d8d18305cf085fdbd4f922c041943e203685d6a1c58fd"
 dependencies = [
  "endian-type",
  "nibble_vec",
+]
+
+[[package]]
+name = "range-set"
+version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f54e99276923acdcd64b81038d78d10dbfe89312de421aa908fa8d0182768812"
+dependencies = [
+ "num-traits",
+ "smallvec",
 ]
 
 [[package]]

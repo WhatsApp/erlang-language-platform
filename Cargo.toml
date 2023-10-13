@@ -65,6 +65,7 @@ profile = { features = [
     "jemalloc",
 ], git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
 quote = "1.0.26"
+range-set = "0.0.10"
 rayon = "1.7.0"
 regex = "1.7.3"
 rowan = "0.15.11"
