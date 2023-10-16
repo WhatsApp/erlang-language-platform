@@ -19,6 +19,7 @@ use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRootId;
+use elp_base_db::VfsPath;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ast::types::RecordType;
@@ -240,6 +241,18 @@ fn has_eqwalizer_ignore_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> b
         })
 }
 
+fn find_path_in_project(
+    db: &dyn EqwalizerDatabase,
+    project_id: ProjectId,
+    path: &VfsPath,
+) -> Option<FileId> {
+    let project = db.project_data(project_id);
+    project
+        .source_roots
+        .iter()
+        .find_map(|&source_root_id| db.source_root(source_root_id).file_for_path(path))
+}
+
 fn decl_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
@@ -251,7 +264,10 @@ fn decl_location(
     let module_file_id = module_index.file_for_module(&module)?;
     let source_root_id = db.file_source_root(module_file_id);
     let source_root = db.source_root(source_root_id);
-    let file_id = source_root.relative_path(module_file_id, file.as_str())?;
+    let decl_file_path = &source_root
+        .path_for_file(&module_file_id)?
+        .join(file.as_str())?;
+    let file_id = find_path_in_project(db, project_id, decl_file_path)?;
     let range: elp_syntax::TextRange = {
         match pos {
             Pos::LineAndColumn(lc) => {
