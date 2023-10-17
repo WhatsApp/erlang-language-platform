@@ -309,15 +309,6 @@ impl Project {
         }
     }
 
-    pub fn add_app(&mut self, app: ProjectAppData) {
-        match self.project_build_data {
-            ProjectBuildData::Otp => unimplemented!(),
-            ProjectBuildData::Rebar(ref mut rebar) => rebar.apps.push(app),
-            ProjectBuildData::Buck(_) => unimplemented!(),
-            ProjectBuildData::Static(_) => unimplemented!(),
-        }
-    }
-
     pub fn all_apps(&self) -> Vec<&ProjectAppData> {
         match &self.project_build_data {
             ProjectBuildData::Otp => self.otp.apps.iter().collect(),
@@ -408,6 +399,12 @@ impl Display for AppName {
 impl Borrow<str> for AppName {
     fn borrow(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<&str> for AppName {
+    fn from(value: &str) -> Self {
+        AppName(value.to_string())
     }
 }
 
@@ -661,7 +658,266 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+    use std::fs;
+    use std::fs::File;
+    use std::io::Write;
+
+    use tempfile::TempDir;
+    use test_fixture::Fixture;
+
     use super::*;
+    use crate::json::JsonProjectAppData;
+    use crate::no_manifest::NoManifestConfig;
+    use crate::rebar::RebarFeature;
+
+    fn gen_project(spec: &str) -> TempDir {
+        let fixtures = Fixture::parse(spec);
+        let tmp_dir = TempDir::new().unwrap();
+        for fixture in &fixtures {
+            let path = tmp_dir.path().join(&fixture.path[1..]);
+            let parent = path.parent().unwrap();
+            fs::create_dir_all(parent).unwrap();
+            let mut tmp_file = File::create(path).unwrap();
+            writeln!(tmp_file, "{}", &fixture.text).unwrap();
+        }
+        tmp_dir
+    }
+
+    #[test]
+    fn test_discover_rebar() {
+        let spec = r#"
+        //- /rebar.config
+            {checkouts_dir, ["."]}.
+            {project_app_dirs, [
+                "app_a",
+                "app_b"
+            ]}.
+            {erl_opts, [debug_info]}.
+            {deps, []}.
+            {alias, [
+                {build_info, [help]}
+            ]}.
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /app_b/src/app.erl
+        -module(app).
+        //- /app_b/include/app.hrl
+        %% comment
+        "#;
+        let dir = gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        if let Ok(Some(ProjectManifest::Rebar(config))) = manifest {
+            let features = HashSet::from_iter(vec![RebarFeature::BuildInfo]);
+            let expected_config = RebarConfig {
+                config_file: AbsPathBuf::assert(dir.path().join("rebar.config")),
+                profile: Profile("test".to_string()),
+                features,
+            };
+            assert_eq!(expected_config, config)
+        } else {
+            panic!("Expected Ok(Some(RebarManifest)), got {:?}", manifest)
+        }
+    }
+
+    #[test]
+    fn test_json() {
+        let spec = r#"
+        //- /build_info.json
+        {
+            "apps": [
+                {
+                    "name": "app_a",
+                    "dir": "app_a",
+                    "src_dirs": ["src"]
+                },
+                {
+                    "name": "app_b",
+                    "dir": "app_b",
+                    "src_dirs": ["src"],
+                    "extra_src_dirs": ["test"],
+                    "include_dirs": ["include"]
+                }
+            ]
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /app_b/src/app.erl
+        -module(app).
+        //- /app_b/include/app.hrl
+        %% comment
+        //- /app_b/test/suite.erl
+        %% test
+        "#;
+        let dir = gen_project(spec);
+        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
+        if let Ok(Some(ProjectManifest::Json(config))) = manifest {
+            let json_app_a = JsonProjectAppData {
+                name: "app_a".into(),
+                dir: "app_a".to_string(),
+                src_dirs: vec!["src".to_string()],
+                ebin: None,
+                extra_src_dirs: vec![],
+                include_dirs: vec![],
+                macros: vec![],
+            };
+            let json_app_b = JsonProjectAppData {
+                name: "app_b".into(),
+                dir: "app_b".to_string(),
+                src_dirs: vec!["src".to_string()],
+                ebin: None,
+                extra_src_dirs: vec!["test".to_string()],
+                include_dirs: vec!["include".to_string()],
+                macros: vec![],
+            };
+            let build_info_path = dir_path.join("build_info.json");
+            let expected_config = JsonConfig::new(
+                vec![json_app_a, json_app_b],
+                vec![],
+                build_info_path.clone(),
+            );
+            //discover only app_b since path was from app_b
+            assert_eq!(expected_config, config);
+            let project = Project::load(ProjectManifest::Json(config)).expect("project must be ok");
+            assert!(project.build_info_file.is_some());
+            if let ProjectBuildData::Static(build_data) = &project.project_build_data {
+                let app_a_path = dir_path.join("app_a");
+                let app_a_src = app_a_path.join("src");
+                let app_data_a = ProjectAppData {
+                    name: "app_a".into(),
+                    dir: app_a_path.clone(),
+                    ebin: None,
+                    extra_src_dirs: vec![],
+                    include_dirs: vec![],
+                    abs_src_dirs: vec![app_a_src.clone()],
+                    macros: vec![],
+                    parse_transforms: vec![],
+                    app_type: AppType::App,
+                    include_path: vec![project.otp.lib_dir.clone(), dir_path.clone(), app_a_src],
+                };
+                let app_b_path = dir_path.join("app_b");
+                let app_b_src = app_b_path.join("src");
+                let app_b_include = app_b_path.join("include");
+                let app_data_b = ProjectAppData {
+                    name: "app_b".into(),
+                    dir: app_b_path,
+                    ebin: None,
+                    extra_src_dirs: vec!["test".to_string()],
+                    include_dirs: vec![app_b_include.clone()],
+                    abs_src_dirs: vec![app_b_src.clone()],
+                    macros: vec![],
+                    parse_transforms: vec![],
+                    app_type: AppType::App,
+                    include_path: vec![
+                        project.otp.lib_dir.clone(),
+                        dir_path,
+                        app_b_include,
+                        app_b_src,
+                    ],
+                };
+                let expected_build_data = StaticProject {
+                    apps: vec![app_data_a, app_data_b],
+                    deps: vec![],
+                    config_path: build_info_path,
+                };
+                assert_eq!(&expected_build_data, build_data)
+            } else {
+                panic!(
+                    "expected staticproject got {:?}",
+                    project.project_build_data
+                )
+            }
+        } else {
+            panic!("Expected Ok(Some(NoManifest)), got {:?}", manifest)
+        }
+    }
+
+    #[test]
+    fn test_no_manifesto() {
+        let spec = r#"
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /app_b/src/app.erl
+        -module(app).
+        //- /app_b/include/app.hrl
+        %% comment
+        //- /app_b/test/suite.erl
+        %% test
+        "#;
+        let dir = gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
+        if let Ok(Some(ProjectManifest::NoManifest(config))) = manifest {
+            let path = AbsPathBuf::assert(dir.path().join("app_b"));
+            let name: AppName = "app_b".into();
+            let abs_src = AbsPathBuf::assert(dir.path().join("app_b/src"));
+            let includes = AbsPathBuf::assert(dir.path().join("app_b/include"));
+            let expected_config =
+                NoManifestConfig::new(path.clone(), name.clone(), vec![abs_src.clone()]);
+            //discover only app_b since path was from app_b
+            assert_eq!(&expected_config, &config);
+
+            let project =
+                Project::load(ProjectManifest::NoManifest(config)).expect("project must be ok");
+            assert!(project.build_info_file.is_some());
+            if let ProjectBuildData::Static(build_data) = &project.project_build_data {
+                let app_data = ProjectAppData {
+                    name,
+                    dir: path.clone(),
+                    ebin: None,
+                    extra_src_dirs: vec!["test".to_string()],
+                    include_dirs: vec![includes.clone()],
+                    abs_src_dirs: vec![abs_src.clone()],
+                    macros: vec![],
+                    parse_transforms: vec![],
+                    app_type: AppType::App,
+                    include_path: vec![
+                        project.otp.lib_dir.clone(),
+                        includes,
+                        abs_src,
+                        AbsPathBuf::assert(dir.path().to_path_buf()),
+                    ],
+                };
+                let expected_build_data = StaticProject {
+                    apps: vec![app_data],
+                    deps: vec![],
+                    config_path: path.join(".static"),
+                };
+                assert_eq!(&expected_build_data, build_data)
+            } else {
+                panic!(
+                    "expected staticproject got {:?}",
+                    project.project_build_data
+                )
+            }
+        } else {
+            panic!("Expected Ok(Some(NoManifest)), got {:?}", manifest)
+        }
+    }
+
+    #[test]
+    fn test_toml_empty() {
+        let spec = r#"
+        //- /.elp.toml
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        if let Ok(Some(ProjectManifest::Toml(toml))) = manifest {
+            let expected_config = buck::ElpConfig::new(
+                AbsPathBuf::assert(dir.path().join(".elp.toml")),
+                None,
+                EqwalizerConfig::default(),
+            );
+            assert_eq!(expected_config, toml)
+        } else {
+            panic!("Expected Ok(Some(Toml)), got {:?}", manifest)
+        }
+    }
 
     #[test]
     fn test_discover() {

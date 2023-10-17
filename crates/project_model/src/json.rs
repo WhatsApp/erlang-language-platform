@@ -85,6 +85,18 @@ impl JsonProjectAppData {
 }
 
 impl JsonConfig {
+    pub fn new(
+        apps: Vec<JsonProjectAppData>,
+        deps: Vec<JsonProjectAppData>,
+        config_path: AbsPathBuf,
+    ) -> Self {
+        Self {
+            apps,
+            deps,
+            config_path: Some(config_path),
+        }
+    }
+
     pub fn try_parse(path: &AbsPath) -> Result<JsonConfig> {
         let config_content = fs::read_to_string(&path)?;
         let mut config: JsonConfig = serde_json::from_str(&config_content)?;
@@ -96,6 +108,7 @@ impl JsonConfig {
         self.config_path.as_ref().unwrap()
     }
 }
+
 pub(crate) fn gen_app_data(
     config: &JsonConfig,
     otp_root: &AbsPath,

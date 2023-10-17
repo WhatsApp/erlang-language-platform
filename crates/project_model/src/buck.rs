@@ -69,6 +69,17 @@ pub struct ElpConfig {
 }
 
 impl ElpConfig {
+    pub fn new(
+        config_path: AbsPathBuf,
+        buck: Option<BuckConfig>,
+        eqwalizer: EqwalizerConfig,
+    ) -> Self {
+        Self {
+            config_path: Some(config_path),
+            buck,
+            eqwalizer,
+        }
+    }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
         let p = Path::new(ELP_CONFIG_FILE);
         let path = if !path.ends_with(RelPath::new_unchecked(p)) {
