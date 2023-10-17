@@ -14,7 +14,6 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::telemetry;
 use elp_project_model::otp::Otp;
-use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashSet;
 
@@ -47,27 +46,25 @@ impl ProjectLoader {
             }
             path_it = path;
         }
-        let conf = DiscoverConfig::buck();
-        let manifest = match ProjectManifest::discover_single(path, &conf) {
-            Ok(manifest) => Ok(manifest),
-            Err(buck_err) => ProjectManifest::discover_single(path, &conf.to_rebar())
-                .map_err(|rebar_err| (buck_err, rebar_err)),
-        };
+        let manifest = ProjectManifest::discover(path);
 
         match manifest {
-            Ok(manifest) => {
+            Ok(Some(manifest)) => {
                 if let Some(root) = manifest.root().parent() {
                     log::info!("Opening new project with root {:?}", &root);
                     self.project_roots.insert(root.to_path_buf());
                 }
                 Ok(Some(manifest))
             }
-            Err((buck_err, rebar_err)) => {
-                log::info!(
-                    "Couldn't open neither buck nor rebar project for path {:?}. buck err: {:?}, rebar err: {:?}",
+            Ok(None) => {
+                log::info!("Could not find a project manifest for path {:?}", path);
+                Ok(None)
+            }
+            Err(err) => {
+                log::error!(
+                    "Project discovery failed for path {:?}, error {}",
                     path,
-                    buck_err,
-                    rebar_err
+                    err
                 );
                 //cache parent path not to discover project for every file without project
                 if let Some(parent) = path.parent() {

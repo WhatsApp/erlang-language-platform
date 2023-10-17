@@ -15,7 +15,6 @@ use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck;
 use elp_project_model::otp::Otp;
-use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectManifest;
 
 use crate::args::BuildInfo;
@@ -23,10 +22,10 @@ use crate::args::BuildInfo;
 pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
-    let manifest = ProjectManifest::discover_single(&root, &DiscoverConfig::buck());
+    let manifest = ProjectManifest::discover(&root);
 
     let config = match manifest {
-        Ok(ProjectManifest::Toml(buck)) => buck,
+        Ok(Some(ProjectManifest::Toml(buck))) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
 

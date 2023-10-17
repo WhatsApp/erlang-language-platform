@@ -138,72 +138,57 @@ impl ProjectManifest {
         }
     }
 
-    fn from_manifest_file(path: &AbsPath, config: &DiscoverConfig) -> Option<ProjectManifest> {
-        if path_ends_with(path, "rebar.config") || path_ends_with(path, "rebar.config.script") {
-            match RebarConfig::from_config_path(path.to_path_buf(), config.rebar_profile.clone()) {
-                Ok(config) => Some(ProjectManifest::Rebar(config)),
-                Err(err) => {
-                    log::warn!("Failed to load rebar config for: {:?}\n{}", path, err);
-                    None
-                }
-            }
-        } else if path_ends_with(path, ".elp.toml") {
-            match buck::ElpConfig::try_parse(path) {
-                Ok(config) if config.buck.enabled => Some(ProjectManifest::Toml(config)),
-                Ok(_) => {
-                    log::info!("Found buck config at {:?} but it is disabled", path);
-                    None
-                }
-                Err(err) => {
-                    log::warn!("Failed to load buck config for: {:?}\n{}", path, err);
-                    None
-                }
-            }
-        } else {
-            log::warn!(
-                "project root must point to rebar.config or rebar.config.script: {:?}",
-                path
-            );
-            None
-        }
-    }
-
-    pub fn discover_single(path: &AbsPath, config: &DiscoverConfig) -> Result<ProjectManifest> {
-        let _timer = timeit!("discover single project");
-        let manifest = ProjectManifest::discover(path, config);
-        match manifest {
-            None => bail!("no projects. Try with --rebar"),
-            Some(it) => Ok(it),
-        }
-    }
-
-    fn discover(path: &AbsPath, config: &DiscoverConfig) -> Option<ProjectManifest> {
-        let _timer = timeit!("discover all projects");
-        return find_in_parent_dirs(path, config);
-
-        fn find_in_parent_dirs(path: &AbsPath, config: &DiscoverConfig) -> Option<ProjectManifest> {
-            let mut curr: Option<&Path> = Some(path.as_ref());
-            let ancestors = iter::from_fn(|| {
-                let next = curr.and_then(|path| path.parent());
-                mem::replace(&mut curr, next)
-            });
-
-            let mut result = ancestors.flat_map(|path| find_in_dir(path, config));
-            if config.rebar {
-                result.last()
-            } else {
-                result.next()
-            }
-        }
-
-        fn find_in_dir(path: &Path, config: &DiscoverConfig) -> Option<ProjectManifest> {
-            config
-                .manifest_files()
+    fn find_in_dir<'a>(
+        path: &'a Path,
+        manifests: &'a [&str],
+    ) -> impl Iterator<Item = AbsPathBuf> + 'a {
+        let mut curr: Option<&Path> = Some(path);
+        let ancestors = iter::from_fn(move || {
+            let next = curr.and_then(|path| path.parent());
+            mem::replace(&mut curr, next)
+        });
+        ancestors.flat_map(|path| {
+            manifests
                 .iter()
                 .map(|file| path.join(file))
                 .filter(|file| file.exists())
                 .map(AbsPathBuf::assert)
-                .find_map(|file| ProjectManifest::from_manifest_file(file.as_path(), config))
+        })
+    }
+
+    pub fn discover_rebar(
+        path: &AbsPath,
+        profile: Option<Profile>,
+    ) -> Result<Option<ProjectManifest>> {
+        let _timer = timeit!("discover rebar");
+        let path =
+            Self::find_in_dir(path.as_ref(), &vec!["rebar.config", "rebar.config.script"]).last();
+        if let Some(path) = path {
+            let rebar = RebarConfig::from_config_path(path, profile.unwrap_or_default())?;
+            Ok(Some(ProjectManifest::Rebar(rebar)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn discover_toml(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+        let _timer = timeit!("discover toml");
+        let toml_path = Self::find_in_dir(path.as_ref(), &vec![".elp.toml"]).next();
+        if let Some(path) = toml_path {
+            let toml = buck::ElpConfig::try_parse(&path)?;
+            Ok(Some(ProjectManifest::Toml(toml)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+        let _timer = timeit!("discover all projects");
+        let toml = Self::discover_toml(path)?;
+        if let Some(m) = toml {
+            Ok(Some(m))
+        } else {
+            Self::discover_rebar(path, None)
         }
     }
 }
@@ -537,10 +522,6 @@ impl Project {
     }
 }
 
-fn path_ends_with(path: &AbsPath, ending: impl AsRef<Path>) -> bool {
-    path.ends_with(paths::RelPath::new_unchecked(ending.as_ref()))
-}
-
 pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
     let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
     let stdout = String::from_utf8(output.stdout)?;
@@ -568,14 +549,13 @@ mod tests {
     #[test]
     fn test_discover() {
         let root = AbsPathBuf::assert(Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures"));
-        let conf = DiscoverConfig::rebar(None);
-        let manifest = ProjectManifest::discover_single(&root.join("nested"), &conf);
+        let manifest = ProjectManifest::discover_rebar(&root.join("nested"), None);
         match manifest {
-            Ok(ProjectManifest::Rebar(RebarConfig {
+            Ok(Some(ProjectManifest::Rebar(RebarConfig {
                 config_file: actual,
                 profile: _,
                 features: _,
-            })) => {
+            }))) => {
                 let expected = root.join("rebar.config.script");
                 assert_eq!(actual, expected);
             }

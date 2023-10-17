@@ -13,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::bail;
 use anyhow::Result;
 use crossbeam_channel::unbounded;
 use crossbeam_channel::Receiver;
@@ -46,7 +47,15 @@ pub fn load_project_at(
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert(root);
-    let manifest = ProjectManifest::discover_single(&root, &conf)?;
+    let manifest = match conf.rebar {
+        true => ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
+        false => ProjectManifest::discover(&root)?,
+    };
+    let manifest = if let Some(manifest) = manifest {
+        manifest
+    } else {
+        bail!("no projects")
+    };
 
     log::info!("Discovered project: {:?}", manifest);
     let pb = cli.spinner("Loading build info");
