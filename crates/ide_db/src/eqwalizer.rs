@@ -56,10 +56,19 @@ impl EqwalizerLoader for crate::RootDatabase {
         modules: Vec<FileId>,
     ) -> EqwalizerDiagnostics {
         let module_index = self.module_index(project_id);
-        let module_names: Vec<&str> = modules
-            .iter()
-            .map(|&f| module_index.module_for_file(f).unwrap().as_str())
-            .collect();
+        let mut module_names = vec![];
+        for module in modules {
+            match module_index.module_for_file(module) {
+                Some(f) => module_names.push(f.as_str()),
+                None => {
+                    let source_root_id = self.file_source_root(module);
+                    let source_root = self.source_root(source_root_id);
+                    let path = source_root.path_for_file(&module);
+                    log::error!("Can't find module for path: {:?}", path);
+                    continue;
+                }
+            };
+        }
         self.eqwalizer
             .typecheck(build_info_path.as_ref(), self, project_id, module_names)
     }
