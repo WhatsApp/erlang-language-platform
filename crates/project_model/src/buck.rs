@@ -63,7 +63,7 @@ pub const ELP_CONFIG_FILE: &str = ".elp.toml";
 pub struct ElpConfig {
     #[serde(skip_deserializing)]
     config_path: Option<AbsPathBuf>,
-    pub buck: BuckConfig,
+    pub buck: Option<BuckConfig>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
 }
@@ -136,13 +136,17 @@ impl BuckConfig {
     }
 
     fn make_config(path: &AbsPath, config: &mut ElpConfig) -> Result<()> {
+        let mut buck_conf = match &mut config.buck {
+            Some(conf) => conf,
+            None => return Ok(()),
+        };
         //assign any file from buck monorepo in order to find root
-        config.buck.buck_root = Some(path.parent().unwrap().to_path_buf());
+        buck_conf.buck_root = Some(path.parent().unwrap().to_path_buf());
 
-        let root = find_root(&config.buck)?;
-        config.buck.buck_root = Some(root);
+        let root = find_root(buck_conf)?;
+        buck_conf.buck_root = Some(root);
 
-        for excluded in config.buck.excluded_targets.iter_mut() {
+        for excluded in buck_conf.excluded_targets.iter_mut() {
             let pat = "/...";
             if excluded.ends_with(pat) {
                 excluded.truncate(excluded.len() - pat.len());
@@ -178,22 +182,25 @@ pub struct TargetInfo {
 pub struct BuckProject {
     pub target_info: TargetInfo,
     pub project_app_data: Vec<ProjectAppData>,
-    pub config: ElpConfig,
+    pub buck_conf: BuckConfig,
+    pub eqwalizer_conf: EqwalizerConfig,
 }
 
 impl BuckProject {
     pub fn load_from_config(
-        config: &ElpConfig,
+        buck_conf: &BuckConfig,
+        eqwalizer_conf: &EqwalizerConfig,
     ) -> Result<(BuckProject, BuildInfoFile, PathBuf), anyhow::Error> {
-        let target_info = load_buck_targets(&config.buck)?;
+        let target_info = load_buck_targets(&buck_conf)?;
         let project_app_data = targets_to_project_data(&target_info.targets);
         let otp_root = Otp::find_otp()?;
-        let build_info_term = build_info(&config.buck, &project_app_data, &otp_root);
+        let build_info_term = build_info(&buck_conf, &project_app_data, &otp_root);
         let build_info = save_build_info(build_info_term)?;
         let project = BuckProject {
             target_info,
             project_app_data,
-            config: config.clone(),
+            buck_conf: buck_conf.clone(),
+            eqwalizer_conf: eqwalizer_conf.clone(),
         };
         Ok((project, build_info, otp_root))
     }

@@ -28,11 +28,15 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
         Ok(Some(ProjectManifest::Toml(buck))) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
+    let buck = match config.buck {
+        Some(buck) => buck,
+        _ => bail!("Can't find buck root for {:?}", root),
+    };
 
-    let target_info = buck::load_buck_targets(&config.buck)?;
+    let target_info = buck::load_buck_targets(&buck)?;
     let project_app_data = buck::targets_to_project_data(&target_info.targets);
     let otp_root = Otp::find_otp()?;
-    let build_info_term = buck::build_info(&config.buck, &project_app_data, &otp_root);
+    let build_info_term = buck::build_info(&buck, &project_app_data, &otp_root);
     let writer = File::create(&args.to)?;
     build_info_term.encode(writer)?;
     Ok(())

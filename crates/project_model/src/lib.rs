@@ -330,7 +330,7 @@ impl Project {
         match &self.project_build_data {
             ProjectBuildData::Otp => Cow::Borrowed(&self.otp.lib_dir),
             ProjectBuildData::Rebar(rebar) => Cow::Borrowed(&rebar.root),
-            ProjectBuildData::Buck(buck) => buck.config.buck.source_root(),
+            ProjectBuildData::Buck(buck) => buck.buck_conf.source_root(),
             ProjectBuildData::Static(stat) => Cow::Borrowed(&stat.config_path),
         }
     }
@@ -372,7 +372,7 @@ impl Project {
 
     pub fn eqwalizer_config(&self) -> EqwalizerConfig {
         match &self.project_build_data {
-            ProjectBuildData::Buck(buck) => buck.config.eqwalizer.clone(),
+            ProjectBuildData::Buck(buck) => buck.eqwalizer_conf.clone(),
             ProjectBuildData::Otp => EqwalizerConfig::default(),
             ProjectBuildData::Rebar(_) => EqwalizerConfig::default(),
             ProjectBuildData::Static(_) => EqwalizerConfig::default(),
@@ -561,14 +561,27 @@ impl Project {
                         })?;
                 (
                     ProjectBuildData::Rebar(rebar_project),
-                    BuildInfoFile(Arc::new(loaded)),
+                    Some(BuildInfoFile(Arc::new(loaded))),
                     otp_root,
                 )
             }
-            ProjectManifest::Toml(ref config) => {
-                let (project, build_info, otp_root) = BuckProject::load_from_config(config)?;
-                (ProjectBuildData::Buck(project), build_info, otp_root)
-            }
+            ProjectManifest::Toml(ref config) => match &config.buck {
+                Some(buck) => {
+                    let (project, build_info, otp_root) =
+                        BuckProject::load_from_config(&buck, &config.eqwalizer)?;
+                    (ProjectBuildData::Buck(project), Some(build_info), otp_root)
+                }
+                None => {
+                    let otp_root = Otp::find_otp()?;
+                    let config_path = config.config_path().to_path_buf();
+                    let project = StaticProject {
+                        apps: vec![],
+                        deps: vec![],
+                        config_path,
+                    };
+                    (ProjectBuildData::Static(project), None, otp_root)
+                }
+            },
             ProjectManifest::Json(ref config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
@@ -580,7 +593,11 @@ impl Project {
                     deps,
                     config_path,
                 };
-                (ProjectBuildData::Static(project), build_info, otp_root)
+                (
+                    ProjectBuildData::Static(project),
+                    Some(build_info),
+                    otp_root,
+                )
             }
             ProjectManifest::NoManifest(ref config) => {
                 let otp_root = Otp::find_otp()?;
@@ -593,12 +610,16 @@ impl Project {
                     deps: vec![],
                     config_path,
                 };
-                (ProjectBuildData::Static(project), build_info, otp_root)
+                (
+                    ProjectBuildData::Static(project),
+                    Some(build_info),
+                    otp_root,
+                )
             }
         };
 
         Ok(Project {
-            build_info_file: Some(build_info),
+            build_info_file: build_info,
             otp: Otp::discover(otp_root),
             project_build_data: project_build_info,
         })
