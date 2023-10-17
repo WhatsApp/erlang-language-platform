@@ -572,6 +572,7 @@ dependencies = [
  "anyhow",
  "eetf",
  "elp_log",
+ "expect-test",
  "fxhash",
  "indexmap",
  "itertools",
@@ -581,6 +582,7 @@ dependencies = [
  "paths",
  "serde",
  "serde_json",
+ "stdx",
  "tempfile",
  "toml",
 ]

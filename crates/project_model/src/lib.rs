@@ -46,6 +46,7 @@ pub mod json;
 pub mod no_manifest;
 pub mod otp;
 pub mod rebar;
+pub mod test_fixture;
 
 pub struct CommandProxy<'a>(MutexGuard<'a, ()>, Command);
 

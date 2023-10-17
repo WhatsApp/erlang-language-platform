@@ -17,7 +17,7 @@
 //! Use this to test functionality local to one file.
 //!
 //! Simple Example:
-//! ```
+//! ```not_rust
 //! r#"
 //! main() ->
 //!     ok.
@@ -29,7 +29,7 @@
 //! which is also how to define multiple files in a single test fixture
 //!
 //! Example using two files in the same crate:
-//! ```
+//! ```not_rust
 //! "
 //! //- /main.erl
 //! -module(main).
@@ -43,7 +43,7 @@
 //! ```
 //!
 //! Specify OTP, and an OTP app
-//! ```
+//! ```not_rust
 //! "
 //! //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
 //! -define(COMP,3).
@@ -51,7 +51,7 @@
 //! ```
 //!
 //! Example setting up multi-app project, and OTP
-//! ```
+//! ```not_rust
 //! "
 //! //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
 //! -define(COMP,3).
@@ -71,12 +71,13 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use elp_project_model::otp::Otp;
-use elp_project_model::AppName;
-use elp_project_model::ProjectAppData;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 pub use stdx::trim_indent;
+
+use crate::otp::Otp;
+use crate::AppName;
+use crate::ProjectAppData;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {

@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
+use elp_project_model::test_fixture::Fixture;
 use elp_project_model::AppName;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
@@ -36,7 +37,6 @@ use vfs::VfsPath;
 
 use crate::change::Change;
 use crate::input::IncludeOtp;
-use crate::test_fixture::Fixture;
 use crate::FilePosition;
 use crate::FileRange;
 use crate::ProjectApps;

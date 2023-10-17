@@ -15,11 +15,11 @@ use std::sync::Arc;
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_ide_db::elp_base_db::test_fixture::trim_indent;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
+use elp_project_model::test_fixture::trim_indent;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 

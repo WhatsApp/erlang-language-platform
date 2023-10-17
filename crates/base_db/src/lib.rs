@@ -26,7 +26,6 @@ mod module_index;
 
 pub mod fixture;
 // @fb-only: mod meta_only;
-pub mod test_fixture;
 pub mod test_utils;
 pub use change::Change;
 pub use elp_project_model::AppType;

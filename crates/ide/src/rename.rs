@@ -126,7 +126,7 @@ fn find_definitions(
 #[cfg(test)]
 mod tests {
     use elp_ide_db::elp_base_db::assert_eq_text;
-    use elp_ide_db::elp_base_db::test_fixture::trim_indent;
+    use elp_project_model::test_fixture::trim_indent;
     use text_edit::TextEdit;
 
     use crate::fixture;
