@@ -202,7 +202,7 @@ impl ProjectManifest {
         }
     }
 
-    fn discover_no_manifest(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    pub fn discover_no_manifest(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover simple");
         let src_path = Self::find_in_dir(path.as_ref(), &vec!["src"]).next();
         let root_path = if let Some(src_path) = &src_path {

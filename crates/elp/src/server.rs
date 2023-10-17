@@ -9,6 +9,7 @@
 
 use std::fmt;
 use std::mem;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -57,6 +58,8 @@ use lsp_types::notification::Notification as _;
 use lsp_types::request;
 use lsp_types::request::Request as _;
 use lsp_types::Diagnostic;
+use lsp_types::FileChangeType;
+use lsp_types::FileEvent;
 use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
@@ -101,7 +104,7 @@ enum Event {
 #[derive(Debug)]
 pub enum Task {
     Response(lsp_server::Response),
-    FetchProject(Result<Project>),
+    FetchProject(Vec<Result<Project>>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
@@ -192,6 +195,7 @@ pub struct Server {
     project_loader: Arc<Mutex<ProjectLoader>>,
     eqwalizer_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
+    cache_scheduled: bool,
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
 
@@ -233,6 +237,7 @@ impl Server {
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             eqwalizer_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
+            cache_scheduled: false,
             logger,
             ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
@@ -271,6 +276,21 @@ impl Server {
                             language: None,
                             scheme: None,
                             pattern: Some("**/rebar.{config,config.script,lock}".to_string()),
+                        },
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/BUCK".to_string()),
+                        },
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/TARGETS".to_string()),
+                        },
+                        lsp_types::DocumentFilter {
+                            language: None,
+                            scheme: None,
+                            pattern: Some("**/TARGETS.v2".to_string()),
                         },
                     ]),
                 },
@@ -600,7 +620,23 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidSaveTextDocument>(|this, params| {
-                if convert::vfs_path(&params.text_document.uri).is_ok() {
+                if let Ok(path) = convert::abs_path(&params.text_document.uri) {
+                    let path_ref: &Path = path.as_ref();
+                    let file_name = path.file_stem().and_then(|name| name.to_str());
+                    let ext = path.extension().and_then(|ext| ext.to_str());
+                    let reload_project = match (file_name, ext) {
+                        (Some("BUCK"), None) => true,
+                        (Some("TARGETS"), None) => true,
+                        (Some("TARGETS"), Some("v2")) => true,
+                        (Some("rebar"), Some("config")) => true,
+                        (Some("rebar.config"), Some("script")) => true,
+                        _ => false,
+                    } && path_ref.is_file();
+
+                    if reload_project {
+                        this.reload_project(vec![path]);
+                    }
+
                     this.eqwalizer_diagnostics_requested = true;
                     this.edoc_diagnostics_requested = true;
                 }
@@ -618,8 +654,12 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidChangeWatchedFiles>(|this, params| {
+                let mut to_reload = vec![];
                 for change in params.changes {
                     if let Ok(path) = convert::abs_path(&change.uri) {
+                        if this.should_reload_project_for_path(&path, &change) {
+                            to_reload.push(path.clone());
+                        }
                         let opened = convert::vfs_path(&change.uri)
                             .map(|vfs_path| {
                                 this.open_document_versions.read().contains_key(&vfs_path)
@@ -630,6 +670,7 @@ impl Server {
                         }
                     }
                 }
+                this.reload_project(to_reload);
                 this.eqwalizer_diagnostics_requested = true;
                 this.edoc_diagnostics_requested = true;
                 Ok(())
@@ -637,6 +678,24 @@ impl Server {
             .finish();
 
         Ok(())
+    }
+
+    fn should_reload_project_for_path(&self, path: &AbsPath, change: &FileEvent) -> bool {
+        if change.typ == FileChangeType::CREATED {
+            let path_ref: &Path = path.as_ref();
+            let file_name = path.file_stem().and_then(|name| name.to_str());
+            let ext = path.extension().and_then(|ext| ext.to_str());
+            let result = match (file_name, ext) {
+                (Some("BUCK"), None) => true,
+                (Some("TARGETS"), None) => true,
+                (Some("TARGETS"), Some("v2")) => true,
+                (Some(file), Some("erl")) if file.ends_with("_SUITE") => true,
+                _ => false,
+            };
+            result && path_ref.is_file()
+        } else {
+            false
+        }
     }
 
     fn on_loader_progress(&mut self, n_total: usize, n_done: usize, config_version: u32) {
@@ -661,6 +720,7 @@ impl Server {
             self.schedule_cache();
             // Not all clients send config in the `initialize` message, request it
             self.refresh_config();
+            self.refresh_lens();
         }
     }
 
@@ -867,20 +927,28 @@ impl Server {
         }
     }
 
-    fn switch_workspaces(&mut self, project: Result<Project>) -> Result<()> {
+    fn switch_workspaces(&mut self, new_projects: Vec<Result<Project>>) -> Result<()> {
         log::info!("will switch workspaces");
 
-        let project = match project {
-            Ok(project) => project,
-            Err(err) if self.projects.len() > 0 => {
-                log::error!("ELP failed to switch workspaces: {:#}", err);
-                return Ok(());
-            }
-            Err(err) => bail!("ELP failed to switch workspaces: {:#}", err),
-        };
-
         let mut projects: Vec<Project> = self.projects.iter().cloned().collect();
-        projects.push(project);
+        for project in new_projects {
+            match project {
+                Ok(project) => {
+                    let idx = projects.iter().enumerate().find_map(|(id, p)| {
+                        if p.root() == project.root() {
+                            Some(id)
+                        } else {
+                            None
+                        }
+                    });
+                    match idx {
+                        Some(idx) => projects[idx] = project,
+                        None => projects.push(project),
+                    }
+                }
+                Err(err) => log::error!("ELP failed to switch workspaces: {:#}", err),
+            }
+        }
 
         let raw_db = self.analysis_host.raw_database_mut();
         raw_db.clear_erlang_services();
@@ -924,6 +992,10 @@ impl Server {
         self.projects = Arc::new(projects);
         self.project_loader.lock().load_completed();
         Ok(())
+    }
+
+    pub fn refresh_lens(&mut self) {
+        self.send_request::<request::CodeLensRefresh>((), |_, _| Ok(()));
     }
 
     pub fn refresh_config(&mut self) {
@@ -973,7 +1045,8 @@ impl Server {
             // Read the lint config file
             let loader = self.project_loader.clone();
             let loader = loader.lock();
-            if let Some(path) = loader.project_roots.iter().next() {
+            //TODO not correct, there is always OTP path in project roots
+            if let Some(path) = loader.project_roots.keys().next() {
                 let ppp: PathBuf = path.clone().into();
                 if let Ok(lint_config) = read_lint_config_file(&ppp, &None) {
                     log::warn!("update_configuration: read lint file: {:?}", lint_config);
@@ -1047,6 +1120,30 @@ impl Server {
             .register(request.id.clone(), (request.method.clone(), received_timer))
     }
 
+    fn reload_project(&mut self, paths: Vec<AbsPathBuf>) {
+        let loader = self.project_loader.clone();
+        if !paths.is_empty() {
+            self.project_pool.handle.spawn_with_sender({
+                move |sender| {
+                    let mut loader = loader.lock();
+                    if loader.clear(&paths) {
+                        let mut projects = vec![];
+                        for path in paths {
+                            let manifest = loader.load_manifest_if_new(&path);
+                            if let Ok(Some(manifest)) = manifest {
+                                projects.push(Project::load(manifest.clone()));
+                            }
+                        }
+                        log::info!("did reload projects");
+                        log::debug!("reloaded projects {:?}", &projects);
+
+                        sender.send(Task::FetchProject(projects)).unwrap();
+                    }
+                }
+            });
+        }
+    }
+
     fn fetch_projects_if_needed(&mut self, path: &AbsPath) {
         let path = path.to_path_buf();
         let loader = self.project_loader.clone();
@@ -1062,12 +1159,12 @@ impl Server {
                 log::info!("did fetch project");
                 log::debug!("fetched projects {:?}", project);
 
-                sender.send(Task::FetchProject(project)).unwrap();
+                sender.send(Task::FetchProject(vec![project])).unwrap();
             }
         })
     }
 
-    fn fetch_project_completed(&mut self, project: Result<Project>) -> Result<()> {
+    fn fetch_project_completed(&mut self, project: Vec<Result<Project>>) -> Result<()> {
         if let Err(err) = self.switch_workspaces(project) {
             self.show_message(lsp_types::MessageType::ERROR, err.to_string())
         }
@@ -1089,6 +1186,9 @@ impl Server {
     }
 
     fn schedule_cache(&mut self) {
+        if self.cache_scheduled {
+            return;
+        }
         let snapshot = self.snapshot();
         let spinner = self.progress.begin_spinner("Parsing codebase".to_string());
 
@@ -1115,6 +1215,7 @@ impl Server {
     fn update_cache(&mut self, spinner: Spinner, mut files: Vec<FileId>) {
         if files.is_empty() {
             spinner.end();
+            self.cache_scheduled = true;
             return;
         }
         let snapshot = self.snapshot();
@@ -1127,11 +1228,7 @@ impl Server {
                     break;
                 }
             }
-            if files.is_empty() {
-                spinner.end();
-            } else {
-                sender.send(Task::UpdateCache(spinner, files)).unwrap();
-            }
+            sender.send(Task::UpdateCache(spinner, files)).unwrap();
         });
     }
 

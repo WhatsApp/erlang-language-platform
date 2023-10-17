@@ -240,7 +240,7 @@ pub struct ProjectApps<'a> {
     /// opting out of using it, e.g. for eqWAlizer compatibility
     pub otp_project_id: Option<ProjectId>,
     // We store the original projects to we can make the AppStructure later
-    projects: Vec<Project>,
+    pub projects: Vec<Project>,
 }
 
 impl<'a> ProjectApps<'a> {

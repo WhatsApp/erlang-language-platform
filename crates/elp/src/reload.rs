@@ -14,6 +14,7 @@ use elp_ide::elp_ide_db::elp_base_db::AppType;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use lsp_types::WatchKind;
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -63,7 +64,7 @@ impl ProjectFolders {
             })
             .collect();
 
-        let watch = project_apps
+        let mut watch: Vec<_> = project_apps
             .all_apps
             .iter()
             .flat_map(|(project_id, app)| iter::repeat(project_id).zip(app.all_source_dirs()))
@@ -78,6 +79,24 @@ impl ProjectFolders {
                 }
             })
             .collect();
+
+        for project in &project_apps.projects {
+            let root = project.root();
+            watch.extend(vec![
+                lsp_types::FileSystemWatcher {
+                    glob_pattern: format!("{}/**/BUCK", root.display()),
+                    kind: Some(WatchKind::Create),
+                },
+                lsp_types::FileSystemWatcher {
+                    glob_pattern: format!("{}/**/TARGETS", root.display()),
+                    kind: Some(WatchKind::Create),
+                },
+                lsp_types::FileSystemWatcher {
+                    glob_pattern: format!("{}/**/TARGETS.v2", root.display()),
+                    kind: Some(WatchKind::Create),
+                },
+            ]);
+        }
 
         ProjectFolders {
             load,
