@@ -112,7 +112,7 @@ pub enum Task {
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
-    UpdateCache(Spinner, Vec<FileId>),
+    UpdateCache(ProgressBar, Vec<FileId>),
 }
 
 impl fmt::Debug for Event {
@@ -707,7 +707,7 @@ impl Server {
         } else if n_done == 0 {
             let pb = self
                 .progress
-                .begin_bar("Applications loaded".into(), n_total);
+                .begin_bar("Applications loaded".into(), Some(n_total));
             self.transition(Status::Loading(pb));
         } else if n_done < n_total {
             if let Status::Loading(pb) = &self.status {
@@ -1190,7 +1190,9 @@ impl Server {
             return;
         }
         let snapshot = self.snapshot();
-        let spinner = self.progress.begin_spinner("Parsing codebase".to_string());
+        let bar = self
+            .progress
+            .begin_bar("Background parsing".to_string(), None);
 
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             let mut files = vec![];
@@ -1208,27 +1210,32 @@ impl Server {
                     files.push(file_id);
                 }
             }
-            sender.send(Task::UpdateCache(spinner, files)).unwrap();
+            sender.send(Task::UpdateCache(bar, files)).unwrap();
         });
     }
 
-    fn update_cache(&mut self, spinner: Spinner, mut files: Vec<FileId>) {
+    fn update_cache(&mut self, bar: ProgressBar, mut files: Vec<FileId>) {
         if files.is_empty() {
-            spinner.end();
+            bar.end();
             self.cache_scheduled = true;
             return;
         }
         let snapshot = self.snapshot();
         self.cache_pool.handle.spawn_with_sender(move |sender| {
+            let total = files.len();
+            let mut done = 0;
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
                 if snapshot.analysis.def_map(file_id).is_err() {
                     //got canceled
                     files.push(file_id);
                     break;
+                } else {
+                    done += 1;
+                    bar.report(done, total);
                 }
             }
-            sender.send(Task::UpdateCache(spinner, files)).unwrap();
+            sender.send(Task::UpdateCache(bar, files)).unwrap();
         });
     }
 

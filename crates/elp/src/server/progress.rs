@@ -53,7 +53,7 @@ impl ProgressManager {
         Spinner::begin(self.sender.clone(), self.next_token(), title)
     }
 
-    pub fn begin_bar(&mut self, title: String, total: usize) -> ProgressBar {
+    pub fn begin_bar(&mut self, title: String, total: Option<usize>) -> ProgressBar {
         ProgressBar::begin(self.sender.clone(), self.next_token(), title, total)
     }
 
@@ -110,12 +110,12 @@ impl ProgressBar {
         sender: Sender<ProgressTask>,
         token: NumberOrString,
         title: String,
-        total: usize,
+        total: Option<usize>,
     ) -> Self {
         let msg = WorkDoneProgressBegin {
             title,
             cancellable: None,
-            message: Some(format!("0/{}", total)),
+            message: total.map(|total| format!("0/{}", total)),
             percentage: Some(0),
         };
         send_begin(&sender, token.clone(), msg);
