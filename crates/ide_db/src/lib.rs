@@ -342,3 +342,37 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
     )?);
     Some(token)
 }
+
+// ---------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::fixture::WithFixture;
+    use elp_base_db::SourceDatabase;
+    use text_edit::TextRange;
+
+    use crate::RootDatabase;
+
+    #[test]
+    fn clamp_range() {
+        let fixture = r#"
+             -mod~ule(main).
+            "#;
+        let (db, position) = RootDatabase::with_position(fixture);
+
+        debug_assert_eq!(
+            db.clamp_range(position.file_id, TextRange::new(2.into(), 2000.into())),
+            TextRange::new(2.into(), 15.into())
+        )
+    }
+
+    #[test]
+    fn clamp_offset() {
+        let fixture = r#"
+             -mod~ule(main).
+            "#;
+        let (db, position) = RootDatabase::with_position(fixture);
+
+        debug_assert_eq!(db.clamp_offset(position.file_id, 2000.into()), 15.into())
+    }
+}

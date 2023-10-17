@@ -351,6 +351,16 @@ impl Analysis {
         self.with_db(|db| db.file_kind(file_id))
     }
 
+    /// When we get a range from the client, limit it to what is in the source file
+    pub fn clamp_range(&self, file_id: FileId, range: TextRange) -> Cancellable<TextRange> {
+        self.with_db(|db| db.clamp_range(file_id, range))
+    }
+
+    /// When we get an offset from the client, limit it to what is in the source file
+    pub fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> Cancellable<TextSize> {
+        self.with_db(|db| db.clamp_offset(file_id, offset))
+    }
+
     /// Convenience function to return assists + quick fixes for diagnostics
     pub fn assists_with_fixes(
         &self,

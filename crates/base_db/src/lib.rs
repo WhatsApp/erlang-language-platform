@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use elp_project_model::AppName;
 use elp_syntax::ast::SourceFile;
+use elp_syntax::AstNode;
 use elp_syntax::Parse;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
@@ -147,6 +148,11 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
 
     fn file_kind(&self, file_id: FileId) -> FileKind;
+
+    /// When we get a range from the client, limit it to what is in the source file
+    fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange;
+
+    fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
 }
 
 fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleIndex> {
@@ -255,6 +261,26 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
             _ => FileKind::Other,
         }
     }
+}
+
+/// When we get a range from the client, limit it to what is in the source file
+fn clamp_range(db: &dyn SourceDatabase, file_id: FileId, range: TextRange) -> TextRange {
+    let source_file = db.parse(file_id).tree();
+    let file_range = source_file.syntax().text_range();
+    let start = file_range.start();
+    let end = file_range.end();
+    TextRange::new(
+        range.start().clamp(start, end),
+        range.end().clamp(start, end),
+    )
+}
+
+fn clamp_offset(db: &dyn SourceDatabase, file_id: FileId, offset: TextSize) -> TextSize {
+    let source_file = db.parse(file_id).tree();
+    let file_range = source_file.syntax().text_range();
+    let start = file_range.start();
+    let end = file_range.end();
+    offset.clamp(start, end)
 }
 
 /// We don't want to give HIR knowledge of source roots, hence we extract these
