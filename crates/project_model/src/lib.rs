@@ -20,6 +20,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use std::vec;
 
 use anyhow::bail;
 use anyhow::Context;
@@ -42,6 +43,7 @@ use crate::rebar::RebarProject;
 
 pub mod buck;
 pub mod json;
+pub mod no_manifest;
 pub mod otp;
 pub mod rebar;
 
@@ -131,6 +133,7 @@ pub enum ProjectManifest {
     Rebar(RebarConfig),
     Toml(buck::ElpConfig),
     Json(JsonConfig),
+    NoManifest(no_manifest::NoManifestConfig),
 }
 
 impl ProjectManifest {
@@ -139,6 +142,7 @@ impl ProjectManifest {
             ProjectManifest::Rebar(conf) => conf.config_path(),
             ProjectManifest::Toml(conf) => conf.config_path(),
             ProjectManifest::Json(conf) => conf.config_path(),
+            ProjectManifest::NoManifest(conf) => conf.config_path(),
         }
     }
 
@@ -197,6 +201,30 @@ impl ProjectManifest {
         }
     }
 
+    fn discover_no_manifest(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+        let _timer = timeit!("discover simple");
+        let src_path = Self::find_in_dir(path.as_ref(), &vec!["src"]).next();
+        let root_path = if let Some(src_path) = &src_path {
+            src_path.parent().map(|path| path.to_path_buf())
+        } else {
+            path.parent().map(|path| path.to_path_buf())
+        };
+        if let Some(root_path) = root_path {
+            let name = AppName(
+                root_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.to_string())
+                    .unwrap_or_else(|| "generic".to_string()),
+            );
+            let abs_src_dirs = vec![src_path.unwrap_or_else(|| root_path.clone())];
+            let no_manifest = no_manifest::NoManifestConfig::new(root_path, name, abs_src_dirs);
+            Ok(Some(ProjectManifest::NoManifest(no_manifest)))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover all projects");
         if let Some(t) = Self::discover_toml(path)? {
@@ -206,6 +234,9 @@ impl ProjectManifest {
             return Ok(Some(r));
         };
         if let Some(s) = Self::discover_static(path)? {
+            return Ok(Some(s));
+        }
+        if let Some(s) = Self::discover_no_manifest(path)? {
             return Ok(Some(s));
         }
         Ok(None)
@@ -547,6 +578,19 @@ impl Project {
                 let project = StaticProject {
                     apps,
                     deps,
+                    config_path,
+                };
+                (ProjectBuildData::Static(project), build_info, otp_root)
+            }
+            ProjectManifest::NoManifest(ref config) => {
+                let otp_root = Otp::find_otp()?;
+                let config_path = config.config_path().to_path_buf();
+                let (apps, terms) = config.to_project_app_data(AbsPath::assert(&otp_root));
+                let build_info_term = buck::make_build_info(terms, vec![], &otp_root, &config_path);
+                let build_info = buck::save_build_info(build_info_term)?;
+                let project = StaticProject {
+                    apps,
+                    deps: vec![],
                     config_path,
                 };
                 (ProjectBuildData::Static(project), build_info, otp_root)
