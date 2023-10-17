@@ -451,13 +451,13 @@ fn str_to_binary(s: &str) -> Term {
     Term::Binary(s.as_bytes().into())
 }
 
-fn path_to_binary(path: &Path) -> Term {
-    str_to_binary(path.as_os_str().to_str().unwrap())
+fn path_to_binary(path: impl AsRef<Path>) -> Term {
+    str_to_binary(path.as_ref().as_os_str().to_str().unwrap())
 }
 
-fn build_info_app(project_data: &ProjectAppData, ebin: &AbsPath) -> Term {
-    let dir = path_to_binary(project_data.dir.as_ref());
-    let ebin = path_to_binary(ebin.as_ref());
+pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> Term {
+    let dir = path_to_binary(&project_data.dir);
+    let ebin = path_to_binary(ebin);
 
     let extra_src_dirs = Term::List(
         project_data
@@ -472,7 +472,7 @@ fn build_info_app(project_data: &ProjectAppData, ebin: &AbsPath) -> Term {
         project_data
             .include_dirs
             .iter()
-            .map(|inc| path_to_binary(inc.as_ref()))
+            .map(|inc| path_to_binary(inc))
             .collect::<Vec<Term>>()
             .into(),
     );
@@ -523,13 +523,20 @@ pub fn build_info(config: &BuckConfig, project_apps: &[ProjectAppData], otp_root
             _ => {}
         };
     }
+    let path = &config.source_root();
+    make_build_info(apps, deps, otp_root, path.as_ref())
+}
 
+pub fn make_build_info(
+    apps: Vec<Term>,
+    deps: Vec<Term>,
+    otp_root: &Path,
+    source_root: impl AsRef<Path>,
+) -> Term {
     let apps = Term::List(apps.into());
     let deps = Term::List(deps.into());
     let otp_lib_dir = path_to_binary(otp_root);
-    let path = config.source_root();
-    let source_root = path_to_binary(path.as_path().as_ref());
-
+    let source_root = path_to_binary(source_root);
     Term::Map(
         vec![
             (Atom("apps".into()), apps),

@@ -88,6 +88,10 @@ impl RebarConfig {
         }
         CommandProxy(guard, cmd)
     }
+
+    pub fn config_path(&self) -> &AbsPath {
+        &self.config_file
+    }
 }
 
 fn has_build_info(config: &RebarConfig) -> bool {
