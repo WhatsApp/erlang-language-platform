@@ -26,7 +26,7 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let manifest = ProjectManifest::discover_single(&root, &DiscoverConfig::buck());
 
     let config = match manifest {
-        Ok(ProjectManifest::BuckConfig(buck)) => buck,
+        Ok(ProjectManifest::Toml(buck)) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
 

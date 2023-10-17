@@ -126,22 +126,22 @@ impl Display for DiscoverConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectManifest {
-    RebarConfig(RebarConfig),
-    BuckConfig(buck::ElpConfig),
+    Rebar(RebarConfig),
+    Toml(buck::ElpConfig),
 }
 
 impl ProjectManifest {
     pub fn root(&self) -> &AbsPath {
         match self {
-            ProjectManifest::RebarConfig(conf) => conf.config_file.as_path(),
-            ProjectManifest::BuckConfig(conf) => conf.config_path(),
+            ProjectManifest::Rebar(conf) => conf.config_file.as_path(),
+            ProjectManifest::Toml(conf) => conf.config_path(),
         }
     }
 
     fn from_manifest_file(path: &AbsPath, config: &DiscoverConfig) -> Option<ProjectManifest> {
         if path_ends_with(path, "rebar.config") || path_ends_with(path, "rebar.config.script") {
             match RebarConfig::from_config_path(path.to_path_buf(), config.rebar_profile.clone()) {
-                Ok(config) => Some(ProjectManifest::RebarConfig(config)),
+                Ok(config) => Some(ProjectManifest::Rebar(config)),
                 Err(err) => {
                     log::warn!("Failed to load rebar config for: {:?}\n{}", path, err);
                     None
@@ -149,7 +149,7 @@ impl ProjectManifest {
             }
         } else if path_ends_with(path, ".elp.toml") {
             match buck::ElpConfig::try_parse(path) {
-                Ok(config) if config.buck.enabled => Some(ProjectManifest::BuckConfig(config)),
+                Ok(config) if config.buck.enabled => Some(ProjectManifest::Toml(config)),
                 Ok(_) => {
                     log::info!("Found buck config at {:?} but it is disabled", path);
                     None
@@ -479,7 +479,7 @@ impl Project {
 
     pub fn load(manifest: ProjectManifest) -> Result<Project> {
         let (project_build_info, build_info, otp_root) = match manifest {
-            ProjectManifest::RebarConfig(ref rebar_setting) => {
+            ProjectManifest::Rebar(ref rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
                     rebar_setting.config_file.display()
@@ -511,7 +511,7 @@ impl Project {
                     otp_root,
                 )
             }
-            ProjectManifest::BuckConfig(ref config) => {
+            ProjectManifest::Toml(ref config) => {
                 let (project, build_info, otp_root) = BuckProject::load_from_config(config)?;
                 (ProjectBuildData::Buck(project), build_info, otp_root)
             }
@@ -571,7 +571,7 @@ mod tests {
         let conf = DiscoverConfig::rebar(None);
         let manifest = ProjectManifest::discover_single(&root.join("nested"), &conf);
         match manifest {
-            Ok(ProjectManifest::RebarConfig(RebarConfig {
+            Ok(ProjectManifest::Rebar(RebarConfig {
                 config_file: actual,
                 profile: _,
                 features: _,
