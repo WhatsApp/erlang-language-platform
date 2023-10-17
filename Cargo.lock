@@ -573,6 +573,7 @@ dependencies = [
  "eetf",
  "elp_log",
  "fxhash",
+ "indexmap",
  "itertools",
  "lazy_static",
  "log",

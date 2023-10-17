@@ -34,12 +34,14 @@ use tempfile::NamedTempFile;
 use tempfile::TempPath;
 
 use crate::buck::BuckProject;
+use crate::json::JsonConfig;
 use crate::otp::Otp;
 use crate::rebar::Profile;
 use crate::rebar::RebarConfig;
 use crate::rebar::RebarProject;
 
 pub mod buck;
+pub mod json;
 pub mod otp;
 pub mod rebar;
 
@@ -128,13 +130,15 @@ impl Display for DiscoverConfig {
 pub enum ProjectManifest {
     Rebar(RebarConfig),
     Toml(buck::ElpConfig),
+    Json(JsonConfig),
 }
 
 impl ProjectManifest {
     pub fn root(&self) -> &AbsPath {
         match self {
-            ProjectManifest::Rebar(conf) => conf.config_file.as_path(),
+            ProjectManifest::Rebar(conf) => conf.config_path(),
             ProjectManifest::Toml(conf) => conf.config_path(),
+            ProjectManifest::Json(conf) => conf.config_path(),
         }
     }
 
@@ -182,14 +186,29 @@ impl ProjectManifest {
         }
     }
 
+    fn discover_static(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+        let _timer = timeit!("discover static");
+        let json_path = Self::find_in_dir(path.as_ref(), &vec!["build_info.json"]).next();
+        if let Some(path) = json_path {
+            let json = json::JsonConfig::try_parse(&path)?;
+            Ok(Some(ProjectManifest::Json(json)))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover all projects");
-        let toml = Self::discover_toml(path)?;
-        if let Some(m) = toml {
-            Ok(Some(m))
-        } else {
-            Self::discover_rebar(path, None)
+        if let Some(t) = Self::discover_toml(path)? {
+            return Ok(Some(t));
+        };
+        if let Some(r) = Self::discover_rebar(path, None)? {
+            return Ok(Some(r));
+        };
+        if let Some(s) = Self::discover_static(path)? {
+            return Ok(Some(s));
         }
+        Ok(None)
     }
 }
 
@@ -198,6 +217,14 @@ pub enum ProjectBuildData {
     Otp,
     Rebar(RebarProject),
     Buck(BuckProject),
+    Static(StaticProject),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StaticProject {
+    pub apps: Vec<ProjectAppData>,
+    pub deps: Vec<ProjectAppData>,
+    pub config_path: AbsPathBuf,
 }
 
 #[derive(Clone)]
@@ -255,6 +282,7 @@ impl Project {
             ProjectBuildData::Otp => unimplemented!(),
             ProjectBuildData::Rebar(ref mut rebar) => rebar.apps.push(app),
             ProjectBuildData::Buck(_) => unimplemented!(),
+            ProjectBuildData::Static(_) => unimplemented!(),
         }
     }
 
@@ -263,6 +291,7 @@ impl Project {
             ProjectBuildData::Otp => self.otp.apps.iter().collect(),
             ProjectBuildData::Rebar(rebar) => rebar.apps.iter().chain(rebar.deps.iter()).collect(),
             ProjectBuildData::Buck(buck) => buck.project_app_data.iter().collect(),
+            ProjectBuildData::Static(stat) => stat.apps.iter().chain(stat.deps.iter()).collect(),
         }
     }
 
@@ -271,6 +300,7 @@ impl Project {
             ProjectBuildData::Otp => Cow::Borrowed(&self.otp.lib_dir),
             ProjectBuildData::Rebar(rebar) => Cow::Borrowed(&rebar.root),
             ProjectBuildData::Buck(buck) => buck.config.buck.source_root(),
+            ProjectBuildData::Static(stat) => Cow::Borrowed(&stat.config_path),
         }
     }
 
@@ -300,6 +330,12 @@ impl Project {
                 .flat_map(|target| &target.ebin)
                 .cloned()
                 .collect(),
+            ProjectBuildData::Static(stat) => stat
+                .deps
+                .iter()
+                .flat_map(|app| &app.ebin)
+                .cloned()
+                .collect(),
         }
     }
 
@@ -308,6 +344,7 @@ impl Project {
             ProjectBuildData::Buck(buck) => buck.config.eqwalizer.clone(),
             ProjectBuildData::Otp => EqwalizerConfig::default(),
             ProjectBuildData::Rebar(_) => EqwalizerConfig::default(),
+            ProjectBuildData::Static(_) => EqwalizerConfig::default(),
         }
     }
 }
@@ -459,6 +496,7 @@ impl Project {
                 Ok(())
             }
             ProjectBuildData::Buck(_) => Ok(()),
+            ProjectBuildData::Static(_) => Ok(()),
         }
     }
 
@@ -499,6 +537,19 @@ impl Project {
             ProjectManifest::Toml(ref config) => {
                 let (project, build_info, otp_root) = BuckProject::load_from_config(config)?;
                 (ProjectBuildData::Buck(project), build_info, otp_root)
+            }
+            ProjectManifest::Json(ref config) => {
+                let otp_root = Otp::find_otp()?;
+                let config_path = config.config_path().to_path_buf();
+                let (apps, deps, terms) = json::gen_app_data(config, AbsPath::assert(&otp_root));
+                let build_info_term = buck::make_build_info(terms, vec![], &otp_root, &config_path);
+                let build_info = buck::save_build_info(build_info_term)?;
+                let project = StaticProject {
+                    apps,
+                    deps,
+                    config_path,
+                };
+                (ProjectBuildData::Static(project), build_info, otp_root)
             }
         };
 
