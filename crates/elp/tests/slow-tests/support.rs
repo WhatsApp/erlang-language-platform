@@ -406,7 +406,7 @@ impl Drop for TestServer {
 struct Timeout;
 
 fn recv_timeout(receiver: &Receiver<Message>) -> Result<Option<Message>, Timeout> {
-    let timeout = Duration::from_secs(30);
+    let timeout = Duration::from_secs(60);
     select! {
         recv(receiver) -> msg => Ok(msg.ok()),
         recv(after(timeout)) -> _ => Err(Timeout),
