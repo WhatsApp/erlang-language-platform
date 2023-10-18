@@ -3,6 +3,10 @@ name = "elp_project_model"
 edition.workspace = true
 version.workspace = true
 
+[features]
+default = ["buck"]
+buck = []
+
 [dependencies]
 elp_log.workspace = true
 

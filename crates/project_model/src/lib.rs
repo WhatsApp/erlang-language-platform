@@ -228,12 +228,14 @@ impl ProjectManifest {
 
     pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover all projects");
-        if let Some(t) = Self::discover_toml(path)? {
-            return Ok(Some(t));
-        };
+        if cfg!(feature = "buck") {
+            if let Some(t) = Self::discover_toml(path)? {
+                return Ok(Some(t));
+            }
+        }
         if let Some(r) = Self::discover_rebar(path, None)? {
             return Ok(Some(r));
-        };
+        }
         if let Some(s) = Self::discover_static(path)? {
             return Ok(Some(s));
         }
