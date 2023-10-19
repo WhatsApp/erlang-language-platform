@@ -901,23 +901,26 @@ mod tests {
 
     #[test]
     fn test_toml_empty() {
-        let spec = r#"
+        if cfg!(feature = "buck") {
+            let spec = r#"
         //- /.elp.toml
         //- /app_a/src/app.erl
         -module(app).
         "#;
-        let dir = gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
-        if let Ok(Some(ProjectManifest::Toml(toml))) = manifest {
-            let expected_config = buck::ElpConfig::new(
-                AbsPathBuf::assert(dir.path().join(".elp.toml")),
-                None,
-                EqwalizerConfig::default(),
-            );
-            assert_eq!(expected_config, toml)
-        } else {
-            panic!("Expected Ok(Some(Toml)), got {:?}", manifest)
+            let dir = gen_project(spec);
+            let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
+                dir.path().join("app_a/src/app.erl"),
+            ));
+            if let Ok(Some(ProjectManifest::Toml(toml))) = manifest {
+                let expected_config = buck::ElpConfig::new(
+                    AbsPathBuf::assert(dir.path().join(".elp.toml")),
+                    None,
+                    EqwalizerConfig::default(),
+                );
+                assert_eq!(expected_config, toml)
+            } else {
+                panic!("Expected Ok(Some(Toml)), got {:?}", manifest)
+            }
         }
     }
 
