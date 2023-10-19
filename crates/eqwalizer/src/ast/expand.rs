@@ -52,6 +52,7 @@ use super::form::InvalidTypeDecl;
 use super::form::TypeDecl;
 use super::invalid_diagnostics::BadMapKey;
 use super::invalid_diagnostics::Invalid;
+use super::invalid_diagnostics::NonExportedId;
 use super::invalid_diagnostics::RecursiveConstraint;
 use super::invalid_diagnostics::RepeatedTyVarInTyDecl;
 use super::invalid_diagnostics::TyVarWithMultipleConstraints;
@@ -291,8 +292,18 @@ impl Expander<'_> {
                     .type_ids(self.project_id, ModuleName::new(ty.id.module.as_str()))
                     .map(|ids| ids.contains(&local_id))
                     .unwrap_or(false);
+                let is_exported = self
+                    .db
+                    .exported_type_ids(self.project_id, ModuleName::new(ty.id.module.as_str()))
+                    .map(|ids| ids.contains(&local_id))
+                    .unwrap_or(false);
                 if !is_defined {
                     Err(Invalid::UnknownId(UnknownId {
+                        location: ty.location,
+                        id: ty.id,
+                    }))
+                } else if ty.id.module != self.module && !is_exported {
+                    Err(Invalid::NonExportedId(NonExportedId {
                         location: ty.location,
                         id: ty.id,
                     }))

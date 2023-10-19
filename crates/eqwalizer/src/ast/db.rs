@@ -60,6 +60,11 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<FxHashSet<Id>>, Error>;
+    fn exported_type_ids(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+    ) -> Result<Arc<FxHashSet<Id>>, Error>;
 
     fn expanded_stub(
         &self,
@@ -184,6 +189,15 @@ fn type_ids(
 ) -> Result<Arc<FxHashSet<Id>>, Error> {
     db.converted_stub(project_id, module)
         .map(|ast| Arc::new(super::type_ids(&ast)))
+}
+
+fn exported_type_ids(
+    db: &dyn EqwalizerASTDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+) -> Result<Arc<FxHashSet<Id>>, Error> {
+    db.converted_stub(project_id, module)
+        .map(|ast| Arc::new(super::exported_type_ids(&ast)))
 }
 
 fn expanded_stub(

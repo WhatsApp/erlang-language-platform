@@ -16,6 +16,7 @@ use crate::ast;
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum Invalid {
     UnknownId(UnknownId),
+    NonExportedId(NonExportedId),
     RecursiveConstraint(RecursiveConstraint),
     TyVarWithMultipleConstraints(TyVarWithMultipleConstraints),
     TypeVarInRecordField(TypeVarInRecordField),
@@ -29,6 +30,12 @@ pub enum Invalid {
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnknownId {
+    pub location: ast::Pos,
+    pub id: ast::RemoteId,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct NonExportedId {
     pub location: ast::Pos,
     pub id: ast::RemoteId,
 }

@@ -351,6 +351,15 @@ pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
         .collect()
 }
 
+pub fn exported_type_ids(ast: &AST) -> FxHashSet<Id> {
+    ast.iter()
+        .flat_map(|form| match form {
+            ExternalForm::ExportType(tys) => tys.types.clone(),
+            _ => vec![],
+        })
+        .collect()
+}
+
 pub fn to_bytes(ast: &AST) -> Vec<u8> {
     serde_json::to_vec(ast).unwrap()
 }
