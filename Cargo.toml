@@ -83,7 +83,7 @@ stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" 
 strsim = { version = "0.10.0" }
 strum = "0.25.0"
 strum_macros = "0.25.0"
-tempfile = "3.5.0"
+tempfile = "3.8.0"
 test-case = "2.2.2"
 text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
 text-size = "1.1.0"
