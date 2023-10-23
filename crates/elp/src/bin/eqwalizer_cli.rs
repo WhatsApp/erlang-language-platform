@@ -387,6 +387,12 @@ fn eqwalize(
                 )?;
                 // The cached parse errors must be non-empty otherwise we wouldn't have `NoAst`
                 assert!(!parse_diagnostics.is_empty());
+                let parse_diagnostics: Vec<_> = parse_diagnostics
+                    .into_iter()
+                    .sorted_by(|d1, d2| {
+                        Ord::cmp(&d1.range.map(|r| r.start()), &d2.range.map(|r| r.start()))
+                    })
+                    .collect();
                 reporter.write_parse_diagnostics(&parse_diagnostics)?;
                 Ok(())
             } else {
