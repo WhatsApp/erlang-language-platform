@@ -40,6 +40,7 @@ use crate::DefineDef;
 use crate::File;
 use crate::FormIdx;
 use crate::FunctionDef;
+use crate::FunctionId;
 use crate::InFile;
 use crate::MacroName;
 use crate::Name;
@@ -66,6 +67,7 @@ pub struct DefMap {
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
     pub parse_transform: bool,
+    function_by_function_id: FxHashMap<FunctionId, FunctionDef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -122,18 +124,20 @@ impl DefMap {
             match form {
                 FormIdx::Function(idx) => {
                     let function = form_list[idx].clone();
-                    def_map.functions.insert(
-                        function.name.clone(),
-                        FunctionDef {
-                            file,
-                            exported: false,
-                            deprecated: false,
-                            deprecated_desc: None,
-                            module: module.clone(),
-                            function,
-                            function_id: idx,
-                        },
-                    );
+                    let fun_name = &function.name.clone();
+                    let function_def = FunctionDef {
+                        file,
+                        exported: false,
+                        deprecated: false,
+                        deprecated_desc: None,
+                        module: module.clone(),
+                        function,
+                        function_id: idx,
+                    };
+                    def_map
+                        .functions
+                        .insert(fun_name.clone(), function_def.clone());
+                    def_map.function_by_function_id.insert(idx, function_def);
                 }
                 FormIdx::Export(idx) => {
                     for export_id in form_list[idx].entries.clone() {
@@ -544,6 +548,7 @@ impl DefMap {
             export_all: _,
             parse_transform: _,
             optional_callbacks,
+            function_by_function_id: function_by_form_id,
         } = self;
 
         included.shrink_to_fit();
@@ -558,6 +563,7 @@ impl DefMap {
         callbacks.shrink_to_fit();
         macros.shrink_to_fit();
         deprecated.shrink_to_fit();
+        function_by_form_id.shrink_to_fit();
     }
 }
 
@@ -582,7 +588,35 @@ mod tests {
                 format!(
                     "fun {} exported: {}",
                     def.function.name,
-                    def.exported && def_map.exported_functions.contains(&def.function.name)
+                    def.exported && def_map.exported_functions.contains(&def.function.name),
+                )
+            })
+            .chain(def_map.types.values().map(|def| match &def.type_alias {
+                TypeAlias::Regular { name, .. } => {
+                    format!("-type {} exported: {}", name, def.exported)
+                }
+                TypeAlias::Opaque { name, .. } => {
+                    format!("-opaque {} exported: {}", name, def.exported)
+                }
+            }))
+            .collect::<Vec<_>>()
+            .join("\n");
+        resolved.push('\n');
+        expect.assert_eq(&resolved);
+    }
+
+    fn check_functions_by_id(fixture: &str, expect: Expect) {
+        let (db, files) = TestDB::with_many_files(fixture);
+        let file_id = files[0];
+        let def_map = db.def_map(file_id);
+        let mut resolved = def_map
+            .function_by_function_id
+            .values()
+            .map(|def| {
+                format!(
+                    "fun {} exported: {}",
+                    def.function.name,
+                    def.exported && def_map.exported_functions.contains(&def.function.name),
                 )
             })
             .chain(def_map.types.values().map(|def| match &def.type_alias {
@@ -782,6 +816,37 @@ bar() -> ok.
             expect![[r#"
                 callback optional/0 optional: false
                 callback init/1 optional: true
+            "#]],
+        )
+    }
+
+    #[test]
+    fn multiple_mfas() {
+        check_functions(
+            r#"
+foo(A,B,C) -> {A,B,C}.
+bar() -> ok.
+foo(X,Y, Z) -> ok.
+"#,
+            expect![[r#"
+                fun foo/3 exported: false
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn multiple_mfas_by_id() {
+        check_functions_by_id(
+            r#"
+foo(A,B,C) -> {A,B,C}.
+bar() -> ok.
+foo(X,Y, Z) -> ok.
+"#,
+            expect![[r#"
+                fun foo/3 exported: false
+                fun bar/0 exported: false
+                fun foo/3 exported: false
             "#]],
         )
     }
