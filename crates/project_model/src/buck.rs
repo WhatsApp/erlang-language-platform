@@ -147,7 +147,7 @@ impl BuckConfig {
     }
 
     fn make_config(path: &AbsPath, config: &mut ElpConfig) -> Result<()> {
-        let mut buck_conf = match &mut config.buck {
+        let buck_conf = match &mut config.buck {
             Some(conf) => conf,
             None => return Ok(()),
         };
@@ -167,20 +167,20 @@ impl BuckConfig {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Ord,
-    PartialOrd,
-    Deserialize,
-    Default
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
 pub struct EqwalizerConfig {
-    #[serde(default)]
+    #[serde(default = "eqwalizer_enable_all_default")]
     pub enable_all: bool,
+}
+
+fn eqwalizer_enable_all_default() -> bool {
+    true
+}
+
+impl Default for EqwalizerConfig {
+    fn default() -> Self {
+        Self { enable_all: true }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]

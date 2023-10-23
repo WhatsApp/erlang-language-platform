@@ -229,4 +229,14 @@ Context expected type: 'error'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-18 ERRORS
+error: incompatible_types
+   ┌─ app_b/src/app_b.erl:16:5
+   │
+16 │     L.
+   │     ^ L.
+Expression has type:   [T]
+Context expected type: T
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+19 ERRORS

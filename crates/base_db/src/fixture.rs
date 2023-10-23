@@ -935,7 +935,7 @@ bar() -> ?FOO.
                                 },
                             },
                             eqwalizer_config: EqwalizerConfig {
-                                enable_all: false,
+                                enable_all: true,
                             },
                         },
                         ProjectId(
@@ -967,7 +967,7 @@ bar() -> ?FOO.
                                 },
                             },
                             eqwalizer_config: EqwalizerConfig {
-                                enable_all: false,
+                                enable_all: true,
                             },
                         },
                     },
@@ -1082,7 +1082,7 @@ foo() -> ?BAR.
                                 },
                             },
                             eqwalizer_config: EqwalizerConfig {
-                                enable_all: false,
+                                enable_all: true,
                             },
                         },
                         ProjectId(
@@ -1104,7 +1104,7 @@ foo() -> ?BAR.
                                 app_map: {},
                             },
                             eqwalizer_config: EqwalizerConfig {
-                                enable_all: false,
+                                enable_all: true,
                             },
                         },
                     },
