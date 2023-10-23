@@ -21,7 +21,7 @@ terms of the Apache-2.0 and MIT licences.  See [LICENCE-APACHE](./LICENCE-APACHE
 
 ### VS Code
 
-Coming soon.
+An ELP extension is [available via the VS Code marketplace](https://marketplace.visualstudio.com/items?itemName=erlang-language-platform.erlang-language-platform).
 
 ### Emacs
 1. Download the appropriate elp executable from https://github.com/WhatsApp/erlang-language-platform/releases, and make sure it is on your `$PATH`.
