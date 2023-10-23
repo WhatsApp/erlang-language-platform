@@ -114,7 +114,20 @@ pub struct EqwalizerDiagnostic {
 impl EqwalizerDiagnostics {
     pub fn combine(mut self, other: Self) -> Self {
         match &mut self {
-            EqwalizerDiagnostics::NoAst { .. } => self,
+            EqwalizerDiagnostics::NoAst {
+                module: self_module,
+            } => match &other {
+                EqwalizerDiagnostics::NoAst {
+                    module: other_module,
+                } => {
+                    if other_module > self_module {
+                        self
+                    } else {
+                        other
+                    }
+                }
+                _ => self,
+            },
             EqwalizerDiagnostics::Error(_) => self,
             EqwalizerDiagnostics::Diagnostics { errors, type_info } => match other {
                 EqwalizerDiagnostics::Diagnostics {
