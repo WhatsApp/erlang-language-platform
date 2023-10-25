@@ -17,7 +17,9 @@ use la_arena::Idx;
 use crate::sema;
 use crate::Atom;
 use crate::Body;
+use crate::DefineId;
 use crate::FunctionDef;
+use crate::InFile;
 use crate::InFunctionBody;
 use crate::RecordFieldId;
 use crate::Semantic;
@@ -137,6 +139,7 @@ pub enum Expr {
         // function arguments.
         expansion: ExprId,
         args: Vec<ExprId>,
+        macro_def: Option<InFile<DefineId>>,
     },
     Call {
         target: CallTarget<ExprId>,
@@ -421,6 +424,7 @@ pub enum Pat {
         // function arguments.
         expansion: PatId,
         args: Vec<ExprId>,
+        macro_def: Option<InFile<DefineId>>,
     },
 }
 
@@ -493,6 +497,7 @@ pub enum Term {
         // function arguments.
         expansion: TermId,
         args: Vec<ExprId>,
+        macro_def: Option<InFile<DefineId>>,
     },
 }
 
@@ -546,6 +551,7 @@ pub enum TypeExpr {
         // function arguments.
         expansion: TypeExprId,
         args: Vec<ExprId>,
+        macro_def: Option<InFile<DefineId>>,
     },
 }
 

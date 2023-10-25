@@ -90,9 +90,9 @@ pub struct Ctx<'a> {
 #[derive(Debug)]
 enum MacroReplacement {
     BuiltIn(BuiltInMacro),
-    Ast(ast::MacroDefReplacement),
+    Ast(InFile<DefineId>, ast::MacroDefReplacement),
     BuiltInArgs(BuiltInMacro, MacroCallArgs),
-    AstArgs(ast::MacroDefReplacement, MacroCallArgs),
+    AstArgs(InFile<DefineId>, ast::MacroDefReplacement, MacroCallArgs),
 }
 
 impl<'a> Ctx<'a> {
@@ -283,15 +283,16 @@ impl<'a> Ctx<'a> {
                     self.resolve_macro(&call, |this, _source, replacement| {
                         match replacement {
                             MacroReplacement::Ast(
+                                _defidx,
                                 ast::MacroDefReplacement::ReplacementFunctionClauses(clauses),
                             ) => clauses
                                 .clauses()
                                 .flat_map(|clause| this.lower_clause_or_macro(clause))
                                 .collect(),
                             // no built-in macro makes sense in this place
-                            MacroReplacement::Ast(_) | MacroReplacement::BuiltIn(_) => vec![],
+                            MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],
                             // args make no sense here
-                            MacroReplacement::AstArgs(_, _)
+                            MacroReplacement::AstArgs(_, _, _)
                             | MacroReplacement::BuiltInArgs(_, _) => vec![],
                         }
                     })
@@ -582,27 +583,34 @@ impl<'a> Ctx<'a> {
                         .map(|literal| {
                             let pat_id = this.alloc_pat(Pat::Literal(literal), Some(expr));
                             this.record_pat_source(pat_id, source);
-                            pat_id
+                            (None, pat_id)
                         }),
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(macro_expr)) => {
+                    MacroReplacement::Ast(def_idx,ast::MacroDefReplacement::Expr(macro_expr)) => {
                         let pat_id = this.lower_pat(&macro_expr);
                         this.record_pat_source(pat_id, source);
-                        Some(pat_id)
+                        Some((Some(def_idx), pat_id))
                     }
-                    MacroReplacement::Ast(_)
+                    MacroReplacement::Ast(_,_)
                     // calls are not allowed in patterns
                     | MacroReplacement::BuiltInArgs(_, _)
-                    | MacroReplacement::AstArgs(_, _) => None,
+                    | MacroReplacement::AstArgs(_,_, _) => None,
                 })
                 .flatten()
-                .map(|expansion| {
+                .map(|(macro_def, expansion)| {
                     let args = call
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_pat(
+                        Pat::MacroCall {
+                            expansion,
+                            args,
+                            macro_def,
+                        },
+                        Some(expr),
+                    )
                 })
                 .unwrap_or_else(|| {
                     let expansion = self.alloc_pat(Pat::Missing, Some(expr));
@@ -612,7 +620,14 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_pat(Pat::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_pat(
+                        Pat::MacroCall {
+                            expansion,
+                            args,
+                            macro_def: None,
+                        },
+                        Some(expr),
+                    )
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_pat(Pat::Missing, Some(expr)),
             ExprMax::MapComprehension(map_comp) => {
@@ -895,12 +910,14 @@ impl<'a> Ctx<'a> {
                             CallTarget::Local { name }
                         })
                     }
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(expr)) => {
+                    MacroReplacement::Ast(_defidx, ast::MacroDefReplacement::Expr(expr)) => {
                         Some(this.lower_call_target(Some(expr)))
                     }
-                    MacroReplacement::Ast(_) => None,
+                    MacroReplacement::Ast(_, _) => None,
                     // This would mean double parens in the call - invalid
-                    MacroReplacement::BuiltInArgs(_, _) | MacroReplacement::AstArgs(_, _) => None,
+                    MacroReplacement::BuiltInArgs(_, _) | MacroReplacement::AstArgs(_, _, _) => {
+                        None
+                    }
                 })
                 .flatten()
                 .unwrap_or_else(|| {
@@ -1068,15 +1085,15 @@ impl<'a> Ctx<'a> {
                         this.lower_built_in_macro(built_in).map(|literal| {
                             let expr_id = this.alloc_expr(Expr::Literal(literal), None);
                             this.record_expr_source(expr_id, source);
-                            expr_id
+                            (None, expr_id)
                         })
                     }
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(macro_expr)) => {
+                    MacroReplacement::Ast(def_idx, ast::MacroDefReplacement::Expr(macro_expr)) => {
                         let expr_id = this.lower_expr(&macro_expr);
                         this.record_expr_source(expr_id, source);
-                        Some(expr_id)
+                        Some((Some(def_idx), expr_id))
                     }
-                    MacroReplacement::Ast(_) => None,
+                    MacroReplacement::Ast(_, _) => None,
                     MacroReplacement::BuiltInArgs(built_in, args) => {
                         let name = this
                             .lower_built_in_macro(built_in)
@@ -1089,9 +1106,10 @@ impl<'a> Ctx<'a> {
                             .collect();
                         let expr_id = this.alloc_expr(Expr::Call { target, args }, None);
                         this.record_expr_source(expr_id, source);
-                        Some(expr_id)
+                        Some((None, expr_id))
                     }
                     MacroReplacement::AstArgs(
+                        def_idx,
                         ast::MacroDefReplacement::Expr(replacement),
                         args,
                     ) => {
@@ -1102,19 +1120,26 @@ impl<'a> Ctx<'a> {
                             .collect();
                         let expr_id = this.alloc_expr(Expr::Call { target, args }, None);
                         this.record_expr_source(expr_id, source);
-                        Some(expr_id)
+                        Some((Some(def_idx), expr_id))
                     }
-                    MacroReplacement::AstArgs(_, _) => None,
+                    MacroReplacement::AstArgs(_, _, _) => None,
                 })
                 .flatten()
-                .map(|expansion| {
+                .map(|(macro_def, expansion)| {
                     let args = call
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_expr(
+                        Expr::MacroCall {
+                            expansion,
+                            args,
+                            macro_def,
+                        },
+                        Some(expr),
+                    )
                 })
                 .unwrap_or_else(|| {
                     let expansion = self.alloc_expr(Expr::Missing, Some(expr));
@@ -1124,7 +1149,14 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_expr(Expr::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_expr(
+                        Expr::MacroCall {
+                            expansion,
+                            args,
+                            macro_def: None,
+                        },
+                        Some(expr),
+                    )
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_expr(Expr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
@@ -1339,15 +1371,16 @@ impl<'a> Ctx<'a> {
                     self.resolve_macro(&call, |this, _source, replacement| {
                         match replacement {
                             MacroReplacement::Ast(
+                                _defidx,
                                 ast::MacroDefReplacement::ReplacementCrClauses(clauses),
                             ) => clauses
                                 .clauses()
                                 .flat_map(|clause| this.lower_cr_clause(clause))
                                 .collect(),
                             // no built-in macro makes sense in this place
-                            MacroReplacement::Ast(_) | MacroReplacement::BuiltIn(_) => vec![],
+                            MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],
                             // args make no sense here
-                            MacroReplacement::AstArgs(_, _)
+                            MacroReplacement::AstArgs(_, _, _)
                             | MacroReplacement::BuiltInArgs(_, _) => vec![],
                         }
                     })
@@ -1570,12 +1603,14 @@ impl<'a> Ctx<'a> {
                             CallTarget::Local { name }
                         })
                     }
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(expr)) => {
+                    MacroReplacement::Ast(_, ast::MacroDefReplacement::Expr(expr)) => {
                         Some(this.lower_type_call_target(Some(expr)))
                     }
-                    MacroReplacement::Ast(_) => None,
+                    MacroReplacement::Ast(_, _) => None,
                     // This would mean double parens in the call - invalid
-                    MacroReplacement::BuiltInArgs(_, _) | MacroReplacement::AstArgs(_, _) => None,
+                    MacroReplacement::BuiltInArgs(_, _) | MacroReplacement::AstArgs(_, _, _) => {
+                        None
+                    }
                 })
                 .flatten()
                 .unwrap_or_else(|| {
@@ -1670,15 +1705,15 @@ impl<'a> Ctx<'a> {
                         this.lower_built_in_macro(built_in).map(|literal| {
                             let type_id = this.alloc_type_expr(TypeExpr::Literal(literal), None);
                             this.record_type_source(type_id, source);
-                            type_id
+                            (None, type_id)
                         })
                     }
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(macro_expr)) => {
+                    MacroReplacement::Ast(def_idx, ast::MacroDefReplacement::Expr(macro_expr)) => {
                         let type_id = this.lower_type_expr(&macro_expr);
                         this.record_type_source(type_id, source);
-                        Some(type_id)
+                        Some((Some(def_idx), type_id))
                     }
-                    MacroReplacement::Ast(_) => None,
+                    MacroReplacement::Ast(_, _) => None,
                     MacroReplacement::BuiltInArgs(built_in, args) => {
                         let name = this
                             .lower_built_in_macro(built_in)
@@ -1691,9 +1726,10 @@ impl<'a> Ctx<'a> {
                             .collect();
                         let type_id = this.alloc_type_expr(TypeExpr::Call { target, args }, None);
                         this.record_type_source(type_id, source);
-                        Some(type_id)
+                        Some((None, type_id))
                     }
                     MacroReplacement::AstArgs(
+                        def_idx,
                         ast::MacroDefReplacement::Expr(replacement),
                         args,
                     ) => {
@@ -1704,19 +1740,26 @@ impl<'a> Ctx<'a> {
                             .collect();
                         let type_id = this.alloc_type_expr(TypeExpr::Call { target, args }, None);
                         this.record_type_source(type_id, source);
-                        Some(type_id)
+                        Some((Some(def_idx), type_id))
                     }
-                    MacroReplacement::AstArgs(_, _) => None,
+                    MacroReplacement::AstArgs(_, _, _) => None,
                 })
                 .flatten()
-                .map(|expansion| {
+                .map(|(macro_def, expansion)| {
                     let args = call
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_type_expr(
+                        TypeExpr::MacroCall {
+                            expansion,
+                            args,
+                            macro_def,
+                        },
+                        Some(expr),
+                    )
                 })
                 .unwrap_or_else(|| {
                     let expansion = self.alloc_type_expr(TypeExpr::Missing, Some(expr));
@@ -1726,7 +1769,14 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_type_expr(TypeExpr::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_type_expr(
+                        TypeExpr::MacroCall {
+                            expansion,
+                            args,
+                            macro_def: None,
+                        },
+                        Some(expr),
+                    )
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
@@ -2035,25 +2085,32 @@ impl<'a> Ctx<'a> {
                         this.lower_built_in_macro(built_in).map(|literal| {
                             let term_id = this.alloc_term(Term::Literal(literal), None);
                             this.record_term_source(term_id, source);
-                            term_id
+                            (None, term_id)
                         })
                     }
-                    MacroReplacement::Ast(ast::MacroDefReplacement::Expr(macro_expr)) => {
+                    MacroReplacement::Ast(def_idx, ast::MacroDefReplacement::Expr(macro_expr)) => {
                         let term_id = this.lower_term(&macro_expr);
                         this.record_term_source(term_id, source);
-                        Some(term_id)
+                        Some((Some(def_idx), term_id))
                     }
                     _ => None,
                 })
                 .flatten()
-                .map(|expansion| {
+                .map(|(macro_def, expansion)| {
                     let args = call
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_term(Term::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_term(
+                        Term::MacroCall {
+                            expansion,
+                            args,
+                            macro_def,
+                        },
+                        Some(expr),
+                    )
                 })
                 .unwrap_or_else(|| {
                     let expansion = self.alloc_term(Term::Missing, Some(expr));
@@ -2063,7 +2120,14 @@ impl<'a> Ctx<'a> {
                         .flat_map(|args| args.args())
                         .map(|expr| self.lower_optional_expr(expr.expr()))
                         .collect();
-                    self.alloc_term(Term::MacroCall { expansion, args }, Some(expr))
+                    self.alloc_term(
+                        Term::MacroCall {
+                            expansion,
+                            args,
+                            macro_def: None,
+                        },
+                        Some(expr),
+                    )
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_term(Term::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
@@ -2186,7 +2250,7 @@ impl<'a> Ctx<'a> {
             Some(res @ ResolvedMacro::User(def_idx)) => {
                 self.record_macro_resolution(call, res);
                 self.enter_macro(name, def_idx, call.args(), |this, replacement| {
-                    cb(this, source, MacroReplacement::Ast(replacement))
+                    cb(this, source, MacroReplacement::Ast(def_idx, replacement))
                 })
             }
             None => {
@@ -2202,7 +2266,11 @@ impl<'a> Ctx<'a> {
                     )),
                     ResolvedMacro::User(def_idx) => {
                         self.enter_macro(name, def_idx, None, |this, replacement| {
-                            cb(this, source, MacroReplacement::AstArgs(replacement, args))
+                            cb(
+                                this,
+                                source,
+                                MacroReplacement::AstArgs(def_idx, replacement, args),
+                            )
                         })
                     }
                 }

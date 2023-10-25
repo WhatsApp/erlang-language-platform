@@ -239,9 +239,11 @@ fn matches_trivially(
         },
 
         Pat::UnaryOp { .. } | Pat::BinaryOp { .. } => false,
-        Pat::MacroCall { expansion, args: _ } => {
-            matches_trivially(sema, def_fb, body_map, source_file, expansion, expr_id)
-        }
+        Pat::MacroCall {
+            expansion,
+            args: _,
+            macro_def: _,
+        } => matches_trivially(sema, def_fb, body_map, source_file, expansion, expr_id),
     }
 }
 

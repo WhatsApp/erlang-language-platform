@@ -401,7 +401,11 @@ impl Index<ExprId> for Body {
     fn index(&self, index: ExprId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.exprs[index] {
-            Expr::MacroCall { expansion, args: _ } => &self.exprs[*expansion],
+            Expr::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => &self.exprs[*expansion],
             expr => expr,
         }
     }
@@ -422,7 +426,11 @@ impl Index<PatId> for Body {
     fn index(&self, index: PatId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.pats[index] {
-            Pat::MacroCall { expansion, args: _ } => &self.pats[*expansion],
+            Pat::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => &self.pats[*expansion],
             pat => pat,
         }
     }
@@ -443,7 +451,11 @@ impl Index<TypeExprId> for Body {
     fn index(&self, index: TypeExprId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.type_exprs[index] {
-            TypeExpr::MacroCall { expansion, args: _ } => &self.type_exprs[*expansion],
+            TypeExpr::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => &self.type_exprs[*expansion],
             type_expr => type_expr,
         }
     }
@@ -464,7 +476,11 @@ impl Index<TermId> for Body {
     fn index(&self, index: TermId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.terms[index] {
-            Term::MacroCall { expansion, args: _ } => &self.terms[*expansion],
+            Term::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => &self.terms[*expansion],
             term => term,
         }
     }

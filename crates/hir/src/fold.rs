@@ -629,7 +629,11 @@ impl<'a, T> FoldCtx<'a, T> {
                 })
             }
             crate::Expr::Catch { expr } => self.do_fold_expr(*expr, acc),
-            crate::Expr::MacroCall { expansion, args } => {
+            crate::Expr::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 let r = if self.strategy == Strategy::SurfaceOnly {
                     self.fold_exprs(args, acc)
                 } else {
@@ -823,7 +827,11 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_expr(*k, acc);
                 self.do_fold_pat(*v, r)
             }),
-            crate::Pat::MacroCall { expansion, args } => {
+            crate::Pat::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 let r = self.do_fold_pat(*expansion, acc);
                 args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
             }
@@ -925,7 +933,11 @@ impl<'a, T> FoldCtx<'a, T> {
                 name: _,
                 arity: _,
             } => acc,
-            crate::Term::MacroCall { expansion, args: _ } => {
+            crate::Term::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => {
                 // We ignore the args for now
                 self.do_fold_term(*expansion, acc)
             }
@@ -1013,7 +1025,11 @@ impl<'a, T> FoldCtx<'a, T> {
                 .fold(acc, |acc, ty| self.do_fold_type_expr(*ty, acc)),
             TypeExpr::UnaryOp { type_expr, op: _ } => self.do_fold_type_expr(*type_expr, acc),
             TypeExpr::Var(_) => acc,
-            TypeExpr::MacroCall { expansion, args } => {
+            TypeExpr::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 let r = if self.strategy == Strategy::SurfaceOnly {
                     self.fold_exprs(args, acc)
                 } else {
@@ -1942,5 +1958,96 @@ bar() ->
                -define(FOO(X), foo(X,fo~o)).
                "#;
         count_atom_foo(fixture_str, 3);
+    }
+
+    // -----------------------------------------------------------------
+    // Testing MacroCall having macro definition
+
+    #[track_caller]
+    fn macro_expansion_origin(fixture_str: &str, expected: Vec<String>) {
+        let (db, file_id, _range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+
+        let r: Vec<_> = fold_file(
+            &sema,
+            WithMacros::Yes,
+            file_id,
+            Vec::new(),
+            &mut |mut acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        acc.push(format!("Expr:{:?}", def));
+                        acc
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::Pat(Pat::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        acc.push(format!("Pat:{:?}", def));
+                        acc
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::TypeExpr(TypeExpr::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        acc.push(format!("TypeExpr:{:?}", def));
+                        acc
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::Term(Term::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        acc.push(format!("Term:{:?}", def));
+                        acc
+                    } else {
+                        acc
+                    }
+                }
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id: FormIdx| acc,
+        );
+
+        assert_eq!(r, expected);
+    }
+
+    #[test]
+    fn macro_expansion() {
+        let fixture_str = r#"
+               -module(f~oo).
+               -define(FOO(X), X).
+               -type bar() :: ?FOO(none()).
+               -wild(?FOO(atom)).
+               blah() ->
+                 ?FOO(X) = ?FOO(4).
+               "#;
+        macro_expansion_origin(
+            fixture_str,
+            vec![
+                "TypeExpr:InFile { file_id: FileId(0), value: Idx::<Define>(0) }".to_string(),
+                "Term:InFile { file_id: FileId(0), value: Idx::<Define>(0) }".to_string(),
+                "Pat:InFile { file_id: FileId(0), value: Idx::<Define>(0) }".to_string(),
+                "Expr:InFile { file_id: FileId(0), value: Idx::<Define>(0) }".to_string(),
+            ],
+        );
     }
 }

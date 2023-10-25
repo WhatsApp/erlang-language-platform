@@ -326,7 +326,11 @@ impl ExprScopes {
                     self.add_bindings(body, scope, *pat, vt, add_bindings);
                 }
             }
-            crate::Pat::MacroCall { expansion, args } => {
+            crate::Pat::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 self.add_bindings(body, scope, *expansion, vt, add_bindings);
                 for arg in args {
                     compute_expr_scopes(*arg, body, self, scope, vt);
@@ -432,7 +436,11 @@ fn compute_expr_scopes(
         crate::Expr::Catch { expr } => {
             compute_expr_scopes(*expr, body, scopes, scope, vt);
         }
-        crate::Expr::MacroCall { expansion, args } => {
+        crate::Expr::MacroCall {
+            expansion,
+            args,
+            macro_def: _,
+        } => {
             compute_expr_scopes(*expansion, body, scopes, scope, vt);
             for arg in args {
                 compute_expr_scopes(*arg, body, scopes, scope, vt);

@@ -309,7 +309,11 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Expr::MacroCall { expansion, args } => {
+            Expr::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("expansion", true, &mut |this| {
@@ -653,7 +657,11 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Pat::MacroCall { expansion, args } => {
+            Pat::MacroCall {
+                expansion,
+                args,
+                macro_def: _,
+            } => {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("expansion", true, &mut |this| {
@@ -743,6 +751,7 @@ impl<'a> Printer<'a> {
             Term::MacroCall {
                 expansion: _,
                 args: _,
+                macro_def: _,
             } => todo!(),
         }
     }
@@ -898,6 +907,7 @@ impl<'a> Printer<'a> {
             TypeExpr::MacroCall {
                 expansion: _,
                 args: _,
+                macro_def: _,
             } => todo!(),
         }
     }

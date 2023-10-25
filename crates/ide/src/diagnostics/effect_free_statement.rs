@@ -110,7 +110,11 @@ fn has_no_effect(def_fb: &InFunctionBody<&FunctionDef>, expr_id: &ExprId) -> boo
             // Side-effect: may throw
             false
         }
-        Expr::MacroCall { expansion, args: _ } => has_no_effect(def_fb, expansion),
+        Expr::MacroCall {
+            expansion,
+            args: _,
+            macro_def: _,
+        } => has_no_effect(def_fb, expansion),
         Expr::Call { .. } | Expr::Receive { .. } => false,
 
         Expr::Block { exprs } => exprs.iter().all(|stmt| has_no_effect(def_fb, stmt)),

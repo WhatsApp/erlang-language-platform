@@ -279,7 +279,11 @@ impl<'a> Printer<'a> {
             Pat::Binary { segs } => self.print_seq(segs, None, "<<", ">>", ",", |this, seg| {
                 this.print_bin_segment(seg, |this, pat| this.print_pat(&this.body[pat]))
             }),
-            Pat::MacroCall { expansion, args: _ } => self.print_pat(&self.body[*expansion]),
+            Pat::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => self.print_pat(&self.body[*expansion]),
         }
     }
 
@@ -453,7 +457,11 @@ impl<'a> Printer<'a> {
                     write!(self, "end")
                 }
             }
-            Expr::MacroCall { expansion, args: _ } => self.print_expr(&self.body[*expansion]),
+            Expr::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => self.print_expr(&self.body[*expansion]),
             Expr::Call { target, args } => {
                 self.print_call_target(target, |this, expr| this.print_expr(&this.body[*expr]))?;
                 self.print_seq(args, None, "(", ")", ",", |this, expr| {
@@ -671,7 +679,11 @@ impl<'a> Printer<'a> {
                     this.print_type(&this.body[*ty])
                 })
             }
-            TypeExpr::MacroCall { expansion, args: _ } => self.print_type(&self.body[*expansion]),
+            TypeExpr::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => self.print_type(&self.body[*expansion]),
         }
     }
 
@@ -720,7 +732,11 @@ impl<'a> Printer<'a> {
                     arity
                 )
             }
-            Term::MacroCall { expansion, args: _ } => self.print_term(&self.body[*expansion]),
+            Term::MacroCall {
+                expansion,
+                args: _,
+                macro_def: _,
+            } => self.print_term(&self.body[*expansion]),
         }
     }
 
