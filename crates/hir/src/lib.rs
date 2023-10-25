@@ -69,6 +69,7 @@ pub use expr::Term;
 pub use expr::TermId;
 pub use expr::TypeExpr;
 pub use expr::TypeExprId;
+pub use fold::FoldBody;
 pub use fold::FoldCtx;
 pub use fold::On;
 pub use fold::Strategy;

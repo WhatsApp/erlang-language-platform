@@ -350,7 +350,7 @@ impl<'db> Semantic<'db> {
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
-            &expr.body.body,
+            &FoldBody::Body(&expr.body.body),
             Strategy::TopDown,
             form_id,
             expr_id_in,
@@ -383,7 +383,7 @@ impl<'db> Semantic<'db> {
         };
 
         Some(FoldCtx::fold_expr(
-            &expr.body.body,
+            &FoldBody::Body(&expr.body.body),
             Strategy::TopDown,
             form_id,
             expr_id_in,
@@ -525,8 +525,14 @@ impl<'db> Semantic<'db> {
     // -----------------------------------------------------------------
     // Folds
 
-    pub fn fold<'a, F: Fold, T>(&self, id: F::Id, initial: T, callback: AnyCallBack<'a, T>) -> T {
-        F::fold(self, id, initial, callback)
+    pub fn fold<'a, F: Fold, T>(
+        &self,
+        with_macros: WithMacros,
+        id: F::Id,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        F::fold(self, with_macros, id, initial, callback)
     }
 
     pub fn fold_function<'a, T>(
@@ -538,6 +544,23 @@ impl<'db> Semantic<'db> {
         let function_body = self.db.function_body(function_id);
         fold_function_body(
             WithMacros::No,
+            &function_body,
+            Strategy::TopDown,
+            initial,
+            callback,
+        )
+    }
+
+    pub fn fold_function_with_macros<'a, T>(
+        &self,
+        with_macros: WithMacros,
+        function_id: InFile<FunctionId>,
+        initial: T,
+        callback: FunctionAnyCallBack<'a, T>,
+    ) -> T {
+        let function_body = self.db.function_body(function_id);
+        fold_function_body(
+            with_macros,
             &function_body,
             Strategy::TopDown,
             initial,
@@ -558,7 +581,7 @@ impl<'db> Semantic<'db> {
             .iter()
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
-                    &function_body.body,
+                    &FoldBody::Body(&function_body.body),
                     Strategy::TopDown,
                     function_body.form_id(),
                     *expr_id,
@@ -667,7 +690,7 @@ impl<'db> Semantic<'db> {
 
 pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WithMacros {
     Yes,
     No,
@@ -894,7 +917,7 @@ impl<T> InFunctionBody<T> {
         let idx = self.body.clauses.iter().find_map(|(idx, clause)| {
             if clause.exprs.iter().any(|expr| {
                 FoldCtx::fold_expr(
-                    &self.body.body,
+                    &FoldBody::Body(&self.body.body),
                     Strategy::TopDown,
                     self.form_id(),
                     *expr,
@@ -926,7 +949,7 @@ impl<T> InFunctionBody<T> {
         callback: AnyCallBack<'a, R>,
     ) -> R {
         FoldCtx::fold_expr(
-            &self.body.body,
+            &FoldBody::Body(&self.body.body),
             strategy,
             self.form_id(),
             expr_id,
