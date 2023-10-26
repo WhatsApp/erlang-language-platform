@@ -383,7 +383,7 @@ impl Analysis {
                 diagnostics::diagnostics(db, diagnostics_config, frange.file_id, false)
                     .iter()
                     .filter_map(|it| it.fixes.clone())
-                    .flat_map(|it| it)
+                    .flatten()
                     .filter(|it| it.target.intersect(frange.range).is_some())
                     .collect()
             } else {

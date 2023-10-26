@@ -639,7 +639,7 @@ pub(crate) fn runnable(
                             workspace_root: workspace_root.into(),
                             command: "test".to_string(),
                             args: runnable.buck2_args(target.clone()),
-                            target: target.to_string(),
+                            target,
                             id: runnable.id(),
                         },
                     })

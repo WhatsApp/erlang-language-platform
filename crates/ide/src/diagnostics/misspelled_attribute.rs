@@ -46,7 +46,7 @@ pub(crate) fn misspelled_attribute(
         let parsed_file = sema.db.parse(file_id);
         let attr_form = attr.form_id.get(&parsed_file.tree());
         diagnostics.push(make_diagnostic(
-            &sema,
+            sema,
             file_id,
             attr,
             attr_form,

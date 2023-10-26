@@ -167,7 +167,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
 
         // diagnostics.extend(new_extra_diags.into_iter());
-        let expected = extract_annotations(&*db.file_text(file_id));
+        let expected = extract_annotations(&db.file_text(file_id));
         let mut actual = diagnostics
             .into_iter()
             .map(|(r, d)| {

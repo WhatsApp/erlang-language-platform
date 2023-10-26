@@ -249,7 +249,7 @@ fn covariant_stub(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let stub = db.contractive_stub(project_id, module.clone())?;
+    let stub = db.contractive_stub(project_id, module)?;
     let checker = VarianceChecker::new(db, project_id);
     checker
         .check(&stub)

@@ -330,7 +330,7 @@ impl SourceFile {
             if let Some(child) = self.syntax().first_child() {
                 Either::Left(
                     iter::successors(child.first_child(), |n| n.next_sibling())
-                        .filter_map(|n| ast::Form::cast(n)),
+                        .filter_map(ast::Form::cast),
                 )
             } else {
                 Either::Right(self.forms_only())
@@ -666,7 +666,6 @@ mod tests {
             .syntax()
             .descendants()
             .filter_map(ast::FunctionClause::cast)
-            .map(|it| it)
             .collect();
         expect![[r#"
             FunctionClause {
@@ -757,7 +756,7 @@ mod tests {
         // match only the top level enum: that is the price we pay for increased API
         // flexibility
         let bin_expr: &ast::BinaryOpExpr = match &expr {
-            ast::Expr::BinaryOpExpr(e) => &e,
+            ast::Expr::BinaryOpExpr(e) => e,
             _ => unreachable!(),
         };
         expect![[r#"

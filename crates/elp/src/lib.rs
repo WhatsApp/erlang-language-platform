@@ -158,12 +158,10 @@ pub fn read_lint_config_file(
             if !file_path.is_file() {
                 potential_path = path.parent();
                 continue;
-            } else {
-                if let Ok(content) = fs::read_to_string(file_path.clone()) {
-                    match toml::from_str::<LintConfig>(&content) {
-                        Ok(config) => return Ok(config),
-                        Err(err) => bail!("failed to read {:?}:{err}", file_path),
-                    }
+            } else if let Ok(content) = fs::read_to_string(file_path.clone()) {
+                match toml::from_str::<LintConfig>(&content) {
+                    Ok(config) => return Ok(config),
+                    Err(err) => bail!("failed to read {:?}:{err}", file_path),
                 }
             }
             break;
@@ -232,6 +230,6 @@ mod tests {
             type = "ArgsPermutation"
             perm = [1, 2]
         "#]]
-        .assert_eq(&toml::to_string::<LintConfig>(&&lint_config).unwrap());
+        .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }
 }

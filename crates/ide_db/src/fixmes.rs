@@ -23,8 +23,8 @@ struct Fixme {
 
 // serialize as:
 // {FixmeCommentStart, FixmeCommentEnd, SuppressionRangeStart, SuppressionRangeEnd, IsIgnore}
-impl Into<eetf::Term> for Fixme {
-    fn into(self) -> eetf::Term {
+impl From<Fixme> for eetf::Term {
+    fn from(val: Fixme) -> Self {
         let to_term = |n: TextSize| -> eetf::Term {
             let n: u32 = n.into();
             // eetf::FixInteger holds an i32, which means
@@ -34,12 +34,12 @@ impl Into<eetf::Term> for Fixme {
             eetf::FixInteger::from(n).into()
         };
         eetf::Tuple::from(vec![
-            to_term(self.comment_range.start()),
-            to_term(self.comment_range.end()),
-            to_term(self.suppression_range.start()),
-            to_term(self.suppression_range.end()),
+            to_term(val.comment_range.start()),
+            to_term(val.comment_range.end()),
+            to_term(val.suppression_range.start()),
+            to_term(val.suppression_range.end()),
             eetf::Atom {
-                name: self.is_ignore.to_string(),
+                name: val.is_ignore.to_string(),
             }
             .into(),
         ])

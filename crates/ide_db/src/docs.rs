@@ -383,7 +383,7 @@ impl Doc {
                     docdb.to_doc(token.with_value(&spec)),
                 ast::Callback(_) => None,
                 ast::Module(_) => {
-                    if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
+                    if let Some(atom) = ast::Atom::cast(wrapper) {
                         docdb.to_doc(token.with_value(&atom))
                     } else {
                         None
@@ -402,7 +402,7 @@ impl Doc {
                 ast::TryClass(_) => None,
                 // All places that embed an expr with special meaning
                 ast::RemoteModule(_) => {
-                    if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
+                    if let Some(atom) = ast::Atom::cast(wrapper) {
                         docdb.to_doc(token.with_value(&atom))
                     } else {
                         None

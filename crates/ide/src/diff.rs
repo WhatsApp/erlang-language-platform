@@ -200,7 +200,7 @@ mod tests {
           line 6
           "#;
 
-        let (diff, unified) = diff_from_textedit(&before, &after);
+        let (diff, unified) = diff_from_textedit(before, after);
         expect![[r#"
             [
                 DiffRange {
@@ -228,7 +228,7 @@ mod tests {
         .assert_eq(
             &unified
                 .unwrap()
-                .split("\n")
+                .split('\n')
                 .map(str::trim_end)
                 .collect::<Vec<_>>()
                 .join("\n"),

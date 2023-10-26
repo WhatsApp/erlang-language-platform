@@ -323,7 +323,7 @@ fn collect_references(
     project_id: ProjectId,
     ty: &Type,
     links: &mut FxHashSet<(SmolStr, FileRange)>,
-) -> () {
+) {
     match ty {
         Type::RemoteType(rt) => {
             if let Some(link) = id_name_and_location(db, project_id, &rt.id) {
@@ -348,8 +348,11 @@ fn collect_references(
         }
         _ => (),
     }
-    ty.visit_children::<()>(&mut |ty| Ok(collect_references(db, project_id, ty, links)))
-        .ok();
+    ty.visit_children::<()>(&mut |ty| {
+        collect_references(db, project_id, ty, links);
+        Ok(())
+    })
+    .ok();
 }
 
 pub fn type_references(
@@ -414,7 +417,7 @@ impl elp_eqwalizer::DbApi for crate::RootDatabase {
     fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>) {
         self.ipc_handles
             .write()
-            .insert(module.as_str().into(), handle.clone());
+            .insert(module.as_str().into(), handle);
     }
 
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>> {

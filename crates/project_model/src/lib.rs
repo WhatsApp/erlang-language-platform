@@ -171,7 +171,7 @@ impl ProjectManifest {
     ) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover rebar");
         let path =
-            Self::find_in_dir(path.as_ref(), &vec!["rebar.config", "rebar.config.script"]).last();
+            Self::find_in_dir(path.as_ref(), &["rebar.config", "rebar.config.script"]).last();
         if let Some(path) = path {
             let rebar = RebarConfig::from_config_path(path, profile.unwrap_or_default())?;
             Ok(Some(ProjectManifest::Rebar(rebar)))
@@ -182,7 +182,7 @@ impl ProjectManifest {
 
     fn discover_toml(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover toml");
-        let toml_path = Self::find_in_dir(path.as_ref(), &vec![".elp.toml"]).next();
+        let toml_path = Self::find_in_dir(path.as_ref(), &[".elp.toml"]).next();
         if let Some(path) = toml_path {
             let toml = buck::ElpConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Toml(toml)))
@@ -193,7 +193,7 @@ impl ProjectManifest {
 
     fn discover_static(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover static");
-        let json_path = Self::find_in_dir(path.as_ref(), &vec!["build_info.json"]).next();
+        let json_path = Self::find_in_dir(path.as_ref(), &["build_info.json"]).next();
         if let Some(path) = json_path {
             let json = json::JsonConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Json(json)))
@@ -204,7 +204,7 @@ impl ProjectManifest {
 
     pub fn discover_no_manifest(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover simple");
-        let src_path = Self::find_in_dir(path.as_ref(), &vec!["src"]).next();
+        let src_path = Self::find_in_dir(path.as_ref(), &["src"]).next();
         let root_path = if let Some(src_path) = &src_path {
             src_path.parent().map(|path| path.to_path_buf())
         } else {
@@ -568,7 +568,7 @@ impl Project {
             ProjectManifest::Toml(ref config) => match &config.buck {
                 Some(buck) => {
                     let (project, build_info, otp_root) =
-                        BuckProject::load_from_config(&buck, &config.eqwalizer)?;
+                        BuckProject::load_from_config(buck, &config.eqwalizer)?;
                     (ProjectBuildData::Buck(project), Some(build_info), otp_root)
                 }
                 None => {
@@ -789,7 +789,7 @@ mod tests {
                 let app_a_src = app_a_path.join("src");
                 let app_data_a = ProjectAppData {
                     name: "app_a".into(),
-                    dir: app_a_path.clone(),
+                    dir: app_a_path,
                     ebin: None,
                     extra_src_dirs: vec![],
                     include_dirs: vec![],

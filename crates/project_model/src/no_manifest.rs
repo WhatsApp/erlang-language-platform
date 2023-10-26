@@ -38,7 +38,7 @@ impl NoManifestConfig {
         if fs::metadata(&include_path).is_ok() {
             include_dirs.push(include_path);
         }
-        if fs::metadata(&test_path).is_ok() {
+        if fs::metadata(test_path).is_ok() {
             extra_src_dirs.push("test".to_string());
         }
 

@@ -91,7 +91,7 @@ fn find_definitions(
                     if let Some(token) = atom.syntax().first_token() {
                         let location = InFile {
                             file_id: position.file_id,
-                            value: token.clone(),
+                            value: token,
                         };
                         match SymbolClass::classify(sema, location) {
                             Some(SymbolClass::Definition(def)) => Some(Ok(vec![def])),

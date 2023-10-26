@@ -143,7 +143,7 @@ where
         // 3. Report mismatch for all not highest, against earliest
         // occurrence of highest
         let (hattr, hlocs) = highest?;
-        let mut hlocs = hlocs.clone();
+        let mut hlocs = hlocs;
         hlocs.sort_by_key(|a| a.start());
         let ref_loc = hlocs[0];
         for head in heads {
@@ -244,7 +244,7 @@ fn fundecl_heads(fun_decl: ast::FunDecl) -> Vec<HeadInfo> {
                 ast::Name::Atom(name) => name,
                 ast::Name::MacroCallExpr(_) | ast::Name::Var(_) => return None,
             };
-            let clause_name = name.text()?.to_string();
+            let clause_name = name.text()?;
             let clause_arity = clause.args()?.args().count();
             Some((
                 clause_name,

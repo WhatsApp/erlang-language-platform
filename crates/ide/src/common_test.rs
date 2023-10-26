@@ -249,7 +249,7 @@ fn runnables_for_group_def(
     group_defs: &FxHashMap<Name, GroupDef>,
 ) {
     if let Some(GroupDef { name, content }) = group_defs.get(group_name) {
-        let mut new_group_names = group_names.clone();
+        let mut new_group_names = group_names;
         new_group_names.insert(GroupName::Name(name.clone()));
         runnables_for_test_defs(res, sema, file_id, content, new_group_names, group_defs)
     }

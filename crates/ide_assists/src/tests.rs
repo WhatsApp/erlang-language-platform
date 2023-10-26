@@ -140,10 +140,10 @@ fn check(
 
     let sema = &db;
     let config = TEST_CONFIG;
-    let context_diagnostics = extract_annotations(&*db.file_text(file_with_caret_id));
+    let context_diagnostics = extract_annotations(&db.file_text(file_with_caret_id));
     let mut diagnostics = vec![];
     for (range, text) in &context_diagnostics {
-        if let Some((code_and_bulb, message)) = text.split_once(":") {
+        if let Some((code_and_bulb, message)) = text.split_once(':') {
             if let Some(code_string) = code_and_bulb.strip_prefix("💡 ") {
                 if let Ok(code) = AssistContextDiagnosticCode::from_str(code_string) {
                     let d = AssistContextDiagnostic::new(code, message.trim().to_string(), *range);
@@ -164,10 +164,8 @@ fn check(
         }
     }
 
-    let mut ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
-    let resolve = match expected {
-        _ => AssistResolveStrategy::All,
-    };
+    let mut ctx = AssistContext::new(sema, &config, frange, &diagnostics, None);
+    let resolve = AssistResolveStrategy::All;
     let mut acc = Assists::new(&ctx, resolve.clone());
     handler(&mut acc, &ctx);
     let mut res = acc.finish();
@@ -177,10 +175,10 @@ fn check(
         } else {
             match requested_user_input.input_type {
                 AssistUserInputType::Variable => {
-                    format!("{}Edited", requested_user_input.value).to_string()
+                    format!("{}Edited", requested_user_input.value)
                 }
                 AssistUserInputType::Atom => {
-                    format!("{}_edited", requested_user_input.value).to_string()
+                    format!("{}_edited", requested_user_input.value)
                 }
             }
         };
@@ -209,7 +207,7 @@ fn check(
                 .expect("Assist did not contain any source changes");
             assert!(!source_change.source_file_edits.is_empty());
             let skip_header = source_change.source_file_edits.len() == 1
-                && source_change.file_system_edits.len() == 0;
+                && source_change.file_system_edits.is_empty();
 
             let mut buf = String::new();
             for (file_id, edit) in source_change.source_file_edits {
@@ -234,7 +232,7 @@ fn check(
                     let sr = db.source_root(sr);
                     let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
                     base.pop();
-                    let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                    let created_file_path = format!("{}{}", base, &dst.path[1..]);
                     format_to!(buf, "//- {}\n", created_file_path);
                     buf.push_str(&initial_contents);
                 }
@@ -258,7 +256,6 @@ fn check(
             match assist_label {
                 Some(label) => {
                     let all = res
-                        .clone()
                         .iter()
                         .map(|resolved| resolved.label.clone())
                         .collect::<Vec<_>>();
@@ -285,7 +282,7 @@ bar() ->
     let sema = &db;
     let config = TEST_CONFIG;
     let diagnostics = vec![];
-    let ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
+    let ctx = AssistContext::new(sema, &config, frange, &diagnostics, None);
     expect![[r#"
         FileRange {
             file_id: FileId(
@@ -315,7 +312,7 @@ bar() ->
     let sema = &db;
     let config = TEST_CONFIG;
     let diagnostics = vec![];
-    let ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
+    let ctx = AssistContext::new(sema, &config, frange, &diagnostics, None);
     expect![[r#"
         FileRange {
             file_id: FileId(
@@ -339,11 +336,11 @@ fn test_function_args() {
     let sema = &db;
     let config = TEST_CONFIG;
     let diagnostics = vec![];
-    let ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
+    let ctx = AssistContext::new(sema, &config, frange, &diagnostics, None);
     let call: ast::Call = ctx.find_node_at_offset().unwrap();
     let call_expr = ctx
         .sema
-        .to_expr(InFile::new(ctx.file_id(), &ast::Expr::Call(call.clone())))
+        .to_expr(InFile::new(ctx.file_id(), &ast::Expr::Call(call)))
         .unwrap();
     if let Expr::Call { target: _, args } = &call_expr[call_expr.value] {
         expect![[r#"
@@ -370,11 +367,11 @@ fn test_function_args_from_type() {
     let sema = &db;
     let config = TEST_CONFIG;
     let diagnostics = vec![];
-    let ctx = AssistContext::new(&sema, &config, frange, &diagnostics, None);
+    let ctx = AssistContext::new(sema, &config, frange, &diagnostics, None);
     let behaviour_forms = ctx.sema.form_list(ctx.file_id());
     if let Some((idx, _callback)) = behaviour_forms.callback_attributes().next() {
         let callback_body = ctx.sema.db.callback_body(InFile::new(ctx.file_id(), idx));
-        if let Some(sig) = callback_body.sigs.iter().next() {
+        if let Some(sig) = callback_body.sigs.first() {
             expect![[r#"
                 "Request,From,State"
             "#]]
@@ -657,7 +654,7 @@ fn export_into_specific_pre_existing_2() {
             let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
-            let (_, export) = forms.exports().skip(1).next().unwrap();
+            let (_, export) = forms.exports().nth(1).unwrap();
             let fa = &export.entries.clone().into_iter().next().unwrap();
             let existing = forms[*fa].name.clone();
 

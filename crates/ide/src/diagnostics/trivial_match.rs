@@ -222,8 +222,8 @@ fn matches_trivially(
                     .iter()
                     .zip(expr_segs.iter())
                     .all(|(pat_seg, expr_seg)| {
-                        pat_seg.with_value({}) == trivial_seg
-                            && expr_seg.with_value({}) == trivial_seg
+                        pat_seg.with_value(()) == trivial_seg
+                            && expr_seg.with_value(()) == trivial_seg
                             && matches_trivially(
                                 sema,
                                 def_fb,

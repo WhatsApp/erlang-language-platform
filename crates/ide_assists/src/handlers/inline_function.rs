@@ -628,7 +628,7 @@ fn guards_text(guard: Option<ast::Guard>) -> Option<String> {
         when.push(token.text().to_string().clone());
         token = token.prev_token()?;
     }
-    when.push(token.text().to_string().clone()); // Include 'when' token
+    when.push(token.text().to_string()); // Include 'when' token
     when.reverse();
 
     let guards = guard.syntax().text().to_string();

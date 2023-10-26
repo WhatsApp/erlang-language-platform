@@ -94,9 +94,9 @@ pub enum CompileOption {
     ElpMetadata(eetf::Term),
 }
 
-impl Into<eetf::Term> for CompileOption {
-    fn into(self) -> eetf::Term {
-        match self {
+impl From<CompileOption> for eetf::Term {
+    fn from(val: CompileOption) -> Self {
+        match val {
             CompileOption::Includes(includes) => {
                 let paths = eetf::List::from(
                     includes
@@ -326,7 +326,7 @@ impl Connection {
             Err(error) => {
                 log::error!(
                     "Erlang service crashed for: {:?}, error: {:?}",
-                    request.clone(),
+                    request,
                     error
                 );
                 Err(format!(
@@ -535,10 +535,12 @@ fn reader_run(
 fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
     match (sender, reply) {
         (ResponseSender::ParseResponseSender(s), Reply::ParseReply(r)) => {
-            Result::Ok(s.send(r).unwrap())
+            s.send(r).unwrap();
+            Result::Ok(())
         }
         (ResponseSender::DocResponseSender(s), Reply::DocReply(r)) => {
-            Result::Ok(s.send(r).unwrap())
+            s.send(r).unwrap();
+            Result::Ok(())
         }
         (ResponseSender::ParseResponseSender(_), Reply::DocReply(_)) => Result::Err(anyhow!(
             "erlang_service response mismatch: Got a doc reply when expecting a parse reply"

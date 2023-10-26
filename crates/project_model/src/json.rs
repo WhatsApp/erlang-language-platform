@@ -98,7 +98,7 @@ impl JsonConfig {
     }
 
     pub fn try_parse(path: &AbsPath) -> Result<JsonConfig> {
-        let config_content = fs::read_to_string(&path)?;
+        let config_content = fs::read_to_string(path)?;
         let mut config: JsonConfig = serde_json::from_str(&config_content)?;
         config.config_path = Some(path.to_path_buf());
         Ok(config)

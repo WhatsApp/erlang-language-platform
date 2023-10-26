@@ -452,13 +452,10 @@ mod tests {
             &mfas,
             &move |_ctx| Some(("Diagnostic Message".to_string(), "".to_string())),
             move |_sema, def_fb, __target, _args, extra_info, _fix_info, range| {
-                let diag = Diagnostic::new(
-                    DiagnosticCode::AdHoc("test".to_string()),
-                    extra_info,
-                    range.clone(),
-                )
-                .with_severity(Severity::Warning)
-                .with_ignore_fix(sema, def_fb.file_id());
+                let diag =
+                    Diagnostic::new(DiagnosticCode::AdHoc("test".to_string()), extra_info, range)
+                        .with_severity(Severity::Warning)
+                        .with_ignore_fix(sema, def_fb.file_id());
                 Some(diag)
             },
         );

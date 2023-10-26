@@ -96,7 +96,7 @@ pub fn replace_call_site_if_args_match(
                         let diag = diagnostic_builder(&mfa, extra_info, range)?;
 
                         if let Some(edit) =
-                            replace_call(&replacement, sema, def_fb, file_id, args, target, &range)
+                            replace_call(replacement, sema, def_fb, file_id, args, target, &range)
                         {
                             Some(diag.with_fixes(Some(vec![fix(
                                 "replace_call_site",
@@ -212,8 +212,7 @@ fn replace_call(
                 .map(|expr| {
                     body_map
                         .expr(*expr)
-                        .map(|expr| expr.to_node(&source_file))
-                        .flatten()
+                        .and_then(|expr| expr.to_node(&source_file))
                         .map(|source| source.to_string())
                 })
                 .collect();
@@ -337,7 +336,7 @@ fn match_fun_ref_in_list_in_call_arg<T>(
                     {
                         if let Expr::Literal(Literal::Integer(arity)) = &def_fb[*arity_expr_id] {
                             if matcher
-                                .get_match(&target, *arity as u32, sema, &def_fb.body())
+                                .get_match(target, *arity as u32, sema, &def_fb.body())
                                 .is_some()
                             {
                                 result.push((*list_elem_id, target.clone(), *arity as u32));

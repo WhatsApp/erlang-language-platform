@@ -399,7 +399,6 @@ fn filter_diagnostics<'a>(
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     Ok(diags
         .to_owned()
-        .clone()
         .into_iter()
         .filter_map(|(m, file_id, ds, changes)| {
             let line_index = db.line_index(file_id).ok()?;
@@ -417,7 +416,7 @@ fn filter_diagnostics<'a>(
                     .cloned()
                     .collect::<Vec<diagnostics::Diagnostic>>();
                 if !ds2.is_empty() {
-                    Some((m.clone(), file_id, ds2))
+                    Some((m, file_id, ds2))
                 } else {
                     None
                 }
@@ -614,7 +613,7 @@ impl<'a> Lints<'a> {
     ) -> Result<Vec<FixResult>> {
         if let Some(fixes) = &diagnostic.fixes {
             let fixes: Vec<_> = fixes
-                .into_iter()
+                .iter()
                 .filter(|f| f.group != Some(group_label_ignore()))
                 .collect();
             if !fixes.is_empty() {

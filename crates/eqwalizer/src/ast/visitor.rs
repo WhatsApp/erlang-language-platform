@@ -58,7 +58,7 @@ impl<'a, T> Visitor<'a, T> {
         (self.expr_visitor)(&elem.expr)?;
         elem.size
             .as_ref()
-            .map_or(Ok(()), |s| (self.expr_visitor)(&s))
+            .map_or(Ok(()), |s| (self.expr_visitor)(s))
     }
 
     pub fn visit_record_field(&mut self, field: &RecordField) -> Result<(), T> {
@@ -140,9 +140,7 @@ impl<'a, T> Visitor<'a, T> {
                 e.catch_clauses
                     .iter()
                     .try_for_each(|c| self.visit_clause(c))?;
-                e.after_body
-                    .as_ref()
-                    .map_or(Ok(()), |b| self.visit_body(&b))
+                e.after_body.as_ref().map_or(Ok(()), |b| self.visit_body(b))
             }
             Expr::TryOfCatchExpr(e) => {
                 self.visit_body(&e.try_body)?;
@@ -152,9 +150,7 @@ impl<'a, T> Visitor<'a, T> {
                 e.catch_clauses
                     .iter()
                     .try_for_each(|c| self.visit_clause(c))?;
-                e.after_body
-                    .as_ref()
-                    .map_or(Ok(()), |b| self.visit_body(&b))
+                e.after_body.as_ref().map_or(Ok(()), |b| self.visit_body(b))
             }
             Expr::Receive(r) => r.clauses.iter().try_for_each(|c| self.visit_clause(c)),
             Expr::ReceiveWithTimeout(r) => {

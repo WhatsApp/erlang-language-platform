@@ -212,10 +212,10 @@ impl BuckProject {
         buck_conf: &BuckConfig,
         eqwalizer_conf: &EqwalizerConfig,
     ) -> Result<(BuckProject, BuildInfoFile, PathBuf), anyhow::Error> {
-        let target_info = load_buck_targets(&buck_conf)?;
+        let target_info = load_buck_targets(buck_conf)?;
         let project_app_data = targets_to_project_data(&target_info.targets);
         let otp_root = Otp::find_otp()?;
-        let build_info_term = build_info(&buck_conf, &project_app_data, &otp_root);
+        let build_info_term = build_info(buck_conf, &project_app_data, &otp_root);
         let build_info = save_build_info(build_info_term)?;
         let project = BuckProject {
             target_info,
@@ -501,7 +501,7 @@ pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> 
         project_data
             .include_dirs
             .iter()
-            .map(|inc| path_to_binary(inc))
+            .map(path_to_binary)
             .collect::<Vec<Term>>()
             .into(),
     );
@@ -607,7 +607,7 @@ fn find_app_root(
         .chain(target.suite.iter());
 
     for path in paths {
-        if let Some(path) = buck_path_to_abs_path(root, path).ok() {
+        if let Ok(path) = buck_path_to_abs_path(root, path) {
             let parent = path.parent();
             if let Some(parent) = parent {
                 if !set.contains(parent) {

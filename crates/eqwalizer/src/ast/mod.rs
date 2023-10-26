@@ -110,9 +110,9 @@ impl TextRange {
         }
     }
 }
-impl Into<elp_syntax::TextRange> for TextRange {
-    fn into(self) -> elp_syntax::TextRange {
-        elp_syntax::TextRange::new(self.start_byte.into(), self.end_byte.into())
+impl From<TextRange> for elp_syntax::TextRange {
+    fn from(val: TextRange) -> Self {
+        elp_syntax::TextRange::new(val.start_byte.into(), val.end_byte.into())
     }
 }
 

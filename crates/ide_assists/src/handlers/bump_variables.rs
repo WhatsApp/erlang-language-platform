@@ -161,7 +161,7 @@ impl NumberedVar {
     }
 
     fn bumped(&self) -> String {
-        format!("{}{}", self.base, self.number + 1).to_string()
+        format!("{}{}", self.base, self.number + 1)
     }
 }
 

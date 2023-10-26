@@ -379,7 +379,7 @@ impl DiagnosticCode {
             DiagnosticCode::DependentHeader => "W0015".to_string(),     // dependent-header
             DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
             DiagnosticCode::ErlangService(c) => c.to_string(),
-            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
+            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
         }
     }
@@ -412,7 +412,7 @@ impl DiagnosticCode {
             DiagnosticCode::DependentHeader => "dependent_header".to_string(),
             DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
-            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}").to_string(),
+            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
         }
     }
@@ -454,7 +454,7 @@ impl DiagnosticCode {
         let code = self.as_code();
         Some(format!(
             "{}/erlang-error-index/{namespace}/{code}",
-            BASE_URL.to_string()
+            BASE_URL
         ))
     }
 
@@ -1438,8 +1438,9 @@ fn erlang_service_label(diagnostic: &Diagnostic) -> Option<Label> {
     match &diagnostic.code {
         DiagnosticCode::ErlangService(s) => match s.as_str() {
             "L1227" => function_undefined_from_message(&diagnostic.message).map(Label::new_raw),
-            "L1308" => spec_for_undefined_function_from_message(&diagnostic.message)
-                .map(|l| Label::new_raw(l)),
+            "L1308" => {
+                spec_for_undefined_function_from_message(&diagnostic.message).map(Label::new_raw)
+            }
             _ => None,
         },
         _ => None,
@@ -1659,7 +1660,7 @@ baz(1)->4.
         assert_eq!(
             diags
                 .into_iter()
-                .filter(|d| !is_implemented_in_elp(&d, FileKind::Module))
+                .filter(|d| !is_implemented_in_elp(d, FileKind::Module))
                 .collect::<Vec<_>>(),
             vec![diag3, diagk]
         );
@@ -1675,7 +1676,7 @@ baz(1)->4.
         assert_eq!(
             diags
                 .into_iter()
-                .filter(|d| !is_implemented_in_elp(&d, FileKind::Escript))
+                .filter(|d| !is_implemented_in_elp(d, FileKind::Escript))
                 .collect::<Vec<_>>(),
             vec![diag1, diag2, diag3, diagk]
         );

@@ -341,7 +341,7 @@ pub fn add_suite_0_option<'a>(
     let def_map = sema.def_map(file_id);
     let name_arity = NameArity::new(known::suite, 0);
     if let Some(fun) = def_map.get_function(&name_arity) {
-        add_to_suite_0(sema, file_id, &fun, &source, key, value, builder);
+        add_to_suite_0(sema, file_id, fun, &source, key, value, builder);
     } else {
         new_suite_0(
             sema, file_id, &form_list, &source, key, value, insert_at, builder,
@@ -428,7 +428,7 @@ fn add_to_suite_0(
 
 fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBuilder) {
     let name_arity = NameArity::new(known::suite, 0);
-    ExportBuilder::new(sema, file_id, &[name_arity.clone()], builder)
+    ExportBuilder::new(sema, file_id, &[name_arity], builder)
         .group_with(NameArity::new(known::all, 0))
         .export_list_pos(ExportListPosition::First)
         .finish();
@@ -444,7 +444,7 @@ fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut So
                     if a.text() == Some(key.to_string()) {
                         if e.syntax().text().to_string() != option {
                             // We found an existing key, with different value, replace the tuple with the new one
-                            builder.replace(e.syntax().text_range(), format!("{option}"));
+                            builder.replace(e.syntax().text_range(), option.to_string());
                         };
                         done = true;
                     }

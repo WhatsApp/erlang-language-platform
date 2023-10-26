@@ -520,7 +520,7 @@ mod tests {
             0,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[("app_a/src/lint_recursive.erl", "lint_recursive.erl")],
             false,
@@ -548,7 +548,7 @@ mod tests {
             0,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -577,7 +577,7 @@ mod tests {
             0,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -604,7 +604,7 @@ mod tests {
             101,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -630,7 +630,7 @@ mod tests {
             101,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -659,7 +659,7 @@ mod tests {
             0,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -699,7 +699,7 @@ mod tests {
             101,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -745,7 +745,7 @@ mod tests {
             0,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
@@ -775,7 +775,7 @@ mod tests {
             101,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/head_mismatch"),
             &[("app_a/src/lints.erl", "lints.erl")],
             false,
@@ -807,7 +807,7 @@ mod tests {
             101,
             buck,
             None,
-            &tmp_path,
+            tmp_path,
             Path::new("../resources/test/lint/head_mismatch"),
             &[("app_a/src/lints.erl", "lints.erl")],
             false,
@@ -927,7 +927,7 @@ mod tests {
         let args = args_vec!["explain", "--code", "W0005"];
         let (stdout, stderr, code) = elp(args);
         let expected = expect_file!["../resources/test/explain_code.stdout"];
-        expected.assert_eq(&stdout.strip_prefix(BASE_URL).unwrap());
+        expected.assert_eq(stdout.strip_prefix(BASE_URL).unwrap());
         assert!(stderr.is_empty());
         assert_eq!(code, 0);
     }
@@ -1059,7 +1059,7 @@ mod tests {
             if !buck {
                 args.push("--rebar".into());
             }
-            let orig_files = files.into_iter().map(|x| x.0).collect::<Vec<_>>();
+            let orig_files = files.iter().map(|x| x.0).collect::<Vec<_>>();
             // Take a backup. The Drop instance will restore at the end
             let _backup = if backup_files {
                 BackupFiles::save_files(project, &orig_files)
@@ -1124,13 +1124,13 @@ mod tests {
     impl BackupFiles {
         fn save_files(project: &str, files: &[&str]) -> Result<BackupFiles> {
             let path_str = project_path(project);
-            let project_path: PathBuf = path_str.clone().into();
+            let project_path: PathBuf = path_str.into();
             let mut restore = Vec::default();
             files.iter().for_each(|file| {
                 let file_path = project_path.join(file);
                 let bak_file_path = file_path.with_extension("bak");
-                assert!(file_path.clone().exists());
-                assert!(!bak_file_path.clone().exists());
+                assert!(file_path.exists());
+                assert!(!bak_file_path.exists());
                 fs::copy(file_path.clone(), bak_file_path.clone()).expect("Failed to copy file");
                 restore.push((bak_file_path, file_path));
             });

@@ -101,7 +101,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                             ) {
                                 if let Some(expr) = call.expr() {
                                     let range = expr.syntax().text_range();
-                                    calls.add(nav.clone(), range);
+                                    calls.add(nav, range);
                                 }
                             }
                         }

@@ -769,12 +769,24 @@ impl StubExpander<'_> {
 
     pub fn expand(&mut self, ast: AST) -> Result<(), TypeConversionError> {
         ast.into_iter().try_for_each(|form| match form {
-            ExternalForm::File(f) => Ok(self.current_file = f.file),
-            ExternalForm::Export(e) => Ok(self.stub.exports.extend(e.funs)),
-            ExternalForm::Import(i) => Ok(i.funs.into_iter().for_each(|id| {
-                self.stub.imports.insert(id, i.module.clone());
-            })),
-            ExternalForm::ExportType(e) => Ok(self.stub.export_types.extend(e.types)),
+            ExternalForm::File(f) => {
+                self.current_file = f.file;
+                Ok(())
+            }
+            ExternalForm::Export(e) => {
+                self.stub.exports.extend(e.funs);
+                Ok(())
+            }
+            ExternalForm::Import(i) => {
+                i.funs.into_iter().for_each(|id| {
+                    self.stub.imports.insert(id, i.module.clone());
+                });
+                Ok(())
+            }
+            ExternalForm::ExportType(e) => {
+                self.stub.export_types.extend(e.types);
+                Ok(())
+            }
             ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d),
             ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d),
             ExternalForm::ExternalFunSpec(s) => self.add_spec(s),
@@ -782,7 +794,8 @@ impl StubExpander<'_> {
             ExternalForm::Behaviour(_) => Ok(()),
             ExternalForm::ExternalCallback(cb) => self.add_callback(cb),
             ExternalForm::ExternalOptionalCallbacks(ocb) => {
-                Ok(self.stub.optional_callbacks.extend(ocb.ids))
+                self.stub.optional_callbacks.extend(ocb.ids);
+                Ok(())
             }
             ExternalForm::Module(_)
             | ExternalForm::CompileExportAll(_)

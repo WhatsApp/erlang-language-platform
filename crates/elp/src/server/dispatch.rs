@@ -104,7 +104,7 @@ impl<'a> RequestDispatcher<'a> {
     pub(crate) fn finish(mut self) {
         if let Some(req) = self.req.take() {
             // The request has not been processed by any of the dispatch handlers
-            let id = req.id.clone();
+            let id = req.id;
             self.server.send_response(Response::new_err(
                 id,
                 lsp_server::ErrorCode::MethodNotFound as i32,

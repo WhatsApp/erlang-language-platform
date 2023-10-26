@@ -109,7 +109,7 @@ pub(crate) fn check_function(
     def: &FunctionDef,
     matches: &[(&FunctionMatch, DeprecationDetails)],
 ) {
-    let matcher = FunctionMatcher::new(&matches);
+    let matcher = FunctionMatcher::new(matches);
     let def_fb = def.in_function_body(sema.db, def);
     def_fb
         .clone()
@@ -117,7 +117,7 @@ pub(crate) fn check_function(
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 let arity = args.len() as u32;
                 if let Some(target_def) =
-                    target.resolve_call(arity, &sema, def_fb.file_id(), &def_fb.body())
+                    target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body())
                 {
                     let match_result =
                         matcher.get_match(&target, args.len() as u32, sema, &def_fb.body());
@@ -129,7 +129,7 @@ pub(crate) fn check_function(
                             ctx.item_id
                         };
                         if let Some(range) = def_fb.range_for_any(sema.db, expr_id) {
-                            let d = make_diagnostic(range.clone(), &target_def, details)
+                            let d = make_diagnostic(range, &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
                                     sema,
                                     def_fb.file_id(),

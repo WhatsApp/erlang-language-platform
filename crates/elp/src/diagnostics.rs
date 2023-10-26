@@ -218,7 +218,7 @@ pub fn attach_related_diagnostics(
         .into_iter()
         .chain(updated)
         .chain(es)
-        .map(|(_, d)| d.clone())
+        .map(|(_, d)| d)
         .collect_vec()
 }
 
@@ -330,8 +330,8 @@ mod tests {
             let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
             let diagnostics = diagnostics.convert(&|d| ide_to_lsp_diagnostic(&line_index, &url, d));
 
-            let combined = attach_related_diagnostics(&url, &diagnostics, &extra_diags);
-            let expected = extract_annotations(&*db.file_text(file_id));
+            let combined = attach_related_diagnostics(&url, &diagnostics, extra_diags);
+            let expected = extract_annotations(&db.file_text(file_id));
             let mut actual = combined
                 .into_iter()
                 .map(|d| {

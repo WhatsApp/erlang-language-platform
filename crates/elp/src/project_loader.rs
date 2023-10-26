@@ -43,7 +43,7 @@ impl ProjectLoader {
         for path in paths {
             let mut path_it: &AbsPath = path.as_ref();
             while let Some(path) = path_it.parent() {
-                if let Some(_) = self.project_roots.remove(path) {
+                if self.project_roots.remove(path).is_some() {
                     result = true;
                     break;
                 }

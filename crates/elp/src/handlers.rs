@@ -384,7 +384,7 @@ pub(crate) fn handle_completion(
 
     if completions.is_empty() {
         completions.push(Completion {
-            label: ai_result.clone(),
+            label: ai_result,
             kind: Kind::AiAssist,
             contents: elp_ide::elp_ide_completion::Contents::SameAsLabel,
             position: None,
@@ -570,7 +570,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
 fn combine_docs(docs: &[(Doc, Option<FileRange>)]) -> Option<(Doc, Option<FileRange>)> {
     match docs {
         [] => None,
-        [(doc, src_range)] => Some((doc.clone(), src_range.clone())),
+        [(doc, src_range)] => Some((doc.clone(), *src_range)),
         many => Some((
             Doc::new(
                 many.iter()
@@ -580,7 +580,7 @@ fn combine_docs(docs: &[(Doc, Option<FileRange>)]) -> Option<(Doc, Option<FileRa
             ),
             many.iter().fold(None, |acc, (_, mr)| match (acc, mr) {
                 (None, None) => None,
-                (None, Some(_)) => mr.clone(),
+                (None, Some(_)) => *mr,
                 (Some(_), None) => acc,
                 (Some(a), Some(b)) => Some(FileRange {
                     file_id: a.file_id,
