@@ -794,6 +794,7 @@ impl ProjectAppDataAcc {
 
                 for abs_extra in &abs_extra_dirs {
                     self.abs_src_dirs.remove(abs_extra);
+                    self.add_parent_if_not_exist(abs_extra);
                 }
 
                 self.extra_src_dirs.extend(extra_src_dirs);
@@ -809,19 +810,19 @@ impl ProjectAppDataAcc {
         //erlclient/src/erlclient.hrl
         if target.private_header {
             for src in &target.src_files {
-                if let Some(parent) = src.parent() {
-                    if !self.include_path.contains(parent) {
-                        self.include_path.insert(parent.to_path_buf());
-                    }
-                }
+                self.add_parent_if_not_exist(src);
             }
         }
 
         for inc in &target.include_files {
-            if let Some(parent) = inc.parent() {
-                if !self.include_path.contains(parent) {
-                    self.include_path.insert(parent.to_path_buf());
-                }
+            self.add_parent_if_not_exist(inc);
+        }
+    }
+
+    fn add_parent_if_not_exist(&mut self, path: &AbsPath) {
+        if let Some(parent) = path.parent() {
+            if !self.include_path.contains(parent) {
+                self.include_path.insert(parent.to_path_buf());
             }
         }
     }
