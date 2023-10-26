@@ -46,7 +46,7 @@
     "yarn-audit-fix": "^9.3.10"
   },
   "resolutions": {
-    "@babel/traverse": "7.23.2",
+    "@babel/traverse": ">=7.23.2",
     "got": ">=11.8.5",
     "trim": ">=0.0.3"
   }
