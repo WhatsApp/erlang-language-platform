@@ -263,6 +263,16 @@ pub struct Shell {
     pub project: PathBuf,
 }
 
+#[derive(Clone, Debug, Bpaf)]
+pub struct ProjectInfo {
+    /// Path to directory with project (defaults to `.`)
+    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    pub project: PathBuf,
+    /// Path to a directory where to dump wa.build_info
+    #[bpaf(argument("TO"))]
+    pub to: Option<PathBuf>,
+}
+
 #[derive(Clone, Debug)]
 pub enum Command {
     ParseAllElp(ParseAllElp),
@@ -280,6 +290,7 @@ pub enum Command {
     Version(Version),
     Shell(Shell),
     Explain(Explain),
+    ProjectInfo(ProjectInfo),
     Help(),
 }
 
@@ -347,6 +358,7 @@ pub fn command() -> impl Parser<Command> {
         .to_options()
         .command("build-info")
         .help("Generate build info file");
+
     let generate_completions = generate_completions()
         .map(Command::GenerateCompletions)
         .to_options()
@@ -383,6 +395,12 @@ pub fn command() -> impl Parser<Command> {
         .command("explain")
         .help("Explain a diagnostic code");
 
+    let project_info = project_info()
+        .map(Command::ProjectInfo)
+        .to_options()
+        .command("project-info")
+        .help("Generate project info file");
+
     construct!([
         eqwalize,
         eqwalize_all,
@@ -399,6 +417,7 @@ pub fn command() -> impl Parser<Command> {
         shell,
         eqwalize_stats,
         explain,
+        project_info,
     ])
     .fallback(Help())
 }

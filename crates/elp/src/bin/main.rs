@@ -76,6 +76,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             eqwalizer_cli::eqwalize_passthrough(&args, cli)?
         }
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args)?,
+        args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args)?,
         args::Command::Lint(args) => lint_cli::lint_all(&args, cli)?,
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
@@ -897,6 +898,16 @@ mod tests {
             .run_inner(Args::from(&["lint", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/lint_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn project_info_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["project-info", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/project_info_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }

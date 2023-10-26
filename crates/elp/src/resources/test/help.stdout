@@ -21,3 +21,4 @@ Available commands:
     shell                 Starts an interactive ELP shell
     eqwalize-stats        Return statistics about code quality for eqWAlizer
     explain               Explain a diagnostic code
+    project-info          Generate project info file

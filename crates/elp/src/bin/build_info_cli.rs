@@ -9,15 +9,18 @@
 
 use std::fs;
 use std::fs::File;
+use std::io::Write;
 
 use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck;
 use elp_project_model::otp::Otp;
+use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 
 use crate::args::BuildInfo;
+use crate::args::ProjectInfo;
 
 pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
@@ -39,5 +42,31 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let build_info_term = buck::build_info(&buck, &project_app_data, &otp_root);
     let writer = File::create(&args.to)?;
     build_info_term.encode(writer)?;
+    Ok(())
+}
+
+pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
+    let root = fs::canonicalize(&args.project)?;
+    let root = AbsPathBuf::assert(root);
+    let manifest = ProjectManifest::discover(&root)?;
+    let manifest = match manifest {
+        Some(manifest) => manifest,
+        None => bail!("Can't find project manifest for {:?}", root),
+    };
+
+    let project = Project::load(manifest.clone())?;
+    let mut writer: Box<dyn Write> = match args.to {
+        Some(to) => Box::new(
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(to)?,
+        ),
+        None => Box::new(std::io::stdout()),
+    };
+    writer.write_all(b"================manifest================\n")?;
+    writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
+    writer.write_all(b"================project_data================\n")?;
+    writer.write_all(format!("{:#?}\n", &project).as_bytes())?;
     Ok(())
 }
