@@ -673,7 +673,7 @@ mod tests {
     use crate::no_manifest::NoManifestConfig;
     use crate::rebar::RebarFeature;
 
-    fn gen_project(spec: &str) -> TempDir {
+    pub fn gen_project(spec: &str) -> TempDir {
         let fixtures = Fixture::parse(spec);
         let tmp_dir = TempDir::new().unwrap();
         for fixture in &fixtures {

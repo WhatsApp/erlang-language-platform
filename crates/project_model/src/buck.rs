@@ -27,11 +27,14 @@ use eetf::Term::Atom;
 use elp_log::timeit;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use indexmap::indexset;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::RelPath;
+use paths::RelPathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 use tempfile::NamedTempFile;
@@ -46,6 +49,13 @@ use crate::ProjectAppData;
 pub type TargetFullName = String;
 
 pub const ELP_CONFIG_FILE: &str = ".elp.toml";
+
+lazy_static! {
+    static ref DIRS: Vec<RelPathBuf> = vec!["src", "test", "include"]
+        .into_iter()
+        .flat_map(|dir| dir.try_into())
+        .collect();
+}
 
 // Sample config:
 // ```
@@ -274,7 +284,7 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
     for (name, target) in buck_targets {
         let mut private_header = false;
 
-        let dir = match find_target_dir(root, &name, &target) {
+        let dir = match find_app_root(root, &name, &target) {
             None => continue,
             Some(dir) => dir,
         };
@@ -333,7 +343,7 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
     }
     Ok(target_info)
 }
-
+/// finds buck root directory based on buck config, executing `buck2 root`
 fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let _timer = timeit!("loading root");
     let output = buck_config.buck_command().arg("root").output()?;
@@ -455,7 +465,7 @@ fn build_third_party_targets(
         .collect())
 }
 
-// Convert waserver//erl/util/thrift/src/thrift_compiler.erl to /Users/$USER/local/whatsapp/server/erl/util/thrift/src/thrift_compiler.erl
+/// Convert waserver//erl/util/thrift/src/thrift_compiler.erl to /Users/$USER/local/whatsapp/server/erl/util/thrift/src/thrift_compiler.erl
 fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
     let mut split = target.split("//");
     let _ = split.next(); //waserver or empty in case of //...
@@ -473,6 +483,7 @@ fn path_to_binary(path: impl AsRef<Path>) -> Term {
     str_to_binary(path.as_ref().as_os_str().to_str().unwrap())
 }
 
+/// creates erlang term for an app in a format required by eqwalizer
 pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> Term {
     let dir = path_to_binary(&project_data.dir);
     let ebin = path_to_binary(ebin);
@@ -573,7 +584,7 @@ pub fn save_build_info(term: Term) -> Result<BuildInfoFile> {
     Ok(BuildInfoFile(Arc::new(build_info_path)))
 }
 
-//convert waserver//erl/chatd:chatd into abs path ~/local/whatsapp/server/erl/chatd
+/// convert waserver//erl/chatd:chatd into abs path ~/local/whatsapp/server/erl/chatd
 fn find_buck_file_base_target_dir(
     root: &AbsPath,
     target_name: &TargetFullName,
@@ -582,48 +593,56 @@ fn find_buck_file_base_target_dir(
     buck_path_to_abs_path(root, &path)
 }
 
-fn find_target_dir(
+fn find_app_root(
     root: &AbsPath,
     target_name: &TargetFullName,
     target: &BuckTarget,
 ) -> Option<AbsPathBuf> {
     let dir_based_on_buck_file = find_buck_file_base_target_dir(root, target_name).ok()?;
-    target
-        .suite
-        .as_ref()
-        .or_else(|| target.srcs.first())
-        .or_else(|| target.includes.first())
-        .and_then(|path| {
-            let path = buck_path_to_abs_path(root, path).ok();
-            let parent = path.as_ref().and_then(|path| path.parent());
-            let dirs = vec!["src", "test", "include"];
-            // Look for one of dirs in the ancestry of the chosen file, abort if we
-            // find BUCK file
-            let mut parent_it = parent;
-            while let Some(parent_in_dirs) = parent_it {
-                if dirs
-                    .iter()
-                    .any(|d| Some(d.as_ref()) == parent_in_dirs.file_name())
-                {
-                    break;
+    let mut set = indexset![];
+    let paths = target
+        .srcs
+        .iter()
+        .chain(target.includes.iter())
+        .chain(target.suite.iter());
+
+    for path in paths {
+        if let Some(path) = buck_path_to_abs_path(root, path).ok() {
+            let parent = path.parent();
+            if let Some(parent) = parent {
+                if !set.contains(parent) {
+                    set.insert(parent.to_path_buf());
                 }
-                if dir_based_on_buck_file.as_path() == parent_in_dirs {
-                    parent_it = None;
-                    break;
-                }
-                parent_it = parent_in_dirs.parent();
             }
-            match parent_it {
-                // We found an src/, test/, or include/ directory before the BUCK file,
-                // so we just return the parent of this directory.
-                Some(parent_in_dirs) => parent_in_dirs.parent().map(|p| p.to_path_buf()),
-                // Otherwise, we just return the directory containing the chosen source file,
-                // this handles both cases where BUCK in this app root or outside, like
-                // [BUCK, app_name[module1.erl, include.hrl]] or
-                // [BUCK, module1.erl, module2.erl, include.hrl]
-                None => parent.map(|p| p.to_path_buf()),
+        }
+    }
+
+    for path in set {
+        if let Some(path) = examine_path(&path, dir_based_on_buck_file.as_path()) {
+            // We found an src/, test/, or include/ directory before the BUCK file,
+            // so we just return the parent of this directory.
+            return Some(path);
+        }
+    }
+    // Otherwise, we just return the directory containing the BUCK file,
+    Some(dir_based_on_buck_file)
+}
+
+fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsPathBuf> {
+    let mut parent_it = Some(path);
+    while let Some(parent_in_dirs) = parent_it {
+        for dir in DIRS.iter() {
+            if parent_in_dirs.ends_with(dir) {
+                return parent_in_dirs.parent().map(|p| p.to_path_buf());
             }
-        })
+        }
+        //optimization to stop on BUCK file location and not go to the /
+        if dir_based_on_buck_file == parent_in_dirs {
+            break;
+        }
+        parent_it = parent_in_dirs.parent();
+    }
+    None
 }
 
 pub fn targets_to_project_data(targets: &FxHashMap<TargetFullName, Target>) -> Vec<ProjectAppData> {
@@ -881,5 +900,150 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
                 })
                 .collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::gen_project;
+
+    #[test]
+    fn test_find_app_root_src() {
+        let spec = r#"
+        //- /app_a/src/app.erl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: None,
+            srcs: vec!["waserver//app_a/src/app.erl".to_string()],
+            includes: vec![],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn test_find_app_root_include() {
+        let spec = r#"
+        //- /app_a/include/app.hrl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: None,
+            srcs: vec![],
+            includes: vec!["waserver//app_a/include/app.hrl".to_string()],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn test_find_app_root_suite() {
+        let spec = r#"
+        //- /app_a/test/app_SUITE.erl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: Some("waserver//app_a/test/app_SUITE.erl".to_string()),
+            srcs: vec![],
+            includes: vec![],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    //aka wa_zippy case
+    fn test_find_app_root_multiple_src() {
+        let spec = r#"
+        //- /app_a/src/app.erl
+        //- /app_a/entity/entity.erl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: None,
+            srcs: vec![
+                "waserver//app_a/entity/entity.erl".to_string(),
+                "waserver//app_a/src/app.erl".to_string(),
+            ],
+            includes: vec![],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn test_find_app_root_no_structure_buck_inside() {
+        let spec = r#"
+        //- /app_a/app.erl
+        //- /app_a/app.hrl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: None,
+            srcs: vec!["waserver//app_a/app.erl".to_string()],
+            includes: vec!["waserver//app_a/app.hrl".to_string()],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn test_find_app_root_no_structure_buck_outside() {
+        let spec = r#"
+        //- /app_a/sub/app.erl
+        //- /app_a/sub/app.hrl
+        //- /app_a/BUCK
+        "#;
+        let dir = gen_project(spec);
+        let root = AbsPath::assert(dir.path());
+        let target_name = "waserver//app_a:app_a".to_string();
+        let target = BuckTarget {
+            name: "app_a".to_string(),
+            suite: None,
+            srcs: vec!["waserver//app_a/sub/app.erl".to_string()],
+            includes: vec!["waserver//app_a/sub/app.hrl".to_string()],
+            labels: FxHashSet::default(),
+        };
+
+        let actual = find_app_root(root, &target_name, &target);
+        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        assert_eq!(expected, actual)
     }
 }
