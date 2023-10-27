@@ -21,9 +21,7 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::EqwalizerStats;
@@ -138,7 +136,6 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
         }
     };
 
-    advise_on_suite_modules_that_should_not_be_opted_in(loaded, analysis, reporter)?;
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
@@ -425,54 +422,6 @@ fn should_eqwalize(analysis: &Analysis, file_id: FileId, include_generated: bool
         && analysis
             .is_eqwalizer_enabled(file_id, include_generated)
             .unwrap()
-}
-
-/// should conform to contract at the top of this Rust file
-fn advise_on_suite_modules_that_should_not_be_opted_in(
-    loaded: &LoadResult,
-    analysis: &Analysis,
-    reporter: &mut dyn reporting::Reporter,
-) -> Result<()> {
-    let project_id = loaded.project_id;
-    let module_index = analysis.module_index(project_id).unwrap();
-    let mut enabled_files: Vec<_> = module_index
-        .iter_own()
-        .par_bridge()
-        .map_with(analysis.clone(), |analysis, (name, source, file_id)| {
-            let enabled = analysis
-                .is_eqwalizer_enabled(file_id, false)
-                .unwrap_or(false);
-            (name, source, file_id, enabled)
-        })
-        .filter_map(|(name, source, file_id, enabled)| {
-            if enabled {
-                Some((name, source, file_id))
-            } else {
-                None
-            }
-        })
-        .filter(|(name, source, _file_id)| is_test_suite(name, *source))
-        .map(|(name, _source, file_id)| (name, file_id))
-        .collect();
-
-    enabled_files.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
-
-    for (_name, file_id) in enabled_files.iter() {
-        let description = "Please remove `-typing([eqwalizer])`. SUITE modules are not checked when eqWAlizing a project.";
-        reporter.write_file_advice(*file_id, description.to_string())?;
-    }
-    Ok(())
-}
-
-/// Approximation: assumes that `tests + test helpers == extra`
-fn is_test_suite_or_test_helper(source: FileSource) -> bool {
-    source == FileSource::Extra
-}
-
-// Hacky, relies on that we use Common Test specifically, where test modules end in _SUITE.
-// We can do something better when we switch to Buck instead of Rebar
-fn is_test_suite(name: &ModuleName, source: FileSource) -> bool {
-    name.ends_with("_SUITE") && is_test_suite_or_test_helper(source)
 }
 
 fn ensure_empty_directory_exists(path: impl AsRef<Path>) -> io::Result<()> {

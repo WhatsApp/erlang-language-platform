@@ -1,9 +1,3 @@
-note: advice
-  ┌─ app_a/test/app_a_SUITE.erl:1:2
-  │
-1 │ -module(app_a_SUITE).
-  │  ^ Please remove `-typing([eqwalizer])`. SUITE modules are not checked when eqWAlizing a project.
-
 error: incompatible_types
   ┌─ app_a/src/app_a.erl:9:5
   │
