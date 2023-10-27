@@ -610,12 +610,12 @@ pub(crate) fn document_highlight_kind(
 pub(crate) fn runnable(
     snap: &Snapshot,
     runnable: Runnable,
-    project_build_data: Option<ProjectBuildData>,
+    project_build_data: &ProjectBuildData,
 ) -> Result<lsp_ext::Runnable, String> {
     let file_id = runnable.nav.file_id;
     let file_path = snap.file_id_to_path(file_id);
     match project_build_data {
-        Some(elp_project_model::ProjectBuildData::Buck(buck_project)) => match file_path {
+        elp_project_model::ProjectBuildData::Buck(buck_project) => match file_path {
             None => Err("Could not extract file path".into()),
             Some(file_path) => match buck_project
                 .target_info
@@ -655,7 +655,7 @@ pub(crate) fn code_lens(
     acc: &mut Vec<lsp_types::CodeLens>,
     snap: &Snapshot,
     annotation: elp_ide::Annotation,
-    project_build_data: Option<ProjectBuildData>,
+    project_build_data: &ProjectBuildData,
 ) -> Result<()> {
     match annotation.kind {
         AnnotationKind::Runnable(run) => {

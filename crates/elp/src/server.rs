@@ -93,6 +93,7 @@ const LOGGER_NAME: &str = "lsp";
 const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] =
     &[FileKind::Module, FileKind::Header, FileKind::Escript];
 const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
+const CT_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -108,6 +109,7 @@ pub enum Task {
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
+    CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
@@ -195,6 +197,7 @@ pub struct Server {
     project_loader: Arc<Mutex<ProjectLoader>>,
     eqwalizer_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
+    ct_diagnostics_requested: bool,
     cache_scheduled: bool,
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
@@ -237,6 +240,7 @@ impl Server {
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             eqwalizer_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
+            ct_diagnostics_requested: false,
             cache_scheduled: false,
             logger,
             ai_completion: Arc::new(Mutex::new(ai_completion)),
@@ -393,6 +397,10 @@ impl Server {
                         spinner.end();
                         self.edoc_diagnostics_completed(diags)
                     }
+                    Task::CommonTestDiagnostics(spinner, diags) => {
+                        spinner.end();
+                        self.ct_diagnostics_completed(diags)
+                    }
                     Task::ErlangServiceDiagnostics(diags) => {
                         self.erlang_service_diagnostics_completed(diags)
                     }
@@ -435,6 +443,10 @@ impl Server {
 
             if mem::take(&mut self.edoc_diagnostics_requested) {
                 self.update_edoc_diagnostics();
+            }
+
+            if mem::take(&mut self.ct_diagnostics_requested) {
+                self.update_ct_diagnostics();
             }
         }
 
@@ -542,6 +554,7 @@ impl Server {
             .on::<notification::DidOpenTextDocument>(|this, params| {
                 this.eqwalizer_diagnostics_requested = true;
                 this.edoc_diagnostics_requested = true;
+                this.ct_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     this.fetch_projects_if_needed(&path);
                     let path = VfsPath::from(path);
@@ -639,6 +652,7 @@ impl Server {
 
                     this.eqwalizer_diagnostics_requested = true;
                     this.edoc_diagnostics_requested = true;
+                    this.ct_diagnostics_requested = true;
                 }
                 Ok(())
             })?
@@ -673,6 +687,7 @@ impl Server {
                 this.reload_project(to_reload);
                 this.eqwalizer_diagnostics_requested = true;
                 this.edoc_diagnostics_requested = true;
+                this.ct_diagnostics_requested = true;
                 Ok(())
             })?
             .finish();
@@ -882,6 +897,32 @@ impl Server {
         });
     }
 
+    fn update_ct_diagnostics(&mut self) {
+        if self.status != Status::Running {
+            return;
+        }
+
+        log::info!("Recomputing CT diagnostics");
+
+        let opened_documents = self.opened_documents();
+        let snapshot = self.snapshot();
+
+        let spinner = self.progress.begin_spinner("Common Test".to_string());
+
+        let supported_opened_documents: Vec<FileId> = opened_documents
+            .into_iter()
+            .filter(|file_id| is_supported_by_ct(&snapshot.analysis, *file_id))
+            .collect();
+        self.task_pool.handle.spawn(move || {
+            let diagnostics = supported_opened_documents
+                .into_iter()
+                .filter_map(|file_id| Some((file_id, snapshot.ct_diagnostics(file_id)?)))
+                .collect();
+
+            Task::CommonTestDiagnostics(spinner, diagnostics)
+        });
+    }
+
     fn eqwalizer_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_eqwalizer(file_id, diagnostics);
@@ -891,6 +932,12 @@ impl Server {
     fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_edoc(file_id, diagnostics);
+        }
+    }
+
+    fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
+        for (file_id, diagnostics) in diags {
+            self.diagnostics.set_ct(file_id, diagnostics);
         }
     }
 
@@ -1297,4 +1344,17 @@ pub fn is_supported_by_edoc(analysis: &Analysis, id: FileId) -> bool {
         Ok(kind) => EDOC_SUPPORTED_EXTENSIONS.contains(&kind),
         Err(_) => false,
     }
+}
+
+pub fn is_supported_by_ct(analysis: &Analysis, file_id: FileId) -> bool {
+    if let Ok(kind) = analysis.file_kind(file_id) {
+        if CT_SUPPORTED_EXTENSIONS.contains(&kind) {
+            if let Ok(Some(module_name)) = analysis.module_name(file_id) {
+                return module_name.ends_with("_SUITE");
+            }
+        } else {
+            return false;
+        }
+    }
+    false
 }

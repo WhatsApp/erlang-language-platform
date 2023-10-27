@@ -15,6 +15,7 @@ use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::fs;
 use std::mem;
 use std::sync::Arc;
 
@@ -106,6 +107,10 @@ impl ChangeFixture {
 
         for entry in fixture {
             let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
+            if let Some(scratch_buffer) = entry.scratch_buffer {
+                let _ = fs::create_dir_all(scratch_buffer.parent().unwrap());
+                let _ = fs::write(scratch_buffer, text.clone());
+            }
             if file_pos.is_some() {
                 assert!(file_position.is_none());
                 file_position = file_pos;

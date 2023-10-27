@@ -24,11 +24,17 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use common_test::ConversionError;
+use common_test::GroupDef;
+pub use common_test::TestDef;
 use crossbeam_channel::bounded;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use eetf::pattern;
+use eetf::Term;
+use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use jod_thread::JoinHandle;
 use parking_lot::Mutex;
 use regex::Regex;
@@ -36,6 +42,8 @@ use stdx::JodChild;
 use tempfile::Builder;
 use tempfile::TempPath;
 use text_size::TextRange;
+
+pub mod common_test;
 
 // Location information of a warning/error may come in different flavors:
 // * Eqwalizer: byte offset for range.
@@ -160,10 +168,18 @@ pub struct DocRequest {
 }
 
 #[derive(Debug, Clone)]
+pub struct EvalRequest {
+    pub src_path: PathBuf,
+    pub compile_options: Vec<CompileOption>,
+    pub expression: String,
+}
+
+#[derive(Debug, Clone)]
 enum Request {
     ParseRequest(ParseRequest, Sender<Result<UndecodedParseResult>>),
     AddCodePath(Vec<PathBuf>),
     DocRequest(DocRequest, Sender<Result<DocResult>>),
+    EvalRequest(EvalRequest, Sender<Result<UndecodedEvalResult>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -189,6 +205,51 @@ type RawMarkdown = String;
 
 pub type DocResult = RawModuleDoc<DocDiagnostic>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UndecodedEvalResult {
+    bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvalResult {
+    pub term: Term,
+}
+
+impl EvalResult {
+    pub fn as_ct_all_result(self) -> Result<FxHashSet<TestDef>, ConversionError> {
+        common_test::all(&self.term)
+    }
+    pub fn as_ct_groups_result(self) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionError> {
+        common_test::groups(&self.term)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    DecodeError(String),
+    ConversionError(ConversionError),
+}
+
+impl From<eetf::DecodeError> for Error {
+    fn from(err: eetf::DecodeError) -> Self {
+        let message = err.to_string();
+        Error::DecodeError(message)
+    }
+}
+
+impl From<ConversionError> for Error {
+    fn from(err: ConversionError) -> Self {
+        Error::ConversionError(err)
+    }
+}
+
+impl UndecodedEvalResult {
+    pub fn decode(self) -> Result<EvalResult, Error> {
+        let term = Term::decode(&*self.bytes)?;
+        Ok(EvalResult { term })
+    }
+}
+
 #[derive(Debug)]
 pub struct RawModuleDoc<Error> {
     pub module_doc: RawMarkdown,
@@ -200,11 +261,14 @@ pub struct RawModuleDoc<Error> {
 enum Reply {
     ParseReply(Result<UndecodedParseResult>),
     DocReply(Result<DocResult>),
+    EvalReply(Result<UndecodedEvalResult>),
 }
 
+#[derive(Debug)]
 enum ResponseSender {
     ParseResponseSender(Sender<Result<UndecodedParseResult>>),
     DocResponseSender(Sender<Result<DocResult>>),
+    EvalResponseSender(Sender<Result<UndecodedEvalResult>>),
 }
 
 impl ResponseSender {
@@ -212,6 +276,7 @@ impl ResponseSender {
         match self {
             ResponseSender::ParseResponseSender(r) => r.send(Result::Err(e)).unwrap(),
             ResponseSender::DocResponseSender(r) => r.send(Result::Err(e)).unwrap(),
+            ResponseSender::EvalResponseSender(r) => r.send(Result::Err(e)).unwrap(),
         }
     }
 }
@@ -341,6 +406,23 @@ impl Connection {
         let request = Request::AddCodePath(paths);
         self.sender.send(request).unwrap();
     }
+
+    pub fn eval(&self, request: EvalRequest) -> Result<EvalResult, String> {
+        let expression = request.expression.clone();
+        let (sender, receiver) = bounded::<Result<UndecodedEvalResult>>(0);
+        let request = Request::EvalRequest(request, sender);
+        self.sender.send(request.clone()).unwrap();
+        match receiver.recv().unwrap() {
+            Result::Ok(result) => match result.decode() {
+                Ok(result) => Ok(result),
+                Err(err) => Err(format!("Decoding error: {:?}", err)),
+            },
+            Err(error) => {
+                log::info!("Fail to evaluate: {:?}, {}", error, expression);
+                Err(format!("Fail to evaluate: {:?}", expression))
+            }
+        }
+    }
 }
 
 fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle) {
@@ -429,6 +511,9 @@ fn reader_run(
         let mut edoc_diagnostics = Vec::new();
 
         let mut is_doc = false;
+        let mut is_eval = false;
+
+        let mut eval_result = Vec::new();
 
         let function_doc_regex =
             Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
@@ -506,6 +591,10 @@ fn reader_run(
                         log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
                     }
                 }
+                "EVAL_RESULT" => {
+                    is_eval = true;
+                    eval_result = buf
+                }
                 _ => {
                     log::error!("Unrecognised segment: {}", line_buf);
                     break;
@@ -520,12 +609,18 @@ fn reader_run(
                 diagnostics: edoc_diagnostics,
             })))
         } else {
-            Ok(Reply::ParseReply(Ok(UndecodedParseResult {
-                ast: Arc::new(ast),
-                stub: Arc::new(stub),
-                warnings,
-                errors,
-            })))
+            if is_eval {
+                Ok(Reply::EvalReply(Ok(UndecodedEvalResult {
+                    bytes: eval_result,
+                })))
+            } else {
+                Ok(Reply::ParseReply(Ok(UndecodedParseResult {
+                    ast: Arc::new(ast),
+                    stub: Arc::new(stub),
+                    warnings,
+                    errors,
+                })))
+            }
         }
     }
 
@@ -542,12 +637,13 @@ fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
             s.send(r).unwrap();
             Result::Ok(())
         }
-        (ResponseSender::ParseResponseSender(_), Reply::DocReply(_)) => Result::Err(anyhow!(
-            "erlang_service response mismatch: Got a doc reply when expecting a parse reply"
-        )),
-        (ResponseSender::DocResponseSender(_), Reply::ParseReply(_)) => Result::Err(anyhow!(
-            "erlang_service response mismatch: Got a parse reply when expecting a doc reply"
-        )),
+        (ResponseSender::EvalResponseSender(s), Reply::EvalReply(r)) => {
+            Result::Ok(s.send(r).unwrap())
+        }
+        (sender, reply) => Result::Err(anyhow!(format!(
+            "erlang_service response mismatch: Got a {:?} reply when expecting a {:?} reply",
+            reply, sender
+        ))),
     }
 }
 
@@ -581,6 +677,17 @@ fn writer_run(
             inflight
                 .lock()
                 .insert(counter, ResponseSender::DocResponseSender(sender));
+            let tag = request.tag();
+            let bytes = request.encode(counter);
+            writeln!(instream, "{} {}", tag, bytes.len())?;
+            instream.write_all(&bytes)?;
+            instream.flush()
+        }
+        Request::EvalRequest(request, sender) => {
+            counter += 1;
+            inflight
+                .lock()
+                .insert(counter, ResponseSender::EvalResponseSender(sender));
             let tag = request.tag();
             let bytes = request.encode(counter);
             writeln!(instream, "{} {}", tag, bytes.len())?;
@@ -686,11 +793,43 @@ impl DocRequest {
     }
 }
 
+impl EvalRequest {
+    fn tag(&self) -> &'static str {
+        "EVAL"
+    }
+
+    fn encode(self, id: usize) -> Vec<u8> {
+        let compile_options = self
+            .compile_options
+            .into_iter()
+            .map(|option| option.into())
+            .collect::<Vec<eetf::Term>>();
+        let tuple = eetf::Tuple::from(vec![
+            eetf::BigInteger::from(id).into(),
+            path_into_list(self.src_path).into(),
+            eetf::List::from(compile_options).into(),
+            expression_into_list(self.expression).into(),
+        ]);
+        let mut buf = Vec::new();
+        eetf::Term::from(tuple).encode(&mut buf).unwrap();
+        buf
+    }
+}
+
 #[cfg(unix)]
 fn path_into_list(path: PathBuf) -> eetf::List {
     use std::os::unix::prelude::OsStringExt;
     path.into_os_string()
         .into_vec()
+        .into_iter()
+        .map(|byte| eetf::FixInteger::from(byte).into())
+        .collect::<Vec<eetf::Term>>()
+        .into()
+}
+
+fn expression_into_list(expression: String) -> eetf::List {
+    expression
+        .into_bytes()
         .into_iter()
         .map(|byte| eetf::FixInteger::from(byte).into())
         .collect::<Vec<eetf::Term>>()
@@ -791,6 +930,66 @@ mod tests {
         );
     }
 
+    #[test]
+    fn eval_ct_all() {
+        expect_eval(
+            "common_test_SUITE:all().".into(),
+            "fixtures/common_test_SUITE.erl".into(),
+            ParseAs::CtAll,
+            expect_file!["../fixtures/common_test_SUITE_ct_all.expected"],
+        );
+    }
+
+    #[test]
+    fn eval_ct_groups() {
+        expect_eval(
+            "common_test_SUITE:groups().".into(),
+            "fixtures/common_test_SUITE.erl".into(),
+            ParseAs::CtGroups,
+            expect_file!["../fixtures/common_test_SUITE_ct_groups.expected"],
+        );
+    }
+
+    #[test]
+    fn eval_ct_exception() {
+        expect_eval(
+            "common_test_exception_SUITE:all().".into(),
+            "fixtures/common_test_exception_SUITE.erl".into(),
+            ParseAs::CtAll,
+            expect_file!["../fixtures/common_test_exception_SUITE.expected"],
+        );
+    }
+
+    #[test]
+    fn eval_ct_incomplete() {
+        expect_eval(
+            "common_test_incomplete_SUITE:all().".into(),
+            "fixtures/common_test_incomplete_SUITE.erl".into(),
+            ParseAs::CtAll,
+            expect_file!["../fixtures/common_test_incomplete_SUITE.expected"],
+        );
+    }
+
+    #[test]
+    fn eval_ct_dynamic_all() {
+        expect_eval(
+            "common_test_dynamic_SUITE:all().".into(),
+            "fixtures/common_test_dynamic_SUITE.erl".into(),
+            ParseAs::CtAll,
+            expect_file!["../fixtures/common_test_dynamic_SUITE_ct_all.expected"],
+        );
+    }
+
+    #[test]
+    fn eval_ct_dynamic_groups() {
+        expect_eval(
+            "common_test_dynamic_SUITE:groups().".into(),
+            "fixtures/common_test_dynamic_SUITE.erl".into(),
+            ParseAs::CtGroups,
+            expect_file!["../fixtures/common_test_dynamic_SUITE_ct_groups.expected"],
+        );
+    }
+
     fn expect_module(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
@@ -824,5 +1023,36 @@ mod tests {
             &response.module_doc, &response.function_docs, &response.diagnostics
         );
         expected.assert_eq(&actual);
+    }
+
+    fn expect_eval(expression: String, path: PathBuf, parse_as: ParseAs, expected: ExpectFile) {
+        lazy_static! {
+            static ref CONN: Connection = Connection::start().unwrap();
+        }
+        let request = EvalRequest {
+            expression,
+            src_path: path,
+            compile_options: vec![],
+        };
+        let result = match CONN.eval(request) {
+            Ok(result) => match parse_as {
+                ParseAs::CtAll => match result.as_ct_all_result() {
+                    Ok(result) => format!("{:?}", result),
+                    Err(err) => format!("{:?}", err),
+                },
+                ParseAs::CtGroups => match result.as_ct_groups_result() {
+                    Ok(result) => format!("{:?}", result),
+                    Err(err) => format!("{:?}", err),
+                },
+            },
+            Err(err) => err,
+        };
+        let actual = format!("EVAL_RESULT\n{}", result);
+        expected.assert_eq(&actual);
+    }
+
+    enum ParseAs {
+        CtAll,
+        CtGroups,
     }
 }

@@ -49,6 +49,8 @@ process(<<"DOC_EDOC ", BinLen/binary>>, State) ->
     get_docs(BinLen, State, edoc);
 process(<<"DOC_EEP48 ", BinLen/binary>>, State) ->
     get_docs(BinLen, State, eep48);
+process(<<"EVAL ", BinLen/binary>>, State) ->
+    eval(BinLen, State);
 process(<<"EXIT">>, State) ->
     init:stop(),
     State.
@@ -89,6 +91,43 @@ get_docs(BinLen, State, DocOrigin) ->
         end
     end),
     State.
+
+eval(BinLen, State) ->
+    Len = binary_to_integer(BinLen),
+    %% Use file:read/2 since it reads bytes
+    {ok, Data} = file:read(State#state.io, Len),
+    spawn_link(fun() ->
+        {Id, FileName, CompileOptions, Expression} = binary_to_term(Data),
+        try
+            eval(Id, FileName, CompileOptions, Expression, State)
+        catch
+            Class:Reason:StackTrace ->
+                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
+                ExceptionData = unicode:characters_to_binary(Formatted),
+                reply_exception(Id, ExceptionData, State)
+        end
+    end),
+    State.
+
+eval(Id, Filename, CompileOptions, Expression, State) ->
+    {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
+    code:load_binary(Module, Filename, Binary),
+    {ok, Tokens, _} = erl_scan:string(Expression),
+    {ok, Exprs} = erl_parse:parse_exprs(Tokens),
+    {value, Value, _} = erl_eval:exprs(Exprs, []),
+    code:delete(Module),
+    code:purge(Module),
+    reply(Id, [{"EVAL_RESULT", term_to_binary(Value)}], State).
+
+normalize_compile_options(CompileOptions) ->
+    normalize_compile_options(CompileOptions, []).
+
+normalize_compile_options([], Acc) ->
+    Acc;
+normalize_compile_options([{includes, Includes} | Tail], Acc) ->
+    normalize_compile_options(Tail, Acc ++ [{i, Include} || Include <- Includes]);
+normalize_compile_options([Head | Tail], Acc) ->
+    normalize_compile_options(Tail, [Head | Acc]).
 
 elp_lint(BinLen, State, PostProcess, Deterministic) ->
     Len = binary_to_integer(BinLen),

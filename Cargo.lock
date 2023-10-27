@@ -451,6 +451,7 @@ dependencies = [
  "regex",
  "salsa",
  "stdx",
+ "tempfile",
  "vfs",
 ]
 
@@ -482,6 +483,7 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "eetf",
+ "elp_syntax",
  "env_logger",
  "expect-test",
  "fxhash",
@@ -501,6 +503,7 @@ version = "1.1.0"
 dependencies = [
  "anyhow",
  "elp_eqwalizer",
+ "elp_erlang_service",
  "elp_ide_assists",
  "elp_ide_completion",
  "elp_ide_db",
@@ -523,6 +526,7 @@ dependencies = [
  "strsim",
  "strum",
  "strum_macros",
+ "tempfile",
  "text-edit",
  "toml",
  "triple_accel",
@@ -579,6 +583,7 @@ dependencies = [
  "fxhash",
  "hir",
  "indexmap 1.9.3",
+ "lazy_static",
  "log",
  "memchr",
  "once_cell",
@@ -587,6 +592,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "stdx",
+ "tempfile",
  "text-edit",
 ]
 

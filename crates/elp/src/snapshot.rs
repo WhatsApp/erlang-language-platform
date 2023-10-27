@@ -48,6 +48,8 @@ pub enum TelemetryData {
     EqwalizerDiagnostics { file_url: Url },
     ParseServerDiagnostics { file_url: Url },
     EdocDiagnostics { file_url: Url },
+    MetaDiagnostics { file_url: Url },
+    CommonTestDiagnostics { file_url: Url },
     Initialize,
 }
 
@@ -65,6 +67,12 @@ impl fmt::Display for TelemetryData {
             }
             TelemetryData::EdocDiagnostics { file_url } => {
                 write!(f, "EDoc Diagnostics file_url: {}", file_url)
+            }
+            TelemetryData::MetaDiagnostics { file_url } => {
+                write!(f, "Meta Diagnostics file_url: {}", file_url)
+            }
+            TelemetryData::CommonTestDiagnostics { file_url } => {
+                write!(f, "CT Diagnostics file_url: {}", file_url)
             }
             TelemetryData::Initialize => {
                 write!(f, "Initialize")
@@ -208,8 +216,9 @@ impl Snapshot {
 
     pub fn edoc_diagnostics(&self, file_id: FileId) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics { file_url });
-        let url = file_id_to_url(&self.vfs.read(), file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics {
+            file_url: file_url.clone()
+        });
         let line_index = self.analysis.line_index(file_id).ok()?;
 
         let diags = &*self.analysis.edoc_diagnostics(file_id).ok()?;
@@ -221,10 +230,44 @@ impl Snapshot {
                     (
                         *file_id,
                         ds.iter()
-                            .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d))
+                            .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d))
                             .collect(),
                     )
                 })
+                .collect(),
+        )
+    }
+
+    pub fn meta_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+        let file_url = self.file_id_to_url(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::MetaDiagnostics {
+            file_url: file_url.clone()
+        });
+        let line_index = self.analysis.line_index(file_id).ok()?;
+
+        let diags = &*self.analysis.meta_diagnostics(file_id).ok()?;
+
+        Some(
+            diags
+                .iter()
+                .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d))
+                .collect(),
+        )
+    }
+
+    pub fn ct_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+        let file_url = self.file_id_to_url(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::CommonTestDiagnostics {
+            file_url: file_url.clone()
+        });
+        let line_index = self.analysis.line_index(file_id).ok()?;
+
+        let diags = &*self.analysis.ct_diagnostics(file_id).ok()?;
+
+        Some(
+            diags
+                .iter()
+                .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d))
                 .collect(),
         )
     }
@@ -234,8 +277,9 @@ impl Snapshot {
         file_id: FileId,
     ) -> Option<Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics { file_url });
-        let url = file_id_to_url(&self.vfs.read(), file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
+            file_url: file_url.clone()
+        });
         let line_index = self.analysis.line_index(file_id).ok()?;
 
         let diags = &*self.analysis.erlang_service_diagnostics(file_id).ok()?;
@@ -246,7 +290,7 @@ impl Snapshot {
                 .map(|(file_id, ds)| {
                     (
                         *file_id,
-                        ds.convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d)),
+                        ds.convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d)),
                     )
                 })
                 .collect(),

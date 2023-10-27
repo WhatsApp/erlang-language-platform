@@ -11,13 +11,13 @@ use std::fmt;
 
 use elp_syntax::TextRange;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Diagnostic {
     pub location: TextRange,
     pub message: DiagnosticMessage,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DiagnosticMessage {
     VarNameOutsideMacro,
 }

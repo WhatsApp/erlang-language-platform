@@ -18,6 +18,8 @@ use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
 use elp_ide_assists::GroupLabel;
 use elp_ide_db::assists::Assist;
+use elp_ide_db::common_test::CommonTestDatabase;
+use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
@@ -642,9 +644,6 @@ pub fn diagnostics(
         static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
     };
     let parse = db.parse(file_id);
-    let root_id = db.file_source_root(file_id);
-    let root = db.source_root(root_id);
-    let path = root.path_for_file(&file_id).unwrap();
 
     let file_kind = db.file_kind(file_id);
     let report_diagnostics = EXTENSIONS.iter().any(|it| it == &file_kind);
@@ -659,13 +658,6 @@ pub fn diagnostics(
             no_module_definition_diagnostic(&mut res, &parse);
             if include_generated || !db.is_generated(file_id) {
                 unused_include::unused_includes(&sema, db, &mut res, file_id);
-            }
-            let is_test_suite = match path.name_and_extension() {
-                Some((name, _)) => name.ends_with("_SUITE"),
-                _ => false,
-            };
-            if is_test_suite {
-                common_test::unreachable_test(&mut res, &sema, file_id)
             }
         }
 
@@ -782,7 +774,6 @@ pub fn semantic_diagnostics(
     mutable_variable::mutable_variable_bug(res, sema, file_id);
     effect_free_statement::effect_free_statement(res, sema, file_id);
     application_env::application_env(res, sema, file_id);
-    // @fb-only: meta_only::diagnostics(res, sema, file_id);
     missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
     cross_node_eval::cross_node_eval(res, sema, file_id);
     dependent_header::dependent_header(res, sema, file_id, file_kind);
@@ -1103,6 +1094,25 @@ fn label_erlang_service_diagnostics(
         .collect_vec()
 }
 
+pub fn meta_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+
+    let sema = Semantic::new(db);
+    if let Some(module_name) = sema.module_name(file_id) {
+        if common_test::is_suite(module_name) {
+            if let elp_ide_db::common_test::CommonTestInfo::Result { all, groups } =
+                &*ct_info(db, file_id)
+            {
+                let testcases =
+                    common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
+                // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, testcases);
+            }
+        }
+    }
+
+    res
+}
+
 pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<Diagnostic>)> {
     // We use a BTreeSet of a tuple because neither ParseError nor
     // Diagnostic nor TextRange has an Ord instance
@@ -1203,6 +1213,59 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
             .into_iter()
             .map(|(file_id, ds)| (file_id, ds))
             .collect()
+    }
+}
+
+pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
+    if !is_ct_test_suite(db, file_id) {
+        return Arc::new(CommonTestInfo::Skipped);
+    }
+
+    // If the file cannot be parsed, return early.
+    // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
+    let format = erlang_service::Format::OffsetEtf;
+    let ast = db.module_ast(file_id, format);
+    if !ast.is_ok() {
+        return Arc::new(CommonTestInfo::BadAST);
+    }
+
+    db.ct_info(file_id)
+}
+
+pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
+    let default: Vec<Diagnostic> = Vec::new();
+    let parse = db.parse(file_id);
+    let line_index = db.file_line_index(file_id);
+
+    let diags = match &*ct_info(db, file_id) {
+        CommonTestInfo::Result { all, groups } => {
+            common_test::unreachable_test(&Semantic::new(db), file_id, all.clone(), groups.clone())
+        }
+        CommonTestInfo::ConversionError(_) => {
+            // TODO: Report malformed test definitions
+            default
+        }
+        _ => default,
+    };
+
+    diags
+        .into_iter()
+        .filter(|d| !d.should_be_ignored(&line_index, &parse.syntax_node()))
+        .collect()
+}
+
+pub fn is_ct_test_suite(db: &RootDatabase, file_id: FileId) -> bool {
+    let root_id = db.file_source_root(file_id);
+    let root = db.source_root(root_id);
+    let path = root.path_for_file(&file_id).unwrap();
+    let file_kind = db.file_kind(file_id);
+    if file_kind == FileKind::Module {
+        match path.name_and_extension() {
+            Some((name, _)) => name.ends_with("_SUITE"),
+            _ => false,
+        }
+    } else {
+        false
     }
 }
 

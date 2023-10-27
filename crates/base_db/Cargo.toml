@@ -21,6 +21,7 @@ profile.workspace = true
 regex.workspace = true
 salsa.workspace = true
 stdx.workspace = true
+tempfile.workspace = true
 vfs.workspace = true
 
 [dev-dependencies]

@@ -146,6 +146,8 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
 
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
 
+    fn file_project_id(&self, file_id: FileId) -> Option<ProjectId>;
+
     fn file_kind(&self, file_id: FileId) -> FileKind;
 
     /// When we get a range from the client, limit it to what is in the source file
@@ -213,6 +215,11 @@ fn file_app_type(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppType> {
 fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
     let app_data = db.app_data(db.file_source_root(file_id))?;
     Some(app_data.name.clone())
+}
+
+fn file_project_id(db: &dyn SourceDatabase, file_id: FileId) -> Option<ProjectId> {
+    let app_data = db.app_data(db.file_source_root(file_id))?;
+    Some(app_data.project_id)
 }
 
 pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleName> {

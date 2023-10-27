@@ -7,9 +7,14 @@
  * of this source tree.
  */
 
+use elp_erlang_service::common_test::GroupDef;
+use elp_erlang_service::TestDef;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
+use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
+use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 
 use crate::runnables::runnables;
 use crate::runnables::Runnable;
@@ -29,10 +34,15 @@ pub enum AnnotationKind {
     Runnable(Runnable),
 }
 
-pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation> {
+pub(crate) fn annotations(
+    db: &RootDatabase,
+    file_id: FileId,
+    all: FxHashSet<TestDef>,
+    groups: FxHashMap<SmolStr, GroupDef>,
+) -> Vec<Annotation> {
     let mut annotations = Vec::default();
 
-    for runnable in runnables(db, file_id) {
+    for runnable in runnables(db, file_id, all, groups) {
         let range = runnable.nav.range();
         annotations.push(Annotation {
             range,
@@ -53,9 +63,10 @@ mod tests {
     #[track_caller]
     fn check(fixture: &str) {
         let (analysis, pos, mut annotations) = fixture::annotations(trim_indent(fixture).as_str());
-        let actual_annotations = analysis.annotations(pos.file_id).unwrap();
+        let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
+        let _ = analysis.db.ensure_erlang_service(project_id);
         let mut actual = Vec::new();
-        for annotation in actual_annotations {
+        for annotation in analysis.annotations(pos.file_id).unwrap() {
             match annotation.kind {
                 AnnotationKind::Runnable(runnable) => {
                     let file_id = runnable.nav.file_id;
@@ -77,6 +88,7 @@ mod tests {
     fn annotations_no_suite() {
         check(
             r#"
+//- /main.erl scratch_buffer:true
 -module(main).
 ~
 main() ->
@@ -89,12 +101,14 @@ main() ->
     fn annotations_suite() {
         check(
             r#"
-//- /main_SUITE.erl
+//- /main_SUITE.erl scratch_buffer:true
    ~
    -module(main_SUITE).
 %% ^^^^^^^^^^^^^^^^^^^^ main_SUITE
-main() ->
-  ok.
+    -export([all/0]).
+    all() -> [].
+    main() ->
+      ok.
             "#,
         );
     }

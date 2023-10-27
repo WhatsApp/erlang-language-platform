@@ -24,6 +24,7 @@ use elp_ide_assists::AssistResolveStrategy;
 use elp_ide_completion::Completion;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistUserInput;
+use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::Doc;
 use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::elp_base_db::salsa::ParallelDatabase;
@@ -249,6 +250,21 @@ impl Analysis {
     /// Computes the set of EDoc diagnostics for the given file.
     pub fn edoc_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<(FileId, Vec<Diagnostic>)>> {
         self.with_db(|db| diagnostics::edoc_diagnostics(db, file_id))
+    }
+
+    /// Computes the set of Meta diagnostics for the given file.
+    pub fn meta_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<Diagnostic>> {
+        self.with_db(|db| diagnostics::meta_diagnostics(db, file_id))
+    }
+
+    /// Computes Common Test info for the given file.
+    pub fn ct_info(&self, file_id: FileId) -> Cancellable<Arc<CommonTestInfo>> {
+        self.with_db(|db| diagnostics::ct_info(db, file_id))
+    }
+
+    /// Computes Common Test diagnostics for the given file.
+    pub fn ct_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<Diagnostic>> {
+        self.with_db(|db| diagnostics::ct_diagnostics(db, file_id))
     }
 
     /// Computes the set of parse server diagnostics for the given file.
@@ -557,11 +573,21 @@ impl Analysis {
     }
 
     pub fn annotations(&self, file_id: FileId) -> Cancellable<Vec<Annotation>> {
-        self.with_db(|db| annotations::annotations(db, file_id))
+        self.with_db(|db| match &*diagnostics::ct_info(db, file_id) {
+            CommonTestInfo::Result { all, groups } => {
+                annotations::annotations(db, file_id, all.clone(), groups.clone())
+            }
+            _ => Vec::new(),
+        })
     }
 
     pub fn runnables(&self, file_id: FileId) -> Cancellable<Vec<Runnable>> {
-        self.with_db(|db| runnables::runnables(db, file_id))
+        self.with_db(|db| match &*diagnostics::ct_info(db, file_id) {
+            CommonTestInfo::Result { all, groups } => {
+                runnables::runnables(db, file_id, all.clone(), groups.clone())
+            }
+            _ => Vec::new(),
+        })
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.

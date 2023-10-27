@@ -43,6 +43,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 mod apply_change;
+pub mod common_test;
 mod defs;
 pub mod docs;
 pub mod eqwalizer;
@@ -96,6 +97,7 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     elp_base_db::SourceDatabaseExtStorage,
     elp_base_db::SourceDatabaseStorage,
     eqwalizer::EqwalizerDatabaseStorage,
+    common_test::CommonTestDatabaseStorage,
     elp_eqwalizer::ast::db::EqwalizerASTDatabaseStorage,
     elp_eqwalizer::EqwalizerDiagnosticsDatabaseStorage,
     erl_ast::ErlAstDatabaseStorage,

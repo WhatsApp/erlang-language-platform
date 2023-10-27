@@ -74,6 +74,7 @@ use std::path::PathBuf;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 pub use stdx::trim_indent;
+use tempfile::tempdir;
 
 use crate::otp::Otp;
 use crate::AppName;
@@ -85,6 +86,7 @@ pub struct Fixture {
     pub text: String,
     pub app_data: Option<ProjectAppData>,
     pub otp: Option<Otp>,
+    pub scratch_buffer: Option<PathBuf>,
 }
 
 impl Fixture {
@@ -152,7 +154,7 @@ impl Fixture {
         let meta = meta["//-".len()..].trim();
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
-        let path = components[0].to_string();
+        let mut path = components[0].to_string();
         assert!(
             path.starts_with('/'),
             "fixture path does not start with `/`: {:?}",
@@ -163,6 +165,7 @@ impl Fixture {
         let mut include_dirs = Vec::new();
         let mut extra_dirs = Vec::new();
         let mut otp = None;
+        let mut scratch_buffer = None;
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -189,6 +192,14 @@ impl Fixture {
                     // It needs to be relative to the app dir.
                     let dir = value.to_string();
                     extra_dirs.push(dir);
+                }
+                "scratch_buffer" => {
+                    // Certain features depending on the Erlang Service
+                    // require a physical copy of the file on the FS
+                    let tmp_dir = tempdir().unwrap();
+                    let tmp_path = tmp_dir.path().join(path.strip_prefix("/").unwrap());
+                    path = tmp_path.to_str().unwrap().to_string();
+                    scratch_buffer = Some(tmp_path);
                 }
                 _ => panic!("bad component: {:?}", component),
             }
@@ -225,6 +236,7 @@ impl Fixture {
             text: String::new(),
             app_data,
             otp,
+            scratch_buffer,
         }
     }
 }

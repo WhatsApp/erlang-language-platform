@@ -22,6 +22,7 @@ use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::trim_indent;
 use fxhash::FxHashSet;
 use itertools::Itertools;
+use text_edit::TextRange;
 
 use crate::diagnostics;
 use crate::diagnostics::Diagnostic;
@@ -33,6 +34,70 @@ use crate::fixture;
 use crate::Analysis;
 use crate::DiagnosticsConfig;
 use crate::NavigationTarget;
+
+#[track_caller]
+pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
+    let after = trim_indent(fixture_after);
+    let (analysis, pos) = fixture::position(fixture_before);
+    let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
+    let _ = analysis.db.ensure_erlang_service(project_id);
+
+    let diagnostic = diagnostics::ct_diagnostics(&analysis.db, pos.file_id)
+        .iter()
+        .last()
+        .expect("no diagnostics")
+        .clone();
+    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[0];
+    let actual = {
+        let source_change = fix.source_change.as_ref().unwrap();
+        let file_id = *source_change.source_file_edits.keys().next().unwrap();
+        let mut actual = analysis.db.file_text(file_id).to_string();
+
+        for edit in source_change.source_file_edits.values() {
+            edit.apply(&mut actual);
+        }
+        actual
+    };
+    assert!(
+        fix.target.contains_inclusive(pos.offset),
+        "diagnostic fix range {:?} does not touch cursor position {:?}",
+        fix.target,
+        pos.offset
+    );
+    assert_eq_text!(&after, &actual);
+}
+
+#[track_caller]
+pub(crate) fn check_meta_fix(fixture_before: &str, fixture_after: &str) {
+    let after = trim_indent(fixture_after);
+    let (analysis, pos) = fixture::position(fixture_before);
+    let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
+    let _ = analysis.db.ensure_erlang_service(project_id);
+
+    let diagnostic = diagnostics::meta_diagnostics(&analysis.db, pos.file_id)
+        .iter()
+        .last()
+        .expect("no diagnostics")
+        .clone();
+    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[0];
+    let actual = {
+        let source_change = fix.source_change.as_ref().unwrap();
+        let file_id = *source_change.source_file_edits.keys().next().unwrap();
+        let mut actual = analysis.db.file_text(file_id).to_string();
+
+        for edit in source_change.source_file_edits.values() {
+            edit.apply(&mut actual);
+        }
+        actual
+    };
+    assert!(
+        fix.target.contains_inclusive(pos.offset),
+        "diagnostic fix range {:?} does not touch cursor position {:?}",
+        fix.target,
+        pos.offset
+    );
+    assert_eq_text!(&after, &actual);
+}
 
 /// Takes a multi-file input fixture with annotated cursor positions,
 /// and checks that:
@@ -150,6 +215,60 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
     check_diagnostics_with_config(config, ra_fixture)
 }
 
+fn convert_diagnostics_to_annotations(
+    diagnostics: Vec<(TextRange, Diagnostic)>,
+) -> Vec<(TextRange, String)> {
+    let mut actual = diagnostics
+        .into_iter()
+        .map(|(r, d)| {
+            let mut annotation = String::new();
+            if let Some(fixes) = &d.fixes {
+                assert!(!fixes.is_empty());
+                annotation.push_str("💡 ")
+            }
+            annotation.push_str(match d.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::WeakWarning => "weak",
+            });
+            annotation.push_str(": ");
+            annotation.push_str(&d.message);
+            (r, annotation)
+        })
+        .collect::<Vec<_>>();
+    actual.sort_by_key(|(range, _)| range.start());
+    actual
+}
+
+#[track_caller]
+pub(crate) fn check_meta_diagnostics(elp_fixture: &str) {
+    let (analysis, pos) = fixture::position(elp_fixture);
+    let file_id = pos.file_id;
+    let project_id = analysis.project_id(file_id).unwrap().unwrap();
+    let _ = analysis.db.ensure_erlang_service(project_id);
+    let diagnostics = diagnostics::meta_diagnostics(&analysis.db, file_id)
+        .into_iter()
+        .map(|d| (d.range, d))
+        .collect();
+    let expected = extract_annotations(&*analysis.db.file_text(file_id));
+    let actual = convert_diagnostics_to_annotations(diagnostics);
+    assert_eq!(expected, actual);
+}
+
+#[track_caller]
+pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
+    let (analysis, file_id) = fixture::single_file(elp_fixture);
+    let project_id = analysis.project_id(file_id).unwrap().unwrap();
+    let _ = analysis.db.ensure_erlang_service(project_id);
+    let diagnostics = diagnostics::ct_diagnostics(&analysis.db, file_id)
+        .into_iter()
+        .map(|d| (d.range, d))
+        .collect();
+    let expected = extract_annotations(&*analysis.db.file_text(file_id));
+    let actual = convert_diagnostics_to_annotations(diagnostics);
+    assert_eq!(expected, actual);
+}
+
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
     check_diagnostics_with_config_and_extra(config, &LabeledDiagnostics::default(), elp_fixture)
@@ -168,25 +287,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
         // diagnostics.extend(new_extra_diags.into_iter());
         let expected = extract_annotations(&db.file_text(file_id));
-        let mut actual = diagnostics
-            .into_iter()
-            .map(|(r, d)| {
-                let mut annotation = String::new();
-                if let Some(fixes) = &d.fixes {
-                    assert!(!fixes.is_empty());
-                    annotation.push_str("💡 ")
-                }
-                annotation.push_str(match d.severity {
-                    Severity::Error => "error",
-                    Severity::Warning => "warning",
-                    Severity::WeakWarning => "weak",
-                });
-                annotation.push_str(": ");
-                annotation.push_str(&d.message);
-                (r, annotation)
-            })
-            .collect::<Vec<_>>();
-        actual.sort_by_key(|(range, _)| range.start());
+        let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
     }
 }

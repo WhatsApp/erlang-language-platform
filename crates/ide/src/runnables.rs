@@ -7,9 +7,14 @@
  * of this source tree.
  */
 
+use elp_erlang_service::common_test::GroupDef;
+use elp_erlang_service::TestDef;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
 use elp_project_model::AppName;
+use elp_syntax::SmolStr;
+use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use hir::NameArity;
 use hir::Semantic;
 
@@ -125,9 +130,14 @@ impl Runnable {
 //
 // | VS Code | **ELP: Run**
 // |===
-pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
+pub(crate) fn runnables(
+    db: &RootDatabase,
+    file_id: FileId,
+    all: FxHashSet<TestDef>,
+    groups: FxHashMap<SmolStr, GroupDef>,
+) -> Vec<Runnable> {
     let sema = Semantic::new(db);
-    match common_test::runnables(&sema, file_id) {
+    match common_test::runnables(&sema, file_id, all, groups) {
         Ok(runnables) => runnables,
         Err(_) => Vec::new(),
     }
@@ -144,6 +154,8 @@ mod tests {
     #[track_caller]
     fn check_runnables(fixture: &str) {
         let (analysis, pos, mut annotations) = fixture::annotations(trim_indent(fixture).as_str());
+        let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
+        let _ = analysis.db.ensure_erlang_service(project_id);
         let runnables = analysis.runnables(pos.file_id).unwrap();
         let mut actual = Vec::new();
         for runnable in runnables {
@@ -170,7 +182,7 @@ mod tests {
     fn runnables_no_suite() {
         check_runnables(
             r#"
- //- /my_app/src/main.erl
+ //- /my_app/src/main.erl scratch_buffer:true
     ~
     -module(main).
     -export([all/]).
@@ -184,10 +196,10 @@ mod tests {
     fn runnables_suite() {
         check_runnables(
             r#"
- //- /my_app/test/my_common_test_SUITE.erl
+ //- /my_app/test/runnables_SUITE.erl scratch_buffer:true
     ~
-    -module(my_common_test_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(runnables_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -export([all/0, groups/0]).
     -export([a/1, b/1, c/1]).
     all() -> [a, b, {group, gc1}].
@@ -209,11 +221,32 @@ mod tests {
     fn runnables_suite_not_exported() {
         check_runnables(
             r#"
- //- /my_app/test/my_common_test_SUITE.erl
+ //- /my_app/test/not_exported_SUITE.erl scratch_buffer:true
     ~
-    -module(my_common_test_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(not_exported_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -export([all/0, groups/0]).
+    -export([a/1]).
+    all() -> [a, b].
+    groups() -> [].
+    a(_Config) ->
+ %% ^ Run Test
+        ok.
+    b(_Config) ->
+        ok.
+    "#,
+        );
+    }
+
+    #[test]
+    fn runnables_suite_no_groups() {
+        check_runnables(
+            r#"
+ //- /my_app/test/no_groups_SUITE.erl scratch_buffer:true
+    ~
+    -module(no_groups_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -export([all/0]).
     -export([a/1]).
     all() -> [a, b].
     a(_Config) ->
@@ -229,10 +262,10 @@ mod tests {
     fn runnables_nested_groups() {
         check_runnables(
             r#"
- //- /my_app/test/nested_SUITE.erl
+ //- /my_app/test/nested_groups_SUITE.erl scratch_buffer:true
     ~
-    -module(nested_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(nested_groups_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
 
     -export([all/0, groups/0]).
     -export([tc1/1, tc2/1, tc3/1, tc4/1, tc5/1]).
@@ -271,10 +304,10 @@ mod tests {
     fn runnables_suite_recursive_groups() {
         check_runnables(
             r#"
- //- /my_app/test/my_common_test_SUITE.erl
+ //- /my_app/test/recursive_groups_SUITE.erl scratch_buffer:true
     ~
-    -module(my_common_test_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(recursive_groups_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -export([all/0, groups/0]).
     -export([a/1, b/1]).
     all() -> [{group, ga}, {group, gb}].
@@ -296,10 +329,10 @@ mod tests {
     fn runnables_suite_otp_example_1() {
         check_runnables(
             r#"
- //- /my_app/test/otp_SUITE.erl
+ //- /my_app/test/otp_1_SUITE.erl scratch_buffer:true
     ~
-    -module(otp_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(otp_1_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -compile(export_all).
     groups() -> [{group1, [parallel], [test1a,test1b]},
                  {group2, [shuffle,sequence], [test2a,test2b,test2c]}].
@@ -326,10 +359,10 @@ mod tests {
     fn runnables_suite_otp_example_2() {
         check_runnables(
             r#"
- //- /my_app/test/otp_SUITE.erl
+ //- /my_app/test/otp_2_SUITE.erl scratch_buffer:true
     ~
-    -module(otp_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(otp_2_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -compile(export_all).
     groups() -> [{tests1, [], [{tests2, [], [t2a,t2b]}, {tests3, [], [t3a,t3b]}]}].
     all() ->[{group, tests1, default, [{tests2, [parallel]}]},
@@ -354,10 +387,10 @@ mod tests {
     fn runnables_suite_otp_example_3() {
         check_runnables(
             r#"
- //- /my_app/test/otp_SUITE.erl
+ //- /my_app/test/otp_3_SUITE.erl scratch_buffer:true
     ~
-    -module(otp_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(otp_3_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -compile(export_all).
     groups() -> [{tests1, [], [{tests2, [], [t2a,t2b]},
                  {tests3, [], [t3a,t3b]}]}].
@@ -386,10 +419,10 @@ mod tests {
     fn runnables_suite_otp_example_4() {
         check_runnables(
             r#"
- //- /my_app/test/otp_SUITE.erl
+ //- /my_app/test/otp_4_SUITE.erl scratch_buffer:true
     ~
-    -module(otp_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(otp_4_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -compile(export_all).
     groups() ->
       [{tests1, [], [{group, tests2}]},
@@ -424,10 +457,10 @@ mod tests {
         // See https://www.erlang.org/doc/apps/common_test/write_test_chapter#test_case_groups
         check_runnables(
             r#"
- //- /my_app/test/my_common_test_SUITE.erl
+ //- /my_app/test/undocumented_group_def_SUITE.erl scratch_buffer:true
     ~
-    -module(my_common_test_SUITE).
- %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
+    -module(undocumented_group_def_SUITE).
+ %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
     -export([all/0, groups/0]).
     -export([a/1, b/1, c/1]).
     all() -> [a, b, {group, gc1}].

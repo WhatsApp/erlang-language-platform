@@ -30,6 +30,7 @@ pub(crate) struct DiagnosticCollection {
     pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
+    pub(crate) ct: FxHashMap<FileId, Vec<Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
 
@@ -55,6 +56,13 @@ impl DiagnosticCollection {
         }
     }
 
+    pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+        if !are_all_diagnostics_equal(&self.ct, file_id, &diagnostics) {
+            set_diagnostics(&mut self.ct, file_id, diagnostics);
+            self.changes.insert(file_id);
+        }
+    }
+
     pub fn set_erlang_service(
         &mut self,
         file_id: FileId,
@@ -74,8 +82,10 @@ impl DiagnosticCollection {
 
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
+        let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer);
         combined.extend(edoc);
+        combined.extend(ct);
         combined
     }
 

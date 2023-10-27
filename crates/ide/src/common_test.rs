@@ -28,18 +28,15 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::ModuleName;
+use elp_ide_db::erlang_service::common_test::GroupDef;
+use elp_ide_db::erlang_service::TestDef;
 use elp_syntax::AstNode;
+use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::known;
-use hir::Body;
-use hir::Expr;
-use hir::ExprId;
 use hir::FunctionDef;
-use hir::InFile;
-use hir::InFunctionBody;
-use hir::Literal;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
@@ -69,39 +66,16 @@ impl GroupName {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-struct GroupDef {
-    name: Name,
-    content: Vec<TestDef>,
-}
+pub fn unreachable_test(
+    sema: &Semantic,
+    file_id: FileId,
+    all: FxHashSet<TestDef>,
+    groups: FxHashMap<SmolStr, GroupDef>,
+) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
 
-impl GroupDef {
-    pub(crate) fn new(
-        sema: &Semantic,
-        body: &Body,
-        group_name: ExprId,
-        group_content: ExprId,
-    ) -> Option<Self> {
-        let group_name = &body[group_name].as_atom()?;
-        let group_name = sema.db.lookup_atom(*group_name);
-        let group_content = parse_group_content(sema, body, group_content).ok()?;
-        Some(GroupDef {
-            name: group_name,
-            content: group_content,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-enum TestDef {
-    TestName(Name),
-    GroupName(Name),
-    GroupDef(Name, Vec<TestDef>),
-}
-
-pub fn unreachable_test(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     let exported_test_ranges = exported_test_ranges(sema, file_id);
-    if let Ok(runnable_names) = runnable_names(sema, file_id) {
+    if let Ok(runnable_names) = runnable_names(sema, file_id, all, groups) {
         for (name, range) in exported_test_ranges {
             if !runnable_names.contains(&name) {
                 let d = Diagnostic::new(
@@ -115,10 +89,17 @@ pub fn unreachable_test(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file
             }
         }
     }
+
+    diagnostics
 }
 
-pub fn runnable_names(sema: &Semantic, file_id: FileId) -> Result<FxHashSet<NameArity>, ()> {
-    runnables(sema, file_id).map(|runnables| {
+pub fn runnable_names(
+    sema: &Semantic,
+    file_id: FileId,
+    all: FxHashSet<TestDef>,
+    groups: FxHashMap<SmolStr, GroupDef>,
+) -> Result<FxHashSet<NameArity>, ()> {
+    runnables(sema, file_id, all, groups).map(|runnables| {
         runnables
             .into_iter()
             .filter_map(|runnable| match runnable.kind {
@@ -156,7 +137,12 @@ lazy_static! {
 }
 
 // Populate the list of runnables for a Common Test test suite
-pub fn runnables(sema: &Semantic, file_id: FileId) -> Result<Vec<Runnable>, ()> {
+pub fn runnables(
+    sema: &Semantic,
+    file_id: FileId,
+    all: FxHashSet<TestDef>,
+    groups: FxHashMap<SmolStr, GroupDef>,
+) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
     if let Some(module_name) = sema.module_name(file_id) {
         if is_suite(module_name) {
@@ -164,11 +150,7 @@ pub fn runnables(sema: &Semantic, file_id: FileId) -> Result<Vec<Runnable>, ()> 
             if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
                 res.push(suite_runnable);
             }
-            // Parse and expand the content of the groups/0 function
-            let groups = groups(sema, file_id)?;
-            // Parse the content of the all/0 function
-            let all = all(sema, file_id)?;
-            // Finally produce the list of runnables
+            // Then produce the list of runnables
             let test_defs = Vec::from_iter(all);
             runnables_for_test_defs(
                 &mut res,
@@ -189,29 +171,35 @@ fn runnables_for_test_defs(
     file_id: FileId,
     test_defs: &Vec<TestDef>,
     group_names: FxHashSet<GroupName>,
-    group_defs: &FxHashMap<Name, GroupDef>,
+    group_defs: &FxHashMap<SmolStr, GroupDef>,
 ) {
     for test_def in test_defs {
         match test_def {
             TestDef::TestName(testcase_name) => {
                 if group_names.is_empty() {
-                    if let Some(runnable) =
-                        runnable(sema, file_id, testcase_name.clone(), GroupName::NoGroup)
-                    {
+                    if let Some(runnable) = runnable(
+                        sema,
+                        file_id,
+                        Name::from_erlang_service(testcase_name),
+                        GroupName::NoGroup,
+                    ) {
                         res.push(runnable);
                     }
                 } else {
                     for group_name in group_names.clone() {
-                        if let Some(runnable) =
-                            runnable(sema, file_id, testcase_name.clone(), group_name)
-                        {
+                        if let Some(runnable) = runnable(
+                            sema,
+                            file_id,
+                            Name::from_erlang_service(testcase_name),
+                            group_name,
+                        ) {
                             res.push(runnable);
                         }
                     }
                 }
             }
             TestDef::GroupName(group_name) => {
-                if !group_names.contains(&GroupName::Name(group_name.clone())) {
+                if !group_names.contains(&GroupName::Name(Name::from_erlang_service(group_name))) {
                     runnables_for_group_def(
                         res,
                         sema,
@@ -223,9 +211,9 @@ fn runnables_for_test_defs(
                 }
             }
             TestDef::GroupDef(group_name, group_test_defs) => {
-                if !group_names.contains(&GroupName::Name(group_name.clone())) {
+                if !group_names.contains(&GroupName::Name(Name::from_erlang_service(group_name))) {
                     let mut new_group_names = group_names.clone();
-                    new_group_names.insert(GroupName::Name(group_name.clone()));
+                    new_group_names.insert(GroupName::Name(Name::from_erlang_service(group_name)));
                     runnables_for_test_defs(
                         res,
                         sema,
@@ -244,13 +232,13 @@ fn runnables_for_group_def(
     res: &mut Vec<Runnable>,
     sema: &Semantic,
     file_id: FileId,
-    group_name: &Name,
+    group_name: &SmolStr,
     group_names: FxHashSet<GroupName>,
-    group_defs: &FxHashMap<Name, GroupDef>,
+    group_defs: &FxHashMap<SmolStr, GroupDef>,
 ) {
     if let Some(GroupDef { name, content }) = group_defs.get(group_name) {
         let mut new_group_names = group_names;
-        new_group_names.insert(GroupName::Name(name.clone()));
+        new_group_names.insert(GroupName::Name(Name::from_erlang_service(name)));
         runnables_for_test_defs(res, sema, file_id, content, new_group_names, group_defs)
     }
 }
@@ -301,199 +289,6 @@ fn def_to_runnable(sema: &Semantic, def: &FunctionDef, group: GroupName) -> Opti
     Some(Runnable { nav, kind })
 }
 
-// Extract the test definitions from the content of the all/0 function
-fn all(sema: &Semantic, file_id: FileId) -> Result<FxHashSet<TestDef>, ()> {
-    let mut res = FxHashSet::default();
-
-    if let Some(expr) = top_level_expression(sema, file_id, known::all, 0) {
-        let body = expr.body();
-        match &body[expr.value] {
-            Expr::List { exprs, tail: _ } => {
-                for expr_id in exprs {
-                    parse_test_definition(&mut res, sema, &body, *expr_id)?
-                }
-            }
-            _ => return Err(()),
-        }
-    }
-
-    Ok(res)
-}
-
-// Parse each entry from the `all/0` function.
-// See https://www.erlang.org/doc/man/ct_suite.html#Module:all-0 for details
-fn parse_test_definition(
-    res: &mut FxHashSet<TestDef>,
-    sema: &Semantic,
-    body: &Body,
-    expr_id: ExprId,
-) -> Result<(), ()> {
-    match &body[expr_id] {
-        Expr::Literal(Literal::Atom(testcase_name)) => {
-            let testcase_name = sema.db.lookup_atom(*testcase_name);
-            res.insert(TestDef::TestName(testcase_name));
-        }
-        Expr::Tuple { exprs } => match exprs[..] {
-            [first, second] => match (&body[first], &body[second]) {
-                (
-                    Expr::Literal(Literal::Atom(group_tag)),
-                    Expr::Literal(Literal::Atom(group_name)),
-                ) => {
-                    if sema.db.lookup_atom(*group_tag) == known::group {
-                        // {group, Group}
-                        let group_name = sema.db.lookup_atom(*group_name);
-                        res.insert(TestDef::GroupName(group_name));
-                    }
-                }
-                _ => return Err(()),
-            },
-            [first, second, _third] => match (&body[first], &body[second]) {
-                (Expr::Literal(Literal::Atom(first)), Expr::Literal(Literal::Atom(second))) => {
-                    if sema.db.lookup_atom(*first) == known::group {
-                        // {group, Group, _Properties}
-                        let group_name = sema.db.lookup_atom(*second);
-                        res.insert(TestDef::GroupName(group_name));
-                    } else if sema.db.lookup_atom(*first) == known::testcase {
-                        // {testcase, Testcase, _Properties}
-                        let testcase_name = sema.db.lookup_atom(*second);
-                        res.insert(TestDef::TestName(testcase_name));
-                    }
-                }
-                _ => return Err(()),
-            },
-            [first, second, _third, _fourth] => {
-                match (&body[first], &body[second]) {
-                    (Expr::Literal(Literal::Atom(first)), Expr::Literal(Literal::Atom(second))) => {
-                        if sema.db.lookup_atom(*first) == known::group {
-                            // {group, Group, _Properties, _SubGroupsProperties}
-                            let group_name = sema.db.lookup_atom(*second);
-                            res.insert(TestDef::GroupName(group_name));
-                        }
-                    }
-                    _ => return Err(()),
-                }
-            }
-            _ => return Err(()),
-        },
-        _ => return Err(()),
-    };
-    Ok(())
-}
-
-// Given a function expressed in terms of name and arity, return the top-level expression for that function.
-// This is used to parse the content of the all/0 and groups/0 functions.
-// The function must be exported.
-fn top_level_expression(
-    sema: &Semantic,
-    file_id: FileId,
-    name: Name,
-    arity: u32,
-) -> Option<InFunctionBody<ExprId>> {
-    let def_map = sema.def_map(file_id);
-    let exported_functions = def_map.get_exported_functions();
-    let name_arity = exported_functions.get(&NameArity::new(name, arity))?;
-    let body = def_map.get_function(name_arity)?;
-    let function_id = InFile::new(file_id, body.function_id);
-    let function_body = sema.to_function_body(function_id);
-    let (_clause_idx, clause) = function_body.clauses().next()?;
-    let expr_id = clause.exprs.first()?;
-    Some(function_body.with_value(*expr_id))
-}
-
-// Extract the group definitions from the content of the groups/0 function.
-fn groups(sema: &Semantic, file_id: FileId) -> Result<FxHashMap<Name, GroupDef>, ()> {
-    let mut res = FxHashMap::default();
-
-    if let Some(expr) = top_level_expression(sema, file_id, known::groups, 0) {
-        let body = expr.body();
-        match &body[expr.value] {
-            Expr::List { exprs, tail: _ } => {
-                for expr_id in exprs {
-                    match parse_group(sema, &body, *expr_id) {
-                        Some(group_def) => {
-                            res.insert(group_def.name.clone(), group_def);
-                        }
-                        None => return Err(()),
-                    }
-                }
-            }
-            _ => return Err(()),
-        }
-    }
-
-    Ok(res)
-}
-
-// Parse each entry from the `groups/0` function.
-// See https://www.erlang.org/doc/man/ct_suite.html#Module:groups-0 for details
-fn parse_group(sema: &Semantic, body: &Body, expr_id: ExprId) -> Option<GroupDef> {
-    match &body[expr_id] {
-        Expr::Tuple { exprs } => match exprs[..] {
-            [group_name, _properties, group_content] => {
-                GroupDef::new(sema, body, group_name, group_content)
-            }
-            [group_name, group_content] => GroupDef::new(sema, body, group_name, group_content),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn parse_group_content(
-    sema: &Semantic,
-    body: &Body,
-    group_content: ExprId,
-) -> Result<Vec<TestDef>, ()> {
-    let mut res = Vec::new();
-    match &body[group_content] {
-        Expr::List { exprs, tail: _ } => {
-            for expr in exprs {
-                parse_group_content_entry(&mut res, sema, body.clone(), *expr)?
-            }
-        }
-        _ => return Err(()),
-    };
-    Ok(res)
-}
-
-fn parse_group_content_entry(
-    res: &mut Vec<TestDef>,
-    sema: &Semantic,
-    body: &Body,
-    expr_id: ExprId,
-) -> Result<(), ()> {
-    match &body[expr_id] {
-        Expr::Literal(Literal::Atom(testcase_name)) => {
-            let testcase_name = sema.db.lookup_atom(*testcase_name);
-            res.push(TestDef::TestName(testcase_name));
-        }
-        Expr::Tuple { exprs } => match exprs[..] {
-            [group_tag, group_name] => match (&body[group_tag], &body[group_name]) {
-                (
-                    Expr::Literal(Literal::Atom(group_tag)),
-                    Expr::Literal(Literal::Atom(group_name)),
-                ) => {
-                    if sema.db.lookup_atom(*group_tag) == known::group {
-                        let group_name = sema.db.lookup_atom(*group_name);
-                        res.push(TestDef::GroupName(group_name));
-                    }
-                }
-                _ => return Err(()),
-            },
-            [group_name, _properties, group_content] => {
-                if let Some(group_name) = &body[group_name].as_atom() {
-                    let group_name = sema.db.lookup_atom(*group_name);
-                    let content = parse_group_content(sema, body, group_content)?;
-                    res.push(TestDef::GroupDef(group_name, content))
-                }
-            }
-            _ => return Err(()),
-        },
-        _ => return Err(()),
-    };
-    Ok(())
-}
-
 pub fn is_suite(module_name: ModuleName) -> bool {
     module_name.ends_with(SUFFIX)
 }
@@ -501,23 +296,14 @@ pub fn is_suite(module_name: ModuleName) -> bool {
 #[cfg(test)]
 mod tests {
 
-    use crate::diagnostics::DiagnosticCode;
-    use crate::diagnostics::DiagnosticsConfig;
-    use crate::tests::check_diagnostics_with_config;
-    use crate::tests::check_fix;
-
-    #[track_caller]
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
-        let config =
-            DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
-        check_diagnostics_with_config(config, ra_fixture)
-    }
+    use crate::tests::check_ct_diagnostics;
+    use crate::tests::check_ct_fix;
 
     #[test]
     fn test_unreachable_test() {
-        check_diagnostics(
+        check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
    -module(my_SUITE).
    -export([all/0]).
    -export([a/1, b/1]).
@@ -533,9 +319,9 @@ mod tests {
 
     #[test]
     fn test_unreachable_test_init_end() {
-        check_diagnostics(
+        check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
    -module(my_SUITE).
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
@@ -553,10 +339,10 @@ mod tests {
     }
 
     #[test]
-    fn test_unreachable_test_unparsable_all() {
-        check_diagnostics(
+    fn test_unreachable_test_dynamic_all() {
+        check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
    -module(my_SUITE).
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
@@ -568,6 +354,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
+%% ^ 💡 warning: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -575,9 +362,9 @@ mod tests {
 
     #[test]
     fn test_unreachable_test_ignore() {
-        check_diagnostics(
+        check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
    -module(my_SUITE).
    -export([all/0]).
    -export([a/1, b/1, c/1]).
@@ -595,9 +382,9 @@ mod tests {
     }
     #[test]
     fn test_unreachable_test_ignore_by_label() {
-        check_diagnostics(
+        check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
    -module(my_SUITE).
    -export([all/0]).
    -export([a/1, b/1, c/1]).
@@ -616,9 +403,9 @@ mod tests {
 
     #[test]
     fn test_unreachable_test_fix() {
-        check_diagnostics(
+        check_ct_diagnostics(
             r#"
- //- /my_app/test/my_SUITE.erl
+ //- /my_app/test/my_SUITE.erl scratch_buffer:true
     -module(my_SUITE).
     -export([all/0]).
     -export([a/1, b/1, c/1]).
@@ -633,9 +420,9 @@ mod tests {
       ok.
      "#,
         );
-        check_fix(
+        check_ct_fix(
             r#"
-//- /my_app/test/my_SUITE.erl
+//- /my_app/test/my_SUITE.erl scratch_buffer:true
 -module(my_SUITE).
 -export([all/0]).
 -export([a/1, b/1, c/1]).
