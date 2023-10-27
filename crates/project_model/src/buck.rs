@@ -559,7 +559,7 @@ pub fn build_info(config: &BuckConfig, project_apps: &[ProjectAppData], otp_root
 pub fn make_build_info(
     apps: Vec<Term>,
     deps: Vec<Term>,
-    otp_root: &Path,
+    otp_root: impl AsRef<Path>,
     source_root: impl AsRef<Path>,
 ) -> Term {
     let apps = Term::List(apps.into());

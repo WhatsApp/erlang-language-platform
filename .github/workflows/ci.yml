@@ -3,6 +3,10 @@ on:
   push: {}
   release:
     types: [published]
+env:
+  EQWALIZER_DIR: $GITHUB_WORKSPACE/eqwalizer/eqwalizer
+  ELP_EQWALIZER_PATH: $EQWALIZER_DIR/eqwalizer
+
 jobs:
   ci:
     strategy:
@@ -83,9 +87,9 @@ jobs:
       - name: Test elp
         # Do not run the tests in case of cross-compilation
         if: matrix.platform-arch != 'macos-latest-arm'
-        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo test --no-default-features --workspace --target ${{ matrix.target }}'
+        run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
       - name: Build elp
-        run: 'export ELP_EQWALIZER_PATH=$GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer && cargo build --release  --target ${{ matrix.target }}'
+        run: 'cargo build --release  --target ${{ matrix.target }}'
       - name: Add elp to path
         run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
       - name: Upload elp binary

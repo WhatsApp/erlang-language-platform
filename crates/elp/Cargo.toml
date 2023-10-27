@@ -29,6 +29,7 @@ crossbeam-channel.workspace = true
 env_logger.workspace = true
 fs_extra.workspace = true
 fxhash.workspace = true
+include_dir.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
 jod-thread.workspace = true

@@ -42,6 +42,7 @@ use crate::rebar::RebarConfig;
 use crate::rebar::RebarProject;
 
 pub mod buck;
+pub mod eqwalizer_support;
 pub mod json;
 pub mod no_manifest;
 pub mod otp;
@@ -585,8 +586,10 @@ impl Project {
             ProjectManifest::Json(ref config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
-                let (apps, deps, terms) = json::gen_app_data(config, AbsPath::assert(&otp_root));
-                let build_info_term = buck::make_build_info(terms, vec![], &otp_root, &config_path);
+                let (apps, deps, terms, deps_terms) =
+                    json::gen_app_data(config, AbsPath::assert(&otp_root));
+                let build_info_term =
+                    buck::make_build_info(terms, deps_terms, &otp_root, &config_path);
                 let build_info = buck::save_build_info(build_info_term)?;
                 let project = StaticProject {
                     apps,
@@ -601,13 +604,21 @@ impl Project {
             }
             ProjectManifest::NoManifest(ref config) => {
                 let otp_root = Otp::find_otp()?;
+                let abs_otp_root = AbsPath::assert(&otp_root);
                 let config_path = config.config_path().to_path_buf();
-                let (apps, terms) = config.to_project_app_data(AbsPath::assert(&otp_root));
-                let build_info_term = buck::make_build_info(terms, vec![], &otp_root, &config_path);
+                let (apps, terms) = config.to_project_app_data(abs_otp_root);
+                let (eqwalizer_support_app, eqwalizer_support_term) =
+                    eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
+                let build_info_term = buck::make_build_info(
+                    terms,
+                    vec![eqwalizer_support_term],
+                    &abs_otp_root,
+                    &config_path,
+                );
                 let build_info = buck::save_build_info(build_info_term)?;
                 let project = StaticProject {
                     apps,
-                    deps: vec![],
+                    deps: vec![eqwalizer_support_app],
                     config_path,
                 };
                 (
@@ -784,6 +795,8 @@ mod tests {
             assert_eq!(expected_config, config);
             let project = Project::load(ProjectManifest::Json(config)).expect("project must be ok");
             assert!(project.build_info_file.is_some());
+            let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
+            let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
             if let ProjectBuildData::Static(build_data) = &project.project_build_data {
                 let app_a_path = dir_path.join("app_a");
                 let app_a_src = app_a_path.join("src");
@@ -821,7 +834,7 @@ mod tests {
                 };
                 let expected_build_data = StaticProject {
                     apps: vec![app_data_a, app_data_b],
-                    deps: vec![],
+                    deps: vec![eqwalizer_support],
                     config_path: build_info_path,
                 };
                 assert_eq!(&expected_build_data, build_data)
@@ -864,6 +877,8 @@ mod tests {
             let project =
                 Project::load(ProjectManifest::NoManifest(config)).expect("project must be ok");
             assert!(project.build_info_file.is_some());
+            let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
+            let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
             if let ProjectBuildData::Static(build_data) = &project.project_build_data {
                 let app_data = ProjectAppData {
                     name,
@@ -884,7 +899,7 @@ mod tests {
                 };
                 let expected_build_data = StaticProject {
                     apps: vec![app_data],
-                    deps: vec![],
+                    deps: vec![eqwalizer_support],
                     config_path: path.join(".static"),
                 };
                 assert_eq!(&expected_build_data, build_data)

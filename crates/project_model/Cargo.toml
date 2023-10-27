@@ -10,8 +10,10 @@ buck = []
 elp_log.workspace = true
 
 anyhow.workspace = true
+dirs.workspace = true
 eetf.workspace = true
 fxhash.workspace = true
+include_dir.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true

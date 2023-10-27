@@ -22,6 +22,7 @@ use paths::AbsPathBuf;
 use serde::Deserialize;
 
 use crate::buck;
+use crate::eqwalizer_support;
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
@@ -112,7 +113,12 @@ impl JsonConfig {
 pub(crate) fn gen_app_data(
     config: &JsonConfig,
     otp_root: &AbsPath,
-) -> (Vec<ProjectAppData>, Vec<ProjectAppData>, Vec<Term>) {
+) -> (
+    Vec<ProjectAppData>,
+    Vec<ProjectAppData>,
+    Vec<Term>,
+    Vec<Term>,
+) {
     let mut terms = vec![];
     let mut global_includes = indexset![otp_root.to_path_buf()];
     let path = config.config_path().parent().unwrap();
@@ -146,15 +152,18 @@ pub(crate) fn gen_app_data(
     }
 
     let mut apps = make_app_data(path, &config.apps, false, &mut terms, &mut global_includes);
-    let deps = make_app_data(path, &config.deps, true, &mut terms, &mut global_includes);
+    let mut deps = make_app_data(path, &config.deps, true, &mut terms, &mut global_includes);
 
     for app in &mut apps {
         let mut include_path = global_includes.clone();
         include_path.extend(app.include_dirs());
         app.include_path = include_path.into_iter().collect();
     }
+    let (eqwalizer_support_app, eqwalizer_support_term) =
+        eqwalizer_support::eqwalizer_suppport_data(otp_root);
+    deps.push(eqwalizer_support_app);
 
-    (apps, deps, terms)
+    (apps, deps, terms, vec![eqwalizer_support_term])
 }
 
 fn default_src_dirs() -> Vec<String> {

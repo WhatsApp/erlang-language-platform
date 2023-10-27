@@ -15,6 +15,9 @@ use time::OffsetDateTime;
 
 const CI: &str = "CI";
 const SOURCE_DATE_EPOCH: &str = "SOURCE_DATE_EPOCH";
+const EQWALIZER_DIR: &str = "EQWALIZER_DIR";
+const EQWALIZER_SUPPORT_DIR: &str = "EQWALIZER_SUPPORT_DIR";
+const CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
 
 fn main() {
     let date_format =
@@ -35,9 +38,24 @@ fn main() {
     } else {
         "local".to_string()
     };
+    let eqwalizer_dir = env::var(EQWALIZER_DIR);
+    let cargo_manifest_dir = env::var(CARGO_MANIFEST_DIR)
+        .expect("CARGO_MANIFEST_DIR should be set automatically by cargo");
+    let eqwalizer_support_dir = match eqwalizer_dir {
+        Ok(eqwalizer_support_dir) => format!("{}/../eqwalizer_support", eqwalizer_support_dir),
+        Err(_) => format!(
+            "{}/../../../eqwalizer/eqwalizer_support",
+            cargo_manifest_dir
+        ),
+    };
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed={}", SOURCE_DATE_EPOCH);
     println!("cargo:rerun-if-env-changed={}", CI);
     println!("cargo:rustc-env=BUILD_ID={}", build_id);
+    println!(
+        "cargo:rustc-env={}={}",
+        EQWALIZER_SUPPORT_DIR, eqwalizer_support_dir
+    );
+    println!("cargo:rerun-if-env-changed={}", EQWALIZER_DIR);
 }

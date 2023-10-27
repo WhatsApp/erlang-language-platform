@@ -21,6 +21,9 @@ use elp::ServerSetup;
 use elp_log::timeit;
 use elp_log::FileLogger;
 use elp_log::Logger;
+use elp_project_model::eqwalizer_support;
+use include_dir::include_dir;
+use include_dir::Dir;
 use lsp_server::Connection;
 
 mod args;
@@ -42,6 +45,7 @@ use crate::args::Args;
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
+static EQWALIZER_SUPPORT_DIR: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 
 fn main() {
     let _timer = timeit!("main");
@@ -63,6 +67,9 @@ fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
 
 fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     let logger = setup_logging(args.log_file, args.no_log_buffering)?;
+    if let Err(err) = eqwalizer_support::setup_eqwalizer_support(&EQWALIZER_SUPPORT_DIR) {
+        log::warn!("Failed to setup eqwalizer_support: {}", err);
+    }
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli)?,
