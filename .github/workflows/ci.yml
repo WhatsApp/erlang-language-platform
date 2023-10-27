@@ -5,7 +5,7 @@ on:
     types: [published]
 env:
   EQWALIZER_DIR: $GITHUB_WORKSPACE/eqwalizer/eqwalizer
-  ELP_EQWALIZER_PATH: $EQWALIZER_DIR/eqwalizer
+  ELP_EQWALIZER_PATH: $GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer
 
 jobs:
   ci:
