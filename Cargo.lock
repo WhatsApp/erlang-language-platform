@@ -369,6 +369,7 @@ dependencies = [
  "expect-test",
  "fs_extra",
  "fxhash",
+ "hir",
  "indicatif",
  "itertools",
  "jod-thread",

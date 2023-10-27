@@ -19,6 +19,7 @@ elp_ide.workspace = true
 elp_log.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
+hir.workspace = true
 
 always-assert.workspace = true
 anyhow.workspace = true

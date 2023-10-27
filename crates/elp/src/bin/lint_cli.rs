@@ -50,9 +50,12 @@ use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use fxhash::FxHashSet;
+use hir::FormIdx;
+use hir::InFile;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
+use text_edit::TextSize;
 
 use crate::args::Lint;
 use crate::reporting;
@@ -69,9 +72,6 @@ pub fn lint_all(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
     do_codemod(cli, &mut loaded, args)
 }
 
-/// Changed lines, from and to
-type ChangeRange = (u32, u32);
-
 fn do_parse_all(
     cli: &dyn Cli,
     analysis: &Analysis,
@@ -79,14 +79,7 @@ fn do_parse_all(
     config: &DiagnosticsConfig,
     include_generated: bool,
     ignore_apps: &[String],
-) -> Result<
-    Vec<(
-        String,
-        FileId,
-        LabeledDiagnostics<diagnostics::Diagnostic>,
-        Vec<ChangeRange>,
-    )>,
-> {
+) -> Result<Vec<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
     let module_iter = module_index.iter_own();
 
@@ -106,15 +99,8 @@ fn do_parse_all(
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                     && !ignored_apps.contains(&db.file_app_name(file_id).ok())
                 {
-                    do_parse_one(
-                        db,
-                        config,
-                        file_id,
-                        module_name.as_str(),
-                        include_generated,
-                        Vec::default(),
-                    )
-                    .unwrap()
+                    do_parse_one(db, config, file_id, module_name.as_str(), include_generated)
+                        .unwrap()
                 } else {
                     None
                 }
@@ -130,18 +116,10 @@ fn do_parse_one(
     file_id: FileId,
     name: &str,
     include_generated: bool,
-    changes: Vec<ChangeRange>,
-) -> Result<
-    Option<(
-        String,
-        FileId,
-        LabeledDiagnostics<diagnostics::Diagnostic>,
-        Vec<ChangeRange>,
-    )>,
-> {
+) -> Result<Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
     let diagnostics = db.diagnostics(config, file_id, include_generated)?;
     if !diagnostics.is_empty() {
-        let res = (name.to_string(), file_id, diagnostics, changes);
+        let res = (name.to_string(), file_id, diagnostics);
         Ok(Some(res))
     } else {
         Ok(None)
@@ -253,15 +231,10 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         args.include_generated,
                         ignore_apps,
                     )?,
-                    (Some(file_id), Some(name)) => do_parse_one(
-                        &analysis,
-                        &cfg,
-                        file_id,
-                        &name,
-                        args.include_generated,
-                        vec![],
-                    )?
-                    .map_or(vec![], |x| vec![x]),
+                    (Some(file_id), Some(name)) => {
+                        do_parse_one(&analysis, &cfg, file_id, &name, args.include_generated)?
+                            .map_or(vec![], |x| vec![x])
+                    }
                     (Some(file_id), _) => {
                         panic!("Could not get name from file_id for {:?}", file_id)
                     }
@@ -274,6 +247,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                     *line_from,
                     *line_to,
                     &res,
+                    &FxHashSet::default(),
                 )?
             };
             if diags.is_empty() {
@@ -390,17 +364,13 @@ fn filter_diagnostics<'a>(
     allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
     line_from: Option<u32>,
     line_to: Option<u32>,
-    diags: &'a [(
-        String,
-        FileId,
-        LabeledDiagnostics<diagnostics::Diagnostic>,
-        Vec<ChangeRange>,
-    )],
+    diags: &'a [(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)],
+    changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     Ok(diags
         .to_owned()
         .into_iter()
-        .filter_map(|(m, file_id, ds, changes)| {
+        .filter_map(|(m, file_id, ds)| {
             let line_index = db.line_index(file_id).ok()?;
             if module.is_none() || &Some(m.to_string()) == module {
                 let ds2 = ds
@@ -408,10 +378,12 @@ fn filter_diagnostics<'a>(
                     .filter(|d| {
                         let range = convert::range(&line_index, d.range);
                         let line = range.start.line;
+                        let form_id = get_form_id_at_offset(db, file_id, d.range.start())
+                            .map(|form_id| InFile::new(file_id, form_id));
                         diagnostic_is_allowed(d, allowed_diagnostics)
                             && check(&line_from, |l| &line >= l)
                             && check(&line_to, |l| &line <= l)
-                            && check_changes(&changes, line)
+                            && check_changes(changed_forms, form_id)
                     })
                     .cloned()
                     .collect::<Vec<diagnostics::Diagnostic>>();
@@ -441,11 +413,14 @@ fn diagnostic_is_allowed(
 // No changes mean no constraint, so the condition passes. If there
 // are changes, the given line must be in at least one of the changed
 // ranges.
-fn check_changes(changes: &[ChangeRange], line: u32) -> bool {
-    changes.is_empty()
-        || changes
-            .iter()
-            .any(|(from, to)| line >= *from && line <= *to)
+fn check_changes(
+    changed_forms: &FxHashSet<InFile<FormIdx>>,
+    form_id: Option<InFile<FormIdx>>,
+) -> bool {
+    changed_forms.is_empty()
+        || form_id
+            .map(|form_id| changed_forms.contains(&form_id))
+            .unwrap_or(false)
 }
 
 fn check<T>(maybe_constraint: &Option<T>, f: impl FnOnce(&T) -> bool) -> bool {
@@ -466,6 +441,7 @@ struct Lints<'a> {
     recursive: bool,
     changed_files: &'a mut FxHashSet<(FileId, String)>,
     diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
+    changed_forms: FxHashSet<InFile<FormIdx>>,
 }
 
 #[derive(Debug)]
@@ -473,7 +449,7 @@ struct FixResult {
     file_id: FileId,
     name: String,
     source: String,
-    changes: Vec<ChangeRange>,
+    changes: Vec<FormIdx>,
     diff: Option<String>,
 }
 
@@ -492,6 +468,16 @@ impl<'a> Lints<'a> {
         changed_files: &'a mut FxHashSet<(FileId, String)>,
         diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
     ) -> Lints<'a> {
+        let mut changed_forms = FxHashSet::default();
+        for (_name, file_id, diags) in &diags {
+            for diag in diags {
+                if let Some(form_id) =
+                    get_form_id_at_offset(&analysis_host.analysis(), *file_id, diag.range.start())
+                {
+                    changed_forms.insert(InFile::new(*file_id, form_id));
+                }
+            }
+        }
         Lints {
             analysis_host,
             cfg,
@@ -502,6 +488,7 @@ impl<'a> Lints<'a> {
             recursive,
             changed_files,
             diags,
+            changed_forms,
         }
     }
 
@@ -530,12 +517,7 @@ impl<'a> Lints<'a> {
                          diff: _,
                      }|
                      -> Result<
-                        Option<(
-                            String,
-                            FileId,
-                            LabeledDiagnostics<diagnostics::Diagnostic>,
-                            Vec<ChangeRange>,
-                        )>,
+                        Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
                     > {
                         self.changed_files.insert((file_id, name.clone()));
                         let path = self.vfs.file_path(file_id);
@@ -548,13 +530,17 @@ impl<'a> Lints<'a> {
                             app_structure: None,
                         });
 
+                        for form_id in &changes {
+                            self.changed_forms
+                                .insert(InFile::new(file_id, form_id.clone()));
+                        }
+
                         do_parse_one(
                             &self.analysis_host.analysis(),
                             self.cfg,
                             file_id,
                             &name,
                             self.include_generated,
-                            changes,
                         )
                     },
                 )
@@ -565,11 +551,22 @@ impl<'a> Lints<'a> {
             self.diags = filter_diagnostics(
                 &self.analysis_host.analysis(),
                 &None,
-                None, // TODO: should we have a set of valid diagnostics codes?
-                None, // TODO: range
-                None, // TODO: range
+                None,
+                None,
+                None,
                 &new_diags,
+                &self.changed_forms,
             )?;
+            if !self.diags.is_empty() {
+                writeln!(cli, "---------------------------------------------\n")?;
+                writeln!(cli, "New filtered diagnostics")?;
+                for (name, file_id, diags) in &self.diags {
+                    writeln!(cli, "  {}: {}", name, diags.len())?;
+                    for diag in diags.iter() {
+                        print_diagnostic(diag, &self.analysis_host.analysis(), *file_id, cli)?;
+                    }
+                }
+            }
             if !self.recursive {
                 break;
             }
@@ -662,7 +659,7 @@ impl<'a> Lints<'a> {
         let (diff, unified) = diff_from_textedit(&original, &actual);
         let changes = diff
             .iter()
-            .filter_map(|d| form_range_from_diff(&self.analysis_host.analysis(), file_id, d))
+            .filter_map(|d| form_from_diff(&self.analysis_host.analysis(), file_id, d))
             .collect::<Vec<_>>();
 
         Some(FixResult {
@@ -691,27 +688,28 @@ impl<'a> Lints<'a> {
     }
 }
 
-/// Take the diff location, and expand it to the start and end line of
-/// its enclosing form.
-fn form_range_from_diff(
-    analysis: &Analysis,
-    file_id: FileId,
-    diff: &DiffRange,
-) -> Option<ChangeRange> {
+/// Take the diff location, find the FormIdx of the enclosing form of its start position
+fn form_from_diff(analysis: &Analysis, file_id: FileId, diff: &DiffRange) -> Option<FormIdx> {
     let line_index = analysis.line_index(file_id).ok()?;
     let pos = line_index.offset(LineCol {
         line: diff.after_start,
         col_utf16: 0,
     });
-    let range = analysis
-        .enclosing_text_range(FilePosition {
-            file_id,
-            offset: pos,
-        })
+    let form_id = get_form_id_at_offset(analysis, file_id, pos)?;
+    Some(form_id)
+}
+
+fn get_form_id_at_offset(
+    analysis: &Analysis,
+    file_id: FileId,
+    offset: TextSize,
+) -> Option<FormIdx> {
+    let form_list = analysis.form_list(file_id).ok()?;
+    let form = analysis
+        .enclosing_form(FilePosition { file_id, offset })
         .ok()??;
-    let start_line = line_index.line_col(range.start()).line;
-    let end_line = line_index.line_col(range.end()).line;
-    Some((start_line, end_line))
+    let form_id = form_list.find_form(&form)?;
+    Some(form_id)
 }
 
 #[cfg(test)]

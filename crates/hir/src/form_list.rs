@@ -273,7 +273,7 @@ impl FormListData {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum FormIdx {
     ModuleAttribute(ModuleAttributeId),
     Function(FunctionId),

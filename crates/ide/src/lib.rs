@@ -65,6 +65,7 @@ use handlers::references;
 use hir::db::MinDefDatabase;
 use hir::DefMap;
 use hir::File;
+use hir::FormList;
 use hir::Module;
 use hir::Semantic;
 use navigation_target::ToNav;
@@ -568,20 +569,24 @@ impl Analysis {
         self.with_db(|db| doc_links::external_docs(db, &position))
     }
 
-    /// Return TextRange for the form enclosing the given position
-    pub fn enclosing_text_range(&self, position: FilePosition) -> Cancellable<Option<TextRange>> {
+    /// Return the form enclosing the given position
+    pub fn enclosing_form(&self, position: FilePosition) -> Cancellable<Option<ast::Form>> {
         self.with_db(|db| {
             let sema = Semantic::new(db);
             let source = sema.parse(position.file_id);
             let syntax = source.value.syntax();
             let form = ancestors_at_offset(syntax, position.offset)
                 .and_then(|mut ns| ns.find_map(ast::Form::cast))?;
-            Some(form.syntax().text_range())
+            Some(form)
         })
     }
 
     pub fn def_map(&self, file_id: FileId) -> Cancellable<Arc<DefMap>> {
         self.with_db(|db| db.def_map(file_id))
+    }
+
+    pub fn form_list(&self, file_id: FileId) -> Cancellable<Arc<FormList>> {
+        self.with_db(|db| db.file_form_list(file_id))
     }
 
     /// Performs an operation on the database that may be canceled.

@@ -102,7 +102,6 @@ impl FormIdMap {
         map
     }
 
-    #[allow(unused)]
     pub fn get_id<N: AstNode>(&self, node: &N) -> FormId<N> {
         let raw_id = self.arena.get(&SyntaxNodePtr::new(node.syntax())).unwrap();
         FormId {
