@@ -67,38 +67,6 @@ pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
     assert_eq_text!(&after, &actual);
 }
 
-#[track_caller]
-pub(crate) fn check_meta_fix(fixture_before: &str, fixture_after: &str) {
-    let after = trim_indent(fixture_after);
-    let (analysis, pos) = fixture::position(fixture_before);
-    let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
-    let _ = analysis.db.ensure_erlang_service(project_id);
-
-    let diagnostic = diagnostics::meta_diagnostics(&analysis.db, pos.file_id)
-        .iter()
-        .last()
-        .expect("no diagnostics")
-        .clone();
-    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[0];
-    let actual = {
-        let source_change = fix.source_change.as_ref().unwrap();
-        let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = analysis.db.file_text(file_id).to_string();
-
-        for edit in source_change.source_file_edits.values() {
-            edit.apply(&mut actual);
-        }
-        actual
-    };
-    assert!(
-        fix.target.contains_inclusive(pos.offset),
-        "diagnostic fix range {:?} does not touch cursor position {:?}",
-        fix.target,
-        pos.offset
-    );
-    assert_eq_text!(&after, &actual);
-}
-
 /// Takes a multi-file input fixture with annotated cursor positions,
 /// and checks that:
 ///  * a diagnostic is produced
@@ -241,23 +209,9 @@ fn convert_diagnostics_to_annotations(
 }
 
 #[track_caller]
-pub(crate) fn check_meta_diagnostics(elp_fixture: &str) {
+pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let (analysis, pos) = fixture::position(elp_fixture);
     let file_id = pos.file_id;
-    let project_id = analysis.project_id(file_id).unwrap().unwrap();
-    let _ = analysis.db.ensure_erlang_service(project_id);
-    let diagnostics = diagnostics::meta_diagnostics(&analysis.db, file_id)
-        .into_iter()
-        .map(|d| (d.range, d))
-        .collect();
-    let expected = extract_annotations(&*analysis.db.file_text(file_id));
-    let actual = convert_diagnostics_to_annotations(diagnostics);
-    assert_eq!(expected, actual);
-}
-
-#[track_caller]
-pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
-    let (analysis, file_id) = fixture::single_file(elp_fixture);
     let project_id = analysis.project_id(file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);
     let diagnostics = diagnostics::ct_diagnostics(&analysis.db, file_id)

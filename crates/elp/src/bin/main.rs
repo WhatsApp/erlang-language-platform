@@ -861,6 +861,40 @@ mod tests {
         .expect("Bad test");
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_edoc(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--include-edoc-diagnostics",
+                "--diagnostic-filter"
+                "O0039"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/elp_lint_edoc.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_ct(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--include-ct-diagnostics",
+                "--diagnostic-filter"
+                "W0008"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/elp_lint_ct.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test]
     fn help() {
         let args = args::args().run_inner(Args::from(&["--help"])).unwrap_err();

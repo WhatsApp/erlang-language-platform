@@ -219,6 +219,10 @@ pub struct Lint {
     /// Run with rebar
     pub rebar: bool,
     pub include_generated: bool,
+    /// Include Common Test diagnostics
+    pub include_ct_diagnostics: bool,
+    /// Include EDoc diagnostics
+    pub include_edoc_diagnostics: bool,
     /// If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
     pub apply_fix: bool,
     /// If applying fixes, apply any new ones that arise from the

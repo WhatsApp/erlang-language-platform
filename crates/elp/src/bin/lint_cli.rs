@@ -78,6 +78,8 @@ fn do_parse_all(
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
     include_generated: bool,
+    include_ct_diagnostics: bool,
+    include_edoc_diagnostics: bool,
     ignore_apps: &[String],
 ) -> Result<Vec<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
@@ -99,8 +101,16 @@ fn do_parse_all(
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                     && !ignored_apps.contains(&db.file_app_name(file_id).ok())
                 {
-                    do_parse_one(db, config, file_id, module_name.as_str(), include_generated)
-                        .unwrap()
+                    do_parse_one(
+                        db,
+                        config,
+                        file_id,
+                        module_name.as_str(),
+                        include_generated,
+                        include_ct_diagnostics,
+                        include_edoc_diagnostics,
+                    )
+                    .unwrap()
                 } else {
                     None
                 }
@@ -116,8 +126,27 @@ fn do_parse_one(
     file_id: FileId,
     name: &str,
     include_generated: bool,
+    include_ct_diagnostics: bool,
+    include_edoc_diagnostics: bool,
 ) -> Result<Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
-    let diagnostics = db.diagnostics(config, file_id, include_generated)?;
+    let mut diagnostics = db.diagnostics(config, file_id, include_generated)?;
+
+    if include_ct_diagnostics {
+        let ct_diagnostics = db
+            .ct_diagnostics(file_id)?
+            .into_iter()
+            .map(|d| (d.range, d));
+        diagnostics.extend(ct_diagnostics);
+    }
+    if include_edoc_diagnostics {
+        let edoc_diagnostics = db
+            .edoc_diagnostics(file_id)?
+            .into_iter()
+            .filter(|(f, _)| *f == file_id)
+            .flat_map(|(_, ds)| ds.into_iter().map(|d| (d.range, d)));
+        diagnostics.extend(edoc_diagnostics);
+    }
+
     if !diagnostics.is_empty() {
         let res = (name.to_string(), file_id, diagnostics);
         Ok(Some(res))
@@ -229,12 +258,20 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         &loaded.project_id,
                         &cfg,
                         args.include_generated,
+                        args.include_ct_diagnostics,
+                        args.include_edoc_diagnostics,
                         ignore_apps,
                     )?,
-                    (Some(file_id), Some(name)) => {
-                        do_parse_one(&analysis, &cfg, file_id, &name, args.include_generated)?
-                            .map_or(vec![], |x| vec![x])
-                    }
+                    (Some(file_id), Some(name)) => do_parse_one(
+                        &analysis,
+                        &cfg,
+                        file_id,
+                        &name,
+                        args.include_generated,
+                        args.include_ct_diagnostics,
+                        args.include_edoc_diagnostics,
+                    )?
+                    .map_or(vec![], |x| vec![x]),
                     (Some(file_id), _) => {
                         panic!("Could not get name from file_id for {:?}", file_id)
                     }
@@ -306,6 +343,8 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         &mut loaded.vfs,
                         &args.to,
                         args.include_generated,
+                        args.include_ct_diagnostics,
+                        args.include_edoc_diagnostics,
                         *in_place,
                         *recursive,
                         &mut changed_files,
@@ -437,6 +476,8 @@ struct Lints<'a> {
     vfs: &'a mut Vfs,
     to: &'a Option<PathBuf>,
     include_generated: bool,
+    include_ct_diagnostics: bool,
+    include_edoc_diagnostics: bool,
     in_place: bool,
     recursive: bool,
     changed_files: &'a mut FxHashSet<(FileId, String)>,
@@ -463,6 +504,8 @@ impl<'a> Lints<'a> {
         vfs: &'a mut Vfs,
         to: &'a Option<PathBuf>,
         include_generated: bool,
+        include_ct_diagnostics: bool,
+        include_edoc_diagnostics: bool,
         in_place: bool,
         recursive: bool,
         changed_files: &'a mut FxHashSet<(FileId, String)>,
@@ -484,6 +527,8 @@ impl<'a> Lints<'a> {
             vfs,
             to,
             include_generated,
+            include_ct_diagnostics,
+            include_edoc_diagnostics,
             in_place,
             recursive,
             changed_files,
@@ -541,6 +586,8 @@ impl<'a> Lints<'a> {
                             file_id,
                             &name,
                             self.include_generated,
+                            self.include_ct_diagnostics,
+                            self.include_edoc_diagnostics,
                         )
                     },
                 )

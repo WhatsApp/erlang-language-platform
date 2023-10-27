@@ -67,13 +67,12 @@ impl GroupName {
 }
 
 pub fn unreachable_test(
+    res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
     all: FxHashSet<TestDef>,
     groups: FxHashMap<SmolStr, GroupDef>,
-) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-
+) {
     let exported_test_ranges = exported_test_ranges(sema, file_id);
     if let Ok(runnable_names) = runnable_names(sema, file_id, all, groups) {
         for (name, range) in exported_test_ranges {
@@ -85,12 +84,10 @@ pub fn unreachable_test(
                 )
                 .with_severity(Severity::Warning)
                 .with_ignore_fix(sema, file_id);
-                diagnostics.push(d);
+                res.push(d);
             }
         }
     }
-
-    diagnostics
 }
 
 pub fn runnable_names(
@@ -303,8 +300,8 @@ mod tests {
     fn test_unreachable_test() {
         check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
-   -module(my_SUITE).
+//- /my_app/test/unreachable_SUITE.erl scratch_buffer:true
+   -module(unreachable_SUITE).~
    -export([all/0]).
    -export([a/1, b/1]).
    all() -> [a].
@@ -321,8 +318,8 @@ mod tests {
     fn test_unreachable_test_init_end() {
         check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
-   -module(my_SUITE).
+//- /my_app/test/unreachable_init_SUITE.erl scratch_buffer:true
+   -module(unreachable_init_SUITE).~
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
    -export([a/1, b/1]).
@@ -342,8 +339,8 @@ mod tests {
     fn test_unreachable_test_dynamic_all() {
         check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
-   -module(my_SUITE).
+//- /my_app/test/unreachable_dynamic_SUITE.erl scratch_buffer:true
+   -module(unreachable_dynamic_SUITE).~
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
    -export([a/1, b/1]).
@@ -364,8 +361,8 @@ mod tests {
     fn test_unreachable_test_ignore() {
         check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
-   -module(my_SUITE).
+//- /my_app/test/unreachable_ignore_SUITE.erl scratch_buffer:true
+   -module(unreachable_ignore_SUITE).~
    -export([all/0]).
    -export([a/1, b/1, c/1]).
    all() -> [a].
@@ -384,8 +381,8 @@ mod tests {
     fn test_unreachable_test_ignore_by_label() {
         check_ct_diagnostics(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
-   -module(my_SUITE).
+//- /my_app/test/unreachable_ignore_label_SUITE.erl scratch_buffer:true
+   -module(unreachable_ignore_label_SUITE).~
    -export([all/0]).
    -export([a/1, b/1, c/1]).
    all() -> [a].
@@ -405,8 +402,8 @@ mod tests {
     fn test_unreachable_test_fix() {
         check_ct_diagnostics(
             r#"
- //- /my_app/test/my_SUITE.erl scratch_buffer:true
-    -module(my_SUITE).
+ //- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
+    -module(unreachable_fix_SUITE).~
     -export([all/0]).
     -export([a/1, b/1, c/1]).
     all() -> [a].
@@ -422,8 +419,8 @@ mod tests {
         );
         check_ct_fix(
             r#"
-//- /my_app/test/my_SUITE.erl scratch_buffer:true
--module(my_SUITE).
+//- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
+-module(unreachable_fix_SUITE).
 -export([all/0]).
 -export([a/1, b/1, c/1]).
 all() -> [a].
@@ -435,7 +432,7 @@ c~(_Config) ->
   ok.
      "#,
             r#"
--module(my_SUITE).
+-module(unreachable_fix_SUITE).
 -export([all/0]).
 -export([a/1, b/1, c/1]).
 all() -> [a].

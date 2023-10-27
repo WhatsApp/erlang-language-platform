@@ -252,11 +252,6 @@ impl Analysis {
         self.with_db(|db| diagnostics::edoc_diagnostics(db, file_id))
     }
 
-    /// Computes the set of Meta diagnostics for the given file.
-    pub fn meta_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::meta_diagnostics(db, file_id))
-    }
-
     /// Computes Common Test info for the given file.
     pub fn ct_info(&self, file_id: FileId) -> Cancellable<Arc<CommonTestInfo>> {
         self.with_db(|db| diagnostics::ct_info(db, file_id))

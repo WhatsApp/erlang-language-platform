@@ -626,6 +626,10 @@ impl<D> LabeledDiagnostics<D> {
             ),
         }
     }
+
+    pub fn extend<I: IntoIterator<Item = (TextRange, D)>>(&mut self, iter: I) {
+        self.normal.extend(iter.into_iter())
+    }
 }
 
 /// Convert a `TextRange` into a form suitable for a `TextRangeSet`
@@ -1094,25 +1098,6 @@ fn label_erlang_service_diagnostics(
         .collect_vec()
 }
 
-pub fn meta_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
-    let mut res = Vec::new();
-
-    let sema = Semantic::new(db);
-    if let Some(module_name) = sema.module_name(file_id) {
-        if common_test::is_suite(module_name) {
-            if let elp_ide_db::common_test::CommonTestInfo::Result { all, groups } =
-                &*ct_info(db, file_id)
-            {
-                let testcases =
-                    common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
-                // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, testcases);
-            }
-        }
-    }
-
-    res
-}
-
 pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<Diagnostic>)> {
     // We use a BTreeSet of a tuple because neither ParseError nor
     // Diagnostic nor TextRange has an Ord instance
@@ -1233,23 +1218,22 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
 }
 
 pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
-    let default: Vec<Diagnostic> = Vec::new();
+    let mut res: Vec<Diagnostic> = Vec::new();
     let parse = db.parse(file_id);
     let line_index = db.file_line_index(file_id);
+    let sema = Semantic::new(db);
 
-    let diags = match &*ct_info(db, file_id) {
+    match &*ct_info(db, file_id) {
         CommonTestInfo::Result { all, groups } => {
-            common_test::unreachable_test(&Semantic::new(db), file_id, all.clone(), groups.clone())
+            common_test::unreachable_test(&mut res, &sema, file_id, all.clone(), groups.clone());
+            // @fb-only: let testcases =
+                // @fb-only: common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
+            // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, testcases);
         }
-        CommonTestInfo::ConversionError(_) => {
-            // TODO: Report malformed test definitions
-            default
-        }
-        _ => default,
+        _ => (),
     };
 
-    diags
-        .into_iter()
+    res.into_iter()
         .filter(|d| !d.should_be_ignored(&line_index, &parse.syntax_node()))
         .collect()
 }
