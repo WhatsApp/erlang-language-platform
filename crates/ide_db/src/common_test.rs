@@ -14,12 +14,13 @@ use std::sync::Arc;
 use elp_base_db::salsa;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
+use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_erlang_service::common_test::ConversionError;
 use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::common_test::TestDef;
-use elp_erlang_service::EvalRequest;
+use elp_erlang_service::CTInfoRequest;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -95,7 +96,7 @@ pub trait CommonTestLoader {
     fn check(
         &self,
         project_id: ProjectId,
-        module_name: &str,
+        module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
         include_path: &[AbsPathBuf],
@@ -108,7 +109,7 @@ impl CommonTestLoader for crate::RootDatabase {
     fn check(
         &self,
         project_id: ProjectId,
-        module_name: &str,
+        module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
         include_path: &[AbsPathBuf],
@@ -125,40 +126,20 @@ impl CommonTestLoader for crate::RootDatabase {
                 CompileOption::Macros(macros.to_vec()),
                 CompileOption::ParseTransforms(parse_transforms.to_vec()),
             ];
-            let all_request = EvalRequest {
+            let should_request_groups = def_map
+                .is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
+            let request = CTInfoRequest {
+                module: eetf::Atom::from(module.to_string()),
                 src_path: src_path.clone(),
-                expression: format!("{}:all().", module_name).to_string(),
                 compile_options: compile_options.clone(),
+                should_request_groups,
             };
-            match erlang_service.eval(all_request) {
-                Ok(all_result) => match all_result.as_ct_all_result() {
-                    Ok(all) => {
-                        match def_map.is_function_exported(&NameArity::new(
-                            Name::from_erlang_service("groups"),
-                            0,
-                        )) {
-                            true => {
-                                let groups_request = EvalRequest {
-                                    src_path,
-                                    expression: format!("{}:groups().", module_name).to_string(),
-                                    compile_options,
-                                };
-                                match erlang_service.eval(groups_request) {
-                                    Ok(groups_result) => {
-                                        match groups_result.as_ct_groups_result() {
-                                            Ok(groups) => CommonTestInfo::Result { all, groups },
-                                            Err(err) => CommonTestInfo::ConversionError(err),
-                                        }
-                                    }
-                                    Err(err) => CommonTestInfo::EvalError(err),
-                                }
-                            }
-                            false => CommonTestInfo::Result {
-                                all,
-                                groups: FxHashMap::default(),
-                            },
-                        }
-                    }
+            match erlang_service.ct_info(request) {
+                Ok(result) => match result.clone().all() {
+                    Ok(all) => match result.groups() {
+                        Ok(groups) => CommonTestInfo::Result { all, groups },
+                        Err(err) => CommonTestInfo::ConversionError(err),
+                    },
                     Err(err) => CommonTestInfo::ConversionError(err),
                 },
                 Err(err) => CommonTestInfo::EvalError(err),

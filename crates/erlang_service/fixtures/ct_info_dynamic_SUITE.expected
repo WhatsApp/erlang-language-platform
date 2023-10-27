@@ -1,0 +1,5 @@
+CT_INFO_ALL
+['a',{'group','group_a'}]
+
+CT_INFO_GROUPS
+[{'group_a',['b','c']}]

@@ -49,8 +49,8 @@ process(<<"DOC_EDOC ", BinLen/binary>>, State) ->
     get_docs(BinLen, State, edoc);
 process(<<"DOC_EEP48 ", BinLen/binary>>, State) ->
     get_docs(BinLen, State, eep48);
-process(<<"EVAL ", BinLen/binary>>, State) ->
-    eval(BinLen, State);
+process(<<"CT_INFO ", BinLen/binary>>, State) ->
+    ct_info(BinLen, State);
 process(<<"EXIT">>, State) ->
     init:stop(),
     State.
@@ -92,14 +92,14 @@ get_docs(BinLen, State, DocOrigin) ->
     end),
     State.
 
-eval(BinLen, State) ->
+ct_info(BinLen, State) ->
     Len = binary_to_integer(BinLen),
     %% Use file:read/2 since it reads bytes
     {ok, Data} = file:read(State#state.io, Len),
     spawn_link(fun() ->
-        {Id, FileName, CompileOptions, Expression} = binary_to_term(Data),
+        {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
         try
-            eval(Id, FileName, CompileOptions, Expression, State)
+            ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups)
         catch
             Class:Reason:StackTrace ->
                 Formatted = erl_error:format_exception(Class, Reason, StackTrace),
@@ -109,15 +109,25 @@ eval(BinLen, State) ->
     end),
     State.
 
-eval(Id, Filename, CompileOptions, Expression, State) ->
+ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups) ->
     {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
+    All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),
+    Groups = case ShouldRequestGroups of
+        true ->
+            eval(lists:flatten(io_lib:format("~p:groups().", [Module])));
+        false ->
+            []
+    end,
+    code:delete(Module),
+    code:purge(Module),
+    reply(Id, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}], State).
+
+eval(Expression) ->
     {ok, Tokens, _} = erl_scan:string(Expression),
     {ok, Exprs} = erl_parse:parse_exprs(Tokens),
     {value, Value, _} = erl_eval:exprs(Exprs, []),
-    code:delete(Module),
-    code:purge(Module),
-    reply(Id, [{"EVAL_RESULT", term_to_binary(Value)}], State).
+    Value.
 
 normalize_compile_options(CompileOptions) ->
     normalize_compile_options(CompileOptions, []).

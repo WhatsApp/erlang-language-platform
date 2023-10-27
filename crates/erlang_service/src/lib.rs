@@ -168,10 +168,11 @@ pub struct DocRequest {
 }
 
 #[derive(Debug, Clone)]
-pub struct EvalRequest {
+pub struct CTInfoRequest {
+    pub module: eetf::Atom,
     pub src_path: PathBuf,
     pub compile_options: Vec<CompileOption>,
-    pub expression: String,
+    pub should_request_groups: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -179,7 +180,7 @@ enum Request {
     ParseRequest(ParseRequest, Sender<Result<UndecodedParseResult>>),
     AddCodePath(Vec<PathBuf>),
     DocRequest(DocRequest, Sender<Result<DocResult>>),
-    EvalRequest(EvalRequest, Sender<Result<UndecodedEvalResult>>),
+    CTInfoRequest(CTInfoRequest, Sender<Result<UndecodedCTInfoResult>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -206,21 +207,23 @@ type RawMarkdown = String;
 pub type DocResult = RawModuleDoc<DocDiagnostic>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UndecodedEvalResult {
-    bytes: Vec<u8>,
+pub struct UndecodedCTInfoResult {
+    all: Vec<u8>,
+    groups: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EvalResult {
-    pub term: Term,
+pub struct CTInfoResult {
+    pub all: Term,
+    pub groups: Term,
 }
 
-impl EvalResult {
-    pub fn as_ct_all_result(self) -> Result<FxHashSet<TestDef>, ConversionError> {
-        common_test::all(&self.term)
+impl CTInfoResult {
+    pub fn all(self) -> Result<FxHashSet<TestDef>, ConversionError> {
+        common_test::all(&self.all)
     }
-    pub fn as_ct_groups_result(self) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionError> {
-        common_test::groups(&self.term)
+    pub fn groups(self) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionError> {
+        common_test::groups(&self.groups)
     }
 }
 
@@ -243,10 +246,11 @@ impl From<ConversionError> for Error {
     }
 }
 
-impl UndecodedEvalResult {
-    pub fn decode(self) -> Result<EvalResult, Error> {
-        let term = Term::decode(&*self.bytes)?;
-        Ok(EvalResult { term })
+impl UndecodedCTInfoResult {
+    pub fn decode(self) -> Result<CTInfoResult, Error> {
+        let all = Term::decode(&*self.all)?;
+        let groups = Term::decode(&*self.groups)?;
+        Ok(CTInfoResult { all, groups })
     }
 }
 
@@ -261,14 +265,14 @@ pub struct RawModuleDoc<Error> {
 enum Reply {
     ParseReply(Result<UndecodedParseResult>),
     DocReply(Result<DocResult>),
-    EvalReply(Result<UndecodedEvalResult>),
+    CTInfoReply(Result<UndecodedCTInfoResult>),
 }
 
 #[derive(Debug)]
 enum ResponseSender {
     ParseResponseSender(Sender<Result<UndecodedParseResult>>),
     DocResponseSender(Sender<Result<DocResult>>),
-    EvalResponseSender(Sender<Result<UndecodedEvalResult>>),
+    CTInfoResponseSender(Sender<Result<UndecodedCTInfoResult>>),
 }
 
 impl ResponseSender {
@@ -276,7 +280,7 @@ impl ResponseSender {
         match self {
             ResponseSender::ParseResponseSender(r) => r.send(Result::Err(e)).unwrap(),
             ResponseSender::DocResponseSender(r) => r.send(Result::Err(e)).unwrap(),
-            ResponseSender::EvalResponseSender(r) => r.send(Result::Err(e)).unwrap(),
+            ResponseSender::CTInfoResponseSender(r) => r.send(Result::Err(e)).unwrap(),
         }
     }
 }
@@ -407,10 +411,10 @@ impl Connection {
         self.sender.send(request).unwrap();
     }
 
-    pub fn eval(&self, request: EvalRequest) -> Result<EvalResult, String> {
-        let expression = request.expression.clone();
-        let (sender, receiver) = bounded::<Result<UndecodedEvalResult>>(0);
-        let request = Request::EvalRequest(request, sender);
+    pub fn ct_info(&self, request: CTInfoRequest) -> Result<CTInfoResult, String> {
+        let module = request.module.clone();
+        let (sender, receiver) = bounded::<Result<UndecodedCTInfoResult>>(0);
+        let request = Request::CTInfoRequest(request, sender);
         self.sender.send(request.clone()).unwrap();
         match receiver.recv().unwrap() {
             Result::Ok(result) => match result.decode() {
@@ -418,8 +422,8 @@ impl Connection {
                 Err(err) => Err(format!("Decoding error: {:?}", err)),
             },
             Err(error) => {
-                log::info!("Fail to evaluate: {:?}, {}", error, expression);
-                Err(format!("Fail to evaluate: {:?}", expression))
+                log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
+                Err(format!("Failed to fetch CT Info for {:?}", module.name))
             }
         }
     }
@@ -511,9 +515,10 @@ fn reader_run(
         let mut edoc_diagnostics = Vec::new();
 
         let mut is_doc = false;
-        let mut is_eval = false;
+        let mut is_ct_info = false;
 
-        let mut eval_result = Vec::new();
+        let mut ct_info_all = Vec::new();
+        let mut ct_info_groups = Vec::new();
 
         let function_doc_regex =
             Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
@@ -591,10 +596,11 @@ fn reader_run(
                         log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
                     }
                 }
-                "EVAL_RESULT" => {
-                    is_eval = true;
-                    eval_result = buf
+                "CT_INFO_ALL" => {
+                    is_ct_info = true;
+                    ct_info_all = buf
                 }
+                "CT_INFO_GROUPS" => ct_info_groups = buf,
                 _ => {
                     log::error!("Unrecognised segment: {}", line_buf);
                     break;
@@ -609,9 +615,10 @@ fn reader_run(
                 diagnostics: edoc_diagnostics,
             })))
         } else {
-            if is_eval {
-                Ok(Reply::EvalReply(Ok(UndecodedEvalResult {
-                    bytes: eval_result,
+            if is_ct_info {
+                Ok(Reply::CTInfoReply(Ok(UndecodedCTInfoResult {
+                    all: ct_info_all,
+                    groups: ct_info_groups,
                 })))
             } else {
                 Ok(Reply::ParseReply(Ok(UndecodedParseResult {
@@ -637,7 +644,7 @@ fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
             s.send(r).unwrap();
             Result::Ok(())
         }
-        (ResponseSender::EvalResponseSender(s), Reply::EvalReply(r)) => {
+        (ResponseSender::CTInfoResponseSender(s), Reply::CTInfoReply(r)) => {
             Result::Ok(s.send(r).unwrap())
         }
         (sender, reply) => Result::Err(anyhow!(format!(
@@ -683,11 +690,11 @@ fn writer_run(
             instream.write_all(&bytes)?;
             instream.flush()
         }
-        Request::EvalRequest(request, sender) => {
+        Request::CTInfoRequest(request, sender) => {
             counter += 1;
             inflight
                 .lock()
-                .insert(counter, ResponseSender::EvalResponseSender(sender));
+                .insert(counter, ResponseSender::CTInfoResponseSender(sender));
             let tag = request.tag();
             let bytes = request.encode(counter);
             writeln!(instream, "{} {}", tag, bytes.len())?;
@@ -793,9 +800,9 @@ impl DocRequest {
     }
 }
 
-impl EvalRequest {
+impl CTInfoRequest {
     fn tag(&self) -> &'static str {
-        "EVAL"
+        "CT_INFO"
     }
 
     fn encode(self, id: usize) -> Vec<u8> {
@@ -804,11 +811,16 @@ impl EvalRequest {
             .into_iter()
             .map(|option| option.into())
             .collect::<Vec<eetf::Term>>();
+        let should_request_groups = match self.should_request_groups {
+            true => eetf::Atom::from("true").into(),
+            false => eetf::Atom::from("false").into(),
+        };
         let tuple = eetf::Tuple::from(vec![
             eetf::BigInteger::from(id).into(),
+            self.module.into(),
             path_into_list(self.src_path).into(),
             eetf::List::from(compile_options).into(),
-            expression_into_list(self.expression).into(),
+            should_request_groups,
         ]);
         let mut buf = Vec::new();
         eetf::Term::from(tuple).encode(&mut buf).unwrap();
@@ -821,15 +833,6 @@ fn path_into_list(path: PathBuf) -> eetf::List {
     use std::os::unix::prelude::OsStringExt;
     path.into_os_string()
         .into_vec()
-        .into_iter()
-        .map(|byte| eetf::FixInteger::from(byte).into())
-        .collect::<Vec<eetf::Term>>()
-        .into()
-}
-
-fn expression_into_list(expression: String) -> eetf::List {
-    expression
-        .into_bytes()
         .into_iter()
         .map(|byte| eetf::FixInteger::from(byte).into())
         .collect::<Vec<eetf::Term>>()
@@ -931,62 +934,38 @@ mod tests {
     }
 
     #[test]
-    fn eval_ct_all() {
-        expect_eval(
-            "common_test_SUITE:all().".into(),
-            "fixtures/common_test_SUITE.erl".into(),
-            ParseAs::CtAll,
-            expect_file!["../fixtures/common_test_SUITE_ct_all.expected"],
+    fn ct_info() {
+        expect_ct_info(
+            "ct_info_SUITE".into(),
+            "fixtures/ct_info_SUITE.erl".into(),
+            expect_file!["../fixtures/ct_info_SUITE.expected"],
         );
     }
 
     #[test]
-    fn eval_ct_groups() {
-        expect_eval(
-            "common_test_SUITE:groups().".into(),
-            "fixtures/common_test_SUITE.erl".into(),
-            ParseAs::CtGroups,
-            expect_file!["../fixtures/common_test_SUITE_ct_groups.expected"],
+    fn ct_info_exception() {
+        expect_ct_info(
+            "ct_info_exception_SUITE".into(),
+            "fixtures/ct_info_exception_SUITE.erl".into(),
+            expect_file!["../fixtures/ct_info_exception_SUITE.expected"],
         );
     }
 
     #[test]
-    fn eval_ct_exception() {
-        expect_eval(
-            "common_test_exception_SUITE:all().".into(),
-            "fixtures/common_test_exception_SUITE.erl".into(),
-            ParseAs::CtAll,
-            expect_file!["../fixtures/common_test_exception_SUITE.expected"],
+    fn ct_info_incomplete() {
+        expect_ct_info(
+            "ct_info_incomplete_SUITE".into(),
+            "fixtures/ct_info_incomplete_SUITE.erl".into(),
+            expect_file!["../fixtures/ct_info_incomplete_SUITE.expected"],
         );
     }
 
     #[test]
-    fn eval_ct_incomplete() {
-        expect_eval(
-            "common_test_incomplete_SUITE:all().".into(),
-            "fixtures/common_test_incomplete_SUITE.erl".into(),
-            ParseAs::CtAll,
-            expect_file!["../fixtures/common_test_incomplete_SUITE.expected"],
-        );
-    }
-
-    #[test]
-    fn eval_ct_dynamic_all() {
-        expect_eval(
-            "common_test_dynamic_SUITE:all().".into(),
-            "fixtures/common_test_dynamic_SUITE.erl".into(),
-            ParseAs::CtAll,
-            expect_file!["../fixtures/common_test_dynamic_SUITE_ct_all.expected"],
-        );
-    }
-
-    #[test]
-    fn eval_ct_dynamic_groups() {
-        expect_eval(
-            "common_test_dynamic_SUITE:groups().".into(),
-            "fixtures/common_test_dynamic_SUITE.erl".into(),
-            ParseAs::CtGroups,
-            expect_file!["../fixtures/common_test_dynamic_SUITE_ct_groups.expected"],
+    fn ct_info_dynamic_all() {
+        expect_ct_info(
+            "ct_info_dynamic_SUITE".into(),
+            "fixtures/ct_info_dynamic_SUITE.erl".into(),
+            expect_file!["../fixtures/ct_info_dynamic_SUITE.expected"],
         );
     }
 
@@ -1025,34 +1004,25 @@ mod tests {
         expected.assert_eq(&actual);
     }
 
-    fn expect_eval(expression: String, path: PathBuf, parse_as: ParseAs, expected: ExpectFile) {
+    fn expect_ct_info(module: String, path: PathBuf, expected: ExpectFile) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
-        let request = EvalRequest {
-            expression,
+        let request = CTInfoRequest {
+            module: eetf::Atom::from(module),
             src_path: path,
             compile_options: vec![],
+            should_request_groups: true,
         };
-        let result = match CONN.eval(request) {
-            Ok(result) => match parse_as {
-                ParseAs::CtAll => match result.as_ct_all_result() {
-                    Ok(result) => format!("{:?}", result),
-                    Err(err) => format!("{:?}", err),
-                },
-                ParseAs::CtGroups => match result.as_ct_groups_result() {
-                    Ok(result) => format!("{:?}", result),
-                    Err(err) => format!("{:?}", err),
-                },
-            },
-            Err(err) => err,
+        let actual = match CONN.ct_info(request) {
+            Ok(response) => {
+                format!(
+                    "CT_INFO_ALL\n{}\n\nCT_INFO_GROUPS\n{}",
+                    &response.all, &response.groups
+                )
+            }
+            Err(err) => err.to_string(),
         };
-        let actual = format!("EVAL_RESULT\n{}", result);
         expected.assert_eq(&actual);
-    }
-
-    enum ParseAs {
-        CtAll,
-        CtGroups,
     }
 }

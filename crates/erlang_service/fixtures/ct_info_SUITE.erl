@@ -1,4 +1,4 @@
--module(common_test_SUITE).
+-module(ct_info_SUITE).
 
 -export([all/0, groups/0]).
 -export([a/1, b/1, c/1]).

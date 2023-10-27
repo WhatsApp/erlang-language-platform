@@ -1,2 +1,0 @@
-EVAL_RESULT
-{"group_a": GroupDef { name: "group_a", content: [TestName("b"), TestName("c")] }}
