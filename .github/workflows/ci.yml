@@ -4,8 +4,8 @@ on:
   release:
     types: [published]
 env:
-  EQWALIZER_DIR: $GITHUB_WORKSPACE/eqwalizer/eqwalizer
-  ELP_EQWALIZER_PATH: $GITHUB_WORKSPACE/eqwalizer/eqwalizer/eqwalizer
+  EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
+  ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer
 
 jobs:
   ci:
