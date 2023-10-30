@@ -178,7 +178,6 @@ fn make_diagnostic(
         .with_severity(severity)
         .with_uri(uri)
         .experimental()
-        .add_categories([Category::SimplificationRule])
 }
 
 fn strip_quotes(s: &str) -> &str {
