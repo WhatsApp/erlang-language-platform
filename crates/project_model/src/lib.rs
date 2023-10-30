@@ -27,7 +27,6 @@ use anyhow::Context;
 use anyhow::Result;
 use buck::EqwalizerConfig;
 use elp_log::timeit;
-use lazy_static::lazy_static;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -93,30 +92,6 @@ impl DiscoverConfig {
             rebar: false,
             rebar_profile: Default::default(),
         }
-    }
-
-    pub fn to_rebar(mut self) -> Self {
-        self.rebar = true;
-        self
-    }
-
-    pub fn manifest_files(&self) -> &Vec<&'static str> {
-        lazy_static! {
-            static ref BUCK_MANIFEST_FILES: Vec<&'static str> = vec![".elp.toml"];
-            static ref REBAR_MANIFEST_FILES: Vec<&'static str> =
-                vec!["rebar.config", "rebar.config.script"];
-        }
-        if self.rebar {
-            &REBAR_MANIFEST_FILES
-        } else {
-            &BUCK_MANIFEST_FILES
-        }
-    }
-}
-
-impl Default for DiscoverConfig {
-    fn default() -> Self {
-        DiscoverConfig::rebar(None)
     }
 }
 
@@ -288,14 +263,6 @@ impl PartialEq for Project {
 }
 
 impl Project {
-    pub fn new(build_info: BuildInfoFile, otp: Otp, rebar: RebarProject) -> Self {
-        Self {
-            build_info_file: Some(build_info),
-            otp,
-            project_build_data: ProjectBuildData::Rebar(rebar),
-        }
-    }
-
     pub fn otp(otp: Otp) -> Self {
         Self {
             build_info_file: None,
