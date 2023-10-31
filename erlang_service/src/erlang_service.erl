@@ -3,6 +3,7 @@
 -export([main/1,
     run_get_docs/2,
     ct_info/4,
+    run_elp_lint/4,
 reply/3,
 reply_exception/3]).
 
@@ -128,23 +129,13 @@ elp_lint(BinLen, State, PostProcess, Deterministic) ->
     Len = binary_to_integer(BinLen),
     %% Use file:read/2 since it reads bytes
     {ok, Data} = file:read(State#state.io, Len),
-    spawn_link(fun() ->
-        {Id, FileName, Options} = binary_to_term(Data),
-        try
-            run_elp_lint(Id, FileName, Options, State, PostProcess, Deterministic)
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                reply_exception(Id, ExceptionData, State#state.io)
-        end
-    end),
+    erlang_service_server:elp_lint(Data, PostProcess, Deterministic),
     State.
 
 run_get_docs(FileName, DocOrigin) ->
     serialize_docs(get_docs_for_src_file(FileName, DocOrigin)).
 
-run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
+run_elp_lint(FileName, Options0, PostProcess, Deterministic) ->
     Options1 =
         case Deterministic of
             true ->
@@ -179,53 +170,41 @@ run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
                 {error, "Skipping diagnostics due to extension"}
         end,
 
-    case MaybeForms of
-        {ok, Forms0} ->
-            Transforms0 = proplists:get_value(parse_transforms, Options3, []),
-            {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
-            Transform = fun(Mod, Forms) -> transform(Mod, Forms, Options3) end,
-            Forms2 = lists:foldl(Transform, Forms1, Transforms),
-            Forms3 =
-                case proplists:get_value(elp_metadata, Options3) of
-                    undefined ->
-                        Forms2;
-                    ElpMetadata ->
-                        elp_metadata:insert_metadata(ElpMetadata, Forms2)
-                end,
-            case lint_file(Forms3, FileName, Options3) of
-                {ok, []} ->
-                    {Stub, AST} = partition_stub(Forms3),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
-                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}], State#state.io);
-                {ok, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
-                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}], State#state.io);
-                {error, Errors, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
-                    FormattedErrors = format_errors(Forms3, FileName, Errors),
-                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    reply(
-                        Id,
-                        [
-                            {"AST", ResultAST},
-                            {"STUB", ResultStub},
-                            {"ERRORS", FormattedErrors},
-                            {"WARNINGS", FormattedWarnings}
-                        ],
-                        State#state.io
-                    )
-            end;
-        {error, Reason} ->
-            Msg = unicode:characters_to_binary(
-                file:format_error(Reason)
-            ),
-            reply_exception(Id, Msg, State#state.io)
+    {ok, Forms0} = MaybeForms,
+    Transforms0 = proplists:get_value(parse_transforms, Options3, []),
+    {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
+    Transform = fun(Mod, Forms) -> transform(Mod, Forms, Options3) end,
+    Forms2 = lists:foldl(Transform, Forms1, Transforms),
+    Forms3 =
+        case proplists:get_value(elp_metadata, Options3) of
+            undefined ->
+                Forms2;
+            ElpMetadata ->
+                elp_metadata:insert_metadata(ElpMetadata, Forms2)
+        end,
+    case lint_file(Forms3, FileName, Options3) of
+        {ok, []} ->
+            {Stub, AST} = partition_stub(Forms3),
+            ResultStub = PostProcess(Stub, FileName),
+            ResultAST = PostProcess(AST, FileName),
+            [{"AST", ResultAST}, {"STUB", ResultStub}];
+        {ok, Warnings} ->
+            {Stub, AST} = partition_stub(Forms3),
+            ResultStub = PostProcess(Stub, FileName),
+            ResultAST = PostProcess(AST, FileName),
+            FormattedWarnings = format_errors(Forms3, FileName, Warnings),
+            [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}];
+        {error, Errors, Warnings} ->
+            {Stub, AST} = partition_stub(Forms3),
+            ResultStub = PostProcess(Stub, FileName),
+            ResultAST = PostProcess(AST, FileName),
+            FormattedErrors = format_errors(Forms3, FileName, Errors),
+            FormattedWarnings = format_errors(Forms3, FileName, Warnings),
+            [{"AST", ResultAST},
+             {"STUB", ResultStub},
+             {"ERRORS", FormattedErrors},
+             {"WARNINGS", FormattedWarnings}
+            ]
     end.
 
 lint_file(Forms, FileName, Options0) ->

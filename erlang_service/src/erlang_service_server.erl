@@ -23,7 +23,7 @@
 ]).
 
 %% API
--export([ get_docs/2, ct_info/1
+-export([ get_docs/2, ct_info/1, elp_lint/3
 ]).
 
 %%==============================================================================
@@ -52,6 +52,9 @@ get_docs(Data, DocOrigin) ->
 
 ct_info(Data) ->
     gen_server:cast(?SERVER, {ct_info, Data}).
+
+elp_lint(Data, PostProcess, Deterministic) ->
+    gen_server:cast(?SERVER, {elp_lint, Data, PostProcess, Deterministic}).
 
 %%==============================================================================
 %% gen_server callbacks
@@ -85,6 +88,20 @@ handle_cast({ct_info, Data}, State) ->
         {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
         try
             Result = erlang_service:ct_info(Module, Filename, CompileOptions, ShouldRequestGroups),
+            gen_server:cast(?SERVER, {result, Id, Result})
+        catch
+            Class:Reason:StackTrace ->
+                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
+                ExceptionData = unicode:characters_to_binary(Formatted),
+                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
+        end
+    end),
+    {noreply, State};
+handle_cast({elp_lint, Data, PostProcess, Deterministic}, State) ->
+    spawn_link(fun() ->
+        {Id, FileName, Options} = binary_to_term(Data),
+        try
+            Result = erlang_service:run_elp_lint(FileName, Options, PostProcess, Deterministic),
             gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->
