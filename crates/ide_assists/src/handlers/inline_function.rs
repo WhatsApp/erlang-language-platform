@@ -198,9 +198,6 @@ fn call_replacement_range(call: &ast::Call) -> TextRange {
             start_pos = token.text_range().start();
             token = token.prev_token()?;
         }
-        // Temporary for  T148094436
-        let _pctx =
-            stdx::panic_context::enter("\ninline_function::call_replacement_range".to_string());
         Some(TextRange::new(start_pos, call.syntax().text_range().end()))
     }
 
@@ -479,8 +476,6 @@ fn has_vars_in_clause(sema: &Semantic, file_id: FileId, fun_clause: &ast::Functi
 }
 
 fn apply_offset(edit: &TextEdit, offset: TextSize) -> Option<Vec<(TextRange, String)>> {
-    // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter("\ninline_function::apply_offset".to_string());
     Some(
         edit.iter()
             .filter_map(|te| {

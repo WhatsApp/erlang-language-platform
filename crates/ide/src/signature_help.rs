@@ -59,8 +59,6 @@ impl SignatureHelp {
         let start = TextSize::of(&self.signature);
         self.signature.push_str(param);
         let end = TextSize::of(&self.signature);
-        // Temporary for T148094436
-        let _pctx = stdx::panic_context::enter("\nSignatureHelp::push_param".to_string());
         self.parameters.push(TextRange::new(start, end))
     }
 }

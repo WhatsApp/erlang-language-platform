@@ -111,8 +111,6 @@ fn make_diagnostic(
     // want to apply another `.name()`, because for attributes with special
     // meanings like `-record(foo, ...).` we would get "foo"
     let attr_name_range_with_hyphen = attr_form.name().unwrap().syntax().text_range();
-    // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter("\nmisspelled_attribute::make_diagnostic".to_string());
     let attr_name_range = TextRange::new(
         attr_name_range_with_hyphen
             .start()

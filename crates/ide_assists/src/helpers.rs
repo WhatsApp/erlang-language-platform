@@ -320,8 +320,6 @@ fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
         Some(end) => end.end(),
         None => orig_range.end(),
     };
-    // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter("\nextend_form_range_for_delete".to_string());
     TextRange::new(start, end)
 }
 

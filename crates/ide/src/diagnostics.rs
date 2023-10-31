@@ -1008,8 +1008,6 @@ pub fn erlang_service_diagnostics(
     let diags: Vec<(FileId, Diagnostic)> = error_info
         .into_iter()
         .map(|(file_id, start, end, code, msg)| {
-            // Temporary for T148094436
-            let _pctx = stdx::panic_context::enter("\nerlang_service_diagnostics:1".to_string());
             (
                 file_id,
                 Diagnostic::new(
@@ -1024,9 +1022,6 @@ pub fn erlang_service_diagnostics(
             warning_info
                 .into_iter()
                 .map(|(file_id, start, end, code, msg)| {
-                    // Temporary for T148094436
-                    let _pctx =
-                        stdx::panic_context::enter("\nerlang_service_diagnostics:2".to_string());
                     (
                         file_id,
                         Diagnostic::new(
@@ -1148,8 +1143,6 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
     let diags: Vec<(FileId, Diagnostic)> = error_info
         .into_iter()
         .map(|(file_id, start, end, code, msg)| {
-            // Temporary for T148094436
-            let _pctx = stdx::panic_context::enter("\nedoc_diagnostics:1".to_string());
             (
                 file_id,
                 Diagnostic::new(
@@ -1164,8 +1157,6 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
             warning_info
                 .into_iter()
                 .map(|(file_id, start, end, code, msg)| {
-                    // Temporary for T148094436
-                    let _pctx = stdx::panic_context::enter("\nedoc_diagnostics:2".to_string());
                     (
                         file_id,
                         Diagnostic::new(

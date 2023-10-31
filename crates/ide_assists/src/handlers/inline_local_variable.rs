@@ -73,8 +73,6 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                     Some(end) => end.end(),
                     None => orig_range.end(),
                 };
-                // Temporary for  T148094436
-                let _pctx = stdx::panic_context::enter("\ninline_local_variable".to_string());
                 TextRange::new(start, end)
             });
 

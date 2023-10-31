@@ -73,8 +73,6 @@ fn collect_fixmes(line_index: &LineIndex, file_text: &str) -> Vec<Fixme> {
                         .into();
                     TextSize::from(next_next_line_start - 1)
                 };
-                // Temporary for T148094436
-                let _pctx = stdx::panic_context::enter("\ncollect_fixmes".to_string());
                 let comment_range = TextRange::new(start, end);
                 let suppression_range = TextRange::new(suppression_start, suppression_end);
                 fixmes.push(Fixme {

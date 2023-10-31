@@ -135,8 +135,6 @@ impl LineIndex {
             .chain(self.newlines[lo..hi].iter().copied())
             .chain(iter::once(range.end()));
 
-        // Temporary for T148094436
-        let _pctx = stdx::panic_context::enter("\nLineIndex::lines".to_string());
         all.clone()
             .zip(all.skip(1))
             .map(|(lo, hi)| TextRange::new(lo, hi))

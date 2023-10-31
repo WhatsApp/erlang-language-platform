@@ -545,8 +545,6 @@ pub(crate) fn semantic_tokens(
 
         for mut text_range in line_index.lines(highlight_range.range) {
             if text[text_range].ends_with('\n') {
-                // Temporary for T148094436
-                let _pctx = stdx::panic_context::enter("\nto_proto::semantic_tokens".to_string());
                 text_range =
                     TextRange::new(text_range.start(), text_range.end() - TextSize::of('\n'));
             }

@@ -116,11 +116,7 @@ impl<'a> AssistContext<'a> {
         let right = right.map(|t| t.text_range().end().clamp(start, end));
 
         let trimmed_range = match (left, right) {
-            (Some(left), Some(right)) if left <= right => {
-                // Temporary for  T148094436
-                let _pctx = stdx::panic_context::enter("\nAssistContext::new".to_string());
-                TextRange::new(left, right)
-            }
+            (Some(left), Some(right)) if left <= right => TextRange::new(left, right),
             // Selection solely consists of whitespace so just fall back to the original
             _ => frange.range,
         };

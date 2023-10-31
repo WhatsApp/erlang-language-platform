@@ -185,8 +185,6 @@ where
     }
 
     let range = RawTextRange::deserialize(deserializer)?;
-    // Temporary for T148094436
-    let _pctx = stdx::panic_context::enter("\neqwalizer::deserialize_text_range".to_string());
     Ok(TextRange::new(range.start.into(), range.end.into()))
 }
 

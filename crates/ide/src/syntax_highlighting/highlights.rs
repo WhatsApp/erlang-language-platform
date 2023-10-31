@@ -91,8 +91,6 @@ impl Node {
     fn flatten(&self, acc: &mut Vec<HlRange>) {
         let mut start = self.hl_range.range.start();
         let mut nested = self.nested.iter();
-        // Temporary for T148094436
-        let _pctx = stdx::panic_context::enter("\nhighlights::Node::flatten".to_string());
         loop {
             let next = nested.next();
             let end = next.map_or(self.hl_range.range.end(), |it| it.hl_range.range.start());

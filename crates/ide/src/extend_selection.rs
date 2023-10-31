@@ -156,8 +156,6 @@ fn extend_single_word_in_comment_or_string(
     let from: TextSize = (start_idx + 1).into();
     let to: TextSize = (cursor_position + end_idx).into();
 
-    // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter("\nextend_single_word_in_comment_or_string".to_string());
     let range = TextRange::new(from, to);
     if range.is_empty() {
         None
@@ -168,8 +166,6 @@ fn extend_single_word_in_comment_or_string(
 
 fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange {
     let ws_text = ws.text();
-    // Temporary for  T148094436
-    let _pctx = stdx::panic_context::enter("\nextend_ws".to_string());
     let suffix = TextRange::new(offset, ws.text_range().end()) - ws.text_range().start();
     let prefix = TextRange::new(ws.text_range().start(), offset) - ws.text_range().start();
     let ws_suffix = &ws_text[suffix];
@@ -232,16 +228,12 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .filter(is_single_line_ws)
             .unwrap_or(delimiter_node);
 
-        // Temporary for  T148094436
-        let _pctx = stdx::panic_context::enter("\nextend_list_item1".to_string());
         return Some(TextRange::new(
             node.text_range().start(),
             final_node.text_range().end(),
         ));
     }
     if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
-        // Temporary for  T148094436
-        let _pctx = stdx::panic_context::enter("\nextend_list_item2".to_string());
         return Some(TextRange::new(
             delimiter_node.text_range().start(),
             node.text_range().end(),

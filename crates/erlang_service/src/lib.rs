@@ -728,16 +728,10 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                 .map(|(path, position, msg, code)| ParseError {
                     path: path.into(),
                     location: match position {
-                        pattern::Union3::A((a, b)) => {
-                            // Temporary for  T148094436
-                            let _pctx = stdx::panic_context::enter("\ndecode_errors1".to_string());
-                            Some(DiagnosticLocation::Normal(Location::TextRange(
-                                TextRange::new(a.into(), b.into()),
-                            )))
-                        }
+                        pattern::Union3::A((a, b)) => Some(DiagnosticLocation::Normal(
+                            Location::TextRange(TextRange::new(a.into(), b.into())),
+                        )),
                         pattern::Union3::B(((a, b), (c, d))) => {
-                            // Temporary for  T148094436
-                            let _pctx = stdx::panic_context::enter("\ndecode_errors2".to_string());
                             Some(DiagnosticLocation::Included {
                                 directive_location: TextRange::new(a.into(), b.into()),
                                 error_location: TextRange::new(c.into(), d.into()),

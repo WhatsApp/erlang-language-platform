@@ -52,9 +52,6 @@ pub(crate) fn unused_macro(
                 {
                     let start = macro_syntax.text_range().start();
                     let end = macro_syntax.text_range().end() + TextSize::from(1);
-                    // Temporary for T148094436
-                    let _pctx =
-                        stdx::panic_context::enter("\ndiagnostics::unused_macro".to_string());
                     TextRange::new(start, end)
                 } else {
                     macro_syntax.text_range()
