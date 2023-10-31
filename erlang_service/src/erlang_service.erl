@@ -19,6 +19,7 @@
 main(_Args) ->
     configure_logging(),
     erlang:system_flag(backtrace_depth, 20),
+    {ok, _} = application:ensure_all_started(erlang_service, permanent),
     State = #state{},
     io:setopts(State#state.io, [binary, {encoding, latin1}]),
     loop(State).

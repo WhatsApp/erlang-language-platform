@@ -1,5 +1,5 @@
 {application, erlang_service, [
-    {description, "An escript"},
+    {description, "Erlang Service"},
     {vsn, "0.1.0"},
     {registered, []},
     {applications, [
@@ -10,5 +10,6 @@
     ]},
     {env, []},
     {modules, []},
-    {links, []}
+    {links, []},
+    {mod, {erlang_service_app, noargs}}
 ]}.
