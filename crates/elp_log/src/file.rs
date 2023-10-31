@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
+use std::time::SystemTime;
 
 use log::Record;
 use parking_lot::Mutex;
@@ -71,7 +72,10 @@ impl ReconfigureLog for FileLogger {
     }
 
     fn write(&self, record: &Record) {
-        let formatted = format!("[{} {}] {}", record.level(), record.target(), record.args());
+        let now = SystemTime::now();
+
+        // humantime::format_rfc3339_millis(now)
+        let formatted = format!("{} [{} {}] {}", humantime::format_rfc3339_millis(now), record.level(), record.target(), record.args());
         let should_flush = match &self.file {
             Some(w) => {
                 let _ = writeln!(w.lock(), "{}", formatted);

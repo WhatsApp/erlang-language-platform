@@ -27,7 +27,7 @@ pub struct Otp {
 
 impl Otp {
     pub fn find_otp() -> Result<PathBuf> {
-        let _timer = timeit!("find otp");
+        let _timer = timeit!("find otp az");
         let output = Command::new("erl")
             .arg("-noshell")
             .arg("-eval")

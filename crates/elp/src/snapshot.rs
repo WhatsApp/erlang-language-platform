@@ -176,6 +176,7 @@ impl Snapshot {
     }
 
     pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+        log::warn!("snapshot.eqwalizer_diagnostics:{:?}", &file_id);
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
 
@@ -183,6 +184,7 @@ impl Snapshot {
         let _ = self.analysis.module_name(file_id).ok()??;
 
         let project_id = self.analysis.project_id(file_id).ok()??;
+        log::warn!("snapshot.eqwalizer_diagnostics:p{:?}", &file_id);
 
         let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id, false).ok()?;
         if !eqwalizer_enabled {
@@ -190,11 +192,13 @@ impl Snapshot {
         }
 
         let line_index = self.analysis.line_index(file_id).ok()?;
+        log::warn!("snapshot.eqwalizer_diagnostics:l:{:?}", &file_id);
 
         let diags = self
             .analysis
             .eqwalizer_diagnostics(project_id, vec![file_id])
             .ok()?;
+        log::warn!("snapshot.eqwalizer_diagnostics:d:{:?}", &file_id);
         match &*diags {
             EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
                 errors
@@ -259,6 +263,7 @@ impl Snapshot {
         &self,
         file_id: FileId,
     ) -> Option<Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>> {
+        log::warn!("erlang_service diagnostics:{:?}", &file_id);
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
             file_url: file_url.clone()

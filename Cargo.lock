@@ -391,6 +391,7 @@ dependencies = [
  "fs_extra",
  "fxhash",
  "hir",
+ "humantime",
  "include_dir",
  "indicatif",
  "itertools",
@@ -604,6 +605,7 @@ dependencies = [
  "env_logger",
  "expect-test",
  "fxhash",
+ "humantime",
  "lazy_static",
  "log",
  "parking_lot 0.12.1",
@@ -2116,6 +2118,8 @@ dependencies = [
 [[package]]
 name = "tree-sitter-erlang"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d110d62a7ae35b985d8cfbc4de6e9281c7cbf268c466e30ebb31c2d3f861141"
 dependencies = [
  "cc",
  "tree-sitter",

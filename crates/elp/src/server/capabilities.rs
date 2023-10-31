@@ -20,7 +20,6 @@ use lsp_types::InlayHintOptions;
 use lsp_types::InlayHintServerCapabilities;
 use lsp_types::OneOf;
 use lsp_types::RenameOptions;
-use lsp_types::SaveOptions;
 use lsp_types::SelectionRangeProviderCapability;
 use lsp_types::SemanticTokensFullOptions;
 use lsp_types::SemanticTokensLegend;
@@ -44,7 +43,8 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
                 change: Some(TextDocumentSyncKind::INCREMENTAL),
                 will_save: None,
                 will_save_wait_until: None,
-                save: Some(SaveOptions::default().into()),
+                // save: Some(SaveOptions::default().into()),
+                save: Some(lsp_types::TextDocumentSyncSaveOptions::Supported(true)),
             },
         )),
         hover_provider: Some(HoverProviderCapability::Simple(true)),

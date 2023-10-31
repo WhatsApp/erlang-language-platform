@@ -43,7 +43,12 @@ impl DiagnosticCollection {
     }
 
     pub fn set_eqwalizer(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+        fn print(d: &Diagnostic) -> String {
+            format!("{:?}:{}", d.range, d.message)
+        }
         if !are_all_diagnostics_equal(&self.eqwalizer, file_id, &diagnostics) {
+            let ff = diagnostics.iter().map(print).collect::<Vec<_>>().join("\n");
+            log::warn!("DiagnosticCollection::set_eqwalizer: {}", ff);
             set_diagnostics(&mut self.eqwalizer, file_id, diagnostics);
             self.changes.insert(file_id);
         }
@@ -119,6 +124,12 @@ fn are_all_labeled_diagnostics_equal(
     let empty_diags = LabeledDiagnostics::default();
     let existing = map.get(&file_id).unwrap_or(&empty_diags);
 
+    log::warn!(
+        "are_all_labeled_diagnostics_equal: lens {} {}",
+        existing.len(),
+        new.len()
+    );
+
     existing.len() == new.len()
         && new
             .iter()
@@ -127,6 +138,13 @@ fn are_all_labeled_diagnostics_equal(
 }
 
 fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
+    log::warn!(
+        "are_diagnostics_equal: ({:?},{}), ({:?},{})",
+        &left.range,
+        &left.message,
+        &right.range,
+        &right.message
+    );
     left.source == right.source
         && left.severity == right.severity
         && left.range == right.range

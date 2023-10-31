@@ -49,6 +49,7 @@ impl AstLoader for crate::RootDatabase {
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
+        log::warn!("erl_ast:entry:{:?}", &path);
         let includes = include_path
             .iter()
             .map(|path| path.clone().into())
@@ -86,6 +87,7 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
 }
 
 fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<ParseResult> {
+    log::warn!("module_ast:{:?}", &file_id);
     // Dummy read of file text and global revision ID to make DB track changes
     let _track_changes_to_file = db.file_text(file_id);
     let _track_global_changes = db.include_files_revision();
@@ -104,7 +106,9 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
         }));
     };
     let metadata = elp_metadata(db, file_id);
-    Arc::new(db.load_ast(
+
+    log::warn!("module_ast:before load_ast{:?}", &file_id);
+    let r = Arc::new(db.load_ast(
         app_data.project_id,
         path,
         &app_data.include_path,
@@ -112,7 +116,9 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
         &app_data.parse_transforms,
         metadata,
         format,
-    ))
+    ));
+    log::warn!("module_ast:load_ast:{:?}, {:?}", &r.errors, &r.warnings);
+    r
 }
 
 fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
@@ -120,8 +126,10 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
     let file_text = db.file_text(file_id);
     let fixmes = fixmes::fixmes_eetf(&line_index, &file_text);
     // Erlang proplist: [{eqwalizer_fixmes, [Fixme1, Fixme2....]}]
-    eetf::List::from(vec![
-        eetf::Tuple::from(vec![eetf::Atom::from("eqwalizer_fixmes").into(), fixmes]).into(),
+    eetf::List::from(vec![eetf::Tuple::from(vec![
+        eetf::Atom::from("eqwalizer_fixmes").into(),
+        fixmes,
     ])
+    .into()])
     .into()
 }

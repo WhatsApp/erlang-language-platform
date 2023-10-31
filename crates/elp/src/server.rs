@@ -12,6 +12,8 @@ use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+// use std::thread;
+// use std::time::Duration;
 
 use always_assert::always;
 use anyhow::bail;
@@ -437,6 +439,7 @@ impl Server {
             }
 
             if mem::take(&mut self.eqwalizer_diagnostics_requested) {
+                log::warn!("eqwalizer_diagnostics_requested, requesting");
                 self.update_eqwalizer_diagnostics();
                 self.update_erlang_service_diagnostics();
             }
@@ -633,6 +636,7 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidSaveTextDocument>(|this, params| {
+                log::warn!("DidSaveTextDocument");
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     let path_ref: &Path = path.as_ref();
                     let file_name = path.file_stem().and_then(|name| name.to_str());
@@ -647,9 +651,24 @@ impl Server {
                     } && path_ref.is_file();
 
                     if reload_project {
+                        log::warn!("DidSaveTextDocument reload");
                         this.reload_project(vec![path]);
                     }
 
+                    // if let Ok(path) = convert::vfs_path(&params.text_document.uri) {
+                    //     let contents = {
+                    //         let vfs = this.vfs.read();
+                    //         // let mut vfs = this.vfs.write();
+                    //         let file_id = vfs.file_id(&path).unwrap();
+                    //         let contents = vfs.file_contents(file_id);
+                    //         contents.to_vec()
+                    //     };
+                    //     let mut vfs = this.vfs.write();
+
+                    //     vfs.set_file_contents(path, Some(contents));
+                    // }
+
+                    log::warn!("DidSaveTextDocument requesting");
                     this.eqwalizer_diagnostics_requested = true;
                     this.edoc_diagnostics_requested = true;
                     this.ct_diagnostics_requested = true;
@@ -668,6 +687,7 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidChangeWatchedFiles>(|this, params| {
+                log::warn!("DidChangeWatchedFiles");
                 let mut to_reload = vec![];
                 for change in params.changes {
                     if let Ok(path) = convert::abs_path(&change.uri) {
@@ -684,6 +704,7 @@ impl Server {
                         }
                     }
                 }
+                log::warn!("DidChangeWatchedFiles");
                 this.reload_project(to_reload);
                 this.eqwalizer_diagnostics_requested = true;
                 this.edoc_diagnostics_requested = true;
@@ -780,6 +801,12 @@ impl Server {
             if let Some((_, Some("hrl"))) = file_path.name_and_extension() {
                 raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
             }
+            // else {
+            //     // AZ: force change always
+            //     log::warn!("bumping global version");
+            //     raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
+            // }
+
             if file.exists() {
                 let bytes = vfs.file_contents(file.file_id).to_vec();
                 let document = Document::from_bytes(bytes);
@@ -789,6 +816,7 @@ impl Server {
                     .insert(file.file_id, line_ending);
                 raw_database.set_file_text(file.file_id, Arc::from(text));
                 // causes us to remove stale squiggles from the UI
+                log::warn!("clearing eqwalizer diagnostics for:{:?}", &file.file_id);
                 self.diagnostics.set_eqwalizer(file.file_id, vec![]);
             } else {
                 // TODO (T105975906): Clean up stale .etf files
@@ -853,6 +881,7 @@ impl Server {
             return;
         }
 
+        log::warn!("Recomputing EqWAlizer diagnostics");
         log::info!("Recomputing EqWAlizer diagnostics");
 
         let opened_documents = self.opened_documents();
@@ -861,10 +890,15 @@ impl Server {
         let spinner = self.progress.begin_spinner("EqWAlizing".to_string());
 
         self.task_pool.handle.spawn(move || {
+            log::warn!("requesting eqwalizer diagnostics");
             let diagnostics = opened_documents
                 .into_iter()
-                .filter_map(|file_id| Some((file_id, snapshot.eqwalizer_diagnostics(file_id)?)))
+                .filter_map(|file_id| {
+                    log::warn!("requesting eqwalizer diagnostics:{:?}", &file_id);
+                    Some((file_id, snapshot.eqwalizer_diagnostics(file_id)?))
+                })
                 .collect();
+            log::warn!("eqwalizer diagnostics fetched");
 
             Task::EqwalizerDiagnostics(spinner, diagnostics)
         });
@@ -946,6 +980,7 @@ impl Server {
             return;
         }
 
+        log::warn!("Recomputing Erlang Service diagnostics");
         log::info!("Recomputing Erlang Service diagnostics");
 
         let opened_documents = self.opened_documents();
@@ -955,11 +990,13 @@ impl Server {
             .filter(|file_id| is_supported_by_parse_server(&snapshot.analysis, *file_id))
             .collect();
         self.task_pool.handle.spawn(move || {
+            log::warn!("requesting erlang_service diagnostics");
             let diagnostics = supported_opened_documents
                 .into_iter()
                 .filter_map(|file_id| snapshot.erlang_service_diagnostics(file_id))
                 .flatten()
                 .collect();
+            log::warn!("erlang_service diagnostics fetched");
 
             Task::ErlangServiceDiagnostics(diagnostics)
         });
@@ -1084,9 +1121,9 @@ impl Server {
         let _p = profile::span("Server::update_configuration");
         let _old_config = mem::replace(&mut self.config, Arc::new(config));
 
-        self.logger
-            .reconfigure(LOGGER_NAME, self.config.log_filter());
-        self.logger.reconfigure("default", self.config.log_filter());
+        // self.logger
+        //     .reconfigure(LOGGER_NAME, self.config.log_filter());
+        // self.logger.reconfigure("default", self.config.log_filter());
 
         if !self.config.disable_experimental() {
             // Read the lint config file

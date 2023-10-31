@@ -116,6 +116,7 @@ fn setup_logging(log_file: Option<PathBuf>, no_buffering: bool) -> Result<Logger
         None => None,
     };
     let filter = env::var("ELP_LOG").ok();
+    // let filter = Some("info".to_string());
     let file_logger = FileLogger::new(log_file, no_buffering, filter.as_deref());
 
     let logger = Logger::default();

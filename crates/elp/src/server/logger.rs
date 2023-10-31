@@ -9,6 +9,9 @@
 
 //! Simple logger that logs using lsp logs using `env_logger` filter syntax
 
+use std::time::Instant;
+use std::time::SystemTime;
+
 use crossbeam_channel::Sender;
 use elp_log::Builder;
 use elp_log::Filter;
@@ -52,7 +55,9 @@ impl ReconfigureLog for LspLogger {
     }
 
     fn write(&self, record: &log::Record) {
-        let message = format!("[{}] {}", record.target(), record.args());
+        let now = SystemTime::now();
+
+        let message = format!("{} [{}] {}", humantime::format_rfc3339_millis(now), record.target(), record.args());
 
         let typ = match record.level() {
             log::Level::Error => MessageType::ERROR,

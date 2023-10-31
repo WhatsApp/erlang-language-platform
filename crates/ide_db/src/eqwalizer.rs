@@ -69,6 +69,7 @@ impl EqwalizerLoader for crate::RootDatabase {
                 }
             };
         }
+        log::warn!("EqwalizerLoader:typecheck:module_names={:?}", &module_names);
         self.eqwalizer
             .typecheck(build_info_path.as_ref(), self, project_id, module_names)
     }
@@ -108,8 +109,10 @@ fn eqwalizer_diagnostics(
     project_id: ProjectId,
     file_ids: Vec<FileId>,
 ) -> Arc<EqwalizerDiagnostics> {
+    log::warn!("eqwalizer.eqwalizer_diagnostics:e:{:?}", &file_ids);
     let project = db.project_data(project_id);
     if let Some(build_info_path) = &project.build_info_path {
+        log::warn!("eqwalizer_diagnostics:file_ids:{:?}", &file_ids);
         Arc::new(db.typecheck(project_id, build_info_path, file_ids))
     } else {
         //
@@ -372,6 +375,7 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
+            log::warn!("eqwalizer:get_erl_ast_bytes:{:?}", &file_id);
             let result = self.module_ast(file_id, elp_erlang_service::Format::OffsetEtf);
             if result.is_ok() {
                 Ok(result.ast.clone())
@@ -389,6 +393,7 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
+            log::warn!("eqwalizer:get_erl_stub_bytes:{:?}", &file_id);
             let result = self.module_ast(file_id, elp_erlang_service::Format::OffsetEtf);
             if result.is_ok() {
                 Ok(result.stub.clone())

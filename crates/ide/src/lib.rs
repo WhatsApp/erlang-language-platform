@@ -220,7 +220,10 @@ impl Analysis {
         project_id: ProjectId,
         file_ids: Vec<FileId>,
     ) -> Cancellable<Arc<EqwalizerDiagnostics>> {
-        self.with_db(|db| db.eqwalizer_diagnostics(project_id, file_ids))
+        log::warn!("withdb eqwalizer_diagnostics");
+        let r = self.with_db(|db| db.eqwalizer_diagnostics(project_id, file_ids));
+        log::warn!("withdb eqwalizer_diagnostics done");
+        r
     }
 
     pub fn eqwalizer_stats(
@@ -267,6 +270,7 @@ impl Analysis {
         &self,
         file_id: FileId,
     ) -> Cancellable<Vec<(FileId, LabeledDiagnostics<Diagnostic>)>> {
+        log::warn!("with_db:erlang_service diagnostics:{:?}", &file_id);
         self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id))
     }
 

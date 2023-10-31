@@ -362,7 +362,7 @@ impl DiagnosticCode {
             DiagnosticCode::MissingModule => "L1201".to_string(),
             DiagnosticCode::UnusedInclude => "L1500".to_string(), // Unused file
             DiagnosticCode::HeadMismatch => "P1700".to_string(),  // "head-mismatch"
-            DiagnosticCode::SyntaxError => "P1711".to_string(),
+            DiagnosticCode::SyntaxError => "P1711e".to_string(),
             DiagnosticCode::BoundVarInPattern => "W0000".to_string(),
             DiagnosticCode::ModuleMismatch => "W0001".to_string(), // "module-mismatch"
             DiagnosticCode::UnusedMacro => "W0002".to_string(),    // "unused-macro"
@@ -980,6 +980,7 @@ pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
 ) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
+    log::warn!("diagnostics:erlang_service diagnostics:{:?}", &file_id);
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry
     let format = erlang_service::Format::OffsetEtf;
 
@@ -1099,6 +1100,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
     let mut warning_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
         BTreeSet::default();
 
+    log::warn!("diagnostics:edoc_diagnostics:{:?}", &file_id);
     // If the file cannot be parsed, it does not really make sense to run EDoc,
     // so let's return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
@@ -1195,6 +1197,7 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
         return Arc::new(CommonTestInfo::Skipped);
     }
 
+    log::warn!("diagnostics:ct_info:{:?}", &file_id);
     // If the file cannot be parsed, return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
