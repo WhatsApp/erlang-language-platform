@@ -63,19 +63,25 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 -spec handle_cast(any(), state()) -> {noreply, state()}.
-handle_cast({get_docs, Data, DocOrigin}, #{io := IO} = State) ->
-    Pid = spawn_link(fun() ->
+handle_cast({get_docs, Data, DocOrigin}, State) ->
+    spawn_link(fun() ->
         {Id, FileName} = binary_to_term(Data),
         try
             Result = erlang_service:run_get_docs(Id, FileName, DocOrigin),
-            erlang_service:reply(Id, Result, IO)
+            gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->
                 Formatted = erl_error:format_exception(Class, Reason, StackTrace),
                 ExceptionData = unicode:characters_to_binary(Formatted),
-                erlang_service:reply_exception(Id, ExceptionData, IO)
+                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
         end
             end),
+    {noreply, State};
+handle_cast({result, Id, Result}, #{io := IO} = State) ->
+    erlang_service:reply(Id, Result, IO),
+    {noreply, State};
+handle_cast({exception, Id, ExceptionData}, #{io := IO} = State) ->
+    erlang_service:reply_exception(Id, ExceptionData, IO),
     {noreply, State}.
 
 -spec handle_info(any(), state()) -> {noreply, state()}.
