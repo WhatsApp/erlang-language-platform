@@ -1,6 +1,9 @@
 -module(erlang_service).
 
--export([main/1]).
+-export([main/1,
+    run_get_docs/3,
+reply/3,
+reply_exception/3]).
 
 -record(state, {io = erlang:group_leader()}).
 
@@ -80,17 +83,7 @@ get_docs(BinLen, State, DocOrigin) ->
     Len = binary_to_integer(BinLen),
     %% Use file:read/2 since it reads bytes
     {ok, Data} = file:read(State#state.io, Len),
-    spawn_link(fun() ->
-        {Id, FileName} = binary_to_term(Data),
-        try
-            run_get_docs(Id, FileName, DocOrigin, State)
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                reply_exception(Id, ExceptionData, State)
-        end
-    end),
+    erlang_service_server:get_docs(Data, DocOrigin),
     State.
 
 ct_info(BinLen, State) ->
@@ -105,7 +98,7 @@ ct_info(BinLen, State) ->
             Class:Reason:StackTrace ->
                 Formatted = erl_error:format_exception(Class, Reason, StackTrace),
                 ExceptionData = unicode:characters_to_binary(Formatted),
-                reply_exception(Id, ExceptionData, State)
+                reply_exception(Id, ExceptionData, State#state.io)
         end
     end),
     State.
@@ -122,7 +115,7 @@ ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups) ->
     end,
     code:delete(Module),
     code:purge(Module),
-    reply(Id, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}], State).
+    reply(Id, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}], State#state.io).
 
 eval(Expression) ->
     {ok, Tokens, _} = erl_scan:string(Expression),
@@ -152,14 +145,13 @@ elp_lint(BinLen, State, PostProcess, Deterministic) ->
             Class:Reason:StackTrace ->
                 Formatted = erl_error:format_exception(Class, Reason, StackTrace),
                 ExceptionData = unicode:characters_to_binary(Formatted),
-                reply_exception(Id, ExceptionData, State)
+                reply_exception(Id, ExceptionData, State#state.io)
         end
     end),
     State.
 
-run_get_docs(Id, FileName, DocOrigin, State) ->
-    Result = serialize_docs(get_docs_for_src_file(FileName, DocOrigin)),
-    reply(Id, Result, State).
+run_get_docs(Id, FileName, DocOrigin) ->
+    serialize_docs(get_docs_for_src_file(FileName, DocOrigin)).
 
 run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
     Options1 =
@@ -214,13 +206,13 @@ run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
                     {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}], State);
+                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}], State#state.io);
                 {ok, Warnings} ->
                     {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}], State);
+                    reply(Id, [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}], State#state.io);
                 {error, Errors, Warnings} ->
                     {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
@@ -235,14 +227,14 @@ run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
                             {"ERRORS", FormattedErrors},
                             {"WARNINGS", FormattedWarnings}
                         ],
-                        State
+                        State#state.io
                     )
             end;
         {error, Reason} ->
             Msg = unicode:characters_to_binary(
                 file:format_error(Reason)
             ),
-            reply_exception(Id, Msg, State)
+            reply_exception(Id, Msg, State#state.io)
     end.
 
 lint_file(Forms, FileName, Options0) ->
@@ -620,19 +612,19 @@ inclusion_range(Forms, Path) ->
             {1, 1}
     end.
 
-reply_exception(Id, Data, State) ->
+reply_exception(Id, Data, Device) ->
     %% Use file:write/2 since it writes bytes
     Size = integer_to_binary(byte_size(Data)),
     BinId = integer_to_binary(Id),
-    file:write(State#state.io, [<<"EXCEPTION ">>, BinId, $\s, Size, $\n | Data]),
+    file:write(Device, [<<"EXCEPTION ">>, BinId, $\s, Size, $\n | Data]),
     ok.
 
-reply(Id, Segments, State) ->
+reply(Id, Segments, Device) ->
     %% Use file:write/2 since it writes bytes
     BinId = integer_to_binary(Id),
     Size = integer_to_binary(length(Segments)),
     Data = [encode_segment(Segment) || Segment <- Segments],
-    file:write(State#state.io, [<<"REPLY ">>, BinId, $\s, Size, $\n | Data]),
+    file:write(Device, [<<"REPLY ">>, BinId, $\s, Size, $\n | Data]),
     ok.
 
 encode_segment({Tag, Data}) ->
