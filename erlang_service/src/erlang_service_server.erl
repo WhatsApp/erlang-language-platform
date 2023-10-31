@@ -73,7 +73,7 @@ handle_cast({get_docs, Data, DocOrigin}, State) ->
     spawn_link(fun() ->
         {Id, FileName} = binary_to_term(Data),
         try
-            Result = erlang_service:run_get_docs(FileName, DocOrigin),
+            Result = erlang_service_edoc:run_get_docs(FileName, DocOrigin),
             gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->
