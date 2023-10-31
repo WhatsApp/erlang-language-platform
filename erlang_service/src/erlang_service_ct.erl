@@ -1,8 +1,8 @@
 -module(erlang_service_ct).
 
--export([ct_info/4]).
+-export([run/1]).
 
-ct_info(Module, Filename, CompileOptions, ShouldRequestGroups) ->
+run([Module, Filename, CompileOptions, ShouldRequestGroups]) ->
     {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
     All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),

@@ -48,13 +48,13 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
 get_docs(Data, DocOrigin) ->
-    gen_server:cast(?SERVER, {get_docs, Data, DocOrigin}).
+    gen_server:cast(?SERVER, {request, get_docs, Data, [DocOrigin]}).
 
 ct_info(Data) ->
-    gen_server:cast(?SERVER, {ct_info, Data}).
+    gen_server:cast(?SERVER, {request, ct_info, Data, []}).
 
 elp_lint(Data, PostProcess, Deterministic) ->
-    gen_server:cast(?SERVER, {elp_lint, Data, PostProcess, Deterministic}).
+    gen_server:cast(?SERVER, {request, elp_lint, Data, [PostProcess, Deterministic]}).
 
 %%==============================================================================
 %% gen_server callbacks
@@ -69,47 +69,8 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 -spec handle_cast(any(), state()) -> {noreply, state()}.
-handle_cast({get_docs, Data, DocOrigin}, State) ->
-    spawn_link(fun() ->
-        {Id, FileName} = binary_to_term(Data),
-        try
-            Result = erlang_service_edoc:run_get_docs(FileName, DocOrigin),
-            gen_server:cast(?SERVER, {result, Id, Result})
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
-        end
-            end),
-    {noreply, State};
-handle_cast({ct_info, Data}, State) ->
-    spawn_link(fun() ->
-        {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
-        try
-            Result = erlang_service_ct:ct_info(Module, Filename, CompileOptions, ShouldRequestGroups),
-            gen_server:cast(?SERVER, {result, Id, Result})
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
-        end
-    end),
-    {noreply, State};
-handle_cast({elp_lint, Data, PostProcess, Deterministic}, State) ->
-    spawn_link(fun() ->
-        {Id, FileName, Options} = binary_to_term(Data),
-        try
-            Result = erlang_service_lint:run_elp_lint(FileName, Options, PostProcess, Deterministic),
-            gen_server:cast(?SERVER, {result, Id, Result})
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
-        end
-    end),
+handle_cast({request, Request, Data, AdditionalParams}, State) ->
+    process_request_async(callback_module(Request), Data, AdditionalParams),
     {noreply, State};
 handle_cast({result, Id, Result}, #{io := IO} = State) ->
     reply(Id, Result, IO),
@@ -143,3 +104,22 @@ reply_exception(Id, Data, Device) ->
 encode_segment({Tag, Data}) ->
     Size = integer_to_binary(byte_size(Data)),
     [Tag, $\s, Size, $\n | Data].
+
+process_request_async(Module, Data, AdditionalParams) ->
+    spawn_link(
+        fun() ->
+            [Id|Params] = binary_to_term(Data),
+            try
+                Result = Module:run(Params ++ AdditionalParams),
+                gen_server:cast(?SERVER, {result, Id, Result})
+            catch
+                Class:Reason:StackTrace ->
+                    Formatted = erl_error:format_exception(Class, Reason, StackTrace),
+                    ExceptionData = unicode:characters_to_binary(Formatted),
+                    gen_server:cast(?SERVER, {exception, Id, ExceptionData})
+            end
+        end).
+
+callback_module(get_docs) -> erlang_service_edoc;
+callback_module(ct_info) -> erlang_service_ct;
+callback_module(elp_lint) -> erlang_service_lint.

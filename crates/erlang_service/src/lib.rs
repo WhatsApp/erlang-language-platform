@@ -770,13 +770,13 @@ impl ParseRequest {
             .map(|option| option.into())
             .chain(iter::once(location_tuple))
             .collect::<Vec<eetf::Term>>();
-        let tuple = eetf::Tuple::from(vec![
+        let list = eetf::List::from(vec![
             eetf::BigInteger::from(id).into(),
             path_into_list(self.path).into(),
             eetf::List::from(options).into(),
         ]);
         let mut buf = Vec::new();
-        eetf::Term::from(tuple).encode(&mut buf).unwrap();
+        eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
 }
@@ -790,12 +790,12 @@ impl DocRequest {
     }
 
     fn encode(self, id: usize) -> Vec<u8> {
-        let tuple = eetf::Tuple::from(vec![
+        let list = eetf::List::from(vec![
             eetf::BigInteger::from(id).into(),
             path_into_list(self.src_path).into(),
         ]);
         let mut buf = Vec::new();
-        eetf::Term::from(tuple).encode(&mut buf).unwrap();
+        eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
 }
@@ -815,7 +815,7 @@ impl CTInfoRequest {
             true => eetf::Atom::from("true").into(),
             false => eetf::Atom::from("false").into(),
         };
-        let tuple = eetf::Tuple::from(vec![
+        let list = eetf::List::from(vec![
             eetf::BigInteger::from(id).into(),
             self.module.into(),
             path_into_list(self.src_path).into(),
@@ -823,7 +823,7 @@ impl CTInfoRequest {
             should_request_groups,
         ]);
         let mut buf = Vec::new();
-        eetf::Term::from(tuple).encode(&mut buf).unwrap();
+        eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
 }

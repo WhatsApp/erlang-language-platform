@@ -1,8 +1,8 @@
 -module(erlang_service_lint).
 
--export([run_elp_lint/4]).
+-export([run/1]).
 
-run_elp_lint(FileName, Options0, PostProcess, Deterministic) ->
+run([FileName, Options0, PostProcess, Deterministic]) ->
     Options1 =
         case Deterministic of
             true ->
