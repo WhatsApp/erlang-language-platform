@@ -530,6 +530,7 @@ dependencies = [
  "text-edit",
  "toml",
  "triple_accel",
+ "url",
 ]
 
 [[package]]
