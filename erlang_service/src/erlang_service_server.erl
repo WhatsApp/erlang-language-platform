@@ -23,7 +23,7 @@
 ]).
 
 %% API
--export([ get_docs/2
+-export([ get_docs/2, ct_info/1
 ]).
 
 %%==============================================================================
@@ -50,6 +50,9 @@ start_link() ->
 get_docs(Data, DocOrigin) ->
     gen_server:cast(?SERVER, {get_docs, Data, DocOrigin}).
 
+ct_info(Data) ->
+    gen_server:cast(?SERVER, {ct_info, Data}).
+
 %%==============================================================================
 %% gen_server callbacks
 %%==============================================================================
@@ -67,7 +70,7 @@ handle_cast({get_docs, Data, DocOrigin}, State) ->
     spawn_link(fun() ->
         {Id, FileName} = binary_to_term(Data),
         try
-            Result = erlang_service:run_get_docs(Id, FileName, DocOrigin),
+            Result = erlang_service:run_get_docs(FileName, DocOrigin),
             gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->
@@ -76,6 +79,20 @@ handle_cast({get_docs, Data, DocOrigin}, State) ->
                 gen_server:cast(?SERVER, {exception, Id, ExceptionData})
         end
             end),
+    {noreply, State};
+handle_cast({ct_info, Data}, State) ->
+    spawn_link(fun() ->
+        {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
+        try
+            Result = erlang_service:ct_info(Module, Filename, CompileOptions, ShouldRequestGroups),
+            gen_server:cast(?SERVER, {result, Id, Result})
+        catch
+            Class:Reason:StackTrace ->
+                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
+                ExceptionData = unicode:characters_to_binary(Formatted),
+                gen_server:cast(?SERVER, {exception, Id, ExceptionData})
+        end
+    end),
     {noreply, State};
 handle_cast({result, Id, Result}, #{io := IO} = State) ->
     erlang_service:reply(Id, Result, IO),

@@ -1,7 +1,8 @@
 -module(erlang_service).
 
 -export([main/1,
-    run_get_docs/3,
+    run_get_docs/2,
+    ct_info/4,
 reply/3,
 reply_exception/3]).
 
@@ -90,20 +91,10 @@ ct_info(BinLen, State) ->
     Len = binary_to_integer(BinLen),
     %% Use file:read/2 since it reads bytes
     {ok, Data} = file:read(State#state.io, Len),
-    spawn_link(fun() ->
-        {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
-        try
-            ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups)
-        catch
-            Class:Reason:StackTrace ->
-                Formatted = erl_error:format_exception(Class, Reason, StackTrace),
-                ExceptionData = unicode:characters_to_binary(Formatted),
-                reply_exception(Id, ExceptionData, State#state.io)
-        end
-    end),
+    erlang_service_server:ct_info(Data),
     State.
 
-ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups) ->
+ct_info(Module, Filename, CompileOptions, ShouldRequestGroups) ->
     {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
     All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),
@@ -115,7 +106,7 @@ ct_info(Id, Module, Filename, CompileOptions, State, ShouldRequestGroups) ->
     end,
     code:delete(Module),
     code:purge(Module),
-    reply(Id, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}], State#state.io).
+    [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}].
 
 eval(Expression) ->
     {ok, Tokens, _} = erl_scan:string(Expression),
@@ -150,7 +141,7 @@ elp_lint(BinLen, State, PostProcess, Deterministic) ->
     end),
     State.
 
-run_get_docs(Id, FileName, DocOrigin) ->
+run_get_docs(FileName, DocOrigin) ->
     serialize_docs(get_docs_for_src_file(FileName, DocOrigin)).
 
 run_elp_lint(Id, FileName, Options0, State, PostProcess, Deterministic) ->
