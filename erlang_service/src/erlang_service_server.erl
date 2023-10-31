@@ -101,7 +101,7 @@ handle_cast({elp_lint, Data, PostProcess, Deterministic}, State) ->
     spawn_link(fun() ->
         {Id, FileName, Options} = binary_to_term(Data),
         try
-            Result = erlang_service:run_elp_lint(FileName, Options, PostProcess, Deterministic),
+            Result = erlang_service_lint:run_elp_lint(FileName, Options, PostProcess, Deterministic),
             gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->
