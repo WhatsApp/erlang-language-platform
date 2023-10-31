@@ -65,25 +65,25 @@ collect_paths(Len, State) ->
     end.
 
 get_docs(BinLen, State, DocOrigin) ->
-    Len = binary_to_integer(BinLen),
-    %% Use file:read/2 since it reads bytes
-    {ok, Data} = file:read(State#state.io, Len),
+    Data = read_request(BinLen, State#state.io),
     erlang_service_server:get_docs(Data, DocOrigin),
     State.
 
 ct_info(BinLen, State) ->
-    Len = binary_to_integer(BinLen),
-    %% Use file:read/2 since it reads bytes
-    {ok, Data} = file:read(State#state.io, Len),
+    Data = read_request(BinLen, State#state.io),
     erlang_service_server:ct_info(Data),
     State.
 
 elp_lint(BinLen, State, PostProcess, Deterministic) ->
-    Len = binary_to_integer(BinLen),
-    %% Use file:read/2 since it reads bytes
-    {ok, Data} = file:read(State#state.io, Len),
+    Data = read_request(BinLen, State#state.io),
     erlang_service_server:elp_lint(Data, PostProcess, Deterministic),
     State.
+
+read_request(BinLen, Device) ->
+    Len = binary_to_integer(BinLen),
+    %% Use file:read/2 since it reads bytes
+    {ok, Data} = file:read(Device, Len),
+    Data.
 
 %-----------------------------------------------------------------------
 configure_logging() ->
