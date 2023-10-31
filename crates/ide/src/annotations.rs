@@ -16,6 +16,7 @@ use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
+// @fb-only: use crate::meta_only;
 use crate::runnables::runnables;
 use crate::runnables::Runnable;
 
@@ -32,10 +33,21 @@ pub struct Annotation {
 #[derive(Debug)]
 pub enum AnnotationKind {
     Runnable(Runnable),
+    Link(Link),
 }
 
-pub(crate) fn annotations(_db: &RootDatabase, _file_id: FileId) -> Vec<Annotation> {
-    Vec::default()
+#[derive(Debug)]
+pub struct Link {
+    pub file_id: FileId,
+    pub text_range: TextRange,
+    pub url: String,
+    pub text: String,
+}
+
+pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation> {
+    let mut annotations = Vec::default();
+    // @fb-only: meta_only::annotations(db, file_id, &mut annotations);
+    annotations
 }
 
 pub(crate) fn ct_annotations(
@@ -81,6 +93,7 @@ mod tests {
                     let text = runnable.nav.name;
                     actual.push((FileRange { file_id, range }, text.to_string()));
                 }
+                _ => {}
             }
         }
         let cmp = |(frange, text): &(FileRange, String)| {

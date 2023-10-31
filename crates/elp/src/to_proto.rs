@@ -686,6 +686,18 @@ pub(crate) fn code_lens(
                 }
             };
         }
+        AnnotationKind::Link(link) => {
+            let line_index = snap.analysis.line_index(link.file_id)?;
+            let annotation_range = range(&line_index, annotation.range);
+            let url = link.url;
+            let text = link.text;
+            let command = command::open_uri(&url, &text);
+            acc.push(lsp_types::CodeLens {
+                range: annotation_range,
+                command: Some(command),
+                data: None,
+            });
+        }
     }
     Ok(())
 }
