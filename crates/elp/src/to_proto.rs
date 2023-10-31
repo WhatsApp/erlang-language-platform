@@ -655,6 +655,7 @@ pub(crate) fn code_lens(
     annotation: elp_ide::Annotation,
     project_build_data: &ProjectBuildData,
 ) -> Result<()> {
+    let lens_config = snap.config.lens();
     match annotation.kind {
         AnnotationKind::Runnable(run) => {
             let line_index = snap.analysis.line_index(run.nav.file_id)?;
@@ -663,7 +664,6 @@ pub(crate) fn code_lens(
             let debug_title = &run.debug_title();
             match runnable(snap, run, project_build_data) {
                 Ok(r) => {
-                    let lens_config = snap.config.lens();
                     if lens_config.run {
                         let run_command = command::run_single(&r, run_title);
                         acc.push(lsp_types::CodeLens {
@@ -687,16 +687,18 @@ pub(crate) fn code_lens(
             };
         }
         AnnotationKind::Link(link) => {
-            let line_index = snap.analysis.line_index(link.file_id)?;
-            let annotation_range = range(&line_index, annotation.range);
-            let url = link.url;
-            let text = link.text;
-            let command = command::open_uri(&url, &text);
-            acc.push(lsp_types::CodeLens {
-                range: annotation_range,
-                command: Some(command),
-                data: None,
-            });
+            if lens_config.links {
+                let line_index = snap.analysis.line_index(link.file_id)?;
+                let annotation_range = range(&line_index, annotation.range);
+                let url = link.url;
+                let text = link.text;
+                let command = command::open_uri(&url, &text);
+                acc.push(lsp_types::CodeLens {
+                    range: annotation_range,
+                    command: Some(command),
+                    data: None,
+                });
+            }
         }
     }
     Ok(())

@@ -56,6 +56,9 @@ config_data! {
       /// Whether to show the `Debug` lenses. Only applies when
       /// `#elp.lens.enable#` is set.
       lens_debug_enable: bool = json! { false },
+      /// Whether to show the `Link` lenses. Only applies when
+      /// `#elp.lens.enable#` is set.
+      lens_links_enable: bool = json! { false },
       /// Configure LSP-based logging using env_logger syntax.
       log: String = json! { "error" },
       /// Whether to show Signature Help.
@@ -82,6 +85,7 @@ pub struct Config {
 pub struct LensConfig {
     pub run: bool,
     pub debug: bool,
+    pub links: bool,
 }
 
 macro_rules! try_ {
@@ -217,6 +221,7 @@ impl Config {
         LensConfig {
             run: self.data.lens_enable && self.data.lens_run_enable,
             debug: self.data.lens_enable && self.data.lens_debug_enable,
+            links: self.data.lens_enable && self.data.lens_links_enable,
         }
     }
 
@@ -445,7 +450,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
+        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":false,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":false,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -491,6 +496,11 @@ mod tests {
             "elp.lens.enable": {
               "default": false,
               "markdownDescription": "Whether to show Code Lenses in Erlang files.",
+              "type": "boolean"
+            },
+            "elp.lens.links.enable": {
+              "default": false,
+              "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
               "type": "boolean"
             },
             "elp.lens.run.enable": {
