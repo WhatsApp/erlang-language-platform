@@ -24,9 +24,9 @@ use crate::AppType;
 use crate::ProjectAppData;
 
 lazy_static! {
-    pub static ref EQWALIZER_SUPPORT: PathBuf = dirs::home_dir()
+    pub static ref EQWALIZER_SUPPORT: PathBuf = dirs::cache_dir()
         .unwrap()
-        .join(".elp")
+        .join("elp")
         .join("eqwalizer_support");
 }
 
