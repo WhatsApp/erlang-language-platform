@@ -333,8 +333,6 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
         .parse(position.file_id)
         .map(|file| file.syntax().clone());
 
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nfind_best_token".to_string());
     let token = syntax.with_value(pick_best_token(
         syntax.value.token_at_offset(position.offset),
         |kind| match kind {

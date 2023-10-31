@@ -31,7 +31,6 @@ use text_edit::TextEdit;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
-use super::Category;
 use super::Diagnostic;
 use super::DiagnosticCode;
 use super::Severity;

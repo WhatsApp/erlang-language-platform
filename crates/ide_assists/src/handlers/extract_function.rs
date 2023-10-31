@@ -512,8 +512,6 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function) -> String {
 }
 
 fn ends_with_comma_then_trivia(node: &SyntaxNode, range: TextRange) -> Option<TextRange> {
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nends_with_comma_then_trivia".to_string());
     let end_tok = node.token_at_offset(range.end());
     let end_tok = end_tok
         .left_biased()

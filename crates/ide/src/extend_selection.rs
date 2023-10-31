@@ -85,8 +85,6 @@ fn try_extend_selection(root: &SyntaxNode, frange: FileRange) -> Option<TextRang
 
     if range.is_empty() {
         let offset = range.start();
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\ntry_extend_selection".to_string());
         let mut leaves = root.token_at_offset(offset);
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
             return Some(extend_ws(root, leaves.next()?, offset));

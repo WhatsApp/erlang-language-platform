@@ -104,11 +104,7 @@ impl<'a> AssistContext<'a> {
         // included in the reduced range.
         let start = frange.range.start();
         let end = frange.range.end();
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nAssistContext::new start".to_string());
         let left = source_file.syntax().token_at_offset(start);
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nAssistContext::new end".to_string());
         let right = source_file.syntax().token_at_offset(end);
         let left = left
             .right_biased()
@@ -146,14 +142,10 @@ impl<'a> AssistContext<'a> {
 
     // NB, this ignores active selection.
     pub(crate) fn offset(&self) -> TextSize {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nAssistContext::offset".to_string());
         self.frange.range.start()
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nAssistContext::token_at_offset".to_string());
         self.source_file.syntax().token_at_offset(self.offset())
     }
 
@@ -195,8 +187,6 @@ impl<'a> AssistContext<'a> {
     }
 
     pub(crate) fn classify_offset(&self) -> Option<SymbolClass> {
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nAssistContext::classify_offset".to_string());
         let token = self
             .source_file
             .syntax()

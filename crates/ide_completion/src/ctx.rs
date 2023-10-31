@@ -157,8 +157,6 @@ impl Ctx {
         if !in_expr {
             return false;
         }
-        // Temporary for T153426323
-        let _pctx = stdx::panic_context::enter("\nCtx::is_expr".to_string());
         if let Some(mut tok) = node.token_at_offset(offset).left_biased() {
             if tok.text_range().start() < ancestor_offset {
                 return false;

@@ -24,8 +24,6 @@ use crate::Kind;
 
 pub(crate) fn atom_value(parsed: &InFile<SourceFile>, offset: TextSize) -> Option<String> {
     let node = parsed.value.syntax();
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\natom_value".to_string());
     let token = node.token_at_offset(offset);
     let token = parsed.with_value(elp_ide_db::helpers::pick_best_token(
         token,

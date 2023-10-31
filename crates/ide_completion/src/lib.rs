@@ -116,19 +116,6 @@ pub fn completions(
     let sema = &Semantic::new(db);
     let parsed = sema.parse(file_position.file_id);
     let node = parsed.value.syntax();
-    let node_range = node.text_range();
-    // Check the failing assert condition for T153426323
-    if !(node_range.start() <= file_position.offset && file_position.offset <= node_range.end()) {
-        let original_token = node.token_at_offset(file_position.offset).left_biased();
-        // Confirming this as the origin for T153426323
-        log::error!(
-            "completions:invalid position {:?} for range {:?}, original_token={:?}",
-            file_position.offset,
-            node.text_range(),
-            original_token
-        );
-        return vec![];
-    }
     let ctx = Ctx::new(node, file_position.offset);
     let mut acc = Vec::new();
     let previous_tokens = get_previous_tokens(node, file_position);
@@ -180,8 +167,6 @@ fn get_previous_tokens(
     node: &SyntaxNode,
     file_position: FilePosition,
 ) -> Option<Vec<(SyntaxKind, SyntaxToken)>> {
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nget_previous_tokens".to_string());
     let mut token = node.token_at_offset(file_position.offset).left_biased()?;
     let mut tokens = Vec::new();
 

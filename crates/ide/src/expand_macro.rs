@@ -36,8 +36,6 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let sema = Semantic::new(db);
     let source_file = sema.parse(position.file_id);
 
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nexpand_macro".to_string());
     let tok = pick_best_token(
         source_file.value.syntax().token_at_offset(position.offset),
         |kind| match kind {

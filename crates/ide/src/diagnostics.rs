@@ -938,8 +938,6 @@ fn prev_line_comment_text(
 ) -> Option<String> {
     let current_line = line_index.line_col(offset).line;
     let prev_line = prev_line(line_index, current_line)?;
-    // Temporary for T153426323
-    let _pctx = stdx::panic_context::enter("\nprev_line_comment_text".to_string());
     let token = source.token_at_offset(prev_line).left_biased()?;
     let prev_line_range = TextRange::new(prev_line, offset);
     let node_or_token = token
