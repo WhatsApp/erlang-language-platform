@@ -87,7 +87,7 @@ handle_cast({ct_info, Data}, State) ->
     spawn_link(fun() ->
         {Id, Module, Filename, CompileOptions, ShouldRequestGroups} = binary_to_term(Data),
         try
-            Result = erlang_service:ct_info(Module, Filename, CompileOptions, ShouldRequestGroups),
+            Result = erlang_service_ct:ct_info(Module, Filename, CompileOptions, ShouldRequestGroups),
             gen_server:cast(?SERVER, {result, Id, Result})
         catch
             Class:Reason:StackTrace ->

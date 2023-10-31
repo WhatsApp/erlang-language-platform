@@ -1,7 +1,6 @@
 -module(erlang_service).
 
 -export([main/1,
-    ct_info/4,
     run_elp_lint/4
 ]).
 
@@ -80,36 +79,6 @@ ct_info(BinLen, State) ->
     {ok, Data} = file:read(State#state.io, Len),
     erlang_service_server:ct_info(Data),
     State.
-
-ct_info(Module, Filename, CompileOptions, ShouldRequestGroups) ->
-    {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
-    code:load_binary(Module, Filename, Binary),
-    All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),
-    Groups = case ShouldRequestGroups of
-        true ->
-            eval(lists:flatten(io_lib:format("~p:groups().", [Module])));
-        false ->
-            []
-    end,
-    code:delete(Module),
-    code:purge(Module),
-    [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}].
-
-eval(Expression) ->
-    {ok, Tokens, _} = erl_scan:string(Expression),
-    {ok, Exprs} = erl_parse:parse_exprs(Tokens),
-    {value, Value, _} = erl_eval:exprs(Exprs, []),
-    Value.
-
-normalize_compile_options(CompileOptions) ->
-    normalize_compile_options(CompileOptions, []).
-
-normalize_compile_options([], Acc) ->
-    Acc;
-normalize_compile_options([{includes, Includes} | Tail], Acc) ->
-    normalize_compile_options(Tail, Acc ++ [{i, Include} || Include <- Includes]);
-normalize_compile_options([Head | Tail], Acc) ->
-    normalize_compile_options(Tail, [Head | Acc]).
 
 elp_lint(BinLen, State, PostProcess, Deterministic) ->
     Len = binary_to_integer(BinLen),
