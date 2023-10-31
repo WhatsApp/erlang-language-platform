@@ -3,9 +3,8 @@
 -export([main/1,
     run_get_docs/2,
     ct_info/4,
-    run_elp_lint/4,
-reply/3,
-reply_exception/3]).
+    run_elp_lint/4
+]).
 
 -record(state, {io = erlang:group_leader()}).
 
@@ -581,25 +580,6 @@ inclusion_range(Forms, Path) ->
         _ ->
             {1, 1}
     end.
-
-reply_exception(Id, Data, Device) ->
-    %% Use file:write/2 since it writes bytes
-    Size = integer_to_binary(byte_size(Data)),
-    BinId = integer_to_binary(Id),
-    file:write(Device, [<<"EXCEPTION ">>, BinId, $\s, Size, $\n | Data]),
-    ok.
-
-reply(Id, Segments, Device) ->
-    %% Use file:write/2 since it writes bytes
-    BinId = integer_to_binary(Id),
-    Size = integer_to_binary(length(Segments)),
-    Data = [encode_segment(Segment) || Segment <- Segments],
-    file:write(Device, [<<"REPLY ">>, BinId, $\s, Size, $\n | Data]),
-    ok.
-
-encode_segment({Tag, Data}) ->
-    Size = integer_to_binary(byte_size(Data)),
-    [Tag, $\s, Size, $\n | Data].
 
 -spec partition_stub([elp_parse:abstract_form()]) ->
     {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.

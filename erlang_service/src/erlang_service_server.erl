@@ -112,10 +112,10 @@ handle_cast({elp_lint, Data, PostProcess, Deterministic}, State) ->
     end),
     {noreply, State};
 handle_cast({result, Id, Result}, #{io := IO} = State) ->
-    erlang_service:reply(Id, Result, IO),
+    reply(Id, Result, IO),
     {noreply, State};
 handle_cast({exception, Id, ExceptionData}, #{io := IO} = State) ->
-    erlang_service:reply_exception(Id, ExceptionData, IO),
+    reply_exception(Id, ExceptionData, IO),
     {noreply, State}.
 
 -spec handle_info(any(), state()) -> {noreply, state()}.
@@ -125,3 +125,21 @@ handle_info(_Request, State) ->
 %%==============================================================================
 %% Internal Functions
 %%==============================================================================
+reply(Id, Segments, Device) ->
+    %% Use file:write/2 since it writes bytes
+    BinId = integer_to_binary(Id),
+    Size = integer_to_binary(length(Segments)),
+    Data = [encode_segment(Segment) || Segment <- Segments],
+    file:write(Device, [<<"REPLY ">>, BinId, $\s, Size, $\n | Data]),
+    ok.
+
+reply_exception(Id, Data, Device) ->
+    %% Use file:write/2 since it writes bytes
+    Size = integer_to_binary(byte_size(Data)),
+    BinId = integer_to_binary(Id),
+    file:write(Device, [<<"EXCEPTION ">>, BinId, $\s, Size, $\n | Data]),
+    ok.
+
+encode_segment({Tag, Data}) ->
+    Size = integer_to_binary(byte_size(Data)),
+    [Tag, $\s, Size, $\n | Data].
