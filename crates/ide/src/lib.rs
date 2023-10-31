@@ -570,9 +570,9 @@ impl Analysis {
     pub fn annotations(&self, file_id: FileId) -> Cancellable<Vec<Annotation>> {
         self.with_db(|db| match &*diagnostics::ct_info(db, file_id) {
             CommonTestInfo::Result { all, groups } => {
-                annotations::annotations(db, file_id, all.clone(), groups.clone())
+                annotations::ct_annotations(db, file_id, all.clone(), groups.clone())
             }
-            _ => Vec::new(),
+            _ => annotations::annotations(db, file_id),
         })
     }
 

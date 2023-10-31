@@ -34,22 +34,29 @@ pub enum AnnotationKind {
     Runnable(Runnable),
 }
 
-pub(crate) fn annotations(
+pub(crate) fn annotations(_db: &RootDatabase, _file_id: FileId) -> Vec<Annotation> {
+    Vec::default()
+}
+
+pub(crate) fn ct_annotations(
     db: &RootDatabase,
     file_id: FileId,
     all: FxHashSet<TestDef>,
     groups: FxHashMap<SmolStr, GroupDef>,
 ) -> Vec<Annotation> {
-    let mut annotations = Vec::default();
+    let mut ct_annotations = Vec::default();
 
     for runnable in runnables(db, file_id, all, groups) {
         let range = runnable.nav.range();
-        annotations.push(Annotation {
+        ct_annotations.push(Annotation {
             range,
             kind: AnnotationKind::Runnable(runnable),
         });
     }
-    annotations
+
+    let annotations = annotations(db, file_id);
+
+    annotations.into_iter().chain(ct_annotations).collect()
 }
 
 #[cfg(test)]
