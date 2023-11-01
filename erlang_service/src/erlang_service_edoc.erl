@@ -15,9 +15,9 @@
 -type severity() :: warning | error.
 
 run([FileName, DocOrigin]) ->
-    serialize_docs(get_docs_for_src_file(FileName, DocOrigin)).
+    {ok, serialize_docs(get_docs_for_src_file(FileName, DocOrigin))}.
 
-    -spec serialize_docs(docs()) -> [{string(), binary()}].
+-spec serialize_docs(docs()) -> [{string(), binary()}].
 serialize_docs(#{
     module_doc := ModuleDoc,
     function_docs := FunctionDocs,

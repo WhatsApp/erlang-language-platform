@@ -853,6 +853,15 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_extension() {
+        expect_module(
+            "fixtures/unsupported_extension.yrl".into(),
+            expect_file!["../fixtures/unsupported_extension.expected"],
+            vec![],
+        );
+    }
+
+    #[test]
     fn structured_comment() {
         expect_module(
             "fixtures/structured_comment.erl".into(),

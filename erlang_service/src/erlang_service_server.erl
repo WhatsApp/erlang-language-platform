@@ -142,8 +142,12 @@ process_request_async(Module, Data, AdditionalParams) ->
     Pid = spawn_link(
         fun() ->
             try
-                Result = Module:run(Params ++ AdditionalParams),
-                gen_server:cast(?SERVER, {result, Id, Result})
+                case Module:run(Params ++ AdditionalParams) of
+                    {ok, Result} ->
+                        gen_server:cast(?SERVER, {result, Id, Result});
+                    {error, Error} ->
+                        gen_server:cast(?SERVER, {exception, Id, Error})
+                end
             catch
                 Class:Reason:StackTrace ->
                     Formatted = erl_error:format_exception(Class, Reason, StackTrace),

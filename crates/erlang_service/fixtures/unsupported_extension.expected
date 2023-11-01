@@ -1,0 +1,18 @@
+AST
+
+
+STUB
+
+
+WARNINGS
+[]
+
+ERRORS
+[
+    ParseError {
+        path: "fixtures/unsupported_extension.yrl",
+        location: None,
+        msg: "Could not parse, error: unknown POSIX error",
+        code: "L0002",
+    },
+]

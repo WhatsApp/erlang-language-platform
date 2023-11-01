@@ -14,7 +14,7 @@ run([Module, Filename, CompileOptions, ShouldRequestGroups]) ->
     end,
     code:delete(Module),
     code:purge(Module),
-    [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}].
+    {ok, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}]}.
 
 eval(Expression) ->
     {ok, Tokens, _} = erl_scan:string(Expression),

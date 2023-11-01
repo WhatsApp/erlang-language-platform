@@ -24,54 +24,48 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
             _ ->
                 Options2
         end,
-    MaybeForms =
-        case filename:extension(FileName) of
-            ".erl" ->
-                Module:parse_file(FileName, Options3);
-            ".hrl" ->
-                Module:parse_file(FileName, Options3);
-            ".escript" ->
-                Forms = elp_escript:extract(Module, FileName),
-                {ok, Forms};
-            _Ext ->
-                {error, "Skipping diagnostics due to extension"}
-        end,
-
-    {ok, Forms0} = MaybeForms,
-    Transforms0 = proplists:get_value(parse_transforms, Options3, []),
-    {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
-    Transform = fun(Mod, Forms) -> transform(Mod, Forms, Options3) end,
-    Forms2 = lists:foldl(Transform, Forms1, Transforms),
-    Forms3 =
-        case proplists:get_value(elp_metadata, Options3) of
-            undefined ->
-                Forms2;
-            ElpMetadata ->
-                elp_metadata:insert_metadata(ElpMetadata, Forms2)
-        end,
-    case lint_file(Forms3, FileName, Options3) of
-        {ok, []} ->
-            {Stub, AST} = partition_stub(Forms3),
-            ResultStub = PostProcess(Stub, FileName),
-            ResultAST = PostProcess(AST, FileName),
-            [{"AST", ResultAST}, {"STUB", ResultStub}];
-        {ok, Warnings} ->
-            {Stub, AST} = partition_stub(Forms3),
-            ResultStub = PostProcess(Stub, FileName),
-            ResultAST = PostProcess(AST, FileName),
-            FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-            [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}];
-        {error, Errors, Warnings} ->
-            {Stub, AST} = partition_stub(Forms3),
-            ResultStub = PostProcess(Stub, FileName),
-            ResultAST = PostProcess(AST, FileName),
-            FormattedErrors = format_errors(Forms3, FileName, Errors),
-            FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-            [{"AST", ResultAST},
-             {"STUB", ResultStub},
-             {"ERRORS", FormattedErrors},
-             {"WARNINGS", FormattedWarnings}
-            ]
+    case extract_forms(FileName, Module, Options3) of
+        {ok, Forms0} ->
+            Transforms0 = proplists:get_value(parse_transforms, Options3, []),
+            {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
+            Transform = fun(Mod, Forms) -> transform(Mod, Forms, Options3) end,
+            Forms2 = lists:foldl(Transform, Forms1, Transforms),
+            Forms3 =
+                case proplists:get_value(elp_metadata, Options3) of
+                    undefined ->
+                        Forms2;
+                    ElpMetadata ->
+                        elp_metadata:insert_metadata(ElpMetadata, Forms2)
+                end,
+            case lint_file(Forms3, FileName, Options3) of
+                {ok, []} ->
+                    {Stub, AST} = partition_stub(Forms3),
+                    ResultStub = PostProcess(Stub, FileName),
+                    ResultAST = PostProcess(AST, FileName),
+                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}]};
+                {ok, Warnings} ->
+                    {Stub, AST} = partition_stub(Forms3),
+                    ResultStub = PostProcess(Stub, FileName),
+                    ResultAST = PostProcess(AST, FileName),
+                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
+                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}]};
+                {error, Errors, Warnings} ->
+                    {Stub, AST} = partition_stub(Forms3),
+                    ResultStub = PostProcess(Stub, FileName),
+                    ResultAST = PostProcess(AST, FileName),
+                    FormattedErrors = format_errors(Forms3, FileName, Errors),
+                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
+                    {ok, [{"AST", ResultAST},
+                          {"STUB", ResultStub},
+                          {"ERRORS", FormattedErrors},
+                          {"WARNINGS", FormattedWarnings}
+                    ]}
+            end;
+        {error, Reason} ->
+            Msg = unicode:characters_to_binary(
+                file:format_error(Reason)
+            ),
+            {error, Msg}
     end.
 
 lint_file(Forms, FileName, Options0) ->
@@ -241,4 +235,17 @@ inclusion_range(Forms, Path) ->
             {Loc, Loc};
         _ ->
             {1, 1}
+    end.
+
+extract_forms(FileName, Module, Options) ->
+    case filename:extension(FileName) of
+        ".erl" ->
+            Module:parse_file(FileName, Options);
+        ".hrl" ->
+            Module:parse_file(FileName, Options);
+        ".escript" ->
+            Forms = elp_escript:extract(Module, FileName),
+            {ok, Forms};
+        _Ext ->
+            {error, "Skipping diagnostics due to extension"}
     end.
