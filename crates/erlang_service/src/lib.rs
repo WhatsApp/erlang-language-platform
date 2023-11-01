@@ -963,6 +963,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn ct_info_infinite_loop() {
+        expect_ct_info(
+            "ct_info_infinite_loop_SUITE".into(),
+            "fixtures/ct_info_infinite_loop_SUITE.erl".into(),
+            expect_file!["../fixtures/ct_info_infinite_loop_SUITE.expected"],
+        );
+    }
+
     fn expect_module(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();

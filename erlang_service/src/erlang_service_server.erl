@@ -23,8 +23,7 @@
 ]).
 
 %% API
--export([ get_docs/2, ct_info/1, elp_lint/3
-]).
+-export([ get_docs/2, ct_info/1, elp_lint/3 ]).
 
 %%==============================================================================
 %% Includes
@@ -38,13 +37,15 @@
 %%==============================================================================
 %% Type Definitions
 %%==============================================================================
--type state() :: #{io := erlang:group_leader()}.
+-type state() :: #{io := erlang:group_leader(), requests := [request()]}.
+-type request() :: {pid(), pos_integer(), reference() | infinity}.
 
 %%==============================================================================
 %% API
 %%==============================================================================
 -spec start_link() -> {ok, pid()}.
 start_link() ->
+    process_flag(trap_exit, true),
     gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
 get_docs(Data, DocOrigin) ->
@@ -61,7 +62,7 @@ elp_lint(Data, PostProcess, Deterministic) ->
 %%==============================================================================
 -spec init(noargs) -> {ok, state()}.
 init(noargs) ->
-    State = #{io => erlang:group_leader()},
+    State = #{io => erlang:group_leader(), requests => []},
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {reply, any(), state()}.
@@ -69,19 +70,50 @@ handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 -spec handle_cast(any(), state()) -> {noreply, state()}.
-handle_cast({request, Request, Data, AdditionalParams}, State) ->
-    process_request_async(callback_module(Request), Data, AdditionalParams),
-    {noreply, State};
-handle_cast({result, Id, Result}, #{io := IO} = State) ->
-    reply(Id, Result, IO),
-    {noreply, State};
-handle_cast({exception, Id, ExceptionData}, #{io := IO} = State) ->
-    reply_exception(Id, ExceptionData, IO),
-    {noreply, State}.
+handle_cast({request, Request, Data, AdditionalParams}, #{requests := Requests} = State) ->
+    {Pid, Id} = process_request_async(callback_module(Request), Data, AdditionalParams),
+    Timer = case timeout(Request) of
+                infinity ->
+                    infinity;
+                Timeout ->
+                    erlang:send_after(Timeout, ?SERVER, {timeout, Pid})
+            end,
+    {noreply, State#{requests => [{Pid, Id, Timer}|Requests]}};
+handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
+    case lists:keytake(Id, 2, Requests) of
+        {value, {Pid, Id, infinity}, NewRequests} ->
+            reply(Id, Result, IO),
+            {noreply, State#{requests => NewRequests}};
+        {value, {Pid, Id, Timer}, NewRequests} ->
+            erlang:cancel_timer(Timer),
+            reply(Id, Result, IO),
+            {noreply, State#{requests => NewRequests}};
+        _ ->
+            {noreply, State}
+    end;
+handle_cast({exception, Id, ExceptionData}, #{io := IO, requests := Requests} = State) ->
+    case lists:keytake(Id, 2, Requests) of
+        {value, {Pid, Id, infinity}, NewRequests} ->
+            reply_exception(Id, ExceptionData, IO),
+            {noreply, State#{requests => NewRequests}};
+        {value, {Pid, Id, Timer}, NewRequests} ->
+            erlang:cancel_timer(Timer),
+            reply_exception(Id, ExceptionData, IO),
+            {noreply, State#{requests => NewRequests}};
+        _ ->
+            {noreply, State}
+    end.
 
 -spec handle_info(any(), state()) -> {noreply, state()}.
-handle_info(_Request, State) ->
-    {noreply, State}.
+handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
+    case lists:keytake(Pid, 1, Requests) of
+        {value, {Pid, Id, Timer}, NewRequests} ->
+            exit(Pid, normal),
+            reply_exception(Id, <<"Timeout">>, IO),
+            {noreply, State#{requests => NewRequests}};
+        _ ->
+            {noreply, State}
+    end.
 
 %%==============================================================================
 %% Internal Functions
@@ -106,9 +138,9 @@ encode_segment({Tag, Data}) ->
     [Tag, $\s, Size, $\n | Data].
 
 process_request_async(Module, Data, AdditionalParams) ->
-    spawn_link(
+    [Id|Params] = binary_to_term(Data),
+    Pid = spawn_link(
         fun() ->
-            [Id|Params] = binary_to_term(Data),
             try
                 Result = Module:run(Params ++ AdditionalParams),
                 gen_server:cast(?SERVER, {result, Id, Result})
@@ -118,8 +150,12 @@ process_request_async(Module, Data, AdditionalParams) ->
                     ExceptionData = unicode:characters_to_binary(Formatted),
                     gen_server:cast(?SERVER, {exception, Id, ExceptionData})
             end
-        end).
+        end),
+    {Pid, Id}.
 
 callback_module(get_docs) -> erlang_service_edoc;
 callback_module(ct_info) -> erlang_service_ct;
 callback_module(elp_lint) -> erlang_service_lint.
+
+timeout(ct_info) -> 2500;
+timeout(_) -> infinity.
