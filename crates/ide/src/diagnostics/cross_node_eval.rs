@@ -93,15 +93,20 @@ mod tests {
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
-    use crate::tests::check_fix;
+    use crate::tests::check_fix_with_config;
 
     #[track_caller]
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
-        let mut config = DiagnosticsConfig::default();
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-        check_diagnostics_with_config(config, ra_fixture)
+    pub(crate) fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config(config, fixture)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
+        check_fix_with_config(config, fixture_before, fixture_after)
     }
 
     #[test]

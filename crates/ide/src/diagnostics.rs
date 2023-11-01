@@ -85,6 +85,7 @@ mod mutable_variable;
 mod redundant_assignment;
 mod replace_call;
 mod trivial_match;
+mod undefined_function;
 mod unused_function_args;
 mod unused_include;
 mod unused_macro;
@@ -322,6 +323,7 @@ pub enum DiagnosticCode {
     CrossNodeEval,
     DependentHeader,
     DeprecatedFunction,
+    UndefinedFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -380,6 +382,7 @@ impl DiagnosticCode {
             DiagnosticCode::CrossNodeEval => "W0014".to_string(),       // cross-node-eval
             DiagnosticCode::DependentHeader => "W0015".to_string(),     // dependent-header
             DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
+            DiagnosticCode::UndefinedFunction => "W0017".to_string(),   // undefined-function
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
@@ -413,6 +416,7 @@ impl DiagnosticCode {
             DiagnosticCode::CrossNodeEval => "cross_node_eval".to_string(),
             DiagnosticCode::DependentHeader => "dependent_header".to_string(),
             DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
+            DiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
@@ -782,6 +786,7 @@ pub fn semantic_diagnostics(
     cross_node_eval::cross_node_eval(res, sema, file_id);
     dependent_header::dependent_header(res, sema, file_id, file_kind);
     deprecated_function::deprecated_function(res, sema, file_id);
+    undefined_function::undefined_function(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(

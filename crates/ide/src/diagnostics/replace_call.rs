@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_first() {
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
@@ -533,10 +533,9 @@ mod tests {
                 )
             }],
             ..DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::UndefinedFunction)
         };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
 
         check_fix_with_config(
             config,
@@ -571,7 +570,7 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_middle() {
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
@@ -586,10 +585,9 @@ mod tests {
                 )
             }],
             ..DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::UndefinedFunction)
         };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
 
         check_fix_with_config(
             config,
@@ -624,7 +622,7 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_last() {
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
@@ -639,10 +637,9 @@ mod tests {
                 )
             }],
             ..DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::UndefinedFunction)
         };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
 
         check_fix_with_config(
             config,
@@ -677,7 +674,7 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_singleton() {
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
@@ -692,11 +689,9 @@ mod tests {
                 )
             }],
             ..DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::UndefinedFunction)
         };
-
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
 
         check_fix_with_config(
             config,
@@ -881,14 +876,12 @@ mod tests {
             }),
             action: crate::diagnostics::ReplaceCallAction::RemoveFromList,
         })];
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             lints_from_config: Arc::new(LintsFromConfig { lints }),
             ..DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::UndefinedFunction)
         };
-
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
 
         check_fix_with_config(
             config,

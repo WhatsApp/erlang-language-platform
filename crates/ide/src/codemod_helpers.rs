@@ -227,20 +227,17 @@ impl<'a, T> FunctionMatcher<'a, T> {
 #[serde(tag = "type")]
 #[allow(clippy::upper_case_acronyms)]
 pub enum FunctionMatch {
-    // FunctionMatch::Any is not used yet, see later diffs
-    #[allow(dead_code)]
     Any,
     MFA(MFA),
-    MF {
-        module: String,
-        name: String,
-    },
-    M {
-        module: String,
-    },
+    MF { module: String, name: String },
+    M { module: String },
 }
 
 impl FunctionMatch {
+    pub fn any() -> FunctionMatch {
+        FunctionMatch::Any
+    }
+
     pub fn mfa(m: &str, f: &str, arity: u32) -> FunctionMatch {
         FunctionMatch::MFA(MFA {
             module: m.into(),
@@ -471,7 +468,8 @@ mod tests {
                 Arc::new(LintsFromConfig::default()),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-            .disable(DiagnosticCode::CrossNodeEval),
+            .disable(DiagnosticCode::CrossNodeEval)
+            .disable(DiagnosticCode::UndefinedFunction),
             fixture,
         );
     }
@@ -490,7 +488,8 @@ mod tests {
                 Arc::new(LintsFromConfig::default()),
             )
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-            .disable(DiagnosticCode::CrossNodeEval),
+            .disable(DiagnosticCode::CrossNodeEval)
+            .disable(DiagnosticCode::UndefinedFunction),
             fixture_before,
             fixture_after,
         );

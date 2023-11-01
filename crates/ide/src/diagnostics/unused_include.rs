@@ -188,7 +188,15 @@ fn is_file_used(
 #[cfg(test)]
 mod tests {
 
-    use crate::tests::check_diagnostics;
+    use crate::diagnostics::DiagnosticCode;
+    use crate::diagnostics::DiagnosticsConfig;
+    use crate::tests::check_diagnostics_with_config;
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config(config, fixture)
+    }
 
     #[test]
     fn optimise_includes_unused_include_with_macro() {
