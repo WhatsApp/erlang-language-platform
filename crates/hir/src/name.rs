@@ -224,6 +224,7 @@ pub mod known {
         erlang,
         apply,
         export_all,
+        module_info,
         parse_transform,
         // Common Test framework
         suite,

@@ -16,6 +16,7 @@
 // calls to undefined local functions are already reported by the Erlang linter itself (L1227).
 
 use elp_ide_db::elp_base_db::FileId;
+use hir::known;
 use hir::FunctionDef;
 use hir::Semantic;
 use text_edit::TextRange;
@@ -57,12 +58,16 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                }: CheckCallCtx<'_, ()>| {
             let arity = args.len() as u32;
             match target {
-                hir::CallTarget::Remote { .. } => {
-                    match target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body()) {
-                        Some(_) => None,
-                        None => target
-                            .label(arity, sema, &def_fb.body())
-                            .map(|label| (label.to_string(), "".to_string())),
+                hir::CallTarget::Remote { module: _, name } => {
+                    if sema.is_atom_named(&def_fb[*name], known::module_info) {
+                        None
+                    } else {
+                        match target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body()) {
+                            Some(_) => None,
+                            None => target
+                                .label(arity, sema, &def_fb.body())
+                                .map(|label| (label.to_string(), "".to_string())),
+                        }
                     }
                 }
                 // Diagnostic L1227 already covers the case for local calls, so avoid double-reporting
@@ -119,6 +124,24 @@ mod tests {
     dependency:exists(),
     dependency:not_exists().
 %%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:not_exists/0' is undefined.
+  exists() -> ok.
+//- /src/dependency.erl
+  -module(dependency).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_exclude_module_info() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    dependency:exists(),
+    dependency:module_info().
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
