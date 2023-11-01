@@ -17,7 +17,10 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use hir::known;
+use hir::Expr;
 use hir::FunctionDef;
+use hir::InFunctionBody;
+use hir::Name;
 use hir::Semantic;
 use text_edit::TextRange;
 
@@ -58,8 +61,10 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                }: CheckCallCtx<'_, ()>| {
             let arity = args.len() as u32;
             match target {
-                hir::CallTarget::Remote { module: _, name } => {
-                    if sema.is_atom_named(&def_fb[*name], known::module_info) {
+                hir::CallTarget::Remote { module, name } => {
+                    let module = &def_fb[*module];
+                    let name = &def_fb[*name];
+                    if in_exclusion_list(sema, module, name) {
                         None
                     } else {
                         match target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body()) {
@@ -79,6 +84,12 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
             Some(diag)
         },
     );
+}
+
+fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr) -> bool {
+    sema.is_atom_named(function, known::module_info)
+        || sema.is_atom_named(module, known::erlang)
+            && sema.is_atom_named(function, known::get_stacktrace)
 }
 
 fn make_diagnostic(
@@ -147,6 +158,20 @@ mod tests {
   -module(dependency).
   -compile(export_all).
   exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_exclude_get_stacktrace() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    erlang:get_stacktrace(),
+    dependency:get_stacktrace().
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:get_stacktrace/0' is undefined.
             "#,
         )
     }
