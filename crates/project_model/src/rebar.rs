@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use std::collections::HashSet;
 use std::convert::TryInto;
 use std::fs;
 use std::path::Path;
@@ -29,6 +28,7 @@ use crate::AppName;
 use crate::AppType;
 use crate::CommandProxy;
 use crate::ProjectAppData;
+use crate::ProjectModelError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RebarProject {
@@ -46,12 +46,6 @@ pub struct Profile(pub String);
 pub struct RebarConfig {
     pub config_file: AbsPathBuf, // rebar config or build_info
     pub profile: Profile,
-    pub features: HashSet<RebarFeature>,
-}
-
-#[derive(Eq, Hash, PartialEq, Clone, Debug)]
-pub enum RebarFeature {
-    BuildInfo,
 }
 
 impl Default for Profile {
@@ -62,16 +56,12 @@ impl Default for Profile {
 
 impl RebarConfig {
     pub fn from_config_path(config_file: AbsPathBuf, profile: Profile) -> Result<RebarConfig> {
-        let mut config = RebarConfig {
+        let config = RebarConfig {
             config_file,
             profile,
-            features: HashSet::default(),
         };
 
-        if has_build_info(&config) {
-            config.features.insert(RebarFeature::BuildInfo);
-        }
-
+        check_build_info(&config)?;
         Ok(config)
     }
 
@@ -94,16 +84,26 @@ impl RebarConfig {
     }
 }
 
-fn has_build_info(config: &RebarConfig) -> bool {
+fn check_build_info(config: &RebarConfig) -> Result<()> {
     let mut cmd = config.rebar3_command();
     cmd.arg("help");
     cmd.arg("build_info");
     match cmd.output() {
-        Ok(cmd) => cmd.status.success(),
+        Ok(cmd) => {
+            if cmd.status.success() {
+                Ok(())
+            } else if cmd.status.code() == Some(1)
+                && String::from_utf8_lossy(&cmd.stdout).contains("Command 'build-info' not found")
+            {
+                bail!(ProjectModelError::NoBuildInfo)
+            } else {
+                bail!("Failed to run rebar3 help buil-info: {:?}", &cmd.status)
+            }
+        }
         Err(error) => {
             warn!("rebar3 build_info is not available");
             debug!("rebar3 help build_info: {}", error);
-            false
+            bail!(ProjectModelError::MissingRebar(error))
         }
     }
 }
@@ -221,7 +221,6 @@ impl Default for RebarConfig {
         RebarConfig {
             config_file: AbsPathBuf::assert("/".into()).normalize(),
             profile: Default::default(),
-            features: Default::default(),
         }
     }
 }

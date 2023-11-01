@@ -633,6 +633,7 @@ dependencies = [
  "serde_json",
  "stdx",
  "tempfile",
+ "thiserror",
  "toml",
 ]
 

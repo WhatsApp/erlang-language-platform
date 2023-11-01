@@ -45,6 +45,7 @@ use crate::AppType;
 use crate::BuildInfoFile;
 use crate::CommandProxy;
 use crate::ProjectAppData;
+use crate::ProjectModelError;
 
 pub type TargetFullName = String;
 
@@ -346,13 +347,26 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
 /// finds buck root directory based on buck config, executing `buck2 root`
 fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let _timer = timeit!("loading root");
-    let output = buck_config.buck_command().arg("root").output()?;
+    let output = match buck_config.buck_command().arg("root").output() {
+        Ok(out) => out,
+        Err(err) => {
+            log::error!("Err executing buck2 root: {:?}", err);
+            bail!(crate::ProjectModelError::MissingBuck(err))
+        }
+    };
     if !output.status.success() {
-        bail!(
-            "Failed to get buck2 root, error code: {:?}, stderr: {:?}",
-            output.status.code(),
-            String::from_utf8(output.stderr)
-        );
+        if output.status.code() == Some(1)
+            && String::from_utf8_lossy(&output.stdout)
+                .contains("not in a Buck project, are you missing a .buckconfig file?")
+        {
+            bail!(ProjectModelError::NotInBuckProject)
+        } else {
+            bail!(
+                "Failed to get buck2 root, error code: {:?}, stderr: {:?}",
+                output.status.code(),
+                String::from_utf8(output.stderr)
+            )
+        }
     }
     let path = String::from_utf8(output.stdout)?;
     match AbsPathBuf::try_from(path.trim()) {

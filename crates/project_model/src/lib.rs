@@ -32,6 +32,7 @@ use paths::AbsPath;
 use paths::AbsPathBuf;
 use tempfile::NamedTempFile;
 use tempfile::TempPath;
+use thiserror::Error;
 
 use crate::buck::BuckProject;
 use crate::json::JsonConfig;
@@ -103,6 +104,22 @@ impl Display for DiscoverConfig {
             write!(f, "buck")
         }
     }
+}
+
+#[derive(Error, Debug)]
+pub enum ProjectModelError {
+    #[error("Buck2 was not found. Try to run buck2 --help from command line")]
+    MissingBuck(#[source] std::io::Error),
+    #[error("Not in buck project")]
+    NotInBuckProject,
+    #[error("Rebar3 was not found. Try to run rebar3 --help from command line")]
+    MissingRebar(#[source] std::io::Error),
+    #[error(
+        "build-info plugin was not installed. Please follow the instructions on https://github.com/WhatsApp/eqwalizer"
+    )]
+    NoBuildInfo,
+    #[error("Failed to parse build info json")]
+    InvalidBuildInfoJson,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -178,7 +195,7 @@ impl ProjectManifest {
         }
     }
 
-    pub fn discover_no_manifest(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    pub fn discover_no_manifest(path: &AbsPath) -> ProjectManifest {
         let _timer = timeit!("discover simple");
         let src_path = Self::find_in_dir(path.as_ref(), &["src"]).next();
         let root_path = if let Some(src_path) = &src_path {
@@ -186,20 +203,18 @@ impl ProjectManifest {
         } else {
             path.parent().map(|path| path.to_path_buf())
         };
-        if let Some(root_path) = root_path {
-            let name = AppName(
-                root_path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .map(|name| name.to_string())
-                    .unwrap_or_else(|| "generic".to_string()),
-            );
-            let abs_src_dirs = vec![src_path.unwrap_or_else(|| root_path.clone())];
-            let no_manifest = no_manifest::NoManifestConfig::new(root_path, name, abs_src_dirs);
-            Ok(Some(ProjectManifest::NoManifest(no_manifest)))
-        } else {
-            Ok(None)
-        }
+        let root_path =
+            root_path.unwrap_or_else(|| panic!("Error getting parent from {:?}", &path));
+        let name = AppName(
+            root_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.to_string())
+                .unwrap_or_else(|| "generic".to_string()),
+        );
+        let abs_src_dirs = vec![src_path.unwrap_or_else(|| root_path.clone())];
+        let no_manifest = no_manifest::NoManifestConfig::new(root_path, name, abs_src_dirs);
+        ProjectManifest::NoManifest(no_manifest)
     }
 
     pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
@@ -215,10 +230,7 @@ impl ProjectManifest {
         if let Some(s) = Self::discover_static(path)? {
             return Ok(Some(s));
         }
-        if let Some(s) = Self::discover_no_manifest(path)? {
-            return Ok(Some(s));
-        }
-        Ok(None)
+        Ok(Some(Self::discover_no_manifest(path)))
     }
 }
 
@@ -579,7 +591,7 @@ impl Project {
                 let build_info_term = buck::make_build_info(
                     terms,
                     vec![eqwalizer_support_term],
-                    &abs_otp_root,
+                    abs_otp_root,
                     &config_path,
                 );
                 let build_info = buck::save_build_info(build_info_term)?;
@@ -638,7 +650,6 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::fs;
     use std::fs::File;
     use std::io::Write;
@@ -649,7 +660,6 @@ mod tests {
     use super::*;
     use crate::json::JsonProjectAppData;
     use crate::no_manifest::NoManifestConfig;
-    use crate::rebar::RebarFeature;
 
     pub fn gen_project(spec: &str) -> TempDir {
         let fixtures = Fixture::parse(spec);
@@ -689,11 +699,9 @@ mod tests {
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
         if let Ok(Some(ProjectManifest::Rebar(config))) = manifest {
-            let features = HashSet::from_iter(vec![RebarFeature::BuildInfo]);
             let expected_config = RebarConfig {
                 config_file: AbsPathBuf::assert(dir.path().join("rebar.config")),
                 profile: Profile("test".to_string()),
-                features,
             };
             assert_eq!(expected_config, config)
         } else {
@@ -914,7 +922,6 @@ mod tests {
             Ok(Some(ProjectManifest::Rebar(RebarConfig {
                 config_file: actual,
                 profile: _,
-                features: _,
             }))) => {
                 let expected = root.join("rebar.config.script");
                 assert_eq!(actual, expected);
