@@ -90,14 +90,16 @@ fn check_build_info(config: &RebarConfig) -> Result<()> {
     cmd.arg("build_info");
     match cmd.output() {
         Ok(cmd) => {
-            if cmd.status.success() {
-                Ok(())
-            } else if cmd.status.code() == Some(1)
-                && String::from_utf8_lossy(&cmd.stdout).contains("Command 'build-info' not found")
-            {
-                bail!(ProjectModelError::NoBuildInfo)
-            } else {
-                bail!("Failed to run rebar3 help buil-info: {:?}", &cmd.status)
+            match (
+                cmd.status.success(),
+                cmd.status.code(),
+                String::from_utf8_lossy(&cmd.stdout),
+            ) {
+                (true, _, _) => Ok(()),
+                (_, Some(1), out) if out.contains("Unknown task build_info") => {
+                    bail!(ProjectModelError::NoBuildInfo)
+                }
+                (_, _, out) => bail!("Failed to run rebar3 help buil-info: {:?}", out),
             }
         }
         Err(error) => {

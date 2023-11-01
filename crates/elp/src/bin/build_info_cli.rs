@@ -28,7 +28,7 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let manifest = ProjectManifest::discover(&root);
 
     let config = match manifest {
-        Ok(Some(ProjectManifest::Toml(buck))) => buck,
+        Ok(ProjectManifest::Toml(buck)) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
     let buck = match config.buck {
@@ -49,12 +49,8 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
     let manifest = ProjectManifest::discover(&root)?;
-    let manifest = match manifest {
-        Some(manifest) => manifest,
-        None => bail!("Can't find project manifest for {:?}", root),
-    };
 
-    let project = Project::load(manifest.clone())?;
+    let project = Project::load(&manifest)?;
     let mut writer: Box<dyn Write> = match args.to {
         Some(to) => Box::new(
             std::fs::OpenOptions::new()

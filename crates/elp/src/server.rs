@@ -18,6 +18,7 @@ use anyhow::bail;
 use anyhow::Result;
 use crossbeam_channel::select;
 use crossbeam_channel::Receiver;
+use crossbeam_channel::Sender;
 use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -48,6 +49,7 @@ use elp_log::timeit;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_project_model::Project;
+use elp_project_model::ProjectManifest;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Notification;
@@ -61,6 +63,7 @@ use lsp_types::request::Request as _;
 use lsp_types::Diagnostic;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
+use lsp_types::ShowMessageParams;
 use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
@@ -106,7 +109,8 @@ enum Event {
 #[derive(Debug)]
 pub enum Task {
     Response(lsp_server::Response),
-    FetchProject(Vec<Result<Project>>),
+    ShowMessage(lsp_types::ShowMessageParams),
+    FetchProject(Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
@@ -415,6 +419,7 @@ impl Server {
                     Task::Progress(progress) => self.report_progress(progress),
                     Task::UpdateCache(spinner, files) => self.update_cache(spinner, files),
                     Task::ScheduleCache => self.schedule_cache(),
+                    Task::ShowMessage(params) => self.show_message(params),
                 }
 
                 // Coalesce many tasks into a single main loop turn
@@ -992,26 +997,21 @@ impl Server {
         }
     }
 
-    fn switch_workspaces(&mut self, new_projects: Vec<Result<Project>>) -> Result<()> {
+    fn switch_workspaces(&mut self, new_projects: Vec<Project>) -> Result<()> {
         log::info!("will switch workspaces");
 
         let mut projects: Vec<Project> = self.projects.iter().cloned().collect();
         for project in new_projects {
-            match project {
-                Ok(project) => {
-                    let idx = projects.iter().enumerate().find_map(|(id, p)| {
-                        if p.root() == project.root() {
-                            Some(id)
-                        } else {
-                            None
-                        }
-                    });
-                    match idx {
-                        Some(idx) => projects[idx] = project,
-                        None => projects.push(project),
-                    }
+            let idx = projects.iter().enumerate().find_map(|(id, p)| {
+                if p.root() == project.root() {
+                    Some(id)
+                } else {
+                    None
                 }
-                Err(err) => log::error!("ELP failed to switch workspaces: {:#}", err),
+            });
+            match idx {
+                Some(idx) => projects[idx] = project,
+                None => projects.push(project),
             }
         }
 
@@ -1133,10 +1133,8 @@ impl Server {
         }
     }
 
-    fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
-        self.send_notification::<lsp_types::notification::ShowMessage>(
-            lsp_types::ShowMessageParams { typ, message },
-        )
+    fn show_message(&mut self, params: ShowMessageParams) {
+        self.send_notification::<lsp_types::notification::ShowMessage>(params)
     }
 
     fn send_response(&mut self, response: Response) {
@@ -1195,8 +1193,12 @@ impl Server {
                         let mut projects = vec![];
                         for path in paths {
                             let manifest = loader.load_manifest_if_new(&path);
-                            if let Ok(Some(manifest)) = manifest {
-                                projects.push(Project::load(manifest.clone()));
+                            if let Some((main, fallback)) = manifest {
+                                if let Ok(project) =
+                                    Server::load_project_or_fallback(&path, main, fallback, &sender)
+                                {
+                                    projects.push(project);
+                                }
                             }
                         }
                         log::info!("did reload projects");
@@ -1209,6 +1211,57 @@ impl Server {
         }
     }
 
+    fn load_project_or_fallback(
+        path: &AbsPath,
+        main: Result<ProjectManifest>,
+        fallback: ProjectManifest,
+        sender: &Sender<Task>,
+    ) -> Result<Project> {
+        let mut fallback_used = false;
+        let mut errors = vec![];
+        let manifest = match main {
+            Ok(main) => main,
+            Err(err) => {
+                log::error!(
+                    "Failed to discover manifest for path: {:?}, error: {:?}",
+                    path,
+                    err
+                );
+                fallback_used = true;
+                errors.push(err.to_string());
+                fallback.clone()
+            }
+        };
+        let mut project = Project::load(&manifest);
+        if let Err(err) = &project {
+            log::error!(
+                "Failed to load project for manifest {:?}, error: {:?}",
+                manifest,
+                err
+            );
+            errors.push(err.to_string());
+            if !fallback_used {
+                project = Project::load(&fallback);
+                if let Err(err) = &project {
+                    log::error!(
+                        "Failed to load project for fallback manifest {:?}, error: {:?}",
+                        manifest,
+                        err
+                    );
+                    errors.push(err.to_string());
+                }
+            }
+        }
+        for err in errors {
+            let params = lsp_types::ShowMessageParams {
+                typ: lsp_types::MessageType::ERROR,
+                message: err,
+            };
+            sender.send(Task::ShowMessage(params))?;
+        }
+        project
+    }
+
     fn fetch_projects_if_needed(&mut self, path: &AbsPath) {
         let path = path.to_path_buf();
         let loader = self.project_loader.clone();
@@ -1216,22 +1269,28 @@ impl Server {
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
                 let project = match manifest {
-                    Ok(Some(manifest)) => Project::load(manifest),
-                    Err(err) => Err(err),
-                    Ok(None) => return,
+                    Some((main, fallback)) => {
+                        Server::load_project_or_fallback(&path, main, fallback, &sender)
+                    }
+                    None => return,
                 };
 
                 log::info!("did fetch project");
                 log::debug!("fetched projects {:?}", project);
-
-                sender.send(Task::FetchProject(vec![project])).unwrap();
+                if let Ok(project) = project {
+                    sender.send(Task::FetchProject(vec![project])).unwrap();
+                }
             }
         })
     }
 
-    fn fetch_project_completed(&mut self, project: Vec<Result<Project>>) -> Result<()> {
+    fn fetch_project_completed(&mut self, project: Vec<Project>) -> Result<()> {
         if let Err(err) = self.switch_workspaces(project) {
-            self.show_message(lsp_types::MessageType::ERROR, err.to_string())
+            let params = lsp_types::ShowMessageParams {
+                typ: lsp_types::MessageType::ERROR,
+                message: err.to_string(),
+            };
+            self.show_message(params);
         }
         Ok(())
     }

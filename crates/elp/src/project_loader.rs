@@ -26,9 +26,11 @@ pub struct ProjectLoader {
 impl ProjectLoader {
     pub fn new() -> Self {
         let mut project_roots = FxHashMap::default();
-        let otp_root = Otp::find_otp().unwrap();
-        let otp_root = AbsPathBuf::assert(otp_root);
-        project_roots.insert(otp_root, None);
+        let otp_root = Otp::find_otp();
+        if let Ok(otp_root) = otp_root {
+            let otp_root = AbsPathBuf::assert(otp_root);
+            project_roots.insert(otp_root, None);
+        }
         let start = Instant::now();
         let initialized = false;
         ProjectLoader {
@@ -53,46 +55,42 @@ impl ProjectLoader {
         result
     }
 
-    pub fn load_manifest(&mut self, path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    pub fn load_manifest(&mut self, path: &AbsPath) -> (Result<ProjectManifest>, ProjectManifest) {
         let manifest = ProjectManifest::discover(path);
+        let fallback = ProjectManifest::discover_no_manifest(path);
 
         match manifest {
-            Ok(Some(manifest)) => {
+            Ok(manifest) => {
                 if let Some(root) = manifest.root().parent() {
                     log::info!("Opening new project with root {:?}", &root);
                     self.project_roots
                         .insert(root.to_path_buf(), Some(manifest.clone()));
                 }
-                Ok(Some(manifest))
-            }
-            Ok(None) => {
-                log::info!("Could not find a project manifest for path {:?}", path);
-                Ok(None)
+                (Ok(manifest), fallback)
             }
             Err(err) => {
-                log::error!(
-                    "Project discovery failed for path {:?}, error {}",
-                    path,
-                    err
-                );
                 //cache parent path not to discover project for every file without project
                 if let Some(parent) = path.parent() {
-                    self.project_roots.insert(parent.to_path_buf(), None);
+                    self.project_roots
+                        .insert(parent.to_path_buf(), Some(fallback.clone()));
                 }
-                Ok(None)
+                (Err(err), fallback)
             }
         }
     }
 
-    pub fn load_manifest_if_new(&mut self, path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    pub fn load_manifest_if_new(
+        &mut self,
+        path: &AbsPath,
+    ) -> Option<(Result<ProjectManifest>, ProjectManifest)> {
         let mut path_it = path;
         while let Some(path) = path_it.parent() {
             if self.project_roots.contains_key(path) {
-                return Ok(None);
+                return None;
             }
             path_it = path;
         }
-        self.load_manifest(path)
+        Some(self.load_manifest(path))
     }
 
     pub fn load_completed(&mut self) {

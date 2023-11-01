@@ -50,7 +50,7 @@ pub fn load_project_at(
     let root = AbsPathBuf::assert(root);
     let manifest = match conf.rebar {
         true => ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
-        false => ProjectManifest::discover(&root)?,
+        false => Some(ProjectManifest::discover(&root)?),
     };
     let manifest = if let Some(manifest) = manifest {
         manifest
@@ -60,7 +60,7 @@ pub fn load_project_at(
 
     log::info!("Discovered project: {:?}", manifest);
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(manifest)?;
+    let project = Project::load(&manifest)?;
     pb.finish();
 
     load_project(cli, project, include_otp, eqwalizer_mode)

@@ -119,7 +119,7 @@ pub enum ProjectModelError {
     )]
     NoBuildInfo,
     #[error("Failed to parse build info json")]
-    InvalidBuildInfoJson,
+    InvalidBuildInfoJson(#[source] anyhow::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,20 +217,20 @@ impl ProjectManifest {
         ProjectManifest::NoManifest(no_manifest)
     }
 
-    pub fn discover(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    pub fn discover(path: &AbsPath) -> Result<ProjectManifest> {
         let _timer = timeit!("discover all projects");
         if cfg!(feature = "buck") {
             if let Some(t) = Self::discover_toml(path)? {
-                return Ok(Some(t));
+                return Ok(t);
             }
         }
         if let Some(r) = Self::discover_rebar(path, None)? {
-            return Ok(Some(r));
+            return Ok(r);
         }
         if let Some(s) = Self::discover_static(path)? {
-            return Ok(Some(s));
+            return Ok(s);
         }
-        Ok(Some(Self::discover_no_manifest(path)))
+        Ok(Self::discover_no_manifest(path))
     }
 }
 
@@ -511,9 +511,9 @@ impl Project {
         }
     }
 
-    pub fn load(manifest: ProjectManifest) -> Result<Project> {
+    pub fn load(manifest: &ProjectManifest) -> Result<Project> {
         let (project_build_info, build_info, otp_root) = match manifest {
-            ProjectManifest::Rebar(ref rebar_setting) => {
+            ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
                     rebar_setting.config_file.display()
@@ -545,7 +545,7 @@ impl Project {
                     otp_root,
                 )
             }
-            ProjectManifest::Toml(ref config) => match &config.buck {
+            ProjectManifest::Toml(config) => match &config.buck {
                 Some(buck) => {
                     let (project, build_info, otp_root) =
                         BuckProject::load_from_config(buck, &config.eqwalizer)?;
@@ -562,7 +562,7 @@ impl Project {
                     (ProjectBuildData::Static(project), None, otp_root)
                 }
             },
-            ProjectManifest::Json(ref config) => {
+            ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
                 let (apps, deps, terms, deps_terms) =
@@ -581,7 +581,7 @@ impl Project {
                     otp_root,
                 )
             }
-            ProjectManifest::NoManifest(ref config) => {
+            ProjectManifest::NoManifest(config) => {
                 let otp_root = Otp::find_otp()?;
                 let abs_otp_root = AbsPath::assert(&otp_root);
                 let config_path = config.config_path().to_path_buf();
@@ -698,7 +698,7 @@ mod tests {
         let dir = gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
-        if let Ok(Some(ProjectManifest::Rebar(config))) = manifest {
+        if let Ok(ProjectManifest::Rebar(config)) = manifest {
             let expected_config = RebarConfig {
                 config_file: AbsPathBuf::assert(dir.path().join("rebar.config")),
                 profile: Profile("test".to_string()),
@@ -741,7 +741,7 @@ mod tests {
         let dir = gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
-        if let Ok(Some(ProjectManifest::Json(config))) = manifest {
+        if let Ok(ProjectManifest::Json(config)) = manifest {
             let json_app_a = JsonProjectAppData {
                 name: "app_a".into(),
                 dir: "app_a".to_string(),
@@ -768,7 +768,8 @@ mod tests {
             );
             //discover only app_b since path was from app_b
             assert_eq!(expected_config, config);
-            let project = Project::load(ProjectManifest::Json(config)).expect("project must be ok");
+            let project =
+                Project::load(&ProjectManifest::Json(config)).expect("project must be ok");
             assert!(project.build_info_file.is_some());
             let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
             let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
@@ -825,6 +826,87 @@ mod tests {
     }
 
     #[test]
+    fn test_err_on_invalid_json() {
+        let spec = r#"
+        //- /build_info.json
+        {
+            invalid_apps": [
+                {
+                    "name": "app_a",
+                    "dir": "app_a",
+                    "src_dirs": ["src"]
+                },
+            ]
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = gen_project(spec);
+        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
+        match manifest
+            .expect_err("Must be err")
+            .downcast_ref::<ProjectModelError>()
+        {
+            Some(ProjectModelError::InvalidBuildInfoJson(_)) => (),
+            Some(err) => panic!("Wrong err {:?}", err),
+            None => panic!("Must be error"),
+        };
+    }
+
+    #[test]
+    fn test_err_on_no_buck_root() {
+        if cfg!(feature = "buck") {
+            let spec = r#"
+            //- /.elp.toml
+            [buck]
+            enabled = true
+            build_deps = false
+            included_targets = ["//..."]
+            //- /app_a/src/app.erl
+            -module(app).
+            "#;
+            let dir = gen_project(spec);
+            let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
+                dir.path().join("app_a/src/app.erl"),
+            ));
+            match manifest
+                .expect_err("Must be err")
+                .downcast_ref::<ProjectModelError>()
+            {
+                Some(ProjectModelError::NotInBuckProject) => (),
+                Some(err) => panic!("Wrong err {:?}", err),
+                None => panic!("Wrong error"),
+            };
+        }
+    }
+
+    #[test]
+    fn test_err_on_no_rebar_build_info() {
+        let spec = r#"
+        //- /rebar.config
+            {checkouts_dir, ["."]}.
+            {project_app_dirs, [
+                "app_a"
+            ]}.
+            {erl_opts, [debug_info]}.
+            {deps, []}.
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        match manifest
+            .expect_err("Must be err")
+            .downcast_ref::<ProjectModelError>()
+        {
+            Some(ProjectModelError::NoBuildInfo) => (),
+            Some(err) => panic!("Wrong err {:?}", err),
+            None => panic!("Wrong error"),
+        };
+    }
+    #[test]
     fn test_no_manifesto() {
         let spec = r#"
         //- /app_a/src/app.erl
@@ -839,7 +921,7 @@ mod tests {
         let dir = gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
-        if let Ok(Some(ProjectManifest::NoManifest(config))) = manifest {
+        if let Ok(ProjectManifest::NoManifest(config)) = manifest {
             let path = AbsPathBuf::assert(dir.path().join("app_b"));
             let name: AppName = "app_b".into();
             let abs_src = AbsPathBuf::assert(dir.path().join("app_b/src"));
@@ -850,7 +932,7 @@ mod tests {
             assert_eq!(&expected_config, &config);
 
             let project =
-                Project::load(ProjectManifest::NoManifest(config)).expect("project must be ok");
+                Project::load(&ProjectManifest::NoManifest(config)).expect("project must be ok");
             assert!(project.build_info_file.is_some());
             let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
             let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
@@ -901,7 +983,7 @@ mod tests {
             let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
                 dir.path().join("app_a/src/app.erl"),
             ));
-            if let Ok(Some(ProjectManifest::Toml(toml))) = manifest {
+            if let Ok(ProjectManifest::Toml(toml)) = manifest {
                 let expected_config = buck::ElpConfig::new(
                     AbsPathBuf::assert(dir.path().join(".elp.toml")),
                     None,

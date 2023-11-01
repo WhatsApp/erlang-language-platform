@@ -356,7 +356,7 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     };
     if !output.status.success() {
         if output.status.code() == Some(1)
-            && String::from_utf8_lossy(&output.stdout)
+            && String::from_utf8_lossy(&output.stderr)
                 .contains("not in a Buck project, are you missing a .buckconfig file?")
         {
             bail!(ProjectModelError::NotInBuckProject)
