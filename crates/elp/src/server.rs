@@ -22,6 +22,7 @@ use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -583,6 +584,10 @@ impl Server {
                         file_id,
                         change_kind: ChangeKind::Modify,
                     });
+
+                    this.analysis_host
+                        .raw_database_mut()
+                        .set_file_revision(file_id, 0);
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
@@ -647,8 +652,16 @@ impl Server {
                     } && path_ref.is_file();
 
                     if reload_project {
-                        this.reload_project(vec![path]);
+                        this.reload_project(vec![path.clone()]);
                     }
+
+                    // Bump the file revision so that the salsa cache
+                    // is invalidated for processes reading the
+                    // on-disk version
+                    let vfs = this.vfs.read();
+                    let vfs_path = VfsPath::from(path);
+                    let file_id = vfs.file_id(&vfs_path).unwrap();
+                    bump_file_revision(file_id, this.analysis_host.raw_database_mut());
 
                     this.eqwalizer_diagnostics_requested = true;
                     this.edoc_diagnostics_requested = true;
@@ -796,6 +809,11 @@ impl Server {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
+            if file.change_kind == ChangeKind::Create {
+                raw_database.set_file_revision(file.file_id, 0);
+            } else {
+                bump_file_revision(file.file_id, raw_database);
+            }
         }
 
         if changed_files

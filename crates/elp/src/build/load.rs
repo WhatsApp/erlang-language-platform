@@ -17,6 +17,7 @@ use anyhow::bail;
 use anyhow::Result;
 use crossbeam_channel::unbounded;
 use crossbeam_channel::Receiver;
+use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -153,6 +154,7 @@ fn load_database(
         let root_id = SourceRootId(idx as u32);
         for file_id in set.iter() {
             db.set_file_source_root(file_id, root_id);
+            db.set_file_revision(file_id, 0);
         }
         let root = SourceRoot::new(set);
         db.set_source_root(root_id, Arc::new(root));
@@ -179,6 +181,7 @@ fn load_database(
                     db.set_file_text(file.file_id, Arc::from(text));
                 }
             }
+            bump_file_revision(file.file_id, db);
         }
     }
 

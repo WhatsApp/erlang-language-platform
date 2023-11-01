@@ -86,8 +86,9 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
 }
 
 fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<ParseResult> {
-    // Dummy read of file text and global revision ID to make DB track changes
-    let _track_changes_to_file = db.file_text(file_id);
+    // Dummy read of file revision and global revision ID to make DB
+    // track changes
+    let _ = db.file_revision(file_id);
     let _track_global_changes = db.include_files_revision();
 
     let root_id = db.file_source_root(file_id);
