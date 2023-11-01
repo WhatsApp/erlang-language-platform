@@ -19,8 +19,6 @@ use elp_ide_db::elp_base_db::FileId;
 use hir::known;
 use hir::Expr;
 use hir::FunctionDef;
-use hir::InFunctionBody;
-use hir::Name;
 use hir::Semantic;
 use text_edit::TextRange;
 
