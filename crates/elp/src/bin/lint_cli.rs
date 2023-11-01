@@ -490,7 +490,7 @@ struct FixResult {
     file_id: FileId,
     name: String,
     source: String,
-    changes: Vec<FormIdx>,
+    changes: Vec<DiffRange>, // Valid in FixResult.source field
     diff: Option<String>,
 }
 
@@ -574,6 +574,13 @@ impl<'a> Lints<'a> {
                             files_changed: vec![(file_id, Some(Arc::from(source)))],
                             app_structure: None,
                         });
+
+                        let changes = changes
+                            .iter()
+                            .filter_map(|d| {
+                                form_from_diff(&self.analysis_host.analysis(), file_id, d)
+                            })
+                            .collect::<Vec<_>>();
 
                         for form_id in &changes {
                             self.changed_forms
@@ -704,16 +711,12 @@ impl<'a> Lints<'a> {
             edit.apply(&mut actual);
         }
         let (diff, unified) = diff_from_textedit(&original, &actual);
-        let changes = diff
-            .iter()
-            .filter_map(|d| form_from_diff(&self.analysis_host.analysis(), file_id, d))
-            .collect::<Vec<_>>();
 
         Some(FixResult {
             file_id,
             name: name.to_owned(),
             source: actual,
-            changes,
+            changes: diff,
             diff: unified,
         })
     }
