@@ -225,8 +225,12 @@ pub mod known {
         apply,
         export_all,
         get_stacktrace,
+        graphql_parser,
+        graphql_scanner,
         module_info,
         parse_transform,
+        thrift_parser,
+        thrift_scanner,
         // Common Test framework
         suite,
         all,

@@ -90,6 +90,10 @@ fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr) -> bool {
     sema.is_atom_named(function, known::module_info)
         || sema.is_atom_named(module, known::erlang)
             && sema.is_atom_named(function, known::get_stacktrace)
+        || sema.is_atom_named(module, known::graphql_scanner)
+        || sema.is_atom_named(module, known::graphql_parser)
+        || sema.is_atom_named(module, known::thrift_scanner)
+        || sema.is_atom_named(module, known::thrift_parser)
 }
 
 fn make_diagnostic(
