@@ -219,10 +219,10 @@ pub struct CTInfoResult {
 }
 
 impl CTInfoResult {
-    pub fn all(self) -> Result<FxHashSet<TestDef>, ConversionError> {
+    pub fn all(&self) -> Result<FxHashSet<TestDef>, ConversionError> {
         common_test::all(&self.all)
     }
-    pub fn groups(self) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionError> {
+    pub fn groups(&self) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionError> {
         common_test::groups(&self.groups)
     }
 }

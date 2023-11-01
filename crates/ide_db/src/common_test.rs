@@ -135,7 +135,7 @@ impl CommonTestLoader for crate::RootDatabase {
                 should_request_groups,
             };
             match erlang_service.ct_info(request) {
-                Ok(result) => match result.clone().all() {
+                Ok(result) => match result.all() {
                     Ok(all) => match result.groups() {
                         Ok(groups) => CommonTestInfo::Result { all, groups },
                         Err(err) => CommonTestInfo::ConversionError(err),

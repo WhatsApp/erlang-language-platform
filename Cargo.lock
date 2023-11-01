@@ -451,7 +451,6 @@ dependencies = [
  "regex",
  "salsa",
  "stdx",
- "tempfile",
  "vfs",
 ]
 
