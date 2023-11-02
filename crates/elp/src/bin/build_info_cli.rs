@@ -13,6 +13,7 @@ use std::io::Write;
 
 use anyhow::bail;
 use anyhow::Result;
+use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck;
 use elp_project_model::otp::Otp;
@@ -48,9 +49,8 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
 pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
-    let manifest = ProjectManifest::discover(&root)?;
+    let (manifest, project) = load_project(&root).or_else(|_| load_fallback(&root))?;
 
-    let project = Project::load(&manifest)?;
     let mut writer: Box<dyn Write> = match args.to {
         Some(to) => Box::new(
             std::fs::OpenOptions::new()
@@ -65,4 +65,16 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
     writer.write_all(b"================project_data================\n")?;
     writer.write_all(format!("{:#?}\n", &project).as_bytes())?;
     Ok(())
+}
+
+fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
+    let manifest = ProjectManifest::discover(&root)?;
+    let project = Project::load(&manifest)?;
+    Ok((manifest, project))
+}
+
+fn load_fallback(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
+    let manifest = ProjectManifest::discover_no_manifest(&root);
+    let project = Project::load(&manifest)?;
+    Ok((manifest, project))
 }
