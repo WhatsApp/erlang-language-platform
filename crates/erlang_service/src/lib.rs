@@ -854,7 +854,7 @@ mod tests {
 
     #[test]
     fn unsupported_extension() {
-        expect_module(
+        expect_module_filtered_error(
             "fixtures/unsupported_extension.yrl".into(),
             expect_file!["../fixtures/unsupported_extension.expected"],
             vec![],
@@ -996,6 +996,38 @@ mod tests {
         let actual = format!(
             "AST\n{}\n\nSTUB\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
             ast, stub, &response.warnings, &response.errors
+        );
+        expected.assert_eq(&actual);
+    }
+
+    fn expect_module_filtered_error(
+        path: PathBuf,
+        expected: ExpectFile,
+        options: Vec<CompileOption>,
+    ) {
+        lazy_static! {
+            static ref CONN: Connection = Connection::start().unwrap();
+        }
+        let request = ParseRequest {
+            options,
+            path,
+            format: Format::Text,
+        };
+        let response = CONN.request_parse(request);
+        let ast = str::from_utf8(&response.ast).unwrap();
+        let stub = str::from_utf8(&response.stub).unwrap();
+        let errors = &response
+            .errors
+            .iter()
+            .map(|e| {
+                let mut e = e.clone();
+                e.msg = "*removed*".to_string();
+                e
+            })
+            .collect::<Vec<ParseError>>();
+        let actual = format!(
+            "AST\n{}\n\nSTUB\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
+            ast, stub, &response.warnings, &errors
         );
         expected.assert_eq(&actual);
     }

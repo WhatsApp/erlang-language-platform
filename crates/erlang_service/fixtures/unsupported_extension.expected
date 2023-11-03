@@ -12,7 +12,7 @@ ERRORS
     ParseError {
         path: "fixtures/unsupported_extension.yrl",
         location: None,
-        msg: "Could not parse, error: unknown POSIX error",
+        msg: "*removed*",
         code: "L0002",
     },
 ]
