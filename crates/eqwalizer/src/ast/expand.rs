@@ -337,7 +337,7 @@ impl Expander<'_> {
             })),
             ExtType::AnyListExtType(ty) => Ok(ExtType::ListExtType(ListExtType {
                 location: ty.location.clone(),
-                t: Box::new(ExtType::eqwalizer_dynamic(ty.location)),
+                t: Box::new(ExtType::dynamic_ext_type(ty.location)),
             })),
             ExtType::UnionExtType(ty) => Ok(ExtType::UnionExtType(UnionExtType {
                 location: ty.location,
@@ -349,8 +349,8 @@ impl Expander<'_> {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
                             location: ty.location.clone(),
-                            key: ExtType::eqwalizer_dynamic(ty.location.clone()),
-                            tp: ExtType::eqwalizer_dynamic(ty.location),
+                            key: ExtType::dynamic_ext_type(ty.location.clone()),
+                            tp: ExtType::dynamic_ext_type(ty.location),
                         })],
                     }))
                 } else {
@@ -369,8 +369,8 @@ impl Expander<'_> {
                 location: ty.location.clone(),
                 props: vec![ExtProp::OptExtProp(OptExtProp {
                     location: ty.location.clone(),
-                    key: ExtType::eqwalizer_dynamic(ty.location.clone()),
-                    tp: ExtType::eqwalizer_dynamic(ty.location),
+                    key: ExtType::dynamic_ext_type(ty.location.clone()),
+                    tp: ExtType::dynamic_ext_type(ty.location),
                 })],
             })),
             ExtType::RecordRefinedExtType(ty) => {
@@ -487,8 +487,8 @@ impl Expander<'_> {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
                             location: ty.location.clone(),
-                            key: ExtType::eqwalizer_dynamic(ty.location.clone()),
-                            tp: ExtType::eqwalizer_dynamic(ty.location),
+                            key: ExtType::dynamic_ext_type(ty.location.clone()),
+                            tp: ExtType::dynamic_ext_type(ty.location),
                         })],
                     }))
                 } else {

@@ -10,7 +10,6 @@
 use elp_syntax::SmolStr;
 use serde::Serialize;
 
-use super::RemoteId;
 use crate::ast;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
@@ -70,16 +69,10 @@ impl ExtType {
         })
     }
 
-    pub fn eqwalizer_dynamic(location: ast::Pos) -> ExtType {
-        let id = RemoteId {
-            module: "eqwalizer".into(),
-            name: "dynamic".into(),
-            arity: 0,
-        };
-        ExtType::RemoteExtType(RemoteExtType {
+    pub fn dynamic_ext_type(location: ast::Pos) -> ExtType {
+        ExtType::BuiltinExtType(BuiltinExtType {
             location,
-            id,
-            args: vec![],
+            name: "dynamic".into(),
         })
     }
 
