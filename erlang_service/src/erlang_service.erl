@@ -23,23 +23,28 @@ loop(State0) ->
 
 process(<<"ADD_PATHS ", BinLen/binary>>, State) ->
     add_paths(BinLen, State);
-process(<<"COMPILE ", BinLen/binary>>, State) ->
+process(<<"COMPILE ", Binary/binary>>, State) ->
+    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
     PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
     % ETF files are consumed by eqwalizer,
     % which requires full paths for snapshot tests.
-    elp_lint(BinLen, State, PostProcess, false);
-process(<<"TEXT ", BinLen/binary>>, State) ->
+    elp_lint(Id, BinLen, State, PostProcess, false);
+process(<<"TEXT ", Binary/binary>>, State) ->
+    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
     PostProcess =
         fun(Forms, _) ->
             unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
         end,
-    elp_lint(BinLen, State, PostProcess, false);
-process(<<"DOC_EDOC ", BinLen/binary>>, State) ->
-    get_docs(BinLen, State, edoc);
-process(<<"DOC_EEP48 ", BinLen/binary>>, State) ->
-    get_docs(BinLen, State, eep48);
-process(<<"CT_INFO ", BinLen/binary>>, State) ->
-    ct_info(BinLen, State);
+    elp_lint(Id, BinLen, State, PostProcess, false);
+process(<<"DOC_EDOC ", Binary/binary>>, State) ->
+    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
+    get_docs(Id, BinLen, State, edoc);
+process(<<"DOC_EEP48 ", Binary/binary>>, State) ->
+    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
+    get_docs(Id, BinLen, State, eep48);
+process(<<"CT_INFO ", Binary/binary>>, State) ->
+    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
+    ct_info(Id, BinLen, State);
 process(<<"EXIT">>, State) ->
     init:stop(),
     State.
@@ -64,19 +69,19 @@ collect_paths(Len, State) ->
             [Path | collect_paths(Len - 1, State)]
     end.
 
-get_docs(BinLen, State, DocOrigin) ->
+get_docs(Id, BinLen, State, DocOrigin) ->
     Data = read_request(BinLen, State#state.io),
-    erlang_service_server:get_docs(Data, DocOrigin),
+    erlang_service_server:get_docs(Id, Data, DocOrigin),
     State.
 
-ct_info(BinLen, State) ->
+ct_info(Id, BinLen, State) ->
     Data = read_request(BinLen, State#state.io),
-    erlang_service_server:ct_info(Data),
+    erlang_service_server:ct_info(Id, Data),
     State.
 
-elp_lint(BinLen, State, PostProcess, Deterministic) ->
+elp_lint(Id, BinLen, State, PostProcess, Deterministic) ->
     Data = read_request(BinLen, State#state.io),
-    erlang_service_server:elp_lint(Data, PostProcess, Deterministic),
+    erlang_service_server:elp_lint(Id, Data, PostProcess, Deterministic),
     State.
 
 read_request(BinLen, Device) ->

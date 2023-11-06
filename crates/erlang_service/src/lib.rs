@@ -667,8 +667,8 @@ fn writer_run(
                 .lock()
                 .insert(counter, ResponseSender::ParseResponseSender(sender));
             let tag = request.tag();
-            let bytes = request.encode(counter);
-            writeln!(instream, "{} {}", tag, bytes.len())?;
+            let bytes = request.encode();
+            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
             instream.write_all(&bytes)?;
             instream.flush()
         }
@@ -685,8 +685,8 @@ fn writer_run(
                 .lock()
                 .insert(counter, ResponseSender::DocResponseSender(sender));
             let tag = request.tag();
-            let bytes = request.encode(counter);
-            writeln!(instream, "{} {}", tag, bytes.len())?;
+            let bytes = request.encode();
+            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
             instream.write_all(&bytes)?;
             instream.flush()
         }
@@ -696,8 +696,8 @@ fn writer_run(
                 .lock()
                 .insert(counter, ResponseSender::CTInfoResponseSender(sender));
             let tag = request.tag();
-            let bytes = request.encode(counter);
-            writeln!(instream, "{} {}", tag, bytes.len())?;
+            let bytes = request.encode();
+            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
             instream.write_all(&bytes)?;
             instream.flush()
         }
@@ -754,7 +754,7 @@ impl ParseRequest {
         }
     }
 
-    fn encode(self, id: usize) -> Vec<u8> {
+    fn encode(self) -> Vec<u8> {
         let location = eetf::Atom::from("offset").into();
         let location_tuple =
             eetf::Tuple::from(vec![eetf::Atom::from("location").into(), location]).into();
@@ -765,7 +765,6 @@ impl ParseRequest {
             .chain(iter::once(location_tuple))
             .collect::<Vec<eetf::Term>>();
         let list = eetf::List::from(vec![
-            eetf::BigInteger::from(id).into(),
             path_into_list(self.path).into(),
             eetf::List::from(options).into(),
         ]);
@@ -783,11 +782,8 @@ impl DocRequest {
         }
     }
 
-    fn encode(self, id: usize) -> Vec<u8> {
-        let list = eetf::List::from(vec![
-            eetf::BigInteger::from(id).into(),
-            path_into_list(self.src_path).into(),
-        ]);
+    fn encode(self) -> Vec<u8> {
+        let list = eetf::List::from(vec![path_into_list(self.src_path).into()]);
         let mut buf = Vec::new();
         eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
@@ -799,7 +795,7 @@ impl CTInfoRequest {
         "CT_INFO"
     }
 
-    fn encode(self, id: usize) -> Vec<u8> {
+    fn encode(self) -> Vec<u8> {
         let compile_options = self
             .compile_options
             .into_iter()
@@ -810,7 +806,6 @@ impl CTInfoRequest {
             false => eetf::Atom::from("false").into(),
         };
         let list = eetf::List::from(vec![
-            eetf::BigInteger::from(id).into(),
             self.module.into(),
             path_into_list(self.src_path).into(),
             eetf::List::from(compile_options).into(),
