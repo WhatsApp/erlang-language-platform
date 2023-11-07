@@ -4,6 +4,7 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
+%%% % @format
 -module(erlang_service).
 
 -export([main/1]).

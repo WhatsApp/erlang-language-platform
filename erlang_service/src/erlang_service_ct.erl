@@ -4,20 +4,22 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
+%%% % @format
 -module(erlang_service_ct).
 
 -export([run/1]).
 
 run([Module, Filename, CompileOptions, ShouldRequestGroups]) ->
-    {ok, Module, Binary} = compile:file(Filename, [binary|normalize_compile_options(CompileOptions)]),
+    {ok, Module, Binary} = compile:file(Filename, [binary | normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
     All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),
-    Groups = case ShouldRequestGroups of
-        true ->
-            eval(lists:flatten(io_lib:format("~p:groups().", [Module])));
-        false ->
-            []
-    end,
+    Groups =
+        case ShouldRequestGroups of
+            true ->
+                eval(lists:flatten(io_lib:format("~p:groups().", [Module])));
+            false ->
+                []
+        end,
     code:delete(Module),
     code:purge(Module),
     {ok, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}]}.

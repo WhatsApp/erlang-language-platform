@@ -4,6 +4,7 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
+%%% % @format
 -module(erlang_service_error_codes).
 
 -export([make_code/2]).
@@ -484,7 +485,8 @@ make_code(edoc, "reference to untyped record ~w") ->
     "O0030";
 make_code(edoc, "'~s' is not allowed - skipping tag, extracting content") ->
     "O0031";
-make_code(edoc,
+make_code(
+    edoc,
     "cannot handle spec with constraints - arity mismatch.\n"
     "This is a bug in EDoc spec formatter - please report it at "
     "https://bugs.erlang.org/\n"
@@ -492,17 +494,20 @@ make_code(edoc,
     "Original spec: ~s\n"
 ) ->
     "O0032";
-make_code(edoc,
+make_code(
+    edoc,
     "cannot annotate spec: "
     "function and spec clause numbers do not match\n"
 ) ->
     "O0033";
-make_code(edoc,
+make_code(
+    edoc,
     "EDoc @spec tags are deprecated. "
     "Please use -spec attributes instead."
 ) ->
     "O0034";
-make_code(edoc,
+make_code(
+    edoc,
     "EDoc @type tags are deprecated. "
     "Please use -type attributes instead."
 ) ->

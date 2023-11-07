@@ -4,7 +4,7 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
-%%%
+%%% % @format
 %%==============================================================================
 %% The server responsible for co-ordinating work
 %%==============================================================================
@@ -30,7 +30,7 @@
 ]).
 
 %% API
--export([ get_docs/3, ct_info/2, elp_lint/4 ]).
+-export([get_docs/3, ct_info/2, elp_lint/4]).
 
 %%==============================================================================
 %% Includes
@@ -79,13 +79,14 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> {noreply, state()}.
 handle_cast({request, Request, Id, Data, AdditionalParams}, #{requests := Requests} = State) ->
     Pid = process_request_async(callback_module(Request), Id, Data, AdditionalParams),
-    Timer = case timeout(Request) of
-                infinity ->
-                    infinity;
-                Timeout ->
-                    erlang:send_after(Timeout, ?SERVER, {timeout, Pid})
-            end,
-    {noreply, State#{requests => [{Pid, Id, Timer}|Requests]}};
+    Timer =
+        case timeout(Request) of
+            infinity ->
+                infinity;
+            Timeout ->
+                erlang:send_after(Timeout, ?SERVER, {timeout, Pid})
+        end,
+    {noreply, State#{requests => [{Pid, Id, Timer} | Requests]}};
 handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Id, 2, Requests) of
         {value, {Pid, Id, infinity}, NewRequests} ->
@@ -159,7 +160,8 @@ process_request_async(Module, Id, Data, AdditionalParams) ->
                     ExceptionData = unicode:characters_to_binary(Formatted),
                     gen_server:cast(?SERVER, {exception, Id, ExceptionData})
             end
-        end).
+        end
+    ).
 
 callback_module(get_docs) -> erlang_service_edoc;
 callback_module(ct_info) -> erlang_service_ct;

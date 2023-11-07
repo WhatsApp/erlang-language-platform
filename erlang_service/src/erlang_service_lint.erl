@@ -4,6 +4,7 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
+%%% % @format
 -module(erlang_service_lint).
 
 -export([run/1]).
@@ -61,10 +62,11 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     ResultAST = PostProcess(AST, FileName),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [{"AST", ResultAST},
-                          {"STUB", ResultStub},
-                          {"ERRORS", FormattedErrors},
-                          {"WARNINGS", FormattedWarnings}
+                    {ok, [
+                        {"AST", ResultAST},
+                        {"STUB", ResultStub},
+                        {"ERRORS", FormattedErrors},
+                        {"WARNINGS", FormattedWarnings}
                     ]}
             end;
         {error, Reason} ->
@@ -75,12 +77,13 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
     end.
 
 lint_file(Forms, FileName, Options0) ->
-    Options = case filename:extension(FileName) of
-        ".hrl" ->
-            [nowarn_unused_function, nowarn_unused_record, nowarn_unused_type|Options0];
-        _ ->
-            Options0
-    end,
+    Options =
+        case filename:extension(FileName) of
+            ".hrl" ->
+                [nowarn_unused_function, nowarn_unused_record, nowarn_unused_type | Options0];
+            _ ->
+                Options0
+        end,
     elp_lint:module(Forms, FileName, Options).
 
 epp_module(Options) ->
@@ -138,8 +141,7 @@ transform(Other, Forms, _Options) ->
     Other:parse_transform(Forms, []).
 
 cth_readable_transform({call, Line, {remote, _, {atom, _, ct}, {atom, _, pal}}, Args}) ->
-    {call, Line, {remote, Line, {atom, Line, cthr}, {atom, Line, pal}},
-        cth_readable_transform(Args)};
+    {call, Line, {remote, Line, {atom, Line, cthr}, {atom, Line, pal}}, cth_readable_transform(Args)};
 cth_readable_transform(Tuple) when is_tuple(Tuple) ->
     list_to_tuple(cth_readable_transform(tuple_to_list(Tuple)));
 cth_readable_transform(List) when is_list(List) ->
@@ -148,8 +150,7 @@ cth_readable_transform(Atomic) ->
     Atomic.
 
 vararg_transform({call, Line, {atom, Line2, 'MAKE_FUN'}, Args}) ->
-    {call, Line, {remote, Line2, {atom, Line2, vararg}, {atom, Line2, 'MAKE_FUN'}},
-        vararg_transform(Args)};
+    {call, Line, {remote, Line2, {atom, Line2, vararg}, {atom, Line2, 'MAKE_FUN'}}, vararg_transform(Args)};
 vararg_transform(Tuple) when is_tuple(Tuple) ->
     list_to_tuple(vararg_transform(tuple_to_list(Tuple)));
 vararg_transform(List) when is_list(List) ->
@@ -165,7 +166,7 @@ format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =
         lists:flatten([
             format_error(Forms, OriginalPath, Path, Warning)
-            || {Path, FileWarnings} <- Warnings, Warning <- FileWarnings
+         || {Path, FileWarnings} <- Warnings, Warning <- FileWarnings
         ]),
     term_to_binary(Formatted).
 

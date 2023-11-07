@@ -4,9 +4,10 @@
 %%% LICENSE-MIT file in the root directory of this source tree and the Apache
 %%% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %%% of this source tree.
+%%% % @format
 -module(erlang_service_edoc).
 
--export([ run/1 ]).
+-export([run/1]).
 
 -define(DICT_KEY, edoc_diagnostics).
 
@@ -52,7 +53,7 @@ serialize_edoc_diagnostic({Line, Code, Message, Severity}) ->
         io_lib:format("~ts ~ts ~tp ~ts", [Code, Severity, Line, Message])
     ).
 
-    -spec get_docs_for_src_file(_FileName, edoc | eep48) -> docs().
+-spec get_docs_for_src_file(_FileName, edoc | eep48) -> docs().
 get_docs_for_src_file(FileName, Origin) ->
     put(?DICT_KEY, []),
     case filename:extension(FileName) of
@@ -115,8 +116,7 @@ fetch_diagnostics_from_dict() ->
 % Format used by OTP docs
 render_docs_v1(
     ModuleName,
-    {docs_v1, _Anno, _BeamLang, <<"application/erlang+html">> = _Format, _ModuleDoc, _Metadata,
-        FunctionDocs} =
+    {docs_v1, _Anno, _BeamLang, <<"application/erlang+html">> = _Format, _ModuleDoc, _Metadata, FunctionDocs} =
         DocsV1,
     Diagnostics = []
 ) ->
