@@ -9,8 +9,13 @@
 
 -export([main/1]).
 
--record(state, {io = erlang:group_leader()}).
+-record(state, {io = erlang:group_leader() :: pid()}).
+-type state() :: #state{}.
+-type id() :: binary().
+-type size() :: binary().
+-type doc_origin() :: edoc | eep48.
 
+-spec main([]) -> no_return().
 main(_Args) ->
     configure_logging(),
     erlang:system_flag(backtrace_depth, 20),
@@ -19,6 +24,7 @@ main(_Args) ->
     io:setopts(State#state.io, [binary, {encoding, latin1}]),
     loop(State).
 
+-spec loop(state()) -> no_return().
 loop(State0) ->
     case io:get_line(State0#state.io, "") of
         Line when is_binary(Line) ->
@@ -28,6 +34,7 @@ loop(State0) ->
             erlang:halt(1)
     end.
 
+-spec process(binary(), state()) -> state().
 process(<<"ADD_PATHS ", BinLen/binary>>, State) ->
     add_paths(BinLen, State);
 process(<<"COMPILE ", Binary/binary>>, State) ->
@@ -56,12 +63,14 @@ process(<<"EXIT">>, State) ->
     init:stop(),
     State.
 
+-spec add_paths(size(), state()) -> state().
 add_paths(BinLen, State) ->
     Len = binary_to_integer(BinLen),
     Paths = collect_paths(Len, State),
     code:add_pathsa(Paths),
     State.
 
+-spec collect_paths(non_neg_integer(), state()) -> [string()].
 collect_paths(0, _State) ->
     [];
 collect_paths(Len, State) ->
@@ -73,31 +82,36 @@ collect_paths(Len, State) ->
                 unicode:characters_to_list(
                     string:trim(Line, trailing)
                 ),
+            is_list(Path) orelse error({invalid_line, Line}),
             [Path | collect_paths(Len - 1, State)]
     end.
 
+-spec get_docs(id(), size(), state(), doc_origin()) -> state().
 get_docs(Id, BinLen, State, DocOrigin) ->
     Data = read_request(BinLen, State#state.io),
     erlang_service_server:get_docs(Id, Data, DocOrigin),
     State.
 
+-spec ct_info(id(), size(), state()) -> state().
 ct_info(Id, BinLen, State) ->
     Data = read_request(BinLen, State#state.io),
     erlang_service_server:ct_info(Id, Data),
     State.
 
+-spec elp_lint(id(), size(), state(), fun((any(), any()) -> binary()), boolean()) -> state().
 elp_lint(Id, BinLen, State, PostProcess, Deterministic) ->
     Data = read_request(BinLen, State#state.io),
     erlang_service_server:elp_lint(Id, Data, PostProcess, Deterministic),
     State.
 
+-spec read_request(size(), pid()) -> string() | binary().
 read_request(BinLen, Device) ->
     Len = binary_to_integer(BinLen),
     %% Use file:read/2 since it reads bytes
     {ok, Data} = file:read(Device, Len),
     Data.
 
-%-----------------------------------------------------------------------
+-spec configure_logging() -> ok.
 configure_logging() ->
     %% The default logger uses standard_io for logging.
     %% This causes the communication between the Erlang Service and the rest
@@ -108,6 +122,7 @@ configure_logging() ->
     HandlerId = default,
     {ok, Handler} = logger:get_handler_config(HandlerId),
     OldConfig = maps:get(config, Handler),
+    is_map(OldConfig) orelse error({invalid_logger_config, OldConfig}),
     NewConfig = maps:update(type, standard_error, OldConfig),
     logger:remove_handler(HandlerId),
-    logger:add_handler(HandlerId, logger_std_h, maps:update(config, NewConfig, Handler)).
+    ok = logger:add_handler(HandlerId, logger_std_h, maps:update(config, NewConfig, Handler)).

@@ -44,8 +44,15 @@
 %%==============================================================================
 %% Type Definitions
 %%==============================================================================
--type state() :: #{io := erlang:group_leader(), requests := [request()]}.
--type request() :: {pid(), pos_integer(), reference() | infinity}.
+-type state() :: #{io := pid(), requests := [request_entry()]}.
+-type request_entry() :: {pid(), id(), reference() | infinity}.
+-type request() :: {request, request_type(), id(), data()}.
+-type result() :: {result, id(), [segment()]}.
+-type exception() :: {exception, id(), any()}.
+-type id() :: binary().
+-type request_type() :: get_docs | ct_info | elp_lint.
+-type data() :: binary().
+-type segment() :: {string(), binary()}.
 
 %%==============================================================================
 %% API
@@ -53,7 +60,7 @@
 -spec start_link() -> {ok, pid()}.
 start_link() ->
     process_flag(trap_exit, true),
-    gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
+    {ok, _Pid} = gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
 get_docs(Id, Data, DocOrigin) ->
     gen_server:cast(?SERVER, {request, get_docs, Id, Data, [DocOrigin]}).
@@ -76,7 +83,7 @@ init(noargs) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
--spec handle_cast(any(), state()) -> {noreply, state()}.
+-spec handle_cast(request() | result() | exception(), state()) -> {noreply, state()}.
 handle_cast({request, Request, Id, Data, AdditionalParams}, #{requests := Requests} = State) ->
     Pid = process_request_async(callback_module(Request), Id, Data, AdditionalParams),
     Timer =
@@ -89,10 +96,10 @@ handle_cast({request, Request, Id, Data, AdditionalParams}, #{requests := Reques
     {noreply, State#{requests => [{Pid, Id, Timer} | Requests]}};
 handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Id, 2, Requests) of
-        {value, {Pid, Id, infinity}, NewRequests} ->
+        {value, {_Pid, _Id, infinity}, NewRequests} ->
             reply(Id, Result, IO),
             {noreply, State#{requests => NewRequests}};
-        {value, {Pid, Id, Timer}, NewRequests} ->
+        {value, {_Pid, _Id, Timer}, NewRequests} ->
             erlang:cancel_timer(Timer),
             reply(Id, Result, IO),
             {noreply, State#{requests => NewRequests}};
@@ -101,10 +108,10 @@ handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
     end;
 handle_cast({exception, Id, ExceptionData}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Id, 2, Requests) of
-        {value, {Pid, Id, infinity}, NewRequests} ->
+        {value, {_Pid, _Id, infinity}, NewRequests} ->
             reply_exception(Id, ExceptionData, IO),
             {noreply, State#{requests => NewRequests}};
-        {value, {Pid, Id, Timer}, NewRequests} ->
+        {value, {_Pid, _Id, Timer}, NewRequests} ->
             erlang:cancel_timer(Timer),
             reply_exception(Id, ExceptionData, IO),
             {noreply, State#{requests => NewRequests}};
@@ -115,7 +122,7 @@ handle_cast({exception, Id, ExceptionData}, #{io := IO, requests := Requests} = 
 -spec handle_info(any(), state()) -> {noreply, state()}.
 handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Pid, 1, Requests) of
-        {value, {Pid, Id, Timer}, NewRequests} ->
+        {value, {Pid, Id, _Timer}, NewRequests} ->
             exit(Pid, normal),
             reply_exception(Id, <<"Timeout">>, IO),
             {noreply, State#{requests => NewRequests}};
@@ -143,6 +150,7 @@ encode_segment({Tag, Data}) ->
     Size = integer_to_binary(byte_size(Data)),
     [Tag, $\s, Size, $\n | Data].
 
+-spec process_request_async(atom(), id(), binary(), [any()]) -> pid().
 process_request_async(Module, Id, Data, AdditionalParams) ->
     spawn_link(
         fun() ->
