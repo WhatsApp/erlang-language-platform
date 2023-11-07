@@ -589,10 +589,6 @@ impl Server {
                         file_id,
                         change_kind: ChangeKind::Modify,
                     });
-
-                    this.analysis_host
-                        .raw_database_mut()
-                        .set_file_revision(file_id, 0);
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
