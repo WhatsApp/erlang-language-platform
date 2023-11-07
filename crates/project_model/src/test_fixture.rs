@@ -42,10 +42,22 @@
 //! "
 //! ```
 //!
-//! Specify OTP, and an OTP app
+//! Certain diagnostics (e.g. Common Test) need to operate on the filesystem directly.
+//! The default behaviour (`scratch_buffer:false`) uses the in-memory representation of the file system.
+//! To dump a fixture to the filesystem, you can use the `scratch_buffer:true` option.
+//! Since tests can run in parallel, ensure the name of the file is unique to prevent race conditions.
+//!
 //! ```not_rust
 //! "
-//! //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
+//! //- /src/my_SUITE.erl scratch_buffer:true
+//! -module(my_SUITE).
+//! "
+//! ```
+//!
+//! //! Specify OTP, and an OTP app
+//! ```not_rust
+//! "
+//! //- /test/opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
 //! -define(COMP,3).
 //! "
 //! ```
