@@ -62,7 +62,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                 hir::CallTarget::Remote { module, name } => {
                     let module = &def_fb[*module];
                     let name = &def_fb[*name];
-                    if in_exclusion_list(sema, module, name) {
+                    if in_exclusion_list(sema, module, name, arity) {
                         None
                     } else {
                         match target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body()) {
@@ -84,10 +84,11 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
     );
 }
 
-fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr) -> bool {
-    sema.is_atom_named(function, known::module_info)
+fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
+    sema.is_atom_named(function, known::module_info) && (arity == 0 || arity == 1)
         || sema.is_atom_named(module, known::erlang)
             && sema.is_atom_named(function, known::get_stacktrace)
+            && arity == 0
         || sema.is_atom_named(module, known::graphql_scanner)
         || sema.is_atom_named(module, known::graphql_parser)
         || sema.is_atom_named(module, known::thrift_scanner)
@@ -155,6 +156,25 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:module_info().
+  exists() -> ok.
+//- /src/dependency.erl
+  -module(dependency).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_exclude_module_info_different_arity() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    dependency:exists(),
+    dependency:module_info(a, b).
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:module_info/2' is undefined.
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
