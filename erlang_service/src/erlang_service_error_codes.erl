@@ -512,8 +512,6 @@ make_code(
     "Please use -type attributes instead."
 ) ->
     "O0035";
-make_code(edoc, "redefining built-in type '~w'.") ->
-    "O0036";
 make_code(edoc, "duplicated type ~w~s") ->
     "O0037";
 make_code(edoc, "missing type ~w~s") ->
