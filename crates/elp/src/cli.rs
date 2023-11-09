@@ -45,7 +45,7 @@ impl Cli for Real {
         } else {
             let pb = ProgressBar::new(len);
             pb.set_style(
-                ProgressStyle::with_template("  {prefix:25!} {bar} {pos}/{len} {wide_msg}")
+                ProgressStyle::with_template("  {prefix:25!} {bar} {wide_msg}")
                     .expect("BUG: invalid template"),
             );
             pb.set_prefix(prefix);
