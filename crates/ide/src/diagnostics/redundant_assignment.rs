@@ -23,7 +23,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFile;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
@@ -48,49 +48,52 @@ pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 }
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    let mut def_fb = def.in_function_body(sema.db, def);
+    let def_fb = def.in_function_body(sema.db, def);
     def_fb
         .clone()
-        .fold_function((), &mut |_acc, _, ctx| match ctx.item_id {
-            AnyExprId::Expr(expr_id) => {
-                if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
-                    if let Pat::Var(_) = &def_fb[lhs] {
-                        if let Expr::Var(_) = &def_fb[rhs] {
-                            if let Some(diag) = is_var_assignment_to_unused_var(
-                                sema,
-                                &mut def_fb,
-                                def.file.file_id,
-                                expr_id,
-                                lhs,
-                                rhs,
-                            ) {
-                                diags.push(diag);
+        .fold_function((), &mut |_acc, clause_id, ctx| {
+            let in_clause = def_fb.in_clause(clause_id);
+            match ctx.item_id {
+                AnyExprId::Expr(expr_id) => {
+                    if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+                        if let Pat::Var(_) = &in_clause[lhs] {
+                            if let Expr::Var(_) = &in_clause[rhs] {
+                                if let Some(diag) = is_var_assignment_to_unused_var(
+                                    sema,
+                                    &in_clause,
+                                    def.file.file_id,
+                                    expr_id,
+                                    lhs,
+                                    rhs,
+                                ) {
+                                    diags.push(diag);
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            _ => {}
+                _ => {}
+            }
         });
 }
 
 fn is_var_assignment_to_unused_var(
     sema: &Semantic,
-    def_fb: &mut InFunctionBody<&FunctionDef>,
+    in_clause: &InFunctionClauseBody<&FunctionDef>,
     file_id: FileId,
     expr_id: ExprId,
     lhs: PatId,
     rhs: ExprId,
 ) -> Option<Diagnostic> {
     let source_file = sema.parse(file_id);
-    let body_map = def_fb.get_body_map(sema.db);
+    let body_map = in_clause.get_body_map(sema.db);
 
     let rhs_name = body_map.expr(rhs)?.to_node(&source_file)?.to_string();
 
     let renamings = try_rename_usages(sema, &body_map, &source_file, lhs, rhs_name)?;
 
-    let range = def_fb.range_for_expr(sema.db, expr_id)?;
+    let range = in_clause.range_for_expr(sema.db, expr_id)?;
 
     let diag = Diagnostic::new(
         DiagnosticCode::RedundantAssignment,

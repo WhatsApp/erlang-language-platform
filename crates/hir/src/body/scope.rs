@@ -43,10 +43,9 @@ use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
 use crate::Body;
 use crate::CRClause;
-use crate::Clause;
 use crate::ComprehensionBuilder;
 use crate::ExprId;
-use crate::FunctionBody;
+use crate::FunctionClauseBody;
 use crate::FunctionId;
 use crate::InFile;
 use crate::Name;
@@ -182,12 +181,7 @@ impl FunctionScopes {
         let clause_scopes = function_body
             .clauses
             .iter()
-            .map(|(idx, clause)| {
-                (
-                    idx,
-                    ExprScopes::for_clause(&function_body, clause, anonymous_var),
-                )
-            })
+            .map(|(idx, clause)| (idx, ExprScopes::for_clause(&clause, anonymous_var)))
             .collect();
         Arc::new(FunctionScopes { clause_scopes })
     }
@@ -198,7 +192,7 @@ impl FunctionScopes {
 }
 
 impl ExprScopes {
-    fn for_clause(body: &FunctionBody, clause: &Clause, anonymous_var: Var) -> ExprScopes {
+    fn for_clause(body: &FunctionClauseBody, anonymous_var: Var) -> ExprScopes {
         let mut scopes = ExprScopes {
             scopes: Arena::default(),
             scope_by_expr: FxHashMap::default(),
@@ -207,13 +201,13 @@ impl ExprScopes {
         };
         let mut root = scopes.root_scope();
         let mut vt = VarTable::default();
-        scopes.add_params_bindings(&body.body, &mut root, &clause.pats, &mut vt);
-        for exprs in &clause.guards {
+        scopes.add_params_bindings(&body.body, &mut root, &body.clause.pats, &mut vt);
+        for exprs in &body.clause.guards {
             for expr_id in exprs {
                 compute_expr_scopes(*expr_id, &body.body, &mut scopes, &mut root, &mut vt);
             }
         }
-        for expr_id in &clause.exprs {
+        for expr_id in &body.clause.exprs {
             compute_expr_scopes(*expr_id, &body.body, &mut scopes, &mut root, &mut vt);
         }
         scopes
@@ -762,14 +756,18 @@ mod tests {
             value: function,
         });
         let ast_clause_id = sema.find_enclosing_function_clause(var.syntax()).unwrap();
+        let in_clause = sema.to_expr(InFile::new(file_id, &marker)).unwrap();
 
-        let (body, source_map) = db.function_body_with_source(InFile::new(file_id, function));
+        let body = db.function_body(InFile::new(file_id, function));
 
-        let expr_id = source_map
-            .expr_id(InFile {
-                file_id: file_id.into(),
-                value: &marker,
-            })
+        let expr_id = in_clause
+            .expr_id_ast(
+                &db,
+                InFile {
+                    file_id: file_id.into(),
+                    value: &marker,
+                },
+            )
             .unwrap();
         let clause_id = body.valid_clause_id(ast_clause_id).unwrap();
         let clause_scope = scopes.get(clause_id).unwrap();

@@ -54,7 +54,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
         &move |CheckCallCtx {
                    target,
                    args,
-                   def_fb,
+                   in_clause: def_fb,
                    ..
                }: CheckCallCtx<'_, ()>| {
             let arity = args.len() as u32;

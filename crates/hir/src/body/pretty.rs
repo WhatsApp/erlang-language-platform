@@ -46,17 +46,21 @@ use crate::TypeExprId;
 use crate::Var;
 
 pub fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody, form: &Function) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let mut out = String::new();
 
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
-        write!(printer, "{}", sep).unwrap();
-        sep = ";\n";
-        printer.print_clause(clause, form.name.name()).unwrap();
+        write!(out, "{}", sep).unwrap();
+        sep = ";";
+        let mut printer = Printer::new(db, &clause.body);
+        printer
+            .print_clause(&clause.clause, form.name.name())
+            .unwrap();
+        write!(out, "{}", printer.to_string_raw()).unwrap();
     }
-    write!(printer, ".").unwrap();
+    write!(out, ".\n").unwrap();
 
-    printer.to_string()
+    out
 }
 
 pub fn print_type_alias(db: &dyn MinInternDatabase, body: &TypeBody, form: &TypeAlias) -> String {
@@ -187,6 +191,11 @@ impl<'a> Printer<'a> {
     fn to_string(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf.push('\n');
+        self.buf
+    }
+
+    fn to_string_raw(mut self) -> String {
+        self.buf.truncate(self.buf.trim_end().len());
         self.buf
     }
 

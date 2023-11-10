@@ -28,6 +28,7 @@ use crate::fold::AnyCallBack;
 use crate::fold::FoldBody;
 use crate::AnyExprId;
 use crate::AnyExprRef;
+use crate::Atom;
 use crate::Attribute;
 use crate::AttributeId;
 use crate::Callback;
@@ -84,8 +85,13 @@ pub struct UnexpandedIndex<'a>(pub &'a Body);
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub function_id: InFile<FunctionId>,
+    pub clauses: Arena<Arc<FunctionClauseBody>>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FunctionClauseBody {
     pub body: Arc<Body>,
-    pub clauses: Arena<Clause>,
+    pub clause: Clause,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -201,15 +207,15 @@ impl FunctionBody {
     pub(crate) fn function_body_with_source_query(
         db: &dyn MinDefDatabase,
         function_id: InFile<FunctionId>,
-    ) -> (Arc<FunctionBody>, Arc<BodySourceMap>) {
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
         let form_list = db.file_form_list(function_id.file_id);
         let function = &form_list[function_id.value];
         let function_ast = function.form_id.get(&function_id.file_syntax(db.upcast()));
 
         let mut ctx = lower::Ctx::new(db, function_id.file_id);
         ctx.set_function_info(&function.name);
-        let (body, source_map) = ctx.lower_function(function_id, &function_ast);
-        (Arc::new(body), Arc::new(source_map))
+        let (body, source_maps) = ctx.lower_function(function_id, &function_ast);
+        (Arc::new(body), source_maps)
     }
 
     pub fn form_id(&self) -> FormIdx {
@@ -230,6 +236,24 @@ impl FunctionBody {
         } else {
             None
         }
+    }
+}
+
+impl FunctionClauseBody {
+    pub(crate) fn lower_clause_body(
+        db: &dyn MinDefDatabase,
+        file_id: FileId,
+        info: Option<(Atom, u32)>,
+        clause_ast: &ast::FunctionClause,
+    ) -> (FunctionClauseBody, BodySourceMap) {
+        let mut ctx = lower::Ctx::new(db, file_id);
+        ctx.set_function_info_raw(info);
+        let (body, source_map) = ctx.lower_function_clause(&clause_ast);
+        (body, source_map)
+    }
+
+    pub fn tree_print(&self, db: &dyn MinInternDatabase) -> String {
+        tree_print::print_function_clause(db, self)
     }
 }
 
@@ -379,7 +403,7 @@ impl AttributeBody {
 }
 
 impl Index<ClauseId> for FunctionBody {
-    type Output = Clause;
+    type Output = Arc<FunctionClauseBody>;
 
     fn index(&self, index: ClauseId) -> &Self::Output {
         &self.clauses[index]

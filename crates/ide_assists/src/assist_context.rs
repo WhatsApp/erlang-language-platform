@@ -24,6 +24,7 @@ use elp_syntax::Direction;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
+use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
@@ -32,6 +33,7 @@ use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
 use hir::AnyExpr;
 use hir::Body;
+use hir::ClauseId;
 use hir::Expr;
 use hir::ExprId;
 use hir::FormId;
@@ -39,6 +41,7 @@ use hir::FormIdx;
 use hir::FunctionId;
 use hir::InFile;
 use hir::InFileAstPtr;
+use hir::InFunctionClauseBody;
 use hir::Semantic;
 use hir::Strategy;
 use hir::TypeExprId;
@@ -168,6 +171,24 @@ impl<'a> AssistContext<'a> {
 
     pub(crate) fn file_id(&self) -> FileId {
         self.frange.file_id
+    }
+
+    pub(crate) fn in_clause(
+        &self,
+        syntax: &SyntaxNode,
+        file_id: FileId,
+    ) -> Option<(InFile<FunctionId>, ClauseId, InFunctionClauseBody<()>)> {
+        let function_id = self.sema.find_enclosing_function(self.file_id(), syntax)?;
+        let infile_function = InFile::new(self.file_id(), function_id);
+        let (clause_id, body) = self.sema.to_clause_body(InFile::new(file_id, syntax))?;
+        let in_clause = InFunctionClauseBody::new(
+            body.clone(),
+            InFile::new(file_id, function_id),
+            clause_id,
+            None,
+            (),
+        );
+        Some((infile_function, clause_id, in_clause))
     }
 
     pub(crate) fn has_empty_selection(&self) -> bool {

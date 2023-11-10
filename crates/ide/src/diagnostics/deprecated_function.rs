@@ -112,14 +112,18 @@ pub(crate) fn check_function(
     let def_fb = def.in_function_body(sema.db, def);
     def_fb
         .clone()
-        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, _, ctx| {
+        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 let arity = args.len() as u32;
                 if let Some(target_def) =
-                    target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body())
+                    target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body(clause_id))
                 {
-                    let match_result =
-                        matcher.get_match(&target, args.len() as u32, sema, &def_fb.body());
+                    let match_result = matcher.get_match(
+                        &target,
+                        args.len() as u32,
+                        sema,
+                        &def_fb.body(clause_id),
+                    );
                     let details = match_result.map(|(_match, details)| details.clone());
                     if target_def.deprecated || match_result.is_some() {
                         let expr_id = if let Some(expr_id) = ctx.in_macro {
@@ -127,7 +131,7 @@ pub(crate) fn check_function(
                         } else {
                             ctx.item_id
                         };
-                        if let Some(range) = def_fb.range_for_any(sema.db, expr_id) {
+                        if let Some(range) = def_fb.range_for_any(sema.db, clause_id, expr_id) {
                             let d = make_diagnostic(range, &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
                                     sema,

@@ -102,25 +102,25 @@ pub(crate) fn process_badmatches(
         def,
         &mfas,
         &move |CheckCallCtx {
-                   t, args, def_fb, ..
+                   t, args, in_clause, ..
                }: CheckCallCtx<'_, &BadEnvCallAction>| match t {
             BadEnvCallAction::AppArg(arg_index) => {
                 let arg = args.get(*arg_index)?;
-                check_valid_application(sema, def_fb, arg, def)
+                check_valid_application(sema, in_clause, arg, def)
             }
             BadEnvCallAction::OptionsArg { arg_index, tag } => {
                 let arg = args.get(*arg_index)?;
-                match &def_fb[*arg] {
+                match &in_clause[*arg] {
                     hir::Expr::List { exprs, tail: _ } => {
-                        exprs.iter().find_map(|expr| match &def_fb[*expr] {
+                        exprs.iter().find_map(|expr| match &in_clause[*expr] {
                             hir::Expr::Tuple { exprs } => {
                                 let key = exprs.get(0)?;
                                 let val = exprs.get(1)?;
-                                let key_name = def_fb.as_atom_name(sema.db, key)?;
+                                let key_name = in_clause.as_atom_name(sema.db, key)?;
                                 if tag == key_name.as_str() {
-                                    if let hir::Expr::Tuple { exprs } = &def_fb[*val] {
+                                    if let hir::Expr::Tuple { exprs } = &in_clause[*val] {
                                         let app = exprs.get(0)?;
-                                        check_valid_application(sema, def_fb, app, def)
+                                        check_valid_application(sema, in_clause, app, def)
                                     } else {
                                         None
                                     }
@@ -145,7 +145,7 @@ pub(crate) fn process_badmatches(
 
 fn check_valid_application(
     sema: &Semantic,
-    def_fb: &hir::InFunctionBody<&FunctionDef>,
+    def_fb: &hir::InFunctionClauseBody<&FunctionDef>,
     arg: &ExprId,
     def: &FunctionDef,
 ) -> Option<(String, String)> {

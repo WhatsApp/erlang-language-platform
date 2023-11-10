@@ -112,16 +112,14 @@ impl FunctionDef {
         self.function.form_id.get(&source_file)
     }
 
-    pub fn in_function_body<T>(
-        &self,
-        db: &dyn MinDefDatabase,
-        value: T,
-    ) -> crate::InFunctionBody<T> {
+    pub fn in_function_body<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionBody<T>
+    where
+        T: Clone,
+    {
         let function_body = db.function_body(InFile::new(self.file.file_id, self.function_id));
         InFunctionBody::new(
             function_body,
             InFile::new(self.file.file_id, self.function_id),
-            None,
             value,
         )
     }

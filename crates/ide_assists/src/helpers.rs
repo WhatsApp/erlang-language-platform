@@ -27,12 +27,12 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use fxhash::FxHashSet;
 use hir::known;
-use hir::Clause;
 use hir::CompileOption;
 use hir::FormList;
+use hir::FunctionClauseBody;
 use hir::FunctionDef;
 use hir::InFileAstPtr;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
 use hir::Var;
@@ -237,9 +237,11 @@ pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {
 pub const DEFAULT_INDENT_STEP: i8 = 4;
 
 /// Any parameters to the `Clause` that are just a single variable.
-pub(crate) fn simple_param_vars(clause: &InFunctionBody<&Clause>) -> Option<FxHashSet<Var>> {
+pub(crate) fn simple_param_vars(
+    clause: &InFunctionClauseBody<&FunctionClauseBody>,
+) -> Option<FxHashSet<Var>> {
     let mut acc = FxHashSet::default();
-    clause.value.pats.iter().for_each(|p| {
+    clause.value.clause.pats.iter().for_each(|p| {
         if let hir::Pat::Var(v) = &clause[*p] {
             acc.insert(*v);
         }

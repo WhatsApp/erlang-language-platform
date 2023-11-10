@@ -8,6 +8,7 @@
  */
 
 use std::iter;
+use std::iter::once;
 use std::sync::Arc;
 
 use either::Either;
@@ -21,6 +22,7 @@ use elp_syntax::unescape;
 use elp_syntax::AstPtr;
 use fxhash::FxHashMap;
 
+use super::FunctionClauseBody;
 use super::InFileAstPtr;
 use crate::db::MinDefDatabase;
 use crate::expr::MaybeExpr;
@@ -119,6 +121,10 @@ impl<'a> Ctx<'a> {
         self.function_info = Some((name, arity));
     }
 
+    pub fn set_function_info_raw(&mut self, info: Option<(Atom, u32)>) {
+        self.function_info = info;
+    }
+
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
         // Verify macro expansion state
         let entry = self.macro_stack.pop().expect("BUG: macro stack empty");
@@ -135,21 +141,34 @@ impl<'a> Ctx<'a> {
         mut self,
         function_id: InFile<FunctionId>,
         function: &ast::FunDecl,
-    ) -> (FunctionBody, BodySourceMap) {
+    ) -> (FunctionBody, Vec<Arc<BodySourceMap>>) {
+        let mut source_maps = Vec::default();
         let clauses = function
             .clauses()
-            .flat_map(|clause| self.lower_clause_or_macro(clause))
+            .flat_map(|clause| self.lower_clause_or_macro_body(clause))
+            .map(|(body, source_map)| {
+                source_maps.push(Arc::new(source_map));
+                Arc::new(body)
+            })
             .collect();
-        let (body, source_map) = self.finish();
 
         (
             FunctionBody {
                 function_id,
-                body,
                 clauses,
             },
-            source_map,
+            source_maps,
         )
+    }
+
+    pub fn lower_function_clause(
+        mut self,
+        function_clause: &ast::FunctionClause,
+    ) -> (FunctionClauseBody, BodySourceMap) {
+        let clause = self.lower_clause(function_clause);
+        let (body, source_map) = self.finish();
+
+        (FunctionClauseBody { body, clause }, source_map)
     }
 
     pub fn lower_type_alias(self, type_alias: &ast::TypeAlias) -> (TypeBody, BodySourceMap) {
@@ -270,24 +289,29 @@ impl<'a> Ctx<'a> {
         (AttributeBody { body, value }, source_map)
     }
 
-    fn lower_clause_or_macro(
+    fn lower_clause_or_macro_body(
         &mut self,
         clause: ast::FunctionOrMacroClause,
-    ) -> impl Iterator<Item = Clause> {
+    ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
-                Either::Left(self.lower_clause(&clause).into_iter())
+                Either::Left(once(FunctionClauseBody::lower_clause_body(
+                    self.db,
+                    self.original_file_id,
+                    self.function_info,
+                    &clause,
+                )))
             }
             ast::FunctionOrMacroClause::MacroCallExpr(call) => {
                 Either::Right(
                     self.resolve_macro(&call, |this, _source, replacement| {
                         match replacement {
                             MacroReplacement::Ast(
-                                _defidx,
+                                _def_idx,
                                 ast::MacroDefReplacement::ReplacementFunctionClauses(clauses),
                             ) => clauses
                                 .clauses()
-                                .flat_map(|clause| this.lower_clause_or_macro(clause))
+                                .flat_map(|clause| this.lower_clause_or_macro_body(clause))
                                 .collect(),
                             // no built-in macro makes sense in this place
                             MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],
@@ -303,7 +327,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_clause(&mut self, clause: &ast::FunctionClause) -> Option<Clause> {
+    fn lower_clause(&mut self, clause: &ast::FunctionClause) -> Clause {
         let pats = clause
             .args()
             .iter()
@@ -313,11 +337,11 @@ impl<'a> Ctx<'a> {
         let guards = self.lower_guards(clause.guard());
         let exprs = self.lower_clause_body(clause.body());
 
-        Some(Clause {
+        Clause {
             pats,
             guards,
             exprs,
-        })
+        }
     }
 
     fn lower_optional_pat(&mut self, expr: Option<ast::Expr>) -> PatId {

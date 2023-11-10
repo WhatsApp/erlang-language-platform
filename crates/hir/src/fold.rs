@@ -1190,7 +1190,7 @@ bar() ->
         let source_file = in_file.value;
         let ast_var = algo::find_node_at_offset::<ast::Var>(source_file.syntax(), offset).unwrap();
 
-        let (body, body_map) = FunctionBody::function_body_with_source_query(
+        let (body, _body_maps) = FunctionBody::function_body_with_source_query(
             &db,
             InFile {
                 file_id,
@@ -1199,23 +1199,29 @@ bar() ->
         );
 
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast_var.clone()));
-        let expr_id = body_map
-            .expr_id(InFile {
-                file_id,
-                value: &expr,
-            })
+
+        let in_clause = sema.to_expr(InFile::new(file_id, &expr)).unwrap();
+
+        let expr_id = in_clause
+            .expr_id_ast(
+                &db,
+                InFile {
+                    file_id,
+                    value: &expr,
+                },
+            )
             .unwrap();
-        let expr = &body.body[expr_id];
+        let expr = &in_clause[expr_id];
         let hir_var = match expr {
             crate::Expr::Var(v) => v,
             _ => panic!(),
         };
         let idx = ClauseId::from_raw(RawIdx::from(0));
         let r: u32 = FoldCtx::fold_expr(
-            &FoldBody::Body(&body.body),
+            &FoldBody::Body(&in_clause.body.body),
             Strategy::TopDown,
             body.form_id(),
-            body.clauses[idx].exprs[0],
+            body.clauses[idx].clause.exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Var(v)) => {
@@ -1330,17 +1336,18 @@ bar() ->
         let function_body = sema.db.function_body(InFile::new(file_id, function_idx));
 
         let idx = ClauseId::from_raw(RawIdx::from(0));
+        let clause_body = &function_body.clauses[idx];
 
         let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&function_body.body))
+            FoldBody::UnexpandedIndex(UnexpandedIndex(&clause_body.body))
         } else {
-            FoldBody::Body(&function_body.body)
+            FoldBody::Body(&clause_body.body)
         };
         let r = FoldCtx::fold_expr_foldbody(
             &fold_body,
             strategy,
             function_body.form_id(),
-            function_body.clauses[idx].exprs[0],
+            function_body.clauses[idx].clause.exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {

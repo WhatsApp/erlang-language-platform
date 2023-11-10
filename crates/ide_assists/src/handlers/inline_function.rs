@@ -8,6 +8,7 @@
  */
 
 use std::iter::zip;
+use std::sync::Arc;
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
@@ -30,10 +31,10 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashSet;
-use hir::Clause;
+use hir::FunctionClauseBody;
 use hir::FunctionDef;
 use hir::InFile;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::Pat;
 use hir::ScopeAnalysis;
 use hir::Semantic;
@@ -113,11 +114,20 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                     if let Some(ast::FunctionOrMacroClause::FunctionClause(ast_clause)) =
                         ast_fun.clauses().next()
                     {
-                        if let Some(clause) = function_body
-                            .clauses
-                            .iter()
-                            .next()
-                            .map(|(_, clause)| fun.in_function_body(ctx.db(), clause.clone()))
+                        if let Some(clause) =
+                            function_body
+                                .clauses
+                                .iter()
+                                .next()
+                                .map(|(clause_id, clause)| {
+                                    InFunctionClauseBody::new(
+                                        clause.clone(),
+                                        function_body.function_id,
+                                        clause_id,
+                                        None,
+                                        clause,
+                                    )
+                                })
                         {
                             if let Some((range, replacement)) = inline_single_function_clause(
                                 &ctx.sema,
@@ -211,7 +221,7 @@ fn inline_single_function_clause(
     ast_fun: &InFile<&ast::FunDecl>,
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionBody<Clause>,
+    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
 ) -> Option<(TextRange, String)> {
     if ast_clause.guard().is_some() {
         inline_function_as_case(ast_fun, call)
@@ -227,7 +237,7 @@ fn inline_single_function_clause(
 fn inline_single_function_clause_with_begin(
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionBody<Clause>,
+    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
 ) -> Option<(TextRange, String)> {
     let (edited_text, _offset) = clause_body_text(ast_clause)?;
 
@@ -268,13 +278,13 @@ fn assign_params_for_begin(
     body_indent: IndentLevel,
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionBody<Clause>,
+    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
 ) -> Option<()> {
     let arity = ast_clause.arity_value()?;
     izip!(
         call.args()?.args(),
         ast_clause.args()?.args(),
-        &clause.value.pats
+        &clause.value.clause.pats
     )
     .enumerate()
     .for_each(|(idx, (val, var, pat))| {
@@ -455,24 +465,13 @@ fn param_substitution(
 }
 
 fn has_vars_in_clause(sema: &Semantic, file_id: FileId, fun_clause: &ast::FunctionClause) -> bool {
-    let clause = || -> Option<InFunctionBody<Clause>> {
+    let has_vars = || -> Option<bool> {
         let ast_expr = fun_clause.body()?.exprs().next()?;
-        let expr = sema.to_expr(InFile::new(file_id, &ast_expr))?;
-        let ast_clause_id = sema.find_enclosing_function_clause(ast_expr.syntax())?;
-        let clause_id = expr.valid_clause_id(ast_clause_id)?;
-        let clause = &expr[clause_id];
-        Some(expr.with_value(clause.clone()))
+        let vars = sema.find_vars_in_clause_ast(&InFile::new(file_id, &ast_expr))?;
+        Some(!vars.is_empty())
     }();
 
-    if let Some(clause) = clause {
-        if let Some(vars) = ScopeAnalysis::clause_vars_in_scope(sema, &clause.as_ref()) {
-            !vars.is_empty()
-        } else {
-            true
-        }
-    } else {
-        true
-    }
+    has_vars.unwrap_or(true)
 }
 
 fn apply_offset(edit: &TextEdit, offset: TextSize) -> Option<Vec<(TextRange, String)>> {
@@ -742,10 +741,16 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
         let fun_vars = function_body
             .clauses
             .iter()
-            .filter_map(|(_, clause)| {
+            .filter_map(|(clause_id, clause)| {
                 ScopeAnalysis::clause_vars_in_scope(
                     &ctx.sema,
-                    &fun.in_function_body(ctx.db(), clause),
+                    &InFunctionClauseBody::new(
+                        clause.clone(),
+                        function_body.function_id,
+                        clause_id,
+                        None,
+                        (),
+                    ),
                 )
             })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {
@@ -755,7 +760,15 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
         let simple_param_vars = function_body
             .clauses
             .iter()
-            .filter_map(|(_, clause)| simple_param_vars(&fun.in_function_body(ctx.db(), clause)))
+            .filter_map(|(clause_id, clause)| {
+                simple_param_vars(&InFunctionClauseBody::new(
+                    clause.clone(),
+                    function_body.function_id,
+                    clause_id,
+                    None,
+                    clause,
+                ))
+            })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {
                 acc.extend(new.into_iter());
                 acc
@@ -771,11 +784,8 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
 
             let expr = ast::Expr::Call(call.clone());
             let clause_vars = || -> Option<FxHashSet<Var>> {
-                let ast_clause_id = ctx.sema.find_enclosing_function_clause(call.syntax())?;
-                let clause_id = function_body.valid_clause_id(ast_clause_id)?;
                 let call_function = ctx.sema.to_expr(InFile::new(ctx.file_id(), &expr))?;
-                let clause = &call_function[clause_id];
-                ScopeAnalysis::clause_vars_in_scope(&ctx.sema, &call_function.with_value(clause))
+                ScopeAnalysis::clause_vars_in_scope(&ctx.sema, &call_function.with_value(()))
             }()
             .unwrap_or_default();
 

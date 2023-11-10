@@ -42,22 +42,19 @@ pub(super) fn hints(
             function_body.fold_function_with_macros(
                 Strategy::Both,
                 (),
-                &mut |acc, _clause_id, ctx| {
+                &mut |acc, clause_id, ctx| {
                     if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                         // Do not produce hints if inside a macro
                         if ctx.on == On::Entry && ctx.in_macro.is_none() {
                             let arity = args.len() as u32;
-                            let body = &function_body.body();
+                            let body = &function_body.body(clause_id);
                             if let Some(call_def) = target.resolve_call(arity, sema, file_id, body)
                             {
                                 let param_names = call_def.function.param_names;
                                 for (param_name, arg) in param_names.iter().zip(args) {
-                                    if should_hint(
-                                        sema.db.upcast(),
-                                        param_name,
-                                        &function_body[arg],
-                                    ) {
-                                        if let Some(arg_range) = def_fb.range_for_expr(sema.db, arg)
+                                    if should_hint(sema.db.upcast(), param_name, &body[arg]) {
+                                        if let Some(arg_range) =
+                                            def_fb.range_for_expr(sema.db, clause_id, arg)
                                         {
                                             if range_limit.is_none()
                                                 || range_limit.unwrap().contains_range(arg_range)

@@ -24,7 +24,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFile;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::Semantic;
 use hir::Strategy;
 use serde::Deserialize;
@@ -320,7 +320,7 @@ pub struct CheckCallCtx<'a, T> {
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
     pub args: &'a [ExprId],
-    pub def_fb: &'a InFunctionBody<&'a FunctionDef>,
+    pub in_clause: &'a InFunctionClauseBody<&'a FunctionDef>,
 }
 
 /// Check a specific call instance, and return extra info for a
@@ -335,7 +335,7 @@ pub(crate) fn find_call_in_function<T>(
     check_call: CheckCall<T>,
     make_diag: impl FnOnce(
         &Semantic,
-        &mut InFunctionBody<&FunctionDef>,
+        &InFunctionClauseBody<&FunctionDef>,
         &CallTarget<ExprId>,
         &[ExprId],
         &str,
@@ -344,21 +344,22 @@ pub(crate) fn find_call_in_function<T>(
     ) -> Option<Diagnostic>
     + Copy,
 ) -> Option<()> {
-    let mut def_fb = def.in_function_body(sema.db, def);
+    let def_fb = def.in_function_body(sema.db, def);
     let matcher = FunctionMatcher::new(mfas);
     def_fb
         .clone()
-        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, _, ctx| {
+        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 if let Some((mfa, t)) =
-                    matcher.get_match(&target, args.len() as u32, sema, &def_fb.body())
+                    matcher.get_match(&target, args.len() as u32, sema, &def_fb.body(clause_id))
                 {
+                    let in_clause = &def_fb.in_clause(clause_id);
                     let context = CheckCallCtx {
                         mfa,
                         t,
                         target: &target,
                         args: &args,
-                        def_fb: &def_fb,
+                        in_clause: &in_clause,
                     };
                     if let Some((match_descr, fix_descr)) = check_call(context) {
                         // Got one.
@@ -367,10 +368,11 @@ pub(crate) fn find_call_in_function<T>(
                         } else {
                             ctx.item_id
                         };
-                        if let Some(range) = &def_fb.range_for_any(sema.db, call_expr_id) {
+                        if let Some(range) = &def_fb.range_for_any(sema.db, clause_id, call_expr_id)
+                        {
                             if let Some(diag) = make_diag(
                                 sema,
-                                &mut def_fb,
+                                &in_clause,
                                 &target,
                                 &args,
                                 &match_descr,

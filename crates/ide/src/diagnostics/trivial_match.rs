@@ -27,7 +27,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFile;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::Literal;
 use hir::Pat;
 use hir::PatId;
@@ -56,14 +56,15 @@ pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let def_fb = def.in_function_body(sema.db, def);
-    let body_map = def_fb.get_body_map(sema.db);
     let source_file = sema.parse(def.file.file_id);
 
-    def_fb.fold_function((), &mut |_acc, _, ctx| {
+    def_fb.fold_function((), &mut |_acc, clause_id, ctx| {
+        let in_clause = def_fb.in_clause(clause_id);
+        let body_map = in_clause.get_body_map(sema.db);
         if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
             let rhs = &rhs.clone();
-            if matches_trivially(sema, &def_fb, &body_map, &source_file, &lhs, rhs) {
-                if let Some(range) = &def_fb.range_for_any(sema.db, ctx.item_id) {
+            if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
+                if let Some(range) = &def_fb.range_for_any(sema.db, clause_id, ctx.item_id) {
                     let rhs_ast = body_map
                         .expr(*rhs)
                         .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
@@ -76,14 +77,14 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
 
 fn matches_trivially(
     sema: &Semantic,
-    def_fb: &InFunctionBody<&FunctionDef>,
+    in_clause: &InFunctionClauseBody<&FunctionDef>,
     body_map: &BodySourceMap,
     source_file: &InFile<SourceFile>,
     pat_id: &PatId,
     expr_id: &ExprId,
 ) -> bool {
-    let pat = &def_fb[*pat_id];
-    let expr = &def_fb[*expr_id];
+    let pat = &in_clause[*pat_id];
+    let expr = &in_clause[*expr_id];
     match pat {
         Pat::Missing => false,
 
@@ -121,7 +122,7 @@ fn matches_trivially(
             Expr::Tuple { exprs } if pats.len() == exprs.len() => pats
                 .iter()
                 .zip(exprs.iter())
-                .all(|(p, e)| matches_trivially(sema, def_fb, body_map, source_file, p, e)),
+                .all(|(p, e)| matches_trivially(sema, in_clause, body_map, source_file, p, e)),
             _ => false,
         },
 
@@ -129,7 +130,7 @@ fn matches_trivially(
             Expr::List { exprs, tail: None } if pats.len() == exprs.len() => pats
                 .iter()
                 .zip(exprs.iter())
-                .all(|(p, e)| matches_trivially(sema, def_fb, body_map, source_file, p, e)),
+                .all(|(p, e)| matches_trivially(sema, in_clause, body_map, source_file, p, e)),
             _ => false,
         },
         Pat::List { .. } => false,
@@ -150,7 +151,7 @@ fn matches_trivially(
                         if let Some(expr_val) = expr_fields_map.get(field) {
                             matches_trivially(
                                 sema,
-                                def_fb,
+                                in_clause,
                                 body_map,
                                 source_file,
                                 pat_val,
@@ -173,7 +174,7 @@ fn matches_trivially(
                 let pat_fields_map = pat_fields
                     .iter()
                     .filter_map(|(field, val)| {
-                        let lit = as_literal(def_fb, field)?;
+                        let lit = as_literal(in_clause, field)?;
                         Some((lit, val))
                     })
                     .collect::<HashMap<_, _>>();
@@ -186,7 +187,7 @@ fn matches_trivially(
                     let expr_fields_map = expr_fields
                         .iter()
                         .filter_map(|(field, val)| {
-                            let lit = as_literal(def_fb, field)?;
+                            let lit = as_literal(in_clause, field)?;
                             Some((lit, val))
                         })
                         .collect::<HashMap<_, _>>();
@@ -195,7 +196,7 @@ fn matches_trivially(
                         if let Some(expr_val) = expr_fields_map.get(field) {
                             matches_trivially(
                                 sema,
-                                def_fb,
+                                in_clause,
                                 body_map,
                                 source_file,
                                 pat_val,
@@ -226,7 +227,7 @@ fn matches_trivially(
                             && expr_seg.with_value(()) == trivial_seg
                             && matches_trivially(
                                 sema,
-                                def_fb,
+                                in_clause,
                                 body_map,
                                 source_file,
                                 &pat_seg.elem,
@@ -243,12 +244,12 @@ fn matches_trivially(
             expansion,
             args: _,
             macro_def: _,
-        } => matches_trivially(sema, def_fb, body_map, source_file, expansion, expr_id),
+        } => matches_trivially(sema, in_clause, body_map, source_file, expansion, expr_id),
     }
 }
 
-fn as_literal(def_fb: &InFunctionBody<&FunctionDef>, expr_id: &ExprId) -> Option<Literal> {
-    let expr = &def_fb[*expr_id];
+fn as_literal(in_clause: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) -> Option<Literal> {
+    let expr = &in_clause[*expr_id];
     match expr {
         Expr::Literal(lit) => Some(lit.clone()),
         _ => None,

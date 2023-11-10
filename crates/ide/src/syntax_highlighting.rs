@@ -23,7 +23,7 @@ use hir::DefMap;
 use hir::Expr;
 use hir::ExprId;
 use hir::InFile;
-use hir::InFunctionBody;
+use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
 
@@ -88,7 +88,7 @@ fn bound_vars_in_pattern_highlight(
     let highlight_bound = HlTag::Symbol(SymbolKind::Variable) | HlMod::Bound;
 
     let bound_var_ranges = sema.bound_vars_in_pattern_diagnostic(file_id);
-    bound_var_ranges.iter().for_each(|(_, _, var)| {
+    bound_var_ranges.iter().for_each(|(_, _, _, var)| {
         let range = var.syntax().text_range();
         // Element inside the viewport, need to highlight
         if range_to_highlight.intersect(range).is_some() {
@@ -113,7 +113,8 @@ fn deprecated_func_highlight(
         if def.file.file_id == file_id {
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
-            sema.fold_function(function_id, (), &mut |acc, _clause_id, ctx| {
+            sema.fold_function(function_id, (), &mut |acc, clause_id, ctx| {
+                let clause_body = function_body.in_clause(clause_id);
                 if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                     let arity = args.len() as u32;
                     match target {
@@ -124,7 +125,7 @@ fn deprecated_func_highlight(
                                 &name,
                                 arity,
                                 range_to_highlight,
-                                &function_body,
+                                &clause_body,
                             ) {
                                 hl.add(HlRange {
                                     range,
@@ -135,7 +136,7 @@ fn deprecated_func_highlight(
                         }
                         CallTarget::Remote { module, name } => {
                             if let Some(file_id) =
-                                find_remote_module_file_id(sema, file_id, &module, &function_body)
+                                find_remote_module_file_id(sema, file_id, &module, &clause_body)
                             {
                                 let def_map = sema.def_map(file_id);
                                 if let Some(range) = find_deprecated_range(
@@ -144,7 +145,7 @@ fn deprecated_func_highlight(
                                     &name,
                                     arity,
                                     range_to_highlight,
-                                    &function_body,
+                                    &clause_body,
                                 ) {
                                     hl.add(HlRange {
                                         range,
@@ -168,7 +169,7 @@ fn find_deprecated_range(
     name: &ExprId,
     arity: u32,
     range_to_highlight: TextRange,
-    function_body: &InFunctionBody<()>,
+    function_body: &InFunctionClauseBody<()>,
 ) -> Option<TextRange> {
     let fun_atom = &function_body[*name].as_atom()?;
     let range = function_body.range_for_expr(sema.db, *name)?;
@@ -185,7 +186,7 @@ fn find_remote_module_file_id(
     sema: &Semantic,
     file_id: FileId,
     module: &ExprId,
-    function_body: &InFunctionBody<()>,
+    function_body: &InFunctionClauseBody<()>,
 ) -> Option<FileId> {
     let module_atom = &function_body[*module].as_atom()?;
     let module_name = sema.db.lookup_atom(*module_atom);

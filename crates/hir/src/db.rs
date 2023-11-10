@@ -18,8 +18,10 @@ use fxhash::FxHashMap;
 
 use crate::body::scope::FunctionScopes;
 use crate::body::DefineBody;
+use crate::body::FunctionClauseBody;
 use crate::edoc;
 use crate::edoc::EdocHeader;
+use crate::expr::ClauseId;
 use crate::include;
 pub use crate::intern::MinInternDatabase;
 pub use crate::intern::MinInternDatabaseStorage;
@@ -58,7 +60,7 @@ pub trait MinDefDatabase:
     fn function_body_with_source(
         &self,
         function_id: InFile<FunctionId>,
-    ) -> (Arc<FunctionBody>, Arc<BodySourceMap>);
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
 
     #[salsa::invoke(RecordBody::record_body_with_source_query)]
     fn record_body_with_source(
@@ -102,6 +104,11 @@ pub trait MinDefDatabase:
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
     fn function_body(&self, function_id: InFile<FunctionId>) -> Arc<FunctionBody>;
+    fn function_clause_body(
+        &self,
+        function_id: InFile<FunctionId>,
+        clause_id: ClauseId,
+    ) -> Arc<FunctionClauseBody>;
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
@@ -142,6 +149,15 @@ pub trait MinDefDatabase:
 
 fn function_body(db: &dyn MinDefDatabase, function_id: InFile<FunctionId>) -> Arc<FunctionBody> {
     db.function_body_with_source(function_id).0
+}
+
+fn function_clause_body(
+    db: &dyn MinDefDatabase,
+    function_id: InFile<FunctionId>,
+    clause_id: ClauseId,
+) -> Arc<FunctionClauseBody> {
+    let function_body = db.function_body_with_source(function_id).0;
+    function_body.clauses[clause_id].clone()
 }
 
 fn type_body(db: &dyn MinDefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {

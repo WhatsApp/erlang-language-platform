@@ -30,6 +30,7 @@ use crate::Expr;
 use crate::ExprId;
 use crate::FunType;
 use crate::FunctionBody;
+use crate::FunctionClauseBody;
 use crate::ListType;
 use crate::Literal;
 use crate::Pat;
@@ -86,17 +87,33 @@ pub(crate) fn print_attribute(
 }
 
 pub(crate) fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let mut out = String::new();
 
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
-        write!(printer, "{}", sep).ok();
-        sep = ";\n";
-        printer.print_clause(clause);
+        write!(out, "{}", sep).unwrap();
+        sep = ";";
+        let mut printer = Printer::new(db, &clause.body);
+        printer.print_clause(&clause.clause);
+        write!(out, "{}", printer.to_string_raw()).unwrap();
     }
-    write!(printer, ".").ok();
+    write!(out, ".\n").unwrap();
 
-    printer.to_string()
+    out
+}
+
+pub(crate) fn print_function_clause(
+    db: &dyn MinInternDatabase,
+    clause: &FunctionClauseBody,
+) -> String {
+    let mut out = String::new();
+
+    let mut printer = Printer::new(db, &clause.body);
+    printer.print_clause(&clause.clause);
+    write!(out, "{}", printer.to_string_raw()).unwrap();
+    write!(out, "\n").unwrap();
+
+    out
 }
 
 pub(crate) fn print_type_alias(
@@ -143,6 +160,11 @@ impl<'a> Printer<'a> {
     fn to_string(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf.push('\n');
+        self.buf
+    }
+
+    fn to_string_raw(mut self) -> String {
+        self.buf.truncate(self.buf.trim_end().len());
         self.buf
     }
 

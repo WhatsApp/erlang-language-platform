@@ -347,7 +347,7 @@ fn test_function_args() {
             "X, XN"
         "#]]
         .assert_debug_eq(&ctx.create_function_args(
-            call_expr.function_id(),
+            call_expr.function_id.value,
             args,
             &call_expr.body(),
         ));

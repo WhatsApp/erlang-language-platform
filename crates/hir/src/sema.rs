@@ -23,6 +23,8 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use la_arena::Arena;
+use la_arena::Idx;
 use la_arena::RawIdx;
 
 use self::find::FindForm;
@@ -32,6 +34,7 @@ pub use self::to_def::FaDef;
 pub use self::to_def::MacroCallDef;
 use self::to_def::ToDef;
 use crate::body::scope::ScopeId;
+use crate::body::FunctionClauseBody;
 use crate::body::UnexpandedIndex;
 use crate::db::MinDefDatabase;
 use crate::edoc::EdocHeader;
@@ -52,7 +55,6 @@ use crate::AnyExprId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
-use crate::Clause;
 use crate::DefMap;
 use crate::Expr;
 use crate::ExprId;
@@ -121,28 +123,51 @@ impl<'db> Semantic<'db> {
         ToDef::to_def(self, ast)
     }
 
-    pub fn to_expr(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionBody<ExprId>> {
+    pub fn to_expr(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<ExprId>> {
         let function_id = self.find_enclosing_function(expr.file_id, expr.value.syntax())?;
-        let (body, body_map) = self
-            .db
-            .function_body_with_source(expr.with_value(function_id));
+        let (clause_id, body, body_map) =
+            self.to_clause_body_with_source(expr.with_value(&expr.value.syntax()))?;
         let expr_id = &body_map.expr_id(expr)?;
-        Some(InFunctionBody {
+        Some(InFunctionClauseBody::new(
             body,
-            function_id: expr.with_value(function_id),
-            body_map: Some(body_map).into(),
-            value: *expr_id,
-        })
+            InFile::new(expr.file_id, function_id),
+            clause_id,
+            Some(body_map).into(),
+            *expr_id,
+        ))
     }
 
     pub fn to_function_body(&self, function_id: InFile<FunctionId>) -> InFunctionBody<()> {
-        let (body, body_map) = self.db.function_body_with_source(function_id);
-        InFunctionBody {
-            body,
-            function_id,
-            body_map: Some(body_map).into(),
-            value: (),
-        }
+        let body = self.db.function_body(function_id);
+        InFunctionBody::new(body, function_id, ())
+    }
+
+    pub fn to_clause_body(
+        &self,
+        syntax: InFile<&SyntaxNode>,
+    ) -> Option<(ClauseId, Arc<FunctionClauseBody>)> {
+        let function_id = self.find_enclosing_function(syntax.file_id, syntax.value)?;
+        let function_body = self.db.function_body(syntax.with_value(function_id));
+        let ast_clause_id = self.find_enclosing_function_clause(syntax.value)?;
+        let clause_id = function_body.valid_clause_id(ast_clause_id)?;
+        let body = &function_body[clause_id];
+        Some((clause_id, body.clone()))
+    }
+
+    pub fn to_clause_body_with_source(
+        &self,
+        syntax: InFile<&SyntaxNode>,
+    ) -> Option<(ClauseId, Arc<FunctionClauseBody>, Arc<BodySourceMap>)> {
+        let function_id = self.find_enclosing_function(syntax.file_id, syntax.value)?;
+        let (function_body, body_maps) = self
+            .db
+            .function_body_with_source(syntax.with_value(function_id));
+        let ast_clause_id = self.find_enclosing_function_clause(syntax.value)?;
+        let clause_id = function_body.valid_clause_id(ast_clause_id)?;
+        let map_idx: u32 = clause_id.into_raw().into();
+        let body_map = body_maps.get(map_idx as usize)?;
+        let body = &function_body[clause_id];
+        Some((clause_id, body.clone(), body_map.clone()))
     }
 
     pub fn resolve_module_names(&self, from_file: FileId) -> Option<ModuleIter> {
@@ -227,8 +252,10 @@ impl<'db> Semantic<'db> {
         let form_list = self.db.file_form_list(file_id);
         let form = form_list.find_form(&form)?;
         match form {
-            FormIdx::Function(fun) => {
-                let (body, map) = self.db.function_body_with_source(InFile::new(file_id, fun));
+            FormIdx::Function(_fun) => {
+                // We need to return the details for the specific clause.
+                let (_clause_id, body, map) =
+                    self.to_clause_body_with_source(InFile::new(file_id, syntax))?;
                 Some((body.body.clone(), map))
             }
             FormIdx::Record(record) => {
@@ -325,28 +352,30 @@ impl<'db> Semantic<'db> {
     pub fn free_vars_ast(&self, file_id: FileId, expr: &ast::Expr) -> Option<ScopeAnalysis> {
         let function_id = self.find_enclosing_function(file_id, expr.syntax())?;
         let infile_function_id = InFile::new(file_id, function_id);
+        let (clause_id, body, source_map) =
+            self.to_clause_body_with_source(InFile::new(file_id, expr.syntax()))?;
 
-        let (body, source_map) = self.db.function_body_with_source(infile_function_id);
         let expr_id_in = source_map.expr_id(InFile {
             file_id,
             value: expr,
         })?;
-        self.free_vars(&InFunctionBody {
-            body,
+
+        self.free_vars(&InFunctionClauseBody {
+            body: body.clone(),
             function_id: infile_function_id,
+            clause_id,
             body_map: Some(source_map).into(),
             value: expr_id_in,
         })
     }
 
     /// Return the free and bound variables in a given expression.
-    pub fn free_vars(&self, expr: &InFunctionBody<ExprId>) -> Option<ScopeAnalysis> {
+    pub fn free_vars(&self, expr: &InFunctionClauseBody<ExprId>) -> Option<ScopeAnalysis> {
         let function = expr.function_id;
         let form_id = FormIdx::Function(function.value);
         let scopes = self.db.function_scopes(function);
         let expr_id_in = expr.value;
-        let clause_id = expr.clause_id(&expr_id_in)?;
-        let clause_scopes = scopes.get(clause_id)?;
+        let clause_scopes = scopes.get(expr.clause_id)?;
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
@@ -410,7 +439,7 @@ impl<'db> Semantic<'db> {
         &self,
         file_id: FileId,
         syntax: &SyntaxNode,
-    ) -> Option<InFunctionBody<Resolver>> {
+    ) -> Option<InFunctionClauseBody<Resolver>> {
         let function_id = self.find_enclosing_function(file_id, syntax)?;
         let ast_clause_id = self.find_enclosing_function_clause(syntax)?;
         self.ast_clause_resolver(InFile::new(file_id, function_id), ast_clause_id)
@@ -420,15 +449,18 @@ impl<'db> Semantic<'db> {
         &self,
         function_id: InFile<FunctionId>,
         ast_clause_id: AstClauseId,
-    ) -> Option<InFunctionBody<Resolver>> {
-        let body = self.db.function_body(function_id);
+    ) -> Option<InFunctionClauseBody<Resolver>> {
+        let function_body = self.db.function_body(function_id);
         let scopes = self.db.function_scopes(function_id);
-        let clause_id = body.valid_clause_id(ast_clause_id)?;
+        let clause_id = function_body.valid_clause_id(ast_clause_id)?;
         let clause_scopes = scopes.get(clause_id)?;
         let resolver = Resolver::new(clause_scopes);
-        Some(InFunctionBody {
-            body,
+        let clause_body = &function_body[clause_id];
+
+        Some(InFunctionClauseBody {
+            body: clause_body.clone(),
             function_id,
+            clause_id,
             body_map: None.into(), // We may not need it, do not get it now
             value: resolver,
         })
@@ -438,24 +470,24 @@ impl<'db> Semantic<'db> {
         &self,
         function_id: InFile<FunctionId>,
         clause_id: ClauseId,
-    ) -> Option<InFunctionBody<Resolver>> {
-        let body = self.db.function_body(function_id);
+    ) -> Option<InFunctionClauseBody<Resolver>> {
+        let function_body = self.db.function_body(function_id);
         let scopes = self.db.function_scopes(function_id);
         let clause_scopes = scopes.get(clause_id)?;
         let resolver = Resolver::new(clause_scopes);
-        Some(InFunctionBody {
-            body,
+        let clause_body = &function_body[clause_id];
+        Some(InFunctionClauseBody {
+            body: clause_body.clone(),
             function_id,
+            clause_id,
             body_map: None.into(), // We may not need it, do not get it now
             value: resolver,
         })
     }
 
     pub fn find_vars_in_clause_ast(&self, expr: &InFile<&ast::Expr>) -> Option<FxHashSet<Var>> {
-        let clause = self.find_enclosing_function_clause(expr.value.syntax())?;
         let in_function = self.to_expr(*expr)?;
-        let clause_id = in_function.valid_clause_id(clause)?;
-        ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(&in_function[clause_id]))
+        ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(()))
     }
 
     /// Find all other variables within the function clause that resolve
@@ -576,12 +608,14 @@ impl<'db> Semantic<'db> {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
-        function_body[clause_id]
+        let clause_body = &function_body[clause_id];
+        clause_body
+            .clause
             .exprs
             .iter()
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
-                    &FoldBody::Body(&function_body.body),
+                    &FoldBody::Body(&clause_body.body),
                     Strategy::TopDown,
                     function_body.form_id(),
                     *expr_id,
@@ -597,7 +631,7 @@ impl<'db> Semantic<'db> {
     pub fn bound_vars_in_pattern_diagnostic(
         &self,
         file_id: FileId,
-    ) -> FxHashSet<(InFile<FunctionId>, PatId, ast::Var)> {
+    ) -> FxHashSet<(InFile<FunctionId>, ClauseId, PatId, ast::Var)> {
         let def_map = self.def_map(file_id);
         let mut res = FxHashSet::default();
         for def in def_map.get_functions().values() {
@@ -607,7 +641,7 @@ impl<'db> Semantic<'db> {
                 self.fold_function(function_id, (), &mut |acc, clause_id, ctx| {
                     if let Some(mut resolver) = self.clause_resolver(function_id, clause_id) {
                         let mut bound_vars =
-                            BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
+                            BoundVarsInPat::new(self, &mut resolver, file_id, clause_id, &mut res);
                         match ctx.item {
                             AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
                                 bound_vars.report_any_bound_vars(&lhs)
@@ -638,10 +672,11 @@ impl<'db> Semantic<'db> {
 
     fn bound_vars_in_pat(
         &self,
+        clause_id: ClauseId,
         pat_id: &PatId,
-        resolver: &mut InFunctionBody<Resolver>,
+        resolver: &mut InFunctionClauseBody<Resolver>,
         file_id: FileId,
-    ) -> FxHashSet<(InFile<FunctionId>, PatId, ast::Var)> {
+    ) -> FxHashSet<(InFile<FunctionId>, ClauseId, PatId, ast::Var)> {
         let parse = self.parse(file_id);
         let body_map = &resolver.get_body_map(self.db);
         FoldCtx::fold_pat(
@@ -650,7 +685,6 @@ impl<'db> Semantic<'db> {
             FormIdx::Function(resolver.function_id.value),
             *pat_id,
             FxHashSet::default(),
-            // &mut |acc, _| acc,
             &mut |mut acc, ctx| {
                 match ctx.item_id {
                     AnyExprId::Pat(pat_id) => {
@@ -664,7 +698,12 @@ impl<'db> Semantic<'db> {
                                             ))) = pat_ptr.to_node(&parse)
                                             {
                                                 if var.syntax().text() != "_" {
-                                                    acc.insert((resolver.function_id, pat_id, var));
+                                                    acc.insert((
+                                                        resolver.function_id,
+                                                        clause_id,
+                                                        pat_id,
+                                                        var,
+                                                    ));
                                                 }
                                             }
                                         };
@@ -707,21 +746,43 @@ fn fold_function_body<'a, T>(
         .clauses
         .iter()
         .fold(initial, |acc, (clause_id, clause)| {
-            clause.exprs.iter().fold(acc, |acc_inner, expr_id| {
-                let fold_body = if with_macros == WithMacros::Yes {
-                    FoldBody::UnexpandedIndex(UnexpandedIndex(&function_body.body))
-                } else {
-                    FoldBody::Body(&function_body.body)
-                };
-                FoldCtx::fold_expr_foldbody(
-                    &fold_body,
-                    strategy,
-                    function_body.form_id(),
-                    *expr_id,
-                    acc_inner,
-                    &mut |acc, ctx| callback(acc, clause_id, ctx),
-                )
-            })
+            fold_function_clause_body(
+                with_macros,
+                function_body.function_id.value,
+                clause,
+                strategy,
+                acc,
+                &mut |acc, ctx| callback(acc, clause_id, ctx),
+            )
+        })
+}
+
+fn fold_function_clause_body<'a, T>(
+    with_macros: WithMacros,
+    function_id: FunctionId,
+    function_clause_body: &FunctionClauseBody,
+    strategy: Strategy,
+    initial: T,
+    callback: AnyCallBack<'a, T>,
+) -> T {
+    function_clause_body
+        .clause
+        .exprs
+        .iter()
+        .fold(initial, |acc_inner, expr_id| {
+            let fold_body = if with_macros == WithMacros::Yes {
+                FoldBody::UnexpandedIndex(UnexpandedIndex(&function_clause_body.body))
+            } else {
+                FoldBody::Body(&function_clause_body.body)
+            };
+            FoldCtx::fold_expr_foldbody(
+                &fold_body,
+                strategy,
+                FormIdx::Function(function_id),
+                *expr_id,
+                acc_inner,
+                callback,
+            )
         })
 }
 
@@ -729,30 +790,33 @@ fn fold_function_body<'a, T>(
 
 struct BoundVarsInPat<'a> {
     sema: &'a Semantic<'a>,
-    resolver: &'a mut InFunctionBody<Resolver>,
+    resolver: &'a mut InFunctionClauseBody<Resolver>,
     file_id: FileId,
-    res: &'a mut FxHashSet<(InFile<FunctionId>, PatId, ast::Var)>,
+    clause_id: ClauseId,
+    res: &'a mut FxHashSet<(InFile<FunctionId>, ClauseId, PatId, ast::Var)>,
 }
 
 impl<'a> BoundVarsInPat<'a> {
     fn new(
         sema: &'a Semantic<'a>,
-        resolver: &'a mut InFunctionBody<Resolver>,
+        resolver: &'a mut InFunctionClauseBody<Resolver>,
         file_id: FileId,
-        res: &'a mut FxHashSet<(InFile<FunctionId>, PatId, ast::Var)>,
+        clause_id: ClauseId,
+        res: &'a mut FxHashSet<(InFile<FunctionId>, ClauseId, PatId, ast::Var)>,
     ) -> Self {
         BoundVarsInPat {
             sema,
             resolver,
             file_id,
+            clause_id,
             res,
         }
     }
 
     fn report_any_bound_vars(&mut self, pat_id: &PatId) {
-        let bound_vars = self
-            .sema
-            .bound_vars_in_pat(pat_id, self.resolver, self.file_id);
+        let bound_vars =
+            self.sema
+                .bound_vars_in_pat(self.clause_id, pat_id, self.resolver, self.file_id);
         bound_vars.into_iter().for_each(|v| {
             self.res.insert(v);
         });
@@ -783,10 +847,10 @@ impl ScopeAnalysis {
 
     pub fn clause_vars_in_scope(
         sema: &Semantic,
-        clause: &InFunctionBody<&Clause>,
+        clause: &InFunctionClauseBody<()>,
     ) -> Option<FxHashSet<Var>> {
         let acc = FxHashSet::default();
-        let x = clause.value.exprs.iter().fold(acc, |mut acc, expr| {
+        let x = clause.body.clause.exprs.iter().fold(acc, |mut acc, expr| {
             let mut analyzer = ScopeAnalysis::new();
             analyzer.walk_expr(sema, &clause.with_value(*expr));
             analyzer.update_scope_analysis(&mut acc);
@@ -810,7 +874,7 @@ impl ScopeAnalysis {
 
     /// Process an expression in the current scope context, updating
     /// the free and bound vars
-    pub fn walk_expr(&mut self, sema: &Semantic, expr: &InFunctionBody<ExprId>) {
+    pub fn walk_expr(&mut self, sema: &Semantic, expr: &InFunctionClauseBody<ExprId>) {
         if let Some(scopes) = sema.free_vars(expr) {
             self.callback(scopes.free, scopes.bound);
         }
@@ -829,23 +893,33 @@ impl ScopeAnalysis {
 pub struct InFunctionBody<T> {
     body: Arc<FunctionBody>,
     function_id: InFile<FunctionId>,
-    // cache body_map if we already have it when wrapping the value.
-    // This field should go away once we fully use the hir API only
-    body_map: RefCell<Option<Arc<BodySourceMap>>>,
+    clause_bodies: Arena<InFunctionClauseBody<T>>,
     pub value: T,
 }
 
-impl<T> InFunctionBody<T> {
+impl<T: Clone> InFunctionBody<T> {
     pub fn new(
         body: Arc<FunctionBody>,
         function_id: InFile<FunctionId>,
-        body_map: Option<Arc<BodySourceMap>>,
         value: T,
     ) -> InFunctionBody<T> {
+        let clause_bodies = body
+            .clauses
+            .iter()
+            .map(|(clause_id, clause)| {
+                InFunctionClauseBody::new(
+                    clause.clone(),
+                    function_id,
+                    clause_id,
+                    None,
+                    value.clone(),
+                )
+            })
+            .collect();
         InFunctionBody {
             body,
             function_id,
-            body_map: body_map.into(),
+            clause_bodies,
             value,
         }
     }
@@ -854,11 +928,18 @@ impl<T> InFunctionBody<T> {
         self.with_value(&self.value)
     }
 
-    pub fn with_value<U>(&self, value: U) -> InFunctionBody<U> {
+    pub fn with_value<U>(&self, value: U) -> InFunctionBody<U>
+    where
+        U: Clone,
+    {
         InFunctionBody {
             body: self.body.clone(),
             function_id: self.function_id,
-            body_map: self.body_map.clone(),
+            clause_bodies: self
+                .clause_bodies
+                .iter()
+                .map(|(_, c)| c.with_value(value.clone()))
+                .collect(),
             value,
         }
     }
@@ -875,104 +956,25 @@ impl<T> InFunctionBody<T> {
         self.function_id.value
     }
 
-    pub fn get_body_map(&self, db: &dyn MinDefDatabase) -> Arc<BodySourceMap> {
-        if let Some(body_map) = &self.body_map.borrow().as_ref() {
-            //return explicitly here because borrow is still held in else statement
-            //https://stackoverflow.com/questions/30243606/why-is-a-borrow-still-held-in-the-else-block-of-an-if-let
-            return Arc::clone(body_map);
-        }
-        let (_body, body_map) = db.function_body_with_source(self.function_id);
-        *self.body_map.borrow_mut() = Some(body_map.clone());
-        body_map
-    }
-
-    pub fn expr_id(&self, expr: &Expr) -> Option<ExprId> {
-        self.body.body.expr_id(expr)
-    }
-
-    pub fn expr_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<ExprId> {
-        self.get_body_map(db).expr_id(expr)
-    }
-
-    pub fn pat_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<PatId> {
-        self.get_body_map(db).pat_id(expr)
-    }
-
-    pub fn expr_from_id(
-        &mut self,
-        db: &dyn MinDefDatabase,
-        expr: InFile<&ast::Expr>,
-    ) -> Option<Expr> {
-        let expr_id = self.expr_id_ast(db, expr)?;
-        Some(self.body.body[expr_id].clone())
+    pub fn get_body_map(&self, db: &dyn MinDefDatabase, clause_id: ClauseId) -> Arc<BodySourceMap> {
+        self.in_clause(clause_id).get_body_map(db)
     }
 
     pub fn valid_clause_id(&self, ast_clause_id: AstClauseId) -> Option<ClauseId> {
         self.body.valid_clause_id(ast_clause_id)
     }
 
-    pub fn clause_id(&self, expr_id: &ExprId) -> Option<ClauseId> {
-        // Can we have a reverse lookup for this instead?
-        // Or go to syntax, parent, clause id
-        let idx = self.body.clauses.iter().find_map(|(idx, clause)| {
-            if clause.exprs.iter().any(|expr| {
-                FoldCtx::fold_expr(
-                    &FoldBody::Body(&self.body.body),
-                    Strategy::TopDown,
-                    self.form_id(),
-                    *expr,
-                    false,
-                    &mut |acc, ctx| acc || AnyExprId::Expr(*expr_id) == ctx.item_id,
-                )
-            }) {
-                Some(idx)
-            } else {
-                None
-            }
-        })?;
-        Some(idx)
-    }
-
-    pub fn clauses(&self) -> impl Iterator<Item = (ClauseId, &Clause)> {
+    pub fn clauses(&self) -> impl Iterator<Item = (ClauseId, &Arc<FunctionClauseBody>)> {
         self.body.clauses.iter()
     }
 
-    pub fn body(&self) -> Arc<Body> {
-        self.body.body.clone()
+    pub fn in_clause<'a>(&'a self, clause_id: ClauseId) -> &'a InFunctionClauseBody<T> {
+        let idx = Idx::from_raw(clause_id.into_raw());
+        &self.clause_bodies[idx]
     }
 
-    pub fn fold_expr<'a, R>(
-        &self,
-        strategy: Strategy,
-        expr_id: ExprId,
-        initial: R,
-        callback: AnyCallBack<'a, R>,
-    ) -> R {
-        FoldCtx::fold_expr(
-            &FoldBody::Body(&self.body.body),
-            strategy,
-            self.form_id(),
-            expr_id,
-            initial,
-            callback,
-        )
-    }
-
-    pub fn fold_pat<'a, R>(
-        &self,
-        strategy: Strategy,
-        pat_id: PatId,
-        initial: R,
-        callback: AnyCallBack<'a, R>,
-    ) -> R {
-        FoldCtx::fold_pat(
-            &self.body.body,
-            strategy,
-            self.form_id(),
-            pat_id,
-            initial,
-            callback,
-        )
+    pub fn body(&self, clause_id: ClauseId) -> Arc<Body> {
+        self.body.clauses[clause_id].body.clone()
     }
 
     pub fn fold_function<'a, R>(&self, initial: R, callback: FunctionAnyCallBack<'a, R>) -> R {
@@ -994,6 +996,175 @@ impl<T> InFunctionBody<T> {
         fold_function_body(WithMacros::Yes, &self.body, strategy, initial, callback)
     }
 
+    pub fn range_for_expr(
+        &self,
+        db: &dyn MinDefDatabase,
+        clause_id: ClauseId,
+        expr_id: ExprId,
+    ) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_expr(db, expr_id)
+    }
+
+    pub fn range_for_any(
+        &self,
+        db: &dyn MinDefDatabase,
+        clause_id: ClauseId,
+        id: AnyExprId,
+    ) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_any(db, id)
+    }
+
+    pub fn range_for_pat(
+        &mut self,
+        db: &dyn MinDefDatabase,
+        clause_id: ClauseId,
+        pat_id: PatId,
+    ) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_pat(db, pat_id)
+    }
+}
+
+impl<T> Index<ClauseId> for InFunctionBody<T> {
+    type Output = FunctionClauseBody;
+
+    fn index(&self, index: ClauseId) -> &Self::Output {
+        &self.body[index]
+    }
+}
+
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct InFunctionClauseBody<T> {
+    pub body: Arc<FunctionClauseBody>,
+    pub function_id: InFile<FunctionId>,
+    pub clause_id: ClauseId,
+    // cache body_map if we already have it when wrapping the value.
+    // This field should go away once we fully use the hir API only
+    body_map: RefCell<Option<Arc<BodySourceMap>>>,
+    pub value: T,
+}
+
+impl<T> InFunctionClauseBody<T> {
+    pub fn new(
+        body: Arc<FunctionClauseBody>,
+        function_id: InFile<FunctionId>,
+        clause_id: ClauseId,
+        body_map: Option<Arc<BodySourceMap>>,
+        value: T,
+    ) -> InFunctionClauseBody<T> {
+        InFunctionClauseBody {
+            body,
+            function_id,
+            clause_id,
+            body_map: body_map.into(),
+            value,
+        }
+    }
+
+    pub fn as_ref(&self) -> InFunctionClauseBody<&T> {
+        self.with_value(&self.value)
+    }
+
+    pub fn with_value<U>(&self, value: U) -> InFunctionClauseBody<U> {
+        InFunctionClauseBody {
+            body: self.body.clone(),
+            function_id: self.function_id,
+            clause_id: self.clause_id,
+            body_map: self.body_map.clone(),
+            value,
+        }
+    }
+
+    pub fn file_id(&self) -> FileId {
+        self.function_id.file_id
+    }
+
+    pub fn clause_id(&self) -> ClauseId {
+        self.clause_id
+    }
+
+    pub fn get_body_map(&self, db: &dyn MinDefDatabase) -> Arc<BodySourceMap> {
+        if let Some(body_map) = &self.body_map.borrow().as_ref() {
+            //return explicitly here because borrow is still held in else statement
+            //https://stackoverflow.com/questions/30243606/why-is-a-borrow-still-held-in-the-else-block-of-an-if-let
+            return Arc::clone(body_map);
+        }
+        let (_body, body_maps) = db.function_body_with_source(self.function_id);
+        let map_idx: u32 = self.clause_id.into_raw().into();
+        let body_map = &body_maps[map_idx as usize];
+        *self.body_map.borrow_mut() = Some(body_map.clone());
+        body_map.clone()
+    }
+
+    pub fn expr_id(&self, expr: &Expr) -> Option<ExprId> {
+        self.body.body.expr_id(expr)
+    }
+
+    pub fn expr_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<ExprId> {
+        self.get_body_map(db).expr_id(expr)
+    }
+
+    pub fn pat_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<PatId> {
+        self.get_body_map(db).pat_id(expr)
+    }
+
+    pub fn body(&self) -> Arc<Body> {
+        self.body.body.clone()
+    }
+
+    pub fn fold_expr<'a, R>(
+        &self,
+        form_id: FormIdx,
+        strategy: Strategy,
+        expr_id: ExprId,
+        initial: R,
+        callback: AnyCallBack<'a, R>,
+    ) -> R {
+        FoldCtx::fold_expr(
+            &FoldBody::Body(&self.body.body),
+            strategy,
+            form_id,
+            expr_id,
+            initial,
+            callback,
+        )
+    }
+
+    pub fn fold_pat<'a, R>(
+        &self,
+        form_id: FormIdx,
+        strategy: Strategy,
+        pat_id: PatId,
+        initial: R,
+        callback: AnyCallBack<'a, R>,
+    ) -> R {
+        FoldCtx::fold_pat(
+            &self.body.body,
+            strategy,
+            form_id,
+            pat_id,
+            initial,
+            callback,
+        )
+    }
+
+    pub fn fold_clause<'a, R>(
+        &self,
+        function_id: FunctionId,
+        initial: R,
+        callback: AnyCallBack<'a, R>,
+    ) -> R {
+        fold_function_clause_body(
+            WithMacros::No,
+            function_id,
+            &self.body,
+            Strategy::TopDown,
+            initial,
+            callback,
+        )
+    }
+
     pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {
         let body_map = self.get_body_map(db);
         let ast = body_map.expr(expr_id)?;
@@ -1006,7 +1177,7 @@ impl<T> InFunctionBody<T> {
         Some(ast.range())
     }
 
-    pub fn range_for_pat(&mut self, db: &dyn MinDefDatabase, pat_id: PatId) -> Option<TextRange> {
+    pub fn range_for_pat(&self, db: &dyn MinDefDatabase, pat_id: PatId) -> Option<TextRange> {
         let body_map = self.get_body_map(db);
         let ast = body_map.pat(pat_id)?;
         Some(ast.range())
@@ -1017,15 +1188,7 @@ impl<T> InFunctionBody<T> {
     }
 }
 
-impl<T> Index<ClauseId> for InFunctionBody<T> {
-    type Output = Clause;
-
-    fn index(&self, index: ClauseId) -> &Self::Output {
-        &self.body[index]
-    }
-}
-
-impl<T> Index<ExprId> for InFunctionBody<T> {
+impl<T> Index<ExprId> for InFunctionClauseBody<T> {
     type Output = Expr;
 
     fn index(&self, index: ExprId) -> &Self::Output {
@@ -1033,7 +1196,7 @@ impl<T> Index<ExprId> for InFunctionBody<T> {
     }
 }
 
-impl<T> Index<PatId> for InFunctionBody<T> {
+impl<T> Index<PatId> for InFunctionClauseBody<T> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
@@ -1041,7 +1204,7 @@ impl<T> Index<PatId> for InFunctionBody<T> {
     }
 }
 
-impl<T> Index<TypeExprId> for InFunctionBody<T> {
+impl<T> Index<TypeExprId> for InFunctionClauseBody<T> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
@@ -1049,13 +1212,15 @@ impl<T> Index<TypeExprId> for InFunctionBody<T> {
     }
 }
 
-impl<T> Index<TermId> for InFunctionBody<T> {
+impl<T> Index<TermId> for InFunctionClauseBody<T> {
     type Output = Term;
 
     fn index(&self, index: TermId) -> &Self::Output {
         &self.body.body[index]
     }
 }
+
+// ---------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -1181,7 +1346,7 @@ mod tests {
         let vars = sema.bound_vars_in_pattern_diagnostic(file_id);
         let ranges: Vec<_> = vars
             .iter()
-            .map(|(_, _, v)| v.syntax().text_range())
+            .map(|(_, _, _, v)| v.syntax().text_range())
             .sorted_by(|a, b| a.start().cmp(&b.start()))
             .collect();
         assert_eq!(expected, ranges);
