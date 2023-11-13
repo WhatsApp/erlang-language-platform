@@ -661,8 +661,9 @@ impl Server {
                     // on-disk version
                     let vfs = this.vfs.read();
                     let vfs_path = VfsPath::from(path);
-                    let file_id = vfs.file_id(&vfs_path).unwrap();
-                    bump_file_revision(file_id, this.analysis_host.raw_database_mut());
+                    if let Some(file_id) = vfs.file_id(&vfs_path) {
+                        bump_file_revision(file_id, this.analysis_host.raw_database_mut());
+                    }
 
                     this.eqwalizer_diagnostics_requested = true;
                     this.edoc_diagnostics_requested = true;
