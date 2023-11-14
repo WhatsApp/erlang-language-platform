@@ -124,7 +124,7 @@ fn load_database(
 
     let db = analysis_host.raw_database_mut();
 
-    let pb = cli.progress(0, "Loading applications");
+    let pb = cli.simple_progress(0, "Loading applications");
 
     for task in receiver {
         match task {

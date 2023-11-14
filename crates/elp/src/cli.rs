@@ -20,6 +20,8 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 
 pub trait Cli: Write + WriteColor {
+    fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar;
+
     fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar;
 
     fn spinner(&self, prefix: &'static str) -> ProgressBar;
@@ -38,19 +40,31 @@ impl Default for Real {
     }
 }
 
-impl Cli for Real {
-    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+impl Real {
+    fn progress_with_style(
+        &self,
+        len: u64,
+        prefix: &'static str,
+        style: &'static str,
+    ) -> ProgressBar {
         if len == 1 {
             self.spinner(prefix)
         } else {
             let pb = ProgressBar::new(len);
-            pb.set_style(
-                ProgressStyle::with_template("  {prefix:25!} {bar} {wide_msg}")
-                    .expect("BUG: invalid template"),
-            );
+            pb.set_style(ProgressStyle::with_template(style).expect("BUG: invalid template"));
             pb.set_prefix(prefix);
             pb
         }
+    }
+}
+
+impl Cli for Real {
+    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.progress_with_style(len, prefix, "  {prefix:25!} {bar} {pos}/{len} {wide_msg}")
+    }
+
+    fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.progress_with_style(len, prefix, "  {prefix:25!} {bar} {wide_msg}")
     }
 
     fn spinner(&self, prefix: &'static str) -> ProgressBar {
@@ -111,6 +125,10 @@ impl Fake {
 
 impl Cli for Fake {
     fn progress(&self, _len: u64, _prefix: &str) -> ProgressBar {
+        ProgressBar::hidden()
+    }
+
+    fn simple_progress(&self, _len: u64, _prefix: &'static str) -> ProgressBar {
         ProgressBar::hidden()
     }
 
