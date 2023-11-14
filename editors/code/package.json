@@ -1,147 +1,154 @@
 {
-	"name": "erlang-language-platform",
-	"description": "Erlang language server",
-	"author": "Meta Platforms, Inc",
-	"license": "Apache2",
-	"version": "0.9.0",
-	"icon": "images/elp-logo-color.png",
-	"homepage": "https://whatsapp.github.io/erlang-language-platform/",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/WhatsApp/erlang-language-platform"
-	},
-	"publisher": "erlang-language-platform",
-	"categories": ["Debuggers", "Formatters", "Linters", "Programming Languages", "Snippets", "Testing"],
-	"keywords": [
-		"elp"
-	],
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"activationEvents": [
-		"onLanguage:erlang"
-	],
-	"main": "./client/out/extension",
-	"contributes": {
-		"languages": [
-			{
-				"id": "erlang",
-				"aliases": [
-					"Erlang"
-				],
-				"extensions": [
-					".erl",
-					".hrl",
-					".app.src",
-					".app",
-					".escript",
-					"rebar.config",
-					"rebar.lock",
-					"rebar.config.script",
-					"sys.config",
-					"sys.config.src",
-					"sys.ct.config",
-					"sys.shell.config",
-					".yrl",
-					".xrl"
-				],
-				"configuration": "./language-configuration.json"
-			}
-		],
-		"grammars": [
-			{
-				"language": "erlang",
-				"scopeName": "source.erlang",
-				"path": "./third-party/grammar/Erlang.plist"
-			}
-		],
-		"configuration": {
-			"type": "object",
-			"title": "Example configuration",
-			"properties": {
-				"languageServerExample.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
-				"languageServerExample.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
-				},
-				"elp.serverPath": {
-					"type": "string",
-					"description": "The path to the ELP executable. If empty, uses the binary included in the extension",
-					"default": ""
-				},
-				"elp.serverArgs": {
-					"type": "string",
-					"description": "The arguments to invoke the language server with",
-					"default": "server"
-				}
-			}
-		},
-		"semanticTokenTypes": [],
-		"semanticTokenModifiers": [
-			{
-				"id": "bound",
-				"description": "Style for bound variables in patterns"
-			},
-			{
-				"id": "exported_function",
-				"description": "Style for exported function declaration names"
-			},
-			{
-				"id": "deprecated_function",
-				"description": "Style for deprecated function declaration names"
-			}
-		],
-		"semanticTokenScopes": [
-			{
-				"language": "erlang",
-				"scopes": {
-					"function": [
-						"entity.name.function.erlang"
-					],
-					"variable": [
-						"variable.other.erlang"
-					],
-					"*.bound": [
-						"markup.underline"
-					],
-					"*.exported_function": [
-						"markup.underline"
-					],
-					"*.deprecated_function": [
-						"markup.strikethrough"
-					]
-				}
-			}
-		]
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
-		"watch": "tsc -b -w",
-		"lint": "eslint ./client/src --ext .ts,.tsx",
-		"postinstall": "cd client && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh",
-		"package": "vsce package -o erlang-language-platform.vsix"
-	},
-	"devDependencies": {
-		"@types/mocha": "^9.1.0",
-		"@types/node": "^16.11.7",
-		"@typescript-eslint/eslint-plugin": "^5.54.0",
-		"@typescript-eslint/parser": "^5.54.0",
-		"eslint": "^8.35.0",
-		"mocha": "^9.2.1",
-		"typescript": "^5.0.2"
-	}
+  "name": "erlang-language-platform",
+  "description": "Erlang language server",
+  "author": "Meta Platforms, Inc",
+  "license": "Apache2",
+  "version": "0.10.0",
+  "icon": "images/elp-logo-color.png",
+  "homepage": "https://whatsapp.github.io/erlang-language-platform/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WhatsApp/erlang-language-platform"
+  },
+  "publisher": "erlang-language-platform",
+  "categories": [
+    "Debuggers",
+    "Formatters",
+    "Linters",
+    "Programming Languages",
+    "Snippets",
+    "Testing"
+  ],
+  "keywords": [
+    "elp"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onLanguage:erlang"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {
+    "languages": [
+      {
+        "id": "erlang",
+        "aliases": [
+          "Erlang"
+        ],
+        "extensions": [
+          ".erl",
+          ".hrl",
+          ".app.src",
+          ".app",
+          ".escript",
+          "rebar.config",
+          "rebar.lock",
+          "rebar.config.script",
+          "sys.config",
+          "sys.config.src",
+          "sys.ct.config",
+          "sys.shell.config",
+          ".yrl",
+          ".xrl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "erlang",
+        "scopeName": "source.erlang",
+        "path": "./third-party/grammar/Erlang.plist"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Example configuration",
+      "properties": {
+        "languageServerExample.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "languageServerExample.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        },
+        "elp.serverPath": {
+          "type": "string",
+          "description": "The path to the ELP executable. If empty, uses the binary included in the extension",
+          "default": ""
+        },
+        "elp.serverArgs": {
+          "type": "string",
+          "description": "The arguments to invoke the language server with",
+          "default": "server"
+        }
+      }
+    },
+    "semanticTokenTypes": [],
+    "semanticTokenModifiers": [
+      {
+        "id": "bound",
+        "description": "Style for bound variables in patterns"
+      },
+      {
+        "id": "exported_function",
+        "description": "Style for exported function declaration names"
+      },
+      {
+        "id": "deprecated_function",
+        "description": "Style for deprecated function declaration names"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "erlang",
+        "scopes": {
+          "function": [
+            "entity.name.function.erlang"
+          ],
+          "variable": [
+            "variable.other.erlang"
+          ],
+          "*.bound": [
+            "markup.underline"
+          ],
+          "*.exported_function": [
+            "markup.underline"
+          ],
+          "*.deprecated_function": [
+            "markup.strikethrough"
+          ]
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "lint": "eslint ./client/src --ext .ts,.tsx",
+    "postinstall": "cd client && npm install && cd ..",
+    "test": "sh ./scripts/e2e.sh",
+    "package": "vsce package -o erlang-language-platform.vsix"
+  },
+  "devDependencies": {
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^16.11.7",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "eslint": "^8.35.0",
+    "mocha": "^9.2.1",
+    "typescript": "^5.0.2"
+  }
 }
