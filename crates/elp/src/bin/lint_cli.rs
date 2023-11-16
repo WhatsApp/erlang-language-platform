@@ -494,7 +494,7 @@ struct FixResult {
     diff: Option<String>,
 }
 
-const LINT_APPLICATION_RECURSION_LIMIT: i32 = 10;
+const LINT_APPLICATION_RECURSION_LIMIT: i32 = 50;
 
 impl<'a> Lints<'a> {
     #[allow(clippy::too_many_arguments)]
@@ -541,14 +541,15 @@ impl<'a> Lints<'a> {
         let mut recursion_limit = LINT_APPLICATION_RECURSION_LIMIT;
         loop {
             let changes = self.apply_diagnostics_fixes(format_normal, cli)?;
-            if recursion_limit <= 0 || changes.is_empty() {
-                if recursion_limit < 0 {
-                    bail!(
-                        "Hit recursion limit ({}) while applying fixes",
-                        LINT_APPLICATION_RECURSION_LIMIT
-                    );
-                }
+            if changes.is_empty() {
+                // Done
                 break;
+            }
+            if recursion_limit <= 0 {
+                bail!(
+                    "Hit recursion limit ({}) while applying fixes",
+                    LINT_APPLICATION_RECURSION_LIMIT
+                );
             }
             recursion_limit -= 1;
             let new_diags = changes
