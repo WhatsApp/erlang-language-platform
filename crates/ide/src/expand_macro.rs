@@ -47,11 +47,16 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
     tok.parent_ancestors().find_map(|node| {
         let mac = ast::MacroCallExpr::cast(node)?;
-        let (name, expansion) = sema.expand(source_file.with_value(&mac))?;
-        Some(ExpandedMacro {
-            name: name.to_string(),
-            expansion,
-        })
+
+        if mac.name()?.syntax().text_range().contains(position.offset) {
+            let (name, expansion) = sema.expand(source_file.with_value(&mac))?;
+            Some(ExpandedMacro {
+                name: name.to_string(),
+                expansion,
+            })
+        } else {
+            None
+        }
     })
 }
 
@@ -577,6 +582,18 @@ get_partition(Who) ->
 -define(ARITY, 0).
 -export([bar/?A~RITY]).
 bar() -> ok.
+"#,
+            expect!["***EXPANSION FAILED***"],
+        );
+    }
+
+    #[test]
+    fn macro_expand_only_from_name() {
+        check(
+            r#"
+-module(foo).
+-define(FOO(X),{X,foo}).
+bar() -> ?FOO(b~az(42)).
 "#,
             expect!["***EXPANSION FAILED***"],
         );
