@@ -90,7 +90,12 @@ pub(crate) fn check_fix_with_config(
 }
 
 #[track_caller]
-fn check_nth_fix(nth: usize, fixture_before: &str, fixture_after: &str, config: DiagnosticsConfig) {
+pub(crate) fn check_nth_fix(
+    nth: usize,
+    fixture_before: &str,
+    fixture_after: &str,
+    config: DiagnosticsConfig,
+) {
     let after = trim_indent(fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(fixture_before);

@@ -685,6 +685,7 @@ pub fn diagnostics(
             file_kind,
             config.disable_experimental,
         );
+        // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
@@ -1211,6 +1212,7 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     db.ct_info(file_id)
 }
 
+/// Diagnostics requiring the erlang_service
 pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let mut res: Vec<Diagnostic> = Vec::new();
     let parse = db.parse(file_id);
@@ -1222,7 +1224,7 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
             common_test::unreachable_test(&mut res, &sema, file_id, all.clone(), groups.clone());
             // @fb-only: let testcases =
                 // @fb-only: common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
-            // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, testcases);
+            // @fb-only: meta_only::ct_diagnostics(&mut res, &sema, file_id, testcases);
         }
         _ => (),
     };

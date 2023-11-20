@@ -9,6 +9,8 @@
 
 //! See [`Name`].
 
+// @fb-only: pub mod meta_only;
+
 use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
@@ -231,6 +233,8 @@ pub mod known {
         parse_transform,
         thrift_parser,
         thrift_scanner,
+        client,
+        server,
         // Common Test framework
         suite,
         all,
