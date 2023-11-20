@@ -70,11 +70,10 @@ pub fn unreachable_test(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    all: FxHashSet<TestDef>,
-    groups: FxHashMap<SmolStr, GroupDef>,
+    testcases: &Option<FxHashSet<NameArity>>,
 ) {
     let exported_test_ranges = exported_test_ranges(sema, file_id);
-    if let Ok(runnable_names) = runnable_names(sema, file_id, all, groups) {
+    if let Some(runnable_names) = testcases {
         for (name, range) in exported_test_ranges {
             if !runnable_names.contains(&name) {
                 let d = Diagnostic::new(

@@ -1221,9 +1221,9 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
 
     match &*ct_info(db, file_id) {
         CommonTestInfo::Result { all, groups } => {
-            common_test::unreachable_test(&mut res, &sema, file_id, all.clone(), groups.clone());
-            // @fb-only: let testcases =
-                // @fb-only: common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
+            let testcases =
+                common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
+            common_test::unreachable_test(&mut res, &sema, file_id, &testcases);
             // @fb-only: meta_only::ct_diagnostics(&mut res, &sema, file_id, testcases);
         }
         _ => (),
