@@ -156,6 +156,7 @@ impl Project {
             },
         );
         config.ignore_diagnostic(DiagnosticCode::MissingCompileWarnMissingSpec);
+        config.ignore_diagnostic(DiagnosticCode::UndefinedFunction);
 
         let handle = thread::spawn(|| {
             let server = setup::setup_server(config, connection, Logger::default())?;

@@ -259,7 +259,8 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
         vec![],
         Arc::new(LintsFromConfig::default()),
     )
-    .disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+    .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+    .disable(DiagnosticCode::UndefinedFunction);
     let diags = analysis.diagnostics(&config, file_id, true).unwrap();
     assert!(
         diags.is_empty(),

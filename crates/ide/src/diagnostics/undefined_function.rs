@@ -105,7 +105,6 @@ fn make_diagnostic(
     Diagnostic::new(DiagnosticCode::UndefinedFunction, message, range)
         .with_severity(Severity::Warning)
         .with_ignore_fix(sema, file_id)
-        .experimental()
 }
 
 #[cfg(test)]

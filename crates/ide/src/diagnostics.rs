@@ -1727,7 +1727,7 @@ baz(1)->4.
 
     #[test]
     fn filter_experimental() {
-        let mut config = DiagnosticsConfig {
+        let config = DiagnosticsConfig {
             disable_experimental: false,
             disabled: FxHashSet::default(),
             adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
@@ -1745,10 +1745,9 @@ baz(1)->4.
                 )
             }],
             lints_from_config: Arc::new(LintsFromConfig::default()),
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        }
+        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+        .disable(DiagnosticCode::UndefinedFunction);
         check_diagnostics_with_config(
             DiagnosticsConfig {
                 disable_experimental: false,
@@ -1770,7 +1769,7 @@ baz(1)->4.
         check_diagnostics_with_config(
             DiagnosticsConfig {
                 disable_experimental: true,
-                ..config.clone()
+                ..config
             },
             r#"
             -module(main).
