@@ -585,9 +585,9 @@ impl DefMap {
         let mut current: Vec<(NameArity, FunctionClauseDef)> = Vec::default();
         self.get_function_clauses_ordered()
             .iter()
-            .for_each(|(_next_na, next_def)| {
+            .for_each(|(_next_id, next_def)| {
                 if let Some((current_na, current_def)) = current.get(0) {
-                    if current_na == &next_def.function.name {
+                    if current_na == &next_def.function.name || next_def.function.is_macro {
                         current.push((next_def.function.name.clone(), next_def.clone()));
                     } else {
                         // We have a new one, create a FunctionDef with

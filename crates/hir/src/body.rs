@@ -20,6 +20,7 @@ use la_arena::Arena;
 use la_arena::ArenaMap;
 use la_arena::RawIdx;
 
+use self::lower::MacroStackEntry;
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
 use crate::def_map::FunctionDefId;
@@ -294,9 +295,11 @@ impl FunctionClauseBody {
         file_id: FileId,
         info: &NameArity,
         clause_ast: &ast::FunctionClause,
+        macrostack: (Vec<MacroStackEntry>, usize),
     ) -> (FunctionClauseBody, BodySourceMap) {
         let mut ctx = lower::Ctx::new(db, file_id);
         ctx.set_function_info(info);
+        ctx.set_macro_stack(macrostack);
         let (body, source_map) = ctx.lower_function_clause(&clause_ast);
         (body, source_map)
     }

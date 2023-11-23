@@ -1461,24 +1461,61 @@ fn binary_term() {
     );
 }
 
-// TODO restore this and fix it (next diff)
-// #[test]
-// fn expand_macro_function_clause() {
-//     check(
-//         r#"
-// -define(CLAUSE, foo(_) -> ok).
+#[test]
+fn expand_macro_function_clause() {
+    check(
+        r#"
+-define(CLAUSE, foo(_) -> ok).
 
-// foo(1) -> 1;
-// ?CLAUSE.
-// "#,
-//         expect![[r#"
-//             foo(1) ->
-//                 1;
-//             foo(_) ->
-//                 'ok'.
-//         "#]],
-//     );
-// }
+foo(1) -> 1;
+?CLAUSE.
+"#,
+        expect![[r#"
+            foo(1) ->
+                1;
+            foo(_) ->
+                'ok'.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_function_clause_with_params() {
+    check(
+        r#"
+-define(CLAUSE(Res), foo(_) -> Res).
+
+foo(1) -> 1;
+?CLAUSE(ok).
+"#,
+        expect![[r#"
+            foo(1) ->
+                1;
+            foo(_) ->
+                'ok'.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_function_multiple_clauses() {
+    check(
+        r#"
+-define(CLAUSE(Res), foo(1) -> 1;
+                     foo(_) -> Res).
+
+?CLAUSE(ok).
+"#,
+        // We do not have the function name in the form list, so we
+        // print the macro name. In HIR this is resolved properly.
+        expect![[r#"
+            CLAUSE(1) ->
+                1;
+            CLAUSE(_) ->
+                'ok'.
+        "#]],
+    );
+}
 
 #[test]
 fn expand_macro_expr() {

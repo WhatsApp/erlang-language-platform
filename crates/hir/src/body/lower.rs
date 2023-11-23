@@ -73,7 +73,8 @@ use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
 
-struct MacroStackEntry {
+#[derive(Debug, Clone)]
+pub(crate) struct MacroStackEntry {
     name: MacroName,
     file_id: FileId,
     var_map: FxHashMap<Var, ast::MacroExpr>,
@@ -88,6 +89,8 @@ pub struct Ctx<'a> {
     function_info: Option<(Atom, u32)>,
     body: Body,
     source_map: BodySourceMap,
+    // For sanity checks, when presetting macro environment
+    starting_stack_size: usize,
 }
 
 #[derive(Debug)]
@@ -113,6 +116,7 @@ impl<'a> Ctx<'a> {
             function_info: None,
             body: Body::default(),
             source_map: BodySourceMap::default(),
+            starting_stack_size: 1,
         }
     }
 
@@ -122,13 +126,28 @@ impl<'a> Ctx<'a> {
         self.function_info = Some((name, arity));
     }
 
+    fn get_macro_stack(&self) -> (Vec<MacroStackEntry>, usize) {
+        (self.macro_stack.clone(), self.macro_stack_id)
+    }
+
+    pub(crate) fn set_macro_stack(&mut self, stack: (Vec<MacroStackEntry>, usize)) {
+        let (macro_stack, macro_stack_id) = stack;
+        self.macro_stack = macro_stack;
+        self.macro_stack_id = macro_stack_id;
+        self.starting_stack_size = self.macro_stack.len();
+    }
+
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
         // Verify macro expansion state
         let entry = self.macro_stack.pop().expect("BUG: macro stack empty");
         assert_eq!(entry.file_id, self.original_file_id);
         assert_eq!(entry.parent_id, 0);
-        assert!(entry.var_map.is_empty());
-        assert!(self.macro_stack.is_empty());
+        if self.macro_stack.len() == 0 {
+            assert!(entry.var_map.is_empty());
+        }
+
+        // Add one for the pop
+        assert!(self.macro_stack.len() + 1 == self.starting_stack_size);
 
         self.body.shrink_to_fit();
         (Arc::new(self.body), self.source_map)
@@ -297,11 +316,13 @@ impl<'a> Ctx<'a> {
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
+                let macrostack = self.get_macro_stack();
                 Either::Left(once(FunctionClauseBody::lower_clause_body(
                     self.db,
                     self.original_file_id,
                     name,
                     &clause,
+                    macrostack,
                 )))
             }
             ast::FunctionOrMacroClause::MacroCallExpr(call) => {

@@ -600,6 +600,7 @@ impl Deref for ParamName {
 pub struct Function {
     pub name: NameArity,
     pub param_names: Vec<ParamName>,
+    pub is_macro: bool,
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::FunDecl>,
     pub separator: Option<(ast::ClauseSeparator, TextRange)>,

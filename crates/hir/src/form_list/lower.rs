@@ -212,32 +212,42 @@ impl<'a> Ctx<'a> {
 
     fn lower_function(&mut self, function: &ast::FunDecl) -> Option<FormIdx> {
         let cond = self.conditions.last().copied();
-        let (name, args) = function.clauses().find_map(|clause| match clause {
+        let (name, param_names, is_macro) = function.clauses().find_map(|clause| match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
-                Some((clause.name()?, clause.args()?))
+                let name = clause.name()?;
+                let args = clause.args()?;
+                let name = self.resolve_name(&name);
+                let param_names: Vec<ParamName> = args
+                    .args()
+                    .enumerate()
+                    .map(
+                        |(i, param)| match ast::Var::cast(param.syntax().to_owned()) {
+                            Some(var) if var.as_name() != "_" => ParamName::Name(var.as_name()),
+                            _ => ParamName::Default(Name::arg(i + 1)),
+                        },
+                    )
+                    .collect();
+                let arity = args.args().count().try_into().ok()?;
+                let name = NameArity::new(name, arity);
+                Some((name, param_names, false))
             }
-            // TODO: macro expansion
-            ast::FunctionOrMacroClause::MacroCallExpr(_) => None,
+            ast::FunctionOrMacroClause::MacroCallExpr(call) => {
+                let name = call.name()?.as_name();
+                let arity = if let Some(args) = call.args() {
+                    args.args().count().try_into().ok()?
+                } else {
+                    0
+                };
+                let name = NameArity::new(name, arity);
+                Some((name, vec![], true))
+            }
         })?;
-
-        let name = self.resolve_name(&name);
-        let param_names: Vec<ParamName> = args
-            .args()
-            .enumerate()
-            .map(
-                |(i, param)| match ast::Var::cast(param.syntax().to_owned()) {
-                    Some(var) if var.as_name() != "_" => ParamName::Name(var.as_name()),
-                    _ => ParamName::Default(Name::arg(i + 1)),
-                },
-            )
-            .collect();
-        let arity = args.args().count().try_into().ok()?;
-        let name = NameArity::new(name, arity);
 
         let form_id = self.id_map.get_id(function);
         let res = Function {
             name,
             param_names,
+            is_macro,
             cond,
             form_id,
             separator: function.separator().map(|(s, t)| (s, t.text_range())),
