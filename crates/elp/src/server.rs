@@ -711,21 +711,21 @@ impl Server {
     }
 
     fn should_reload_project_for_path(&self, path: &AbsPath, change: &FileEvent) -> bool {
-        if change.typ == FileChangeType::CREATED {
-            let path_ref: &Path = path.as_ref();
-            let file_name = path.file_stem().and_then(|name| name.to_str());
-            let ext = path.extension().and_then(|ext| ext.to_str());
-            let result = match (file_name, ext) {
-                (Some("BUCK"), None) => true,
-                (Some("TARGETS"), None) => true,
-                (Some("TARGETS"), Some("v2")) => true,
-                (Some(file), Some("erl")) if file.ends_with("_SUITE") => true,
-                _ => false,
-            };
-            result && path_ref.is_file()
-        } else {
-            false
-        }
+        let path_ref: &Path = path.as_ref();
+        let file_name = path.file_stem().and_then(|name| name.to_str());
+        let ext = path.extension().and_then(|ext| ext.to_str());
+        let result = match (file_name, ext) {
+            (Some("BUCK"), None) => true,
+            (Some("TARGETS"), None) => true,
+            (Some("TARGETS"), Some("v2")) => true,
+            (Some(file), Some("erl"))
+                if change.typ == FileChangeType::CREATED && file.ends_with("_SUITE") =>
+            {
+                true
+            }
+            _ => false,
+        };
+        result && path_ref.is_file()
     }
 
     fn on_loader_progress(&mut self, n_total: usize, n_done: usize, config_version: u32) {
