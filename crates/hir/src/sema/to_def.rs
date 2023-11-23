@@ -474,6 +474,7 @@ impl ToDef for ast::Var {
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let function_id = sema.find_enclosing_function_id(ast.file_id, ast.value.syntax())?;
+        let in_clause = sema.to_function_clause_body(ast.with_value(function_id));
         let (body, body_map) = sema
             .db
             .function_clause_body_with_source(ast.with_value(function_id));
@@ -483,41 +484,18 @@ impl ToDef for ast::Var {
         });
         let resolver = Resolver::new(scopes.clone());
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast.value.clone()));
-        let (var, original_pat_id, pat_ids) =
-            if let Some(expr_id) = body_map.expr_id(ast.with_value(&expr)) {
-                let var = body.body[expr_id].as_var()?;
-                (var, None, resolver.resolve_expr_id(&var, expr_id)?)
-            } else {
-                let pat_id = body_map.pat_id(ast.with_value(&expr))?;
-                let var = body.body[pat_id].as_var()?;
-                (var, Some(pat_id), resolver.resolve_pat_id(&var, pat_id)?)
-            };
-        let mut self_def = false;
-        let mut resolved = pat_ids
-            .iter()
-            .filter_map(|&pat_id| {
-                let var_def = body_map.pat(pat_id)?;
-                let def = VarDef {
-                    file: File {
-                        file_id: var_def.file_id(),
-                    },
-                    var: var_def.value().cast()?,
-                    hir_var: var,
-                };
-                if Some(pat_id) == original_pat_id {
-                    self_def = true;
-                };
-                Some(def)
-            })
-            .collect::<Vec<_>>();
-        if self_def {
-            assert!(resolved.len() == 1);
-            // swap_remove dance necessary to take ownership of element without copying
-            Some(DefinitionOrReference::Definition(resolved.swap_remove(0)))
-        } else if !resolved.is_empty() {
-            Some(DefinitionOrReference::Reference(resolved))
+        if let Some(expr_id) = body_map.expr_id(ast.with_value(&expr)) {
+            let var = body.body[expr_id].as_var()?;
+            in_clause.to_var_def(sema, resolver.resolve_expr_id(&var, expr_id)?, var, None)
         } else {
-            None
+            let pat_id = body_map.pat_id(ast.with_value(&expr))?;
+            let var = body.body[pat_id].as_var()?;
+            in_clause.to_var_def(
+                sema,
+                resolver.resolve_pat_id(&var, pat_id)?,
+                var,
+                Some(pat_id),
+            )
         }
     }
 }

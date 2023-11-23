@@ -1237,6 +1237,80 @@ impl<T> InFunctionClauseBody<T> {
     pub fn as_atom_name(&self, db: &dyn MinDefDatabase, expr: &ExprId) -> Option<Name> {
         Some(db.lookup_atom(self[*expr].as_atom()?))
     }
+
+    pub fn to_var_def_pat(
+        &self,
+        sema: &Semantic,
+        pat_id: PatId,
+    ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
+        match &self[pat_id] {
+            Pat::Var(_) => {
+                let clause_scopes = sema.db.function_clause_scopes(self.function_id);
+                let resolver = Resolver::new(clause_scopes.clone());
+                let (var, original_pat_id, pat_ids) = {
+                    let var = self[pat_id].as_var()?;
+                    (var, Some(pat_id), resolver.resolve_pat_id(&var, pat_id)?)
+                };
+                self.to_var_def(sema, pat_ids, var, original_pat_id)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn to_var_def_expr(
+        &self,
+        sema: &Semantic,
+        expr_id: ExprId,
+    ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
+        match &self[expr_id] {
+            Expr::Var(_) => {
+                let clause_scopes = sema.db.function_clause_scopes(self.function_id);
+                let resolver = Resolver::new(clause_scopes.clone());
+                let (var, original_pat_id, pat_ids) = {
+                    let var = self[expr_id].as_var()?;
+                    (var, None, resolver.resolve_expr_id(&var, expr_id)?)
+                };
+                self.to_var_def(sema, pat_ids, var, original_pat_id)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn to_var_def(
+        &self,
+        sema: &Semantic,
+        pat_ids: &Vec<PatId>,
+        var: Var,
+        original_pat_id: Option<PatId>,
+    ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
+        let mut self_def = false;
+        let mut resolved = pat_ids
+            .iter()
+            .filter_map(|&pat_id| {
+                let var_def = self.get_body_map(sema.db).pat(pat_id)?;
+                let def = VarDef {
+                    file: File {
+                        file_id: var_def.file_id(),
+                    },
+                    var: var_def.value().cast()?,
+                    hir_var: var,
+                };
+                if Some(pat_id) == original_pat_id {
+                    self_def = true;
+                };
+                Some(def)
+            })
+            .collect::<Vec<_>>();
+        if self_def {
+            assert!(resolved.len() == 1);
+            // swap_remove dance necessary to take ownership of element without copying
+            Some(DefinitionOrReference::Definition(resolved.swap_remove(0)))
+        } else if !resolved.is_empty() {
+            Some(DefinitionOrReference::Reference(resolved))
+        } else {
+            None
+        }
+    }
 }
 
 impl<T> Index<ExprId> for InFunctionClauseBody<T> {
