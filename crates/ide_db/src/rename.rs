@@ -215,7 +215,7 @@ impl SymbolDefinition {
             }
             SymbolDefinition::Var(var) => {
                 let usages = sema
-                    .find_local_usages(InFile {
+                    .find_local_usages_ast(InFile {
                         file_id,
                         value: &var.source(sema.db.upcast()),
                     })

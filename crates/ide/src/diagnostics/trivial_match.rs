@@ -21,6 +21,7 @@ use elp_syntax::ast;
 use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
 use hir::AnyExpr;
+use hir::AnyExprId;
 use hir::BinarySeg;
 use hir::BodySourceMap;
 use hir::Expr;
@@ -91,21 +92,15 @@ fn matches_trivially(
             _ => false,
         },
         Pat::Var(l) => {
-            let ast_node = body_map
-                .pat(*pat_id)
-                .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(source_file));
+            let in_clause_var = in_clause.with_value(AnyExprId::Pat(*pat_id));
 
-            if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(ast_var))) = ast_node {
-                let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
-
-                if !var_name_starts_with_underscore(&ast_var)
-                    && is_only_place_where_var_is_defined(sema, infile_ast_var)
-                    && var_has_no_references(sema, infile_ast_var)
-                {
-                    // RHS defines a variable, so this will always match. Moreover, the the variable is
-                    // never used, so we can safely remover it.
-                    return true;
-                }
+            if !var_name_starts_with_underscore(sema.db.upcast(), &l)
+                && is_only_place_where_var_is_defined(sema, &in_clause_var)
+                && var_has_no_references(sema, &in_clause_var)
+            {
+                // RHS defines a variable, so this will always match. Moreover, the the variable is
+                // never used, so we can safely remover it.
+                return true;
             }
 
             match expr {

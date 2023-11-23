@@ -17,7 +17,9 @@ use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
+use hir::db::MinInternDatabase;
 use hir::AnyExpr;
+use hir::AnyExprId;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -106,23 +108,29 @@ pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
     node_range.cover(final_node_range)
 }
 
-pub(crate) fn var_name_starts_with_underscore(var: &ast::Var) -> bool {
-    var.syntax().to_string().starts_with('_')
+pub(crate) fn var_name_starts_with_underscore(db: &dyn MinInternDatabase, var: &hir::Var) -> bool {
+    var.as_string(db).starts_with('_')
 }
 
-pub(crate) fn is_only_place_where_var_is_defined(sema: &Semantic, var: InFile<&ast::Var>) -> bool {
+pub(crate) fn is_only_place_where_var_is_defined(
+    sema: &Semantic,
+    var: &InFunctionClauseBody<AnyExprId>,
+) -> bool {
     check_is_only_place_where_var_is_defined(sema, var).is_some()
 }
 
-pub(crate) fn var_has_no_references(sema: &Semantic, var: InFile<&ast::Var>) -> bool {
+pub(crate) fn var_has_no_references(
+    sema: &Semantic,
+    var: &InFunctionClauseBody<AnyExprId>,
+) -> bool {
     check_var_has_no_references(sema, var).is_some()
 }
 
-pub(crate) fn check_is_only_place_where_var_is_defined(
+pub(crate) fn check_is_only_place_where_var_is_defined_ast(
     sema: &Semantic,
     var: InFile<&ast::Var>,
 ) -> Option<()> {
-    let usages = sema.find_local_usages(var)?;
+    let usages = sema.find_local_usages_ast(var)?;
     let num_definitions = usages
         .iter()
         .filter(|v| sema.to_def(var.with_value(*v)).map_or(false, is_definition))
@@ -130,8 +138,23 @@ pub(crate) fn check_is_only_place_where_var_is_defined(
     if num_definitions == 1 { Some(()) } else { None }
 }
 
-pub(crate) fn check_var_has_no_references(sema: &Semantic, var: InFile<&ast::Var>) -> Option<()> {
+pub(crate) fn check_is_only_place_where_var_is_defined(
+    sema: &Semantic,
+    var: &InFunctionClauseBody<AnyExprId>,
+) -> Option<()> {
     let usages = sema.find_local_usages(var)?;
+    let num_definitions = usages
+        .iter()
+        .filter(|(id, _v)| var.to_var_def_any(sema, *id).map_or(false, is_definition))
+        .count();
+    if num_definitions == 1 { Some(()) } else { None }
+}
+
+pub(crate) fn check_var_has_no_references_ast(
+    sema: &Semantic,
+    var: InFile<&ast::Var>,
+) -> Option<()> {
+    let usages = sema.find_local_usages_ast(var)?;
     let num_definitions = usages
         .iter()
         .filter(|v| {
@@ -142,8 +165,20 @@ pub(crate) fn check_var_has_no_references(sema: &Semantic, var: InFile<&ast::Var
     if num_definitions == 0 { Some(()) } else { None }
 }
 
+pub(crate) fn check_var_has_no_references(
+    sema: &Semantic,
+    var: &InFunctionClauseBody<AnyExprId>,
+) -> Option<()> {
+    let usages = sema.find_local_usages(var)?;
+    let definition_found = usages.iter().any(|(id, _v)| {
+        var.to_var_def_any(sema, *id)
+            .map_or(false, |dor| !is_definition(dor))
+    });
+    if !definition_found { Some(()) } else { None }
+}
+
 pub(crate) fn check_var_has_references(sema: &Semantic, var: InFile<&ast::Var>) -> Option<()> {
-    match check_var_has_no_references(sema, var) {
+    match check_var_has_no_references_ast(sema, var) {
         Some(()) => None,
         None => Some(()),
     }

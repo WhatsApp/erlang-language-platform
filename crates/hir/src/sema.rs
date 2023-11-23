@@ -144,6 +144,20 @@ impl<'db> Semantic<'db> {
         })
     }
 
+    pub fn to_pat(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<PatId>> {
+        let function_id = self.find_enclosing_function_id(expr.file_id, expr.value.syntax())?;
+        let (body, body_map) = self
+            .db
+            .function_clause_body_with_source(expr.with_value(function_id));
+        let pat_id = &body_map.pat_id(expr)?;
+        Some(InFunctionClauseBody {
+            body,
+            function_id: expr.with_value(function_id),
+            body_map: Some(body_map).into(),
+            value: *pat_id,
+        })
+    }
+
     pub fn to_function_body(&self, function_id: InFile<FunctionDefId>) -> InFunctionBody<()> {
         let body = self.db.function_body(function_id);
         InFunctionBody::new(body, function_id, ())
@@ -515,14 +529,17 @@ impl<'db> Semantic<'db> {
         })
     }
 
-    pub fn find_vars_in_clause_ast(&self, expr: &InFile<&ast::Expr>) -> Option<FxHashSet<Var>> {
+    pub fn find_vars_in_clause_ast(
+        &self,
+        expr: &InFile<&ast::Expr>,
+    ) -> Option<FxHashSet<crate::Var>> {
         let in_function = self.to_expr(*expr)?;
         ScopeAnalysis::clause_vars_in_scope(self, &in_function.with_value(()))
     }
 
     /// Find all other variables within the function clause that resolve
     /// to the one given.
-    pub fn find_local_usages(&self, var: InFile<&ast::Var>) -> Option<Vec<ast::Var>> {
+    pub fn find_local_usages_ast(&self, var: InFile<&ast::Var>) -> Option<Vec<ast::Var>> {
         // TODO: replace this function with the appropriate one when the
         // highlight usages feature exists. T128835148
         let var_resolved = self.resolve_var_to_pats(var)?;
@@ -580,6 +597,110 @@ impl<'db> Semantic<'db> {
                 }
             })
             .collect();
+
+        if vars.is_empty() { None } else { Some(vars) }
+    }
+
+    /// Find all other variables within the function clause that resolve
+    /// to the one given.
+    pub fn find_local_usages(
+        &self,
+        // Ideally we would use a type that encodes: Either an ExprId
+        // for a Expr::Var, or a PatId for a Pat::Var (and maybe
+        // TypeExpr::Var in future).
+        in_clause: &InFunctionClauseBody<AnyExprId>,
+    ) -> Option<Vec<(AnyExprId, crate::Var)>> {
+        let resolver = in_clause.resolver(&self);
+        let var_resolved: Vec<_> = match in_clause.value {
+            AnyExprId::Expr(expr_id) => {
+                let var = in_clause[expr_id].as_var()?;
+                resolver.resolve_expr_id(&var, expr_id).cloned()?
+            }
+            AnyExprId::Pat(pat_id) => {
+                let var = in_clause[pat_id].as_var()?;
+                resolver.resolve_pat_id(&var, pat_id).cloned()?
+            }
+            _ => vec![],
+        };
+
+        let mut resolved_set = FxHashSet::from_iter(var_resolved);
+        // We first extend the resolved_set to the widest one that
+        // includes the current variable resolution.  This ensures
+        // that if we are looking at a variable in one leg of a case
+        // clause, and it has equivalents in another leg, then these
+        // are also found.
+        in_clause
+            .body_exprs()
+            .for_each(|(expr_id, expr)| match expr {
+                Expr::Var(v) => {
+                    if let Some(ds) = resolver.resolve_expr_id(&v, expr_id).cloned() {
+                        let ds_set = FxHashSet::from_iter(ds);
+                        if resolved_set.intersection(&ds_set).next().is_some() {
+                            resolved_set.extend(ds_set);
+                        }
+                    }
+                }
+                _ => {}
+            });
+        in_clause.body_pats().for_each(|(pat_id, pat)| match pat {
+            Pat::Var(v) => {
+                if let Some(ds) = resolver.resolve_pat_id(&v, pat_id).cloned() {
+                    let ds_set = FxHashSet::from_iter(ds);
+                    if resolved_set.intersection(&ds_set).next().is_some() {
+                        resolved_set.extend(ds_set);
+                    }
+                }
+            }
+            _ => {}
+        });
+
+        // Then we actually check for any variables that resolve to it.
+        // If we resolve a candidate Var, Check that it resolves to
+        // the one we are looking for
+        // We may be in an arm of a case, receive, try, and so we will
+        // only find one definition. So check for an intersection with
+        // the whole.
+        let mut vars: Vec<_> = in_clause
+            .body_exprs()
+            .filter_map(|(expr_id, expr)| match expr {
+                Expr::Var(v) => {
+                    if let Some(ds) = resolver.resolve_expr_id(&v, expr_id).cloned() {
+                        {
+                            if resolved_set
+                                .intersection(&FxHashSet::from_iter(ds))
+                                .any(|_| true)
+                            {
+                                Some((AnyExprId::Expr(expr_id), *v))
+                            } else {
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+        vars.extend(in_clause.body_pats().filter_map(|(pat_id, pat)| match pat {
+            Pat::Var(v) => {
+                if let Some(ds) = resolver.resolve_pat_id(&v, pat_id).cloned() {
+                    {
+                        if resolved_set
+                            .intersection(&FxHashSet::from_iter(ds))
+                            .any(|_| true)
+                        {
+                            Some((AnyExprId::Pat(pat_id), *v))
+                        } else {
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }));
 
         if vars.is_empty() { None } else { Some(vars) }
     }
@@ -1137,6 +1258,14 @@ impl<T> InFunctionClauseBody<T> {
         self.function_id.file_id
     }
 
+    pub fn body_exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
+        self.body.body.exprs.iter()
+    }
+
+    pub fn body_pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
+        self.body.body.pats.iter()
+    }
+
     pub fn get_body_map(&self, db: &dyn MinDefDatabase) -> Arc<BodySourceMap> {
         if let Some(body_map) = &self.body_map.borrow().as_ref() {
             //return explicitly here because borrow is still held in else statement
@@ -1238,6 +1367,24 @@ impl<T> InFunctionClauseBody<T> {
         Some(db.lookup_atom(self[*expr].as_atom()?))
     }
 
+    fn resolver(&self, sema: &Semantic<'_>) -> Resolver {
+        // Should this be a field in InFunctionClauseBody?
+        let clause_scopes = sema.db.function_clause_scopes(self.function_id);
+        Resolver::new(clause_scopes.clone())
+    }
+
+    pub fn to_var_def_any(
+        &self,
+        sema: &Semantic,
+        id: AnyExprId,
+    ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
+        match id {
+            AnyExprId::Expr(expr_id) => self.to_var_def_expr(sema, expr_id),
+            AnyExprId::Pat(pat_id) => self.to_var_def_pat(sema, pat_id),
+            _ => None,
+        }
+    }
+
     pub fn to_var_def_pat(
         &self,
         sema: &Semantic,
@@ -1245,8 +1392,7 @@ impl<T> InFunctionClauseBody<T> {
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
         match &self[pat_id] {
             Pat::Var(_) => {
-                let clause_scopes = sema.db.function_clause_scopes(self.function_id);
-                let resolver = Resolver::new(clause_scopes.clone());
+                let resolver = self.resolver(sema);
                 let (var, original_pat_id, pat_ids) = {
                     let var = self[pat_id].as_var()?;
                     (var, Some(pat_id), resolver.resolve_pat_id(&var, pat_id)?)
@@ -1359,6 +1505,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::test_db::TestDB;
+    use crate::AnyExprId;
     use crate::InFile;
     use crate::Semantic;
 
@@ -1369,12 +1516,20 @@ mod tests {
 
         let file_syntax = db.parse(position.file_id).syntax_node();
         let var: ast::Var = find_node_at_offset(&file_syntax, position.offset).unwrap();
-        let usages = sema
-            .find_local_usages(InFile {
-                file_id: position.file_id,
-                value: &var,
-            })
+        let in_clause = sema
+            .to_pat(InFile::new(
+                position.file_id,
+                &ast::Expr::ExprMax(ast::ExprMax::Var(var)),
+            ))
             .unwrap();
+        let usages = sema
+            .find_local_usages(&in_clause.with_value(AnyExprId::Pat(in_clause.value)))
+            .unwrap();
+        let usages: Vec<_> = usages
+            .iter()
+            .map(|(id, v)| (in_clause.range_for_any(&db, *id).unwrap(), v.as_string(&db)))
+            .sorted_by_key(|(r, _)| r.start())
+            .collect();
         expect.assert_debug_eq(&usages);
     }
 
@@ -1393,26 +1548,22 @@ mod tests {
                    Z."#,
             expect![[r#"
                 [
-                    Var {
-                        syntax: VAR@109..110
-                          VAR@109..110 "Z"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@171..172
-                          VAR@171..172 "Z"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@201..202
-                          VAR@201..202 "Z"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@279..280
-                          VAR@279..280 "Z"
-                        ,
-                    },
+                    (
+                        109..110,
+                        "Z",
+                    ),
+                    (
+                        171..172,
+                        "Z",
+                    ),
+                    (
+                        201..202,
+                        "Z",
+                    ),
+                    (
+                        279..280,
+                        "Z",
+                    ),
                 ]
             "#]],
         )
@@ -1432,26 +1583,22 @@ mod tests {
                    ok."#,
             expect![[r#"
                 [
-                    Var {
-                        syntax: VAR@29..30
-                          VAR@29..30 "Y"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@101..102
-                          VAR@101..102 "Y"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@146..147
-                          VAR@146..147 "Y"
-                        ,
-                    },
-                    Var {
-                        syntax: VAR@240..241
-                          VAR@240..241 "Y"
-                        ,
-                    },
+                    (
+                        29..30,
+                        "Y",
+                    ),
+                    (
+                        101..102,
+                        "Y",
+                    ),
+                    (
+                        146..147,
+                        "Y",
+                    ),
+                    (
+                        240..241,
+                        "Y",
+                    ),
                 ]
             "#]],
         )

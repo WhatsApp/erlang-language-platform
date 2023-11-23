@@ -106,7 +106,7 @@ fn is_unused_var(
                     infile_ast_ptr.to_node(source_file)
                 {
                     let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
-                    if let Some(var_usages) = sema.find_local_usages(infile_ast_var) {
+                    if let Some(var_usages) = sema.find_local_usages_ast(infile_ast_var) {
                         return var_usages.len() == 1;
                     }
                 }

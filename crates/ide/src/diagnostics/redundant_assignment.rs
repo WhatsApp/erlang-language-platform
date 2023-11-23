@@ -30,7 +30,7 @@ use hir::Semantic;
 
 use super::Diagnostic;
 use super::Severity;
-use crate::codemod_helpers::check_is_only_place_where_var_is_defined;
+use crate::codemod_helpers::check_is_only_place_where_var_is_defined_ast;
 use crate::codemod_helpers::check_var_has_references;
 use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
@@ -122,7 +122,7 @@ fn try_rename_usages(
         let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
         let def = sema.to_def(infile_ast_var)?;
 
-        check_is_only_place_where_var_is_defined(sema, infile_ast_var)?;
+        check_is_only_place_where_var_is_defined_ast(sema, infile_ast_var)?;
         check_var_has_references(sema, infile_ast_var)?; // otherwise covered by trivial-match
 
         if let hir::DefinitionOrReference::Definition(var_def) = def {
