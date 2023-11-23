@@ -448,7 +448,7 @@ mod tests {
             "f(1a) -> ok begin 1 end.",
             expect![[r#"
                 SOURCE_FILE@0..24
-                  FUN_DECL@0..24
+                  FUN_DECL@0..11
                     FUNCTION_CLAUSE@0..11
                       ATOM@0..1
                         ATOM@0..1 "f"
@@ -466,15 +466,15 @@ mod tests {
                         WHITESPACE@8..9 " "
                         ATOM@9..11
                           ATOM@9..11 "ok"
-                    WHITESPACE@11..12 " "
-                    ERROR@12..23
-                      ATOM@12..17
-                        ATOM@12..17 "begin"
-                      WHITESPACE@17..18 " "
-                      INTEGER@18..19
-                        INTEGER@18..19 "1"
-                      WHITESPACE@19..20 " "
-                      ANON_END@20..23 "end"
+                  WHITESPACE@11..12 " "
+                  ERROR@12..24
+                    ATOM@12..17
+                      ATOM@12..17 "begin"
+                    WHITESPACE@17..18 " "
+                    INTEGER@18..19
+                      INTEGER@18..19 "1"
+                    WHITESPACE@19..20 " "
+                    ANON_END@20..23 "end"
                     ANON_DOT@23..24 ".""#]],
         );
     }
@@ -522,16 +522,16 @@ mod tests {
             expect![[r#"
                 SOURCE_FILE@0..104
                   WHITESPACE@0..13 "\n            "
-                  MODULE_ATTRIBUTE@13..26
-                    ANON_DASH@13..14 "-"
-                    ANON_MODULE@14..20 "module"
-                    ANON_LPAREN@20..21 "("
-                    ATOM@21..24
-                      ATOM@21..24 "foo"
-                    ANON_RPAREN@24..25 ")"
-                    ANON_DOT@25..26 "."
-                  WHITESPACE@26..40 "\n\n            "
-                  ERROR@40..104
+                  ERROR@13..104
+                    MODULE_ATTRIBUTE@13..26
+                      ANON_DASH@13..14 "-"
+                      ANON_MODULE@14..20 "module"
+                      ANON_LPAREN@20..21 "("
+                      ATOM@21..24
+                        ATOM@21..24 "foo"
+                      ANON_RPAREN@24..25 ")"
+                      ANON_DOT@25..26 "."
+                    WHITESPACE@26..40 "\n\n            "
                     ATOM@40..44
                       ATOM@40..44 "test"
                     EXPR_ARGS@44..50
@@ -653,7 +653,7 @@ mod tests {
             }"#]]
         .assert_eq(format!("{:#?}", fun).as_str());
         let fun_clauses = fun.clauses();
-        assert_eq!(fun_clauses.clone().count(), 1);
+        assert_eq!(fun.clauses().count(), 1);
 
         let clauses_cast: Vec<ast::FunctionClause> = file
             .syntax()

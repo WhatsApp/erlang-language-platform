@@ -13,9 +13,12 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
+use elp_syntax::ast::ClauseSeparator;
 use elp_syntax::syntax_node::SyntaxNode;
+use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
+use hir::Semantic;
 use text_edit::TextEdit;
 
 use super::DiagnosticCode;
@@ -27,25 +30,84 @@ use crate::Diagnostic;
 //
 // Diagnostic for mismatches between the clauses of a function declaration.
 
+// TODO use lowered versions, they have the separator in them. T170135788
+pub(crate) fn head_mismatch_semantic(
+    diagnostics: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    file_id: FileId,
+) {
+    let def_map = sema.def_map(file_id);
+    let head_info = def_map
+        .get_function_clauses_ordered()
+        .iter()
+        .filter_map(|(_idx, def)| {
+            let ast_fun = def.source(sema.db.upcast());
+            if let Some(clause) = match ast_fun.clause() {
+                Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => Some(clause),
+                _ => None,
+            } {
+                Some((clause_head_info(clause)?, ast_fun.separator()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    let heads = partition_to_funs(&head_info);
+    for head in heads {
+        Name {}.validate_fundecl_attr(file_id, &head, diagnostics);
+        Arity {}.validate_fundecl_attr(file_id, &head, diagnostics);
+    }
+}
+
+// We have the function clauses, in order, including their separators.
+// Combine ones according to separators using normal Erlang syntax.
+// If a separator is missing, treat it as the end of the current
+// function.
+fn partition_to_funs(
+    heads: &[(HeadInfo, Option<(ast::ClauseSeparator, SyntaxToken)>)],
+) -> Vec<Vec<HeadInfo>> {
+    let mut res = Vec::default();
+    let mut current = Vec::default();
+
+    heads.iter().for_each(|(head_info, separator)| {
+        if let Some((separator, _)) = separator {
+            match separator {
+                ClauseSeparator::Semi => {
+                    current.push(head_info.clone());
+                }
+                ClauseSeparator::Dot => {
+                    current.push(head_info.clone());
+                    res.push(current.clone());
+                    current = Vec::default();
+                }
+                ClauseSeparator::Missing => {
+                    if !current.is_empty() {
+                        res.push(current.clone());
+                        current = Vec::default();
+                    }
+                }
+            }
+        } else {
+            // Start a new one.
+            if !current.is_empty() {
+                res.push(current.clone());
+                current = Vec::default();
+            }
+        }
+    });
+
+    if !current.is_empty() {
+        res.push(current.clone());
+    }
+    res
+}
+
 pub(crate) fn head_mismatch(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    head_mismatch_fundecl(acc, file_id, node);
     head_mismatch_anonymous_fun(acc, file_id, node);
-    Some(())
-}
-
-pub(crate) fn head_mismatch_fundecl(
-    acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    let f = ast::FunDecl::cast(node.clone())?;
-    let heads: Vec<HeadInfo> = fundecl_heads(f);
-    Name {}.validate_fundecl_attr(file_id, &heads, acc);
-    Arity {}.validate_fundecl_attr(file_id, &heads, acc);
     Some(())
 }
 
@@ -232,28 +294,19 @@ impl Validate<usize> for Arity {
     }
 }
 
-fn fundecl_heads(fun_decl: ast::FunDecl) -> Vec<HeadInfo> {
-    fun_decl
-        .clauses()
-        .flat_map(|clause| match clause {
-            ast::FunctionOrMacroClause::FunctionClause(clause) => Some(clause),
-            ast::FunctionOrMacroClause::MacroCallExpr(_) => None,
-        })
-        .flat_map(|clause| {
-            let name = match clause.name()? {
-                ast::Name::Atom(name) => name,
-                ast::Name::MacroCallExpr(_) | ast::Name::Var(_) => return None,
-            };
-            let clause_name = name.text()?;
-            let clause_arity = clause.args()?.args().count();
-            Some((
-                clause_name,
-                name.syntax().text_range(),
-                clause_arity,
-                clause.syntax().text_range(),
-            ))
-        })
-        .collect()
+fn clause_head_info(clause: ast::FunctionClause) -> Option<HeadInfo> {
+    let name = match clause.name()? {
+        ast::Name::Atom(name) => name,
+        ast::Name::MacroCallExpr(_) | ast::Name::Var(_) => return None,
+    };
+    let clause_name = name.text()?;
+    let clause_arity = clause.args()?.args().count();
+    Some((
+        clause_name,
+        name.syntax().text_range(),
+        clause_arity,
+        clause.syntax().text_range(),
+    ))
 }
 
 fn anonymous_fun_heads(fun: ast::AnonymousFun) -> Vec<HeadInfo> {
@@ -282,10 +335,30 @@ fn anonymous_fun_heads(fun: ast::AnonymousFun) -> Vec<HeadInfo> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
-    use crate::tests::check_fix;
+    use crate::diagnostics::DiagnosticCode;
+    use crate::diagnostics::DiagnosticsConfig;
+    use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_nth_fix;
 
-    // The followings tests exercice head_mismatch function indirectly.
+    #[track_caller]
+    fn check_diagnostics(ra_fixture: &str) {
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
+            .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
+        check_diagnostics_with_config(config, ra_fixture)
+    }
+
+    #[track_caller]
+    fn check_fix(fixture_before: &str, fixture_after: &str) {
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
+            .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
+        check_nth_fix(0, fixture_before, fixture_after, config);
+    }
+
+    // The followings tests exercise head_mismatch function indirectly.
 
     #[test]
     fn test_head_mismatch() {
@@ -307,6 +380,25 @@ mod tests {
     -module(main).
     foo(0) -> 1;
     foo(1) -> 2.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_head_mismatch_2() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            food(0) ->
+                ok;
+            fooX(_X) ->
+         %% ^^^^ 💡 error: head mismatch 'fooX' vs 'food'
+                no.
+
+            bar() ->
+                baz(b, a).
+
+            baz(A,B) -> {A,B}.
             "#,
         );
     }

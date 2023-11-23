@@ -31,8 +31,8 @@ pub(crate) fn links(sema: &Semantic, def: SymbolDefinition) -> Option<Vec<DocLin
         SymbolDefinition::Function(function_def) => {
             if function_def.is_in_otp(sema.db) {
                 let module_name = sema.module_name(function_def.file.file_id)?.to_string();
-                let function_name = function_def.function.name.name();
-                let function_arity = function_def.function.name.arity();
+                let function_name = function_def.name.name();
+                let function_arity = function_def.name.arity();
                 let title = format!("{module_name}:{function_name}/{function_arity}");
                 let uri = format!(
                     "{}/doc/man/{}.html#{}-{}",

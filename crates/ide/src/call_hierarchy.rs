@@ -52,7 +52,8 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
         for range in ranges {
             if let Some(call) = algo::find_node_at_offset::<ast::Call>(syntax, range.start()) {
-                let enclosing_function_id = sema.find_enclosing_function(file_id, call.syntax())?;
+                let enclosing_function_id =
+                    sema.find_enclosing_function_id(file_id, call.syntax())?;
                 let enclosing_function_name = &form_list[enclosing_function_id].name;
                 let def_map = sema.def_map(file_id);
                 let enclosing_function_def = def_map.get_function(enclosing_function_name)?;

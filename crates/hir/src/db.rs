@@ -16,12 +16,12 @@ use elp_base_db::Upcast;
 use elp_syntax::ast;
 use fxhash::FxHashMap;
 
+use crate::body::scope::ExprScopes;
 use crate::body::scope::FunctionScopes;
 use crate::body::DefineBody;
-use crate::body::FunctionClauseBody;
+use crate::def_map::FunctionDefId;
 use crate::edoc;
 use crate::edoc::EdocHeader;
-use crate::expr::ClauseId;
 use crate::include;
 pub use crate::intern::MinInternDatabase;
 pub use crate::intern::MinInternDatabaseStorage;
@@ -36,6 +36,7 @@ use crate::DefMap;
 use crate::DefineId;
 use crate::FormList;
 use crate::FunctionBody;
+use crate::FunctionClauseBody;
 use crate::FunctionId;
 use crate::InFile;
 use crate::InFileAstPtr;
@@ -59,8 +60,14 @@ pub trait MinDefDatabase:
     #[salsa::invoke(FunctionBody::function_body_with_source_query)]
     fn function_body_with_source(
         &self,
-        function_id: InFile<FunctionId>,
+        function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
+
+    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_query)]
+    fn function_clause_body_with_source(
+        &self,
+        function_id: InFile<FunctionId>,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
     #[salsa::invoke(RecordBody::record_body_with_source_query)]
     fn record_body_with_source(
@@ -103,12 +110,8 @@ pub trait MinDefDatabase:
     ) -> Option<(Arc<DefineBody>, Arc<BodySourceMap>)>;
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
-    fn function_body(&self, function_id: InFile<FunctionId>) -> Arc<FunctionBody>;
-    fn function_clause_body(
-        &self,
-        function_id: InFile<FunctionId>,
-        clause_id: ClauseId,
-    ) -> Arc<FunctionClauseBody>;
+    fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
+    fn function_clause_body(&self, function_id: InFile<FunctionId>) -> Arc<FunctionClauseBody>;
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
@@ -118,7 +121,10 @@ pub trait MinDefDatabase:
     fn define_body(&self, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>>;
 
     #[salsa::invoke(FunctionScopes::function_scopes_query)]
-    fn function_scopes(&self, fun: InFile<FunctionId>) -> Arc<FunctionScopes>;
+    fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
+
+    #[salsa::invoke(FunctionScopes::function_clause_scopes_query)]
+    fn function_clause_scopes(&self, fun: InFile<FunctionId>) -> Arc<ExprScopes>;
 
     #[salsa::invoke(include::resolve)]
     fn resolve_include(&self, include_id: InFile<IncludeAttributeId>) -> Option<FileId>;
@@ -147,17 +153,15 @@ pub trait MinDefDatabase:
     fn local_def_map(&self, file_id: FileId) -> Arc<DefMap>;
 }
 
-fn function_body(db: &dyn MinDefDatabase, function_id: InFile<FunctionId>) -> Arc<FunctionBody> {
+fn function_body(db: &dyn MinDefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
     db.function_body_with_source(function_id).0
 }
 
 fn function_clause_body(
     db: &dyn MinDefDatabase,
     function_id: InFile<FunctionId>,
-    clause_id: ClauseId,
 ) -> Arc<FunctionClauseBody> {
-    let function_body = db.function_body_with_source(function_id).0;
-    function_body.clauses[clause_id].clone()
+    db.function_clause_body_with_source(function_id).0
 }
 
 fn type_body(db: &dyn MinDefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {

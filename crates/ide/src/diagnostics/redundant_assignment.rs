@@ -37,14 +37,11 @@ use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
 pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                process_matches(diags, sema, def)
-            }
-        });
+    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
+        if def.file.file_id == file_id {
+            process_matches(diags, sema, def)
+        }
+    });
 }
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
@@ -60,7 +57,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
                             if let Expr::Var(_) = &in_clause[rhs] {
                                 if let Some(diag) = is_var_assignment_to_unused_var(
                                     sema,
-                                    &in_clause,
+                                    in_clause,
                                     def.file.file_id,
                                     expr_id,
                                     lhs,

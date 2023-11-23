@@ -99,7 +99,7 @@ impl SymbolDefinition {
                     rename_error!("Invalid new function name: '{}'", get_name(None));
                 }
 
-                let arity = fun.function.name.arity();
+                let arity = fun.name.arity();
                 if safety_check == SafetyChecks::Yes
                     && !is_safe_function(sema, fun.file.file_id, &get_name(None), arity)
                 {
@@ -165,22 +165,22 @@ impl SymbolDefinition {
             SymbolDefinition::Function(function) => {
                 let usages = self.clone().usages(sema).all();
                 let mut def_usages = Vec::default();
-                let fun = function.source(sema.db.upcast());
-                for clause in fun.clauses() {
-                    match clause {
-                        ast::FunctionOrMacroClause::FunctionClause(fc) => {
+                let funs = function.source(sema.db.upcast());
+                for fun in funs {
+                    match fun.clause() {
+                        Some(ast::FunctionOrMacroClause::FunctionClause(fc)) => {
                             if let Some(name) = fc.name() {
                                 def_usages.push(NameLike::Name(name));
                             }
                         }
-                        ast::FunctionOrMacroClause::MacroCallExpr(_) => {}
+                        _ => {}
                     };
                 }
                 if safety_check == SafetyChecks::Yes {
                     // We have already checked the function safe in
                     // its defining file, check remote references
                     // now.
-                    let arity = function.function.name.arity();
+                    let arity = function.name.arity();
                     let mut problems = usages.iter().filter(|(file_id, _refs)| {
                         !is_safe_function(sema, *file_id, &get_name(None), arity)
                     });

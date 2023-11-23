@@ -92,14 +92,11 @@ pub(crate) fn deprecated_function(
         .iter()
         .map(|(m, d)| (m, d.clone()))
         .collect::<Vec<_>>();
-    sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                check_function(diagnostics, sema, def, &matches)
-            }
-        });
+    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
+        if def.file.file_id == file_id {
+            check_function(diagnostics, sema, def, &matches)
+        }
+    });
 }
 
 pub(crate) fn check_function(
@@ -154,7 +151,7 @@ fn make_diagnostic(
     def: &FunctionDef,
     details: Option<DeprecationDetails>,
 ) -> Diagnostic {
-    let base_message = format!("Function '{}' is deprecated.", def.function.name);
+    let base_message = format!("Function '{}' is deprecated.", def.name);
     let base_message = match &def.deprecated_desc {
         Some(desc) => {
             let desc = desc.to_string();
@@ -210,8 +207,8 @@ fn fix_xref_ignore(
     let text = format!(
         "-ignore_xref([{{{}, {}, {}}}]).\n",
         module.as_str(),
-        def.function.name.name(),
-        def.function.name.arity()
+        def.name.name(),
+        def.name.arity()
     );
     let mut edit_builder = TextEdit::builder();
     edit_builder.insert(offset, text);

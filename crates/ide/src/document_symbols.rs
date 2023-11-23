@@ -55,36 +55,40 @@ pub trait ToDocumentSymbol {
 impl ToDocumentSymbol for FunctionDef {
     fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol {
         let source = self.source(db.upcast());
-        let range = source.syntax().text_range();
+        let range = self
+            .range(db.upcast())
+            .unwrap_or(TextRange::new(0.into(), 0.into())); // default should never be needed
         let mut children = Vec::new();
-        for clause in source.clauses() {
-            let function_name = self.function.name.to_string();
-            let function_name_no_arity = self.function.name.name().to_string();
-            let clause_name = match &clause {
-                FunctionOrMacroClause::FunctionClause(clause) => match clause.args() {
-                    None => Name::MISSING.to_string(),
-                    Some(args) => args.to_string(),
-                },
-                FunctionOrMacroClause::MacroCallExpr(_) => Name::MISSING.to_string(),
-            };
-            let range = clause.syntax().text_range();
-            let selection_range = match &clause {
-                FunctionOrMacroClause::FunctionClause(clause) => match clause.name() {
-                    None => range,
-                    Some(name) => name.syntax().text_range(),
-                },
-                FunctionOrMacroClause::MacroCallExpr(_) => range,
-            };
-            let symbol = DocumentSymbol {
-                name: format!("{function_name_no_arity}{clause_name}"),
-                kind: SymbolKind::Function,
-                range,
-                selection_range,
-                deprecated: self.deprecated,
-                detail: Some(function_name),
-                children: None,
-            };
-            children.push(symbol);
+        for fun_clause in source.iter() {
+            if let Some(clause) = fun_clause.clause() {
+                let function_name = self.name.to_string();
+                let function_name_no_arity = self.name.name().to_string();
+                let clause_name = match &clause {
+                    FunctionOrMacroClause::FunctionClause(clause) => match clause.args() {
+                        None => Name::MISSING.to_string(),
+                        Some(args) => args.to_string(),
+                    },
+                    FunctionOrMacroClause::MacroCallExpr(_) => Name::MISSING.to_string(),
+                };
+                let range = clause.syntax().text_range();
+                let selection_range = match &clause {
+                    FunctionOrMacroClause::FunctionClause(clause) => match clause.name() {
+                        None => range,
+                        Some(name) => name.syntax().text_range(),
+                    },
+                    FunctionOrMacroClause::MacroCallExpr(_) => range,
+                };
+                let symbol = DocumentSymbol {
+                    name: format!("{function_name_no_arity}{clause_name}"),
+                    kind: SymbolKind::Function,
+                    range,
+                    selection_range,
+                    deprecated: self.deprecated,
+                    detail: Some(function_name),
+                    children: None,
+                };
+                children.push(symbol);
+            }
         }
         let selection_range = children.first().map_or(range, |c| c.selection_range);
         let children = if !children.is_empty() {
@@ -93,7 +97,7 @@ impl ToDocumentSymbol for FunctionDef {
             None
         };
         DocumentSymbol {
-            name: self.function.name.to_string(),
+            name: self.name.to_string(),
             kind: SymbolKind::Function,
             range,
             selection_range,

@@ -240,6 +240,7 @@ impl<'a> Ctx<'a> {
             param_names,
             cond,
             form_id,
+            separator: function.separator().map(|(s, t)| (s, t.text_range())),
         };
         Some(FormIdx::Function(self.data.functions.alloc(res)))
     }

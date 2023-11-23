@@ -25,6 +25,7 @@ use fxhash::FxHashMap;
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
 use crate::db::MinDefDatabase;
+use crate::def_map::FunctionDefId;
 use crate::expr::MaybeExpr;
 use crate::known;
 use crate::macro_exp;
@@ -121,10 +122,6 @@ impl<'a> Ctx<'a> {
         self.function_info = Some((name, arity));
     }
 
-    pub fn set_function_info_raw(&mut self, info: Option<(Atom, u32)>) {
-        self.function_info = info;
-    }
-
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
         // Verify macro expansion state
         let entry = self.macro_stack.pop().expect("BUG: macro stack empty");
@@ -139,13 +136,16 @@ impl<'a> Ctx<'a> {
 
     pub fn lower_function(
         mut self,
-        function_id: InFile<FunctionId>,
-        function: &ast::FunDecl,
+        function_id: InFile<FunctionDefId>,
+        clause_ids: Vec<FunctionId>,
+        name: &NameArity,
+        function_asts: &[ast::FunDecl],
     ) -> (FunctionBody, Vec<Arc<BodySourceMap>>) {
         let mut source_maps = Vec::default();
-        let clauses = function
-            .clauses()
-            .flat_map(|clause| self.lower_clause_or_macro_body(clause))
+        let clauses = function_asts
+            .iter()
+            .filter_map(|f| f.clause())
+            .flat_map(|clause| self.lower_clause_or_macro_body(name, clause))
             .map(|(body, source_map)| {
                 source_maps.push(Arc::new(source_map));
                 Arc::new(body)
@@ -155,6 +155,7 @@ impl<'a> Ctx<'a> {
         (
             FunctionBody {
                 function_id,
+                clause_ids,
                 clauses,
             },
             source_maps,
@@ -289,8 +290,9 @@ impl<'a> Ctx<'a> {
         (AttributeBody { body, value }, source_map)
     }
 
-    fn lower_clause_or_macro_body(
+    pub(crate) fn lower_clause_or_macro_body(
         &mut self,
+        name: &NameArity,
         clause: ast::FunctionOrMacroClause,
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
@@ -298,7 +300,7 @@ impl<'a> Ctx<'a> {
                 Either::Left(once(FunctionClauseBody::lower_clause_body(
                     self.db,
                     self.original_file_id,
-                    self.function_info,
+                    name,
                     &clause,
                 )))
             }
@@ -311,7 +313,7 @@ impl<'a> Ctx<'a> {
                                 ast::MacroDefReplacement::ReplacementFunctionClauses(clauses),
                             ) => clauses
                                 .clauses()
-                                .flat_map(|clause| this.lower_clause_or_macro_body(clause))
+                                .flat_map(|clause| this.lower_clause_or_macro_body(name, clause))
                                 .collect(),
                             // no built-in macro makes sense in this place
                             MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],

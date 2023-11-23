@@ -250,7 +250,7 @@ impl AstClauseId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct Clause {
     pub pats: Vec<PatId>,
     pub guards: Vec<Vec<ExprId>>,

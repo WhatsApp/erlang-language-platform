@@ -39,6 +39,7 @@ use la_arena::Idx;
 
 use super::UnexpandedIndex;
 use crate::db::MinDefDatabase;
+use crate::def_map::FunctionDefId;
 use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
 use crate::Body;
@@ -174,7 +175,7 @@ pub enum AddBinding {
 impl FunctionScopes {
     pub(crate) fn function_scopes_query(
         db: &dyn MinDefDatabase,
-        function_id: InFile<FunctionId>,
+        function_id: InFile<FunctionDefId>,
     ) -> Arc<FunctionScopes> {
         let function_body = db.function_body(function_id);
         let anonymous_var = db.var(Name::ANONYMOUS);
@@ -186,6 +187,16 @@ impl FunctionScopes {
         Arc::new(FunctionScopes { clause_scopes })
     }
 
+    pub(crate) fn function_clause_scopes_query(
+        db: &dyn MinDefDatabase,
+        function_id: InFile<FunctionId>,
+    ) -> Arc<ExprScopes> {
+        let function_body = db.function_clause_body(function_id);
+        let anonymous_var = db.var(Name::ANONYMOUS);
+        Arc::new(ExprScopes::for_clause(&function_body, anonymous_var))
+    }
+
+    #[cfg(test)]
     pub(crate) fn get(&self, clause: ClauseId) -> Option<ExprScopes> {
         self.clause_scopes.get(clause).cloned()
     }
@@ -714,19 +725,15 @@ mod tests {
     use crate::db::MinDefDatabase;
     use crate::db::MinInternDatabase;
     use crate::test_db::TestDB;
-    use crate::FunctionId;
+    use crate::FunctionDefId;
     use crate::InFile;
     use crate::Semantic;
 
     // Return the first function found in the test fixture
-    fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
-        let forms = db.file_form_list(file_id);
-
-        let function = forms.forms().iter().find_map(|form| match form {
-            crate::FormIdx::Function(f) => Some(f),
-            _ => None,
-        });
-        *function.unwrap()
+    fn find_function(db: &TestDB, file_id: FileId) -> FunctionDefId {
+        let def_map = db.def_map(file_id);
+        let (_, fun) = def_map.get_functions().next().unwrap();
+        fun.function_id
     }
 
     #[track_caller]

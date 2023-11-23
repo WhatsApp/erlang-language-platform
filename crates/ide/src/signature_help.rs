@@ -210,11 +210,13 @@ fn build_signature_help(
         Some(m) => format_to!(help.signature, "{m}:{fun_name}("),
         None => format_to!(help.signature, "{fun_name}("),
     }
-    let parameters = &def.function.param_names;
-    for parameter in parameters {
-        help.push_param(parameter);
+    if let Some(function) = def.function.get(0) {
+        let parameters = &function.param_names;
+        for parameter in parameters {
+            help.push_param(&parameter);
+        }
+        help.signature.push(')');
     }
-    help.signature.push(')');
     help
 }
 
@@ -233,7 +235,12 @@ fn get_function_doc(
 ) -> Option<String> {
     let position = FilePosition {
         file_id,
-        offset: def.source(sema.db.upcast()).syntax().text_range().start(),
+        offset: def
+            .source(sema.db.upcast())
+            .get(0)?
+            .syntax()
+            .text_range()
+            .start(),
     };
     let (doc, _file_range) = get_doc_at_position(db, position)?;
     Some(doc.markdown_text().to_string())

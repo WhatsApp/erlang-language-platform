@@ -135,7 +135,7 @@ fn is_file_used(
             return true;
         }
 
-        for fun_def in def_map.get_functions().values() {
+        for (_, fun_def) in def_map.get_functions() {
             if SymbolDefinition::Function(fun_def.clone())
                 .usages(sema)
                 .set_scope(&scope)

@@ -34,9 +34,8 @@ pub(super) fn hints(
         return None;
     }
     let def_map = sema.def_map(file_id);
-    for def in def_map.get_functions().values() {
+    for (_, def) in def_map.get_functions() {
         if def.file.file_id == file_id {
-            let def_fb = def.in_function_body(sema.db, def);
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
             function_body.fold_function_with_macros(
@@ -50,11 +49,11 @@ pub(super) fn hints(
                             let body = &function_body.body(clause_id);
                             if let Some(call_def) = target.resolve_call(arity, sema, file_id, body)
                             {
-                                let param_names = call_def.function.param_names;
+                                let param_names = &call_def.function[0].param_names;
                                 for (param_name, arg) in param_names.iter().zip(args) {
                                     if should_hint(sema.db.upcast(), param_name, &body[arg]) {
                                         if let Some(arg_range) =
-                                            def_fb.range_for_expr(sema.db, clause_id, arg)
+                                            function_body.range_for_expr(sema.db, clause_id, arg)
                                         {
                                             if range_limit.is_none()
                                                 || range_limit.unwrap().contains_range(arg_range)

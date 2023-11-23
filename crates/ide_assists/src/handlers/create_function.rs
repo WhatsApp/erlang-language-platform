@@ -76,12 +76,10 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                     let function_args =
                         ctx.create_function_args(function_id, args, &call_expr.body());
 
-                    let enclosing_function = &form_list[function_id];
-
-                    let function_range = ctx
-                        .form_ast(enclosing_function.form_id)
-                        .syntax()
-                        .text_range();
+                    let fun_def = ctx
+                        .sema
+                        .function_def(&InFile::new(ctx.file_id(), function_id))?;
+                    let function_range = fun_def.range(ctx.sema.db.upcast())?;
 
                     let insert = function_range.end() + TextSize::from(1);
 

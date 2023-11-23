@@ -21,8 +21,7 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use hir::AnyExpr;
 use hir::AnyExprId;
-use hir::FormIdx;
-use hir::FunctionDef;
+use hir::FunctionClauseDef;
 use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::PatId;
@@ -39,65 +38,53 @@ use crate::fix;
 
 pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
+        .get_function_clauses()
+        .for_each(|(_, def)| {
             if def.file.file_id != file_id {
                 return;
             }
             let source_file = sema.parse(file_id);
 
-            let def_fb = def.in_function_body(sema.db, def);
+            let in_clause = def.in_clause(sema.db, def);
+            let body_map = in_clause.get_body_map(sema.db);
+            let clause = in_clause.clone().body;
 
-            for (clause_id, clause) in def_fb.clone().clauses() {
-                let pats = &clause.clause.pats;
-                let in_clause = def_fb.in_clause(clause_id);
-                let body_map = def_fb.get_body_map(sema.db, clause_id);
-                let mut unused_vars_with_wrong_name = HashMap::new();
+            let pats = &clause.clause.pats;
+            let mut unused_vars_with_wrong_name = HashMap::new();
 
-                for clause_arg_pat_id in pats.iter() {
-                    in_clause.fold_pat(
-                        FormIdx::Function(def.function_id),
-                        Strategy::TopDown,
-                        *clause_arg_pat_id,
-                        (),
-                        &mut |(), ctx| {
-                            match ctx.item_id {
-                                AnyExprId::Pat(pat_id) => {
-                                    // if let Some(var) = ctx.pat.as_var() {
-                                    if let Some(var) = match ctx.item {
-                                        AnyExpr::Pat(pat) => pat.as_var(),
-                                        _ => None,
-                                    } {
-                                        if is_unused_var(
-                                            sema,
-                                            &in_clause,
-                                            &body_map,
-                                            &source_file,
-                                            &pat_id,
-                                        ) {
-                                            let var_name = var.as_string(sema.db.upcast());
-                                            if !var_name.starts_with('_') {
-                                                unused_vars_with_wrong_name
-                                                    .insert(pat_id, var_name);
-                                            }
-                                        }
+            for clause_arg_pat_id in pats.iter() {
+                in_clause.fold_pat(
+                    def.form_id(),
+                    Strategy::TopDown,
+                    *clause_arg_pat_id,
+                    (),
+                    &mut |(), ctx| match ctx.item_id {
+                        AnyExprId::Pat(pat_id) => {
+                            if let Some(var) = match ctx.item {
+                                AnyExpr::Pat(pat) => pat.as_var(),
+                                _ => None,
+                            } {
+                                if is_unused_var(sema, &in_clause, &body_map, &source_file, &pat_id)
+                                {
+                                    let var_name = var.as_string(sema.db.upcast());
+                                    if !var_name.starts_with('_') {
+                                        unused_vars_with_wrong_name.insert(pat_id, var_name);
                                     }
                                 }
-                                _ => {}
                             }
-                        },
-                    );
-                }
+                        }
+                        _ => {}
+                    },
+                );
+            }
 
-                if !unused_vars_with_wrong_name.is_empty() {
-                    if let Some(replacements) =
-                        pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
-                    {
-                        for (pat_id, new_name) in replacements.iter() {
-                            if let Some(range) = in_clause.range_for_pat(sema.db, *pat_id) {
-                                diags.push(make_diagnostic(file_id, range, new_name.clone()));
-                            }
+            if !unused_vars_with_wrong_name.is_empty() {
+                if let Some(replacements) =
+                    pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
+                {
+                    for (pat_id, new_name) in replacements.iter() {
+                        if let Some(range) = in_clause.range_for_pat(sema.db, *pat_id) {
+                            diags.push(make_diagnostic(file_id, range, new_name.clone()));
                         }
                     }
                 }
@@ -107,7 +94,7 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 
 fn is_unused_var(
     sema: &Semantic,
-    in_clause: &InFunctionClauseBody<&FunctionDef>,
+    in_clause: &InFunctionClauseBody<&FunctionClauseDef>,
     body_map: &hir::BodySourceMap,
     source_file: &InFile<ast::SourceFile>,
     pat_id: &PatId,
@@ -133,7 +120,7 @@ fn is_unused_var(
 // Pick a new name for the unused vars, that start with an underscore. Ensure no clash with existing names.
 fn pick_new_unused_var_names(
     sema: &Semantic,
-    in_clause: &InFunctionClauseBody<&FunctionDef>,
+    in_clause: &InFunctionClauseBody<&FunctionClauseDef>,
     unused_var_names: &HashMap<PatId, String>,
 ) -> Option<HashMap<PatId, String>> {
     let clause_vars = hir::ScopeAnalysis::clause_vars_in_scope(sema, &in_clause.with_value(()))?;

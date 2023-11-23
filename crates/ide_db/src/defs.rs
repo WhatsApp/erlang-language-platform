@@ -247,7 +247,7 @@ impl SymbolDefinition {
     pub fn search_name(&self, db: &dyn MinDefDatabase) -> SmolStr {
         match self {
             SymbolDefinition::Module(it) => it.name(db).raw(),
-            SymbolDefinition::Function(it) => it.function.name.name().raw(),
+            SymbolDefinition::Function(it) => it.name.name().raw(),
             SymbolDefinition::Record(it) => it.record.name.raw(),
             SymbolDefinition::RecordField(it) => it.field.name.raw(),
             SymbolDefinition::Type(it) => it.name().name().raw(),

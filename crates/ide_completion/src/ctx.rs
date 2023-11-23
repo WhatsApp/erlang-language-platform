@@ -223,6 +223,7 @@ impl Ctx {
 /// Tests of internals, delete when autocomplete is full-featured T126163525
 #[cfg(test)]
 mod ctx_tests {
+    use elp_base_db::SourceDatabase;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide_db::elp_base_db::FilePosition;
     use elp_ide_db::RootDatabase;
@@ -236,6 +237,7 @@ mod ctx_tests {
         let sema = Semantic::new(&db);
         let parsed = sema.parse(file_id);
         let node = parsed.value.syntax();
+        let offset = db.clamp_offset(file_id, offset);
         Ctx::new(node, offset)
     }
 

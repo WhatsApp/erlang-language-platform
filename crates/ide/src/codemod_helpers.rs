@@ -289,7 +289,7 @@ impl MFA {
     ) -> Option<MFA> {
         let call_target = target.resolve_call(arity, sema, file_id, body)?;
         let call_module = call_target.module?;
-        let na = call_target.function.name;
+        let na = call_target.name;
         Some(MFA {
             module: call_module.to_quoted_string(),
             name: na.name().to_quoted_string(),
@@ -419,8 +419,7 @@ mod tests {
     ) {
         sema.def_map(file_id)
             .get_functions()
-            .iter()
-            .for_each(|(_arity, def)| check_function(diags, sema, def, match_spec.clone()));
+            .for_each(|(_, def)| check_function(diags, sema, def, match_spec.clone()));
     }
 
     fn check_function(

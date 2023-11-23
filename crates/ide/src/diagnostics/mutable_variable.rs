@@ -29,7 +29,6 @@ use elp_ide_db::elp_base_db::FileId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::AnyExpr;
-use hir::ClauseId;
 use hir::Expr;
 use hir::FunctionId;
 use hir::PatId;
@@ -43,39 +42,32 @@ pub(crate) fn mutable_variable_bug(
     sema: &Semantic,
     file_id: FileId,
 ) -> Option<()> {
-    let mut bound_vars_by_function: FxHashMap<(FunctionId, ClauseId), FxHashSet<&PatId>> =
-        FxHashMap::default();
+    let mut bound_vars_by_function: FxHashMap<FunctionId, FxHashSet<&PatId>> = FxHashMap::default();
     let bound_vars = sema.bound_vars_in_pattern_diagnostic(file_id);
-    bound_vars
-        .iter()
-        .for_each(|(function_id, clause_id, pat_id, _var)| {
-            bound_vars_by_function
-                .entry((function_id.value, *clause_id))
-                .and_modify(|vars| {
-                    vars.insert(pat_id);
-                })
-                .or_insert_with(|| {
-                    let mut vars = FxHashSet::default();
-                    vars.insert(pat_id);
-                    vars
-                });
-        });
+    bound_vars.iter().for_each(|(function_id, pat_id, _var)| {
+        bound_vars_by_function
+            .entry(function_id.value)
+            .and_modify(|vars| {
+                vars.insert(pat_id);
+            })
+            .or_insert_with(|| {
+                let mut vars = FxHashSet::default();
+                vars.insert(pat_id);
+                vars
+            });
+    });
     sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
+        .get_function_clauses()
+        .for_each(|(_, def)| {
             if def.file.file_id == file_id {
-                let def_fb = def.in_function_body(sema.db, def);
-                def_fb.fold_function((), &mut |acc, clause_id, ctx| {
-                    if let Some(bound_vars) =
-                        bound_vars_by_function.get(&(def.function_id, clause_id))
-                    {
-                        let in_clause = def_fb.in_clause(clause_id);
+                if let Some(bound_vars) = bound_vars_by_function.get(&def.function_id) {
+                    let in_clause = def.in_clause(sema.db, def);
+                    in_clause.fold_clause(def.function_id, (), &mut |acc, ctx| {
                         if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
                             if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
                                 if bound_vars.contains(lhs) {
                                     if let Some(range) =
-                                        def_fb.range_for_any(sema.db, clause_id, ctx.item_id)
+                                        in_clause.range_for_any(sema.db, ctx.item_id)
                                     {
                                         diags.push(Diagnostic::new(
                                             DiagnosticCode::MutableVarBug,
@@ -87,8 +79,8 @@ pub(crate) fn mutable_variable_bug(
                             }
                         };
                         acc
-                    }
-                });
+                    });
+                }
             }
         });
 

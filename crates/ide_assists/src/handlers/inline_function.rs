@@ -8,7 +8,6 @@
  */
 
 use std::iter::zip;
-use std::sync::Arc;
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
@@ -31,7 +30,6 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashSet;
-use hir::FunctionClauseBody;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::InFunctionClauseBody;
@@ -79,7 +77,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
         .clone()
         .set_scope(&SearchScope::file_range(FileRange {
             file_id: fun.file.file_id,
-            range: fun.source(ctx.db().upcast()).syntax().text_range(),
+            range: fun.range(ctx.db().upcast())?,
         }))
         .at_least_one();
     if is_recursive_fn {
@@ -101,7 +99,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
             let file_id = ctx.frange.file_id;
             let ast_fun = fun.source(ctx.db().upcast());
             if delete_definition {
-                if let Some(delete_ranges) = ranges_for_delete_function(ctx, &ast_fun) {
+                if let Some(delete_ranges) = ranges_for_delete_function(ctx, &ast_fun[0]) {
                     delete_ranges.delete(builder);
                 }
             }
@@ -110,24 +108,19 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 let function_body = ctx
                     .db()
                     .function_body(InFile::new(fun.file.file_id, fun.function_id));
-                if ast_fun.clauses().count() == 1 {
+                if ast_fun.len() == 1 {
                     if let Some(ast::FunctionOrMacroClause::FunctionClause(ast_clause)) =
-                        ast_fun.clauses().next()
+                        ast_fun[0].clause()
                     {
                         if let Some(clause) =
-                            function_body
-                                .clauses
-                                .iter()
-                                .next()
-                                .map(|(clause_id, clause)| {
-                                    InFunctionClauseBody::new(
-                                        clause.clone(),
-                                        function_body.function_id,
-                                        clause_id,
-                                        None,
-                                        clause,
-                                    )
-                                })
+                            function_body.clauses.iter().next().map(|(_, clause)| {
+                                InFunctionClauseBody::new(
+                                    clause.clone(),
+                                    InFile::new(fun.file.file_id, function_body.clause_ids[0]),
+                                    None,
+                                    (),
+                                )
+                            })
                         {
                             if let Some((range, replacement)) = inline_single_function_clause(
                                 &ctx.sema,
@@ -153,17 +146,17 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
 /// Function has multiple clauses, convert them to a case statement
 fn inline_function_as_case(
-    fun: &InFile<&ast::FunDecl>,
+    fun: &InFile<&Vec<ast::FunDecl>>,
     call: &ast::Call,
 ) -> Option<(TextRange, String)> {
     let mut clauses = Vec::default();
-    let end_idx = fun.value.clauses().count() - 1;
+    let end_idx = fun.value.len() - 1;
     let params = params_text(&call.args()?)?;
     clauses.push("".to_string());
     clauses.push(format!("case {params} of"));
-    for (idx, clause) in fun.value.clauses().enumerate() {
-        match clause {
-            ast::FunctionOrMacroClause::FunctionClause(clause) => {
+    for (idx, fun) in fun.value.iter().enumerate() {
+        match fun.clause() {
+            Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => {
                 // Turn the clause into a case
                 // foo(Args) -> bar;
                 // -->
@@ -180,7 +173,7 @@ fn inline_function_as_case(
                 };
                 clauses.push(case_clause);
             }
-            ast::FunctionOrMacroClause::MacroCallExpr(_) => return None,
+            _ => return None,
         }
     }
     clauses.push("end".to_string());
@@ -218,10 +211,10 @@ fn call_replacement_range(call: &ast::Call) -> TextRange {
 fn inline_single_function_clause(
     sema: &Semantic,
     file_id: FileId,
-    ast_fun: &InFile<&ast::FunDecl>,
+    ast_fun: &InFile<&Vec<ast::FunDecl>>,
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
+    clause: &InFunctionClauseBody<()>,
 ) -> Option<(TextRange, String)> {
     if ast_clause.guard().is_some() {
         inline_function_as_case(ast_fun, call)
@@ -237,7 +230,7 @@ fn inline_single_function_clause(
 fn inline_single_function_clause_with_begin(
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
+    clause: &InFunctionClauseBody<()>,
 ) -> Option<(TextRange, String)> {
     let (edited_text, _offset) = clause_body_text(ast_clause)?;
 
@@ -278,13 +271,13 @@ fn assign_params_for_begin(
     body_indent: IndentLevel,
     ast_clause: &ast::FunctionClause,
     call: &ast::Call,
-    clause: &InFunctionClauseBody<&Arc<FunctionClauseBody>>,
+    clause: &InFunctionClauseBody<()>,
 ) -> Option<()> {
     let arity = ast_clause.arity_value()?;
     izip!(
         call.args()?.args(),
         ast_clause.args()?.args(),
-        &clause.value.clause.pats
+        &clause.body.clause.pats
     )
     .enumerate()
     .for_each(|(idx, (val, var, pat))| {
@@ -676,7 +669,7 @@ fn can_inline_function(ctx: &AssistContext) -> Option<InlineData> {
 
     match &def {
         SymbolDefinition::Function(fun) => {
-            let target = fun.source(ctx.db().upcast()).syntax().text_range();
+            let target = fun.range(ctx.db().upcast())?;
             let usages = def.clone().usages(&ctx.sema).direct_only().all();
             let mut all_references = Vec::default();
             let mut selected_call_reference = Vec::default();
@@ -741,13 +734,12 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
         let fun_vars = function_body
             .clauses
             .iter()
-            .filter_map(|(clause_id, clause)| {
+            .filter_map(|(_, clause)| {
                 ScopeAnalysis::clause_vars_in_scope(
                     &ctx.sema,
                     &InFunctionClauseBody::new(
                         clause.clone(),
-                        function_body.function_id,
-                        clause_id,
+                        InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                         None,
                         (),
                     ),
@@ -760,13 +752,12 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
         let simple_param_vars = function_body
             .clauses
             .iter()
-            .filter_map(|(clause_id, clause)| {
+            .filter_map(|(_, clause)| {
                 simple_param_vars(&InFunctionClauseBody::new(
                     clause.clone(),
-                    function_body.function_id,
-                    clause_id,
+                    InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                     None,
-                    clause,
+                    &clause,
                 ))
             })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {

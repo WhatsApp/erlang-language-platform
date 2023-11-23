@@ -244,8 +244,8 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
         let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
 
-        // diagnostics.extend(new_extra_diags.into_iter());
-        let expected = extract_annotations(&db.file_text(file_id));
+        let mut expected = extract_annotations(&db.file_text(file_id));
+        expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
     }

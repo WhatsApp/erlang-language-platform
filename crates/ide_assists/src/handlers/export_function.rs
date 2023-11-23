@@ -11,7 +11,6 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
-use elp_syntax::AstNode;
 
 use crate::helpers;
 use crate::AssistContext;
@@ -31,8 +30,8 @@ use crate::Assists;
 // ```
 pub(crate) fn export_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) = ctx.classify_offset() {
-        let function_name_arity = fun.function.name;
-        let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+        let function_range = fun.range(ctx.sema.db.upcast())?;
+        let function_name_arity = fun.name;
 
         if !fun.exported {
             let id = AssistId("export_function", AssistKind::QuickFix);

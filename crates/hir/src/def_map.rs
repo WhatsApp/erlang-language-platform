@@ -39,6 +39,7 @@ use crate::CallbackDef;
 use crate::DefineDef;
 use crate::File;
 use crate::FormIdx;
+use crate::FunctionClauseDef;
 use crate::FunctionDef;
 use crate::FunctionId;
 use crate::InFile;
@@ -54,7 +55,14 @@ use crate::TypeAliasDef;
 pub struct DefMap {
     _c: Count<Self>,
     included: FxHashSet<FileId>,
-    functions: FxHashMap<NameArity, FunctionDef>,
+
+    function_clauses: FxHashMap<FunctionId, FunctionClauseDef>,
+    functions: FxHashMap<InFile<FunctionDefId>, FunctionDef>,
+
+    function_clauses_by_fa: FxHashMap<NameArity, FunctionId>,
+    functions_by_fa: FxHashMap<NameArity, InFile<FunctionDefId>>,
+    function_by_function_id: FxHashMap<FunctionId, FunctionDefId>,
+
     specs: FxHashMap<NameArity, SpecDef>,
     exported_functions: FxHashSet<NameArity>,
     deprecated: Deprecated,
@@ -67,7 +75,23 @@ pub struct DefMap {
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
     pub parse_transform: bool,
-    function_by_function_id: FxHashMap<FunctionId, FunctionDef>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct FunctionDefId(FunctionId);
+
+impl FunctionDefId {
+    /// A `FunctionDefId` wraps the `FunctionId` of the first fun_decl
+    /// with its clause.
+    /// Use with care, if the clause being processed matters.
+    pub fn as_form_id(&self) -> FormIdx {
+        FormIdx::Function(self.0)
+    }
+
+    // #[cfg(test)]
+    pub fn new(function_id: FunctionId) -> FunctionDefId {
+        FunctionDefId(function_id)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -125,19 +149,17 @@ impl DefMap {
                 FormIdx::Function(idx) => {
                     let function = form_list[idx].clone();
                     let fun_name = &function.name.clone();
-                    let function_def = FunctionDef {
+                    let function_def = FunctionClauseDef {
                         file,
-                        exported: false,
-                        deprecated: false,
-                        deprecated_desc: None,
                         module: module.clone(),
                         function,
                         function_id: idx,
                     };
+                    def_map.function_clauses.insert(idx, function_def);
+                    let function_clause_id = idx;
                     def_map
-                        .functions
-                        .insert(fun_name.clone(), function_def.clone());
-                    def_map.function_by_function_id.insert(idx, function_def);
+                        .function_clauses_by_fa
+                        .insert(fun_name.clone(), function_clause_id);
                 }
                 FormIdx::Export(idx) => {
                     for export_id in form_list[idx].entries.clone() {
@@ -261,6 +283,7 @@ impl DefMap {
             }
         }
 
+        def_map.fixup_functions();
         def_map.fixup_exports();
         def_map.fixup_deprecated();
         def_map.fixup_callbacks();
@@ -322,8 +345,12 @@ impl DefMap {
         db.local_def_map(*file_id)
     }
 
-    pub fn get_function(&self, name: &NameArity) -> Option<&FunctionDef> {
-        self.functions.get(name)
+    pub fn get_by_function_id(&self, function_id: &InFile<FunctionDefId>) -> Option<&FunctionDef> {
+        self.functions.get(function_id)
+    }
+
+    pub fn function_def_id(&self, function_id: &FunctionId) -> Option<&FunctionDefId> {
+        self.function_by_function_id.get(function_id)
     }
 
     pub fn is_deprecated(&self, name: &NameArity) -> bool {
@@ -335,13 +362,11 @@ impl DefMap {
     }
 
     pub fn get_specd_function(&self, name: &NameArity) -> Option<SpecdFunctionDef> {
-        let (spec_def, function_def) = Option::zip(
-            self.get_spec(name).cloned(),
-            self.get_function(name).cloned(),
-        )?;
+        let (spec_def, function_def) =
+            Option::zip(self.get_spec(name).cloned(), self.get_function(name))?;
         Some(SpecdFunctionDef {
             spec_def,
-            function_def,
+            function_def: function_def.clone(),
         })
     }
 
@@ -353,8 +378,35 @@ impl DefMap {
         self.exported_functions.contains(name)
     }
 
-    pub fn get_functions(&self) -> &FxHashMap<NameArity, FunctionDef> {
-        &self.functions
+    pub fn get_function(&self, name: &NameArity) -> Option<&FunctionDef> {
+        self.functions_by_fa
+            .get(name)
+            .and_then(|idx| self.functions.get(idx))
+    }
+
+    pub fn get_functions(&self) -> impl Iterator<Item = (&NameArity, &FunctionDef)> {
+        self.functions_by_fa.iter().filter_map(|(k, _)| {
+            if let Some(def) = self.get_function(k) {
+                Some((k, def))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn get_function_clauses(&self) -> impl Iterator<Item = (&FunctionId, &FunctionClauseDef)> {
+        self.function_clauses.iter()
+    }
+
+    pub fn get_function_clauses_ordered(&self) -> Vec<(FunctionId, FunctionClauseDef)> {
+        // We can't use a BTreeMap for this because of the lack of Ord for Idx<_>.
+        let mut v: Vec<(FunctionId, FunctionClauseDef)> = Vec::from_iter(
+            self.function_clauses
+                .iter()
+                .map(|(k, v)| ((*k).clone(), (*v).clone())),
+        );
+        v.sort_by(|(ka, _), (kb, _)| ka.into_raw().cmp(&kb.into_raw()));
+        v
     }
 
     pub fn get_specs(&self) -> &FxHashMap<NameArity, SpecDef> {
@@ -362,12 +414,11 @@ impl DefMap {
     }
 
     pub fn get_specd_functions(&self) -> FxHashMap<NameArity, SpecdFunctionDef> {
-        let functions = self.get_functions();
         let specs = self.get_specs();
-        let name_arities = functions.keys().chain(specs.keys());
+        let name_arities = self.functions_by_fa.keys().chain(specs.keys());
         name_arities
             .filter_map(|na| {
-                specs.get(na).zip(functions.get(na)).map(|(s, f)| {
+                specs.get(na).zip(self.get_function(na)).map(|(s, f)| {
                     (
                         na.clone(),
                         SpecdFunctionDef {
@@ -385,7 +436,7 @@ impl DefMap {
     }
 
     pub fn get_functions_in_scope(&self) -> impl Iterator<Item = &NameArity> {
-        self.get_imports().keys().chain(self.get_functions().keys())
+        self.get_imports().keys().chain(self.functions_by_fa.keys())
     }
 
     // TODO: tweak API T127375780
@@ -433,6 +484,7 @@ impl DefMap {
     fn is_empty(&self) -> bool {
         self.included.is_empty()
             && self.functions.is_empty()
+            && self.function_clauses.is_empty()
             && self.exported_functions.is_empty()
             && self.types.is_empty()
             && self.exported_types.is_empty()
@@ -443,9 +495,33 @@ impl DefMap {
 
     fn merge(&mut self, other: &Self) {
         self.included.extend(other.included.iter().cloned());
+        self.function_clauses.extend(
+            other
+                .function_clauses
+                .iter()
+                .map(|(name, def)| (name.clone(), def.clone())),
+        );
         self.functions.extend(
             other
                 .functions
+                .iter()
+                .map(|(name, def)| (name.clone(), def.clone())),
+        );
+        self.function_clauses_by_fa.extend(
+            other
+                .function_clauses_by_fa
+                .iter()
+                .map(|(name, def)| (name.clone(), def.clone())),
+        );
+        self.functions_by_fa.extend(
+            other
+                .functions_by_fa
+                .iter()
+                .map(|(name, def)| (name.clone(), def.clone())),
+        );
+        self.function_by_function_id.extend(
+            other
+                .function_by_function_id
                 .iter()
                 .map(|(name, def)| (name.clone(), def.clone())),
         );
@@ -500,13 +576,111 @@ impl DefMap {
         );
     }
 
+    fn fixup_functions(&mut self) {
+        // We parse each function clause independently as a top level
+        // form, to improve error recovery.
+        // These have been lowered into self.function_clauses.
+        // Work through them and construct the top level function
+        // definitions by combining the ones that belong together.
+        let mut current: Vec<(NameArity, FunctionClauseDef)> = Vec::default();
+        self.get_function_clauses_ordered()
+            .iter()
+            .for_each(|(_next_na, next_def)| {
+                if let Some((current_na, current_def)) = current.get(0) {
+                    if current_na == &next_def.function.name {
+                        current.push((next_def.function.name.clone(), next_def.clone()));
+                    } else {
+                        // We have a new one, create a FunctionDef with
+                        // the ones in current.
+                        self.insert_fun(&current, current_na, current_def);
+                        current = Vec::default();
+                        current.push((next_def.function.name.clone(), next_def.clone()));
+                    }
+                } else {
+                    current.push((next_def.function.name.clone(), next_def.clone()));
+                }
+            });
+        if let Some((current_na, current_def)) = current.get(0) {
+            self.insert_fun(&current, current_na, current_def);
+        }
+    }
+
+    fn insert_fun(
+        &mut self,
+        current: &Vec<(NameArity, FunctionClauseDef)>,
+        current_na: &NameArity,
+        current_def: &FunctionClauseDef,
+    ) {
+        let function = current
+            .iter()
+            .map(|(_, clause)| clause.function.clone())
+            .collect::<Vec<_>>();
+        let function_ids = current
+            .iter()
+            .map(|(_, clause)| clause.function_id)
+            .collect::<Vec<_>>();
+        let function_id = FunctionDefId(function_ids[0]);
+        let na = (current_na).clone();
+        let fun = FunctionDef {
+            file: current_def.file,
+            exported: false,
+            deprecated: false,
+            deprecated_desc: None,
+            module: current_def.module.clone(),
+            name: (current_na).clone(),
+            function,
+            function_ids,
+            function_id,
+        };
+        let function_def_id = FunctionDefId(fun.function_ids[0]);
+        self.function_by_function_id.extend(
+            fun.function_ids
+                .iter()
+                .map(|id| (*id, function_def_id.clone())),
+        );
+        let id = InFile::new(current_def.file.file_id, function_def_id.clone());
+        self.functions.insert(id, fun.clone());
+        self.functions_by_fa.insert(na, id);
+    }
+
+    fn is_exported(&self, fun_def_id: &InFile<FunctionDefId>) -> bool {
+        if let Some(fun) = self.functions.get(fun_def_id) {
+            self.exported_functions.contains(&fun.function[0].name)
+        } else {
+            false
+        }
+    }
+
+    fn is_deprecated_fun_def(&self, fun_def_id: &InFile<FunctionDefId>) -> bool {
+        if let Some(fun) = self.functions.get(fun_def_id) {
+            self.deprecated.is_deprecated(&fun.name)
+        } else {
+            false
+        }
+    }
+
+    fn deprecation_desc(&self, fun_def_id: &InFile<FunctionDefId>) -> Option<DeprecatedDesc> {
+        self.functions
+            .get(fun_def_id)
+            .and_then(|fun| self.deprecated.deprecation_desc(&fun.function[0].name))
+    }
+
     fn fixup_exports(&mut self) {
         if self.export_all {
-            self.exported_functions = self.functions.keys().cloned().collect()
+            self.exported_functions = self.functions_by_fa.keys().cloned().collect()
         }
 
-        for (name, fun_def) in self.functions.iter_mut() {
-            fun_def.exported |= self.export_all || self.exported_functions.contains(name)
+        // Hack around mutable borrow issue below
+        let exported: FxHashMap<FunctionDefId, bool> = self
+            .functions
+            .clone()
+            .iter()
+            .map(|(fun_def_id, _)| (fun_def_id.value.clone(), self.is_exported(fun_def_id)))
+            .collect();
+
+        for (fun_def_id, fun_def) in self.functions.iter_mut() {
+            fun_def.exported |=
+                self.export_all || *exported.get(&fun_def_id.value).unwrap_or(&false)
         }
 
         for (name, type_def) in self.types.iter_mut() {
@@ -515,11 +689,34 @@ impl DefMap {
     }
 
     fn fixup_deprecated(&mut self) {
-        for (name, fun_def) in self.functions.iter_mut() {
-            let is_deprecated = self.deprecated.is_deprecated(name);
+        // Hack around mutable borrow issue below
+        let deprecated: FxHashMap<FunctionDefId, bool> = self
+            .functions
+            .clone()
+            .iter()
+            .map(|(fun_def_id, _)| {
+                (
+                    fun_def_id.value.clone(),
+                    self.is_deprecated_fun_def(fun_def_id),
+                )
+            })
+            .collect();
+
+        let deprecation_desc: FxHashMap<FunctionDefId, Option<DeprecatedDesc>> = self
+            .functions
+            .clone()
+            .iter()
+            .map(|(fun_def_id, _)| (fun_def_id.value.clone(), self.deprecation_desc(fun_def_id)))
+            .collect();
+
+        for (fun_def_id, fun_def) in self.functions.iter_mut() {
+            let is_deprecated = *deprecated.get(&fun_def_id.value).unwrap_or(&false);
             fun_def.deprecated |= is_deprecated;
             if is_deprecated {
-                fun_def.deprecated_desc = self.deprecated.deprecation_desc(name);
+                fun_def.deprecated_desc = deprecation_desc
+                    .get(&fun_def_id.value)
+                    .unwrap_or(&None)
+                    .clone();
             }
         }
     }
@@ -535,6 +732,7 @@ impl DefMap {
         let Self {
             _c: _,
             included,
+            function_clauses,
             functions,
             specs,
             deprecated,
@@ -549,9 +747,12 @@ impl DefMap {
             parse_transform: _,
             optional_callbacks,
             function_by_function_id: function_by_form_id,
+            function_clauses_by_fa,
+            functions_by_fa,
         } = self;
 
         included.shrink_to_fit();
+        function_clauses.shrink_to_fit();
         functions.shrink_to_fit();
         specs.shrink_to_fit();
         exported_functions.shrink_to_fit();
@@ -564,6 +765,8 @@ impl DefMap {
         macros.shrink_to_fit();
         deprecated.shrink_to_fit();
         function_by_form_id.shrink_to_fit();
+        function_clauses_by_fa.shrink_to_fit();
+        functions_by_fa.shrink_to_fit();
     }
 }
 
@@ -587,8 +790,8 @@ mod tests {
             .map(|def| {
                 format!(
                     "fun {} exported: {}",
-                    def.function.name,
-                    def.exported && def_map.exported_functions.contains(&def.function.name),
+                    def.name,
+                    def.exported && def_map.exported_functions.contains(&def.name),
                 )
             })
             .chain(def_map.types.values().map(|def| match &def.type_alias {
@@ -610,13 +813,13 @@ mod tests {
         let file_id = files[0];
         let def_map = db.def_map(file_id);
         let mut resolved = def_map
-            .function_by_function_id
+            .functions
             .values()
             .map(|def| {
                 format!(
                     "fun {} exported: {}",
-                    def.function.name,
-                    def.exported && def_map.exported_functions.contains(&def.function.name),
+                    def.name,
+                    def.exported && def_map.exported_functions.contains(&def.name),
                 )
             })
             .chain(def_map.types.values().map(|def| match &def.type_alias {
@@ -663,8 +866,8 @@ foo(_) -> ok.
 bar() -> ok.
 "#,
             expect![[r#"
-                fun bar/0 exported: false
                 fun foo/1 exported: true
+                fun bar/0 exported: false
             "#]],
         )
     }
@@ -679,8 +882,8 @@ foo(_) -> ok.
 bar() -> ok.
 "#,
             expect![[r#"
-                fun bar/0 exported: true
                 fun foo/1 exported: true
+                fun bar/0 exported: true
             "#]],
         )
     }
@@ -695,8 +898,8 @@ foo(_) -> ok.
 bar() -> ok.
 "#,
             expect![[r#"
-                fun bar/0 exported: true
                 fun foo/1 exported: true
+                fun bar/0 exported: true
             "#]],
         )
     }
@@ -711,8 +914,8 @@ foo(_) -> ok.
 bar() -> ok.
 "#,
             expect![[r#"
-                fun bar/0 exported: true
                 fun foo/1 exported: true
+                fun bar/0 exported: true
             "#]],
         )
     }
@@ -727,8 +930,8 @@ foo(_) -> ok.
 bar() -> ok.
 "#,
             expect![[r#"
-                fun bar/0 exported: true
                 fun foo/1 exported: true
+                fun bar/0 exported: true
             "#]],
         )
     }
@@ -797,8 +1000,8 @@ bar() -> ok.
 -export([foo/1]).
 "#,
             expect![[r#"
-                fun bar/0 exported: false
                 fun foo/1 exported: true
+                fun bar/0 exported: false
             "#]],
         )
     }
@@ -831,6 +1034,7 @@ foo(X,Y, Z) -> ok.
             expect![[r#"
                 fun foo/3 exported: false
                 fun bar/0 exported: false
+                fun foo/3 exported: false
             "#]],
         )
     }

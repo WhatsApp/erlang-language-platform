@@ -38,7 +38,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let has_spec_already = ctx
         .sema
         .def_map(ctx.file_id())
-        .get_spec(&function_def.function.name)
+        .get_spec(&function_def.name)
         .is_some();
 
     if has_spec_already {
@@ -46,10 +46,10 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     let source = function_def.source(ctx.db().upcast());
-    let name = source.name()?;
+    let name = source.get(0)?.name()?;
     let name_text = name.text()?;
 
-    let insert = source.syntax().text_range().start();
+    let insert = source.get(0)?.syntax().text_range().start();
     let target = name.syntax().text_range();
 
     acc.add(
@@ -59,16 +59,16 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         None,
         |builder| {
             let type_names = source
-                .clauses()
-                .find_map(|c| match c {
-                    ast::FunctionOrMacroClause::FunctionClause(ref clause) => {
+                .iter()
+                .find_map(|c| match c.clause() {
+                    Some(ast::FunctionOrMacroClause::FunctionClause(ref clause)) => {
                         if c.syntax().text_range().contains(ctx.offset()) {
                             Some(clause.clone())
                         } else {
                             None
                         }
                     }
-                    ast::FunctionOrMacroClause::MacroCallExpr(_) => None,
+                    _ => None,
                 })
                 .unwrap()
                 .args()

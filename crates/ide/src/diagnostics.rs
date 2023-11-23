@@ -79,6 +79,7 @@ mod from_config;
 mod head_mismatch;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
+mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
 mod mutable_variable;
@@ -324,6 +325,7 @@ pub enum DiagnosticCode {
     DependentHeader,
     DeprecatedFunction,
     UndefinedFunction,
+    Unexpected(String),
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -383,6 +385,7 @@ impl DiagnosticCode {
             DiagnosticCode::DependentHeader => "W0015".to_string(),     // dependent-header
             DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
             DiagnosticCode::UndefinedFunction => "W0017".to_string(),   // undefined-function
+            DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
@@ -417,6 +420,7 @@ impl DiagnosticCode {
             DiagnosticCode::DependentHeader => "dependent_header".to_string(),
             DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
             DiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
+            DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
@@ -788,6 +792,8 @@ pub fn semantic_diagnostics(
     dependent_header::dependent_header(res, sema, file_id, file_kind);
     deprecated_function::deprecated_function(res, sema, file_id);
     undefined_function::undefined_function(res, sema, file_id);
+    head_mismatch::head_mismatch_semantic(res, sema, file_id);
+    missing_separator::missing_separator_semantic(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(
@@ -845,9 +851,6 @@ fn form_missing_separator_diagnostics(parse: &Parse<ast::SourceFile>) -> Vec<Dia
             }
             ast::Form::ExportTypeAttribute(f) => {
                 check_missing_sep(f.types(), SyntaxKind::ANON_COMMA, ",", "missing_comma")
-            }
-            ast::Form::FunDecl(f) => {
-                check_missing_sep(f.clauses(), SyntaxKind::ANON_SEMI, ";", "missing_semi")
             }
             ast::Form::ImportAttribute(f) => {
                 check_missing_sep(f.funs(), SyntaxKind::ANON_COMMA, ",", "missing_comma")
@@ -977,9 +980,23 @@ fn non_whitespace_prev_token(node: &SyntaxNode) -> Option<NodeOrToken> {
     r.map(NodeOrToken::Token)
 }
 
-fn make_missing_diagnostic(range: TextRange, item: &'static str, code: String) -> Diagnostic {
+pub(crate) fn make_missing_diagnostic(
+    range: TextRange,
+    item: &'static str,
+    code: String,
+) -> Diagnostic {
     let message = format!("Missing '{}'", item);
     Diagnostic::new(DiagnosticCode::Missing(code), message, range).with_severity(Severity::Warning)
+}
+
+pub(crate) fn make_unexpected_diagnostic(
+    range: TextRange,
+    item: &'static str,
+    code: String,
+) -> Diagnostic {
+    let message = format!("Unexpected '{}'", item);
+    Diagnostic::new(DiagnosticCode::Unexpected(code), message, range)
+        .with_severity(Severity::Warning)
 }
 
 pub fn erlang_service_diagnostics(
@@ -1510,7 +1527,6 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use elp_syntax::ast;
     use expect_test::expect;
 
     use super::*;
@@ -1520,49 +1536,6 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_diagnostics_with_config_and_extra;
     use crate::tests::check_specific_fix;
-
-    #[test]
-    fn fun_decl_missing_semi_no_warning() {
-        let text = concat!("foo(2)->3.");
-
-        let parsed = ast::SourceFile::parse_text(text);
-        let d = form_missing_separator_diagnostics(&parsed);
-        assert_eq!(format!("{:?}", d), "[]")
-    }
-
-    #[test]
-    fn fun_decl_missing_semi_no_warning_2() {
-        let text = concat!("foo(1)->2;\n", "foo(2)->3.");
-
-        let parsed = ast::SourceFile::parse_text(text);
-        let d = form_missing_separator_diagnostics(&parsed);
-        assert_eq!(format!("{:?}", d), "[]")
-    }
-
-    #[test]
-    fn fun_decl_missing_semi_1() {
-        check_diagnostics(
-            r#"
-   -module(main).
-   foo(1)->2
-        %% ^ warning: Missing ';'
-   foo(2)->3.
-"#,
-        );
-    }
-
-    #[test]
-    fn fun_decl_missing_semi_2() {
-        check_diagnostics(
-            r#"
-   -module(main).
-   foo(1)->2;
-   foo(2)->3
-        %% ^ warning: Missing ';'
-   foo(3)->4.
-"#,
-        );
-    }
 
     #[test]
     fn export_attribute_missing_comma() {

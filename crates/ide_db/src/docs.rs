@@ -87,7 +87,7 @@ impl ToDoc for InFile<&ast::Fa> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         let fa_def = docs.sema.to_def(ast)?;
         let name = match fa_def {
-            hir::FaDef::Function(f) => Some(f.function.name),
+            hir::FaDef::Function(f) => Some(f.name),
             hir::FaDef::Type(_) => None,
             hir::FaDef::Callback(c) => Some(c.callback.name),
         }?;
@@ -98,7 +98,7 @@ impl ToDoc for InFile<&ast::Fa> {
 impl ToDoc for InFile<&ast::Spec> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         let fun_def = docs.sema.to_def(ast)?;
-        docs.function_doc(ast.file_id, fun_def.function.name)
+        docs.function_doc(ast.file_id, fun_def.name)
     }
 }
 
@@ -113,7 +113,7 @@ impl ToDoc for InFile<&ast::Atom> {
 impl ToDoc for InFile<&ast::ExternalFun> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         let fun_def = docs.sema.to_def(ast)?;
-        docs.function_doc(fun_def.file.file_id, fun_def.function.name)
+        docs.function_doc(fun_def.file.file_id, fun_def.name)
     }
 }
 
@@ -123,7 +123,7 @@ impl ToDoc for InFile<&ast::Remote> {
             match call_def {
                 CallDef::Function(fun_def) => {
                     let file_id = fun_def.file.file_id;
-                    let name_arity = fun_def.function.name;
+                    let name_arity = fun_def.name;
                     docs.function_doc(file_id, name_arity)
                 }
                 CallDef::Type(_) => None,
@@ -138,9 +138,7 @@ impl ToDoc for InFile<&ast::Call> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         if let Some(call_def) = docs.sema.to_def(ast) {
             match call_def {
-                CallDef::Function(fun_def) => {
-                    docs.function_doc(fun_def.file.file_id, fun_def.function.name)
-                }
+                CallDef::Function(fun_def) => docs.function_doc(fun_def.file.file_id, fun_def.name),
                 CallDef::Type(_) => None,
             }
         } else {
@@ -151,16 +149,13 @@ impl ToDoc for InFile<&ast::Call> {
 
 impl ToDoc for InFile<&ast::FunctionClause> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
-        if let Some(function_id) = docs
+        let function_id = docs
             .sema
-            .find_enclosing_function(ast.file_id, ast.value.syntax())
-        {
-            let form_list = docs.sema.form_list(ast.file_id);
-            let function = &form_list[function_id];
-            docs.function_doc(ast.file_id, function.name.clone())
-        } else {
-            None
-        }
+            .find_enclosing_function(ast.file_id, ast.value.syntax())?;
+        let function = docs
+            .sema
+            .function_def(&InFile::new(ast.file_id, function_id))?;
+        docs.function_doc(ast.file_id, function.name)
     }
 }
 

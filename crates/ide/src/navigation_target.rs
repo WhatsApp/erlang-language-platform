@@ -120,15 +120,17 @@ impl ToNav for hir::FunctionDef {
     fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
-        let full_range = source.syntax().text_range();
-        let focus_range = source.clauses().find_map(|clause| match clause {
-            ast::FunctionOrMacroClause::FunctionClause(clause) => {
-                clause.name().map(|name| name.syntax().text_range())
-            }
-            ast::FunctionOrMacroClause::MacroCallExpr(_) => None,
-        });
-        let arity = self.function.name.arity();
-        let name = self.function.name.name().raw();
+        let full_range = self.range(db.upcast()).unwrap_or_default(); // Should always succeed, but play safe
+        let focus_range = source
+            .iter()
+            .find_map(|fun_clause| match fun_clause.clause() {
+                Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => {
+                    clause.name().map(|name| name.syntax().text_range())
+                }
+                _ => None,
+            });
+        let arity = self.name.arity();
+        let name = self.name.name().raw();
         NavigationTarget {
             file_id,
             full_range,

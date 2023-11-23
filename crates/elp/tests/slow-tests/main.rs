@@ -156,48 +156,6 @@ fn test_run_mock_lsp() {
                     {
                       "edits": [
                         {
-                          "newText": "fun_name()",
-                          "range": {
-                            "end": {
-                              "character": 11,
-                              "line": 4
-                            },
-                            "start": {
-                              "character": 10,
-                              "line": 3
-                            }
-                          }
-                        },
-                        {
-                          "newText": "\n\nfun_name() ->\n    1;\n    bar(1) -> 2.",
-                          "range": {
-                            "end": {
-                              "character": 12,
-                              "line": 5
-                            },
-                            "start": {
-                              "character": 12,
-                              "line": 5
-                            }
-                          }
-                        }
-                      ],
-                      "textDocument": {
-                        "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
-                        "version": 0
-                      }
-                    }
-                  ]
-                },
-                "kind": "refactor.extract",
-                "title": "Extract into function"
-              },
-              {
-                "edit": {
-                  "documentChanges": [
-                    {
-                      "edits": [
-                        {
                           "newText": "\n-export([bar/1]).\n",
                           "range": {
                             "end": {

@@ -282,8 +282,11 @@ pub(crate) fn ranges_for_delete_function(
         _ => None,
     }?;
 
+    let fun_asts = function_def.source(ctx.sema.db.upcast());
+    let fun_range = function_def.range(ctx.sema.db.upcast())?;
+
     let def_map = ctx.sema.def_map(ctx.file_id());
-    let spec = def_map.get_spec(&function_def.function.name);
+    let spec = def_map.get_spec(&function_def.name);
 
     let edoc_comments: Vec<InFileAstPtr<ast::Comment>> = if let Some(file_edoc) =
         ctx.sema.form_edoc_comments(InFileAstPtr::new(
@@ -309,7 +312,7 @@ pub(crate) fn ranges_for_delete_function(
     });
 
     Some(FunctionRanges {
-        function: extend_form_range_for_delete(ast_fun.syntax()),
+        function: extend_function_range_for_delete(fun_range, fun_asts.last()?.syntax()),
         spec: spec_range,
         edoc,
     })
@@ -319,6 +322,15 @@ fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
     let orig_range = syntax.text_range();
     let start = orig_range.start();
     let end = match skip_trailing_newline(syntax) {
+        Some(end) => end.end(),
+        None => orig_range.end(),
+    };
+    TextRange::new(start, end)
+}
+
+fn extend_function_range_for_delete(orig_range: TextRange, last_syntax: &SyntaxNode) -> TextRange {
+    let start = orig_range.start();
+    let end = match skip_trailing_newline(last_syntax) {
         Some(end) => end.end(),
         None => orig_range.end(),
     };
@@ -399,8 +411,9 @@ fn add_to_suite_0(
     value: &str,
     builder: &mut SourceChangeBuilder,
 ) -> Option<()> {
-    let fun_ast = fun_def.function.form_id.get(source);
-    let clause = match fun_ast.clauses().next()? {
+    let fun = fun_def.function.get(0)?;
+    let fun_ast = fun.form_id.get(source);
+    let clause = match fun_ast.clause()? {
         ast::FunctionOrMacroClause::FunctionClause(clause) => clause,
         ast::FunctionOrMacroClause::MacroCallExpr(_) => return None,
     };

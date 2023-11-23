@@ -22,6 +22,7 @@ use super::generated::nodes;
 use super::ArithOp;
 use super::BinaryOp;
 use super::CompOp;
+use super::FunctionOrMacroClause;
 use super::ListOp;
 use super::LogicOp;
 use super::MapOp;
@@ -51,13 +52,43 @@ impl nodes::MacroName {
 
 impl nodes::FunDecl {
     pub fn name(&self) -> Option<Name> {
-        match self.clauses().next() {
+        match self.clause() {
             Some(c) => match c {
                 nodes::FunctionOrMacroClause::FunctionClause(c) => c.name(),
                 nodes::FunctionOrMacroClause::MacroCallExpr(_) => None,
             },
             None => None,
         }
+    }
+    pub fn clauses(&self) -> impl Iterator<Item = FunctionOrMacroClause> {
+        self.clause().into_iter()
+    }
+
+    pub fn separator(&self) -> Option<(ClauseSeparator, SyntaxToken)> {
+        clause_separator(self.syntax())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum ClauseSeparator {
+    Missing,
+    Semi,
+    Dot,
+}
+
+fn clause_separator(parent: &SyntaxNode) -> Option<(ClauseSeparator, SyntaxToken)> {
+    parent
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .filter(|it| it.kind() != WHITESPACE && it.kind() != COMMENT)
+        .find_map(|c| Some((match_clause_separator(&c)?, c)))
+}
+
+fn match_clause_separator(c: &SyntaxToken) -> Option<ClauseSeparator> {
+    match c.kind() {
+        ANON_DOT => Some(ClauseSeparator::Dot),
+        ANON_SEMI => Some(ClauseSeparator::Semi),
+        _ => Some(ClauseSeparator::Missing),
     }
 }
 
@@ -174,11 +205,13 @@ impl HasArity for super::Spec {
         self.sigs().next()?.arity_value()
     }
 }
+
 impl HasArity for super::FunDecl {
     fn arity_value(&self) -> Arity {
-        self.clauses().next()?.arity_value()
+        self.clause()?.arity_value()
     }
 }
+
 impl HasArity for super::FunctionOrMacroClause {
     fn arity_value(&self) -> Arity {
         match self {

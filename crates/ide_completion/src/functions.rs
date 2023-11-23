@@ -38,7 +38,7 @@ pub(crate) fn add_completions(
         [.., (K::ANON_FUN, _), (K::ATOM, function_prefix)] if trigger.is_none() => {
             let def_map = sema.def_map(file_position.file_id);
 
-            let completions = def_map.get_functions().keys().filter_map(|na| {
+            let completions = def_map.get_functions().filter_map(|(na, _)| {
                 helpers::name_slash_arity_completion(na, function_prefix.text(), Kind::Function)
             });
             acc.extend(completions);
@@ -91,13 +91,13 @@ pub(crate) fn add_completions(
             let def_map = sema.def_map(file_position.file_id);
             let completions = def_map
                 .get_functions()
-                .keys()
-                .filter(|na| na.name().starts_with(function_prefix.text()))
-                .map(|na| {
+                .filter(|(na, _)| na.name().starts_with(function_prefix.text()))
+                .filter_map(|(na, _)| {
                     let function_name = na.name();
-                    let def = def_map.get_function(na).unwrap();
+                    let def = def_map.get_function(na)?;
                     let args = def
                         .function
+                        .get(0)?
                         .param_names
                         .iter()
                         .enumerate()
@@ -109,17 +109,17 @@ pub(crate) fn add_completions(
                         .join(", ");
                     let fun_decl_ast = def.source(sema.db.upcast());
                     let deprecated = def_map.is_deprecated(na);
-                    Completion {
+                    Some(Completion {
                         label: na.to_string(),
                         kind: Kind::Function,
                         contents: Contents::Snippet(format!("{function_name}({args})")),
                         position: Some(FilePosition {
                             file_id: def.file.file_id,
-                            offset: fun_decl_ast.syntax().text_range().start(),
+                            offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
                         }),
                         sort_text: None,
                         deprecated,
-                    }
+                    })
                 });
 
             acc.extend(completions);
@@ -141,12 +141,12 @@ fn complete_remote_function_call<'a>(
         let def_map = sema.def_map(module.file.file_id);
         let completions = def_map.get_exported_functions().iter().filter_map(|na| {
             let def = def_map.get_function(na);
-            let position = def.map(|def| {
+            let position = def.and_then(|def| {
                 let fun_decl_ast = def.source(sema.db.upcast());
-                FilePosition {
+                Some(FilePosition {
                     file_id: def.file.file_id,
-                    offset: fun_decl_ast.syntax().text_range().start(),
-                }
+                    offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
+                })
             });
             let deprecated = def_map.is_deprecated(na);
             name_arity_to_call_completion(def, na, fun_prefix, position, deprecated)
@@ -164,17 +164,18 @@ fn name_arity_to_call_completion(
     deprecated: bool,
 ) -> Option<Completion> {
     if na.name().starts_with(prefix) {
-        let contents = def.map_or(helpers::format_call(na.name(), na.arity()), |def| {
+        let contents = def.map_or(Some(helpers::format_call(na.name(), na.arity())), |def| {
             let arg_names = def
                 .function
+                .get(0)?
                 .param_names
                 .iter()
                 .enumerate()
                 .map(|(i, param)| format!("${{{}:{}}}", i + 1, param))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Contents::Snippet(format!("{}({})", na.name(), arg_names))
-        });
+            Some(Contents::Snippet(format!("{}({})", na.name(), arg_names)))
+        })?;
         Some(Completion {
             label: na.to_string(),
             kind: Kind::Function,
@@ -563,14 +564,13 @@ mod test {
     -module(sample1).
     foo() ->
         b~
-    % bar/0 should appear in autocompletes but doesn't yet
     bar() -> ok.
     baz(X) -> X.
     "#,
             None,
-            expect![[
-                r#"{label:baz/1, kind:Function, contents:Snippet("baz(${1:X})"), position:Some(FilePosition { file_id: FileId(0), offset: 101 })}"#
-            ]],
+            expect![[r#"
+                {label:bar/0, kind:Function, contents:Snippet("bar()"), position:Some(FilePosition { file_id: FileId(0), offset: 33 })}
+                {label:baz/1, kind:Function, contents:Snippet("baz(${1:X})"), position:Some(FilePosition { file_id: FileId(0), offset: 46 })}"#]],
         );
         check(
             r#"

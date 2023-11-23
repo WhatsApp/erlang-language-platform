@@ -112,7 +112,7 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
     let functions = def_map.get_functions();
     for (name_arity, def) in functions {
         if def.exported && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity) {
-            if let Some(name) = def.source(sema.db.upcast()).name() {
+            if let Some(name) = def.source(sema.db.upcast()).get(0).and_then(|f| f.name()) {
                 if name_arity.arity() == 1 {
                     res.insert(name_arity.clone(), name.syntax().text_range());
                 }
@@ -274,7 +274,7 @@ fn def_to_runnable(sema: &Semantic, def: &FunctionDef, group: GroupName) -> Opti
     let nav = def.to_nav(sema.db);
     let app_name = sema.db.file_app_name(def.file.file_id)?;
     let suite = sema.module_name(def.file.file_id)?.to_string();
-    let name = def.function.name.clone();
+    let name = def.name.clone();
     let kind = RunnableKind::Test {
         name: name.clone(),
         app_name,

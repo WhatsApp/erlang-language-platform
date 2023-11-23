@@ -1165,6 +1165,7 @@ mod tests {
     use crate::test_db::TestDB;
     use crate::AnyAttribute;
     use crate::FormIdx;
+    use crate::FunctionDefId;
     use crate::InFile;
     use crate::SpecOrCallback;
 
@@ -1178,7 +1179,8 @@ mod tests {
             .flat_map(|&form_idx| -> Option<String> {
                 match form_idx {
                     FormIdx::Function(function_id) => {
-                        let body = db.function_body(InFile::new(file_id, function_id));
+                        let body =
+                            db.function_body(InFile::new(file_id, FunctionDefId::new(function_id)));
                         Some(body.tree_print(&db))
                     }
                     FormIdx::TypeAlias(type_alias_id) => {

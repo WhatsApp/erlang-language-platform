@@ -37,7 +37,7 @@ use hir::ClauseId;
 use hir::Expr;
 use hir::ExprId;
 use hir::FormId;
-use hir::FormIdx;
+use hir::FunctionDefId;
 use hir::FunctionId;
 use hir::InFile;
 use hir::InFileAstPtr;
@@ -173,21 +173,19 @@ impl<'a> AssistContext<'a> {
         self.frange.file_id
     }
 
+    #[allow(dead_code)]
     pub(crate) fn in_clause(
         &self,
         syntax: &SyntaxNode,
         file_id: FileId,
     ) -> Option<(InFile<FunctionId>, ClauseId, InFunctionClauseBody<()>)> {
-        let function_id = self.sema.find_enclosing_function(self.file_id(), syntax)?;
+        let function_id = self
+            .sema
+            .find_enclosing_function_id(self.file_id(), syntax)?;
         let infile_function = InFile::new(self.file_id(), function_id);
         let (clause_id, body) = self.sema.to_clause_body(InFile::new(file_id, syntax))?;
-        let in_clause = InFunctionClauseBody::new(
-            body.clone(),
-            InFile::new(file_id, function_id),
-            clause_id,
-            None,
-            (),
-        );
+        let in_clause =
+            InFunctionClauseBody::new(body.clone(), InFile::new(file_id, function_id), None, ());
         Some((infile_function, clause_id, in_clause))
     }
 
@@ -239,7 +237,7 @@ impl<'a> AssistContext<'a> {
     /// the expressions in a user-meaningful way.
     pub(crate) fn create_function_args(
         &self,
-        function_id: FunctionId,
+        function_id: FunctionDefId,
         args: &[ExprId],
         body: &Body,
     ) -> String {
@@ -251,7 +249,7 @@ impl<'a> AssistContext<'a> {
                 // called as `X + 1 + Y` becomes `XNY`.
                 let vars_and_literals = body.fold_expr(
                     Strategy::TopDown,
-                    FormIdx::Function(function_id),
+                    function_id.as_form_id(),
                     *arg,
                     Vec::default(),
                     &mut |mut acc, ctx| {

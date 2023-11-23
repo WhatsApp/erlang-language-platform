@@ -25,7 +25,7 @@ use hir::BinarySeg;
 use hir::BodySourceMap;
 use hir::Expr;
 use hir::ExprId;
-use hir::FunctionDef;
+use hir::FunctionClauseDef;
 use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Literal;
@@ -45,26 +45,24 @@ use crate::fix;
 
 pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
+        .get_function_clauses()
+        .for_each(|(_, def)| {
             if def.file.file_id == file_id {
                 process_matches(diags, sema, def)
             }
         });
 }
 
-fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    let def_fb = def.in_function_body(sema.db, def);
+fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionClauseDef) {
+    let in_clause = def.in_clause(sema.db, def);
+    let body_map = in_clause.get_body_map(sema.db);
     let source_file = sema.parse(def.file.file_id);
 
-    def_fb.fold_function((), &mut |_acc, clause_id, ctx| {
-        let in_clause = def_fb.in_clause(clause_id);
-        let body_map = in_clause.get_body_map(sema.db);
+    in_clause.fold_clause(def.function_id, (), &mut |_acc, ctx| {
         if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
             let rhs = &rhs.clone();
             if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
-                if let Some(range) = &def_fb.range_for_any(sema.db, clause_id, ctx.item_id) {
+                if let Some(range) = &in_clause.range_for_any(sema.db, ctx.item_id) {
                     let rhs_ast = body_map
                         .expr(*rhs)
                         .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
@@ -77,7 +75,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
 
 fn matches_trivially(
     sema: &Semantic,
-    in_clause: &InFunctionClauseBody<&FunctionDef>,
+    in_clause: &InFunctionClauseBody<&FunctionClauseDef>,
     body_map: &BodySourceMap,
     source_file: &InFile<SourceFile>,
     pat_id: &PatId,
@@ -248,8 +246,11 @@ fn matches_trivially(
     }
 }
 
-fn as_literal(in_clause: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) -> Option<Literal> {
-    let expr = &in_clause[*expr_id];
+fn as_literal(
+    def_fb: &InFunctionClauseBody<&FunctionClauseDef>,
+    expr_id: &ExprId,
+) -> Option<Literal> {
+    let expr = &def_fb[*expr_id];
     match expr {
         Expr::Literal(lit) => Some(lit.clone()),
         _ => None,

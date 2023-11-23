@@ -56,6 +56,7 @@ use elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
+use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::Idx;
@@ -601,6 +602,7 @@ pub struct Function {
     pub param_names: Vec<ParamName>,
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::FunDecl>,
+    pub separator: Option<(ast::ClauseSeparator, TextRange)>,
 }
 
 /// -define, -undef, -include, and -include_lib

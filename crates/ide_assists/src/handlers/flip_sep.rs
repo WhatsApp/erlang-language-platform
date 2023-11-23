@@ -10,9 +10,13 @@
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::algo::non_trivia_sibling;
+use elp_syntax::AstNode;
 use elp_syntax::Direction;
 use elp_syntax::SyntaxKind;
+use elp_syntax::SyntaxToken;
 use fxhash::FxHashSet;
+use hir::InFile;
+use text_edit::TextRange;
 
 use crate::AssistContext;
 use crate::Assists;
@@ -42,8 +46,18 @@ pub(crate) fn flip_sep(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         SyntaxKind::ANON_SEMI,
     ]))?;
 
-    let prev = non_trivia_sibling(pivot.clone().into(), Direction::Prev)?;
-    let next = non_trivia_sibling(pivot.clone().into(), Direction::Next)?;
+    let flip = if let Some(flip) = flip_function_clause(ctx, &pivot) {
+        flip
+    } else {
+        let prev = non_trivia_sibling(pivot.clone().into(), Direction::Prev)?;
+        let next = non_trivia_sibling(pivot.clone().into(), Direction::Next)?;
+        Flip {
+            prev_range: prev.text_range(),
+            prev_source: prev.to_string(),
+            next_range: next.text_range(),
+            next_source: next.to_string(),
+        }
+    };
 
     acc.add(
         AssistId("flip_sep", AssistKind::RefactorRewrite),
@@ -51,10 +65,43 @@ pub(crate) fn flip_sep(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         pivot.text_range(),
         None,
         |edit| {
-            edit.replace(prev.text_range(), next.to_string());
-            edit.replace(next.text_range(), prev.to_string());
+            edit.replace(flip.prev_range, flip.next_source);
+            edit.replace(flip.next_range, flip.prev_source);
         },
     )
+}
+
+#[derive(Debug)]
+struct Flip {
+    prev_range: TextRange,
+    prev_source: String,
+    next_range: TextRange,
+    next_source: String,
+}
+
+fn flip_function_clause(ctx: &AssistContext, pivot: &SyntaxToken) -> Option<Flip> {
+    let function = ctx
+        .sema
+        .find_enclosing_function(ctx.file_id(), &pivot.parent()?)?;
+    let def_map = ctx.sema.def_map(ctx.file_id());
+    let function_def = def_map.get_by_function_id(&InFile::new(ctx.file_id(), function))?;
+    let asts = function_def.source(ctx.sema.db.upcast());
+    asts.iter().enumerate().find_map(|(i, fun_ast)| {
+        let (_item, token) = fun_ast.separator()?;
+        if &token == pivot {
+            let next = asts.get(i + 1)?;
+            let prev_syntax = fun_ast.clause()?.syntax().clone();
+            let next_syntax = next.clause()?.syntax().clone();
+            Some(Flip {
+                prev_range: prev_syntax.text_range(),
+                prev_source: prev_syntax.to_string(),
+                next_range: next_syntax.text_range(),
+                next_source: next_syntax.to_string(),
+            })
+        } else {
+            None
+        }
+    })
 }
 
 #[cfg(test)]

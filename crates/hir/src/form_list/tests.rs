@@ -77,6 +77,8 @@ fun2(A, B, C) -> ok.
             fun1() -> .... %% cond: None
 
             fun2(_, _, _) -> .... %% cond: None
+
+            fun2(_, _, _) -> .... %% cond: None
         "#]],
     )
 }

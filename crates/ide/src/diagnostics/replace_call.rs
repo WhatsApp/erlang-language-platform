@@ -72,51 +72,42 @@ pub fn replace_call_site_if_args_match(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    sema.def_map(file_id)
-        .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                find_call_in_function(
-                    acc,
-                    sema,
-                    def,
-                    &[(fm, ())],
-                    &args_match,
-                    move |sema, in_clause, target, args, extra_info, fix_info, range| {
-                        let mfa = MFA::from_call_target(
-                            target,
-                            args.len() as u32,
-                            sema,
-                            &in_clause.body(),
-                            file_id,
-                        )?;
-                        let mfa_str = mfa.label();
+    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
+        if def.file.file_id == file_id {
+            find_call_in_function(
+                acc,
+                sema,
+                def,
+                &[(fm, ())],
+                &args_match,
+                move |sema, in_clause, target, args, extra_info, fix_info, range| {
+                    let mfa = MFA::from_call_target(
+                        target,
+                        args.len() as u32,
+                        sema,
+                        &in_clause.body(),
+                        file_id,
+                    )?;
+                    let mfa_str = mfa.label();
 
-                        let diag = diagnostic_builder(&mfa, extra_info, range)?;
+                    let diag = diagnostic_builder(&mfa, extra_info, range)?;
 
-                        if let Some(edit) = replace_call(
-                            replacement,
-                            sema,
-                            &in_clause,
-                            file_id,
-                            args,
-                            target,
-                            &range,
-                        ) {
-                            Some(diag.with_fixes(Some(vec![fix(
-                                "replace_call_site",
-                                &format!("Replace call to '{:?}' {}", &mfa_str, fix_info),
-                                SourceChange::from_text_edit(file_id, edit),
-                                range,
-                            )])))
-                        } else {
-                            Some(diag)
-                        }
-                    },
-                );
-            }
-        });
+                    if let Some(edit) =
+                        replace_call(&replacement, sema, in_clause, file_id, args, target, &range)
+                    {
+                        Some(diag.with_fixes(Some(vec![fix(
+                            "replace_call_site",
+                            &format!("Replace call to '{:?}' {}", &mfa_str, fix_info),
+                            SourceChange::from_text_edit(file_id, edit),
+                            range,
+                        )])))
+                    } else {
+                        Some(diag)
+                    }
+                },
+            );
+        }
+    });
 }
 
 #[allow(dead_code)] // @oss-only
@@ -268,64 +259,59 @@ pub fn remove_fun_ref_from_list(
 ) {
     let mfas = vec![(fm, ())];
     let matcher = FunctionMatcher::new(&mfas);
-    sema.def_map(file_id)
-        .get_functions()
-        .values()
-        .for_each(|def| {
-            if def.file.file_id == file_id {
-                let def_fb = def.in_function_body(sema.db, def);
-                let source_file = sema.parse(file_id);
-                def_fb
-                    .clone()
-                    .fold_function((), &mut |_acc, clause_id, ctx| {
-                        let body_map = def_fb.get_body_map(sema.db, clause_id);
-                        let in_clause = def_fb.in_clause(clause_id);
-                        match ctx.item_id {
-                            AnyExprId::Expr(expr_id) => {
-                                let matches = match_fun_ref_in_list_in_call_arg(
-                                    &matcher, sema, &in_clause, &expr_id,
-                                );
-                                matches
-                                    .iter()
-                                    .for_each(|(matched_funref_id, target, arity)| {
-                                        || -> Option<()> {
-                                            let in_file_ast_ptr =
-                                                body_map.expr(*matched_funref_id)?;
-                                            let list_elem_ast =
-                                                in_file_ast_ptr.to_node(&source_file)?;
-                                            let statement_removal =
-                                                remove_statement(&list_elem_ast)?;
-                                            let mfa = MFA::from_call_target(
-                                                target,
-                                                *arity,
-                                                sema,
-                                                &def_fb.body(clause_id),
+    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
+        if def.file.file_id == file_id {
+            let def_fb = def.in_function_body(sema.db, def);
+            let source_file = sema.parse(file_id);
+            def_fb
+                .clone()
+                .fold_function((), &mut |_acc, clause_id, ctx| {
+                    let body_map = def_fb.get_body_map(sema.db, clause_id);
+                    let in_clause = def_fb.in_clause(clause_id);
+                    match ctx.item_id {
+                        AnyExprId::Expr(expr_id) => {
+                            let matches = match_fun_ref_in_list_in_call_arg(
+                                &matcher, sema, &in_clause, &expr_id,
+                            );
+                            matches
+                                .iter()
+                                .for_each(|(matched_funref_id, target, arity)| {
+                                    || -> Option<()> {
+                                        let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
+                                        let list_elem_ast =
+                                            in_file_ast_ptr.to_node(&source_file)?;
+                                        let statement_removal = remove_statement(&list_elem_ast)?;
+                                        let mfa = MFA::from_call_target(
+                                            target,
+                                            *arity,
+                                            sema,
+                                            &def_fb.body(clause_id),
+                                            file_id,
+                                        )?;
+                                        let range = def_fb.clone().range_for_expr(
+                                            sema.db,
+                                            clause_id,
+                                            *matched_funref_id,
+                                        )?;
+                                        let diag = diagnostic_builder(&mfa, "", range)?;
+                                        diags.push(diag.with_fixes(Some(vec![fix(
+                                            "remove_fun_ref_from_list",
+                                            "Remove noop fun ref from list",
+                                            SourceChange::from_text_edit(
                                                 file_id,
-                                            )?;
-                                            let range = def_fb.clone().range_for_expr(
-                                                sema.db,
-                                                clause_id,
-                                                *matched_funref_id,
-                                            )?;
-                                            let diag = diagnostic_builder(&mfa, "", range)?;
-                                            diags.push(diag.with_fixes(Some(vec![fix(
-                                                "remove_fun_ref_from_list",
-                                                "Remove noop fun ref from list",
-                                                SourceChange::from_text_edit(
-                                                    file_id,
-                                                    statement_removal,
-                                                ),
-                                                range,
-                                            )])));
-                                            Some(())
-                                        }();
-                                    });
-                            }
-                            _ => {}
+                                                statement_removal,
+                                            ),
+                                            range,
+                                        )])));
+                                        Some(())
+                                    }();
+                                });
                         }
-                    });
-            }
-        })
+                        _ => {}
+                    }
+                });
+        }
+    })
 }
 
 fn match_fun_ref_in_list_in_call_arg<T>(

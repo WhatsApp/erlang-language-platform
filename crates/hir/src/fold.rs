@@ -261,11 +261,11 @@ pub fn fold_file<'a, T>(
     let r = form_list.forms().iter().fold(initial, |r, &form_idx| {
         let r = form_callback(r, On::Entry, form_idx);
         let r = match form_idx {
-            FormIdx::Function(function_id) => sema.fold_function_with_macros(
+            FormIdx::Function(function_id) => sema.fold_clause_with_macros(
                 with_macros,
                 InFile::new(file_id, function_id),
                 r,
-                &mut |acc, _clause, ctx| callback(acc, ctx),
+                callback,
             ),
             FormIdx::TypeAlias(type_alias_id) => sema.fold::<TypeAlias, T>(
                 with_macros,
@@ -1129,7 +1129,6 @@ mod tests {
     use super::FoldBody;
     use crate::body::UnexpandedIndex;
     use crate::expr::AnyExpr;
-    use crate::expr::ClauseId;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
     use crate::form_list::Form;
@@ -1139,7 +1138,8 @@ mod tests {
     use crate::Atom;
     use crate::Expr;
     use crate::FormIdx;
-    use crate::FunctionBody;
+    use crate::FunctionClauseBody;
+    use crate::FunctionId;
     use crate::InFile;
     use crate::Literal;
     use crate::On;
@@ -1190,38 +1190,30 @@ bar() ->
         let source_file = in_file.value;
         let ast_var = algo::find_node_at_offset::<ast::Var>(source_file.syntax(), offset).unwrap();
 
-        let (body, _body_maps) = FunctionBody::function_body_with_source_query(
-            &db,
-            InFile {
-                file_id,
-                value: Idx::from_raw(RawIdx::from(0)),
-            },
-        );
+        let function_id: InFile<FunctionId> = InFile {
+            file_id,
+            value: Idx::from_raw(RawIdx::from(0)),
+        };
+        let (body, body_map) =
+            FunctionClauseBody::function_clause_body_with_source_query(&db, function_id);
 
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast_var.clone()));
-
-        let in_clause = sema.to_expr(InFile::new(file_id, &expr)).unwrap();
-
-        let expr_id = in_clause
-            .expr_id_ast(
-                &db,
-                InFile {
-                    file_id,
-                    value: &expr,
-                },
-            )
+        let expr_id = body_map
+            .expr_id(InFile {
+                file_id,
+                value: &expr,
+            })
             .unwrap();
-        let expr = &in_clause[expr_id];
+        let expr = &body.body[expr_id];
         let hir_var = match expr {
             crate::Expr::Var(v) => v,
             _ => panic!(),
         };
-        let idx = ClauseId::from_raw(RawIdx::from(0));
         let r: u32 = FoldCtx::fold_expr(
-            &FoldBody::Body(&in_clause.body.body),
+            &FoldBody::Body(&body.body),
             Strategy::TopDown,
-            body.form_id(),
-            body.clauses[idx].clause.exprs[0],
+            FormIdx::Function(function_id.value),
+            body.clause.exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Var(v)) => {
@@ -1333,21 +1325,20 @@ bar() ->
 
         let form_list = sema.form_list(file_id);
         let (function_idx, _) = form_list.functions().next().unwrap();
-        let function_body = sema.db.function_body(InFile::new(file_id, function_idx));
-
-        let idx = ClauseId::from_raw(RawIdx::from(0));
-        let clause_body = &function_body.clauses[idx];
+        let function_body = sema
+            .db
+            .function_clause_body(InFile::new(file_id, function_idx));
 
         let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&clause_body.body))
+            FoldBody::UnexpandedIndex(UnexpandedIndex(&function_body.body))
         } else {
-            FoldBody::Body(&clause_body.body)
+            FoldBody::Body(&function_body.body)
         };
         let r = FoldCtx::fold_expr_foldbody(
             &fold_body,
             strategy,
-            function_body.form_id(),
-            function_body.clauses[idx].clause.exprs[0],
+            FormIdx::Function(function_idx),
+            function_body.clause.exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
@@ -1397,7 +1388,7 @@ bar() ->
                             Literal(Atom('foo')),
                         },
                     },
-            }.
+            }
         "#]],
             expect![[r#"
             (
@@ -1436,7 +1427,7 @@ bar() ->
                             Literal(Atom('foo')),
                         },
                     },
-            }.
+            }
         "#]],
             expect![[r#"
             (
@@ -1475,7 +1466,7 @@ bar() ->
                             Literal(Atom('foo')),
                         },
                     },
-            }.
+            }
         "#]],
             expect![[r#"
             (
@@ -1814,7 +1805,6 @@ bar() ->
         let hir_atom_str = ast_atom.raw_text();
 
         let form_list = sema.db.file_form_list(file_id);
-        // let record = &form_list[record_id.value];
 
         let r: u32 =
             fold_file(

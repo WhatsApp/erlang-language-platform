@@ -18,19 +18,23 @@ use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
+use elp_syntax::TextRange;
 
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
+use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
 use crate::Callback;
 use crate::DefMap;
 use crate::Define;
+use crate::FormIdx;
 use crate::Function;
 use crate::FunctionId;
 use crate::InFile;
 use crate::InFileAstPtr;
 use crate::InFunctionBody;
+use crate::InFunctionClauseBody;
 use crate::ModuleAttribute;
 use crate::Name;
 use crate::NameArity;
@@ -96,30 +100,76 @@ impl Module {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FunctionClauseDef {
+    pub file: File,
+    pub module: Option<ModuleName>,
+    pub function: Function,
+    pub function_id: FunctionId,
+}
+
+impl FunctionClauseDef {
+    pub fn source(&self, db: &dyn SourceDatabase) -> ast::FunDecl {
+        let source_file = self.file.source(db);
+        self.function.form_id.get(&source_file)
+    }
+
+    pub fn in_clause<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionClauseBody<T>
+    where
+        T: Clone,
+    {
+        let function_body =
+            db.function_clause_body(InFile::new(self.file.file_id, self.function_id.clone()));
+        InFunctionClauseBody::new(
+            function_body,
+            InFile::new(self.file.file_id, self.function_id.clone()),
+            None,
+            value,
+        )
+    }
+
+    pub fn form_id(&self) -> FormIdx {
+        FormIdx::Function(self.function_id)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FunctionDef {
     pub file: File,
     pub exported: bool,
     pub deprecated: bool,
     pub deprecated_desc: Option<DeprecatedDesc>,
     pub module: Option<ModuleName>,
-    pub function: Function,
-    pub function_id: FunctionId,
+    pub name: NameArity,
+    pub function: Vec<Function>,
+    pub function_ids: Vec<FunctionId>,
+    pub function_id: FunctionDefId,
 }
 
 impl FunctionDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::FunDecl {
+    pub fn source(&self, db: &dyn SourceDatabase) -> Vec<ast::FunDecl> {
         let source_file = self.file.source(db);
-        self.function.form_id.get(&source_file)
+        self.function
+            .iter()
+            .map(|f| f.form_id.get(&source_file))
+            .collect()
+    }
+
+    pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        let sources = self.source(db);
+        let start = sources.first()?;
+        let end = sources.last()?;
+        Some(start.syntax().text_range().cover(end.syntax().text_range()))
     }
 
     pub fn in_function_body<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionBody<T>
     where
         T: Clone,
     {
-        let function_body = db.function_body(InFile::new(self.file.file_id, self.function_id));
+        let function_body =
+            db.function_body(InFile::new(self.file.file_id, self.function_id.clone()));
         InFunctionBody::new(
             function_body,
-            InFile::new(self.file.file_id, self.function_id),
+            InFile::new(self.file.file_id, self.function_id.clone()),
             value,
         )
     }
@@ -129,9 +179,11 @@ impl FunctionDef {
     }
 
     pub fn edoc_comments(&self, db: &dyn MinDefDatabase) -> Option<EdocHeader> {
+        let fun_decls = self.source(db.upcast());
+        let fun_decl = fun_decls.get(0)?;
         let form = InFileAstPtr::new(
             self.file.file_id,
-            AstPtr::new(&ast::Form::FunDecl(self.source(db.upcast()))),
+            AstPtr::new(&ast::Form::FunDecl(fun_decl.clone())),
         );
         let file_edoc = db.file_edoc_comments(form.file_id())?;
         file_edoc.get(&form).cloned()

@@ -31,8 +31,7 @@ pub(crate) fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file
     }
     sema.def_map(file_id)
         .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| check_function(diags, sema, def));
+        .for_each(|(_, def)| check_function(diags, sema, def));
 }
 
 pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {

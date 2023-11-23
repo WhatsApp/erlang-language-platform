@@ -29,8 +29,7 @@ use crate::diagnostics::Severity;
 pub(crate) fn application_env(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_functions()
-        .iter()
-        .for_each(|(_arity, def)| check_function(diags, sema, def));
+        .for_each(|(_, def)| check_function(diags, sema, def));
 }
 
 #[derive(Debug, Clone)]

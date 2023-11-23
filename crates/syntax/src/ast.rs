@@ -27,6 +27,7 @@ pub use self::erlang::is_erlang_fun;
 pub use self::erlang::is_erlang_type;
 pub use self::generated::nodes::*;
 pub use self::node_ext::Arity;
+pub use self::node_ext::ClauseSeparator;
 pub use self::node_ext::HasArity;
 pub use self::operators::ArithOp;
 pub use self::operators::BinaryOp;

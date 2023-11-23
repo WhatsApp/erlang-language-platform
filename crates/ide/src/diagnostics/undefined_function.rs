@@ -36,7 +36,6 @@ pub(crate) fn undefined_function(
 ) {
     sema.def_map(file_id)
         .get_functions()
-        .iter()
         .for_each(|(_arity, def)| {
             if def.file.file_id == file_id {
                 check_function(diagnostics, sema, def)

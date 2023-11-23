@@ -22,13 +22,13 @@ use la_arena::RawIdx;
 
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
+use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
 use crate::fold::FoldBody;
 use crate::AnyExprId;
 use crate::AnyExprRef;
-use crate::Atom;
 use crate::Attribute;
 use crate::AttributeId;
 use crate::Callback;
@@ -45,6 +45,7 @@ use crate::FormList;
 use crate::Function;
 use crate::FunctionId;
 use crate::InFile;
+use crate::NameArity;
 use crate::Pat;
 use crate::PatId;
 use crate::RecordFieldBody;
@@ -84,7 +85,8 @@ pub struct UnexpandedIndex<'a>(pub &'a Body);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
-    pub function_id: InFile<FunctionId>,
+    pub function_id: InFile<FunctionDefId>,
+    pub clause_ids: Vec<FunctionId>,
     pub clauses: Arena<Arc<FunctionClauseBody>>,
 }
 
@@ -206,20 +208,34 @@ impl Body {
 impl FunctionBody {
     pub(crate) fn function_body_with_source_query(
         db: &dyn MinDefDatabase,
-        function_id: InFile<FunctionId>,
+        function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
-        let form_list = db.file_form_list(function_id.file_id);
-        let function = &form_list[function_id.value];
-        let function_ast = function.form_id.get(&function_id.file_syntax(db.upcast()));
+        let def_map = db.def_map(function_id.file_id);
+        if let Some(fun_def) = def_map.get_by_function_id(&function_id) {
+            let fun_asts = fun_def.source(db.upcast());
 
-        let mut ctx = lower::Ctx::new(db, function_id.file_id);
-        ctx.set_function_info(&function.name);
-        let (body, source_maps) = ctx.lower_function(function_id, &function_ast);
-        (Arc::new(body), source_maps)
+            let mut ctx = lower::Ctx::new(db, function_id.file_id);
+            let name = &fun_def.function[0].name;
+            ctx.set_function_info(name);
+            let (body, source_maps) =
+                ctx.lower_function(function_id, fun_def.function_ids.clone(), name, &fun_asts);
+            (Arc::new(body), source_maps)
+        } else {
+            (
+                Arc::new(FunctionBody {
+                    function_id,
+                    clause_ids: vec![],
+                    clauses: Arena::default(),
+                }),
+                vec![],
+            )
+        }
     }
 
-    pub fn form_id(&self) -> FormIdx {
-        FormIdx::Function(self.function_id.value)
+    pub fn form_id(&self, clause_id: ClauseId) -> Option<FormIdx> {
+        let n: u32 = clause_id.into_raw().into();
+        let function_id = self.clause_ids.get(n as usize)?;
+        Some(FormIdx::Function(*function_id))
     }
 
     pub fn print(&self, db: &dyn MinInternDatabase, form: &Function) -> String {
@@ -240,14 +256,47 @@ impl FunctionBody {
 }
 
 impl FunctionClauseBody {
+    pub(crate) fn function_clause_body_with_source_query(
+        db: &dyn MinDefDatabase,
+        function_id: InFile<FunctionId>,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        fn empty() -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+            (
+                Arc::new(FunctionClauseBody {
+                    body: Arc::new(Body::default()),
+                    clause: Clause::default(),
+                }),
+                Arc::new(BodySourceMap::default()),
+            )
+        }
+
+        let form_list = db.file_form_list(function_id.file_id);
+        let function = &form_list[function_id.value];
+        let function_ast = function.form_id.get(&function_id.file_syntax(db.upcast()));
+        if let Some(clause_ast) = function_ast.clause() {
+            let mut ctx = lower::Ctx::new(db, function_id.file_id);
+            ctx.set_function_info(&function.name);
+            if let Some((body, source_map)) = ctx
+                .lower_clause_or_macro_body(&function.name, clause_ast)
+                .next()
+            {
+                (Arc::new(body), Arc::new(source_map))
+            } else {
+                empty()
+            }
+        } else {
+            empty()
+        }
+    }
+
     pub(crate) fn lower_clause_body(
         db: &dyn MinDefDatabase,
         file_id: FileId,
-        info: Option<(Atom, u32)>,
+        info: &NameArity,
         clause_ast: &ast::FunctionClause,
     ) -> (FunctionClauseBody, BodySourceMap) {
         let mut ctx = lower::Ctx::new(db, file_id);
-        ctx.set_function_info_raw(info);
+        ctx.set_function_info(info);
         let (body, source_map) = ctx.lower_function_clause(&clause_ast);
         (body, source_map)
     }

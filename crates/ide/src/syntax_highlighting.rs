@@ -88,7 +88,7 @@ fn bound_vars_in_pattern_highlight(
     let highlight_bound = HlTag::Symbol(SymbolKind::Variable) | HlMod::Bound;
 
     let bound_var_ranges = sema.bound_vars_in_pattern_diagnostic(file_id);
-    bound_var_ranges.iter().for_each(|(_, _, _, var)| {
+    bound_var_ranges.iter().for_each(|(_, _, var)| {
         let range = var.syntax().text_range();
         // Element inside the viewport, need to highlight
         if range_to_highlight.intersect(range).is_some() {
@@ -109,7 +109,7 @@ fn deprecated_func_highlight(
 ) {
     let def_map = sema.def_map(file_id);
     let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::DeprecatedFunction;
-    for def in def_map.get_functions().values() {
+    for (_, def) in def_map.get_functions() {
         if def.file.file_id == file_id {
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
@@ -201,42 +201,45 @@ fn functions_highlight(
     hl: &mut Highlights,
 ) {
     let def_map = sema.def_map(file_id);
-    for def in def_map.get_functions().values() {
+    for (_, def) in def_map.get_functions() {
         if def.file.file_id == file_id && (def.exported || def.deprecated) {
             let fun_decl_ast = def.source(sema.db.upcast());
 
-            fun_decl_ast.clauses().for_each(|clause| match clause {
-                ast::FunctionOrMacroClause::FunctionClause(clause) => {
-                    if let Some(n) = clause.name() {
-                        let range = n.syntax().text_range();
+            fun_decl_ast
+                .iter()
+                .for_each(|fun_clause| match fun_clause.clause() {
+                    Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => {
+                        if let Some(n) = clause.name() {
+                            let range = n.syntax().text_range();
 
-                        let highlight = match (def.exported, def.deprecated) {
-                            (true, true) => {
-                                HlTag::Symbol(SymbolKind::Function)
-                                    | HlMod::ExportedFunction
-                                    | HlMod::DeprecatedFunction
+                            let highlight = match (def.exported, def.deprecated) {
+                                (true, true) => {
+                                    HlTag::Symbol(SymbolKind::Function)
+                                        | HlMod::ExportedFunction
+                                        | HlMod::DeprecatedFunction
+                                }
+                                (false, true) => {
+                                    HlTag::Symbol(SymbolKind::Function) | HlMod::DeprecatedFunction
+                                }
+                                (true, false) => {
+                                    HlTag::Symbol(SymbolKind::Function) | HlMod::ExportedFunction
+                                }
+                                (false, false) => unreachable!("checked above"),
+                            };
+
+                            // Element inside the viewport, need to highlight
+                            if range_to_highlight.intersect(range).is_some() {
+                                hl.add(HlRange {
+                                    range,
+                                    highlight,
+                                    binding_hash: None,
+                                })
                             }
-                            (false, true) => {
-                                HlTag::Symbol(SymbolKind::Function) | HlMod::DeprecatedFunction
-                            }
-                            (true, false) => {
-                                HlTag::Symbol(SymbolKind::Function) | HlMod::ExportedFunction
-                            }
-                            (false, false) => unreachable!("checked above"),
                         };
-
-                        // Element inside the viewport, need to highlight
-                        if range_to_highlight.intersect(range).is_some() {
-                            hl.add(HlRange {
-                                range,
-                                highlight,
-                                binding_hash: None,
-                            })
-                        }
-                    };
-                }
-                ast::FunctionOrMacroClause::MacroCallExpr(_) => {}
-            })
+                    }
+                    Some(ast::FunctionOrMacroClause::MacroCallExpr(_)) => {}
+                    None => {}
+                })
         }
     }
 }

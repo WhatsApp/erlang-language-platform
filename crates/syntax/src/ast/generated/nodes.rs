@@ -2725,8 +2725,8 @@ pub struct FunDecl {
     pub(crate) syntax: SyntaxNode,
 }
 impl FunDecl {
-    pub fn clauses(&self) -> AstChildren<FunctionOrMacroClause> {
-        support::children(&self.syntax)
+    pub fn clause(&self) -> Option<FunctionOrMacroClause> {
+        support::child(&self.syntax, 0usize)
     }
 }
 #[doc = r" Via NodeType::Node 2 struct"]

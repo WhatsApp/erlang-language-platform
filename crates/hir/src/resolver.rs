@@ -9,6 +9,8 @@
 
 //! Name resolution façade.
 
+use std::sync::Arc;
+
 use fxhash::FxHashSet;
 
 use crate::body::scope::ExprScopes;
@@ -22,11 +24,11 @@ pub type Resolution = (Var, Vec<PatId>);
 
 #[derive(Debug, Clone)]
 pub struct Resolver {
-    pub scopes: ExprScopes,
+    pub scopes: Arc<ExprScopes>,
 }
 
 impl Resolver {
-    pub fn new(expr_scopes: ExprScopes) -> Resolver {
+    pub fn new(expr_scopes: Arc<ExprScopes>) -> Resolver {
         Resolver {
             scopes: expr_scopes,
         }

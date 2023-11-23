@@ -28,11 +28,11 @@ use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
-use elp_syntax::AstNode;
 use elp_syntax::SourceFile;
 use expect_test::expect;
 use expect_test::Expect;
 use hir::Expr;
+use hir::FunctionDefId;
 use hir::InFile;
 use hir::Semantic;
 use stdx::format_to;
@@ -347,7 +347,7 @@ fn test_function_args() {
             "X, XN"
         "#]]
         .assert_debug_eq(&ctx.create_function_args(
-            call_expr.function_id.value,
+            FunctionDefId::new(call_expr.function_id.value),
             args,
             &call_expr.body(),
         ));
@@ -390,8 +390,8 @@ fn export_no_pre_existing() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -433,8 +433,8 @@ fn export_single_pre_existing() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -482,8 +482,8 @@ fn export_single_pre_existing_with_comment() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -535,8 +535,8 @@ fn export_single_group_with_overrides_comment() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
@@ -591,8 +591,8 @@ fn export_into_specific_pre_existing_1() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
@@ -650,8 +650,8 @@ fn export_into_specific_pre_existing_2() {
         if let Some(SymbolClass::Definition(SymbolDefinition::Function(fun))) =
             ctx.classify_offset()
         {
-            let function_name_arity = fun.function.name;
-            let function_range = ctx.form_ast(fun.function.form_id).syntax().text_range();
+            let function_name_arity = fun.name.clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().nth(1).unwrap();

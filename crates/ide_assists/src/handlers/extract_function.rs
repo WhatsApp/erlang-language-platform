@@ -124,7 +124,7 @@ fn make_function_name(ctx: &AssistContext<'_>) -> String {
     let def_map = ctx.sema.def_map(ctx.file_id());
     let names_in_scope: FxHashSet<_> = def_map
         .get_functions()
-        .keys()
+        .map(|(na, _)| na)
         .chain(def_map.get_imports().iter().map(|(na, _)| na))
         .map(|n| n.name().as_str().to_string())
         .collect();
