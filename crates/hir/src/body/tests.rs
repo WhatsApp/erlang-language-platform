@@ -21,7 +21,8 @@ use crate::SpecOrCallback;
 
 #[track_caller]
 fn check(ra_fixture: &str, expect: Expect) {
-    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = file_ids[0];
     let form_list = db.file_form_list(file_id);
     let pretty = form_list
         .forms()
@@ -1505,6 +1506,29 @@ fn expand_macro_function_multiple_clauses() {
                      foo(_) -> Res).
 
 ?CLAUSE(ok).
+"#,
+        // We do not have the function name in the form list, so we
+        // print the macro name. In HIR this is resolved properly.
+        expect![[r#"
+            CLAUSE(1) ->
+                1;
+            CLAUSE(_) ->
+                'ok'.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_function_multiple_files() {
+    check(
+        r#"
+//- /src/main.erl
+-include("main.hrl").
+?CLAUSE(ok).
+//- /src/main.hrl
+-define(CLAUSE(Res), foo(1) -> 1;
+                     foo(_) -> Res).
+
 "#,
         // We do not have the function name in the form list, so we
         // print the macro name. In HIR this is resolved properly.

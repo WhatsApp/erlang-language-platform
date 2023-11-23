@@ -140,9 +140,11 @@ impl<'a> Ctx<'a> {
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
         // Verify macro expansion state
         let entry = self.macro_stack.pop().expect("BUG: macro stack empty");
-        assert_eq!(entry.file_id, self.original_file_id);
-        assert_eq!(entry.parent_id, 0);
         if self.macro_stack.len() == 0 {
+            // We can only check this at the actual end, not when
+            // finishing a recursive case.
+            assert_eq!(entry.file_id, self.original_file_id);
+            assert_eq!(entry.parent_id, 0);
             assert!(entry.var_map.is_empty());
         }
 
