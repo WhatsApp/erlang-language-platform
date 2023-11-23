@@ -137,12 +137,7 @@ impl<'tree, 'text> Converter<'tree, 'text> {
 
         if self.open_count > 0 {
             // If the open_count is > 0 it means we have unfinished builder nodes.
-            // Log the text for later analysis, and close the nodes. T106727908
-            log::error!(
-                "Converter::convert:open_count={}\n,text=[\n{}\n]",
-                self.open_count,
-                self.text
-            );
+            // Close the nodes.
             while self.open_count > 0 {
                 self.builder.finish_node();
                 self.open_count -= 1;
