@@ -175,5 +175,5 @@ callback_module(get_docs) -> erlang_service_edoc;
 callback_module(ct_info) -> erlang_service_ct;
 callback_module(elp_lint) -> erlang_service_lint.
 
-timeout(ct_info) -> 2500;
+timeout(ct_info) -> 5000;
 timeout(_) -> infinity.
