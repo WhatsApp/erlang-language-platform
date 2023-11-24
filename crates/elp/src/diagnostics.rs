@@ -119,11 +119,24 @@ fn are_all_labeled_diagnostics_equal(
     let empty_diags = LabeledDiagnostics::default();
     let existing = map.get(&file_id).unwrap_or(&empty_diags);
 
-    existing.len() == new.len()
-        && new
-            .iter()
-            .zip(existing.iter())
-            .all(|(left, right)| are_diagnostics_equal(left, right))
+    // len() is a coarse sanity check, it does not count the actual
+    // number of diagnostics. In particular, there is no guarantee that
+    // x.len() == x.iter().len()
+    existing.len() == new.len() && {
+        itertools::equal(
+            existing.iter().map(|d| CompareDiagnostic(d)),
+            new.iter().map(|d| CompareDiagnostic(d)),
+        )
+    }
+}
+
+#[derive(Debug)]
+struct CompareDiagnostic<'a>(&'a Diagnostic);
+
+impl PartialEq for CompareDiagnostic<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        are_diagnostics_equal(&self.0, &other.0)
+    }
 }
 
 fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
@@ -253,6 +266,8 @@ fn as_related(diagnostic: &Diagnostic, url: &Url) -> DiagnosticRelatedInformatio
 
 #[cfg(test)]
 mod tests {
+
+    use std::iter::once;
 
     use elp_ide::diagnostics;
     use elp_ide::diagnostics::DiagnosticCode;
@@ -419,6 +434,41 @@ mod tests {
              foo( -> ok. %%
              %%  ^ error: Syntax Error: Missing )
             "#,
+        );
+    }
+
+    #[test]
+    fn are_labeled_diagnostics_equal() {
+        let labeled_one = FxHashMap::from_iter([(
+            None,
+            vec![make_diag("function foo/0 undefined", "L1227", 3, 1, 2)],
+        )]);
+        let labeled_two = FxHashMap::from_iter([(
+            None,
+            vec![
+                make_diag("function foo/0 undefined", "L1227", 3, 1, 2),
+                make_diag("spec for undefined function foo/0", "L1308", 8, 1, 2),
+            ],
+        )]);
+        let diags_one = LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
+            normal: vec![],
+            labeled: labeled_one,
+        };
+        let diags_two = LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
+            normal: vec![],
+            labeled: labeled_two,
+        };
+
+        let file_id = FileId(0);
+        assert_eq!(
+            are_all_labeled_diagnostics_equal(
+                &FxHashMap::from_iter(once((file_id, diags_one))),
+                file_id,
+                &diags_two,
+            ),
+            false
         );
     }
 }
