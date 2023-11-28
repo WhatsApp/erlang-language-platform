@@ -687,8 +687,8 @@ impl BodySourceMap {
         match id {
             AnyExprId::Expr(expr_id) => self.expr_map_back.get(expr_id).copied(),
             AnyExprId::Pat(pat_id) => self.pat_map_back.get(pat_id).copied(),
-            AnyExprId::TypeExpr(_) => None,
-            AnyExprId::Term(_) => None,
+            AnyExprId::TypeExpr(type_id) => self.type_expr_map_back.get(type_id).copied(),
+            AnyExprId::Term(term_id) => self.term_map_back.get(term_id).copied(),
         }
     }
 
