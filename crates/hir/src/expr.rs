@@ -26,6 +26,7 @@ use crate::InFile;
 use crate::InFunctionClauseBody;
 use crate::RecordFieldId;
 use crate::Semantic;
+use crate::TypeAliasDef;
 use crate::Var;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -296,6 +297,18 @@ pub struct ReceiveAfter {
 pub enum CallTarget<Id> {
     Local { name: Id },
     Remote { module: Id, name: Id },
+}
+
+impl CallTarget<TypeExprId> {
+    pub fn resolve_call(
+        &self,
+        arity: u32,
+        sema: &Semantic,
+        file_id: FileId,
+        body: &Body,
+    ) -> Option<TypeAliasDef> {
+        sema::to_def::resolve_type_target(sema, self, arity, file_id, body)
+    }
 }
 
 impl CallTarget<ExprId> {

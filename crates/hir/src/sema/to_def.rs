@@ -39,6 +39,7 @@ use crate::Semantic;
 use crate::Term;
 use crate::TypeAliasDef;
 use crate::TypeExpr;
+use crate::TypeExprId;
 use crate::VarDef;
 
 pub trait ToDef: Clone {
@@ -141,27 +142,7 @@ impl ToDef for ast::Call {
             }
             AnyExprRef::TypeExpr(TypeExpr::Call { target, args }) => {
                 let arity = args.len().try_into().ok()?;
-                let (file_id, type_expr) = match target {
-                    CallTarget::Local { name } => (ast.file_id, *name),
-                    CallTarget::Remote { module, name } => {
-                        let module = sema.db.lookup_atom(body[*module].as_atom()?);
-                        (
-                            resolve_module_name(sema, ast.file_id, &module)?
-                                .file
-                                .file_id,
-                            *name,
-                        )
-                    }
-                };
-
-                let name = sema.db.lookup_atom(body[type_expr].as_atom()?);
-                let name = NameArity::new(name, arity);
-                sema.db
-                    .def_map(file_id)
-                    .get_types()
-                    .get(&name)
-                    .cloned()
-                    .map(CallDef::Type)
+                resolve_type_target(sema, target, arity, file_id, &body).map(CallDef::Type)
             }
             _ => None,
         }?;
@@ -524,7 +505,7 @@ pub fn resolve_module_name(sema: &Semantic<'_>, file_id: FileId, name: &str) -> 
     })
 }
 
-pub(crate) fn resolve_call_target(
+pub fn resolve_call_target(
     sema: &Semantic<'_>,
     target: &CallTarget<ExprId>,
     arity: u32,
@@ -566,6 +547,29 @@ pub(crate) fn resolve_call_target(
             None
         }
     }
+}
+
+pub fn resolve_type_target(
+    sema: &Semantic<'_>,
+    target: &CallTarget<TypeExprId>,
+    arity: u32,
+    file_id: FileId,
+    body: &Body,
+) -> Option<TypeAliasDef> {
+    let (file_id, type_expr) = match target {
+        CallTarget::Local { name } => (file_id, *name),
+        CallTarget::Remote { module, name } => {
+            let module = sema.db.lookup_atom(body[*module].as_atom()?);
+            (
+                resolve_module_name(sema, file_id, &module)?.file.file_id,
+                *name,
+            )
+        }
+    };
+
+    let name = sema.db.lookup_atom(body[type_expr].as_atom()?);
+    let name = NameArity::new(name, arity);
+    sema.db.def_map(file_id).get_types().get(&name).cloned()
 }
 
 fn resolve_capture(sema: &Semantic<'_>, fun: InFile<ast::Expr>) -> Option<FunctionDef> {
