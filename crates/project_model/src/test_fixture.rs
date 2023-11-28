@@ -80,6 +80,9 @@
 //! "
 //! ```
 
+use std::fs;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -87,6 +90,7 @@ use paths::AbsPath;
 use paths::AbsPathBuf;
 pub use stdx::trim_indent;
 use tempfile::tempdir;
+use tempfile::TempDir;
 
 use crate::otp::Otp;
 use crate::AppName;
@@ -156,6 +160,19 @@ impl Fixture {
         }
 
         res
+    }
+
+    pub fn gen_project(spec: &str) -> TempDir {
+        let fixtures = Fixture::parse(spec);
+        let tmp_dir = TempDir::new().unwrap();
+        for fixture in &fixtures {
+            let path = tmp_dir.path().join(&fixture.path[1..]);
+            let parent = path.parent().unwrap();
+            fs::create_dir_all(parent).unwrap();
+            let mut tmp_file = File::create(path).unwrap();
+            writeln!(tmp_file, "{}", &fixture.text).unwrap();
+        }
+        tmp_dir
     }
 
     //- /module.erl app:foo

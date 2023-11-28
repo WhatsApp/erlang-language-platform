@@ -56,6 +56,7 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
             std::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(to)?,
         ),
         None => Box::new(std::io::stdout()),

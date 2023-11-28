@@ -651,28 +651,11 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::fs::File;
-    use std::io::Write;
-
-    use tempfile::TempDir;
-    use test_fixture::Fixture;
 
     use super::*;
     use crate::json::JsonProjectAppData;
     use crate::no_manifest::NoManifestConfig;
-
-    pub fn gen_project(spec: &str) -> TempDir {
-        let fixtures = Fixture::parse(spec);
-        let tmp_dir = TempDir::new().unwrap();
-        for fixture in &fixtures {
-            let path = tmp_dir.path().join(&fixture.path[1..]);
-            let parent = path.parent().unwrap();
-            fs::create_dir_all(parent).unwrap();
-            let mut tmp_file = File::create(path).unwrap();
-            writeln!(tmp_file, "{}", &fixture.text).unwrap();
-        }
-        tmp_dir
-    }
+    use crate::test_fixture::Fixture;
 
     #[test]
     fn test_discover_rebar() {
@@ -695,7 +678,7 @@ mod tests {
         //- /app_b/include/app.hrl
         %% comment
         "#;
-        let dir = gen_project(spec);
+        let dir = Fixture::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
         if let Ok(ProjectManifest::Rebar(config)) = manifest {
@@ -738,7 +721,7 @@ mod tests {
         //- /app_b/test/suite.erl
         %% test
         "#;
-        let dir = gen_project(spec);
+        let dir = Fixture::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         if let Ok(ProjectManifest::Json(config)) = manifest {
@@ -841,7 +824,7 @@ mod tests {
         //- /app_a/src/app.erl
         -module(app).
         "#;
-        let dir = gen_project(spec);
+        let dir = Fixture::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         match manifest
@@ -866,7 +849,7 @@ mod tests {
             //- /app_a/src/app.erl
             -module(app).
             "#;
-            let dir = gen_project(spec);
+            let dir = Fixture::gen_project(spec);
             let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
                 dir.path().join("app_a/src/app.erl"),
             ));
@@ -894,7 +877,7 @@ mod tests {
         //- /app_a/src/app.erl
         -module(app).
         "#;
-        let dir = gen_project(spec);
+        let dir = Fixture::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
         match manifest
@@ -918,7 +901,7 @@ mod tests {
         //- /app_b/test/suite.erl
         %% test
         "#;
-        let dir = gen_project(spec);
+        let dir = Fixture::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
         if let Ok(ProjectManifest::NoManifest(config)) = manifest {
@@ -979,7 +962,7 @@ mod tests {
         //- /app_a/src/app.erl
         -module(app).
         "#;
-            let dir = gen_project(spec);
+            let dir = Fixture::gen_project(spec);
             let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
                 dir.path().join("app_a/src/app.erl"),
             ));
