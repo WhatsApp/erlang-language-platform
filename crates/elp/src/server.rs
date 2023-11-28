@@ -639,36 +639,17 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidSaveTextDocument>(|this, params| {
-                if let Ok(path) = convert::abs_path(&params.text_document.uri) {
-                    let path_ref: &Path = path.as_ref();
-                    let file_name = path.file_stem().and_then(|name| name.to_str());
-                    let ext = path.extension().and_then(|ext| ext.to_str());
-                    let reload_project = match (file_name, ext) {
-                        (Some("BUCK"), None) => true,
-                        (Some("TARGETS"), None) => true,
-                        (Some("TARGETS"), Some("v2")) => true,
-                        (Some("rebar"), Some("config")) => true,
-                        (Some("rebar.config"), Some("script")) => true,
-                        _ => false,
-                    } && path_ref.is_file();
-
-                    if reload_project {
-                        this.reload_project(vec![path.clone()]);
-                    }
-
-                    // Bump the file revision so that the salsa cache
-                    // is invalidated for processes reading the
-                    // on-disk version
-                    let vfs = this.vfs.read();
-                    let vfs_path = VfsPath::from(path);
-                    if let Some(file_id) = vfs.file_id(&vfs_path) {
-                        bump_file_revision(file_id, this.analysis_host.raw_database_mut());
-                    }
-
-                    this.eqwalizer_diagnostics_requested = true;
-                    this.edoc_diagnostics_requested = true;
-                    this.ct_diagnostics_requested = true;
-                }
+                process_changed_files(
+                    this,
+                    &vec![FileEvent::new(
+                        params.text_document.uri,
+                        FileChangeType::CHANGED,
+                    )],
+                );
+                Ok(())
+            })?
+            .on::<notification::DidChangeWatchedFiles>(|this, params| {
+                process_changed_files(this, &params.changes);
                 Ok(())
             })?
             .on::<notification::DidChangeConfiguration>(|this, _params| {
@@ -680,29 +661,6 @@ impl Server {
             })?
             .on::<notification::SetTrace>(|_, _| {
                 // Nothing to do for now
-                Ok(())
-            })?
-            .on::<notification::DidChangeWatchedFiles>(|this, params| {
-                let mut to_reload = vec![];
-                for change in params.changes {
-                    if let Ok(path) = convert::abs_path(&change.uri) {
-                        if this.should_reload_project_for_path(&path, &change) {
-                            to_reload.push(path.clone());
-                        }
-                        let opened = convert::vfs_path(&change.uri)
-                            .map(|vfs_path| {
-                                this.open_document_versions.read().contains_key(&vfs_path)
-                            })
-                            .unwrap_or(false);
-                        if !opened {
-                            this.vfs_loader.handle.invalidate(path);
-                        }
-                    }
-                }
-                this.reload_project(to_reload);
-                this.eqwalizer_diagnostics_requested = true;
-                this.edoc_diagnostics_requested = true;
-                this.ct_diagnostics_requested = true;
                 Ok(())
             })?
             .finish();
@@ -718,6 +676,8 @@ impl Server {
             (Some("BUCK"), None) => true,
             (Some("TARGETS"), None) => true,
             (Some("TARGETS"), Some("v2")) => true,
+            (Some("rebar"), Some("config")) => true,
+            (Some("rebar.config"), Some("script")) => true,
             (Some(file), Some("erl"))
                 if change.typ == FileChangeType::CREATED && file.ends_with("_SUITE") =>
             {
@@ -1386,6 +1346,36 @@ impl Server {
             ),
         }
     }
+}
+
+fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
+    let mut to_reload = vec![];
+    for change in changes {
+        if let Ok(path) = convert::abs_path(&change.uri) {
+            if this.should_reload_project_for_path(&path, &change) {
+                to_reload.push(path.clone());
+            }
+            let opened = convert::vfs_path(&change.uri)
+                .map(|vfs_path| this.open_document_versions.read().contains_key(&vfs_path))
+                .unwrap_or(false);
+            if opened {
+                // Bump the file revision so that the salsa cache
+                // is invalidated for processes reading the
+                // on-disk version
+                let vfs = this.vfs.read();
+                let vfs_path = VfsPath::from(path);
+                if let Some(file_id) = vfs.file_id(&vfs_path) {
+                    bump_file_revision(file_id, this.analysis_host.raw_database_mut());
+                }
+            } else {
+                this.vfs_loader.handle.invalidate(path);
+            }
+        }
+    }
+    this.reload_project(to_reload);
+    this.eqwalizer_diagnostics_requested = true;
+    this.edoc_diagnostics_requested = true;
+    this.ct_diagnostics_requested = true;
 }
 
 fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
