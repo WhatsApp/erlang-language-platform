@@ -96,6 +96,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             writeln!(cli, "{}", help)?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
+        args::Command::Glean(_) => (),
     }
 
     log::logger().flush();
@@ -959,6 +960,16 @@ mod tests {
             .run_inner(Args::from(&["explain", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/explain_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn glean_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["glean", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/glean_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }

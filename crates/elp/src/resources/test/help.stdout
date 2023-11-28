@@ -22,3 +22,4 @@ Available commands:
     eqwalize-stats        Return statistics about code quality for eqWAlizer
     explain               Explain a diagnostic code
     project-info          Generate project info file
+    glean                 Glean indexer

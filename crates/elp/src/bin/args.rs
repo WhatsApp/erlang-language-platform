@@ -277,6 +277,18 @@ pub struct ProjectInfo {
     pub to: Option<PathBuf>,
 }
 
+#[derive(Clone, Debug, Bpaf)]
+pub struct Glean {
+    /// Path to directory with project (defaults to `.`)
+    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    pub project: PathBuf,
+    #[bpaf(argument("MODULE"))]
+    pub module: Option<String>,
+    /// Path to a directory where to dump result
+    #[bpaf(argument("TO"))]
+    pub to: Option<PathBuf>,
+}
+
 #[derive(Clone, Debug)]
 pub enum Command {
     ParseAllElp(ParseAllElp),
@@ -295,6 +307,7 @@ pub enum Command {
     Shell(Shell),
     Explain(Explain),
     ProjectInfo(ProjectInfo),
+    Glean(Glean),
     Help(),
 }
 
@@ -405,6 +418,12 @@ pub fn command() -> impl Parser<Command> {
         .command("project-info")
         .help("Generate project info file");
 
+    let glean = glean()
+        .map(Command::Glean)
+        .to_options()
+        .command("glean")
+        .help("Glean indexer");
+
     construct!([
         eqwalize,
         eqwalize_all,
@@ -422,6 +441,7 @@ pub fn command() -> impl Parser<Command> {
         eqwalize_stats,
         explain,
         project_info,
+        glean,
     ])
     .fallback(Help())
 }
