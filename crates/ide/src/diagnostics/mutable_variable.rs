@@ -132,8 +132,8 @@ push_eligible(ProductPlatform, _Pu) ->
     false;
 push_eligible(_ProductPlatform, Pu) ->
     AppVersion = ABUserInfo = Pu,
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
-%%               ^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+%%  ^^^^^^^^^^ 💡 warning: match is redundant
+%%               ^^^^^^^^^^ 💡 warning: match is redundant
     false.
 
 "#,

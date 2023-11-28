@@ -63,11 +63,18 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
         if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
             let rhs = &rhs.clone();
             if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
-                if let Some(range) = &in_clause.range_for_any(sema.db, ctx.item_id) {
+                let maybe_lhs_range = &in_clause.range_for_any(sema.db, AnyExprId::Pat(lhs));
+                let maybe_full_range = &in_clause.range_for_any(sema.db, ctx.item_id);
+                if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range) {
                     let rhs_ast = body_map
                         .expr(*rhs)
                         .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                    diags.push(make_diagnostic(def.file.file_id, range, rhs_ast));
+                    diags.push(make_diagnostic(
+                        def.file.file_id,
+                        lhs_range,
+                        full_range,
+                        rhs_ast,
+                    ));
                 }
             }
         }
@@ -254,24 +261,29 @@ fn as_literal(
 
 fn make_diagnostic(
     file_id: FileId,
-    range: &TextRange,
+    lhs_range: &TextRange,
+    full_range: &TextRange,
     maybe_replacement: Option<ast::Expr>,
 ) -> Diagnostic {
-    let diag = Diagnostic::new(DiagnosticCode::TrivialMatch, "match is redundant", *range)
-        .with_severity(Severity::Warning)
-        .add_categories([Category::SimplificationRule]);
+    let diag = Diagnostic::new(
+        DiagnosticCode::TrivialMatch,
+        "match is redundant",
+        *lhs_range,
+    )
+    .with_severity(Severity::Warning)
+    .add_categories([Category::SimplificationRule]);
 
     if let Some(replacement_ast) = maybe_replacement {
         let replacement_str = replacement_ast.to_string();
         let mut edit_builder = TextEdit::builder();
-        edit_builder.replace(*range, replacement_str);
+        edit_builder.replace(*full_range, replacement_str);
         let edit = edit_builder.finish();
 
         diag.with_fixes(Some(vec![fix(
             "remove_redundant_match",
             "Remove match",
             SourceChange::from_text_edit(file_id, edit),
-            *range,
+            *full_range,
         )]))
     } else {
         diag
@@ -328,16 +340,16 @@ mod tests {
 
             do_foo() ->
                 42 = 42,
-            %%% ^^^^^^^ 💡 warning: match is redundant
+            %%% ^^ 💡 warning: match is redundant
                 42 = 43,
                 "blah" = "blah",
-            %%% ^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^ 💡 warning: match is redundant
                 "blah" = "bleh",
                 'x' = 'x',
-            %%% ^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^ 💡 warning: match is redundant
                 'x' = 'X',
                 true = true,
-            %%% ^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^ 💡 warning: match is redundant
                 true = false,
                 ok.
             "#,
@@ -354,12 +366,12 @@ mod tests {
                 X = 42,
                 Y = 42,
                 X = X,
-            %%% ^^^^^ 💡 warning: match is redundant
+            %%% ^ 💡 warning: match is redundant
                 X = Y,
                 {Z} = {Y},
-            %%% ^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^ 💡 warning: match is redundant
                 [W, ok] = [ok, ok],
-            %%% ^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^ 💡 warning: match is redundant
                 [_W, ok] = [ok, ok],
                 ok.
             "#,
@@ -375,9 +387,9 @@ mod tests {
             do_foo() ->
                 X = 42,
                 <<"foo", 42>> = <<"foo", 42>>,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^ 💡 warning: match is redundant
                 <<"foo", X>> = <<"foo", X>>,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^ 💡 warning: match is redundant
                 <<"foo", Y>> = <<"foo", 42>>,
                 Y.
             "#,
@@ -392,12 +404,12 @@ mod tests {
             do_foo() ->
                 X = 42,
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, bar}},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 {X, foo} = {X, bar},
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, pub}},
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, bar, hey}},
                 {} = {},
-            %%% ^^^^^^^ 💡 warning: match is redundant
+            %%% ^^ 💡 warning: match is redundant
                 ok.
             "#,
         )
@@ -412,12 +424,12 @@ mod tests {
             do_foo() ->
                 X = 42,
                 [X, ["foo"], [foo, bar]] = [X, ["foo"], [foo, bar]],
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 [X, foo] = [X, bar],
                 [X, "foo", [foo, bar]] = [X, "foo", [foo, pub]],
                 [X, "foo", [foo, bar]] = [X, "foo", [foo, bar, hey]],
                 [] = [],
-            %%% ^^^^^^^ 💡 warning: match is redundant
+            %%% ^^ 💡 warning: match is redundant
                 ok.
             "#,
         )
@@ -433,12 +445,12 @@ mod tests {
 
             do_foo() ->
                 #person{name = "Joe", age = 42} = #person{age = 42, name = "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 #person{name = "Joe", age = 43} = #person{age = 42, name = "Joe"},
                 #person{name = "Joe"} = #person{age = 42, name = "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 #person{age = 42} = #person{age = 42, name = "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 ok.
             "#,
         )
@@ -452,12 +464,12 @@ mod tests {
 
             do_foo() ->
                 #{name := "Joe", age := 42} = #{age => 42, name => "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 #{name := "Joe", age := 43} = #{age => 42, name => "Joe"},
                 #{name := "Joe"} = #{age => 42, name => "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
                 #{age := 42} = #{age => 42, name => "Joe"},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%% ^^^^^^^^^^^^ 💡 warning: match is redundant
                 ok.
             "#,
         )

@@ -1868,7 +1868,7 @@ baz(1)->4.
 
              baz()->
                Foo = 1,
-             %%^^^^^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: match is redundant
                % elp:ignore W0007
                Bar = 2,
                ok.
@@ -1884,11 +1884,11 @@ baz(1)->4.
 
              baz()->
                Foo = 1,
-             %%^^^^^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: match is redundant
                % elp:ignore W0007
 
                Bar = 2,
-             %%^^^^^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: match is redundant
                ok.
              "#,
         );

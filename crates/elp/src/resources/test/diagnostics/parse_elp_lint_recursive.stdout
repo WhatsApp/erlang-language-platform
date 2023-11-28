@@ -1,12 +1,12 @@
 module specified: lint_recursive
 Diagnostics reported in 1 modules:
   lint_recursive: 2
-      18:4-18:20::[Warning] [W0007] match is redundant
-      13:4-13:20::[Warning] [W0007] match is redundant
+      18:4-18:11::[Warning] [W0007] match is redundant
+      13:4-13:11::[Warning] [W0007] match is redundant
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      18:4-18:20::[Warning] [W0007] match is redundant
+      18:4-18:11::[Warning] [W0007] match is redundant
 @@ -16,7 +16,7 @@
  
  test_foo2(Config) ->
@@ -21,12 +21,12 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 2
-      13:4-13:20::[Warning] [W0007] match is redundant
+      13:4-13:11::[Warning] [W0007] match is redundant
       18:4-18:10::[Warning] [W0006] this statement has no effect
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      13:4-13:20::[Warning] [W0007] match is redundant
+      13:4-13:11::[Warning] [W0007] match is redundant
 @@ -11,7 +11,7 @@
  %% something/0.
  test_foo(Config) ->
