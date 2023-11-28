@@ -356,6 +356,7 @@ pub struct AnyCallBackCtx {
     pub in_macro: Option<HirIdx>,
     pub item_id: AnyExprId,
     pub item: AnyExpr,
+    pub form_id: FormIdx,
 }
 
 pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;
@@ -579,6 +580,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Expr(expr_id),
             item: AnyExpr::Expr(expr.clone()),
+            form_id: self.form_id,
         };
         let acc = match self.strategy {
             Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
@@ -789,6 +791,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     in_macro: self.in_macro(),
                     item_id: AnyExprId::Expr(expr_id),
                     item: AnyExpr::Expr(expr.clone()),
+                    form_id: self.form_id,
                 };
                 (self.callback)(r, ctx)
             }
@@ -803,6 +806,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Pat(pat_id),
             item: AnyExpr::Pat(pat.clone()),
+            form_id: self.form_id,
         };
         let acc = match self.strategy {
             Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
@@ -861,6 +865,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     in_macro: self.in_macro(),
                     item_id: AnyExprId::Pat(pat_id),
                     item: AnyExpr::Pat(pat.clone()),
+                    form_id: self.form_id,
                 };
                 (self.callback)(r, ctx)
             }
@@ -923,6 +928,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Term(term_id),
             item: AnyExpr::Term(term.clone()),
+            form_id: self.form_id,
         };
         let acc = match self.strategy {
             Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
@@ -966,6 +972,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     in_macro: self.in_macro(),
                     item_id: AnyExprId::Term(term_id),
                     item: AnyExpr::Term(term.clone()),
+                    form_id: self.form_id,
                 };
                 (self.callback)(r, ctx)
             }
@@ -986,6 +993,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::TypeExpr(type_expr_id),
             item: AnyExpr::TypeExpr(type_expr.clone()),
+            form_id: self.form_id,
         };
         let acc = match self.strategy {
             Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
@@ -1068,6 +1076,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     in_macro: self.in_macro(),
                     item_id: AnyExprId::TypeExpr(type_expr_id),
                     item: AnyExpr::TypeExpr(type_expr.clone()),
+                    form_id: self.form_id,
                 };
                 (self.callback)(r, ctx)
             }
