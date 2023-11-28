@@ -711,11 +711,12 @@ impl<'db> Semantic<'db> {
     pub fn fold<'a, F: Fold, T>(
         &self,
         with_macros: WithMacros,
+        strategy: Strategy,
         id: F::Id,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        F::fold(self, with_macros, id, initial, callback)
+        F::fold(self, with_macros, strategy, id, initial, callback)
     }
 
     pub fn fold_function<'a, T>(
@@ -737,18 +738,13 @@ impl<'db> Semantic<'db> {
     pub fn fold_function_with_macros<'a, T>(
         &self,
         with_macros: WithMacros,
+        strategy: Strategy,
         function_id: InFile<FunctionDefId>,
         initial: T,
         callback: FunctionAnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
-        fold_function_body(
-            with_macros,
-            &function_body,
-            Strategy::TopDown,
-            initial,
-            callback,
-        )
+        fold_function_body(with_macros, &function_body, strategy, initial, callback)
     }
 
     pub fn fold_clause<'a, T>(
@@ -777,6 +773,7 @@ impl<'db> Semantic<'db> {
     pub fn fold_clause_with_macros<'a, T>(
         &'a self,
         with_macros: WithMacros,
+        strategy: Strategy,
         function_id: InFile<FunctionId>,
         initial: T,
         callback: AnyCallBack<'a, T>,
@@ -794,7 +791,7 @@ impl<'db> Semantic<'db> {
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
                     &fold_body,
-                    Strategy::TopDown,
+                    strategy,
                     FormIdx::Function(function_id.value),
                     *expr_id,
                     acc_inner,
