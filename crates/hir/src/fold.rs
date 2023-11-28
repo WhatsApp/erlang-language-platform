@@ -1028,7 +1028,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 }
             },
             TypeExpr::List(list_type) => match list_type {
-                ListType::Empty => todo!(),
+                ListType::Empty => acc,
                 ListType::Regular(ty) => self.do_fold_type_expr(*ty, acc),
                 ListType::NonEmpty(ty) => self.do_fold_type_expr(*ty, acc),
             },
