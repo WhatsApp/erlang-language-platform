@@ -13,7 +13,6 @@ use hir::db::MinInternDatabase;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
-use hir::On;
 use hir::ParamName;
 use hir::Semantic;
 use hir::Strategy;
@@ -39,12 +38,12 @@ pub(super) fn hints(
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
             function_body.fold_function_with_macros(
-                Strategy::Both,
+                Strategy::TopDown,
                 (),
                 &mut |acc, clause_id, ctx| {
                     if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                         // Do not produce hints if inside a macro
-                        if ctx.on == On::Entry && ctx.in_macro.is_none() {
+                        if ctx.in_macro.is_none() {
                             let arity = args.len() as u32;
                             let body = &function_body.body(clause_id);
                             if let Some(call_def) = target.resolve_call(arity, sema, file_id, body)

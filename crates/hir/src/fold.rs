@@ -376,7 +376,6 @@ pub enum Strategy {
     SurfaceOnly,
     TopDown,
     BottomUp,
-    Both,
 }
 
 #[derive(Debug)]
@@ -583,9 +582,7 @@ impl<'a, T> FoldCtx<'a, T> {
             form_id: self.form_id,
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
-                (self.callback)(initial, ctx)
-            }
+            Strategy::TopDown | Strategy::SurfaceOnly => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match expr {
@@ -785,7 +782,7 @@ impl<'a, T> FoldCtx<'a, T> {
             }
         };
         match self.strategy {
-            Strategy::BottomUp | Strategy::Both => {
+            Strategy::BottomUp => {
                 let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
@@ -809,7 +806,7 @@ impl<'a, T> FoldCtx<'a, T> {
             form_id: self.form_id,
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
+            Strategy::TopDown => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match &pat {
@@ -859,7 +856,7 @@ impl<'a, T> FoldCtx<'a, T> {
         };
 
         match self.strategy {
-            Strategy::BottomUp | Strategy::Both => {
+            Strategy::BottomUp => {
                 let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
@@ -931,7 +928,7 @@ impl<'a, T> FoldCtx<'a, T> {
             form_id: self.form_id,
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both => (self.callback)(initial, ctx),
+            Strategy::TopDown => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match &term {
@@ -966,7 +963,7 @@ impl<'a, T> FoldCtx<'a, T> {
             }
         };
         match self.strategy {
-            Strategy::BottomUp | Strategy::Both => {
+            Strategy::BottomUp => {
                 let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
@@ -996,9 +993,7 @@ impl<'a, T> FoldCtx<'a, T> {
             form_id: self.form_id,
         };
         let acc = match self.strategy {
-            Strategy::TopDown | Strategy::Both | Strategy::SurfaceOnly => {
-                (self.callback)(initial, ctx)
-            }
+            Strategy::TopDown | Strategy::SurfaceOnly => (self.callback)(initial, ctx),
             _ => initial,
         };
         let r = match &type_expr {
@@ -1070,7 +1065,7 @@ impl<'a, T> FoldCtx<'a, T> {
             }
         };
         match self.strategy {
-            Strategy::BottomUp | Strategy::Both => {
+            Strategy::BottomUp => {
                 let ctx = AnyCallBackCtx {
                     on: On::Exit,
                     in_macro: self.in_macro(),
