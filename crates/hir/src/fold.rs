@@ -16,7 +16,6 @@ use elp_base_db::FileId;
 use crate::body::UnexpandedIndex;
 use crate::expr::AnyExpr;
 use crate::expr::MaybeExpr;
-use crate::sema::WithMacros;
 use crate::AnyExprId;
 use crate::Attribute;
 use crate::AttributeId;
@@ -58,11 +57,12 @@ use crate::TypeExprId;
 
 // ---------------------------------------------------------------------
 
-pub fn fold_body(with_macros: WithMacros, body: &Body) -> FoldBody {
-    if with_macros == WithMacros::Yes {
-        FoldBody::UnexpandedIndex(UnexpandedIndex(body))
-    } else {
-        FoldBody::Body(body)
+pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
+    match strategy {
+        Strategy::SurfaceOnly | Strategy::VisibleMacros => {
+            FoldBody::UnexpandedIndex(UnexpandedIndex(body))
+        }
+        Strategy::TopDown | Strategy::InvisibleMacros => FoldBody::Body(body),
     }
 }
 
@@ -71,7 +71,6 @@ pub trait Fold {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -84,7 +83,6 @@ impl Fold for Spec {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -93,7 +91,7 @@ impl Fold for Spec {
         let body = sema.db.spec_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
             FoldCtx::fold_type_spec_sig(
-                &fold_body(with_macros, &body.body),
+                &fold_body(strategy, &body.body),
                 strategy,
                 FormIdx::Spec(id.value),
                 spec_sig,
@@ -109,7 +107,6 @@ impl Fold for Callback {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: InFile<CallbackId>,
         initial: T,
@@ -118,7 +115,7 @@ impl Fold for Callback {
         let body = sema.db.callback_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
             FoldCtx::fold_type_spec_sig(
-                &fold_body(with_macros, &body.body),
+                &fold_body(strategy, &body.body),
                 strategy,
                 FormIdx::Callback(id.value),
                 spec_sig,
@@ -134,7 +131,6 @@ impl Fold for TypeAlias {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -142,7 +138,7 @@ impl Fold for TypeAlias {
     ) -> T {
         let body = sema.db.type_body(id);
         FoldCtx::fold_type_expr(
-            &fold_body(with_macros, &body.body),
+            &fold_body(strategy, &body.body),
             strategy,
             FormIdx::TypeAlias(id.value),
             body.ty,
@@ -157,7 +153,6 @@ impl Fold for Record {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -166,7 +161,7 @@ impl Fold for Record {
         let body = sema.db.record_body(id);
         body.fields.iter().fold(initial, |acc, item| {
             FoldCtx::fold_record_field_body(
-                &fold_body(with_macros, &body.body),
+                &fold_body(strategy, &body.body),
                 strategy,
                 FormIdx::Record(id.value),
                 item,
@@ -182,7 +177,6 @@ impl Fold for Attribute {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -190,7 +184,7 @@ impl Fold for Attribute {
     ) -> T {
         let body = sema.db.attribute_body(id);
         FoldCtx::fold_term(
-            &fold_body(with_macros, &body.body),
+            &fold_body(strategy, &body.body),
             strategy,
             FormIdx::Attribute(id.value),
             body.value,
@@ -205,7 +199,6 @@ impl Fold for CompileOption {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -213,7 +206,7 @@ impl Fold for CompileOption {
     ) -> T {
         let body = sema.db.compile_body(id);
         FoldCtx::fold_term(
-            &fold_body(with_macros, &body.body),
+            &fold_body(strategy, &body.body),
             strategy,
             FormIdx::CompileOption(id.value),
             body.value,
@@ -228,7 +221,6 @@ impl Fold for Define {
 
     fn fold<'a, T>(
         sema: &Semantic,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
@@ -237,7 +229,7 @@ impl Fold for Define {
         if let Some(body) = sema.db.define_body(id) {
             if let Some(form_id) = sema.form_list(id.file_id).find_define_form(&id.value) {
                 FoldCtx::fold_expr(
-                    &fold_body(with_macros, &body.body),
+                    &fold_body(strategy, &body.body),
                     strategy,
                     form_id,
                     body.expr,
@@ -259,7 +251,6 @@ impl Fold for Define {
 #[allow(dead_code)] // Until the balance of the stack lands and it gets used
 pub fn fold_file<'a, T>(
     sema: &Semantic,
-    with_macros: WithMacros,
     strategy: Strategy,
     file_id: FileId,
     initial: T,
@@ -271,49 +262,42 @@ pub fn fold_file<'a, T>(
         let r = form_callback(r, On::Entry, form_idx);
         let r = match form_idx {
             FormIdx::Function(function_id) => sema.fold_clause_with_macros(
-                with_macros,
                 strategy,
                 InFile::new(file_id, function_id),
                 r,
                 callback,
             ),
             FormIdx::TypeAlias(type_alias_id) => sema.fold::<TypeAlias, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, type_alias_id),
                 r,
                 &mut |acc, ctx| callback(acc, ctx),
             ),
             FormIdx::Spec(spec_id) => sema.fold::<Spec, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, spec_id),
                 r,
                 &mut |acc, ctx| callback(acc, ctx),
             ),
             FormIdx::Callback(callback_id) => sema.fold::<Callback, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, callback_id),
                 r,
                 &mut |acc, ctx| callback(acc, ctx),
             ),
             FormIdx::Record(record_id) => sema.fold::<Record, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, record_id),
                 r,
                 &mut |acc, ctx| callback(acc, ctx),
             ),
             FormIdx::Attribute(attribute_id) => sema.fold::<Attribute, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, attribute_id),
                 r,
                 &mut |acc, ctx| callback(acc, ctx),
             ),
             FormIdx::CompileOption(attribute_id) => sema.fold::<CompileOption, T>(
-                with_macros,
                 strategy,
                 InFile::new(file_id, attribute_id),
                 r,
@@ -322,7 +306,6 @@ pub fn fold_file<'a, T>(
             FormIdx::PPDirective(idx) => {
                 if let PPDirective::Define(define_id) = &form_list[idx] {
                     sema.fold::<Define, T>(
-                        with_macros,
                         strategy,
                         InFile::new(file_id, *define_id),
                         r,
@@ -374,7 +357,9 @@ pub enum Strategy {
     /// Fold over HIR, but do not call back for macro expansions, only
     /// their arguments.
     SurfaceOnly,
-    TopDown,
+    TopDown, // To be deprecated
+    InvisibleMacros,
+    VisibleMacros,
 }
 
 #[derive(Debug)]
@@ -789,10 +774,7 @@ impl<'a, T> FoldCtx<'a, T> {
             item: AnyExpr::Pat(pat.clone()),
             form_id: self.form_id,
         };
-        let acc = match self.strategy {
-            Strategy::TopDown => (self.callback)(initial, ctx),
-            _ => initial,
-        };
+        let acc = (self.callback)(initial, ctx);
         let r = match &pat {
             crate::Pat::Missing => acc,
             crate::Pat::Literal(_) => acc,
@@ -898,10 +880,7 @@ impl<'a, T> FoldCtx<'a, T> {
             item: AnyExpr::Term(term.clone()),
             form_id: self.form_id,
         };
-        let acc = match self.strategy {
-            Strategy::TopDown => (self.callback)(initial, ctx),
-            _ => initial,
-        };
+        let acc = (self.callback)(initial, ctx);
         let r = match &term {
             crate::Term::Missing => acc,
             crate::Term::Literal(_) => acc,
@@ -1774,8 +1753,7 @@ bar() ->
         let r: u32 =
             fold_file(
                 &sema,
-                WithMacros::No,
-                Strategy::TopDown,
+                Strategy::InvisibleMacros,
                 file_id,
                 0,
                 &mut |acc, ctx| match ctx.item {
@@ -1933,8 +1911,7 @@ bar() ->
 
         let r: Vec<_> = fold_file(
             &sema,
-            WithMacros::Yes,
-            Strategy::TopDown,
+            Strategy::VisibleMacros,
             file_id,
             Vec::new(),
             &mut |mut acc, ctx| match ctx.item {

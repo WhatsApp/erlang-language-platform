@@ -42,6 +42,7 @@ use crate::edoc::EdocHeader;
 use crate::expr::AnyExpr;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
+use crate::fold::fold_body;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
 use crate::fold::Fold;
@@ -710,13 +711,12 @@ impl<'db> Semantic<'db> {
 
     pub fn fold<'a, F: Fold, T>(
         &self,
-        with_macros: WithMacros,
         strategy: Strategy,
         id: F::Id,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        F::fold(self, with_macros, strategy, id, initial, callback)
+        F::fold(self, strategy, id, initial, callback)
     }
 
     pub fn fold_function<'a, T>(
@@ -772,18 +772,13 @@ impl<'db> Semantic<'db> {
 
     pub fn fold_clause_with_macros<'a, T>(
         &'a self,
-        with_macros: WithMacros,
         strategy: Strategy,
         function_id: InFile<FunctionId>,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let function_clause_body = self.db.function_clause_body(function_id);
-        let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&function_clause_body.body))
-        } else {
-            FoldBody::Body(&function_clause_body.body)
-        };
+        let fold_body = fold_body(strategy, &function_clause_body.body);
         function_clause_body
             .clause
             .exprs
