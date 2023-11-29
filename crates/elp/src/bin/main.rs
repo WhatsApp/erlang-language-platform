@@ -32,6 +32,7 @@ mod elp_parse_cli;
 mod eqwalizer_cli;
 mod erlang_service_cli;
 mod explain_cli;
+mod glean;
 mod lint_cli;
 mod reporting;
 mod shell;
@@ -96,7 +97,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             writeln!(cli, "{}", help)?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
-        args::Command::Glean(_) => (),
+        args::Command::Glean(args) => glean::index(&args, cli)?,
     }
 
     log::logger().flush();
