@@ -38,7 +38,7 @@ pub(super) fn hints(
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
             function_body.fold_function_with_macros(
-                Strategy::TopDown,
+                Strategy::VisibleMacros,
                 (),
                 &mut |acc, clause_id, ctx| {
                     if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {

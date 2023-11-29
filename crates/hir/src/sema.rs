@@ -35,7 +35,6 @@ pub use self::to_def::MacroCallDef;
 use self::to_def::ToDef;
 use crate::body::scope::ScopeId;
 use crate::body::FunctionClauseBody;
-use crate::body::UnexpandedIndex;
 use crate::db::MinDefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
@@ -726,25 +725,18 @@ impl<'db> Semantic<'db> {
         callback: FunctionAnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
-        fold_function_body(
-            WithMacros::No,
-            &function_body,
-            Strategy::TopDown,
-            initial,
-            callback,
-        )
+        fold_function_body(&function_body, Strategy::InvisibleMacros, initial, callback)
     }
 
     pub fn fold_function_with_macros<'a, T>(
         &self,
-        with_macros: WithMacros,
         strategy: Strategy,
         function_id: InFile<FunctionDefId>,
         initial: T,
         callback: FunctionAnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
-        fold_function_body(with_macros, &function_body, strategy, initial, callback)
+        fold_function_body(&function_body, strategy, initial, callback)
     }
 
     pub fn fold_clause<'a, T>(
@@ -810,10 +802,9 @@ impl<'db> Semantic<'db> {
                 let body = self.db.function_clause_body(function_id);
 
                 fold_function_clause_body(
-                    WithMacros::No,
                     function_id.value,
                     &body,
-                    Strategy::TopDown,
+                    Strategy::InvisibleMacros,
                     (),
                     &mut |acc, ctx| {
                         if let Some(mut resolver) = self.clause_resolver(function_id) {
@@ -901,14 +892,7 @@ impl<'db> Semantic<'db> {
 
 pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WithMacros {
-    Yes,
-    No,
-}
-
 fn fold_function_body<'a, T>(
-    with_macros: WithMacros,
     function_body: &FunctionBody,
     strategy: Strategy,
     initial: T,
@@ -919,19 +903,13 @@ fn fold_function_body<'a, T>(
         .iter()
         .zip(function_body.clause_ids.iter())
         .fold(initial, |acc, ((clause_id, clause), function_id)| {
-            fold_function_clause_body(
-                with_macros,
-                *function_id,
-                clause,
-                strategy,
-                acc,
-                &mut |acc, ctx| callback(acc, clause_id, ctx),
-            )
+            fold_function_clause_body(*function_id, clause, strategy, acc, &mut |acc, ctx| {
+                callback(acc, clause_id, ctx)
+            })
         })
 }
 
 fn fold_function_clause_body<'a, T>(
-    with_macros: WithMacros,
     function_id: FunctionId,
     function_clause_body: &FunctionClauseBody,
     strategy: Strategy,
@@ -943,11 +921,7 @@ fn fold_function_clause_body<'a, T>(
         .exprs
         .iter()
         .fold(initial, |acc_inner, expr_id| {
-            let fold_body = if with_macros == WithMacros::Yes {
-                FoldBody::UnexpandedIndex(UnexpandedIndex(&function_clause_body.body))
-            } else {
-                FoldBody::Body(&function_clause_body.body)
-            };
+            let fold_body = fold_body(strategy, &function_clause_body.body);
             FoldCtx::fold_expr_foldbody(
                 &fold_body,
                 strategy,
@@ -1152,22 +1126,17 @@ impl<T: Clone> InFunctionBody<T> {
     }
 
     pub fn fold_function<'a, R>(&self, initial: R, callback: FunctionAnyCallBack<'a, R>) -> R {
-        fold_function_body(
-            WithMacros::No,
-            &self.body,
-            Strategy::TopDown,
-            initial,
-            callback,
-        )
+        fold_function_body(&self.body, Strategy::InvisibleMacros, initial, callback)
     }
 
+    // TODO: rename to fold_function_with_strategy. Or just make this the only one
     pub fn fold_function_with_macros<'a, R>(
         &self,
         strategy: Strategy,
         initial: R,
         callback: FunctionAnyCallBack<'a, R>,
     ) -> R {
-        fold_function_body(WithMacros::Yes, &self.body, strategy, initial, callback)
+        fold_function_body(&self.body, strategy, initial, callback)
     }
 
     pub fn range_for_expr(
@@ -1328,10 +1297,9 @@ impl<T> InFunctionClauseBody<T> {
         callback: AnyCallBack<'a, R>,
     ) -> R {
         fold_function_clause_body(
-            WithMacros::No,
             function_id,
             &self.body,
-            Strategy::TopDown,
+            Strategy::InvisibleMacros,
             initial,
             callback,
         )

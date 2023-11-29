@@ -1069,14 +1069,13 @@ mod tests {
     use la_arena::Idx;
     use la_arena::RawIdx;
 
+    use super::fold_body;
     use super::fold_file;
     use super::FoldBody;
-    use crate::body::UnexpandedIndex;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
     use crate::form_list::Form;
-    use crate::sema::WithMacros;
     use crate::test_db::TestDB;
     use crate::AnyExprRef;
     use crate::Atom;
@@ -1249,7 +1248,6 @@ bar() ->
 
     #[track_caller]
     fn check_macros_expr(
-        with_macros: WithMacros,
         strategy: Strategy,
         fixture_str: &str,
         tree_expect: Expect,
@@ -1273,11 +1271,7 @@ bar() ->
             .db
             .function_clause_body(InFile::new(file_id, function_idx));
 
-        let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&function_body.body))
-        } else {
-            FoldBody::Body(&function_body.body)
-        };
+        let fold_body = fold_body(strategy, &function_body.body);
         let r = FoldCtx::fold_expr_foldbody(
             &fold_body,
             strategy,
@@ -1307,8 +1301,7 @@ bar() ->
     #[test]
     fn macro_aware_full_traversal_expr() {
         check_macros_expr(
-            WithMacros::Yes,
-            Strategy::TopDown,
+            Strategy::VisibleMacros,
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -1346,7 +1339,6 @@ bar() ->
     #[test]
     fn macro_aware_surface_traversal_expr() {
         check_macros_expr(
-            WithMacros::Yes,
             Strategy::SurfaceOnly,
             r#"
              -define(AA(X), {X,foo}).
@@ -1385,8 +1377,7 @@ bar() ->
     #[test]
     fn ignore_macros_expr() {
         check_macros_expr(
-            WithMacros::No,
-            Strategy::TopDown,
+            Strategy::InvisibleMacros,
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -1579,7 +1570,6 @@ bar() ->
 
     #[track_caller]
     fn check_macros_type_expr(
-        with_macros: WithMacros,
         strategy: Strategy,
         fixture_str: &str,
         tree_expect: Expect,
@@ -1601,11 +1591,7 @@ bar() ->
         let (idx, type_alias) = form_list.type_aliases().next().unwrap();
         let type_alias_body = sema.db.type_body(InFile::new(file_id, idx));
 
-        let fold_body = if with_macros == WithMacros::Yes {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(&type_alias_body.body))
-        } else {
-            FoldBody::Body(&type_alias_body.body)
-        };
+        let fold_body = fold_body(strategy, &type_alias_body.body);
         let r = FoldCtx::fold_type_expr_foldbody(
             &fold_body,
             strategy,
@@ -1647,8 +1633,7 @@ bar() ->
     #[test]
     fn macro_aware_full_traversal_type_expr() {
         check_macros_type_expr(
-            WithMacros::Yes,
-            Strategy::TopDown,
+            Strategy::VisibleMacros,
             r#"
              -define(AA(X), {X,foo}).
              -type baz() :: {fo~o, ?AA(foo)}.
@@ -1675,7 +1660,6 @@ bar() ->
     #[test]
     fn macro_aware_surface_traversal_type_expr() {
         check_macros_type_expr(
-            WithMacros::Yes,
             Strategy::SurfaceOnly,
             r#"
              -define(AA(X), {X,foo}).
@@ -1703,8 +1687,7 @@ bar() ->
     #[test]
     fn ignore_macros_type_expr() {
         check_macros_type_expr(
-            WithMacros::No,
-            Strategy::TopDown,
+            Strategy::InvisibleMacros,
             r#"
              -define(AA(X), {X,foo}).
              -type baz() :: {fo~o, ?AA(foo)}.

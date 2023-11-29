@@ -381,9 +381,10 @@ pub(crate) fn find_call_in_function<T>(
 ) -> Option<()> {
     let def_fb = def.in_function_body(sema.db, def);
     let matcher = FunctionMatcher::new(mfas);
-    def_fb
-        .clone()
-        .fold_function_with_macros(Strategy::TopDown, (), &mut |acc, clause_id, ctx| {
+    def_fb.clone().fold_function_with_macros(
+        Strategy::VisibleMacros,
+        (),
+        &mut |acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 if let Some((mfa, t)) =
                     matcher.get_match(&target, args.len() as u32, sema, &def_fb.body(clause_id))
@@ -421,7 +422,8 @@ pub(crate) fn find_call_in_function<T>(
                 }
             };
             acc
-        });
+        },
+    );
     Some(())
 }
 
