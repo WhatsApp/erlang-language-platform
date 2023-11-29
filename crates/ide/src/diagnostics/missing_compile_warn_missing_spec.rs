@@ -54,8 +54,8 @@ pub(crate) fn missing_compile_warn_missing_spec(
         .map(|(idx, compile_attribute)| {
             let co = sema.db.compile_body(InFile::new(file_id, idx));
             let is_present = FoldCtx::fold_term(
-                &co.body,
                 Strategy::InvisibleMacros,
+                &co.body,
                 FormIdx::CompileOption(idx),
                 co.value,
                 false,

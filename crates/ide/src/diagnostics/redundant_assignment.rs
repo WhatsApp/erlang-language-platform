@@ -27,6 +27,7 @@ use hir::InFunctionClauseBody;
 use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
+use hir::Strategy;
 
 use super::Diagnostic;
 use super::Severity;
@@ -46,9 +47,10 @@ pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let def_fb = def.in_function_body(sema.db, def);
-    def_fb
-        .clone()
-        .fold_function((), &mut |_acc, clause_id, ctx| {
+    def_fb.clone().fold_function(
+        Strategy::InvisibleMacros,
+        (),
+        &mut |_acc, clause_id, ctx| {
             let in_clause = def_fb.in_clause(clause_id);
             match ctx.item_id {
                 AnyExprId::Expr(expr_id) => {
@@ -72,7 +74,8 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
 
                 _ => {}
             }
-        });
+        },
+    );
 }
 
 fn is_var_assignment_to_unused_var(

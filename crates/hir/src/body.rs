@@ -183,7 +183,7 @@ impl Body {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_expr(self, strategy, form_id, expr_id, initial, callback)
+        FoldCtx::fold_expr(strategy, self, form_id, expr_id, initial, callback)
     }
 
     pub fn fold_pat<'a, T>(
@@ -194,7 +194,7 @@ impl Body {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_pat(self, strategy, form_id, pat_id, initial, callback)
+        FoldCtx::fold_pat(strategy, self, form_id, pat_id, initial, callback)
     }
 }
 

@@ -433,8 +433,8 @@ impl<'db> Semantic<'db> {
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
-            &expr.body.body,
             Strategy::InvisibleMacros,
+            &expr.body.body,
             form_id,
             expr_id_in,
             FxHashSet::default(),
@@ -466,8 +466,8 @@ impl<'db> Semantic<'db> {
         };
 
         Some(FoldCtx::fold_expr(
-            &expr.body.body,
             Strategy::InvisibleMacros,
+            &expr.body.body,
             form_id,
             expr_id_in,
             ScopeAnalysis::new(),
@@ -719,16 +719,6 @@ impl<'db> Semantic<'db> {
 
     pub fn fold_function<'a, T>(
         &self,
-        function_id: InFile<FunctionDefId>,
-        initial: T,
-        callback: FunctionAnyCallBack<'a, T>,
-    ) -> T {
-        let function_body = self.db.function_body(function_id);
-        fold_function_body(&function_body, Strategy::InvisibleMacros, initial, callback)
-    }
-
-    pub fn fold_function_with_macros<'a, T>(
-        &self,
         strategy: Strategy,
         function_id: InFile<FunctionDefId>,
         initial: T,
@@ -740,29 +730,6 @@ impl<'db> Semantic<'db> {
 
     pub fn fold_clause<'a, T>(
         &'a self,
-        function_id: InFile<FunctionId>,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-    ) -> T {
-        let function_clause_body = self.db.function_clause_body(function_id);
-        function_clause_body
-            .clause
-            .exprs
-            .iter()
-            .fold(initial, |acc_inner, expr_id| {
-                FoldCtx::fold_expr(
-                    &function_clause_body.body,
-                    Strategy::InvisibleMacros,
-                    FormIdx::Function(function_id.value),
-                    *expr_id,
-                    acc_inner,
-                    callback,
-                )
-            })
-    }
-
-    pub fn fold_clause_with_macros<'a, T>(
-        &'a self,
         strategy: Strategy,
         function_id: InFile<FunctionId>,
         initial: T,
@@ -775,8 +742,8 @@ impl<'db> Semantic<'db> {
             .iter()
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
-                    &function_clause_body.body,
                     strategy,
+                    &function_clause_body.body,
                     FormIdx::Function(function_id.value),
                     *expr_id,
                     acc_inner,
@@ -846,8 +813,8 @@ impl<'db> Semantic<'db> {
         let parse = self.parse(file_id);
         let body_map = &resolver.get_body_map(self.db);
         FoldCtx::fold_pat(
-            &resolver.body.body,
             Strategy::InvisibleMacros,
+            &resolver.body.body,
             FormIdx::Function(resolver.function_id.value),
             *pat_id,
             FxHashSet::default(),
@@ -921,8 +888,8 @@ fn fold_function_clause_body<'a, T>(
         .fold(initial, |acc_inner, expr_id| {
             let fold_body = fold_body(strategy, &function_clause_body.body);
             FoldCtx::fold_expr_foldbody(
-                &fold_body,
                 strategy,
+                &fold_body,
                 FormIdx::Function(function_id),
                 *expr_id,
                 acc_inner,
@@ -1123,12 +1090,7 @@ impl<T: Clone> InFunctionBody<T> {
         self.body.clauses[clause_id].body.clone()
     }
 
-    pub fn fold_function<'a, R>(&self, initial: R, callback: FunctionAnyCallBack<'a, R>) -> R {
-        fold_function_body(&self.body, Strategy::InvisibleMacros, initial, callback)
-    }
-
-    // TODO: rename to fold_function_with_strategy. Or just make this the only one
-    pub fn fold_function_with_macros<'a, R>(
+    pub fn fold_function<'a, R>(
         &self,
         strategy: Strategy,
         initial: R,
@@ -1254,15 +1216,15 @@ impl<T> InFunctionClauseBody<T> {
 
     pub fn fold_expr<'a, R>(
         &self,
-        form_id: FormIdx,
         strategy: Strategy,
+        form_id: FormIdx,
         expr_id: ExprId,
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
         FoldCtx::fold_expr(
-            &self.body.body,
             strategy,
+            &self.body.body,
             form_id,
             expr_id,
             initial,
@@ -1272,15 +1234,15 @@ impl<T> InFunctionClauseBody<T> {
 
     pub fn fold_pat<'a, R>(
         &self,
-        form_id: FormIdx,
         strategy: Strategy,
+        form_id: FormIdx,
         pat_id: PatId,
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
         FoldCtx::fold_pat(
-            &self.body.body,
             strategy,
+            &self.body.body,
             form_id,
             pat_id,
             initial,
@@ -1290,17 +1252,12 @@ impl<T> InFunctionClauseBody<T> {
 
     pub fn fold_clause<'a, R>(
         &self,
+        strategy: Strategy,
         function_id: FunctionId,
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        fold_function_clause_body(
-            function_id,
-            &self.body,
-            Strategy::InvisibleMacros,
-            initial,
-            callback,
-        )
+        fold_function_clause_body(function_id, &self.body, strategy, initial, callback)
     }
 
     pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {

@@ -107,10 +107,9 @@ pub(crate) fn check_function(
 ) {
     let matcher = FunctionMatcher::new(matches);
     let def_fb = def.in_function_body(sema.db, def);
-    def_fb.clone().fold_function_with_macros(
-        Strategy::VisibleMacros,
-        (),
-        &mut |acc, clause_id, ctx| {
+    def_fb
+        .clone()
+        .fold_function(Strategy::VisibleMacros, (), &mut |acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
                 let arity = args.len() as u32;
                 if let Some(target_def) =
@@ -144,8 +143,7 @@ pub(crate) fn check_function(
                 }
             };
             acc
-        },
-    );
+        });
 }
 
 fn make_diagnostic(

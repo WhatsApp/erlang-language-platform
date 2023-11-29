@@ -26,6 +26,7 @@ use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
+use hir::Strategy;
 
 use self::highlights::Highlights;
 use self::tags::Highlight;
@@ -113,32 +114,16 @@ fn deprecated_func_highlight(
         if def.file.file_id == file_id {
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
-            sema.fold_function(function_id, (), &mut |acc, clause_id, ctx| {
-                let clause_body = function_body.in_clause(clause_id);
-                if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
-                    let arity = args.len() as u32;
-                    match target {
-                        CallTarget::Local { name } => {
-                            if let Some(range) = find_deprecated_range(
-                                sema,
-                                &def_map,
-                                &name,
-                                arity,
-                                range_to_highlight,
-                                &clause_body,
-                            ) {
-                                hl.add(HlRange {
-                                    range,
-                                    highlight,
-                                    binding_hash: None,
-                                })
-                            }
-                        }
-                        CallTarget::Remote { module, name } => {
-                            if let Some(file_id) =
-                                find_remote_module_file_id(sema, file_id, &module, &clause_body)
-                            {
-                                let def_map = sema.def_map(file_id);
+            sema.fold_function(
+                Strategy::InvisibleMacros,
+                function_id,
+                (),
+                &mut |acc, clause_id, ctx| {
+                    let clause_body = function_body.in_clause(clause_id);
+                    if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
+                        let arity = args.len() as u32;
+                        match target {
+                            CallTarget::Local { name } => {
                                 if let Some(range) = find_deprecated_range(
                                     sema,
                                     &def_map,
@@ -154,11 +139,32 @@ fn deprecated_func_highlight(
                                     })
                                 }
                             }
+                            CallTarget::Remote { module, name } => {
+                                if let Some(file_id) =
+                                    find_remote_module_file_id(sema, file_id, &module, &clause_body)
+                                {
+                                    let def_map = sema.def_map(file_id);
+                                    if let Some(range) = find_deprecated_range(
+                                        sema,
+                                        &def_map,
+                                        &name,
+                                        arity,
+                                        range_to_highlight,
+                                        &clause_body,
+                                    ) {
+                                        hl.add(HlRange {
+                                            range,
+                                            highlight,
+                                            binding_hash: None,
+                                        })
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-                acc
-            });
+                    acc
+                },
+            );
         }
     }
 }

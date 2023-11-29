@@ -25,6 +25,7 @@ use hir::FunctionDef;
 use hir::InFunctionClauseBody;
 use hir::Literal;
 use hir::Semantic;
+use hir::Strategy;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
@@ -263,9 +264,10 @@ pub fn remove_fun_ref_from_list(
         if def.file.file_id == file_id {
             let def_fb = def.in_function_body(sema.db, def);
             let source_file = sema.parse(file_id);
-            def_fb
-                .clone()
-                .fold_function((), &mut |_acc, clause_id, ctx| {
+            def_fb.clone().fold_function(
+                Strategy::InvisibleMacros,
+                (),
+                &mut |_acc, clause_id, ctx| {
                     let body_map = def_fb.get_body_map(sema.db, clause_id);
                     let in_clause = def_fb.in_clause(clause_id);
                     match ctx.item_id {
@@ -309,7 +311,8 @@ pub fn remove_fun_ref_from_list(
                         }
                         _ => {}
                     }
-                });
+                },
+            );
         }
     })
 }

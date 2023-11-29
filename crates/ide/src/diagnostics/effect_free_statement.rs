@@ -27,6 +27,7 @@ use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
+use hir::Strategy;
 use text_edit::TextEdit;
 
 use super::Category;
@@ -42,24 +43,28 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
             let source_file = sema.parse(file_id);
 
             let def_fb = def.in_function_body(sema.db, def);
-            def_fb.fold_function((), &mut |_acc, clause_id, ctx| match ctx.item_id {
-                AnyExprId::Expr(expr_id) => {
-                    let body_map = def_fb.get_body_map(sema.db, clause_id);
-                    let in_clause = def_fb.in_clause(clause_id);
-                    if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
-                        if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
-                            if is_statement(&expr_ast)
-                                && !is_macro_usage(&expr_ast)
-                                && has_no_effect(&in_clause, &expr_id)
-                                && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
-                            {
-                                diags.push(make_diagnostic(file_id, &expr_ast));
+            def_fb.fold_function(
+                Strategy::InvisibleMacros,
+                (),
+                &mut |_acc, clause_id, ctx| match ctx.item_id {
+                    AnyExprId::Expr(expr_id) => {
+                        let body_map = def_fb.get_body_map(sema.db, clause_id);
+                        let in_clause = def_fb.in_clause(clause_id);
+                        if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
+                            if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
+                                if is_statement(&expr_ast)
+                                    && !is_macro_usage(&expr_ast)
+                                    && has_no_effect(&in_clause, &expr_id)
+                                    && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
+                                {
+                                    diags.push(make_diagnostic(file_id, &expr_ast));
+                                }
                             }
                         }
                     }
-                }
-                _ => {}
-            });
+                    _ => {}
+                },
+            );
         }
     });
 }
