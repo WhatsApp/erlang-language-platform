@@ -362,6 +362,20 @@ pub enum FoldBody<'a> {
 }
 
 impl<'a, T> FoldCtx<'a, T> {
+    fn new(
+        strategy: Strategy,
+        body: &'a FoldBody<'a>,
+        form_id: FormIdx,
+        callback: AnyCallBack<'a, T>,
+    ) -> FoldCtx<'a, T> {
+        FoldCtx {
+            form_id,
+            body,
+            strategy,
+            macro_stack: Vec::default(),
+            callback,
+        }
+    }
     pub fn fold_expr(
         strategy: Strategy,
         body: &'a Body,
@@ -370,14 +384,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        }
-        .do_fold_expr(expr_id, initial)
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_expr(expr_id, initial)
     }
 
     pub fn fold_pat(
@@ -388,14 +396,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        }
-        .do_fold_pat(pat_id, initial)
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_pat(pat_id, initial)
     }
 
     fn in_macro(&self) -> Option<HirIdx> {
@@ -410,14 +412,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        }
-        .do_fold_term(term_id, initial)
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_term(term_id, initial)
     }
 
     pub fn fold_type_expr(
@@ -428,14 +424,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        }
-        .do_fold_type_expr(type_expr_id, initial)
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_type_expr(type_expr_id, initial)
     }
 
     pub fn fold_type_exprs(
@@ -446,14 +436,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        }
-        .do_fold_type_exprs(type_expr_ids, initial)
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_type_exprs(type_expr_ids, initial)
     }
 
     pub fn fold_type_spec_sig(
@@ -464,13 +448,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        let mut ctx = FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        };
+        let fold_body = &fold_body(strategy, body);
+        let mut ctx = FoldCtx::new(strategy, &fold_body, form_id, callback);
         let r = ctx.do_fold_type_exprs(&spec_sig.args, initial);
         ctx.macro_stack = Vec::default();
         let r = ctx.do_fold_type_expr(spec_sig.result, r);
@@ -490,13 +469,8 @@ impl<'a, T> FoldCtx<'a, T> {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        let mut ctx = FoldCtx {
-            form_id,
-            body: &fold_body(strategy, body),
-            strategy,
-            macro_stack: Vec::default(),
-            callback,
-        };
+        let fold_body = fold_body(strategy, body);
+        let mut ctx = FoldCtx::new(strategy, &fold_body, form_id, callback);
         ctx.macro_stack = Vec::default();
         let r = if let Some(expr_id) = record_field_body.expr {
             ctx.do_fold_expr(expr_id, initial)
