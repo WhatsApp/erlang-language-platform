@@ -41,7 +41,6 @@ use crate::edoc::EdocHeader;
 use crate::expr::AnyExpr;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
-use crate::fold::fold_body;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
 use crate::fold::Fold;
@@ -886,10 +885,9 @@ fn fold_function_clause_body<'a, T>(
         .exprs
         .iter()
         .fold(initial, |acc_inner, expr_id| {
-            let fold_body = fold_body(strategy, &function_clause_body.body);
-            FoldCtx::fold_expr_foldbody(
+            FoldCtx::fold_expr(
                 strategy,
-                &fold_body,
+                &function_clause_body.body,
                 FormIdx::Function(function_id),
                 *expr_id,
                 acc_inner,
