@@ -62,7 +62,7 @@ pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
         Strategy::SurfaceOnly | Strategy::VisibleMacros => {
             FoldBody::UnexpandedIndex(UnexpandedIndex(body))
         }
-        Strategy::TopDown | Strategy::InvisibleMacros => FoldBody::Body(body),
+        Strategy::InvisibleMacros => FoldBody::Body(body),
     }
 }
 
@@ -138,7 +138,7 @@ impl Fold for TypeAlias {
     ) -> T {
         let body = sema.db.type_body(id);
         FoldCtx::fold_type_expr(
-            &fold_body(strategy, &body.body),
+            &body.body,
             strategy,
             FormIdx::TypeAlias(id.value),
             body.ty,
@@ -184,7 +184,7 @@ impl Fold for Attribute {
     ) -> T {
         let body = sema.db.attribute_body(id);
         FoldCtx::fold_term(
-            &fold_body(strategy, &body.body),
+            &body.body,
             strategy,
             FormIdx::Attribute(id.value),
             body.value,
@@ -206,7 +206,7 @@ impl Fold for CompileOption {
     ) -> T {
         let body = sema.db.compile_body(id);
         FoldCtx::fold_term(
-            &fold_body(strategy, &body.body),
+            &body.body,
             strategy,
             FormIdx::CompileOption(id.value),
             body.value,
@@ -228,14 +228,7 @@ impl Fold for Define {
     ) -> T {
         if let Some(body) = sema.db.define_body(id) {
             if let Some(form_id) = sema.form_list(id.file_id).find_define_form(&id.value) {
-                FoldCtx::fold_expr(
-                    &fold_body(strategy, &body.body),
-                    strategy,
-                    form_id,
-                    body.expr,
-                    initial,
-                    callback,
-                )
+                FoldCtx::fold_expr(&body.body, strategy, form_id, body.expr, initial, callback)
             } else {
                 initial
             }
@@ -357,8 +350,9 @@ pub enum Strategy {
     /// Fold over HIR, but do not call back for macro expansions, only
     /// their arguments.
     SurfaceOnly,
-    TopDown, // To be deprecated
+    /// Seamlessly expand macros. Similar to abstract forms
     InvisibleMacros,
+    /// macro call expressions will show up in the fold options too
     VisibleMacros,
 }
 
@@ -370,7 +364,7 @@ pub enum FoldBody<'a> {
 
 impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_expr(
-        body: &'a FoldBody,
+        body: &'a Body,
         strategy: Strategy,
         form_id: FormIdx,
         expr_id: ExprId,
@@ -379,7 +373,7 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx {
             form_id,
-            body,
+            body: &fold_body(strategy, body),
             strategy,
             macro_stack: Vec::default(),
             callback,
@@ -397,7 +391,7 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx {
             form_id,
-            body: &FoldBody::Body(body),
+            body: &fold_body(strategy, body),
             strategy,
             macro_stack: Vec::default(),
             callback,
@@ -428,7 +422,7 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     pub fn fold_term(
-        body: &'a FoldBody,
+        body: &'a Body,
         strategy: Strategy,
         form_id: FormIdx,
         term_id: TermId,
@@ -437,7 +431,7 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx {
             form_id,
-            body,
+            body: &fold_body(strategy, body),
             strategy,
             macro_stack: Vec::default(),
             callback,
@@ -464,7 +458,7 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     pub fn fold_type_expr(
-        body: &'a FoldBody,
+        body: &'a Body,
         strategy: Strategy,
         form_id: FormIdx,
         type_expr_id: TypeExprId,
@@ -473,7 +467,7 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx {
             form_id,
-            body,
+            body: &fold_body(strategy, body),
             strategy,
             macro_stack: Vec::default(),
             callback,
@@ -1071,7 +1065,6 @@ mod tests {
 
     use super::fold_body;
     use super::fold_file;
-    use super::FoldBody;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
@@ -1153,8 +1146,8 @@ bar() ->
             _ => panic!(),
         };
         let r: u32 = FoldCtx::fold_expr(
-            &FoldBody::Body(&body.body),
-            Strategy::TopDown,
+            &body.body,
+            Strategy::InvisibleMacros,
             FormIdx::Function(function_id.value),
             body.clause.exprs[0],
             0,
@@ -1214,8 +1207,8 @@ bar() ->
         let (idx, _) = form_list.compile_attributes().next().unwrap();
         let compiler_options = sema.db.compile_body(InFile::new(file_id, idx));
         let r = FoldCtx::fold_term(
-            &FoldBody::Body(&compiler_options.body),
-            Strategy::TopDown,
+            &compiler_options.body,
+            Strategy::InvisibleMacros,
             FormIdx::CompileOption(idx),
             compiler_options.value,
             0,
@@ -1434,8 +1427,8 @@ bar() ->
         let type_alias = sema.db.type_body(InFile::new(file_id, idx));
         let r =
             FoldCtx::fold_type_expr(
-                &FoldBody::Body(&type_alias.body),
-                Strategy::TopDown,
+                &type_alias.body,
+                Strategy::InvisibleMacros,
                 FormIdx::TypeAlias(idx),
                 type_alias.ty,
                 0,

@@ -27,7 +27,6 @@ use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
-use crate::fold::FoldBody;
 use crate::AnyExprId;
 use crate::AnyExprRef;
 use crate::Attribute;
@@ -184,14 +183,7 @@ impl Body {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::fold_expr(
-            &FoldBody::Body(self),
-            strategy,
-            form_id,
-            expr_id,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_expr(self, strategy, form_id, expr_id, initial, callback)
     }
 
     pub fn fold_pat<'a, T>(

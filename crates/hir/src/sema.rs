@@ -45,7 +45,6 @@ use crate::fold::fold_body;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
 use crate::fold::Fold;
-use crate::fold::FoldBody;
 use crate::fold::FoldCtx;
 use crate::fold::Strategy;
 pub use crate::intern::MinInternDatabase;
@@ -434,8 +433,8 @@ impl<'db> Semantic<'db> {
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
-            &FoldBody::Body(&expr.body.body),
-            Strategy::TopDown,
+            &expr.body.body,
+            Strategy::InvisibleMacros,
             form_id,
             expr_id_in,
             FxHashSet::default(),
@@ -467,8 +466,8 @@ impl<'db> Semantic<'db> {
         };
 
         Some(FoldCtx::fold_expr(
-            &FoldBody::Body(&expr.body.body),
-            Strategy::TopDown,
+            &expr.body.body,
+            Strategy::InvisibleMacros,
             form_id,
             expr_id_in,
             ScopeAnalysis::new(),
@@ -752,8 +751,8 @@ impl<'db> Semantic<'db> {
             .iter()
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
-                    &FoldBody::Body(&function_clause_body.body),
-                    Strategy::TopDown,
+                    &function_clause_body.body,
+                    Strategy::InvisibleMacros,
                     FormIdx::Function(function_id.value),
                     *expr_id,
                     acc_inner,
@@ -770,14 +769,13 @@ impl<'db> Semantic<'db> {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let function_clause_body = self.db.function_clause_body(function_id);
-        let fold_body = fold_body(strategy, &function_clause_body.body);
         function_clause_body
             .clause
             .exprs
             .iter()
             .fold(initial, |acc_inner, expr_id| {
                 FoldCtx::fold_expr(
-                    &fold_body,
+                    &function_clause_body.body,
                     strategy,
                     FormIdx::Function(function_id.value),
                     *expr_id,
@@ -849,7 +847,7 @@ impl<'db> Semantic<'db> {
         let body_map = &resolver.get_body_map(self.db);
         FoldCtx::fold_pat(
             &resolver.body.body,
-            Strategy::TopDown,
+            Strategy::InvisibleMacros,
             FormIdx::Function(resolver.function_id.value),
             *pat_id,
             FxHashSet::default(),
@@ -1263,7 +1261,7 @@ impl<T> InFunctionClauseBody<T> {
         callback: AnyCallBack<'a, R>,
     ) -> R {
         FoldCtx::fold_expr(
-            &FoldBody::Body(&self.body.body),
+            &self.body.body,
             strategy,
             form_id,
             expr_id,

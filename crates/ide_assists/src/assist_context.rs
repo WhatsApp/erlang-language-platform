@@ -248,7 +248,7 @@ impl<'a> AssistContext<'a> {
                 // the variables together. So a param
                 // called as `X + 1 + Y` becomes `XNY`.
                 let vars_and_literals = body.fold_expr(
-                    Strategy::TopDown,
+                    Strategy::InvisibleMacros,
                     function_id.as_form_id(),
                     *arg,
                     Vec::default(),

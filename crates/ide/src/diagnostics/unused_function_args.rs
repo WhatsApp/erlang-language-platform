@@ -55,7 +55,7 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
             for clause_arg_pat_id in pats.iter() {
                 in_clause.fold_pat(
                     def.form_id(),
-                    Strategy::TopDown,
+                    Strategy::InvisibleMacros,
                     *clause_arg_pat_id,
                     (),
                     &mut |(), ctx| match ctx.item_id {

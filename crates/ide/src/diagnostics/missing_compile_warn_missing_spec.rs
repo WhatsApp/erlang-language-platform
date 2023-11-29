@@ -20,7 +20,6 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
-use hir::FoldBody;
 use hir::known;
 use hir::AnyExpr;
 use hir::FoldCtx;
@@ -55,8 +54,8 @@ pub(crate) fn missing_compile_warn_missing_spec(
         .map(|(idx, compile_attribute)| {
             let co = sema.db.compile_body(InFile::new(file_id, idx));
             let is_present = FoldCtx::fold_term(
-                &FoldBody::Body(&co.body),
-                Strategy::TopDown,
+                &co.body,
+                Strategy::InvisibleMacros,
                 FormIdx::CompileOption(idx),
                 co.value,
                 false,

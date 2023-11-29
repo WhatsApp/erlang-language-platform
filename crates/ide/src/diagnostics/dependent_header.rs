@@ -44,7 +44,7 @@ pub(crate) fn dependent_header(
                 let form_id = form_list.find_define_form(&define_id)?;
 
                 body.body.fold_expr(
-                    Strategy::TopDown,
+                    Strategy::InvisibleMacros,
                     form_id,
                     body.expr,
                     (),
