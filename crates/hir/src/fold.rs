@@ -375,7 +375,6 @@ pub enum Strategy {
     /// their arguments.
     SurfaceOnly,
     TopDown,
-    BottomUp,
 }
 
 #[derive(Debug)]
@@ -581,10 +580,7 @@ impl<'a, T> FoldCtx<'a, T> {
             item: AnyExpr::Expr(expr.clone()),
             form_id: self.form_id,
         };
-        let acc = match self.strategy {
-            Strategy::TopDown | Strategy::SurfaceOnly => (self.callback)(initial, ctx),
-            _ => initial,
-        };
+        let acc = (self.callback)(initial, ctx);
         let r = match expr {
             crate::Expr::Missing => acc,
             crate::Expr::Literal(_) => acc,
@@ -781,19 +777,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 self.fold_cr_clause(else_clauses, r)
             }
         };
-        match self.strategy {
-            Strategy::BottomUp => {
-                let ctx = AnyCallBackCtx {
-                    on: On::Exit,
-                    in_macro: self.in_macro(),
-                    item_id: AnyExprId::Expr(expr_id),
-                    item: AnyExpr::Expr(expr.clone()),
-                    form_id: self.form_id,
-                };
-                (self.callback)(r, ctx)
-            }
-            _ => r,
-        }
+        r
     }
 
     fn do_fold_pat(&mut self, pat_id: PatId, initial: T) -> T {
@@ -854,20 +838,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
             }
         };
-
-        match self.strategy {
-            Strategy::BottomUp => {
-                let ctx = AnyCallBackCtx {
-                    on: On::Exit,
-                    in_macro: self.in_macro(),
-                    item_id: AnyExprId::Pat(pat_id),
-                    item: AnyExpr::Pat(pat.clone()),
-                    form_id: self.form_id,
-                };
-                (self.callback)(r, ctx)
-            }
-            _ => r,
-        }
+        r
     }
 
     fn fold_exprs(&mut self, exprs: &[ExprId], initial: T) -> T {
@@ -962,19 +933,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 self.do_fold_term(*expansion, acc)
             }
         };
-        match self.strategy {
-            Strategy::BottomUp => {
-                let ctx = AnyCallBackCtx {
-                    on: On::Exit,
-                    in_macro: self.in_macro(),
-                    item_id: AnyExprId::Term(term_id),
-                    item: AnyExpr::Term(term.clone()),
-                    form_id: self.form_id,
-                };
-                (self.callback)(r, ctx)
-            }
-            _ => r,
-        }
+        r
     }
 
     fn do_fold_terms(&mut self, terms: &[TermId], initial: T) -> T {
@@ -992,10 +951,7 @@ impl<'a, T> FoldCtx<'a, T> {
             item: AnyExpr::TypeExpr(type_expr.clone()),
             form_id: self.form_id,
         };
-        let acc = match self.strategy {
-            Strategy::TopDown | Strategy::SurfaceOnly => (self.callback)(initial, ctx),
-            _ => initial,
-        };
+        let acc = (self.callback)(initial, ctx);
         let r = match &type_expr {
             TypeExpr::Missing => acc,
             TypeExpr::AnnType { var: _, ty } => self.do_fold_type_expr(*ty, acc),
@@ -1064,19 +1020,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 r
             }
         };
-        match self.strategy {
-            Strategy::BottomUp => {
-                let ctx = AnyCallBackCtx {
-                    on: On::Exit,
-                    in_macro: self.in_macro(),
-                    item_id: AnyExprId::TypeExpr(type_expr_id),
-                    item: AnyExpr::TypeExpr(type_expr.clone()),
-                    form_id: self.form_id,
-                };
-                (self.callback)(r, ctx)
-            }
-            _ => r,
-        }
+        r
     }
 
     fn do_fold_type_exprs(&mut self, types: &[TypeExprId], initial: T) -> T {
