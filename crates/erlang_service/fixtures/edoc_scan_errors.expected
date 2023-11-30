@@ -7,6 +7,12 @@ FUNCTION_DOCS
 EDOC_DIAGNOSTICS
 [
     DocDiagnostic {
+        code: "O0002",
+        severity: "error",
+        line: 1,
+        message: "error in XML parser: {fatal,\n                         {{endtag_does_not_match,\n                              {was,doc,should_have_been,tag}},\n                          {file,file_name_unknown},\n                          {line,1},\n                          {col,49}}}.",
+    },
+    DocDiagnostic {
         code: "O0000",
         severity: "error",
         line: 1,

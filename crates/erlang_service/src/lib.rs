@@ -524,7 +524,8 @@ fn reader_run(
             Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
 
         let doc_diagnostic_regex =
-            Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>.*)$").unwrap();
+            Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
+                .unwrap();
 
         for _ in 0..num {
             line_buf.clear();
