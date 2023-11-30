@@ -301,8 +301,14 @@ fn do_typecheck(
             MsgFromEqWAlizer::EnteringModule { module } => {
                 db.set_module_ipc_handle(ModuleName::new(&module), handle.clone());
                 let diags = db.module_diagnostics(project_id, module).0;
-                handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
                 diagnostics = diagnostics.combine((*diags).clone());
+                match diagnostics {
+                    EqwalizerDiagnostics::Error(_) | EqwalizerDiagnostics::NoAst { .. } => {
+                        return Ok(diagnostics);
+                    }
+                    EqwalizerDiagnostics::Diagnostics { .. } => (),
+                }
+                handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
             }
             MsgFromEqWAlizer::Done { .. } => {
                 return Ok(diagnostics);
