@@ -18,9 +18,12 @@ use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
+use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::Analysis;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::Project;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -39,12 +42,12 @@ pub(crate) struct FileLinesFact {
 }
 
 impl FileLinesFact {
-    fn new(file_id: u32, lengths: Vec<u32>) -> Self {
+    fn new(file_id: u32, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
         FileLinesFact {
             key: FileLinesFactKey {
                 file_id,
                 lengths,
-                ends_with_new_line: true,
+                ends_with_new_line,
                 unicode_or_tabs: true,
             },
         }
@@ -202,7 +205,25 @@ impl<'a> GleanIndexer<'a> {
         Ok(())
     }
 
-    fn index_file(&self, file_id: FileId, path: &VfsPath, ctxi: &mut IndexedFacts) -> Result<()> {
+    fn index_file(&self, file_id: FileId, path: &VfsPath, facts: &mut IndexedFacts) -> Result<()> {
+        let proj = match self.analysis.project_id(file_id)? {
+            Some(proj) => proj,
+            None => return Ok(()),
+        };
+
+        if self.loaded.project_id != proj {
+            return Ok(());
+        }
+
+        let line_index = self.analysis.line_index(file_id)?;
+
+        let file_fact = match self.file_fact(file_id, path) {
+            Some(file_fact) => file_fact,
+            None => return Ok(()),
+        };
+        let line_fact = self.line_fact(file_id, &line_index);
+        facts.file_facts.push(file_fact);
+        facts.file_line_facts.push(line_fact);
         Ok(())
     }
 
@@ -253,6 +274,42 @@ impl<'a> GleanIndexer<'a> {
         }?;
         Ok(())
     }
+
+    fn file_fact(&self, file_id: FileId, path: &VfsPath) -> Option<FileFact> {
+        let root = self.loaded.project.root();
+        let root = root.as_path();
+        let file_path = path.as_path()?;
+        let file_path = file_path.strip_prefix(root)?;
+        let file_path = file_path.as_ref().to_str()?.into();
+        Some(FileFact {
+            file_id: file_id.0,
+            file_path,
+        })
+    }
+
+    fn line_fact(&self, file_id: FileId, line_index: &LineIndex) -> FileLinesFact {
+        let mut line = 1;
+        let mut prev_offset = 0;
+        let mut lengths = vec![];
+        let mut ends_with_new_line = true;
+        while let Some(offset) = line_index.line_at(line) {
+            let curr_offset: u32 = offset.into();
+            lengths.push(curr_offset - prev_offset);
+            line += 1;
+            prev_offset = curr_offset;
+        }
+        let content = String::from_utf8_lossy(self.loaded.vfs.file_contents(file_id));
+        if !content.ends_with("\n") {
+            ends_with_new_line = false;
+            let len = if content.len() as u32 >= prev_offset {
+                content.len() as u32 - prev_offset
+            } else {
+                0
+            };
+            lengths.push(len);
+        }
+        FileLinesFact::new(file_id.0, lengths, ends_with_new_line)
+    }
 }
 
 #[cfg(test)]
@@ -291,7 +348,7 @@ mod tests {
                 file_path: "/local/whatsapp/server/erl/groupd_service/test/p13n/grpd_p13n_new_create_group_SUITE.erl".into(),
             }
         ];
-        let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42])];
+        let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
         let declaration_facts = vec![FunctionDeclarationFact::new(
             file_id,
             mfa.clone(),
@@ -323,7 +380,7 @@ mod tests {
     fn load_project_test() {
         let mut cli = Fake::default();
         let spec = r#"
-        //- /glean/app_glean/src/glean_module1.erl
+        //- /glean/app_glean1/src/glean_module1.erl
         -module(glean_module1).
         "#;
         let dir = Fixture::gen_project(spec);
@@ -332,11 +389,89 @@ mod tests {
                 .into_path()
                 .to_path_buf()
                 .join("glean")
-                .join("app_glean"),
+                .join("app_glean1"),
             module: Some("glean_module1".into()),
             to: None,
         };
         let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
         let result = indexer.index_facts().expect("should be ok");
+    }
+
+    #[test]
+    fn file_fact_test() {
+        let mut cli = Fake::default();
+        let spec = r#"
+        //- /glean/app_glean2/src/glean_module2.erl
+        -module(glean_module2).
+        "#;
+        let dir = Fixture::gen_project(spec);
+        let args = Glean {
+            project: dir
+                .into_path()
+                .to_path_buf()
+                .join("glean")
+                .join("app_glean2"),
+            module: Some("glean_module2".into()),
+            to: None,
+        };
+        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
+        let result = indexer.index_facts().expect("should be ok");
+        let file_fact = &result.file_facts;
+        assert_eq!(file_fact.len(), 1);
+        assert_eq!(file_fact[0].file_path.as_str(), "src/glean_module2.erl");
+    }
+
+    #[test]
+    fn line_fact_with_new_line_test() {
+        let mut cli = Fake::default();
+        let spec = r#"
+        //- /glean/app_glean3/src/glean_module3.erl
+        -module(glean_module3).
+        main() ->
+            bar.
+
+        "#;
+        let dir = Fixture::gen_project(spec);
+        let args = Glean {
+            project: dir
+                .into_path()
+                .to_path_buf()
+                .join("glean")
+                .join("app_glean3"),
+            module: Some("glean_module3".into()),
+            to: None,
+        };
+        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
+        let result = indexer.index_facts().expect("should be ok");
+        let line_fact = &result.file_line_facts;
+        assert_eq!(line_fact.len(), 1);
+        assert!(&line_fact[0].key.ends_with_new_line);
+        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 9, 1]);
+    }
+
+    #[test]
+    fn line_fact_without_new_line_test() {
+        let mut cli = Fake::default();
+        let spec = r#"
+        //- /glean/app_glean4/src/glean_module4.erl
+        -module(glean_module4).
+        main() ->
+            bar."#;
+        let dir = Fixture::gen_project(spec);
+        let args = Glean {
+            project: dir
+                .into_path()
+                .to_path_buf()
+                .join("glean")
+                .join("app_glean4"),
+            module: Some("glean_module4".into()),
+            to: None,
+        };
+        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
+        let result = indexer.index_facts().expect("should be ok");
+        let line_fact = &result.file_line_facts;
+        assert_eq!(line_fact.len(), 1);
+        assert_eq!(line_fact[0].key.ends_with_new_line, false);
+        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 8]);
     }
 }

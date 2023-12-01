@@ -305,7 +305,10 @@ impl Project {
             ProjectBuildData::Otp => Cow::Borrowed(&self.otp.lib_dir),
             ProjectBuildData::Rebar(rebar) => Cow::Borrowed(&rebar.root),
             ProjectBuildData::Buck(buck) => buck.buck_conf.source_root(),
-            ProjectBuildData::Static(stat) => Cow::Borrowed(&stat.config_path),
+            ProjectBuildData::Static(stat) => match stat.config_path.parent() {
+                Some(parent) => Cow::Owned(parent.to_path_buf()),
+                None => Cow::Owned(AbsPathBuf::assert(PathBuf::from("/"))),
+            },
         }
     }
 

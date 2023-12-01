@@ -170,7 +170,7 @@ impl Fixture {
             let parent = path.parent().unwrap();
             fs::create_dir_all(parent).unwrap();
             let mut tmp_file = File::create(path).unwrap();
-            writeln!(tmp_file, "{}", &fixture.text).unwrap();
+            write!(tmp_file, "{}", &fixture.text).unwrap();
         }
         tmp_dir
     }
