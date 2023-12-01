@@ -9,6 +9,7 @@
 
 #![allow(dead_code, unused)]
 use std::io::Write;
+use std::mem;
 
 use anyhow::Result;
 use elp::build::load;
@@ -149,99 +150,109 @@ pub(crate) enum Fact {
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<XRefFact> },
 }
-type IndexFileResult = (
-    FileFact,
-    FileLinesFact,
-    Option<Vec<FunctionDeclarationFact>>,
-    Option<XRefFact>,
-);
 
-fn index_file(
-    loaded: &LoadResult,
-    analysis: &Analysis,
-    file_id: FileId,
-    path: &VfsPath,
-) -> Result<Option<IndexFileResult>> {
-    Ok(None)
+struct IndexedFacts {
+    file_facts: Vec<FileFact>,
+    file_line_facts: Vec<FileLinesFact>,
+    declaration_facts: Vec<FunctionDeclarationFact>,
+    xref_facts: Vec<XRefFact>,
 }
 
-pub(crate) fn index_facts(args: &Glean, cli: &mut dyn Cli) -> Result<Vec<Fact>> {
-    let config = DiscoverConfig::buck();
-    let loaded = load::load_project_at(
-        cli,
-        &args.project,
-        config,
-        IncludeOtp::Yes,
-        elp_eqwalizer::Mode::Cli,
-    )?;
-    let mut file_facts = vec![];
-    let mut line_facts = vec![];
-    let mut decl_facts = vec![];
-    let mut xref_facts = vec![];
-    let analysis = loaded.analysis();
-
-    if let Some(module) = &args.module {
-        let index = analysis.module_index(loaded.project_id)?;
-        let file_id = index
-            .file_for_module(&ModuleName::new(module))
-            .expect("No module found");
-        let path = loaded.vfs.file_path(file_id);
-        if let Some((file_fact, line_fact, decl_fact, xref_fact)) =
-            index_file(&loaded, &analysis, file_id, &path)?
-        {
-            file_facts.push(file_fact);
-            line_facts.push(line_fact);
-            if let Some(decl_fact) = decl_fact {
-                decl_facts.extend(decl_fact);
-            }
-            if let Some(xref_fact) = xref_fact {
-                xref_facts.push(xref_fact);
-            }
-        }
-    } else {
-        for (file_id, path) in loaded.vfs.iter() {
-            if let Ok(Some((file_fact, line_fact, decl_fact, xref_fact))) =
-                index_file(&loaded, &analysis, file_id, path)
-            {
-                file_facts.push(file_fact);
-                line_facts.push(line_fact);
-                if let Some(decl_fact) = decl_fact {
-                    decl_facts.extend(decl_fact);
-                }
-                if let Some(xref_fact) = xref_fact {
-                    xref_facts.push(xref_fact);
-                }
-            }
+impl IndexedFacts {
+    fn new() -> Self {
+        Self {
+            file_facts: vec![],
+            file_line_facts: vec![],
+            declaration_facts: vec![],
+            xref_facts: vec![],
         }
     }
-
-    Ok(vec![
-        Fact::File { facts: file_facts },
-        Fact::FileLine { facts: line_facts },
-        Fact::FunctionDeclaration { facts: decl_facts },
-        Fact::XRef { facts: xref_facts },
-    ])
 }
 
-pub(crate) fn write_results(args: &Glean, cli: &mut dyn Cli, facts: Vec<Fact>) -> Result<()> {
-    let mut writer: Box<dyn Write> = match &args.to {
-        Some(to) => Box::new(
-            std::fs::OpenOptions::new()
+pub struct GleanIndexer<'a> {
+    loaded: LoadResult,
+    analysis: Analysis,
+    cli: &'a mut dyn Cli,
+    args: &'a Glean,
+}
+
+impl<'a> GleanIndexer<'a> {
+    pub fn new(args: &'a Glean, cli: &'a mut dyn Cli) -> Result<Self> {
+        let config = DiscoverConfig::buck();
+        let loaded = load::load_project_at(
+            cli,
+            &args.project,
+            config,
+            IncludeOtp::Yes,
+            elp_eqwalizer::Mode::Cli,
+        )?;
+        let analysis = loaded.analysis();
+        let indexer = Self {
+            loaded,
+            analysis,
+            cli,
+            args,
+        };
+        Ok(indexer)
+    }
+
+    pub fn index(mut self) -> Result<()> {
+        let facts = self.index_facts()?;
+        self.write_results(facts)?;
+        Ok(())
+    }
+
+    fn index_file(&self, file_id: FileId, path: &VfsPath, ctxi: &mut IndexedFacts) -> Result<()> {
+        Ok(())
+    }
+
+    fn index_facts(&self) -> Result<IndexedFacts> {
+        let mut ctx = IndexedFacts::new();
+
+        if let Some(module) = &self.args.module {
+            let index = self.analysis.module_index(self.loaded.project_id)?;
+            let file_id = index
+                .file_for_module(&ModuleName::new(module))
+                .expect("No module found");
+            let path = self.loaded.vfs.file_path(file_id);
+            self.index_file(file_id, &path, &mut ctx)?;
+        } else {
+            for (file_id, path) in self.loaded.vfs.iter() {
+                if let Err(err) = self.index_file(file_id, path, &mut ctx) {
+                    log::warn!("Error indexing file {:?}: {}", path, err);
+                }
+            }
+        }
+        Ok(ctx)
+    }
+
+    fn write_results(&mut self, mut indexed_facts: IndexedFacts) -> Result<()> {
+        let facts = vec![
+            Fact::File {
+                facts: mem::take(&mut indexed_facts.file_facts),
+            },
+            Fact::FileLine {
+                facts: mem::take(&mut indexed_facts.file_line_facts),
+            },
+            Fact::FunctionDeclaration {
+                facts: mem::take(&mut indexed_facts.declaration_facts),
+            },
+            Fact::XRef {
+                facts: mem::take(&mut indexed_facts.xref_facts),
+            },
+        ];
+        let content = serde_json::to_string(&facts)?;
+        match &self.args.to {
+            Some(to) => std::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(to)?,
-        ),
-        None => Box::new(cli),
-    };
-    let content = serde_json::to_string(&facts)?;
-    writer.write_all(&content.as_bytes())?;
-    Ok(())
-}
-
-pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
-    let facts = index_facts(args, cli)?;
-    write_results(args, cli, facts)
+                .open(to)?
+                .write_all(&content.as_bytes()),
+            None => self.cli.write_all(&content.as_bytes()),
+        }?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -274,33 +285,33 @@ mod tests {
             0,
         );
 
-        let file_fact = Fact::File {
-            facts: vec![FileFact {
+        let file_facts = vec![
+            FileFact {
                 file_id,
                 file_path: "/local/whatsapp/server/erl/groupd_service/test/p13n/grpd_p13n_new_create_group_SUITE.erl".into(),
-                }
-            ],
-        };
-        let file_line_fact = Fact::FileLine {
-            facts: vec![FileLinesFact::new(file_id, vec![71, 42])],
-        };
-        let func_decl_fact = Fact::FunctionDeclaration {
-            facts: vec![FunctionDeclarationFact::new(
-                file_id,
-                mfa.clone(),
-                location.clone(),
-            )],
+            }
+        ];
+        let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42])];
+        let declaration_facts = vec![FunctionDeclarationFact::new(
+            file_id,
+            mfa.clone(),
+            location.clone(),
+        )];
+
+        let xref_facts = vec![XRefFact::new(
+            file_id,
+            vec![XRefFactVal::new(location, mfa)],
+        )];
+        let facts = IndexedFacts {
+            file_facts,
+            file_line_facts,
+            declaration_facts,
+            xref_facts,
         };
 
-        let xref_fact = Fact::XRef {
-            facts: vec![XRefFact::new(
-                file_id,
-                vec![XRefFactVal::new(location, mfa)],
-            )],
-        };
-        let facts = vec![file_fact, file_line_fact, func_decl_fact, xref_fact];
+        let mut indexer = GleanIndexer::new(&args, &mut cli).expect("success");
 
-        write_results(&args, &mut cli, facts).unwrap();
+        indexer.write_results(facts).unwrap();
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
@@ -325,7 +336,7 @@ mod tests {
             module: Some("glean_module1".into()),
             to: None,
         };
-        let result = index_facts(&args, &mut cli).expect("should be ok");
-        assert_eq!(result.len(), 4)
+        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
+        let result = indexer.index_facts().expect("should be ok");
     }
 }
