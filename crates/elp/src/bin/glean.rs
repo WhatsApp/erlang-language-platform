@@ -15,6 +15,7 @@ use anyhow::Result;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
@@ -28,7 +29,8 @@ use elp_syntax::AstNode;
 use hir::db::MinDefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
-use hir::sema;
+use hir::sema::to_def::resolve_call_target;
+use hir::sema::to_def::resolve_type_target;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -39,6 +41,8 @@ use hir::Literal;
 use hir::Name;
 use hir::Semantic;
 use hir::Strategy;
+use hir::TypeExpr;
+use hir::TypeExprId;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -442,6 +446,14 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
+                    let arity = args.len() as u32;
+                    if let Some(fact) = Self::resolve_type(db, &sema, target, arity, file_id, &ctx)
+                    {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -516,9 +528,24 @@ impl<'a> GleanIndexer<'a> {
         body: &Body,
         range: TextRange,
     ) -> Option<XRefFactVal> {
-        let def = sema::to_def::resolve_call_target(&sema, &target, arity, file_id, &body)?;
+        let def = resolve_call_target(&sema, &target, arity, file_id, &body)?;
         let module = &def.module?;
         let mfa = MFA::new(module, def.name.name(), arity);
+        Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn resolve_type(
+        db: &RootDatabase,
+        sema: &Semantic,
+        target: &CallTarget<TypeExprId>,
+        arity: u32,
+        file_id: FileId,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<XRefFactVal> {
+        let (body, range) = Self::find_range(db, file_id, &ctx)?;
+        let def = resolve_type_target(&sema, target, arity, file_id, &body)?;
+        let module = module_name(db, def.file.file_id)?;
+        let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 }
@@ -551,10 +578,7 @@ mod tests {
             to: None,
         };
         let file_id = FileId(10071);
-        let location = Location {
-            start: 0,
-            length: 10,
-        };
+        let location = Location::new(0, 10);
         let mfa = mfa(
             "smax_product_catalog",
             "product_visibility_update_request_iq",
@@ -713,6 +737,34 @@ mod tests {
         assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(20, 24));
         assert_eq!(xref_fact[0].key.xrefs[1].target, baz);
         assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(56, 9));
+    }
+
+    #[test]
+    fn xref_types_test() {
+        let module = "glean_module8";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module81.erl
+        -type small() :: #{non_neg_integer() | infinity}.
+
+        //- /glean/app_glean/src/glean_module8.erl
+        -type huuuge() :: #{non_neg_integer() | infinity}.
+        -spec baz(
+            A :: huuuge(),
+            B :: glean_module81:small()
+        ) -> huuuge().
+        baz(A, B) ->
+            A + B."#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts;
+        let small = mfa("glean_module81", "small", 0);
+        let huuuge = mfa(module, "huuuge", 0);
+        assert_eq!(xref_fact[0].key.xrefs[0].target, huuuge);
+        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(71, 8));
+        assert_eq!(xref_fact[0].key.xrefs[1].target, small);
+        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(90, 22));
+        assert_eq!(xref_fact[0].key.xrefs[2].target, huuuge);
+        assert_eq!(xref_fact[0].key.xrefs[2].source, Location::new(118, 8));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
