@@ -100,8 +100,8 @@ pub struct FunctionClauseBody {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TopLevelMacro {
-    args: Vec<ExprId>,
-    macro_def: InFile<DefineId>,
+    pub args: Vec<ExprId>,
+    pub macro_def: InFile<DefineId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

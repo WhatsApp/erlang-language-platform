@@ -880,20 +880,30 @@ fn fold_function_clause_body<'a, T>(
     initial: T,
     callback: AnyCallBack<'a, T>,
 ) -> T {
-    function_clause_body
-        .clause
-        .exprs
-        .iter()
-        .fold(initial, |acc_inner, expr_id| {
-            FoldCtx::fold_expr(
-                strategy,
-                &function_clause_body.body,
-                FormIdx::Function(function_id),
-                *expr_id,
-                acc_inner,
-                callback,
-            )
-        })
+    match &function_clause_body.from_macro {
+        Some(from_macro) if strategy == Strategy::SurfaceOnly => FoldCtx::fold_exprs(
+            strategy,
+            &function_clause_body.body,
+            FormIdx::Function(function_id),
+            &from_macro.args,
+            initial,
+            callback,
+        ),
+        _ => function_clause_body
+            .clause
+            .exprs
+            .iter()
+            .fold(initial, |acc_inner, expr_id| {
+                FoldCtx::fold_expr(
+                    strategy,
+                    &function_clause_body.body,
+                    FormIdx::Function(function_id),
+                    *expr_id,
+                    acc_inner,
+                    callback,
+                )
+            }),
+    }
 }
 
 // ---------------------------------------------------------------------

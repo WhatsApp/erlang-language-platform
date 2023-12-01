@@ -35,6 +35,7 @@ use crate::Expr;
 use crate::ExprId;
 use crate::FormIdx;
 use crate::FunType;
+use crate::FunctionDefId;
 use crate::HirIdx;
 use crate::InFile;
 use crate::ListType;
@@ -257,7 +258,17 @@ pub fn fold_file<'a, T>(
         let r = form_callback(r, On::Entry, form_idx);
         let r = match form_idx {
             FormIdx::Function(function_id) => {
-                sema.fold_clause(strategy, InFile::new(file_id, function_id), r, callback)
+                // We now have only one clause per function, with the
+                // FunctionDefId derived from the FunctionId of the
+                // first one. So print the whole thing when we have a
+                // valid FunctionDefid.
+                let def_map = sema.db.def_map(file_id);
+                let function_def_id = InFile::new(file_id, FunctionDefId::new(function_id));
+                if let Some(_fun_def) = def_map.get_by_function_id(&function_def_id) {
+                    sema.fold_function(strategy, function_def_id, r, &mut |a, _, b| callback(a, b))
+                } else {
+                    r
+                }
             }
             FormIdx::TypeAlias(type_alias_id) => sema.fold::<TypeAlias, T>(
                 strategy,
@@ -376,6 +387,7 @@ impl<'a, T> FoldCtx<'a, T> {
             callback,
         }
     }
+
     pub fn fold_expr(
         strategy: Strategy,
         body: &'a Body,
@@ -386,6 +398,18 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
             .do_fold_expr(expr_id, initial)
+    }
+
+    pub fn fold_exprs(
+        strategy: Strategy,
+        body: &'a Body,
+        form_id: FormIdx,
+        expr_ids: &[ExprId],
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+            .do_fold_exprs(expr_ids, initial)
     }
 
     pub fn fold_pat(
@@ -505,9 +529,9 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_pat(*lhs, acc);
                 self.do_fold_expr(*rhs, r)
             }
-            crate::Expr::Tuple { exprs } => self.fold_exprs(exprs, acc),
+            crate::Expr::Tuple { exprs } => self.do_fold_exprs(exprs, acc),
             crate::Expr::List { exprs, tail } => {
-                let r = self.fold_exprs(exprs, acc);
+                let r = self.do_fold_exprs(exprs, acc);
                 if let Some(expr_id) = tail {
                     self.do_fold_expr(*expr_id, r)
                 } else {
@@ -563,7 +587,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_def: _,
             } => {
                 let r = if self.strategy == Strategy::SurfaceOnly {
-                    self.fold_exprs(args, acc)
+                    self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
                         form_id: self.form_id,
@@ -615,7 +639,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 let mut r = self.fold_cr_clause(clauses, acc);
                 if let Some(after) = after {
                     r = self.do_fold_expr(after.timeout, r);
-                    r = self.fold_exprs(&after.exprs, r);
+                    r = self.do_fold_exprs(&after.exprs, r);
                 };
                 r
             }
@@ -642,7 +666,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     r = clause
                         .guards
                         .iter()
-                        .fold(r, |acc, exprs| self.fold_exprs(exprs, acc));
+                        .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
                     clause
                         .exprs
                         .iter()
@@ -675,8 +699,8 @@ impl<'a, T> FoldCtx<'a, T> {
                         .fold(acc, |acc, pat_id| self.do_fold_pat(*pat_id, acc));
                     r = guards
                         .iter()
-                        .fold(r, |acc, exprs| self.fold_exprs(exprs, acc));
-                    self.fold_exprs(exprs, r)
+                        .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
+                    self.do_fold_exprs(exprs, r)
                 },
             ),
             Expr::Maybe {
@@ -754,7 +778,7 @@ impl<'a, T> FoldCtx<'a, T> {
         r
     }
 
-    fn fold_exprs(&mut self, exprs: &[ExprId], initial: T) -> T {
+    fn do_fold_exprs(&mut self, exprs: &[ExprId], initial: T) -> T {
         exprs
             .iter()
             .fold(initial, |acc, expr_id| self.do_fold_expr(*expr_id, acc))
@@ -917,7 +941,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_def: _,
             } => {
                 let r = if self.strategy == Strategy::SurfaceOnly {
-                    self.fold_exprs(args, acc)
+                    self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
                         form_id: self.form_id,
@@ -1001,6 +1025,7 @@ mod tests {
     use la_arena::RawIdx;
 
     use super::fold_file;
+    use crate::db::MinInternDatabase;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;
@@ -1643,6 +1668,11 @@ bar() ->
 
     #[track_caller]
     fn count_atom_foo(fixture_str: &str, n: u32) {
+        count_atom_foo_with_strategy(Strategy::InvisibleMacros, fixture_str, n)
+    }
+
+    #[track_caller]
+    fn count_atom_foo_with_strategy(strategy: Strategy, fixture_str: &str, n: u32) {
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
@@ -1660,71 +1690,78 @@ bar() ->
 
         let form_list = sema.db.file_form_list(file_id);
 
-        let r: u32 =
-            fold_file(
-                &sema,
-                Strategy::InvisibleMacros,
-                file_id,
-                0,
-                &mut |acc, ctx| match ctx.item {
-                    AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
-                        if atom == hir_atom {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    }
-                    AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
-                        if atom == hir_atom {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    }
-                    AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
-                        if atom == hir_atom { acc + 1 } else { acc }
-                    }
-                    AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
-                        if atom == hir_atom {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    }
-                    _ => acc,
-                },
-                &mut |acc, on, form_id: FormIdx| {
-                    if on == On::Entry {
-                        match form_list.get(form_id) {
-                            Form::ModuleAttribute(ma) => {
-                                if ma.name.as_str() == hir_atom_str.as_str() {
-                                    acc + 1
-                                } else {
-                                    acc
-                                }
-                            }
-                            Form::Function(_) => acc,
-                            Form::PPDirective(_) => acc,
-                            Form::PPCondition(_) => acc,
-                            Form::Export(_) => acc,
-                            Form::Import(_) => acc,
-                            Form::TypeExport(_) => acc,
-                            Form::Behaviour(_) => acc,
-                            Form::TypeAlias(_) => acc,
-                            Form::Spec(_) => acc,
-                            Form::Callback(_) => acc,
-                            Form::OptionalCallbacks(_) => acc,
-                            Form::Record(_) => acc,
-                            Form::Attribute(_) => acc,
-                            Form::CompileOption(_) => acc,
-                            Form::DeprecatedAttribute(_) => acc,
-                            Form::FeatureAttribute(_) => acc,
-                        }
+        let r: u32 = fold_file(
+            &sema,
+            strategy,
+            file_id,
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
                     } else {
                         acc
                     }
-                },
-            );
+                }
+                AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::TypeExpr(TypeExpr::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                _ => acc,
+            },
+            &mut |acc, on, form_id: FormIdx| {
+                if on == On::Entry {
+                    match form_list.get(form_id) {
+                        Form::ModuleAttribute(ma) => {
+                            if ma.name.as_str() == hir_atom_str.as_str() {
+                                acc + 1
+                            } else {
+                                acc
+                            }
+                        }
+                        Form::Function(_) => acc,
+                        Form::PPDirective(_) => acc,
+                        Form::PPCondition(_) => acc,
+                        Form::Export(_) => acc,
+                        Form::Import(_) => acc,
+                        Form::TypeExport(_) => acc,
+                        Form::Behaviour(_) => acc,
+                        Form::TypeAlias(_) => acc,
+                        Form::Spec(_) => acc,
+                        Form::Callback(_) => acc,
+                        Form::OptionalCallbacks(_) => acc,
+                        Form::Record(_) => acc,
+                        Form::Attribute(_) => acc,
+                        Form::CompileOption(_) => acc,
+                        Form::DeprecatedAttribute(_) => acc,
+                        Form::FeatureAttribute(_) => acc,
+                    }
+                } else {
+                    acc
+                }
+            },
+        );
 
         // Count of the occurrences of the atom 'foo' in the code example
         assert_eq!(r, n);
@@ -1809,6 +1846,54 @@ bar() ->
                -define(FOO(X), foo(X,fo~o)).
                "#;
         count_atom_foo(fixture_str, 3);
+    }
+
+    #[test]
+    fn traverse_macro_clause_1() {
+        let fixture_str = r#"
+               -module(foo).
+               fo~o() -> ok.
+               -define(FOO(Res), bar(_) -> Res).
+               ?FOO([foo()]).
+               "#;
+        // We do not see the function name (not looking)
+        count_atom_foo(fixture_str, 2);
+    }
+
+    #[test]
+    fn traverse_macro_clause_surface_only() {
+        let fixture_str = r#"
+               -define(FOO(Args), bar() -> {Args, Args}).
+
+               fo~o() -> 1.
+               ?FOO([foo()]).
+               "#;
+        // We do not see the function name (not looking)
+        count_atom_foo_with_strategy(Strategy::SurfaceOnly, fixture_str, 1);
+    }
+
+    #[test]
+    fn traverse_macro_clause_invisible_macros() {
+        let fixture_str = r#"
+               -define(FOO(Args), bar() -> {Args, Args}).
+
+               fo~o() -> 1.
+               ?FOO([foo()]).
+               "#;
+        count_atom_foo_with_strategy(Strategy::InvisibleMacros, fixture_str, 2);
+    }
+
+    #[test]
+    fn traverse_macro_clause_visible_macros() {
+        let fixture_str = r#"
+               -define(FOO(Args), bar() -> {Args, Args}).
+
+               fo~o() -> 1.
+               ?FOO([foo()]).
+               "#;
+        // We do not see the arguments separately, it is up to us to
+        // explicitly look at them if we care.
+        count_atom_foo_with_strategy(Strategy::VisibleMacros, fixture_str, 2);
     }
 
     // -----------------------------------------------------------------
