@@ -11,7 +11,15 @@
 use std::io::Write;
 
 use anyhow::Result;
+use elp::build::load;
+use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+use elp_ide::elp_ide_db::elp_base_db::ModuleName;
+use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::Analysis;
+use elp_project_model::DiscoverConfig;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -141,9 +149,78 @@ pub(crate) enum Fact {
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<XRefFact> },
 }
+type IndexFileResult = (
+    FileFact,
+    FileLinesFact,
+    Option<Vec<FunctionDeclarationFact>>,
+    Option<XRefFact>,
+);
 
-pub(crate) fn index_facts(_args: &Glean, _cli: &mut dyn Cli) -> Result<Vec<Fact>> {
-    Ok(vec![])
+fn index_file(
+    loaded: &LoadResult,
+    analysis: &Analysis,
+    file_id: FileId,
+    path: &VfsPath,
+) -> Result<Option<IndexFileResult>> {
+    Ok(None)
+}
+
+pub(crate) fn index_facts(args: &Glean, cli: &mut dyn Cli) -> Result<Vec<Fact>> {
+    let config = DiscoverConfig::buck();
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        elp_eqwalizer::Mode::Cli,
+    )?;
+    let mut file_facts = vec![];
+    let mut line_facts = vec![];
+    let mut decl_facts = vec![];
+    let mut xref_facts = vec![];
+    let analysis = loaded.analysis();
+
+    if let Some(module) = &args.module {
+        let index = analysis.module_index(loaded.project_id)?;
+        let file_id = index
+            .file_for_module(&ModuleName::new(module))
+            .expect("No module found");
+        let path = loaded.vfs.file_path(file_id);
+        if let Some((file_fact, line_fact, decl_fact, xref_fact)) =
+            index_file(&loaded, &analysis, file_id, &path)?
+        {
+            file_facts.push(file_fact);
+            line_facts.push(line_fact);
+            if let Some(decl_fact) = decl_fact {
+                decl_facts.extend(decl_fact);
+            }
+            if let Some(xref_fact) = xref_fact {
+                xref_facts.push(xref_fact);
+            }
+        }
+    } else {
+        for (file_id, path) in loaded.vfs.iter() {
+            if let Ok(Some((file_fact, line_fact, decl_fact, xref_fact))) =
+                index_file(&loaded, &analysis, file_id, path)
+            {
+                file_facts.push(file_fact);
+                line_facts.push(line_fact);
+                if let Some(decl_fact) = decl_fact {
+                    decl_facts.extend(decl_fact);
+                }
+                if let Some(xref_fact) = xref_fact {
+                    xref_facts.push(xref_fact);
+                }
+            }
+        }
+    }
+
+    Ok(vec![
+        Fact::File { facts: file_facts },
+        Fact::FileLine { facts: line_facts },
+        Fact::FunctionDeclaration { facts: decl_facts },
+        Fact::XRef { facts: xref_facts },
+    ])
 }
 
 pub(crate) fn write_results(args: &Glean, cli: &mut dyn Cli, facts: Vec<Fact>) -> Result<()> {
@@ -173,6 +250,7 @@ mod tests {
     use std::path::PathBuf;
 
     use elp::cli::Fake;
+    use elp_project_model::test_fixture::Fixture;
     use expect_test::expect_file;
 
     use super::*;
@@ -227,6 +305,27 @@ mod tests {
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
         expected.assert_eq(&out);
-        assert!(err.is_empty())
+        assert_eq!(err, "")
+    }
+
+    #[test]
+    fn load_project_test() {
+        let mut cli = Fake::default();
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module1.erl
+        -module(glean_module1).
+        "#;
+        let dir = Fixture::gen_project(spec);
+        let args = Glean {
+            project: dir
+                .into_path()
+                .to_path_buf()
+                .join("glean")
+                .join("app_glean"),
+            module: Some("glean_module1".into()),
+            to: None,
+        };
+        let result = index_facts(&args, &mut cli).expect("should be ok");
+        assert_eq!(result.len(), 4)
     }
 }
