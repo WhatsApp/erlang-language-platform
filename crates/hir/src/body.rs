@@ -93,8 +93,15 @@ pub struct FunctionBody {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionClauseBody {
     pub name: Option<NameArity>,
+    pub from_macro: Option<TopLevelMacro>,
     pub body: Arc<Body>,
     pub clause: Clause,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TopLevelMacro {
+    args: Vec<ExprId>,
+    macro_def: InFile<DefineId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -258,6 +265,7 @@ impl FunctionClauseBody {
             (
                 Arc::new(FunctionClauseBody {
                     name: None,
+                    from_macro: None,
                     body: Arc::new(Body::default()),
                     clause: Clause::default(),
                 }),
@@ -271,7 +279,9 @@ impl FunctionClauseBody {
         if let Some(clause_ast) = function_ast.clause() {
             let mut ctx = lower::Ctx::new(db, function_id.file_id);
             ctx.set_function_info(&function.name);
-            if let Some((body, source_map)) = ctx.lower_clause_or_macro_body(clause_ast).next() {
+            if let Some((body, source_map)) =
+                ctx.lower_clause_or_macro_body(clause_ast, None).next()
+            {
                 (Arc::new(body), Arc::new(source_map))
             } else {
                 empty()
@@ -286,11 +296,14 @@ impl FunctionClauseBody {
         file_id: FileId,
         clause_ast: &ast::FunctionClause,
         macrostack: MacroInformation,
+        macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
     ) -> (FunctionClauseBody, BodySourceMap) {
         let mut ctx = lower::Ctx::new(db, file_id);
         ctx.set_function_info_from_ast(clause_ast);
         ctx.set_macro_information(macrostack);
-        let (body, source_map) = ctx.lower_function_clause(&clause_ast);
+        let from_macro =
+            macro_def.map(|(macro_def, args)| ctx.lower_top_level_macro(args, macro_def));
+        let (body, source_map) = ctx.lower_function_clause(&clause_ast, from_macro);
         (body, source_map)
     }
 

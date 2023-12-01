@@ -24,6 +24,7 @@ use fxhash::FxHashMap;
 
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
+use super::TopLevelMacro;
 use crate::db::MinDefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::MaybeExpr;
@@ -202,7 +203,7 @@ impl<'a> Ctx<'a> {
         let clauses = function_asts
             .iter()
             .filter_map(|f| f.clause())
-            .flat_map(|clause| self.lower_clause_or_macro_body(clause))
+            .flat_map(|clause| self.lower_clause_or_macro_body(clause, None))
             .map(|(body, source_map)| {
                 source_maps.push(Arc::new(source_map));
                 Arc::new(body)
@@ -222,12 +223,33 @@ impl<'a> Ctx<'a> {
     pub fn lower_function_clause(
         mut self,
         function_clause: &ast::FunctionClause,
+        from_macro: Option<TopLevelMacro>,
     ) -> (FunctionClauseBody, BodySourceMap) {
         let name = self.function_name();
         let clause = self.lower_clause(function_clause);
         let (body, source_map) = self.finish();
 
-        (FunctionClauseBody { name, body, clause }, source_map)
+        (
+            FunctionClauseBody {
+                name,
+                from_macro,
+                body,
+                clause,
+            },
+            source_map,
+        )
+    }
+
+    pub fn lower_top_level_macro(
+        &mut self,
+        args: Vec<ast::MacroExpr>,
+        macro_def: InFile<DefineId>,
+    ) -> TopLevelMacro {
+        let args = args
+            .iter()
+            .map(|expr| self.lower_optional_expr(expr.expr()))
+            .collect();
+        TopLevelMacro { args, macro_def }
     }
 
     pub fn resolve_name_arity(
@@ -361,6 +383,7 @@ impl<'a> Ctx<'a> {
     pub(crate) fn lower_clause_or_macro_body(
         &mut self,
         clause: ast::FunctionOrMacroClause,
+        macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
@@ -370,6 +393,7 @@ impl<'a> Ctx<'a> {
                     self.original_file_id,
                     &clause,
                     macrostack,
+                    macro_def,
                 )))
             }
             ast::FunctionOrMacroClause::MacroCallExpr(call) => {
@@ -377,11 +401,15 @@ impl<'a> Ctx<'a> {
                     self.resolve_macro(&call, |this, _source, replacement| {
                         match replacement {
                             MacroReplacement::Ast(
-                                _def_idx,
+                                def_idx,
                                 ast::MacroDefReplacement::ReplacementFunctionClauses(clauses),
                             ) => clauses
                                 .clauses()
-                                .flat_map(|clause| this.lower_clause_or_macro_body(clause))
+                                .flat_map(|clause| {
+                                    let args: Vec<_> =
+                                        call.args().iter().flat_map(|args| args.args()).collect();
+                                    this.lower_clause_or_macro_body(clause, Some((def_idx, args)))
+                                })
                                 .collect(),
                             // no built-in macro makes sense in this place
                             MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],
