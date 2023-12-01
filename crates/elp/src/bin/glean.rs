@@ -21,9 +21,13 @@ use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::Analysis;
+use elp_ide::TextRange;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::Project;
+use elp_syntax::AstNode;
+use hir::db::MinDefDatabase;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -36,16 +40,25 @@ pub(crate) struct FileFact {
     file_path: String,
 }
 
+impl FileFact {
+    fn new(file_id: FileId, file_path: String) -> Self {
+        Self {
+            file_id: file_id.0,
+            file_path,
+        }
+    }
+}
+
 #[derive(Serialize, Debug)]
 pub(crate) struct FileLinesFact {
     key: FileLinesFactKey,
 }
 
 impl FileLinesFact {
-    fn new(file_id: u32, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
+    fn new(file_id: FileId, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
         FileLinesFact {
             key: FileLinesFactKey {
-                file_id,
+                file_id: file_id.0,
                 lengths,
                 ends_with_new_line,
                 unicode_or_tabs: true,
@@ -71,9 +84,13 @@ pub(crate) struct FunctionDeclarationFact {
 }
 
 impl FunctionDeclarationFact {
-    fn new(file_id: u32, fqn: MFA, span: Location) -> Self {
+    fn new(file_id: FileId, fqn: MFA, span: Location) -> Self {
         Self {
-            key: FunctionDeclarationKey { file_id, fqn, span },
+            key: FunctionDeclarationKey {
+                file_id: file_id.0,
+                fqn,
+                span,
+            },
         }
     }
 }
@@ -92,9 +109,12 @@ pub(crate) struct XRefFact {
 }
 
 impl XRefFact {
-    fn new(file_id: u32, xrefs: Vec<XRefFactVal>) -> Self {
+    fn new(file_id: FileId, xrefs: Vec<XRefFactVal>) -> Self {
         Self {
-            key: XRefFactKey { file_id, xrefs },
+            key: XRefFactKey {
+                file_id: file_id.0,
+                xrefs,
+            },
         }
     }
 }
@@ -118,7 +138,7 @@ impl XRefFactVal {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 struct MFA {
     module: String,
     name: String,
@@ -135,10 +155,16 @@ impl MFA {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 struct Location {
     start: u32,
     length: u32,
+}
+
+impl Location {
+    fn new(start: u32, length: u32) -> Self {
+        Self { start, length }
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -224,6 +250,16 @@ impl<'a> GleanIndexer<'a> {
         let line_fact = self.line_fact(file_id, &line_index);
         facts.file_facts.push(file_fact);
         facts.file_line_facts.push(line_fact);
+
+        let module_index = self.analysis.module_index(proj)?;
+        if let Some(module) = module_index.module_for_file(file_id) {
+            match self.declaration_fact(file_id, module) {
+                Ok(decl) => facts.declaration_facts.extend(decl),
+                Err(err) => {
+                    log::warn!("Error while indexing declarations for {:?}: {}", &path, err)
+                }
+            }
+        }
         Ok(())
     }
 
@@ -281,10 +317,7 @@ impl<'a> GleanIndexer<'a> {
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
         let file_path = file_path.as_ref().to_str()?.into();
-        Some(FileFact {
-            file_id: file_id.0,
-            file_path,
-        })
+        Some(FileFact::new(file_id, file_path))
     }
 
     fn line_fact(&self, file_id: FileId, line_index: &LineIndex) -> FileLinesFact {
@@ -308,7 +341,60 @@ impl<'a> GleanIndexer<'a> {
             };
             lengths.push(len);
         }
-        FileLinesFact::new(file_id.0, lengths, ends_with_new_line)
+        FileLinesFact::new(file_id, lengths, ends_with_new_line)
+    }
+
+    fn declaration_fact(
+        &self,
+        file_id: FileId,
+        module: &ModuleName,
+    ) -> Result<Vec<FunctionDeclarationFact>> {
+        let result = self
+            .analysis
+            .with_db(|db| Self::declarations(db, file_id, module.as_str()))?;
+        Ok(result)
+    }
+
+    fn declarations(
+        db: &RootDatabase,
+        file_id: FileId,
+        module: &str,
+    ) -> Vec<FunctionDeclarationFact> {
+        let def_map = db.local_def_map(file_id);
+        let mut result = vec![];
+        for (fun, def) in def_map.get_functions() {
+            let range = def.range(db);
+            if let Some(range) = range {
+                let loc = range.into();
+                let mfa = MFA::new(module.to_string(), fun.name().to_string(), fun.arity());
+                result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
+            }
+        }
+        for (ty, def) in def_map.get_types() {
+            let range = def.source(db).syntax().text_range();
+            let loc = range.into();
+            let mfa = MFA::new(module.to_string(), ty.name().to_string(), ty.arity());
+            result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
+        }
+        for (rec, def) in def_map.get_records() {
+            let range = def.source(db).syntax().text_range();
+            let loc = range.into();
+            let mfa = MFA::new(module.to_string(), rec.to_string(), 99);
+            result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
+        }
+        result
+    }
+}
+
+impl From<TextRange> for Location {
+    fn from(range: TextRange) -> Self {
+        let start: u32 = range.start().into();
+        let mut length: u32 = range.len().into();
+        //to allign with eqwalizer indexer
+        if length > 0 {
+            length -= 1
+        }
+        Location { start, length }
     }
 }
 
@@ -331,7 +417,7 @@ mod tests {
             module: None,
             to: None,
         };
-        let file_id = 10071;
+        let file_id = FileId(10071);
         let location = Location {
             start: 0,
             length: 10,
@@ -343,10 +429,10 @@ mod tests {
         );
 
         let file_facts = vec![
-            FileFact {
+            FileFact::new(
                 file_id,
-                file_path: "/local/whatsapp/server/erl/groupd_service/test/p13n/grpd_p13n_new_create_group_SUITE.erl".into(),
-            }
+                "/local/whatsapp/server/erl/groupd_service/test/p13n/grpd_p13n_new_create_group_SUITE.erl".into(),
+            )
         ];
         let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
         let declaration_facts = vec![FunctionDeclarationFact::new(
@@ -377,45 +463,12 @@ mod tests {
     }
 
     #[test]
-    fn load_project_test() {
-        let mut cli = Fake::default();
-        let spec = r#"
-        //- /glean/app_glean1/src/glean_module1.erl
-        -module(glean_module1).
-        "#;
-        let dir = Fixture::gen_project(spec);
-        let args = Glean {
-            project: dir
-                .into_path()
-                .to_path_buf()
-                .join("glean")
-                .join("app_glean1"),
-            module: Some("glean_module1".into()),
-            to: None,
-        };
-        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        let result = indexer.index_facts().expect("should be ok");
-    }
-
-    #[test]
     fn file_fact_test() {
-        let mut cli = Fake::default();
         let spec = r#"
-        //- /glean/app_glean2/src/glean_module2.erl
+        //- /glean/app_glean/src/glean_module2.erl
         -module(glean_module2).
         "#;
-        let dir = Fixture::gen_project(spec);
-        let args = Glean {
-            project: dir
-                .into_path()
-                .to_path_buf()
-                .join("glean")
-                .join("app_glean2"),
-            module: Some("glean_module2".into()),
-            to: None,
-        };
-        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        let result = indexer.index_facts().expect("should be ok");
+        let result = run_spec(spec, "glean_module2");
         let file_fact = &result.file_facts;
         assert_eq!(file_fact.len(), 1);
         assert_eq!(file_fact[0].file_path.as_str(), "src/glean_module2.erl");
@@ -423,26 +476,14 @@ mod tests {
 
     #[test]
     fn line_fact_with_new_line_test() {
-        let mut cli = Fake::default();
         let spec = r#"
-        //- /glean/app_glean3/src/glean_module3.erl
+        //- /glean/app_glean/src/glean_module3.erl
         -module(glean_module3).
         main() ->
             bar.
 
         "#;
-        let dir = Fixture::gen_project(spec);
-        let args = Glean {
-            project: dir
-                .into_path()
-                .to_path_buf()
-                .join("glean")
-                .join("app_glean3"),
-            module: Some("glean_module3".into()),
-            to: None,
-        };
-        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        let result = indexer.index_facts().expect("should be ok");
+        let result = run_spec(spec, "glean_module3");
         let line_fact = &result.file_line_facts;
         assert_eq!(line_fact.len(), 1);
         assert!(&line_fact[0].key.ends_with_new_line);
@@ -451,27 +492,60 @@ mod tests {
 
     #[test]
     fn line_fact_without_new_line_test() {
-        let mut cli = Fake::default();
         let spec = r#"
-        //- /glean/app_glean4/src/glean_module4.erl
+        //- /glean/app_glean/src/glean_module4.erl
         -module(glean_module4).
         main() ->
             bar."#;
+        let result = run_spec(spec, "glean_module4");
+        let line_fact = &result.file_line_facts;
+        assert_eq!(line_fact.len(), 1);
+        assert_eq!(line_fact[0].key.ends_with_new_line, false);
+        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 8]);
+    }
+
+    #[test]
+    fn declaration_test() {
+        let module = "glean_module5";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module5.erl
+        -module(glean_module5).
+        -type tree() :: {'node', tree(), tree(), any(), any()}.
+        -record(user, {name = "" :: string(),
+                       notes :: tree(),
+                       age :: non_neg_integer(),
+                       friends=[] :: [user()],
+                       bio :: string() | binary()}).
+        main(A) ->
+            A."#;
+        let result = run_spec(spec, module);
+        let decl_fact = &result.declaration_facts;
+        assert_eq!(decl_fact.len(), 3);
+        let main = MFA::new(module.into(), "main".into(), 1);
+        let typ = MFA::new(module.into(), "tree".into(), 0);
+        let rec = MFA::new(module.into(), "user".into(), 99);
+        assert_eq!(&decl_fact[0].key.fqn, &main);
+        assert_eq!(&decl_fact[0].key.span, &Location::new(275, 16));
+        assert_eq!(&decl_fact[1].key.fqn, &typ);
+        assert_eq!(&decl_fact[1].key.span, &Location::new(24, 54));
+        assert_eq!(&decl_fact[2].key.fqn, &rec);
+        assert_eq!(&decl_fact[2].key.span, &Location::new(80, 193));
+    }
+
+    fn run_spec(spec: &str, module: &str) -> IndexedFacts {
+        let mut cli = Fake::default();
         let dir = Fixture::gen_project(spec);
+
         let args = Glean {
             project: dir
                 .into_path()
                 .to_path_buf()
                 .join("glean")
-                .join("app_glean4"),
-            module: Some("glean_module4".into()),
+                .join("app_glean"),
+            module: Some(module.into()),
             to: None,
         };
         let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        let result = indexer.index_facts().expect("should be ok");
-        let line_fact = &result.file_line_facts;
-        assert_eq!(line_fact.len(), 1);
-        assert_eq!(line_fact[0].key.ends_with_new_line, false);
-        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 8]);
+        indexer.index_facts().expect("should be ok")
     }
 }
