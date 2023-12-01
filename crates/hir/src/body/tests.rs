@@ -1481,6 +1481,25 @@ foo(1) -> 1;
 }
 
 #[test]
+fn expand_macro_function_clause_new_fun() {
+    check(
+        r#"
+-define(CLAUSE, bar(_) -> ok).
+
+foo(1) -> 1.
+?CLAUSE.
+"#,
+        expect![[r#"
+            foo(1) ->
+                1.
+
+            CLAUSE(_) ->
+                'ok'.
+        "#]],
+    );
+}
+
+#[test]
 fn expand_macro_function_clause_with_params() {
     check(
         r#"

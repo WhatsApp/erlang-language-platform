@@ -583,11 +583,15 @@ impl DefMap {
         // Work through them and construct the top level function
         // definitions by combining the ones that belong together.
         let mut current: Vec<(NameArity, FunctionClauseDef)> = Vec::default();
+        let mut prior_separator = None;
         self.get_function_clauses_ordered()
             .iter()
             .for_each(|(_next_id, next_def)| {
                 if let Some((current_na, current_def)) = current.get(0) {
-                    if current_na == &next_def.function.name || next_def.function.is_macro {
+                    if current_na == &next_def.function.name
+                        || (next_def.function.is_macro
+                            && prior_separator == Some(ast::ClauseSeparator::Semi))
+                    {
                         current.push((next_def.function.name.clone(), next_def.clone()));
                     } else {
                         // We have a new one, create a FunctionDef with
@@ -599,6 +603,7 @@ impl DefMap {
                 } else {
                     current.push((next_def.function.name.clone(), next_def.clone()));
                 }
+                prior_separator = next_def.function.separator.clone().map(|s| s.0);
             });
         if let Some((current_na, current_def)) = current.get(0) {
             self.insert_fun(&current, current_na, current_def);
