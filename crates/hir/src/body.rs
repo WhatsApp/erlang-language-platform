@@ -612,7 +612,7 @@ impl<T: AstNode> InFileAstPtr<T> {
         }
     }
 
-    pub(crate) fn range(&self) -> TextRange {
+    pub fn range(&self) -> TextRange {
         self.0.value.syntax_node_ptr().range()
     }
 

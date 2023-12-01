@@ -7,9 +7,9 @@
  * of this source tree.
  */
 
-#![allow(dead_code, unused)]
 use std::io::Write;
 use std::mem;
+use std::sync::Arc;
 
 use anyhow::Result;
 use elp::build::load;
@@ -27,6 +27,14 @@ use elp_project_model::DiscoverConfig;
 use elp_syntax::AstNode;
 use hir::db::MinDefDatabase;
 use hir::fold;
+use hir::fold::AnyCallBackCtx;
+use hir::sema;
+use hir::Body;
+use hir::CallTarget;
+use hir::Expr;
+use hir::ExprId;
+use hir::FormIdx;
+use hir::InFile;
 use hir::Name;
 use hir::Semantic;
 use hir::Strategy;
@@ -406,6 +414,17 @@ impl<'a> GleanIndexer<'a> {
             file_id,
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
+                hir::AnyExpr::Expr(Expr::Call { target, args }) => {
+                    if let Some((body, range)) = Self::find_range(db, file_id, &ctx) {
+                        let arity = args.len() as u32;
+                        if let Some(fact) =
+                            Self::resolve_call(&sema, &target, arity, file_id, &body, range)
+                        {
+                            acc.push(fact);
+                        }
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -413,17 +432,85 @@ impl<'a> GleanIndexer<'a> {
 
         XRefFact::new(file_id, xrefs)
     }
+
+    fn find_range(
+        db: &RootDatabase,
+        file_id: FileId,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<(Arc<Body>, TextRange)> {
+        let (body, source) = match ctx.form_id {
+            FormIdx::ModuleAttribute(_) => None,
+            FormIdx::Function(func_id) => {
+                let in_file = InFile::new(file_id, func_id);
+                let (body, source) = db.function_clause_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::PPDirective(_) => None,
+            FormIdx::PPCondition(_) => None,
+            FormIdx::Export(_) => None,
+            FormIdx::Import(_) => None,
+            FormIdx::TypeExport(_) => None,
+            FormIdx::Behaviour(_) => None,
+            FormIdx::TypeAlias(typ) => {
+                let in_file = InFile::new(file_id, typ);
+                let (body, source) = db.type_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::Spec(spec) => {
+                let in_file = InFile::new(file_id, spec);
+                let (body, source) = db.spec_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::Callback(call) => {
+                let in_file = InFile::new(file_id, call);
+                let (body, source) = db.callback_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::OptionalCallbacks(_) => None,
+            FormIdx::Record(rec) => {
+                let in_file = InFile::new(file_id, rec);
+                let (body, source) = db.record_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::Attribute(attr) => {
+                let in_file = InFile::new(file_id, attr);
+                let (body, source) = db.attribute_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+            FormIdx::CompileOption(comp) => {
+                let in_file = InFile::new(file_id, comp);
+                let (body, source) = db.compile_body_with_source(in_file);
+                Some((body.body.clone(), source))
+            }
+
+            FormIdx::DeprecatedAttribute(_) => None,
+            FormIdx::FeatureAttribute(_) => None,
+        }?;
+
+        let ast = source.any(ctx.item_id)?;
+        Some((body, ast.range()))
+    }
+
+    fn resolve_call(
+        sema: &Semantic<'_>,
+        target: &CallTarget<ExprId>,
+        arity: u32,
+        file_id: FileId,
+        body: &Body,
+        range: TextRange,
+    ) -> Option<XRefFactVal> {
+        let def = sema::to_def::resolve_call_target(&sema, &target, arity, file_id, &body)?;
+        let module = &def.module?;
+        let mfa = MFA::new(module, def.name.name(), arity);
+        Some(XRefFactVal::new(range.into(), mfa))
+    }
 }
 
 impl From<TextRange> for Location {
     fn from(range: TextRange) -> Self {
         let start: u32 = range.start().into();
-        let mut length: u32 = range.len().into();
-        //to allign with eqwalizer indexer
-        if length > 0 {
-            length -= 1
-        }
-        Location { start, length }
+        let length: u32 = range.len().into();
+        Location::new(start, length)
     }
 }
 
@@ -515,8 +602,8 @@ mod tests {
         let result = run_spec(spec, "glean_module3");
         let line_fact = &result.file_line_facts;
         assert_eq!(line_fact.len(), 1);
-        assert!(&line_fact[0].key.ends_with_new_line);
-        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 9, 1]);
+        assert!(line_fact[0].key.ends_with_new_line);
+        assert_eq!(line_fact[0].key.lengths, vec![24, 10, 9, 1]);
     }
 
     #[test]
@@ -530,7 +617,7 @@ mod tests {
         let line_fact = &result.file_line_facts;
         assert_eq!(line_fact.len(), 1);
         assert_eq!(line_fact[0].key.ends_with_new_line, false);
-        assert_eq!(&line_fact[0].key.lengths, &vec![24, 10, 8]);
+        assert_eq!(line_fact[0].key.lengths, vec![24, 10, 8]);
     }
 
     #[test]
@@ -553,12 +640,38 @@ mod tests {
         let main = mfa(module, "main", 1);
         let typ = mfa(module, "tree", 0);
         let rec = mfa(module, "user", 99);
-        assert_eq!(&decl_fact[0].key.fqn, &main);
-        assert_eq!(&decl_fact[0].key.span, &Location::new(275, 16));
-        assert_eq!(&decl_fact[1].key.fqn, &typ);
-        assert_eq!(&decl_fact[1].key.span, &Location::new(24, 54));
-        assert_eq!(&decl_fact[2].key.fqn, &rec);
-        assert_eq!(&decl_fact[2].key.span, &Location::new(80, 193));
+        assert_eq!(decl_fact[0].key.fqn, main);
+        assert_eq!(decl_fact[0].key.span, Location::new(275, 17));
+        assert_eq!(decl_fact[1].key.fqn, typ);
+        assert_eq!(decl_fact[1].key.span, Location::new(24, 55));
+        assert_eq!(decl_fact[2].key.fqn, rec);
+        assert_eq!(decl_fact[2].key.span, Location::new(80, 194));
+    }
+
+    #[test]
+    fn xref_call_test() {
+        let module = "glean_module6";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module61.erl
+        -module(glean_module61).
+        foo(Bar) -> Bar + 1.
+
+        //- /glean/app_glean/src/glean_module6.erl
+        main() ->
+            B = baz(1, 2),
+            F = glean_module61:foo(B),
+            F.
+        baz(A, B) ->
+            A + B."#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts;
+        let foo = mfa("glean_module61", "foo", 1);
+        let baz = mfa(module, "baz", 2);
+        assert_eq!(xref_fact[0].key.xrefs[0].target, baz);
+        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(18, 9));
+        assert_eq!(xref_fact[0].key.xrefs[1].target, foo);
+        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(37, 21));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {

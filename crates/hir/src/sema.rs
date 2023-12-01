@@ -81,7 +81,7 @@ use crate::Var;
 use crate::VarDef;
 
 mod find;
-pub(crate) mod to_def;
+pub mod to_def;
 
 pub struct ModuleIter(Arc<ModuleIndex>);
 
