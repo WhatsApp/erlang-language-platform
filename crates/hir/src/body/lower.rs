@@ -55,6 +55,7 @@ use crate::InFile;
 use crate::ListType;
 use crate::Literal;
 use crate::MacroName;
+use crate::MacroSource;
 use crate::Name;
 use crate::NameArity;
 use crate::Pat;
@@ -87,10 +88,14 @@ pub struct Ctx<'a> {
     macro_stack: Vec<MacroStackEntry>,
     macro_stack_id: usize,
     function_info: Option<(Atom, u32)>,
+    function_name: Option<NameArity>, // Equivalent to function_info, cached
     body: Body,
     source_map: BodySourceMap,
     // For sanity checks, when presetting macro environment
     starting_stack_size: usize,
+    // For transferring corresponding entries from the macro_stack to
+    // the source_map.macro_map when recursing
+    macro_source_map: FxHashMap<MacroName, MacroSource>,
 }
 
 #[derive(Debug)]
@@ -100,6 +105,12 @@ enum MacroReplacement {
     BuiltInArgs(BuiltInMacro, MacroCallArgs),
     AstArgs(InFile<DefineId>, ast::MacroDefReplacement, MacroCallArgs),
 }
+
+pub(crate) type MacroInformation = (
+    Vec<MacroStackEntry>,
+    usize,
+    FxHashMap<MacroSource, ResolvedMacro>,
+);
 
 impl<'a> Ctx<'a> {
     pub fn new(db: &'a dyn MinDefDatabase, file_id: FileId) -> Self {
@@ -114,9 +125,11 @@ impl<'a> Ctx<'a> {
             }],
             macro_stack_id: 0,
             function_info: None,
+            function_name: None,
             body: Body::default(),
             source_map: BodySourceMap::default(),
             starting_stack_size: 1,
+            macro_source_map: FxHashMap::default(),
         }
     }
 
@@ -124,17 +137,41 @@ impl<'a> Ctx<'a> {
         let name = self.db.atom(info.name().clone());
         let arity = info.arity();
         self.function_info = Some((name, arity));
+        self.function_name = Some(info.clone());
     }
 
-    fn get_macro_stack(&self) -> (Vec<MacroStackEntry>, usize) {
-        (self.macro_stack.clone(), self.macro_stack_id)
+    pub fn set_function_info_from_ast(&mut self, clause: &ast::FunctionClause) {
+        let info = self.resolve_name_arity(clause);
+        if let Some(info) = info {
+            let name = self.db.atom(info.name().clone());
+            let arity = info.arity();
+            self.function_info = Some((name, arity));
+            self.function_name = Some(info.clone());
+        }
     }
 
-    pub(crate) fn set_macro_stack(&mut self, stack: (Vec<MacroStackEntry>, usize)) {
-        let (macro_stack, macro_stack_id) = stack;
+    pub fn function_name(&self) -> Option<NameArity> {
+        self.function_name.clone()
+    }
+
+    fn get_macro_information(&self) -> MacroInformation {
+        let mut macro_map: FxHashMap<MacroSource, ResolvedMacro> = FxHashMap::default();
+        self.macro_stack.iter().for_each(|e| {
+            if let Some(macro_source) = self.macro_source_map.get(&e.name) {
+                if let Some(resolution) = self.source_map.macro_map.get(macro_source) {
+                    macro_map.insert(*macro_source, *resolution);
+                }
+            }
+        });
+        (self.macro_stack.clone(), self.macro_stack_id, macro_map)
+    }
+
+    pub(crate) fn set_macro_information(&mut self, stack: MacroInformation) {
+        let (macro_stack, macro_stack_id, macro_map) = stack;
         self.macro_stack = macro_stack;
         self.macro_stack_id = macro_stack_id;
         self.starting_stack_size = self.macro_stack.len();
+        self.source_map.macro_map = macro_map;
     }
 
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
@@ -159,14 +196,13 @@ impl<'a> Ctx<'a> {
         mut self,
         function_id: InFile<FunctionDefId>,
         clause_ids: Vec<FunctionId>,
-        name: &NameArity,
         function_asts: &[ast::FunDecl],
     ) -> (FunctionBody, Vec<Arc<BodySourceMap>>) {
         let mut source_maps = Vec::default();
         let clauses = function_asts
             .iter()
             .filter_map(|f| f.clause())
-            .flat_map(|clause| self.lower_clause_or_macro_body(name, clause))
+            .flat_map(|clause| self.lower_clause_or_macro_body(clause))
             .map(|(body, source_map)| {
                 source_maps.push(Arc::new(source_map));
                 Arc::new(body)
@@ -187,10 +223,21 @@ impl<'a> Ctx<'a> {
         mut self,
         function_clause: &ast::FunctionClause,
     ) -> (FunctionClauseBody, BodySourceMap) {
+        let name = self.function_name();
         let clause = self.lower_clause(function_clause);
         let (body, source_map) = self.finish();
 
-        (FunctionClauseBody { body, clause }, source_map)
+        (FunctionClauseBody { name, body, clause }, source_map)
+    }
+
+    pub fn resolve_name_arity(
+        &mut self,
+        function_clause: &ast::FunctionClause,
+    ) -> Option<NameArity> {
+        let name_atom = self.resolve_name(function_clause.name()?)?;
+        let name = self.db.lookup_atom(name_atom);
+        let arity = function_clause.args()?.args().count().try_into().ok()?;
+        Some(NameArity::new(name, arity))
     }
 
     pub fn lower_type_alias(self, type_alias: &ast::TypeAlias) -> (TypeBody, BodySourceMap) {
@@ -313,16 +360,14 @@ impl<'a> Ctx<'a> {
 
     pub(crate) fn lower_clause_or_macro_body(
         &mut self,
-        name: &NameArity,
         clause: ast::FunctionOrMacroClause,
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
-                let macrostack = self.get_macro_stack();
+                let macrostack = self.get_macro_information();
                 Either::Left(once(FunctionClauseBody::lower_clause_body(
                     self.db,
                     self.original_file_id,
-                    name,
                     &clause,
                     macrostack,
                 )))
@@ -336,7 +381,7 @@ impl<'a> Ctx<'a> {
                                 ast::MacroDefReplacement::ReplacementFunctionClauses(clauses),
                             ) => clauses
                                 .clauses()
-                                .flat_map(|clause| this.lower_clause_or_macro_body(name, clause))
+                                .flat_map(|clause| this.lower_clause_or_macro_body(clause))
                                 .collect(),
                             // no built-in macro makes sense in this place
                             MacroReplacement::Ast(_, _) | MacroReplacement::BuiltIn(_) => vec![],
@@ -2280,7 +2325,7 @@ impl<'a> Ctx<'a> {
 
         match self.db.resolve_macro(self.original_file_id, name.clone()) {
             Some(res @ ResolvedMacro::BuiltIn(built_in)) => {
-                self.record_macro_resolution(call, res);
+                self.record_macro_resolution(call, res, name.clone());
                 match built_in {
                     BuiltInMacro::FUNCTION_NAME => {
                         if let Some(args) = call.args() {
@@ -2297,7 +2342,7 @@ impl<'a> Ctx<'a> {
                 }
             }
             Some(res @ ResolvedMacro::User(def_idx)) => {
-                self.record_macro_resolution(call, res);
+                self.record_macro_resolution(call, res, name.clone());
                 self.enter_macro(name, def_idx, call.args(), |this, replacement| {
                     cb(this, source, MacroReplacement::Ast(def_idx, replacement))
                 })
@@ -2306,7 +2351,7 @@ impl<'a> Ctx<'a> {
                 let name = name.with_arity(None);
                 let args = call.args()?;
                 let res = self.db.resolve_macro(self.original_file_id, name.clone())?;
-                self.record_macro_resolution(call, res);
+                self.record_macro_resolution(call, res, name.clone());
                 match res {
                     ResolvedMacro::BuiltIn(built_in) => Some(cb(
                         self,
@@ -2457,10 +2502,16 @@ impl<'a> Ctx<'a> {
         self.source_map.term_map_back.insert(term_id, source);
     }
 
-    fn record_macro_resolution(&mut self, call: &ast::MacroCallExpr, res: ResolvedMacro) {
+    fn record_macro_resolution(
+        &mut self,
+        call: &ast::MacroCallExpr,
+        res: ResolvedMacro,
+        name: MacroName,
+    ) {
         let ptr = AstPtr::new(call);
         let source = InFileAstPtr::new(self.curr_file_id(), ptr);
         self.source_map.macro_map.insert(source, res);
+        self.macro_source_map.insert(name, source);
     }
 
     fn curr_file_id(&self) -> FileId {

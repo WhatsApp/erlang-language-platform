@@ -37,6 +37,7 @@ pub use body::ExprSource;
 pub use body::FunctionBody;
 pub use body::FunctionClauseBody;
 pub use body::InFileAstPtr;
+pub use body::MacroSource;
 pub use body::RecordBody;
 pub use body::SpecBody;
 pub use body::SpecOrCallback;

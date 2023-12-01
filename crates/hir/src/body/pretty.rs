@@ -54,7 +54,10 @@ pub fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody, form: &Fu
         sep = ";";
         let mut printer = Printer::new(db, &clause.body);
         printer
-            .print_clause(&clause.clause, form.name.name())
+            .print_clause(
+                &clause.clause,
+                clause.name.clone().unwrap_or(form.name.clone()).name(),
+            )
             .unwrap();
         write!(out, "{}", printer.to_string_raw()).unwrap();
     }

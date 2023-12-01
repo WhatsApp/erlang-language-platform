@@ -20,7 +20,7 @@ use la_arena::Arena;
 use la_arena::ArenaMap;
 use la_arena::RawIdx;
 
-use self::lower::MacroStackEntry;
+use self::lower::MacroInformation;
 use crate::db::MinDefDatabase;
 use crate::db::MinInternDatabase;
 use crate::def_map::FunctionDefId;
@@ -92,6 +92,7 @@ pub struct FunctionBody {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FunctionClauseBody {
+    pub name: Option<NameArity>,
     pub body: Arc<Body>,
     pub clause: Clause,
 }
@@ -211,7 +212,7 @@ impl FunctionBody {
             let name = &fun_def.function[0].name;
             ctx.set_function_info(name);
             let (body, source_maps) =
-                ctx.lower_function(function_id, fun_def.function_ids.clone(), name, &fun_asts);
+                ctx.lower_function(function_id, fun_def.function_ids.clone(), &fun_asts);
             (Arc::new(body), source_maps)
         } else {
             (
@@ -256,6 +257,7 @@ impl FunctionClauseBody {
         fn empty() -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
             (
                 Arc::new(FunctionClauseBody {
+                    name: None,
                     body: Arc::new(Body::default()),
                     clause: Clause::default(),
                 }),
@@ -269,10 +271,7 @@ impl FunctionClauseBody {
         if let Some(clause_ast) = function_ast.clause() {
             let mut ctx = lower::Ctx::new(db, function_id.file_id);
             ctx.set_function_info(&function.name);
-            if let Some((body, source_map)) = ctx
-                .lower_clause_or_macro_body(&function.name, clause_ast)
-                .next()
-            {
+            if let Some((body, source_map)) = ctx.lower_clause_or_macro_body(clause_ast).next() {
                 (Arc::new(body), Arc::new(source_map))
             } else {
                 empty()
@@ -285,13 +284,12 @@ impl FunctionClauseBody {
     pub(crate) fn lower_clause_body(
         db: &dyn MinDefDatabase,
         file_id: FileId,
-        info: &NameArity,
         clause_ast: &ast::FunctionClause,
-        macrostack: (Vec<MacroStackEntry>, usize),
+        macrostack: MacroInformation,
     ) -> (FunctionClauseBody, BodySourceMap) {
         let mut ctx = lower::Ctx::new(db, file_id);
-        ctx.set_function_info(info);
-        ctx.set_macro_stack(macrostack);
+        ctx.set_function_info_from_ast(clause_ast);
+        ctx.set_macro_information(macrostack);
         let (body, source_map) = ctx.lower_function_clause(&clause_ast);
         (body, source_map)
     }

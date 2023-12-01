@@ -1493,7 +1493,7 @@ foo(1) -> 1.
             foo(1) ->
                 1.
 
-            CLAUSE(_) ->
+            bar(_) ->
                 'ok'.
         "#]],
     );
@@ -1529,9 +1529,9 @@ fn expand_macro_function_multiple_clauses() {
         // We do not have the function name in the form list, so we
         // print the macro name. In HIR this is resolved properly.
         expect![[r#"
-            CLAUSE(1) ->
+            foo(1) ->
                 1;
-            CLAUSE(_) ->
+            foo(_) ->
                 'ok'.
         "#]],
     );
@@ -1552,9 +1552,9 @@ fn expand_macro_function_multiple_files() {
         // We do not have the function name in the form list, so we
         // print the macro name. In HIR this is resolved properly.
         expect![[r#"
-            CLAUSE(1) ->
+            foo(1) ->
                 1;
-            CLAUSE(_) ->
+            foo(_) ->
                 'ok'.
         "#]],
     );

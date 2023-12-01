@@ -598,4 +598,17 @@ bar() -> ?FOO(b~az(42)).
             expect!["***EXPANSION FAILED***"],
         );
     }
+
+    // This test is restored and passes later in the stack
+    //     #[test]
+    //     fn expand_top_level_function() {
+    //         check(
+    //             r#"
+    // -module(foo).
+    // -define(FOO(X), baz() -> X).
+    // ?FO~O(42).
+    // "#,
+    //             expect!["baz() -> 42"],
+    //         );
+    //     }
 }
