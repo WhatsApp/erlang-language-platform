@@ -626,9 +626,9 @@ mod tests {
         -module(glean_module2).
         "#;
         let result = run_spec(spec, "glean_module2");
-        let file_fact = &result.file_facts;
-        assert_eq!(file_fact.len(), 1);
-        assert_eq!(file_fact[0].file_path.as_str(), "src/glean_module2.erl");
+        assert_eq!(result.file_facts.len(), 1);
+        let file_fact = &result.file_facts[0];
+        assert_eq!(file_fact.file_path.as_str(), "src/glean_module2.erl");
     }
 
     #[test]
@@ -641,10 +641,10 @@ mod tests {
 
         "#;
         let result = run_spec(spec, "glean_module3");
-        let line_fact = &result.file_line_facts;
-        assert_eq!(line_fact.len(), 1);
-        assert!(line_fact[0].key.ends_with_new_line);
-        assert_eq!(line_fact[0].key.lengths, vec![24, 10, 9, 1]);
+        assert_eq!(result.file_line_facts.len(), 1);
+        let line_fact = &result.file_line_facts[0].key;
+        assert!(line_fact.ends_with_new_line);
+        assert_eq!(line_fact.lengths, vec![24, 10, 9, 1]);
     }
 
     #[test]
@@ -655,10 +655,10 @@ mod tests {
         main() ->
             bar."#;
         let result = run_spec(spec, "glean_module4");
-        let line_fact = &result.file_line_facts;
-        assert_eq!(line_fact.len(), 1);
-        assert_eq!(line_fact[0].key.ends_with_new_line, false);
-        assert_eq!(line_fact[0].key.lengths, vec![24, 10, 8]);
+        assert_eq!(result.file_line_facts.len(), 1);
+        let line_fact = &result.file_line_facts[0].key;
+        assert_eq!(line_fact.ends_with_new_line, false);
+        assert_eq!(line_fact.lengths, vec![24, 10, 8]);
     }
 
     #[test]
@@ -706,13 +706,13 @@ mod tests {
             A + B."#;
 
         let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts;
+        let xref_fact = &result.xref_facts[0].key;
         let foo = mfa("glean_module61", "foo", 1);
         let baz = mfa(module, "baz", 2);
-        assert_eq!(xref_fact[0].key.xrefs[0].target, baz);
-        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(18, 9));
-        assert_eq!(xref_fact[0].key.xrefs[1].target, foo);
-        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(37, 21));
+        assert_eq!(xref_fact.xrefs[0].target, baz);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(18, 9));
+        assert_eq!(xref_fact.xrefs[1].target, foo);
+        assert_eq!(xref_fact.xrefs[1].source, Location::new(37, 21));
     }
 
     #[test]
@@ -730,13 +730,13 @@ mod tests {
             A + B."#;
 
         let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts;
+        let xref_fact = &result.xref_facts[0].key;
         let foo = mfa("glean_module71", "foo", 1);
         let baz = mfa(module, "baz", 2);
-        assert_eq!(xref_fact[0].key.xrefs[0].target, foo);
-        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(20, 24));
-        assert_eq!(xref_fact[0].key.xrefs[1].target, baz);
-        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(56, 9));
+        assert_eq!(xref_fact.xrefs[0].target, foo);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(20, 24));
+        assert_eq!(xref_fact.xrefs[1].target, baz);
+        assert_eq!(xref_fact.xrefs[1].source, Location::new(56, 9));
     }
 
     #[test]
@@ -756,15 +756,15 @@ mod tests {
             A + B."#;
 
         let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts;
+        let xref_fact = &result.xref_facts[0].key;
         let small = mfa("glean_module81", "small", 0);
         let huuuge = mfa(module, "huuuge", 0);
-        assert_eq!(xref_fact[0].key.xrefs[0].target, huuuge);
-        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(71, 8));
-        assert_eq!(xref_fact[0].key.xrefs[1].target, small);
-        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(90, 22));
-        assert_eq!(xref_fact[0].key.xrefs[2].target, huuuge);
-        assert_eq!(xref_fact[0].key.xrefs[2].source, Location::new(118, 8));
+        assert_eq!(xref_fact.xrefs[0].target, huuuge);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(71, 8));
+        assert_eq!(xref_fact.xrefs[1].target, small);
+        assert_eq!(xref_fact.xrefs[1].source, Location::new(90, 22));
+        assert_eq!(xref_fact.xrefs[2].target, huuuge);
+        assert_eq!(xref_fact.xrefs[2].source, Location::new(118, 8));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
