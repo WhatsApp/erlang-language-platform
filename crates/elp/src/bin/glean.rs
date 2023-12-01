@@ -35,6 +35,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FormIdx;
 use hir::InFile;
+use hir::Literal;
 use hir::Name;
 use hir::Semantic;
 use hir::Strategy;
@@ -425,6 +426,22 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
+                    if let Some((body, range)) = Self::find_range(db, file_id, &ctx) {
+                        let arity: Option<u32> = match body[*arity] {
+                            Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
+                            _ => None,
+                        };
+                        if let Some(arity) = arity {
+                            if let Some(fact) =
+                                Self::resolve_call(&sema, &target, arity, file_id, &body, range)
+                            {
+                                acc.push(fact);
+                            }
+                        }
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -672,6 +689,30 @@ mod tests {
         assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(18, 9));
         assert_eq!(xref_fact[0].key.xrefs[1].target, foo);
         assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(37, 21));
+    }
+
+    #[test]
+    fn xref_captured_fun_test() {
+        let module = "glean_module7";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module71.erl
+        foo(Bar) -> Bar + 1.
+
+        //- /glean/app_glean/src/glean_module7.erl
+        main() ->
+            Foo = fun glean_module71:foo/1,
+            Baz = fun baz/2.
+        baz(A, B) ->
+            A + B."#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts;
+        let foo = mfa("glean_module71", "foo", 1);
+        let baz = mfa(module, "baz", 2);
+        assert_eq!(xref_fact[0].key.xrefs[0].target, foo);
+        assert_eq!(xref_fact[0].key.xrefs[0].source, Location::new(20, 24));
+        assert_eq!(xref_fact[0].key.xrefs[1].target, baz);
+        assert_eq!(xref_fact[0].key.xrefs[1].source, Location::new(56, 9));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
