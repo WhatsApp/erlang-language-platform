@@ -724,7 +724,7 @@ impl<'db> Semantic<'db> {
         callback: FunctionAnyCallBack<'a, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
-        fold_function_body(&function_body, strategy, initial, callback)
+        fold_function_body(strategy, &function_body, initial, callback)
     }
 
     pub fn fold_clause<'a, T>(
@@ -766,9 +766,9 @@ impl<'db> Semantic<'db> {
                 let body = self.db.function_clause_body(function_id);
 
                 fold_function_clause_body(
-                    function_id.value,
-                    &body,
                     Strategy::InvisibleMacros,
+                    &body,
+                    function_id.value,
                     (),
                     &mut |acc, ctx| {
                         if let Some(mut resolver) = self.clause_resolver(function_id) {
@@ -857,8 +857,8 @@ impl<'db> Semantic<'db> {
 pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
 
 fn fold_function_body<'a, T>(
-    function_body: &FunctionBody,
     strategy: Strategy,
+    function_body: &FunctionBody,
     initial: T,
     callback: FunctionAnyCallBack<'a, T>,
 ) -> T {
@@ -867,16 +867,16 @@ fn fold_function_body<'a, T>(
         .iter()
         .zip(function_body.clause_ids.iter())
         .fold(initial, |acc, ((clause_id, clause), function_id)| {
-            fold_function_clause_body(*function_id, clause, strategy, acc, &mut |acc, ctx| {
+            fold_function_clause_body(strategy, clause, *function_id, acc, &mut |acc, ctx| {
                 callback(acc, clause_id, ctx)
             })
         })
 }
 
 fn fold_function_clause_body<'a, T>(
-    function_id: FunctionId,
-    function_clause_body: &FunctionClauseBody,
     strategy: Strategy,
+    function_clause_body: &FunctionClauseBody,
+    function_id: FunctionId,
     initial: T,
     callback: AnyCallBack<'a, T>,
 ) -> T {
@@ -1094,7 +1094,7 @@ impl<T: Clone> InFunctionBody<T> {
         initial: R,
         callback: FunctionAnyCallBack<'a, R>,
     ) -> R {
-        fold_function_body(&self.body, strategy, initial, callback)
+        fold_function_body(strategy, &self.body, initial, callback)
     }
 
     pub fn range_for_expr(
@@ -1255,7 +1255,7 @@ impl<T> InFunctionClauseBody<T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        fold_function_clause_body(function_id, &self.body, strategy, initial, callback)
+        fold_function_clause_body(strategy, &self.body, function_id, initial, callback)
     }
 
     pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {
