@@ -18,16 +18,15 @@ use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
 use elp_project_model::DiscoverConfig;
-use elp_project_model::Project;
 use elp_syntax::AstNode;
 use hir::db::MinDefDatabase;
+use hir::Name;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -146,10 +145,10 @@ struct MFA {
 }
 
 impl MFA {
-    fn new(module: String, name: String, arity: u32) -> Self {
+    fn new(module: &ModuleName, name: &Name, arity: u32) -> Self {
         Self {
-            module,
-            name,
+            module: module.to_string(),
+            name: name.to_string(),
             arity,
         }
     }
@@ -351,14 +350,14 @@ impl<'a> GleanIndexer<'a> {
     ) -> Result<Vec<FunctionDeclarationFact>> {
         let result = self
             .analysis
-            .with_db(|db| Self::declarations(db, file_id, module.as_str()))?;
+            .with_db(|db| Self::declarations(db, file_id, module))?;
         Ok(result)
     }
 
     fn declarations(
         db: &RootDatabase,
         file_id: FileId,
-        module: &str,
+        module: &ModuleName,
     ) -> Vec<FunctionDeclarationFact> {
         let def_map = db.local_def_map(file_id);
         let mut result = vec![];
@@ -366,20 +365,20 @@ impl<'a> GleanIndexer<'a> {
             let range = def.range(db);
             if let Some(range) = range {
                 let loc = range.into();
-                let mfa = MFA::new(module.to_string(), fun.name().to_string(), fun.arity());
+                let mfa = MFA::new(module, fun.name(), fun.arity());
                 result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
             }
         }
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
             let loc = range.into();
-            let mfa = MFA::new(module.to_string(), ty.name().to_string(), ty.arity());
+            let mfa = MFA::new(module, ty.name(), ty.arity());
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
             let loc = range.into();
-            let mfa = MFA::new(module.to_string(), rec.to_string(), 99);
+            let mfa = MFA::new(module, rec, 99);
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
@@ -422,9 +421,9 @@ mod tests {
             start: 0,
             length: 10,
         };
-        let mfa = MFA::new(
-            "smax_product_catalog".into(),
-            "product_visibility_update_request_iq".into(),
+        let mfa = mfa(
+            "smax_product_catalog",
+            "product_visibility_update_request_iq",
             0,
         );
 
@@ -521,9 +520,9 @@ mod tests {
         let result = run_spec(spec, module);
         let decl_fact = &result.declaration_facts;
         assert_eq!(decl_fact.len(), 3);
-        let main = MFA::new(module.into(), "main".into(), 1);
-        let typ = MFA::new(module.into(), "tree".into(), 0);
-        let rec = MFA::new(module.into(), "user".into(), 99);
+        let main = mfa(module, "main", 1);
+        let typ = mfa(module, "tree", 0);
+        let rec = mfa(module, "user", 99);
         assert_eq!(&decl_fact[0].key.fqn, &main);
         assert_eq!(&decl_fact[0].key.span, &Location::new(275, 16));
         assert_eq!(&decl_fact[1].key.fqn, &typ);
@@ -547,5 +546,13 @@ mod tests {
         };
         let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
         indexer.index_facts().expect("should be ok")
+    }
+
+    fn mfa(module: &str, name: &str, arity: u32) -> MFA {
+        MFA {
+            module: module.into(),
+            name: name.into(),
+            arity,
+        }
     }
 }
