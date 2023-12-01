@@ -17,7 +17,7 @@ mod def_map;
 mod diagnostics;
 pub mod edoc;
 mod expr;
-mod fold;
+pub mod fold;
 mod form_list;
 mod include;
 mod intern;
@@ -25,7 +25,7 @@ mod macro_exp;
 mod module_data;
 mod name;
 pub mod resolver;
-mod sema;
+pub mod sema;
 mod test_db;
 
 pub use body::AnyAttribute;

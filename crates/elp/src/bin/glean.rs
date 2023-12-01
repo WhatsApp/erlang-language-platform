@@ -26,7 +26,10 @@ use elp_ide::TextRange;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::AstNode;
 use hir::db::MinDefDatabase;
+use hir::fold;
 use hir::Name;
+use hir::Semantic;
+use hir::Strategy;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -257,6 +260,12 @@ impl<'a> GleanIndexer<'a> {
                 Err(err) => {
                     log::warn!("Error while indexing declarations for {:?}: {}", &path, err)
                 }
+            };
+            match self.xrefs_fact(file_id) {
+                Ok(xref) => facts.xref_facts.push(xref),
+                Err(err) => {
+                    log::warn!("Error while indexing xref for {:?}: {}", &path, err)
+                }
             }
         }
         Ok(())
@@ -382,6 +391,27 @@ impl<'a> GleanIndexer<'a> {
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
+    }
+
+    fn xrefs_fact(&self, file_id: FileId) -> Result<XRefFact> {
+        let result = self.analysis.with_db(|db| Self::xrefs(db, file_id))?;
+        Ok(result)
+    }
+
+    fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
+        let sema = Semantic::new(db);
+        let xrefs = fold::fold_file(
+            &sema,
+            Strategy::SurfaceOnly,
+            file_id,
+            vec![],
+            &mut |mut acc, ctx| match &ctx.item {
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id| acc,
+        );
+
+        XRefFact::new(file_id, xrefs)
     }
 }
 
