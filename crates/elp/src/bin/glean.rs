@@ -31,6 +31,7 @@ use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
+use hir::sema::MinInternDatabase;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -454,6 +455,18 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::Expr(Expr::Record { name, fields: _ }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
+                hir::AnyExpr::Expr(Expr::RecordIndex { name, field: _ }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -546,6 +559,21 @@ impl<'a> GleanIndexer<'a> {
         let def = resolve_type_target(&sema, target, arity, file_id, &body)?;
         let module = module_name(db, def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
+        Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn resolve_record(
+        db: &RootDatabase,
+        name: hir::Atom,
+        file_id: FileId,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<XRefFactVal> {
+        let record_name = db.lookup_atom(name);
+        let def_map = db.def_map(file_id);
+        let def = def_map.get_record(&record_name)?;
+        let module = module_name(db, def.file.file_id)?;
+        let (_, range) = Self::find_range(db, file_id, ctx)?;
+        let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 }
@@ -765,6 +793,46 @@ mod tests {
         assert_eq!(xref_fact.xrefs[1].source, Location::new(90, 22));
         assert_eq!(xref_fact.xrefs[2].target, huuuge);
         assert_eq!(xref_fact.xrefs[2].source, Location::new(118, 8));
+    }
+
+    #[test]
+    fn xref_record_test() {
+        let module = "glean_module9";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module9.erl
+        -record(query, {
+            size :: non_neg_integer()
+        }).
+        baz(A) ->
+            #query{
+                size = A
+            }.
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let query = mfa(module, "query", 99);
+        assert_eq!(xref_fact.xrefs[0].target, query);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(65, 30));
+    }
+
+    #[test]
+    fn xref_record_index_test() {
+        let module = "glean_module10";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module10.erl
+        -record(stats, {count, time}).
+        baz(Time) ->
+            [{#stats.count, 1}, {#stats.time, Time}].
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let query = mfa(module, "stats", 99);
+        assert_eq!(xref_fact.xrefs[0].target, query);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(50, 12));
+        assert_eq!(xref_fact.xrefs[1].target, query);
+        assert_eq!(xref_fact.xrefs[1].source, Location::new(69, 11));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
