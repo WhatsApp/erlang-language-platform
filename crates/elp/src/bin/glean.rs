@@ -477,6 +477,16 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::Expr(Expr::RecordUpdate {
+                    name,
+                    expr: _,
+                    fields: _,
+                }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -847,9 +857,9 @@ mod tests {
 
     #[test]
     fn xref_record_field_test() {
-        let module = "glean_module10";
+        let module = "glean_module11";
         let spec = r#"
-        //- /glean/app_glean/src/glean_module10.erl
+        //- /glean/app_glean/src/glean_module11.erl
         -record(stats, {count, time}).
         baz(Stats) ->
             Stats#stats.count.
@@ -860,6 +870,23 @@ mod tests {
         let stats = mfa(module, "stats", 99);
         assert_eq!(xref_fact.xrefs[0].target, stats);
         assert_eq!(xref_fact.xrefs[0].source, Location::new(49, 17));
+    }
+
+    #[test]
+    fn xref_record_update_test() {
+        let module = "glean_module12";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module12.erl
+        -record(stats, {count, time}).
+        baz(Stats, NewCnt) ->
+            Stats#stats{count = NewCnt}.
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let stats = mfa(module, "stats", 99);
+        assert_eq!(xref_fact.xrefs[0].target, stats);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(57, 27));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
