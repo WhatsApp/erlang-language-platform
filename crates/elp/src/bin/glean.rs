@@ -40,6 +40,7 @@ use hir::FormIdx;
 use hir::InFile;
 use hir::Literal;
 use hir::Name;
+use hir::Pat;
 use hir::Semantic;
 use hir::Strategy;
 use hir::TypeExpr;
@@ -487,6 +488,12 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::Pat(Pat::Record { name, fields: _ }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -887,6 +894,23 @@ mod tests {
         let stats = mfa(module, "stats", 99);
         assert_eq!(xref_fact.xrefs[0].target, stats);
         assert_eq!(xref_fact.xrefs[0].source, Location::new(57, 27));
+    }
+
+    #[test]
+    fn xref_pat_record_test() {
+        let module = "glean_module13";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module13.erl
+        -record(stats, {count, time}).
+        baz(Stats) ->
+            #stats{count = Count, time = Time} = Stats.
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let stats = mfa(module, "stats", 99);
+        assert_eq!(xref_fact.xrefs[0].target, stats);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(49, 34));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
