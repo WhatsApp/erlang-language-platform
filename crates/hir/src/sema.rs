@@ -889,20 +889,52 @@ fn fold_function_clause_body<'a, T>(
             initial,
             callback,
         ),
-        _ => function_clause_body
-            .clause
-            .exprs
-            .iter()
-            .fold(initial, |acc_inner, expr_id| {
-                FoldCtx::fold_expr(
-                    strategy,
-                    &function_clause_body.body,
-                    FormIdx::Function(function_id),
-                    *expr_id,
-                    acc_inner,
-                    callback,
-                )
-            }),
+        _ => {
+            let initial =
+                function_clause_body
+                    .clause
+                    .pats
+                    .iter()
+                    .fold(initial, |acc_inner, pat_id| {
+                        FoldCtx::fold_pat(
+                            strategy,
+                            &function_clause_body.body,
+                            FormIdx::Function(function_id),
+                            *pat_id,
+                            acc_inner,
+                            callback,
+                        )
+                    });
+
+            let initial = function_clause_body.clause.guards.iter().flatten().fold(
+                initial,
+                |acc_inner, expr_id| {
+                    FoldCtx::fold_expr(
+                        strategy,
+                        &function_clause_body.body,
+                        FormIdx::Function(function_id),
+                        *expr_id,
+                        acc_inner,
+                        callback,
+                    )
+                },
+            );
+
+            function_clause_body
+                .clause
+                .exprs
+                .iter()
+                .fold(initial, |acc_inner, expr_id| {
+                    FoldCtx::fold_expr(
+                        strategy,
+                        &function_clause_body.body,
+                        FormIdx::Function(function_id),
+                        *expr_id,
+                        acc_inner,
+                        callback,
+                    )
+                })
+        }
     }
 }
 

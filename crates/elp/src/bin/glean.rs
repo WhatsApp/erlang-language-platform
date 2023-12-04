@@ -494,6 +494,12 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::Pat(Pat::RecordIndex { name, field: _ }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -911,6 +917,22 @@ mod tests {
         let stats = mfa(module, "stats", 99);
         assert_eq!(xref_fact.xrefs[0].target, stats);
         assert_eq!(xref_fact.xrefs[0].source, Location::new(49, 34));
+    }
+
+    #[test]
+    fn xref_pat_record_index() {
+        let module = "glean_module14";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module14.erl
+        -record(rec, {field}).
+        foo(#rec.field) -> ok.
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let stats = mfa(module, "rec", 99);
+        assert_eq!(xref_fact.xrefs[0].target, stats);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(27, 10));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
