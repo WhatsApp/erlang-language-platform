@@ -500,6 +500,12 @@ impl<'a> GleanIndexer<'a> {
                     }
                     acc
                 }
+                hir::AnyExpr::TypeExpr(TypeExpr::Record { name, fields: _ }) => {
+                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                        acc.push(fact);
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -933,6 +939,26 @@ mod tests {
         let stats = mfa(module, "rec", 99);
         assert_eq!(xref_fact.xrefs[0].target, stats);
         assert_eq!(xref_fact.xrefs[0].source, Location::new(27, 10));
+    }
+
+    #[test]
+    fn xref_record_in_type_test() {
+        let module = "glean_module15";
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module15.erl
+        -record(stats, {count, time}).
+        -spec baz() -> #stats{}.
+        baz() ->
+            #stats{count = 1, time = 2}.
+        "#;
+
+        let result = run_spec(spec, module);
+        let xref_fact = &result.xref_facts[0].key;
+        let stats = mfa(module, "stats", 99);
+        assert_eq!(xref_fact.xrefs[0].target, stats);
+        assert_eq!(xref_fact.xrefs[0].source, Location::new(46, 8));
+        assert_eq!(xref_fact.xrefs[1].target, stats);
+        assert_eq!(xref_fact.xrefs[1].source, Location::new(69, 27));
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
