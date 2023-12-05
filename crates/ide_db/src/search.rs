@@ -25,7 +25,9 @@ use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
+use hir::File;
 use hir::InFile;
 use hir::Semantic;
 use memchr::memmem::Finder;
@@ -159,12 +161,9 @@ impl SymbolDefinition {
                     iter::once(file.file_id).chain(file.def_map(sema.db).get_included_files()),
                 ),
                 FileKind::Header => {
-                    let def_map = file.def_map(sema.db);
-                    let included = def_map.get_included_files();
-                    let header = SymbolDefinition::Header(*file);
-                    let usages = header.usages(sema).all();
-                    let includers = usages.iter().map(|(file_id, _)| file_id);
-                    SearchScope::files(iter::once(file.file_id).chain(included).chain(includers))
+                    let mut includers = FxHashSet::default();
+                    recursive_include_files(*file, sema, &mut includers);
+                    SearchScope::files(includers.into_iter())
                 }
                 FileKind::Escript => SearchScope::single_file(self.file().file_id, None),
                 FileKind::Other => SearchScope::single_file(self.file().file_id, None),
@@ -194,6 +193,24 @@ impl SymbolDefinition {
             sema,
             direct_only: false,
         }
+    }
+}
+
+fn recursive_include_files(file: File, sema: &Semantic, includers: &mut FxHashSet<FileId>) {
+    if includers.contains(&file.file_id) {
+        return;
+    } else {
+        let def_map = file.def_map(sema.db);
+        includers.insert(file.file_id);
+        includers.extend(def_map.get_included_files());
+        let header = SymbolDefinition::Header(file);
+        header.usages(sema).all().iter().for_each(|(file_id, _)| {
+            let file = File { file_id };
+            if let FileKind::Header = file.kind(sema.db.upcast()) {
+                recursive_include_files(file, sema, includers);
+            }
+            includers.insert(file_id);
+        });
     }
 }
 

@@ -314,6 +314,35 @@ should_not_match() -> #foo{}.
     }
 
     #[test]
+    fn test_record_transitive() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo() -> #r~ec{}.
+%%        ^^^
+
+//- /src/other.erl
+-module(other).
+-include("header.hrl").
+
+bar() -> #rec{}.
+%%        ^^^
+
+
+//- /src/header.hrl
+-include("header_deep.hrl").
+
+//- /src/header_deep.hrl
+-record(rec, {}).
+%%      ^^^def
+"#,
+        );
+    }
+
+    #[test]
     fn test_record_field() {
         check(
             r#"
