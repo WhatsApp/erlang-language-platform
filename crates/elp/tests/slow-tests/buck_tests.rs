@@ -30,7 +30,7 @@ mod tests {
     #[ignore]
     fn test_success_case() {
         let path_str = "../../test_projects/buck_tests";
-        let path: PathBuf = path_str.clone().into();
+        let path: PathBuf = path_str.into();
         let cli = Fake::default();
 
         let conf = DiscoverConfig::buck();
@@ -74,7 +74,7 @@ mod tests {
     #[ignore]
     fn test_load_buck_targets() {
         let path_str = "../../test_projects/buck_tests";
-        let path: PathBuf = path_str.clone().into();
+        let path: PathBuf = path_str.into();
 
         let buck_config = ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
 
@@ -100,7 +100,7 @@ mod tests {
 
         let test_data: Vec<ProjectAppTestData> = get_test_data()
             .into_iter()
-            .sorted_by_key(|data| data.name.clone())
+            .sorted_by_key(|data| data.name)
             .collect();
 
         //this assert checks absence of test_elp_suite_data app
