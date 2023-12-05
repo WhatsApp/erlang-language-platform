@@ -50,9 +50,24 @@ use serde::Serialize;
 use crate::args::Glean;
 
 #[derive(Serialize, Debug)]
+struct GleanFileId(u32);
+
+impl GleanFileId {
+    fn new(file_id: FileId) -> Self {
+        Self(file_id.0 + 1)
+    }
+}
+
+impl From<FileId> for GleanFileId {
+    fn from(value: FileId) -> Self {
+        GleanFileId::new(value)
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub(crate) struct FileFact {
     #[serde(rename = "id")]
-    file_id: u32,
+    file_id: GleanFileId,
     #[serde(rename = "key")]
     file_path: String,
 }
@@ -60,7 +75,7 @@ pub(crate) struct FileFact {
 impl FileFact {
     fn new(file_id: FileId, file_path: String) -> Self {
         Self {
-            file_id: file_id.0,
+            file_id: file_id.into(),
             file_path,
         }
     }
@@ -75,7 +90,7 @@ impl FileLinesFact {
     fn new(file_id: FileId, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
         FileLinesFact {
             key: FileLinesFactKey {
-                file_id: file_id.0,
+                file_id: file_id.into(),
                 lengths,
                 ends_with_new_line,
                 unicode_or_tabs: true,
@@ -87,7 +102,7 @@ impl FileLinesFact {
 #[derive(Serialize, Debug)]
 struct FileLinesFactKey {
     #[serde(rename = "file")]
-    file_id: u32,
+    file_id: GleanFileId,
     lengths: Vec<u32>,
     #[serde(rename = "endsInNewline")]
     ends_with_new_line: bool,
@@ -104,7 +119,7 @@ impl FunctionDeclarationFact {
     fn new(file_id: FileId, fqn: MFA, span: Location) -> Self {
         Self {
             key: FunctionDeclarationKey {
-                file_id: file_id.0,
+                file_id: file_id.into(),
                 fqn,
                 span,
             },
@@ -115,7 +130,7 @@ impl FunctionDeclarationFact {
 #[derive(Serialize, Debug)]
 struct FunctionDeclarationKey {
     #[serde(rename = "file")]
-    file_id: u32,
+    file_id: GleanFileId,
     fqn: MFA,
     span: Location,
 }
@@ -129,7 +144,7 @@ impl XRefFact {
     fn new(file_id: FileId, xrefs: Vec<XRefFactVal>) -> Self {
         Self {
             key: XRefFactKey {
-                file_id: file_id.0,
+                file_id: file_id.into(),
                 xrefs,
             },
         }
@@ -139,7 +154,7 @@ impl XRefFact {
 #[derive(Serialize, Debug)]
 struct XRefFactKey {
     #[serde(rename = "file")]
-    file_id: u32,
+    file_id: GleanFileId,
     xrefs: Vec<XRefFactVal>,
 }
 
