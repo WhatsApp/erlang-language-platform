@@ -316,6 +316,26 @@ baz() -> ko().
     }
 
     #[test]
+    fn local_call_erlang_function() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+foo() ->
+  Pid = se~lf(),
+  Pid.
+
+//- /src/erlang.erl
+  -module(erlang).
+  self() -> ok.
+%%^^^^
+  spawn(F) -> {F}.
+"#,
+        )
+    }
+
+    #[test]
     fn local_type_alias() {
         // BinaryOpExpr
         check(

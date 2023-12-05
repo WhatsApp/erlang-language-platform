@@ -9,6 +9,7 @@
 
 use elp_base_db::FileId;
 use elp_syntax::ast;
+use elp_syntax::ast::in_erlang_module;
 use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 
@@ -534,8 +535,12 @@ pub fn resolve_call_target(
             .db
             .def_map(file_id)
             .get_imports()
-            .get(&name_arity)?
-            .clone();
+            .get(&name_arity)
+            .cloned()
+            .or_else(|| {
+                in_erlang_module(&name_arity.name().as_str(), arity as usize)
+                    .then_some(known::erlang)
+            })?;
         let module = resolve_module_name(sema, file_id, &module_name)?;
         let def = sema
             .db
