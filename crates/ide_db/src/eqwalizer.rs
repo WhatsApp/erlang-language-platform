@@ -61,6 +61,8 @@ impl EqwalizerLoader for crate::RootDatabase {
             match module_index.module_for_file(module) {
                 Some(f) => module_names.push(f.as_str()),
                 None => {
+                    // Context for T171541590
+                    let _ = stdx::panic_context::enter(format!("\ntypecheck: {:?}", module));
                     let source_root_id = self.file_source_root(module);
                     let source_root = self.source_root(source_root_id);
                     let path = source_root.path_for_file(&module);
@@ -176,6 +178,8 @@ fn is_eqwalizer_enabled(
         return false;
     }
 
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {:?}", file_id));
     let source_root = db.file_source_root(file_id);
     let app_data = if let Some(app_data) = db.app_data(source_root) {
         app_data
@@ -271,6 +275,8 @@ fn decl_location(
 ) -> Option<FileRange> {
     let module_index = db.module_index(project_id);
     let module_file_id = module_index.file_for_module(&module)?;
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\ndecl_location: {:?}", module_file_id));
     let source_root_id = db.file_source_root(module_file_id);
     let source_root = db.source_root(source_root_id);
     let decl_file_path = &source_root

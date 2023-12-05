@@ -34,6 +34,8 @@ pub(crate) fn resolve(
 
 impl<'a> IncludeCtx<'a> {
     fn new(db: &'a dyn MinDefDatabase, file_id: FileId) -> Self {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {:?}", file_id));
         let source_root_id = db.file_source_root(file_id);
         let source_root = db.source_root(source_root_id);
         Self {

@@ -61,6 +61,8 @@ lazy_static! {
 fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     let text = db.file_text(file_id);
     if let Some(tmp_dir) = &*CT_INFO_TMP_DIR {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nct_info: {:?}", file_id));
         let root_id = db.file_source_root(file_id);
         let root = db.source_root(root_id);
         if let Some(path) = root.path_for_file(&file_id) {

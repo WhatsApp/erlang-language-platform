@@ -1252,6 +1252,8 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
 }
 
 pub fn is_ct_test_suite(db: &RootDatabase, file_id: FileId) -> bool {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_ct_test_suite: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap();

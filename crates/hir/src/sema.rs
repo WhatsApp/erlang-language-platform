@@ -203,6 +203,8 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn resolve_module_names(&self, from_file: FileId) -> Option<ModuleIter> {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nresolve_module_names: {:?}", from_file));
         let source_root_id = self.db.file_source_root(from_file);
         let project_id = self.db.app_data(source_root_id)?.project_id;
         let module_index = self.db.module_index(project_id);
@@ -214,6 +216,8 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn resolve_module_name(&self, file_id: FileId, name: &str) -> Option<Module> {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nresolve_module_names {:?}", file_id));
         let source_root_id = self.db.file_source_root(file_id);
         let project_id = self.db.app_data(source_root_id)?.project_id;
         let module_index = self.db.module_index(project_id);

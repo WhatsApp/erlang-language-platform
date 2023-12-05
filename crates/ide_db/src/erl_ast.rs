@@ -91,6 +91,8 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
     let _ = db.file_revision(file_id);
     let _track_global_changes = db.include_files_revision();
 
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();

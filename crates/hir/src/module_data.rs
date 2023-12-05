@@ -61,6 +61,8 @@ impl File {
     }
 
     pub fn name(&self, db: &dyn SourceDatabase) -> SmolStr {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nFile::name: {:?}", self.file_id));
         let source_root = db.source_root(db.file_source_root(self.file_id));
         if let Some((name, Some(ext))) = source_root
             .path_for_file(&self.file_id)
@@ -378,6 +380,8 @@ impl VarDef {
 }
 
 fn is_in_otp(file_id: FileId, db: &dyn MinDefDatabase) -> bool {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {:?}", file_id));
     let source_root_id = db.file_source_root(file_id);
     match db.app_data(source_root_id) {
         Some(app_data) => {

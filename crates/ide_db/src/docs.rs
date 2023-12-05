@@ -213,6 +213,8 @@ impl<'db> Documentation<'db> {
 // Some(false) -> file is not in OTP
 // None -> Unknown (e.g. because OTP is not being tracked)
 fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
     if let Some(app_data) = db.app_data(root_id) {
         let project_id = app_data.project_id;
@@ -292,6 +294,8 @@ fn get_file_function_specs(
 impl DocLoader for crate::RootDatabase {
     fn load_doc_descriptions(&self, file_id: FileId, doc_origin: DocOrigin) -> FileDoc {
         _ = SourceDatabaseExt::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nload_doc_descriptions: {:?}", file_id));
         let root_id = self.file_source_root(file_id);
         let root = self.source_root(root_id);
         let src_db: &dyn SourceDatabase = self.upcast();

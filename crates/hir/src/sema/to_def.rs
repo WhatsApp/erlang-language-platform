@@ -494,6 +494,8 @@ pub(crate) fn resolve_module_expr(
 }
 
 pub fn resolve_module_name(sema: &Semantic<'_>, file_id: FileId, name: &str) -> Option<Module> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nresolve_module_name: {:?}", file_id));
     let source_root_id = sema.db.file_source_root(file_id);
     let project_id = sema.db.app_data(source_root_id)?.project_id;
     let module_index = sema.db.module_index(project_id);

@@ -103,6 +103,8 @@ lazy_static! {
 }
 
 fn is_in_src_dir(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_in_src_dir: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id)?.as_path()?.as_ref().to_str()?;

@@ -177,6 +177,8 @@ impl SymbolDefinition {
             // Ideally, we'd use information about application dependencies to limit the search,
             // but our dependencies are not precise enough - especially for types
             let file_id = self.file().file_id;
+            // Context for T171541590
+            let _ = stdx::panic_context::enter(format!("\nsearch_scope: {:?}", file_id));
             let project_id = match sema.db.app_data(sema.db.file_source_root(file_id)) {
                 Some(app_data) => app_data.project_id,
                 None => return SearchScope::single_file(file_id, None),

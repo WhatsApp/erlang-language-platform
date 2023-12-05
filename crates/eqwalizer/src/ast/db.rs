@@ -113,6 +113,8 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
 
 fn from_beam(db: &dyn EqwalizerASTDatabase, project_id: ProjectId, module: ModuleName) -> bool {
     if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nfrom_beam: {:?}", file_id));
         let source_root = db.file_source_root(file_id);
         if let Some(app) = db.app_data(source_root) {
             return app.app_type == AppType::Otp;
@@ -175,6 +177,8 @@ fn beam_path(
     module: ModuleName,
 ) -> Option<AbsPathBuf> {
     let file_id = db.module_index(project_id).file_for_module(&module)?;
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nbeam_path: {:?}", file_id));
     let source_root = db.file_source_root(file_id);
     let app = db.app_data(source_root)?;
     let ebin = app.ebin_path.as_ref()?;

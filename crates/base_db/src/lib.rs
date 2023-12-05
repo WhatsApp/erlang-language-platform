@@ -211,6 +211,8 @@ fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
 }
 
 fn is_test_suite_or_test_helper(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nis_test_suite_or_test_helper: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let app_data = db.app_data(root_id)?;
@@ -223,21 +225,29 @@ fn is_test_suite_or_test_helper(db: &dyn SourceDatabase, file_id: FileId) -> Opt
 }
 
 fn file_app_type(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppType> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nfile_app_type: {:?}", file_id));
     let app_data = db.app_data(db.file_source_root(file_id))?;
     Some(app_data.app_type)
 }
 
 fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nfile_app_name: {:?}", file_id));
     let app_data = db.app_data(db.file_source_root(file_id))?;
     Some(app_data.name.clone())
 }
 
 fn file_project_id(db: &dyn SourceDatabase, file_id: FileId) -> Option<ProjectId> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nfile_project_id: {:?}", file_id));
     let app_data = db.app_data(db.file_source_root(file_id))?;
     Some(app_data.project_id)
 }
 
 pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleName> {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nmodule_name: {:?}", file_id));
     let source_root_id = db.file_source_root(file_id);
     let app_data = db.app_data(source_root_id)?;
     let module_index = db.module_index(app_data.project_id);
@@ -255,6 +265,8 @@ static ref IGNORED_SOURCES: Vec<Regex> = {
 }
 
 fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nfile_kind: {:?}", file_id));
     let source_root_id = db.file_source_root(file_id);
     let source_root = db.source_root(source_root_id);
     let ignored_path = source_root
@@ -265,6 +277,8 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
             IGNORED_SOURCES.iter().any(|r| r.is_match(path))
         })
         .unwrap_or(false);
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nfile_kind: {:?}", file_id));
     let catch_all = db.catch_all_source_root();
     if source_root_id == catch_all && ignored_path {
         // not part of the known project model, and on list of ignored
