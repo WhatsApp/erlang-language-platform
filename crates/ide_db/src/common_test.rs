@@ -132,8 +132,8 @@ impl CommonTestLoader for crate::RootDatabase {
                 .is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
             let request = CTInfoRequest {
                 module: eetf::Atom::from(module.to_string()),
-                src_path: src_path.clone(),
-                compile_options: compile_options.clone(),
+                src_path,
+                compile_options,
                 should_request_groups,
             };
             match erlang_service.ct_info(request) {

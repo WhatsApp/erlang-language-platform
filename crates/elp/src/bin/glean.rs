@@ -343,8 +343,8 @@ impl<'a> GleanIndexer<'a> {
                 .create(true)
                 .truncate(true)
                 .open(to)?
-                .write_all(&content.as_bytes()),
-            None => self.cli.write_all(&content.as_bytes()),
+                .write_all(content.as_bytes()),
+            None => self.cli.write_all(content.as_bytes()),
         }?;
         Ok(())
     }
@@ -370,7 +370,7 @@ impl<'a> GleanIndexer<'a> {
             prev_offset = curr_offset;
         }
         let content = String::from_utf8_lossy(self.loaded.vfs.file_contents(file_id));
-        if !content.ends_with("\n") {
+        if !content.ends_with('\n') {
             ends_with_new_line = false;
             let len = if content.len() as u32 >= prev_offset {
                 content.len() as u32 - prev_offset
@@ -440,7 +440,7 @@ impl<'a> GleanIndexer<'a> {
                     if let Some((body, range)) = Self::find_range(db, file_id, &ctx) {
                         let arity = args.len() as u32;
                         if let Some(fact) =
-                            Self::resolve_call(&sema, &target, arity, file_id, &body, range)
+                            Self::resolve_call(&sema, target, arity, file_id, &body, range)
                         {
                             acc.push(fact);
                         }
@@ -455,7 +455,7 @@ impl<'a> GleanIndexer<'a> {
                         };
                         if let Some(arity) = arity {
                             if let Some(fact) =
-                                Self::resolve_call(&sema, &target, arity, file_id, &body, range)
+                                Self::resolve_call(&sema, target, arity, file_id, &body, range)
                             {
                                 acc.push(fact);
                             }
@@ -595,7 +595,7 @@ impl<'a> GleanIndexer<'a> {
         body: &Body,
         range: TextRange,
     ) -> Option<XRefFactVal> {
-        let def = resolve_call_target(&sema, &target, arity, file_id, &body)?;
+        let def = resolve_call_target(sema, target, arity, file_id, body)?;
         let module = &def.module?;
         let mfa = MFA::new(module, def.name.name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
@@ -609,8 +609,8 @@ impl<'a> GleanIndexer<'a> {
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
-        let (body, range) = Self::find_range(db, file_id, &ctx)?;
-        let def = resolve_type_target(&sema, target, arity, file_id, &body)?;
+        let (body, range) = Self::find_range(db, file_id, ctx)?;
+        let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         let module = module_name(db, def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
@@ -981,11 +981,7 @@ mod tests {
         let dir = Fixture::gen_project(spec);
 
         let args = Glean {
-            project: dir
-                .into_path()
-                .to_path_buf()
-                .join("glean")
-                .join("app_glean"),
+            project: dir.into_path().join("glean").join("app_glean"),
             module: Some(module.into()),
             to: None,
         };

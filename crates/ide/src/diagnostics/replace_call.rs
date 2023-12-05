@@ -94,7 +94,7 @@ pub fn replace_call_site_if_args_match(
                     let diag = diagnostic_builder(&mfa, extra_info, range)?;
 
                     if let Some(edit) =
-                        replace_call(&replacement, sema, in_clause, file_id, args, target, &range)
+                        replace_call(replacement, sema, in_clause, file_id, args, target, &range)
                     {
                         Some(diag.with_fixes(Some(vec![fix(
                             "replace_call_site",
@@ -273,7 +273,7 @@ pub fn remove_fun_ref_from_list(
                     match ctx.item_id {
                         AnyExprId::Expr(expr_id) => {
                             let matches = match_fun_ref_in_list_in_call_arg(
-                                &matcher, sema, &in_clause, &expr_id,
+                                &matcher, sema, in_clause, &expr_id,
                             );
                             matches
                                 .iter()

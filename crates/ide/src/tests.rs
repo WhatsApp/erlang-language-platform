@@ -223,7 +223,7 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
         .into_iter()
         .map(|d| (d.range, d))
         .collect();
-    let expected = extract_annotations(&*analysis.db.file_text(file_id));
+    let expected = extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
     assert_eq!(expected, actual);
 }

@@ -90,7 +90,7 @@ pub fn groups(term: &Term) -> Result<FxHashMap<SmolStr, GroupDef>, ConversionErr
         Term::List(list) => {
             for gd in &list.elements {
                 let gd = parse_group(gd)?;
-                res.insert(gd.name.clone().into(), gd);
+                res.insert(gd.name.clone(), gd);
             }
         }
         _ => return Err(ConversionError::InvalidGroupsCallback),

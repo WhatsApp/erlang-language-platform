@@ -124,8 +124,8 @@ fn are_all_labeled_diagnostics_equal(
     // x.len() == x.iter().len()
     existing.len() == new.len() && {
         itertools::equal(
-            existing.iter().map(|d| CompareDiagnostic(d)),
-            new.iter().map(|d| CompareDiagnostic(d)),
+            existing.iter().map(CompareDiagnostic),
+            new.iter().map(CompareDiagnostic),
         )
     }
 }
@@ -135,7 +135,7 @@ struct CompareDiagnostic<'a>(&'a Diagnostic);
 
 impl PartialEq for CompareDiagnostic<'_> {
     fn eq(&self, other: &Self) -> bool {
-        are_diagnostics_equal(&self.0, &other.0)
+        are_diagnostics_equal(self.0, other.0)
     }
 }
 

@@ -213,7 +213,7 @@ fn build_signature_help(
     if let Some(function) = def.function.get(0) {
         let parameters = &function.param_names;
         for parameter in parameters {
-            help.push_param(&parameter);
+            help.push_param(parameter);
         }
         help.signature.push(')');
     }

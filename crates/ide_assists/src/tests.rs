@@ -391,7 +391,7 @@ fn export_no_pre_existing() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -434,7 +434,7 @@ fn export_single_pre_existing() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -483,7 +483,7 @@ fn export_single_pre_existing_with_comment() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
@@ -536,7 +536,7 @@ fn export_single_group_with_overrides_comment() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
@@ -592,7 +592,7 @@ fn export_into_specific_pre_existing_1() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
@@ -651,7 +651,7 @@ fn export_into_specific_pre_existing_2() {
             ctx.classify_offset()
         {
             let function_name_arity = fun.name.clone();
-            let function_range = fun.range(ctx.db().upcast()).unwrap().clone();
+            let function_range = fun.range(ctx.db().upcast()).unwrap();
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().nth(1).unwrap();

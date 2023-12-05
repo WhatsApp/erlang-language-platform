@@ -226,7 +226,7 @@ impl Fixture {
                     // Certain features depending on the Erlang Service
                     // require a physical copy of the file on the FS
                     let tmp_dir = tempdir().unwrap();
-                    let tmp_path = tmp_dir.path().join(path.strip_prefix("/").unwrap());
+                    let tmp_path = tmp_dir.path().join(path.strip_prefix('/').unwrap());
                     path = tmp_path.to_str().unwrap().to_string();
                     scratch_buffer = Some(tmp_path);
                 }

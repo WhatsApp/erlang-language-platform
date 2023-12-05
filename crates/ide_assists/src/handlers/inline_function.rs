@@ -757,7 +757,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                     clause.clone(),
                     InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                     None,
-                    &clause,
+                    clause,
                 ))
             })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {

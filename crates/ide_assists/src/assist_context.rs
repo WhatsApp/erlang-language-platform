@@ -185,7 +185,7 @@ impl<'a> AssistContext<'a> {
         let infile_function = InFile::new(self.file_id(), function_id);
         let (clause_id, body) = self.sema.to_clause_body(InFile::new(file_id, syntax))?;
         let in_clause =
-            InFunctionClauseBody::new(body.clone(), InFile::new(file_id, function_id), None, ());
+            InFunctionClauseBody::new(body, InFile::new(file_id, function_id), None, ());
         Some((infile_function, clause_id, in_clause))
     }
 

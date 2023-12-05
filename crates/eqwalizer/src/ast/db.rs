@@ -276,7 +276,7 @@ fn transitive_stub(
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
     let stub = db.covariant_stub(project_id, module.clone())?;
-    let mut checker = TransitiveChecker::new(db, project_id, module.as_str().clone().into());
+    let mut checker = TransitiveChecker::new(db, project_id, module.as_str().into());
     checker
         .check(&stub)
         .map(Arc::new)

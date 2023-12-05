@@ -394,7 +394,7 @@ pub(crate) fn find_call_in_function<T>(
                         t,
                         target: &target,
                         args: &args,
-                        in_clause: &in_clause,
+                        in_clause,
                     };
                     if let Some((match_descr, fix_descr)) = check_call(context) {
                         // Got one.
@@ -407,7 +407,7 @@ pub(crate) fn find_call_in_function<T>(
                         {
                             if let Some(diag) = make_diag(
                                 sema,
-                                &in_clause,
+                                in_clause,
                                 &target,
                                 &args,
                                 &match_descr,

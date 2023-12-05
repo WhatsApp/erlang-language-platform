@@ -301,7 +301,7 @@ fn source_edit_from_def(
 
     let mut edit = TextEdit::builder();
     if edit.is_empty() {
-        edit.replace(range, new_name.to_string());
+        edit.replace(range, new_name);
     }
     Ok((file_id, edit.finish()))
 }

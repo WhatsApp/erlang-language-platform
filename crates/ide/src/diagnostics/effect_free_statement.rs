@@ -54,7 +54,7 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
                             if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
                                 if is_statement(&expr_ast)
                                     && !is_macro_usage(&expr_ast)
-                                    && has_no_effect(&in_clause, &expr_id)
+                                    && has_no_effect(in_clause, &expr_id)
                                     && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
                                 {
                                     diags.push(make_diagnostic(file_id, &expr_ast));

@@ -108,7 +108,7 @@ fn matches_trivially(
         Pat::Var(l) => {
             let in_clause_var = in_clause.with_value(AnyExprId::Pat(*pat_id));
 
-            if !var_name_starts_with_underscore(sema.db.upcast(), &l)
+            if !var_name_starts_with_underscore(sema.db.upcast(), l)
                 && is_only_place_where_var_is_defined(sema, &in_clause_var)
                 && var_has_no_references(sema, &in_clause_var)
             {

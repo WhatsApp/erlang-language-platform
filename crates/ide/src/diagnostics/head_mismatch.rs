@@ -97,7 +97,7 @@ fn partition_to_funs(
     });
 
     if !current.is_empty() {
-        res.push(current.clone());
+        res.push(current);
     }
     res
 }

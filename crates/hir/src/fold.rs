@@ -1685,7 +1685,6 @@ bar() ->
         let ast_atom =
             algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
         expect![[r#"foo"#]].assert_eq(&ast_atom.raw_text());
-        let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
         let hir_atom_str = ast_atom.raw_text();
 
         let form_list = sema.db.file_form_list(file_id);

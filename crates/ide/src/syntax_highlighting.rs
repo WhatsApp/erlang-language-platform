@@ -130,7 +130,7 @@ fn deprecated_func_highlight(
                                     &name,
                                     arity,
                                     range_to_highlight,
-                                    &clause_body,
+                                    clause_body,
                                 ) {
                                     hl.add(HlRange {
                                         range,
@@ -141,7 +141,7 @@ fn deprecated_func_highlight(
                             }
                             CallTarget::Remote { module, name } => {
                                 if let Some(file_id) =
-                                    find_remote_module_file_id(sema, file_id, &module, &clause_body)
+                                    find_remote_module_file_id(sema, file_id, &module, clause_body)
                                 {
                                     let def_map = sema.def_map(file_id);
                                     if let Some(range) = find_deprecated_range(
@@ -150,7 +150,7 @@ fn deprecated_func_highlight(
                                         &name,
                                         arity,
                                         range_to_highlight,
-                                        &clause_body,
+                                        clause_body,
                                     ) {
                                         hl.add(HlRange {
                                             range,

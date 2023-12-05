@@ -415,7 +415,7 @@ impl Connection {
         let module = request.module.clone();
         let (sender, receiver) = bounded::<Result<UndecodedCTInfoResult>>(0);
         let request = Request::CTInfoRequest(request, sender);
-        self.sender.send(request.clone()).unwrap();
+        self.sender.send(request).unwrap();
         match receiver.recv().unwrap() {
             Result::Ok(result) => match result.decode() {
                 Ok(result) => Ok(result),

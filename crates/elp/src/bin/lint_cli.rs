@@ -584,8 +584,7 @@ impl<'a> Lints<'a> {
                             .collect::<Vec<_>>();
 
                         for form_id in &changes {
-                            self.changed_forms
-                                .insert(InFile::new(file_id, form_id.clone()));
+                            self.changed_forms.insert(InFile::new(file_id, *form_id));
                         }
 
                         do_parse_one(

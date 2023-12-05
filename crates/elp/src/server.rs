@@ -641,7 +641,7 @@ impl Server {
             .on::<notification::DidSaveTextDocument>(|this, params| {
                 process_changed_files(
                     this,
-                    &vec![FileEvent::new(
+                    &[FileEvent::new(
                         params.text_document.uri,
                         FileChangeType::CHANGED,
                     )],
@@ -1352,7 +1352,7 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
     let mut to_reload = vec![];
     for change in changes {
         if let Ok(path) = convert::abs_path(&change.uri) {
-            if this.should_reload_project_for_path(&path, &change) {
+            if this.should_reload_project_for_path(&path, change) {
                 to_reload.push(path.clone());
             }
             let opened = convert::vfs_path(&change.uri)

@@ -69,13 +69,13 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
 }
 
 fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
-    let manifest = ProjectManifest::discover(&root)?;
+    let manifest = ProjectManifest::discover(root)?;
     let project = Project::load(&manifest)?;
     Ok((manifest, project))
 }
 
 fn load_fallback(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
-    let manifest = ProjectManifest::discover_no_manifest(&root);
+    let manifest = ProjectManifest::discover_no_manifest(root);
     let project = Project::load(&manifest)?;
     Ok((manifest, project))
 }
