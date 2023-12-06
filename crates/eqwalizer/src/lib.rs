@@ -155,7 +155,7 @@ pub struct EqwalizerStats {
 pub trait DbApi {
     fn eqwalizing_start(&self, module: String);
     fn eqwalizing_done(&self, module: String);
-    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>);
+    fn set_module_ipc_handle(&self, module: ModuleName, handle: Option<Arc<Mutex<IpcHandle>>>);
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
 }
 
@@ -287,8 +287,6 @@ fn do_typecheck(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
-    // Never cache the results of this function
-    db.salsa_runtime().report_untracked_read();
     let handle = Arc::new(Mutex::new(
         IpcHandle::from_command(&mut cmd)
             .with_context(|| format!("starting eqWAlizer process: {:?}", cmd))?,
@@ -299,14 +297,18 @@ fn do_typecheck(
         let msg = handle.lock().receive()?;
         match msg {
             MsgFromEqWAlizer::EnteringModule { module } => {
-                db.set_module_ipc_handle(ModuleName::new(&module), handle.clone());
-                let diags = db.module_diagnostics(project_id, module).0;
-                diagnostics = diagnostics.combine((*diags).clone());
-                match diagnostics {
-                    EqwalizerDiagnostics::Error(_) | EqwalizerDiagnostics::NoAst { .. } => {
-                        return Ok(diagnostics);
+                let module_name = ModuleName::new(&module);
+                if db.module_ipc_handle(module_name.clone()).is_none() {
+                    db.set_module_ipc_handle(module_name.clone(), Some(handle.clone()));
+                    let diags = db.module_diagnostics(project_id, module).0;
+                    db.set_module_ipc_handle(module_name, None);
+                    diagnostics = diagnostics.combine((*diags).clone());
+                    match diagnostics {
+                        EqwalizerDiagnostics::Error(_) | EqwalizerDiagnostics::NoAst { .. } => {
+                            return Ok(diagnostics);
+                        }
+                        EqwalizerDiagnostics::Diagnostics { .. } => (),
                     }
-                    EqwalizerDiagnostics::Diagnostics { .. } => (),
                 }
                 handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
             }

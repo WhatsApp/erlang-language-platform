@@ -84,11 +84,6 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
-    fn eqwalizer_diagnostics(
-        &self,
-        project_id: ProjectId,
-        file_ids: Vec<FileId>,
-    ) -> Arc<EqwalizerDiagnostics>;
     fn eqwalizer_stats(
         &self,
         project_id: ProjectId,
@@ -105,20 +100,17 @@ pub trait EqwalizerDatabase:
     fn is_eqwalizer_enabled(&self, file_id: FileId, include_generated: bool) -> bool;
 }
 
-fn eqwalizer_diagnostics(
+pub fn eqwalizer_diagnostics(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     file_ids: Vec<FileId>,
-) -> Arc<EqwalizerDiagnostics> {
+) -> EqwalizerDiagnostics {
     let project = db.project_data(project_id);
     if let Some(build_info_path) = &project.build_info_path {
-        Arc::new(db.typecheck(project_id, build_info_path, file_ids))
+        db.typecheck(project_id, build_info_path, file_ids)
     } else {
-        //
         log::error!("EqWAlizing in a fixture project");
-        Arc::new(EqwalizerDiagnostics::Error(
-            "EqWAlizing in a fixture project".to_string(),
-        ))
+        EqwalizerDiagnostics::Error("EqWAlizing in a fixture project".to_string())
     }
 }
 
@@ -141,7 +133,7 @@ fn type_at_position(
         return None;
     }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        &(*db.eqwalizer_diagnostics(project_id, vec![position.file_id]))
+        eqwalizer_diagnostics(db, project_id, vec![position.file_id])
     {
         let offset: u32 = position.offset.into();
         let module_index = db.module_index(project_id);
@@ -420,10 +412,17 @@ impl elp_eqwalizer::DbApi for crate::RootDatabase {
         }
     }
 
-    fn set_module_ipc_handle(&self, module: ModuleName, handle: Arc<Mutex<IpcHandle>>) {
-        self.ipc_handles
-            .write()
-            .insert(module.as_str().into(), handle);
+    fn set_module_ipc_handle(&self, module: ModuleName, handle: Option<Arc<Mutex<IpcHandle>>>) {
+        match handle {
+            Some(handle) => {
+                self.ipc_handles
+                    .write()
+                    .insert(module.as_str().into(), handle);
+            }
+            None => {
+                self.ipc_handles.write().remove(module.as_str().into());
+            }
+        }
     }
 
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>> {

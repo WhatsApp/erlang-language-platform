@@ -65,6 +65,8 @@ impl LoadResult {
 
             fn done_module(&mut self, module: &str) {
                 self.current.remove(module);
+                let current = self.current.iter().join(", ");
+                self.bar.set_message(current);
                 self.bar.inc(1);
             }
         }

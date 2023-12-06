@@ -12,6 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
+use std::sync::Once;
 
 use anyhow::Result;
 use bpaf::batteries;
@@ -47,6 +48,13 @@ use crate::args::Args;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 static EQWALIZER_SUPPORT_DIR: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
+static INIT: Once = Once::new();
+
+/// Thread stack size for rayon, in bytes.
+///
+/// Due to inefficient encoding of lists, the default stack size of 2MiB may not be
+/// enough to parse some generated modules, and eqWAlizer may stack overflow.
+const THREAD_STACK_SIZE: usize = 10_000_000;
 
 fn main() {
     let _timer = timeit!("main");
@@ -71,6 +79,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     if let Err(err) = eqwalizer_support::setup_eqwalizer_support(&EQWALIZER_SUPPORT_DIR) {
         log::warn!("Failed to setup eqwalizer_support: {}", err);
     }
+    INIT.call_once(setup_thread_pool);
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli)?,
@@ -125,6 +134,15 @@ fn setup_logging(log_file: Option<PathBuf>, no_buffering: bool) -> Result<Logger
     logger.install();
 
     Ok(logger)
+}
+
+fn setup_thread_pool() -> () {
+    if let Err(err) = rayon::ThreadPoolBuilder::new()
+        .stack_size(THREAD_STACK_SIZE)
+        .build_global()
+    {
+        log::warn!("Failed to setup thread pool: {}", err);
+    }
 }
 
 fn run_server(logger: Logger) -> Result<()> {

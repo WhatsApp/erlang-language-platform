@@ -48,14 +48,9 @@ use crate::reporting::Reporter;
 
 /// Max parallel eqWAlizer tasks.
 ///
-/// Since eqWAlizer is frequently limited by memory, this can't be fully parallel
-const MAX_EQWALIZER_TASKS: usize = 4;
-
-/// Thread stack size for eqWAlizer tasks, in bytes.
-///
-/// Due to inefficient encoding of lists, the default stack size of 2MiB may not be
-/// enough for some generated modules.
-const THREAD_STACK_SIZE: usize = 10_000_000;
+/// There are diminishing returns on parallelisation due to IPC performance and GC
+/// so we don't fully parallelise.
+const MAX_EQWALIZER_TASKS: usize = 32;
 
 struct EqwalizerInternalArgs<'a> {
     analysis: &'a Analysis,
@@ -328,28 +323,20 @@ fn eqwalize(
     let files_count = file_ids.len();
     let pb = reporter.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
-        let chunk_size = (files_count + MAX_EQWALIZER_TASKS - 1) / MAX_EQWALIZER_TASKS;
-        let pool = rayon::ThreadPoolBuilder::new()
-            .stack_size(THREAD_STACK_SIZE)
-            .build()
-            .unwrap();
         let project_id = loaded.project_id;
-        pool.install(|| {
-            file_ids
-                .chunks(chunk_size)
-                .par_bridge()
-                .map_with(analysis, move |analysis, file_ids| {
-                    analysis
-                        .eqwalizer_diagnostics(project_id, file_ids.to_vec())
-                        .expect("cancelled")
-                })
-                .fold(EqwalizerDiagnostics::default, |acc, output| {
-                    acc.combine((*output).clone())
-                })
-                .reduce(EqwalizerDiagnostics::default, |acc, other| {
-                    acc.combine(other)
-                })
-        })
+        (0..MAX_EQWALIZER_TASKS)
+            .into_par_iter()
+            .map_with(analysis, move |analysis, _task_id| {
+                analysis
+                    .eqwalizer_diagnostics(project_id, file_ids.clone())
+                    .expect("cancelled")
+            })
+            .fold(EqwalizerDiagnostics::default, |acc, output| {
+                acc.combine(output)
+            })
+            .reduce(EqwalizerDiagnostics::default, |acc, other| {
+                acc.combine(other)
+            })
     });
     let eqwalized = pb.position();
     pb.finish();
