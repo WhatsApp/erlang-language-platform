@@ -2117,6 +2117,8 @@ dependencies = [
 [[package]]
 name = "tree-sitter-erlang"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e812f0b7cf3ee07049dd4433c420dec32e421467084456fcd4c6151bf6817b07"
 dependencies = [
  "cc",
  "tree-sitter",

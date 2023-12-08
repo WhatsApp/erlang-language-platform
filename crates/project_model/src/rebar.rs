@@ -171,6 +171,10 @@ impl RebarProject {
                 .map(|term| Ok(to_string(term)?.to_owned()))
                 .collect::<Result<_>>()?;
             let abs_src_dirs: Vec<AbsPathBuf> = src_dirs.iter().map(|src| dir.join(src)).collect();
+            let include_dirs: Vec<AbsPathBuf> = to_vec(map_get(term, "include_dirs")?)?
+                .iter()
+                .map(to_abs_path)
+                .collect::<Result<_>>()?;
             Ok(ProjectAppData {
                 name: AppName(to_string(map_get(term, "name")?)?.to_string()),
                 dir,
@@ -179,14 +183,11 @@ impl RebarProject {
                     .iter()
                     .map(|term| Ok(to_string(term)?.to_owned()))
                     .collect::<Result<_>>()?,
-                include_dirs: to_vec(map_get(term, "include_dirs")?)?
-                    .iter()
-                    .map(to_abs_path)
-                    .collect::<Result<_>>()?,
+                include_dirs: include_dirs.clone(),
                 macros: to_vec(map_get(term, "macros")?)?.to_owned(),
                 parse_transforms: to_vec(map_get(term, "parse_transforms")?)?.to_owned(),
                 app_type: is_dep,
-                include_path: vec![],
+                include_path: include_dirs,
                 abs_src_dirs,
             })
         }
