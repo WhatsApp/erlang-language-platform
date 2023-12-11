@@ -533,6 +533,14 @@ impl DefMap {
         );
         self.exported_functions
             .extend(other.exported_functions.iter().cloned());
+        self.optional_callbacks
+            .extend(other.optional_callbacks.iter().cloned());
+        self.imported_functions.extend(
+            other
+                .imported_functions
+                .iter()
+                .map(|(name_arity, module)| (name_arity.clone(), module.clone())),
+        );
         self.types.extend(
             other
                 .types

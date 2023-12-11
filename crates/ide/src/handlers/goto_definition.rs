@@ -336,6 +336,29 @@ foo() ->
     }
 
     #[test]
+    fn local_call_imported_fun() {
+        check(
+            r#"
+//- /src/main.erl
+  -module(main).
+  -include("blah.hrl").
+
+  -import(foo, [bar/0]).
+
+  baz() -> b~ar(),?FOO.
+
+//- /src/foo.erl
+  -module(foo).
+  -export([bar/0]).
+  bar() -> ok.
+%%^^^
+//- /src/blah.hrl
+-define(FOO,ok).
+"#,
+        )
+    }
+
+    #[test]
     fn local_type_alias() {
         // BinaryOpExpr
         check(
