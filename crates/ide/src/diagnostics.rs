@@ -300,7 +300,6 @@ pub enum Category {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
-// pub struct DiagnosticCode(pub String);
 pub enum DiagnosticCode {
     DefaultCodeForEnumIter,
     HeadMismatch,
@@ -432,16 +431,17 @@ impl DiagnosticCode {
     }
 
     pub fn maybe_from_string(s: &String) -> Option<DiagnosticCode> {
-        if let Some(r) = DIAGNOSTIC_CODE_LOOKUPS.get(s) {
-            Some(r.clone())
-        } else {
-            // Look for ErlangService and AdHoc
-            if let Some(code) = Self::is_adhoc(s) {
-                Some(DiagnosticCode::AdHoc(code))
-            } else {
-                Self::is_erlang_service(s).map(DiagnosticCode::ErlangService)
-            }
-        }
+        DIAGNOSTIC_CODE_LOOKUPS
+            .get(s).cloned()
+            // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(|c| DiagnosticCode::MetaOnly(c)))
+            .or_else( ||
+                // Look for ErlangService and AdHoc
+                if let Some(code) = Self::is_adhoc(s) {
+                    Some(DiagnosticCode::AdHoc(code))
+                } else {
+                    Self::is_erlang_service(s).map(DiagnosticCode::ErlangService)
+                },
+            )
     }
 
     pub fn namespace(code: &String) -> Option<String> {
@@ -508,6 +508,7 @@ impl FromStr for DiagnosticCode {
         }
     }
 }
+
 impl From<&str> for DiagnosticCode {
     fn from(str: &str) -> Self {
         match DiagnosticCode::from_str(str) {
