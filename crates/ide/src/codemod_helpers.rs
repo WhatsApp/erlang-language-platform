@@ -306,7 +306,7 @@ impl FunctionMatch {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct MFA {
     pub module: String,
