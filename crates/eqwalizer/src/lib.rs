@@ -334,10 +334,13 @@ fn module_diagnostics(
     // diagnostics, and not attempt to back-date them if they are equal to
     // the memoized ones.
     let timestamp = Instant::now();
-    match get_module_diagnostics(db, project_id, module) {
+    match get_module_diagnostics(db, project_id, module.clone()) {
         Ok(diag) => (Arc::new(diag), timestamp),
         Err(err) => (
-            Arc::new(EqwalizerDiagnostics::Error(format!("{}", err))),
+            Arc::new(EqwalizerDiagnostics::Error(format!(
+                "eqWAlizing module {}:\n{}",
+                module, err
+            ))),
             timestamp,
         ),
     }
@@ -404,7 +407,12 @@ fn get_module_diagnostics(
                         let reply = &MsgToEqWAlizer::GetAstBytesReply { ast_bytes_len };
                         handle.send(reply)?;
                         handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes)?;
+                        handle.send_bytes(&ast_bytes).with_context(|| {
+                            format!(
+                                "sending to eqwalizer: bytes for module {} (format = {:?})",
+                                module, format
+                            )
+                        })?;
                     }
                     Err(Error::ModuleNotFound(_)) => {
                         log::debug!(
