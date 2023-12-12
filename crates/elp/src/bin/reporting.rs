@@ -303,25 +303,6 @@ pub fn format_raw_parse_error(errs: &[ParseDiagnostic]) -> String {
         .join("\n")
 }
 
-pub fn format_json_parse_error(errs: &[ParseDiagnostic]) -> String {
-    errs.iter()
-        .map(|err| {
-            let severity = arc_types::Severity::Error;
-            let diagnostic = arc_types::Diagnostic::new(
-                err.relative_path.as_path(),
-                err.line_num,
-                None,
-                severity,
-                "ELP".to_string(),
-                err.msg.clone(),
-                None,
-            );
-            serde_json::to_string(&diagnostic).unwrap()
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
 pub fn get_relative_path<'a>(root: &AbsPath, file: &'a VfsPath) -> &'a Path {
     let file = file.as_path().unwrap();
     match file.strip_prefix(root) {

@@ -89,9 +89,6 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(&args, cli)?,
         args::Command::EqwalizeStats(args) => eqwalizer_cli::eqwalize_stats(&args, cli)?,
         args::Command::EqwalizeTarget(args) => eqwalizer_cli::eqwalize_target(&args, cli)?,
-        args::Command::EqwalizePassthrough(args) => {
-            eqwalizer_cli::eqwalize_passthrough(&args, cli)?
-        }
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args)?,
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args)?,
         args::Command::Lint(args) => lint_cli::lint_all(&args, cli)?,

@@ -19,7 +19,6 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::process::ExitStatus;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -53,7 +52,6 @@ pub enum Mode {
     Cli,
     Server,
     Shell,
-    Passthrough,
 }
 impl Mode {
     fn to_env_var(&self) -> &str {
@@ -61,7 +59,6 @@ impl Mode {
             Mode::Cli => "elp_cli",
             Mode::Server => "elp_ide",
             Mode::Shell => "shell",
-            Mode::Passthrough => "standalone",
         }
     }
 }
@@ -265,20 +262,6 @@ impl Eqwalizer {
             Ok(diags) => diags,
             Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
         }
-    }
-
-    pub fn passthrough(
-        &self,
-        args: &[String],
-        build_info_path: &Path,
-        elp_ast_dir: &Path,
-    ) -> Result<ExitStatus> {
-        let mut cmd = self.cmd();
-        cmd.args(args);
-        cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
-        add_env(&mut cmd, build_info_path, Some(elp_ast_dir));
-        cmd.status()
-            .with_context(|| "Error in eqwalizer passthrough")
     }
 }
 

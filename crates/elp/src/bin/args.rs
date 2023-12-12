@@ -107,20 +107,6 @@ pub struct EqwalizeAll {
 }
 
 #[derive(Clone, Debug, Bpaf)]
-pub struct EqwalizePassthrough {
-    /// Path to directory with project (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
-    pub profile: String,
-    /// Run with buck
-    pub buck: bool,
-    #[bpaf(positional::< String > ("ARGS"), many)]
-    pub args: Vec<String>,
-}
-
-#[derive(Clone, Debug, Bpaf)]
 pub struct EqwalizeTarget {
     /// Path to directory with project (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
@@ -295,7 +281,6 @@ pub enum Command {
     ParseAll(ParseAll),
     Eqwalize(Eqwalize),
     EqwalizeAll(EqwalizeAll),
-    EqwalizePassthrough(EqwalizePassthrough),
     EqwalizeTarget(EqwalizeTarget),
     EqwalizeApp(EqwalizeApp),
     EqwalizeStats(EqwalizeStats),
@@ -345,12 +330,6 @@ pub fn command() -> impl Parser<Command> {
         .to_options()
         .command("eqwalize-all")
         .help("Eqwalize all opted-in modules in a project");
-
-    let eqwalize_passthrough = eqwalize_passthrough()
-        .map(Command::EqwalizePassthrough)
-        .to_options()
-        .command("eqwalize-passthrough")
-        .help("Pass args to eqwalizer");
 
     let eqwalize_target = eqwalize_target()
         .map(Command::EqwalizeTarget)
@@ -434,7 +413,6 @@ pub fn command() -> impl Parser<Command> {
         generate_completions,
         parse_all,
         parse_elp,
-        eqwalize_passthrough,
         build_info,
         version,
         shell,

@@ -7,11 +7,8 @@
  * of this source tree.
  */
 
-use std::fs;
-use std::io;
 use std::path::Path;
 
-use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
@@ -39,7 +36,6 @@ use rayon::prelude::*;
 use crate::args::Eqwalize;
 use crate::args::EqwalizeAll;
 use crate::args::EqwalizeApp;
-use crate::args::EqwalizePassthrough;
 use crate::args::EqwalizeStats;
 use crate::args::EqwalizeTarget;
 use crate::erlang_service_cli;
@@ -232,50 +228,6 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
     })
 }
 
-pub fn eqwalize_passthrough(args: &EqwalizePassthrough, cli: &mut dyn Cli) -> Result<()> {
-    let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(
-        cli,
-        &args.project,
-        config,
-        IncludeOtp::No,
-        Mode::Passthrough,
-    )?;
-    build::compile_deps(&loaded, cli)?;
-
-    let ast_dir = loaded.project.root().join("_build").join("elp").join("ast");
-
-    ensure_empty_directory_exists(&ast_dir)?;
-    let parse_diagnostics = erlang_service_cli::do_parse_all(
-        cli,
-        &loaded,
-        ast_dir.as_ref(),
-        erlang_service::Format::OffsetEtf,
-        &None,
-        args.buck,
-    )?;
-    if !parse_diagnostics.is_empty() {
-        writeln!(
-            cli,
-            "{}",
-            reporting::format_json_parse_error(&parse_diagnostics)
-        )
-        .unwrap();
-        bail!("Aborting because there was an error parsing");
-    }
-
-    let status = loaded.analysis().eqwalizer().passthrough(
-        args.args.as_ref(),
-        loaded.project.build_info_file().unwrap().as_ref(),
-        ast_dir.as_ref(),
-    )?;
-
-    let code = status
-        .code()
-        .ok_or_else(|| anyhow!("No return code for {:?}", args.args))?;
-    std::process::exit(code);
-}
-
 pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
@@ -409,11 +361,4 @@ fn should_eqwalize(analysis: &Analysis, file_id: FileId, include_generated: bool
         && analysis
             .is_eqwalizer_enabled(file_id, include_generated)
             .unwrap()
-}
-
-fn ensure_empty_directory_exists(path: impl AsRef<Path>) -> io::Result<()> {
-    let path = path.as_ref();
-    fs::create_dir_all(path)?;
-    fs::remove_dir_all(path)?;
-    fs::create_dir(path)
 }

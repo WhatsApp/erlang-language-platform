@@ -15,7 +15,6 @@ Available commands:
     generate-completions  Generate shell completions
     parse-all             Dump ast for all files in a project for specified rebar.config file
     parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
-    eqwalize-passthrough  Pass args to eqwalizer
     build-info            Generate build info file
     version               Print version
     shell                 Starts an interactive ELP shell
