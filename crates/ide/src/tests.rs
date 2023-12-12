@@ -42,6 +42,8 @@ pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
     let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);
 
+    check_no_parse_errors(&analysis, pos.file_id);
+
     let diagnostic = diagnostics::ct_diagnostics(&analysis.db, pos.file_id)
         .iter()
         .last()
