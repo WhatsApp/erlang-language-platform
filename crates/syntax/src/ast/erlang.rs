@@ -245,6 +245,8 @@ pub fn is_erlang_type(f: &str, a: usize) -> bool {
         ("node", 0) => true,
         ("timeout", 0) => true,
         ("no_return", 0) => true,
+
+        ("dynamic", 0) => true,
         _ => false,
     }
 }
