@@ -45,12 +45,15 @@ use crate::FormList;
 use crate::Function;
 use crate::FunctionId;
 use crate::InFile;
+use crate::Literal;
+use crate::Name;
 use crate::NameArity;
 use crate::Pat;
 use crate::PatId;
 use crate::RecordFieldBody;
 use crate::RecordId;
 use crate::ResolvedMacro;
+use crate::Semantic;
 use crate::Spec;
 use crate::SpecId;
 use crate::SpecSig;
@@ -165,6 +168,13 @@ impl Body {
             AnyExprId::Pat(pat_id) => tree_print::print_pat(db, self, pat_id),
             AnyExprId::TypeExpr(type_id) => tree_print::print_type(db, self, type_id),
             AnyExprId::Term(term_id) => tree_print::print_term(db, self, term_id),
+        }
+    }
+
+    pub fn get_atom_name(&self, sema: &Semantic, name: &ExprId) -> Option<Name> {
+        match self[*name] {
+            Expr::Literal(Literal::Atom(atom)) => Some(sema.db.lookup_atom(atom)),
+            _ => None,
         }
     }
 

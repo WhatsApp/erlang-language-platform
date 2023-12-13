@@ -20,14 +20,20 @@ use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use hir::db::MinDefDatabase;
+use hir::known;
+use hir::AnyExprRef;
 use hir::CallDef;
+use hir::CallTarget;
 use hir::CallbackDef;
 use hir::DefineDef;
 use hir::DefinitionOrReference;
+use hir::Expr;
+use hir::ExprId;
 use hir::FaDef;
 use hir::File;
 use hir::FunctionDef;
 use hir::InFile;
+use hir::Literal;
 use hir::MacroCallDef;
 use hir::Module;
 use hir::RecordDef;
@@ -212,6 +218,7 @@ impl SymbolClass {
                 },
                 ast::ExprArgs(args) => {
                     from_apply(sema, &token, args.syntax())
+                    .or_else(|| from_is_record(sema, &token, args.syntax()))
                         .or_else(|| from_wrapper(sema, &token, wrapper))
                 },
                 _ => {
@@ -416,6 +423,77 @@ pub fn from_apply(
         } => reference_other(Some(def)),
         _ => None,
     }
+}
+
+pub fn from_is_record(
+    sema: &Semantic,
+    token: &InFile<SyntaxToken>,
+    syntax: &SyntaxNode,
+) -> Option<SymbolClass> {
+    let call = ast::Call::cast(syntax.parent()?)?;
+    let (body, body_map) = sema.find_body(token.file_id, syntax)?;
+    let expr = ast::Expr::from(call.clone());
+    let any_expr_id = body_map.any_id(token.with_value(expr).as_ref())?;
+    match body.get_any(any_expr_id) {
+        AnyExprRef::Expr(Expr::Call { target, args }) => {
+            match target {
+                CallTarget::Local { name } => {
+                    if named_is_record(sema, &body, None, name).is_none() {
+                        return None;
+                    }
+                }
+                CallTarget::Remote { module, name } => {
+                    if named_is_record(sema, &body, Some(module), name).is_none() {
+                        return None;
+                    }
+                }
+            };
+            // We know we are calling erlang:is_record
+            if args.len() < 2 {
+                return None;
+            }
+            match &body[args[1]] {
+                Expr::Literal(Literal::Atom(atom)) => {
+                    let def_map = sema.def_map(token.file_id);
+                    let record = def_map.get_record(&sema.db.lookup_atom(*atom))?;
+                    match args.len() {
+                        2 => reference_direct(Some(record.clone())),
+                        3 => match &body[args[2]] {
+                            Expr::Literal(Literal::Integer(size)) => {
+                                let num_fields = record.record.fields.clone().into_iter().count();
+                                if num_fields == (*size) as usize {
+                                    reference_direct(Some(record.clone()))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+fn named_is_record(
+    sema: &Semantic,
+    body: &hir::Body,
+    module: Option<&ExprId>,
+    name: &ExprId,
+) -> Option<()> {
+    if let Some(module) = module {
+        if body.get_atom_name(sema, module)? != known::erlang {
+            return None;
+        }
+    }
+    if body.get_atom_name(sema, name)? != known::is_record {
+        return None;
+    }
+    Some(())
 }
 
 /// Parent is nothing structured, it must be a raw atom or var literal

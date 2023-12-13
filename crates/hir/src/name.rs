@@ -226,6 +226,7 @@ pub mod known {
         erlang,
         apply,
         export_all,
+        is_record,
         get_stacktrace,
         graphql_parser,
         graphql_scanner,

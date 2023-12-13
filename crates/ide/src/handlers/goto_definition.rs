@@ -1105,6 +1105,82 @@ foo() -> #r~ec{}.
     }
 
     #[test]
+    fn is_record_2() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo(Payload) when is_record(Payload, re~c) -> ok.
+
+//- /src/header.hrl
+-record(rec, {}).
+%%      ^^^
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag) -> false.
+"#,
+        );
+    }
+
+    #[test]
+    fn not_is_record_2() {
+        check_unresolved(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-record(rec, {}).
+foo(Payload) when bar_is_record(Payload, re~c) -> ok.
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag) -> false.
+"#,
+        );
+    }
+
+    #[test]
+    fn is_record_3_matches() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo(Payload) when is_record(Payload, re~c, 1) -> ok.
+
+//- /src/header.hrl
+-record(rec, {bar}).
+%%      ^^^
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag, _Size) -> false.
+"#,
+        );
+    }
+
+    #[test]
+    fn is_record_3_no_match() {
+        check_unresolved(
+            r#"
+//- /src/main.erl
+-module(main).
+-record(rec, {bar}).
+foo(Payload) when is_record(Payload, re~c, 2) -> ok.
+baz() -> #rec.bar.
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag, _Size) -> false.
+"#,
+        );
+    }
+
+    #[test]
     fn record_field_name() {
         check(
             r#"

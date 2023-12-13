@@ -432,4 +432,44 @@ lol(A, _B) -> A.
 "#,
         );
     }
+
+    #[test]
+    fn used_for_is_record_2() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo(Payload) when is_record(Payload, rec) -> ok.
+
+//- /src/header.hrl
+-record(rec, {}).
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag) -> false.
+"#,
+        )
+    }
+
+    #[test]
+    fn used_for_is_record_3() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo(Payload) when is_record(Payload, rec, 0) -> ok.
+
+//- /src/header.hrl
+-record(rec, {}).
+
+//- /src/erlang.erl
+-module(erlang).
+is_record(_Term,_RecordTag, _Size) -> false.
+"#,
+        )
+    }
 }
