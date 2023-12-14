@@ -193,6 +193,7 @@ impl<'a> MacroExpCtx<'a> {
             ast::MacroDefReplacement::ReplacementFunctionClauses(_) => None,
             ast::MacroDefReplacement::ReplacementGuardAnd(_) => None,
             ast::MacroDefReplacement::ReplacementGuardOr(_) => None,
+            ast::MacroDefReplacement::ReplacementExprGuard(_) => None,
             ast::MacroDefReplacement::ReplacementParens(_) => None,
         }
     }
@@ -486,5 +487,20 @@ foo() -> ?~FOO.
 "#,
         );
         assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn test_expression_with_guard() {
+        check_user(
+            r#"
+   -define(MACRO, Error when Error == oops).
+%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+foo(X) ->
+   case X of
+     ?~MACRO -> ok
+   end.
+"#,
+        );
     }
 }

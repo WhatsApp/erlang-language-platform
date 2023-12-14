@@ -3481,6 +3481,7 @@ impl std::fmt::Display for MacroCallExpr {
 pub enum MacroDefReplacement {
     Expr(Expr),
     ReplacementCrClauses(ReplacementCrClauses),
+    ReplacementExprGuard(ReplacementExprGuard),
     ReplacementFunctionClauses(ReplacementFunctionClauses),
     ReplacementGuardAnd(ReplacementGuardAnd),
     ReplacementGuardOr(ReplacementGuardOr),
@@ -3534,6 +3535,7 @@ impl AstNode for MacroDefReplacement {
             | REMOTE
             | UNARY_OP_EXPR
             | REPLACEMENT_CR_CLAUSES
+            | REPLACEMENT_EXPR_GUARD
             | REPLACEMENT_FUNCTION_CLAUSES
             | REPLACEMENT_GUARD_AND
             | REPLACEMENT_GUARD_OR
@@ -3555,6 +3557,9 @@ impl AstNode for MacroDefReplacement {
             REPLACEMENT_CR_CLAUSES => Some(MacroDefReplacement::ReplacementCrClauses(
                 ReplacementCrClauses { syntax },
             )),
+            REPLACEMENT_EXPR_GUARD => Some(MacroDefReplacement::ReplacementExprGuard(
+                ReplacementExprGuard { syntax },
+            )),
             REPLACEMENT_FUNCTION_CLAUSES => Some(MacroDefReplacement::ReplacementFunctionClauses(
                 ReplacementFunctionClauses { syntax },
             )),
@@ -3574,6 +3579,7 @@ impl AstNode for MacroDefReplacement {
         match self {
             MacroDefReplacement::Expr(it) => it.syntax(),
             MacroDefReplacement::ReplacementCrClauses(it) => it.syntax(),
+            MacroDefReplacement::ReplacementExprGuard(it) => it.syntax(),
             MacroDefReplacement::ReplacementFunctionClauses(it) => it.syntax(),
             MacroDefReplacement::ReplacementGuardAnd(it) => it.syntax(),
             MacroDefReplacement::ReplacementGuardOr(it) => it.syntax(),
@@ -3590,6 +3596,11 @@ impl From<Expr> for MacroDefReplacement {
 impl From<ReplacementCrClauses> for MacroDefReplacement {
     fn from(node: ReplacementCrClauses) -> MacroDefReplacement {
         MacroDefReplacement::ReplacementCrClauses(node)
+    }
+}
+impl From<ReplacementExprGuard> for MacroDefReplacement {
+    fn from(node: ReplacementExprGuard) -> MacroDefReplacement {
+        MacroDefReplacement::ReplacementExprGuard(node)
     }
 }
 impl From<ReplacementFunctionClauses> for MacroDefReplacement {
@@ -5385,6 +5396,42 @@ impl AstNode for ReplacementCrClauses {
 }
 #[doc = r" Via NodeType::Node 2 display"]
 impl std::fmt::Display for ReplacementCrClauses {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ReplacementExprGuard {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ReplacementExprGuard {
+    pub fn expr(&self) -> Option<Expr> {
+        support::child(&self.syntax, 0usize)
+    }
+    pub fn guard(&self) -> Option<Guard> {
+        support::child(&self.syntax, 0usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for ReplacementExprGuard {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == REPLACEMENT_EXPR_GUARD
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for ReplacementExprGuard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
