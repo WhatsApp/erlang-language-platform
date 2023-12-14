@@ -1223,6 +1223,15 @@ impl<T> InFunctionClauseBody<T> {
         self.function_id.file_id
     }
 
+    pub fn ast_fun_decl(&self, db: &dyn MinDefDatabase) -> ast::FunDecl {
+        let form_list = db.file_form_list(self.function_id.file_id);
+        let function = &form_list[self.function_id.value];
+        let function_ast = function
+            .form_id
+            .get(&self.function_id.file_syntax(db.upcast()));
+        function_ast
+    }
+
     pub fn body_exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
         self.body.body.exprs.iter()
     }
@@ -1466,6 +1475,7 @@ mod tests {
     use crate::test_db::TestDB;
     use crate::AnyExprId;
     use crate::InFile;
+    use crate::InFunctionClauseBody;
     use crate::Semantic;
 
     #[track_caller]
@@ -1670,5 +1680,87 @@ mod tests {
                  {H}.
             "#,
         )
+    }
+
+    #[track_caller]
+    fn check_in_clause_ast(fixture_before: &str, expect: Expect) {
+        let (db, position) = TestDB::with_position(fixture_before);
+        let sema = Semantic::new(&db);
+
+        let file_syntax = db.parse(position.file_id).syntax_node();
+        let token = file_syntax
+            .token_at_offset(position.offset)
+            .right_biased()
+            .unwrap();
+        let node = token.parent().unwrap();
+        let (_clause_id, clause) = sema
+            .to_clause_body(InFile::new(position.file_id, &node))
+            .unwrap();
+        let function_id = sema
+            .find_enclosing_function_id(position.file_id, &node)
+            .unwrap();
+        let in_clause =
+            InFunctionClauseBody::new(clause, InFile::new(position.file_id, function_id), None, ());
+        let ast = in_clause.ast_fun_decl(&db);
+        expect.assert_debug_eq(&ast);
+    }
+
+    #[test]
+    fn infunctionclausebody_get_ast() {
+        check_in_clause_ast(
+            r#"foo(0) -> ok;
+               foo(~A) -> this.
+                   "#,
+            expect![[r#"
+                FunDecl {
+                    syntax: FUN_DECL@29..44
+                      FUNCTION_CLAUSE@29..43
+                        ATOM@29..32
+                          ATOM@29..32 "foo"
+                        EXPR_ARGS@32..35
+                          ANON_LPAREN@32..33 "("
+                          VAR@33..34
+                            VAR@33..34 "A"
+                          ANON_RPAREN@34..35 ")"
+                        WHITESPACE@35..36 " "
+                        CLAUSE_BODY@36..43
+                          ANON_DASH_GT@36..38 "->"
+                          WHITESPACE@38..39 " "
+                          ATOM@39..43
+                            ATOM@39..43 "this"
+                      ANON_DOT@43..44 "."
+                    ,
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn infunctionclausebody_get_ast_from_macro() {
+        check_in_clause_ast(
+            r#"
+             -define(CLAUSE(Res), foo(_) -> Res).
+
+             foo() -> 1;
+             ?CLAUSE(~V).
+                   "#,
+            expect![[r#"
+                FunDecl {
+                    syntax: FUN_DECL@50..61
+                      MACRO_CALL_EXPR@50..60
+                        ANON_QMARK@50..51 "?"
+                        VAR@51..57
+                          VAR@51..57 "CLAUSE"
+                        MACRO_CALL_ARGS@57..60
+                          ANON_LPAREN@57..58 "("
+                          MACRO_EXPR@58..59
+                            VAR@58..59
+                              VAR@58..59 "V"
+                          ANON_RPAREN@59..60 ")"
+                      ANON_DOT@60..61 "."
+                    ,
+                }
+            "#]],
+        );
     }
 }
