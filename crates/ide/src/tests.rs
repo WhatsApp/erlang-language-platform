@@ -37,12 +37,29 @@ use crate::NavigationTarget;
 
 #[track_caller]
 pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
+    let config = DiagnosticsConfig::new(
+        true,
+        FxHashSet::default(),
+        vec![],
+        Arc::new(LintsFromConfig::default()),
+    )
+    .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+    .disable(DiagnosticCode::UndefinedFunction);
+    check_ct_fix_with_config(fixture_before, fixture_after, config);
+}
+
+#[track_caller]
+pub(crate) fn check_ct_fix_with_config(
+    fixture_before: &str,
+    fixture_after: &str,
+    config: DiagnosticsConfig,
+) {
     let after = trim_indent(fixture_after);
     let (analysis, pos) = fixture::position(fixture_before);
     let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);
 
-    check_no_parse_errors(&analysis, pos.file_id);
+    check_no_parse_errors_with_config(&analysis, pos.file_id, config);
 
     let diagnostic = diagnostics::ct_diagnostics(&analysis.db, pos.file_id)
         .iter()
@@ -263,6 +280,15 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
     )
     .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
     .disable(DiagnosticCode::UndefinedFunction);
+    check_no_parse_errors_with_config(analysis, file_id, config);
+}
+
+#[track_caller]
+pub fn check_no_parse_errors_with_config(
+    analysis: &Analysis,
+    file_id: FileId,
+    config: DiagnosticsConfig,
+) {
     let diags = analysis.diagnostics(&config, file_id, true).unwrap();
     assert!(
         diags.is_empty(),
