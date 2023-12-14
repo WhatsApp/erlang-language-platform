@@ -276,11 +276,13 @@ fn eqwalize(
     let pb = reporter.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
         let project_id = loaded.project_id;
-        (0..MAX_EQWALIZER_TASKS)
-            .into_par_iter()
-            .map_with(analysis, move |analysis, _task_id| {
+        let chunk_size = (files_count + MAX_EQWALIZER_TASKS - 1) / MAX_EQWALIZER_TASKS;
+        file_ids
+            .chunks(chunk_size)
+            .par_bridge()
+            .map_with(analysis, move |analysis, file_ids| {
                 analysis
-                    .eqwalizer_diagnostics(project_id, file_ids.clone())
+                    .eqwalizer_diagnostics(project_id, file_ids.to_vec())
                     .expect("cancelled")
             })
             .fold(EqwalizerDiagnostics::default, |acc, output| {

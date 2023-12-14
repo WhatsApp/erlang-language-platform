@@ -281,17 +281,15 @@ fn do_typecheck(
         match msg {
             MsgFromEqWAlizer::EnteringModule { module } => {
                 let module_name = ModuleName::new(&module);
-                if db.module_ipc_handle(module_name.clone()).is_none() {
-                    db.set_module_ipc_handle(module_name.clone(), Some(handle.clone()));
-                    let diags = db.module_diagnostics(project_id, module).0;
-                    db.set_module_ipc_handle(module_name, None);
-                    diagnostics = diagnostics.combine((*diags).clone());
-                    match diagnostics {
-                        EqwalizerDiagnostics::Error(_) | EqwalizerDiagnostics::NoAst { .. } => {
-                            return Ok(diagnostics);
-                        }
-                        EqwalizerDiagnostics::Diagnostics { .. } => (),
+                db.set_module_ipc_handle(module_name.clone(), Some(handle.clone()));
+                let diags = db.module_diagnostics(project_id, module).0;
+                db.set_module_ipc_handle(module_name, None);
+                diagnostics = diagnostics.combine((*diags).clone());
+                match diagnostics {
+                    EqwalizerDiagnostics::Error(_) | EqwalizerDiagnostics::NoAst { .. } => {
+                        return Ok(diagnostics);
                     }
+                    EqwalizerDiagnostics::Diagnostics { .. } => (),
                 }
                 handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
             }
