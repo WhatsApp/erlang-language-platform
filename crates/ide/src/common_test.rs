@@ -141,7 +141,7 @@ pub fn runnables(
 ) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
     if let Some(module_name) = sema.module_name(file_id) {
-        if is_suite(module_name) {
+        if is_suite(&module_name) {
             // Add a runnable for the entire test suite
             if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
                 res.push(suite_runnable);
@@ -285,7 +285,7 @@ fn def_to_runnable(sema: &Semantic, def: &FunctionDef, group: GroupName) -> Opti
     Some(Runnable { nav, kind })
 }
 
-pub fn is_suite(module_name: ModuleName) -> bool {
+pub fn is_suite(module_name: &ModuleName) -> bool {
     module_name.ends_with(SUFFIX)
 }
 
