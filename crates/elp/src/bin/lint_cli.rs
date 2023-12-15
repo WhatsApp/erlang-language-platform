@@ -298,9 +298,9 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                     for (_name, file_id, diags) in &diags {
                         if args.print_diags {
                             for diag in diags {
-                                if let diagnostics::Severity::Error = diag.severity {
-                                    err_in_diag = true;
-                                };
+                                // We use JSON output for CI, and want to see warnings too.
+                                // So do not filter on errors only
+                                err_in_diag = true;
                                 let vfs_path = loaded.vfs.file_path(*file_id);
                                 let analysis = loaded.analysis();
                                 let root_path = &analysis

@@ -766,7 +766,7 @@ mod tests {
             ],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_lint_json_output.stdout"),
-            0,
+            101,
             buck,
             None,
             tmp_path,
