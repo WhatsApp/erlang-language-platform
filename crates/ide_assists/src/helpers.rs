@@ -318,7 +318,7 @@ pub(crate) fn ranges_for_delete_function(
     })
 }
 
-fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
+pub fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
     let orig_range = syntax.text_range();
     let start = orig_range.start();
     let end = match skip_trailing_newline(syntax) {
