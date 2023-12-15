@@ -223,12 +223,6 @@ pub struct Lint {
     /// Filter out all reported diagnostics except this one, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_filter: Option<String>,
-    /// Filter out all reported diagnostics before this line. Valid only for single file
-    #[bpaf(argument("LINE_FROM"))]
-    pub line_from: Option<u32>,
-    /// Filter out all reported diagnostics after this line. Valid only for single file
-    #[bpaf(argument("LINE_TO"))]
-    pub line_to: Option<u32>,
     /// Get some configuration from a .elp_lint.toml file instead in the project root
     pub read_config: bool,
     /// Override normal configuration file. When set, acts as if READ_CONFIG is true.

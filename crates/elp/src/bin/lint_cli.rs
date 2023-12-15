@@ -166,8 +166,6 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             in_place,
             diagnostic_ignore,
             diagnostic_filter,
-            line_from,
-            line_to,
             ignore_apps,
             read_config,
             config_file,
@@ -281,8 +279,6 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                     &analysis,
                     &args.module,
                     Some(&allowed_diagnostics),
-                    *line_from,
-                    *line_to,
                     &res,
                     &FxHashSet::default(),
                 )?
@@ -401,8 +397,6 @@ fn filter_diagnostics<'a>(
     db: &Analysis,
     module: &'a Option<String>,
     allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
-    line_from: Option<u32>,
-    line_to: Option<u32>,
     diags: &'a [(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
@@ -410,18 +404,13 @@ fn filter_diagnostics<'a>(
         .to_owned()
         .into_iter()
         .filter_map(|(m, file_id, ds)| {
-            let line_index = db.line_index(file_id).ok()?;
             if module.is_none() || &Some(m.to_string()) == module {
                 let ds2 = ds
                     .iter()
                     .filter(|d| {
-                        let range = convert::range(&line_index, d.range);
-                        let line = range.start.line;
                         let form_id = get_form_id_at_offset(db, file_id, d.range.start())
                             .map(|form_id| InFile::new(file_id, form_id));
                         diagnostic_is_allowed(d, allowed_diagnostics)
-                            && check(&line_from, |l| &line >= l)
-                            && check(&line_to, |l| &line <= l)
                             && check_changes(changed_forms, form_id)
                     })
                     .cloned()
@@ -460,14 +449,6 @@ fn check_changes(
         || form_id
             .map(|form_id| changed_forms.contains(&form_id))
             .unwrap_or(false)
-}
-
-fn check<T>(maybe_constraint: &Option<T>, f: impl FnOnce(&T) -> bool) -> bool {
-    if let Some(constraint) = maybe_constraint {
-        f(constraint)
-    } else {
-        true
-    }
 }
 
 struct Lints<'a> {
@@ -605,8 +586,6 @@ impl<'a> Lints<'a> {
             self.diags = filter_diagnostics(
                 &self.analysis_host.analysis(),
                 &None,
-                None,
-                None,
                 None,
                 &new_diags,
                 &self.changed_forms,
