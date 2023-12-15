@@ -1313,6 +1313,10 @@ impl<T> InFunctionClauseBody<T> {
         fold_function_clause_body(strategy, &self.body, function_id, initial, callback)
     }
 
+    pub fn range(&self, db: &dyn MinDefDatabase) -> TextRange {
+        self.ast_fun_decl(db).syntax().text_range()
+    }
+
     pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {
         let body_map = self.get_body_map(db);
         let ast = body_map.expr(expr_id)?;
