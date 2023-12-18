@@ -11,7 +11,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 
@@ -77,10 +76,7 @@ fn do_parse_all(
     analysis: &Analysis,
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
-    include_generated: bool,
-    include_ct_diagnostics: bool,
-    include_edoc_diagnostics: bool,
-    include_test_files: bool,
+    args: &Lint,
     ignore_apps: &[String],
 ) -> Result<Vec<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
@@ -102,17 +98,7 @@ fn do_parse_all(
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                     && !ignored_apps.contains(&db.file_app_name(file_id).ok())
                 {
-                    do_parse_one(
-                        db,
-                        config,
-                        file_id,
-                        module_name.as_str(),
-                        include_generated,
-                        include_ct_diagnostics,
-                        include_edoc_diagnostics,
-                        include_test_files,
-                    )
-                    .unwrap()
+                    do_parse_one(db, config, file_id, module_name.as_str(), args).unwrap()
                 } else {
                     None
                 }
@@ -127,25 +113,22 @@ fn do_parse_one(
     config: &DiagnosticsConfig,
     file_id: FileId,
     name: &str,
-    include_generated: bool,
-    include_ct_diagnostics: bool,
-    include_edoc_diagnostics: bool,
-    include_tests: bool,
+    args: &Lint,
 ) -> Result<Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
-    if !include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
+    if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
         return Ok(None);
     }
 
-    let mut diagnostics = db.diagnostics(config, file_id, include_generated)?;
+    let mut diagnostics = db.diagnostics(config, file_id, args.include_generated)?;
 
-    if include_ct_diagnostics {
+    if args.include_ct_diagnostics {
         let ct_diagnostics = db
             .ct_diagnostics(file_id)?
             .into_iter()
             .map(|d| (d.range, d));
         diagnostics.extend(ct_diagnostics);
     }
-    if include_edoc_diagnostics {
+    if args.include_edoc_diagnostics {
         let edoc_diagnostics = db
             .edoc_diagnostics(file_id)?
             .into_iter()
@@ -169,8 +152,6 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
     // bunch of args set
     match args {
         Lint {
-            recursive,
-            in_place,
             diagnostic_ignore,
             diagnostic_filter,
             ignore_apps,
@@ -257,28 +238,13 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                 };
 
                 res = match (file_id, name) {
-                    (None, _) => do_parse_all(
-                        cli,
-                        &analysis,
-                        &loaded.project_id,
-                        &cfg,
-                        args.include_generated,
-                        args.include_ct_diagnostics,
-                        args.include_edoc_diagnostics,
-                        args.include_tests,
-                        ignore_apps,
-                    )?,
-                    (Some(file_id), Some(name)) => do_parse_one(
-                        &analysis,
-                        &cfg,
-                        file_id,
-                        &name,
-                        args.include_generated,
-                        args.include_ct_diagnostics,
-                        args.include_edoc_diagnostics,
-                        args.include_tests,
-                    )?
-                    .map_or(vec![], |x| vec![x]),
+                    (None, _) => {
+                        do_parse_all(cli, &analysis, &loaded.project_id, &cfg, args, ignore_apps)?
+                    }
+                    (Some(file_id), Some(name)) => {
+                        do_parse_one(&analysis, &cfg, file_id, &name, args)?
+                            .map_or(vec![], |x| vec![x])
+                    }
                     (Some(file_id), _) => {
                         panic!("Could not get name from file_id for {:?}", file_id)
                     }
@@ -346,13 +312,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         &mut loaded.analysis_host,
                         &cfg,
                         &mut loaded.vfs,
-                        &args.to,
-                        args.include_generated,
-                        args.include_ct_diagnostics,
-                        args.include_edoc_diagnostics,
-                        args.include_tests,
-                        *in_place,
-                        *recursive,
+                        &args,
                         &mut changed_files,
                         diags,
                     );
@@ -465,13 +425,7 @@ struct Lints<'a> {
     analysis_host: &'a mut AnalysisHost,
     cfg: &'a DiagnosticsConfig<'a>,
     vfs: &'a mut Vfs,
-    to: &'a Option<PathBuf>,
-    include_generated: bool,
-    include_ct_diagnostics: bool,
-    include_edoc_diagnostics: bool,
-    include_tests: bool,
-    in_place: bool,
-    recursive: bool,
+    args: &'a Lint,
     changed_files: &'a mut FxHashSet<(FileId, String)>,
     diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
     changed_forms: FxHashSet<InFile<FormIdx>>,
@@ -494,13 +448,7 @@ impl<'a> Lints<'a> {
         analysis_host: &'a mut AnalysisHost,
         cfg: &'a DiagnosticsConfig,
         vfs: &'a mut Vfs,
-        to: &'a Option<PathBuf>,
-        include_generated: bool,
-        include_ct_diagnostics: bool,
-        include_edoc_diagnostics: bool,
-        include_tests: bool,
-        in_place: bool,
-        recursive: bool,
+        args: &'a Lint,
         changed_files: &'a mut FxHashSet<(FileId, String)>,
         diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
     ) -> Lints<'a> {
@@ -518,13 +466,7 @@ impl<'a> Lints<'a> {
             analysis_host,
             cfg,
             vfs,
-            to,
-            include_generated,
-            include_ct_diagnostics,
-            include_edoc_diagnostics,
-            include_tests,
-            in_place,
-            recursive,
+            args,
             changed_files,
             diags,
             changed_forms,
@@ -586,10 +528,7 @@ impl<'a> Lints<'a> {
                             self.cfg,
                             file_id,
                             &name,
-                            self.include_generated,
-                            self.include_ct_diagnostics,
-                            self.include_edoc_diagnostics,
-                            self.include_tests,
+                            self.args,
                         )
                     },
                 )
@@ -614,7 +553,7 @@ impl<'a> Lints<'a> {
                     }
                 }
             }
-            if !self.recursive {
+            if !self.args.recursive {
                 break;
             }
         }
@@ -715,12 +654,12 @@ impl<'a> Lints<'a> {
     }
 
     fn write_fix_result(&self, file_id: FileId, name: &String, actual: &String) -> Option<()> {
-        if self.in_place {
+        if self.args.in_place {
             let file_path = self.vfs.file_path(file_id);
             let to_path = file_path.as_path()?;
             let mut output = File::create(to_path).ok()?;
             write!(output, "{actual}").ok()?;
-        } else if let Some(to) = self.to {
+        } else if let Some(to) = &self.args.to {
             let to_path = to.join(format!("{}.erl", name));
             let mut output = File::create(to_path).ok()?;
             write!(output, "{actual}").ok()?;
