@@ -85,7 +85,7 @@ impl FunctionDefId {
     /// with its clause.
     /// Use with care, if the clause being processed matters.
     pub fn as_form_id(&self) -> FormIdx {
-        FormIdx::Function(self.0)
+        FormIdx::FunctionClause(self.0)
     }
 
     // #[cfg(test)]
@@ -146,13 +146,13 @@ impl DefMap {
         let form_list = db.file_form_list(file_id);
         for &form in form_list.forms() {
             match form {
-                FormIdx::Function(idx) => {
-                    let function = form_list[idx].clone();
-                    let fun_name = &function.name.clone();
+                FormIdx::FunctionClause(idx) => {
+                    let function_clause = form_list[idx].clone();
+                    let fun_name = &function_clause.name.clone();
                     let function_def = FunctionClauseDef {
                         file,
                         module: module.clone(),
-                        function,
+                        function_clause,
                         function_clause_id: idx,
                     };
                     def_map.function_clauses.insert(idx, function_def);
@@ -598,22 +598,22 @@ impl DefMap {
             .iter()
             .for_each(|(_next_id, next_def)| {
                 if let Some((current_na, current_def)) = current.get(0) {
-                    if current_na == &next_def.function.name
-                        || (next_def.function.is_macro
+                    if current_na == &next_def.function_clause.name
+                        || (next_def.function_clause.is_macro
                             && prior_separator == Some(ast::ClauseSeparator::Semi))
                     {
-                        current.push((next_def.function.name.clone(), next_def.clone()));
+                        current.push((next_def.function_clause.name.clone(), next_def.clone()));
                     } else {
                         // We have a new one, create a FunctionDef with
                         // the ones in current.
                         self.insert_fun(&current, current_na, current_def);
                         current = Vec::default();
-                        current.push((next_def.function.name.clone(), next_def.clone()));
+                        current.push((next_def.function_clause.name.clone(), next_def.clone()));
                     }
                 } else {
-                    current.push((next_def.function.name.clone(), next_def.clone()));
+                    current.push((next_def.function_clause.name.clone(), next_def.clone()));
                 }
-                prior_separator = next_def.function.separator.clone().map(|s| s.0);
+                prior_separator = next_def.function_clause.separator.clone().map(|s| s.0);
             });
         if let Some((current_na, current_def)) = current.get(0) {
             self.insert_fun(&current, current_na, current_def);
@@ -626,9 +626,9 @@ impl DefMap {
         current_na: &NameArity,
         current_def: &FunctionClauseDef,
     ) {
-        let function = current
+        let function_clauses = current
             .iter()
-            .map(|(_, clause)| clause.function.clone())
+            .map(|(_, clause)| clause.function_clause.clone())
             .collect::<Vec<_>>();
         let function_clause_ids = current
             .iter()
@@ -643,7 +643,7 @@ impl DefMap {
             deprecated_desc: None,
             module: current_def.module.clone(),
             name: (current_na).clone(),
-            function,
+            function_clauses,
             function_clause_ids,
             function_id,
         };
@@ -660,7 +660,8 @@ impl DefMap {
 
     fn is_exported(&self, fun_def_id: &InFile<FunctionDefId>) -> bool {
         if let Some(fun) = self.functions.get(fun_def_id) {
-            self.exported_functions.contains(&fun.function[0].name)
+            self.exported_functions
+                .contains(&fun.function_clauses[0].name)
         } else {
             false
         }
@@ -675,9 +676,10 @@ impl DefMap {
     }
 
     fn deprecation_desc(&self, fun_def_id: &InFile<FunctionDefId>) -> Option<DeprecatedDesc> {
-        self.functions
-            .get(fun_def_id)
-            .and_then(|fun| self.deprecated.deprecation_desc(&fun.function[0].name))
+        self.functions.get(fun_def_id).and_then(|fun| {
+            self.deprecated
+                .deprecation_desc(&fun.function_clauses[0].name)
+        })
     }
 
     fn fixup_exports(&mut self) {

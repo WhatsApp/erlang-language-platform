@@ -536,7 +536,7 @@ impl<'a> GleanIndexer<'a> {
     ) -> Option<(Arc<Body>, TextRange)> {
         let (body, source) = match ctx.form_id {
             FormIdx::ModuleAttribute(_) => None,
-            FormIdx::Function(func_id) => {
+            FormIdx::FunctionClause(func_id) => {
                 let in_file = InFile::new(file_id, func_id);
                 let (body, source) = db.function_clause_body_with_source(in_file);
                 Some((body.body.clone(), source))

@@ -42,7 +42,7 @@ use crate::ExprId;
 use crate::FoldCtx;
 use crate::FormIdx;
 use crate::FormList;
-use crate::Function;
+use crate::FunctionClause;
 use crate::FunctionClauseId;
 use crate::InFile;
 use crate::Literal;
@@ -226,7 +226,7 @@ impl FunctionBody {
             let fun_asts = fun_def.source(db.upcast());
 
             let mut ctx = lower::Ctx::new(db, function_id.file_id);
-            let name = &fun_def.function[0].name;
+            let name = &fun_def.function_clauses[0].name;
             ctx.set_function_info(name);
             let (body, source_maps) =
                 ctx.lower_function(function_id, fun_def.function_clause_ids.clone(), &fun_asts);
@@ -246,11 +246,11 @@ impl FunctionBody {
     pub fn form_id(&self, clause_id: ClauseId) -> Option<FormIdx> {
         let n: u32 = clause_id.into_raw().into();
         let function_id = self.clause_ids.get(n as usize)?;
-        Some(FormIdx::Function(*function_id))
+        Some(FormIdx::FunctionClause(*function_id))
     }
 
-    pub fn print(&self, db: &dyn MinInternDatabase, form: &Function) -> String {
-        pretty::print_function(db, self, form)
+    pub fn print(&self, db: &dyn MinInternDatabase, form: &FunctionClause) -> String {
+        pretty::print_function_clause(db, self, form)
     }
 
     pub fn tree_print(&self, db: &dyn MinInternDatabase) -> String {

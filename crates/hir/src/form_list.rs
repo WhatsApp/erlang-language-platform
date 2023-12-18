@@ -108,7 +108,7 @@ impl FormList {
         self.data.includes.iter()
     }
 
-    pub fn function_clauses(&self) -> impl Iterator<Item = (FunctionClauseId, &Function)> {
+    pub fn function_clauses(&self) -> impl Iterator<Item = (FunctionClauseId, &FunctionClause)> {
         self.data.function_clauses.iter()
     }
 
@@ -173,7 +173,7 @@ impl FormList {
     pub fn get(&self, idx: FormIdx) -> Form {
         match idx {
             FormIdx::ModuleAttribute(idx) => Form::ModuleAttribute(&self[idx]),
-            FormIdx::Function(idx) => Form::Function(&self[idx]),
+            FormIdx::FunctionClause(idx) => Form::FunctionClause(&self[idx]),
             FormIdx::PPDirective(idx) => Form::PPDirective(&self[idx]),
             FormIdx::PPCondition(idx) => Form::PPCondition(&self[idx]),
             FormIdx::Export(idx) => Form::Export(&self[idx]),
@@ -203,7 +203,7 @@ pub(crate) struct FormListData {
     // have many due to errors or conditional compilation
     module_attribute: Arena<ModuleAttribute>,
     includes: Arena<IncludeAttribute>,
-    function_clauses: Arena<Function>,
+    function_clauses: Arena<FunctionClause>,
     pub defines: Arena<Define>,
     pub pp_directives: Arena<PPDirective>,
     pp_conditions: Arena<PPCondition>,
@@ -277,7 +277,7 @@ impl FormListData {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum FormIdx {
     ModuleAttribute(ModuleAttributeId),
-    Function(FunctionClauseId),
+    FunctionClause(FunctionClauseId),
     PPDirective(PPDirectiveId),
     PPCondition(PPConditionId),
     Export(ExportId),
@@ -298,7 +298,7 @@ pub enum FormIdx {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Form<'a> {
     ModuleAttribute(&'a ModuleAttribute),
-    Function(&'a Function),
+    FunctionClause(&'a FunctionClause),
     PPDirective(&'a PPDirective),
     PPCondition(&'a PPCondition),
     Export(&'a Export),
@@ -318,7 +318,7 @@ pub enum Form<'a> {
 
 pub type ModuleAttributeId = Idx<ModuleAttribute>;
 pub type IncludeAttributeId = Idx<IncludeAttribute>;
-pub type FunctionClauseId = Idx<Function>;
+pub type FunctionClauseId = Idx<FunctionClause>;
 pub type DefineId = Idx<Define>;
 pub type PPDirectiveId = Idx<PPDirective>;
 pub type PPConditionId = Idx<PPCondition>;
@@ -355,7 +355,7 @@ impl Index<IncludeAttributeId> for FormList {
 }
 
 impl Index<FunctionClauseId> for FormList {
-    type Output = Function;
+    type Output = FunctionClause;
 
     fn index(&self, index: FunctionClauseId) -> &Self::Output {
         &self.data.function_clauses[index]
@@ -597,7 +597,7 @@ impl Deref for ParamName {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Function {
+pub struct FunctionClause {
     pub name: NameArity,
     pub param_names: Vec<ParamName>,
     pub is_macro: bool,

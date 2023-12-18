@@ -411,7 +411,7 @@ fn add_to_suite_0(
     value: &str,
     builder: &mut SourceChangeBuilder,
 ) -> Option<()> {
-    let fun = fun_def.function.get(0)?;
+    let fun = fun_def.function_clauses.get(0)?;
     let fun_ast = fun.form_id.get(source);
     let clause = match fun_ast.clause()? {
         ast::FunctionOrMacroClause::FunctionClause(clause) => clause,

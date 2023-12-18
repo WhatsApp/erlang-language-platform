@@ -44,7 +44,7 @@ use crate::Export;
 use crate::FaEntry;
 use crate::FaEntryId;
 use crate::FormList;
-use crate::Function;
+use crate::FunctionClause;
 use crate::Import;
 use crate::IncludeAttribute;
 use crate::MacroName;
@@ -244,7 +244,7 @@ impl<'a> Ctx<'a> {
         })?;
 
         let form_id = self.id_map.get_id(function);
-        let res = Function {
+        let res = FunctionClause {
             name,
             param_names,
             is_macro,
@@ -252,7 +252,9 @@ impl<'a> Ctx<'a> {
             form_id,
             separator: function.separator().map(|(s, t)| (s, t.text_range())),
         };
-        Some(FormIdx::Function(self.data.function_clauses.alloc(res)))
+        Some(FormIdx::FunctionClause(
+            self.data.function_clauses.alloc(res),
+        ))
     }
 
     fn lower_pp_directive(&mut self, pp: &ast::PreprocessorDirective) -> Option<FormIdx> {

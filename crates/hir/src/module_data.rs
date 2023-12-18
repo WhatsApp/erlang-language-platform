@@ -29,7 +29,7 @@ use crate::Callback;
 use crate::DefMap;
 use crate::Define;
 use crate::FormIdx;
-use crate::Function;
+use crate::FunctionClause;
 use crate::FunctionClauseId;
 use crate::InFile;
 use crate::InFileAstPtr;
@@ -105,14 +105,14 @@ impl Module {
 pub struct FunctionClauseDef {
     pub file: File,
     pub module: Option<ModuleName>,
-    pub function: Function,
+    pub function_clause: FunctionClause,
     pub function_clause_id: FunctionClauseId,
 }
 
 impl FunctionClauseDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> ast::FunDecl {
         let source_file = self.file.source(db);
-        self.function.form_id.get(&source_file)
+        self.function_clause.form_id.get(&source_file)
     }
 
     pub fn in_clause<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionClauseBody<T>
@@ -132,7 +132,7 @@ impl FunctionClauseDef {
     }
 
     pub fn form_id(&self) -> FormIdx {
-        FormIdx::Function(self.function_clause_id)
+        FormIdx::FunctionClause(self.function_clause_id)
     }
 }
 
@@ -144,7 +144,7 @@ pub struct FunctionDef {
     pub deprecated_desc: Option<DeprecatedDesc>,
     pub module: Option<ModuleName>,
     pub name: NameArity,
-    pub function: Vec<Function>,
+    pub function_clauses: Vec<FunctionClause>,
     pub function_clause_ids: Vec<FunctionClauseId>,
     pub function_id: FunctionDefId,
 }
@@ -152,7 +152,7 @@ pub struct FunctionDef {
 impl FunctionDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> Vec<ast::FunDecl> {
         let source_file = self.file.source(db);
-        self.function
+        self.function_clauses
             .iter()
             .map(|f| f.form_id.get(&source_file))
             .collect()

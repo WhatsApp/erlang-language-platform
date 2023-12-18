@@ -28,7 +28,7 @@ fn check(ra_fixture: &str, expect: Expect) {
         .forms()
         .iter()
         .flat_map(|&form_idx| match form_idx {
-            FormIdx::Function(function_id) => {
+            FormIdx::FunctionClause(function_id) => {
                 // We now have only one clause per function, with the
                 // FunctionDefId derived from the FunctionId of the
                 // first one. So print the whole thing when we have a

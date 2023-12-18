@@ -96,7 +96,7 @@ pub(crate) fn add_completions(
                     let function_name = na.name();
                     let def = def_map.get_function(na)?;
                     let args = def
-                        .function
+                        .function_clauses
                         .get(0)?
                         .param_names
                         .iter()
@@ -166,7 +166,7 @@ fn name_arity_to_call_completion(
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(helpers::format_call(na.name(), na.arity())), |def| {
             let arg_names = def
-                .function
+                .function_clauses
                 .get(0)?
                 .param_names
                 .iter()

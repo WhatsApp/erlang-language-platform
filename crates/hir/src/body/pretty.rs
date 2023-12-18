@@ -26,8 +26,8 @@ use crate::Expr;
 use crate::ExprId;
 use crate::FormList;
 use crate::FunType;
-use crate::Function;
 use crate::FunctionBody;
+use crate::FunctionClause;
 use crate::ListType;
 use crate::Literal;
 use crate::Pat;
@@ -45,7 +45,11 @@ use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
 
-pub fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody, form: &Function) -> String {
+pub fn print_function_clause(
+    db: &dyn MinInternDatabase,
+    body: &FunctionBody,
+    form: &FunctionClause,
+) -> String {
     let mut out = String::new();
 
     let mut sep = "";

@@ -29,70 +29,74 @@ pub(crate) fn missing_separator_semantic(
     let def_map = sema.def_map(file_id);
 
     def_map.get_functions().for_each(|(_, fun_def)| {
-        let n = fun_def.function.len();
-        fun_def.function.iter().enumerate().for_each(|(i, fun)| {
-            if i + 1 != n {
-                match fun.separator {
-                    Some((ClauseSeparator::Missing, range)) => {
-                        diagnostics.push(make_missing_diagnostic(
-                            range,
-                            ";",
-                            "missing_semi".to_string(),
-                        ));
-                    }
-
-                    Some((ClauseSeparator::Semi, _range)) => {}
-                    Some((ClauseSeparator::Dot, range)) => {
-                        diagnostics.push(make_unexpected_diagnostic(
-                            range,
-                            ".",
-                            "unexpected_dot".to_string(),
-                        ));
-                    }
-                    None => {
-                        let ast_fun = fun.form_id.get_ast(sema.db, file_id);
-                        if let Some(last_tok) = ast_fun.syntax().last_token() {
-                            let range = last_tok.text_range();
+        let n = fun_def.function_clauses.len();
+        fun_def
+            .function_clauses
+            .iter()
+            .enumerate()
+            .for_each(|(i, fun)| {
+                if i + 1 != n {
+                    match fun.separator {
+                        Some((ClauseSeparator::Missing, range)) => {
                             diagnostics.push(make_missing_diagnostic(
                                 range,
                                 ";",
                                 "missing_semi".to_string(),
-                            ))
-                        };
-                    }
-                }
-            } else {
-                match fun.separator {
-                    Some((ClauseSeparator::Missing, range)) => {
-                        diagnostics.push(make_missing_diagnostic(
-                            range,
-                            ".",
-                            "missing_dot".to_string(),
-                        ));
-                    }
+                            ));
+                        }
 
-                    Some((ClauseSeparator::Semi, range)) => {
-                        diagnostics.push(make_unexpected_diagnostic(
-                            range,
-                            ";",
-                            "unexpected_semi".to_string(),
-                        ));
+                        Some((ClauseSeparator::Semi, _range)) => {}
+                        Some((ClauseSeparator::Dot, range)) => {
+                            diagnostics.push(make_unexpected_diagnostic(
+                                range,
+                                ".",
+                                "unexpected_dot".to_string(),
+                            ));
+                        }
+                        None => {
+                            let ast_fun = fun.form_id.get_ast(sema.db, file_id);
+                            if let Some(last_tok) = ast_fun.syntax().last_token() {
+                                let range = last_tok.text_range();
+                                diagnostics.push(make_missing_diagnostic(
+                                    range,
+                                    ";",
+                                    "missing_semi".to_string(),
+                                ))
+                            };
+                        }
                     }
-                    Some((ClauseSeparator::Dot, _range)) => {}
-                    None => {
-                        let ast_fun = fun.form_id.get_ast(sema.db, file_id);
-                        if let Some(last_tok) = ast_fun.syntax().last_token() {
-                            let range = last_tok.text_range();
+                } else {
+                    match fun.separator {
+                        Some((ClauseSeparator::Missing, range)) => {
                             diagnostics.push(make_missing_diagnostic(
                                 range,
                                 ".",
                                 "missing_dot".to_string(),
-                            ))
-                        };
-                    }
-                };
-            }
-        })
+                            ));
+                        }
+
+                        Some((ClauseSeparator::Semi, range)) => {
+                            diagnostics.push(make_unexpected_diagnostic(
+                                range,
+                                ";",
+                                "unexpected_semi".to_string(),
+                            ));
+                        }
+                        Some((ClauseSeparator::Dot, _range)) => {}
+                        None => {
+                            let ast_fun = fun.form_id.get_ast(sema.db, file_id);
+                            if let Some(last_tok) = ast_fun.syntax().last_token() {
+                                let range = last_tok.text_range();
+                                diagnostics.push(make_missing_diagnostic(
+                                    range,
+                                    ".",
+                                    "missing_dot".to_string(),
+                                ))
+                            };
+                        }
+                    };
+                }
+            })
     });
 }
 

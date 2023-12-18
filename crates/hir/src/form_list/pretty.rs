@@ -27,7 +27,7 @@ use crate::Export;
 use crate::FaEntry;
 use crate::FormIdx;
 use crate::FormList;
-use crate::Function;
+use crate::FunctionClause;
 use crate::Import;
 use crate::IncludeAttribute;
 use crate::ModuleAttribute;
@@ -64,7 +64,7 @@ impl<'a> Printer<'a> {
     pub fn print_form(&mut self, form: FormIdx) -> fmt::Result {
         match form {
             FormIdx::ModuleAttribute(idx) => self.print_module_attribute(&self.forms[idx])?,
-            FormIdx::Function(idx) => self.print_function(&self.forms[idx])?,
+            FormIdx::FunctionClause(idx) => self.print_function_clause(&self.forms[idx])?,
             FormIdx::PPDirective(idx) => self.print_pp_directive(&self.forms[idx])?,
             FormIdx::PPCondition(idx) => self.print_pp_condition(&self.forms[idx], idx)?,
             FormIdx::Export(idx) => self.print_export(&self.forms[idx])?,
@@ -117,7 +117,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_function(&mut self, function: &Function) -> fmt::Result {
+    fn print_function_clause(&mut self, function: &FunctionClause) -> fmt::Result {
         let args = BlankArgs(function.name.arity());
         writeln!(
             self,

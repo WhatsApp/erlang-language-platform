@@ -290,7 +290,7 @@ impl<'db> Semantic<'db> {
         let form_list = self.db.file_form_list(file_id);
         let form = form_list.find_form(&form)?;
         match form {
-            FormIdx::Function(fun) => {
+            FormIdx::FunctionClause(fun) => {
                 let (body, map) = self
                     .db
                     .function_clause_body_with_source(InFile::new(file_id, fun));
@@ -359,7 +359,7 @@ impl<'db> Semantic<'db> {
         let form_list = self.db.file_form_list(file_id);
         let form = form_list.find_form(&form)?;
         match form {
-            FormIdx::Function(fun) => Some(fun),
+            FormIdx::FunctionClause(fun) => Some(fun),
             _ => None,
         }
     }
@@ -435,7 +435,7 @@ impl<'db> Semantic<'db> {
         let function_clause = expr.function_clause_id;
         let clause_scopes = self.db.function_clause_scopes(function_clause);
         let expr_id_in = expr.value;
-        let form_id = FormIdx::Function(function_clause.value);
+        let form_id = FormIdx::FunctionClause(function_clause.value);
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
@@ -750,7 +750,7 @@ impl<'db> Semantic<'db> {
                 FoldCtx::fold_expr(
                     strategy,
                     &function_clause_body.body,
-                    FormIdx::Function(function_clause_id.value),
+                    FormIdx::FunctionClause(function_clause_id.value),
                     *expr_id,
                     acc_inner,
                     callback,
@@ -821,7 +821,7 @@ impl<'db> Semantic<'db> {
         FoldCtx::fold_pat(
             Strategy::InvisibleMacros,
             &resolver.body.body,
-            FormIdx::Function(resolver.function_clause_id.value),
+            FormIdx::FunctionClause(resolver.function_clause_id.value),
             *pat_id,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
@@ -895,7 +895,7 @@ fn fold_function_clause_body<'a, T>(
         Some(from_macro) if strategy == Strategy::SurfaceOnly => FoldCtx::fold_exprs(
             strategy,
             &function_clause_body.body,
-            FormIdx::Function(function_clause_id),
+            FormIdx::FunctionClause(function_clause_id),
             &from_macro.args,
             initial,
             callback,
@@ -910,7 +910,7 @@ fn fold_function_clause_body<'a, T>(
                         FoldCtx::fold_pat(
                             strategy,
                             &function_clause_body.body,
-                            FormIdx::Function(function_clause_id),
+                            FormIdx::FunctionClause(function_clause_id),
                             *pat_id,
                             acc_inner,
                             callback,
@@ -923,7 +923,7 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::Function(function_clause_id),
+                        FormIdx::FunctionClause(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -939,7 +939,7 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::Function(function_clause_id),
+                        FormIdx::FunctionClause(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -1109,7 +1109,7 @@ impl<T: Clone> InFunctionBody<T> {
     }
 
     pub fn form_id(&self) -> FormIdx {
-        FormIdx::Function(self.body.clause_ids[0])
+        FormIdx::FunctionClause(self.body.clause_ids[0])
     }
 
     pub fn function_id(&self) -> FunctionDefId {
@@ -1284,7 +1284,7 @@ impl<T> InFunctionClauseBody<T> {
         FoldCtx::fold_expr(
             strategy,
             &self.body.body,
-            FormIdx::Function(self.function_clause_id.value),
+            FormIdx::FunctionClause(self.function_clause_id.value),
             expr_id,
             initial,
             callback,
@@ -1301,7 +1301,7 @@ impl<T> InFunctionClauseBody<T> {
         FoldCtx::fold_pat(
             strategy,
             &self.body.body,
-            FormIdx::Function(self.function_clause_id.value),
+            FormIdx::FunctionClause(self.function_clause_id.value),
             pat_id,
             initial,
             callback,

@@ -257,7 +257,7 @@ pub fn fold_file<'a, T>(
     let r = form_list.forms().iter().fold(initial, |r, &form_idx| {
         let r = form_callback(r, On::Entry, form_idx);
         let r = match form_idx {
-            FormIdx::Function(function_id) => {
+            FormIdx::FunctionClause(function_id) => {
                 // We now have only one clause per function, with the
                 // FunctionDefId derived from the FunctionId of the
                 // first one. So print the whole thing when we have a
@@ -1109,7 +1109,7 @@ bar() ->
         let r: u32 = FoldCtx::fold_expr(
             Strategy::InvisibleMacros,
             &body.body,
-            FormIdx::Function(function_clause_id.value),
+            FormIdx::FunctionClause(function_clause_id.value),
             body.clause.exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
@@ -1228,7 +1228,7 @@ bar() ->
         let r = FoldCtx::fold_expr(
             strategy,
             &function_body.body,
-            FormIdx::Function(function_clause_idx),
+            FormIdx::FunctionClause(function_clause_idx),
             function_body.clause.exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {
@@ -1739,7 +1739,7 @@ bar() ->
                                 acc
                             }
                         }
-                        Form::Function(_) => acc,
+                        Form::FunctionClause(_) => acc,
                         Form::PPDirective(_) => acc,
                         Form::PPCondition(_) => acc,
                         Form::Export(_) => acc,

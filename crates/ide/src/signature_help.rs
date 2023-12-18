@@ -210,7 +210,7 @@ fn build_signature_help(
         Some(m) => format_to!(help.signature, "{m}:{fun_name}("),
         None => format_to!(help.signature, "{fun_name}("),
     }
-    if let Some(function) = def.function.get(0) {
+    if let Some(function) = def.function_clauses.get(0) {
         let parameters = &function.param_names;
         for parameter in parameters {
             help.push_param(parameter);

@@ -44,7 +44,7 @@ pub(super) fn hints(
                         let arity = args.len() as u32;
                         let body = &function_body.body(clause_id);
                         if let Some(call_def) = target.resolve_call(arity, sema, file_id, body) {
-                            let param_names = &call_def.function[0].param_names;
+                            let param_names = &call_def.function_clauses[0].param_names;
                             for (param_name, arg) in param_names.iter().zip(args) {
                                 if should_hint(sema.db.upcast(), param_name, &body[arg]) {
                                     if let Some(arg_range) =

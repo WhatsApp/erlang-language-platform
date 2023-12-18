@@ -1178,7 +1178,7 @@ mod tests {
             .iter()
             .flat_map(|&form_idx| -> Option<String> {
                 match form_idx {
-                    FormIdx::Function(function_id) => {
+                    FormIdx::FunctionClause(function_id) => {
                         let body =
                             db.function_body(InFile::new(file_id, FunctionDefId::new(function_id)));
                         Some(body.tree_print(&db))
