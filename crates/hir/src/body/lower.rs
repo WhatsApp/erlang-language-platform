@@ -50,7 +50,7 @@ use crate::ExprId;
 use crate::ExprSource;
 use crate::FunType;
 use crate::FunctionBody;
-use crate::FunctionId;
+use crate::FunctionClauseId;
 use crate::IfClause;
 use crate::InFile;
 use crate::ListType;
@@ -196,7 +196,7 @@ impl<'a> Ctx<'a> {
     pub fn lower_function(
         mut self,
         function_id: InFile<FunctionDefId>,
-        clause_ids: Vec<FunctionId>,
+        clause_ids: Vec<FunctionClauseId>,
         function_asts: &[ast::FunDecl],
     ) -> (FunctionBody, Vec<Arc<BodySourceMap>>) {
         let mut source_maps = Vec::default();

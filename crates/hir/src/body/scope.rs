@@ -47,7 +47,7 @@ use crate::CRClause;
 use crate::ComprehensionBuilder;
 use crate::ExprId;
 use crate::FunctionClauseBody;
-use crate::FunctionId;
+use crate::FunctionClauseId;
 use crate::InFile;
 use crate::Name;
 use crate::PatId;
@@ -189,11 +189,11 @@ impl FunctionScopes {
 
     pub(crate) fn function_clause_scopes_query(
         db: &dyn MinDefDatabase,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> Arc<ExprScopes> {
-        let function_body = db.function_clause_body(function_id);
+        let function_clause_body = db.function_clause_body(function_clause_id);
         let anonymous_var = db.var(Name::ANONYMOUS);
-        Arc::new(ExprScopes::for_clause(&function_body, anonymous_var))
+        Arc::new(ExprScopes::for_clause(&function_clause_body, anonymous_var))
     }
 
     #[cfg(test)]

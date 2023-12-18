@@ -30,7 +30,7 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::AnyExpr;
 use hir::Expr;
-use hir::FunctionId;
+use hir::FunctionClauseId;
 use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
@@ -43,7 +43,8 @@ pub(crate) fn mutable_variable_bug(
     sema: &Semantic,
     file_id: FileId,
 ) -> Option<()> {
-    let mut bound_vars_by_function: FxHashMap<FunctionId, FxHashSet<&PatId>> = FxHashMap::default();
+    let mut bound_vars_by_function: FxHashMap<FunctionClauseId, FxHashSet<&PatId>> =
+        FxHashMap::default();
     let bound_vars = sema.bound_vars_in_pattern_diagnostic(file_id);
     bound_vars.iter().for_each(|(function_id, pat_id, _var)| {
         bound_vars_by_function
@@ -61,11 +62,11 @@ pub(crate) fn mutable_variable_bug(
         .get_function_clauses()
         .for_each(|(_, def)| {
             if def.file.file_id == file_id {
-                if let Some(bound_vars) = bound_vars_by_function.get(&def.function_id) {
+                if let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id) {
                     let in_clause = def.in_clause(sema.db, def);
                     in_clause.fold_clause(
                         Strategy::InvisibleMacros,
-                        def.function_id,
+                        def.function_clause_id,
                         (),
                         &mut |acc, ctx| {
                             if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {

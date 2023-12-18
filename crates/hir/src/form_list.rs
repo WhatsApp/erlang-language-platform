@@ -108,8 +108,8 @@ impl FormList {
         self.data.includes.iter()
     }
 
-    pub fn functions(&self) -> impl Iterator<Item = (FunctionId, &Function)> {
-        self.data.functions.iter()
+    pub fn function_clauses(&self) -> impl Iterator<Item = (FunctionClauseId, &Function)> {
+        self.data.function_clauses.iter()
     }
 
     pub fn exports(&self) -> impl Iterator<Item = (ExportId, &Export)> {
@@ -203,7 +203,7 @@ pub(crate) struct FormListData {
     // have many due to errors or conditional compilation
     module_attribute: Arena<ModuleAttribute>,
     includes: Arena<IncludeAttribute>,
-    functions: Arena<Function>,
+    function_clauses: Arena<Function>,
     pub defines: Arena<Define>,
     pub pp_directives: Arena<PPDirective>,
     pp_conditions: Arena<PPCondition>,
@@ -230,7 +230,7 @@ impl FormListData {
         let FormListData {
             module_attribute,
             includes,
-            functions,
+            function_clauses,
             defines,
             pp_directives,
             pp_conditions,
@@ -252,7 +252,7 @@ impl FormListData {
         } = self;
         module_attribute.shrink_to_fit();
         includes.shrink_to_fit();
-        functions.shrink_to_fit();
+        function_clauses.shrink_to_fit();
         defines.shrink_to_fit();
         pp_directives.shrink_to_fit();
         pp_conditions.shrink_to_fit();
@@ -277,7 +277,7 @@ impl FormListData {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum FormIdx {
     ModuleAttribute(ModuleAttributeId),
-    Function(FunctionId),
+    Function(FunctionClauseId),
     PPDirective(PPDirectiveId),
     PPCondition(PPConditionId),
     Export(ExportId),
@@ -318,7 +318,7 @@ pub enum Form<'a> {
 
 pub type ModuleAttributeId = Idx<ModuleAttribute>;
 pub type IncludeAttributeId = Idx<IncludeAttribute>;
-pub type FunctionId = Idx<Function>;
+pub type FunctionClauseId = Idx<Function>;
 pub type DefineId = Idx<Define>;
 pub type PPDirectiveId = Idx<PPDirective>;
 pub type PPConditionId = Idx<PPCondition>;
@@ -354,11 +354,11 @@ impl Index<IncludeAttributeId> for FormList {
     }
 }
 
-impl Index<FunctionId> for FormList {
+impl Index<FunctionClauseId> for FormList {
     type Output = Function;
 
-    fn index(&self, index: FunctionId) -> &Self::Output {
-        &self.data.functions[index]
+    fn index(&self, index: FunctionClauseId) -> &Self::Output {
+        &self.data.function_clauses[index]
     }
 }
 

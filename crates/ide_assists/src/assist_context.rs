@@ -37,8 +37,8 @@ use hir::ClauseId;
 use hir::Expr;
 use hir::ExprId;
 use hir::FormId;
+use hir::FunctionClauseId;
 use hir::FunctionDefId;
-use hir::FunctionId;
 use hir::InFile;
 use hir::InFileAstPtr;
 use hir::InFunctionClauseBody;
@@ -178,14 +178,14 @@ impl<'a> AssistContext<'a> {
         &self,
         syntax: &SyntaxNode,
         file_id: FileId,
-    ) -> Option<(InFile<FunctionId>, ClauseId, InFunctionClauseBody<()>)> {
-        let function_id = self
+    ) -> Option<(InFile<FunctionClauseId>, ClauseId, InFunctionClauseBody<()>)> {
+        let function_clause_id = self
             .sema
-            .find_enclosing_function_id(self.file_id(), syntax)?;
-        let infile_function = InFile::new(self.file_id(), function_id);
+            .find_enclosing_function_clause_id(self.file_id(), syntax)?;
+        let infile_function = InFile::new(self.file_id(), function_clause_id);
         let (clause_id, body) = self.sema.to_clause_body(InFile::new(file_id, syntax))?;
         let in_clause =
-            InFunctionClauseBody::new(body, InFile::new(file_id, function_id), None, ());
+            InFunctionClauseBody::new(body, InFile::new(file_id, function_clause_id), None, ());
         Some((infile_function, clause_id, in_clause))
     }
 

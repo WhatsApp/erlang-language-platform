@@ -1036,7 +1036,7 @@ mod tests {
     use crate::Expr;
     use crate::FormIdx;
     use crate::FunctionClauseBody;
-    use crate::FunctionId;
+    use crate::FunctionClauseId;
     use crate::InFile;
     use crate::Literal;
     use crate::On;
@@ -1087,12 +1087,12 @@ bar() ->
         let source_file = in_file.value;
         let ast_var = algo::find_node_at_offset::<ast::Var>(source_file.syntax(), offset).unwrap();
 
-        let function_id: InFile<FunctionId> = InFile {
+        let function_clause_id: InFile<FunctionClauseId> = InFile {
             file_id,
             value: Idx::from_raw(RawIdx::from(0)),
         };
         let (body, body_map) =
-            FunctionClauseBody::function_clause_body_with_source_query(&db, function_id);
+            FunctionClauseBody::function_clause_body_with_source_query(&db, function_clause_id);
 
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast_var.clone()));
         let expr_id = body_map
@@ -1109,7 +1109,7 @@ bar() ->
         let r: u32 = FoldCtx::fold_expr(
             Strategy::InvisibleMacros,
             &body.body,
-            FormIdx::Function(function_id.value),
+            FormIdx::Function(function_clause_id.value),
             body.clause.exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
@@ -1220,15 +1220,15 @@ bar() ->
         let hir_atom = to_atom(&sema, InFile::new(file_id, &ast_atom)).unwrap();
 
         let form_list = sema.form_list(file_id);
-        let (function_idx, _) = form_list.functions().next().unwrap();
+        let (function_clause_idx, _) = form_list.function_clauses().next().unwrap();
         let function_body = sema
             .db
-            .function_clause_body(InFile::new(file_id, function_idx));
+            .function_clause_body(InFile::new(file_id, function_clause_idx));
 
         let r = FoldCtx::fold_expr(
             strategy,
             &function_body.body,
-            FormIdx::Function(function_idx),
+            FormIdx::Function(function_clause_idx),
             function_body.clause.exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {

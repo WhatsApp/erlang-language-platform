@@ -40,8 +40,8 @@ use crate::DefineDef;
 use crate::File;
 use crate::FormIdx;
 use crate::FunctionClauseDef;
+use crate::FunctionClauseId;
 use crate::FunctionDef;
-use crate::FunctionId;
 use crate::InFile;
 use crate::MacroName;
 use crate::Name;
@@ -56,12 +56,12 @@ pub struct DefMap {
     _c: Count<Self>,
     included: FxHashSet<FileId>,
 
-    function_clauses: FxHashMap<FunctionId, FunctionClauseDef>,
+    function_clauses: FxHashMap<FunctionClauseId, FunctionClauseDef>,
     functions: FxHashMap<InFile<FunctionDefId>, FunctionDef>,
 
-    function_clauses_by_fa: FxHashMap<NameArity, FunctionId>,
+    function_clauses_by_fa: FxHashMap<NameArity, FunctionClauseId>,
     functions_by_fa: FxHashMap<NameArity, InFile<FunctionDefId>>,
-    function_by_function_id: FxHashMap<FunctionId, FunctionDefId>,
+    function_by_function_id: FxHashMap<FunctionClauseId, FunctionDefId>,
 
     specs: FxHashMap<NameArity, SpecDef>,
     exported_functions: FxHashSet<NameArity>,
@@ -78,7 +78,7 @@ pub struct DefMap {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionDefId(FunctionId);
+pub struct FunctionDefId(FunctionClauseId);
 
 impl FunctionDefId {
     /// A `FunctionDefId` wraps the `FunctionId` of the first fun_decl
@@ -89,7 +89,7 @@ impl FunctionDefId {
     }
 
     // #[cfg(test)]
-    pub fn new(function_id: FunctionId) -> FunctionDefId {
+    pub fn new(function_id: FunctionClauseId) -> FunctionDefId {
         FunctionDefId(function_id)
     }
 }
@@ -153,7 +153,7 @@ impl DefMap {
                         file,
                         module: module.clone(),
                         function,
-                        function_id: idx,
+                        function_clause_id: idx,
                     };
                     def_map.function_clauses.insert(idx, function_def);
                     let function_clause_id = idx;
@@ -349,7 +349,7 @@ impl DefMap {
         self.functions.get(function_id)
     }
 
-    pub fn function_def_id(&self, function_id: &FunctionId) -> Option<&FunctionDefId> {
+    pub fn function_def_id(&self, function_id: &FunctionClauseId) -> Option<&FunctionDefId> {
         self.function_by_function_id.get(function_id)
     }
 
@@ -394,13 +394,15 @@ impl DefMap {
         })
     }
 
-    pub fn get_function_clauses(&self) -> impl Iterator<Item = (&FunctionId, &FunctionClauseDef)> {
+    pub fn get_function_clauses(
+        &self,
+    ) -> impl Iterator<Item = (&FunctionClauseId, &FunctionClauseDef)> {
         self.function_clauses.iter()
     }
 
-    pub fn get_function_clauses_ordered(&self) -> Vec<(FunctionId, FunctionClauseDef)> {
+    pub fn get_function_clauses_ordered(&self) -> Vec<(FunctionClauseId, FunctionClauseDef)> {
         // We can't use a BTreeMap for this because of the lack of Ord for Idx<_>.
-        let mut v: Vec<(FunctionId, FunctionClauseDef)> = Vec::from_iter(
+        let mut v: Vec<(FunctionClauseId, FunctionClauseDef)> = Vec::from_iter(
             self.function_clauses
                 .iter()
                 .map(|(k, v)| ((*k).clone(), (*v).clone())),
@@ -630,7 +632,7 @@ impl DefMap {
             .collect::<Vec<_>>();
         let function_clause_ids = current
             .iter()
-            .map(|(_, clause)| clause.function_id)
+            .map(|(_, clause)| clause.function_clause_id)
             .collect::<Vec<_>>();
         let function_id = FunctionDefId(function_clause_ids[0]);
         let na = (current_na).clone();

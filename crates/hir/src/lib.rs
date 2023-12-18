@@ -94,7 +94,7 @@ pub use form_list::FormId;
 pub use form_list::FormIdx;
 pub use form_list::FormList;
 pub use form_list::Function;
-pub use form_list::FunctionId;
+pub use form_list::FunctionClauseId;
 pub use form_list::Import;
 pub use form_list::ImportId;
 pub use form_list::IncludeAttribute;

@@ -30,7 +30,7 @@ use crate::DefMap;
 use crate::Define;
 use crate::FormIdx;
 use crate::Function;
-use crate::FunctionId;
+use crate::FunctionClauseId;
 use crate::InFile;
 use crate::InFileAstPtr;
 use crate::InFunctionBody;
@@ -106,7 +106,7 @@ pub struct FunctionClauseDef {
     pub file: File,
     pub module: Option<ModuleName>,
     pub function: Function,
-    pub function_id: FunctionId,
+    pub function_clause_id: FunctionClauseId,
 }
 
 impl FunctionClauseDef {
@@ -119,18 +119,20 @@ impl FunctionClauseDef {
     where
         T: Clone,
     {
-        let function_body =
-            db.function_clause_body(InFile::new(self.file.file_id, self.function_id.clone()));
+        let function_clause_body = db.function_clause_body(InFile::new(
+            self.file.file_id,
+            self.function_clause_id.clone(),
+        ));
         InFunctionClauseBody::new(
-            function_body,
-            InFile::new(self.file.file_id, self.function_id.clone()),
+            function_clause_body,
+            InFile::new(self.file.file_id, self.function_clause_id.clone()),
             None,
             value,
         )
     }
 
     pub fn form_id(&self) -> FormIdx {
-        FormIdx::Function(self.function_id)
+        FormIdx::Function(self.function_clause_id)
     }
 }
 
@@ -143,7 +145,7 @@ pub struct FunctionDef {
     pub module: Option<ModuleName>,
     pub name: NameArity,
     pub function: Vec<Function>,
-    pub function_clause_ids: Vec<FunctionId>,
+    pub function_clause_ids: Vec<FunctionClauseId>,
     pub function_id: FunctionDefId,
 }
 

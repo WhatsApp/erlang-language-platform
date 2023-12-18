@@ -65,7 +65,9 @@ pub(crate) fn implement_behaviour(acc: &mut Assists, ctx: &AssistContext) -> Opt
     behaviour_forms
         .callback_attributes()
         .for_each(|(idx, callback)| {
-            let implemented = our_forms.functions().find(|(_, f)| f.name == callback.name);
+            let implemented = our_forms
+                .function_clauses()
+                .find(|(_, f)| f.name == callback.name);
             match implemented {
                 Some((_idx, fun)) => {
                     if module_def_map.is_callback_optional(&callback.name) {

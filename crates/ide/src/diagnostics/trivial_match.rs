@@ -62,7 +62,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
 
     in_clause.fold_clause(
         Strategy::InvisibleMacros,
-        def.function_id,
+        def.function_clause_id,
         (),
         &mut |_acc, ctx| {
             if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {

@@ -58,10 +58,10 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         // referring to this one.
 
         let file_id = ctx.frange.file_id;
-        let function_id = ctx
+        let function_clause_id = ctx
             .sema
-            .find_enclosing_function_id(ctx.file_id(), var.syntax())?;
-        let infile_function = InFile::new(ctx.file_id(), function_id);
+            .find_enclosing_function_clause_id(ctx.file_id(), var.syntax())?;
+        let infile_function = InFile::new(ctx.file_id(), function_clause_id);
         let (_body, body_map) = ctx.db().function_clause_body_with_source(infile_function);
         let vars = ctx.sema.fold_clause(
             Strategy::InvisibleMacros,

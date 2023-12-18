@@ -455,14 +455,15 @@ impl ToDef for ast::Var {
     type Def = DefinitionOrReference<VarDef, Vec<VarDef>>;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let function_id = sema.find_enclosing_function_id(ast.file_id, ast.value.syntax())?;
-        let in_clause = sema.to_function_clause_body(ast.with_value(function_id));
+        let function_clause_id =
+            sema.find_enclosing_function_clause_id(ast.file_id, ast.value.syntax())?;
+        let in_clause = sema.to_function_clause_body(ast.with_value(function_clause_id));
         let (body, body_map) = sema
             .db
-            .function_clause_body_with_source(ast.with_value(function_id));
+            .function_clause_body_with_source(ast.with_value(function_clause_id));
         let scopes = sema.db.function_clause_scopes(InFile {
             file_id: ast.file_id,
-            value: function_id,
+            value: function_clause_id,
         });
         let resolver = Resolver::new(scopes.clone());
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast.value.clone()));
@@ -666,7 +667,7 @@ impl ToDef for ast::FunctionClause {
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let form_list = sema.form_list(ast.file_id);
-        let idx = sema.find_enclosing_function_id(ast.file_id, ast.value.syntax())?;
+        let idx = sema.find_enclosing_function_clause_id(ast.file_id, ast.value.syntax())?;
         let name = &form_list[idx].name;
         sema.db.def_map(ast.file_id).get_function(name).cloned()
     }

@@ -61,8 +61,8 @@ use crate::File;
 use crate::FormIdx;
 use crate::FormList;
 use crate::FunctionBody;
+use crate::FunctionClauseId;
 use crate::FunctionDef;
-use crate::FunctionId;
 use crate::InFile;
 use crate::InFileAstPtr;
 use crate::Literal;
@@ -123,34 +123,36 @@ impl<'db> Semantic<'db> {
         ToDef::to_def(self, ast)
     }
 
-    pub fn function_def_id(&self, function_id: &InFile<FunctionId>) -> Option<FunctionDefId> {
+    pub fn function_def_id(&self, function_id: &InFile<FunctionClauseId>) -> Option<FunctionDefId> {
         let def_map = self.def_map(function_id.file_id);
         def_map.function_def_id(&function_id.value).cloned()
     }
 
     pub fn to_expr(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<ExprId>> {
-        let function_id = self.find_enclosing_function_id(expr.file_id, expr.value.syntax())?;
+        let function_id =
+            self.find_enclosing_function_clause_id(expr.file_id, expr.value.syntax())?;
         let (body, body_map) = self
             .db
             .function_clause_body_with_source(expr.with_value(function_id));
         let expr_id = &body_map.expr_id(expr)?;
         Some(InFunctionClauseBody {
             body,
-            function_id: expr.with_value(function_id),
+            function_clause_id: expr.with_value(function_id),
             body_map: Some(body_map).into(),
             value: *expr_id,
         })
     }
 
     pub fn to_pat(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<PatId>> {
-        let function_id = self.find_enclosing_function_id(expr.file_id, expr.value.syntax())?;
+        let function_id =
+            self.find_enclosing_function_clause_id(expr.file_id, expr.value.syntax())?;
         let (body, body_map) = self
             .db
             .function_clause_body_with_source(expr.with_value(function_id));
         let pat_id = &body_map.pat_id(expr)?;
         Some(InFunctionClauseBody {
             body,
-            function_id: expr.with_value(function_id),
+            function_clause_id: expr.with_value(function_id),
             body_map: Some(body_map).into(),
             value: *pat_id,
         })
@@ -163,12 +165,12 @@ impl<'db> Semantic<'db> {
 
     pub fn to_function_clause_body(
         &self,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> InFunctionClauseBody<()> {
-        let (body, body_map) = self.db.function_clause_body_with_source(function_id);
+        let (body, body_map) = self.db.function_clause_body_with_source(function_clause_id);
         InFunctionClauseBody {
             body,
-            function_id,
+            function_clause_id,
             body_map: Some(body_map).into(),
             value: (),
         }
@@ -242,7 +244,8 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn resolve_var_to_pats(&self, var_in: InFile<&ast::Var>) -> Option<Vec<PatId>> {
-        let function_id = self.find_enclosing_function_id(var_in.file_id, var_in.value.syntax())?;
+        let function_id =
+            self.find_enclosing_function_clause_id(var_in.file_id, var_in.value.syntax())?;
         let resolver = self.ast_clause_resolver(var_in.with_value(function_id))?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
         if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
@@ -264,8 +267,9 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn scope_for(&self, var_in: InFile<&ast::Var>) -> Option<(Resolver, ScopeId)> {
-        let function_id = self.find_enclosing_function_id(var_in.file_id, var_in.value.syntax())?;
-        let resolver = self.ast_clause_resolver(var_in.with_value(function_id))?;
+        let function_clause_id =
+            self.find_enclosing_function_clause_id(var_in.file_id, var_in.value.syntax())?;
+        let resolver = self.ast_clause_resolver(var_in.with_value(function_clause_id))?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
         if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
             let scope = resolver.value.scopes.scope_for_expr(expr_id)?;
@@ -342,15 +346,15 @@ impl<'db> Semantic<'db> {
         file_id: FileId,
         syntax: &SyntaxNode,
     ) -> Option<FunctionDefId> {
-        let function_id = self.find_enclosing_function_id(file_id, syntax)?;
-        self.function_def_id(&InFile::new(file_id, function_id))
+        let function_clause_id = self.find_enclosing_function_clause_id(file_id, syntax)?;
+        self.function_def_id(&InFile::new(file_id, function_clause_id))
     }
 
-    pub fn find_enclosing_function_id(
+    pub fn find_enclosing_function_clause_id(
         &self,
         file_id: FileId,
         syntax: &SyntaxNode,
-    ) -> Option<FunctionId> {
+    ) -> Option<FunctionClauseId> {
         let form = syntax.ancestors().find_map(ast::Form::cast)?;
         let form_list = self.db.file_form_list(file_id);
         let form = form_list.find_form(&form)?;
@@ -395,8 +399,8 @@ impl<'db> Semantic<'db> {
 
     /// Return the free and bound variables in a given ast expression.
     pub fn free_vars_ast(&self, file_id: FileId, expr: &ast::Expr) -> Option<ScopeAnalysis> {
-        let function_id = self.find_enclosing_function_id(file_id, expr.syntax())?;
-        let infile_function_id = InFile::new(file_id, function_id);
+        let function_clause_id = self.find_enclosing_function_clause_id(file_id, expr.syntax())?;
+        let infile_function_id = InFile::new(file_id, function_clause_id);
 
         let (body, source_map) = self.db.function_clause_body_with_source(infile_function_id);
         let expr_id_in = source_map.expr_id(InFile {
@@ -405,7 +409,7 @@ impl<'db> Semantic<'db> {
         })?;
         self.free_vars(&InFunctionClauseBody {
             body,
-            function_id: infile_function_id,
+            function_clause_id: infile_function_id,
             body_map: Some(source_map).into(),
             value: expr_id_in,
         })
@@ -420,7 +424,7 @@ impl<'db> Semantic<'db> {
         &self,
         function_id: &InFile<FunctionDefId>,
         clause_id: ClauseId,
-    ) -> Option<FunctionId> {
+    ) -> Option<FunctionClauseId> {
         let function = self.function_def(function_id)?;
         let n: u32 = clause_id.into_raw().into();
         function.function_clause_ids.get(n as usize).cloned()
@@ -428,11 +432,10 @@ impl<'db> Semantic<'db> {
 
     /// Return the free and bound variables in a given expression.
     pub fn free_vars(&self, expr: &InFunctionClauseBody<ExprId>) -> Option<ScopeAnalysis> {
-        let function = expr.function_id;
-        let scopes = self.db.function_clause_scopes(function);
+        let function_clause = expr.function_clause_id;
+        let clause_scopes = self.db.function_clause_scopes(function_clause);
         let expr_id_in = expr.value;
-        let form_id = FormIdx::Function(function.value);
-        let clause_scopes = scopes;
+        let form_id = FormIdx::Function(function_clause.value);
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
@@ -497,20 +500,20 @@ impl<'db> Semantic<'db> {
         file_id: FileId,
         syntax: &SyntaxNode,
     ) -> Option<InFunctionClauseBody<Resolver>> {
-        let function_id = self.find_enclosing_function_id(file_id, syntax)?;
-        self.ast_clause_resolver(InFile::new(file_id, function_id))
+        let function_clause_id = self.find_enclosing_function_clause_id(file_id, syntax)?;
+        self.ast_clause_resolver(InFile::new(file_id, function_clause_id))
     }
 
     pub fn ast_clause_resolver(
         &self,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> Option<InFunctionClauseBody<Resolver>> {
-        let body = self.db.function_clause_body(function_id);
-        let scopes = self.db.function_clause_scopes(function_id);
+        let body = self.db.function_clause_body(function_clause_id);
+        let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
         Some(InFunctionClauseBody {
             body,
-            function_id,
+            function_clause_id,
             body_map: None.into(), // We may not need it, do not get it now
             value: resolver,
         })
@@ -518,14 +521,14 @@ impl<'db> Semantic<'db> {
 
     pub fn clause_resolver(
         &self,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> Option<InFunctionClauseBody<Resolver>> {
-        let body = self.db.function_clause_body(function_id);
-        let scopes = self.db.function_clause_scopes(function_id);
+        let body = self.db.function_clause_body(function_clause_id);
+        let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
         Some(InFunctionClauseBody {
             body,
-            function_id,
+            function_clause_id,
             body_map: None.into(), // We may not need it, do not get it now
             value: resolver,
         })
@@ -734,11 +737,11 @@ impl<'db> Semantic<'db> {
     pub fn fold_clause<'a, T>(
         &'a self,
         strategy: Strategy,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        let function_clause_body = self.db.function_clause_body(function_id);
+        let function_clause_body = self.db.function_clause_body(function_clause_id);
         function_clause_body
             .clause
             .exprs
@@ -747,7 +750,7 @@ impl<'db> Semantic<'db> {
                 FoldCtx::fold_expr(
                     strategy,
                     &function_clause_body.body,
-                    FormIdx::Function(function_id.value),
+                    FormIdx::Function(function_clause_id.value),
                     *expr_id,
                     acc_inner,
                     callback,
@@ -761,7 +764,7 @@ impl<'db> Semantic<'db> {
     pub fn bound_vars_in_pattern_diagnostic(
         &self,
         file_id: FileId,
-    ) -> FxHashSet<(InFile<FunctionId>, PatId, ast::Var)> {
+    ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
         let def_map = self.def_map(file_id);
         let mut res = FxHashSet::default();
         for (function_id, def) in def_map.get_function_clauses() {
@@ -812,13 +815,13 @@ impl<'db> Semantic<'db> {
         pat_id: &PatId,
         resolver: &mut InFunctionClauseBody<Resolver>,
         file_id: FileId,
-    ) -> FxHashSet<(InFile<FunctionId>, PatId, ast::Var)> {
+    ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
         let parse = self.parse(file_id);
         let body_map = &resolver.get_body_map(self.db);
         FoldCtx::fold_pat(
             Strategy::InvisibleMacros,
             &resolver.body.body,
-            FormIdx::Function(resolver.function_id.value),
+            FormIdx::Function(resolver.function_clause_id.value),
             *pat_id,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
@@ -834,7 +837,11 @@ impl<'db> Semantic<'db> {
                                             ))) = pat_ptr.to_node(&parse)
                                             {
                                                 if var.syntax().text() != "_" {
-                                                    acc.insert((resolver.function_id, pat_id, var));
+                                                    acc.insert((
+                                                        resolver.function_clause_id,
+                                                        pat_id,
+                                                        var,
+                                                    ));
                                                 }
                                             }
                                         };
@@ -880,7 +887,7 @@ fn fold_function_body<'a, T>(
 fn fold_function_clause_body<'a, T>(
     strategy: Strategy,
     function_clause_body: &FunctionClauseBody,
-    function_id: FunctionId,
+    function_clause_id: FunctionClauseId,
     initial: T,
     callback: AnyCallBack<'a, T>,
 ) -> T {
@@ -888,7 +895,7 @@ fn fold_function_clause_body<'a, T>(
         Some(from_macro) if strategy == Strategy::SurfaceOnly => FoldCtx::fold_exprs(
             strategy,
             &function_clause_body.body,
-            FormIdx::Function(function_id),
+            FormIdx::Function(function_clause_id),
             &from_macro.args,
             initial,
             callback,
@@ -903,7 +910,7 @@ fn fold_function_clause_body<'a, T>(
                         FoldCtx::fold_pat(
                             strategy,
                             &function_clause_body.body,
-                            FormIdx::Function(function_id),
+                            FormIdx::Function(function_clause_id),
                             *pat_id,
                             acc_inner,
                             callback,
@@ -916,7 +923,7 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::Function(function_id),
+                        FormIdx::Function(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -932,7 +939,7 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::Function(function_id),
+                        FormIdx::Function(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -948,7 +955,7 @@ struct BoundVarsInPat<'a> {
     sema: &'a Semantic<'a>,
     resolver: &'a mut InFunctionClauseBody<Resolver>,
     file_id: FileId,
-    res: &'a mut FxHashSet<(InFile<FunctionId>, PatId, ast::Var)>,
+    res: &'a mut FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)>,
 }
 
 impl<'a> BoundVarsInPat<'a> {
@@ -956,7 +963,7 @@ impl<'a> BoundVarsInPat<'a> {
         sema: &'a Semantic<'a>,
         resolver: &'a mut InFunctionClauseBody<Resolver>,
         file_id: FileId,
-        res: &'a mut FxHashSet<(InFile<FunctionId>, PatId, ast::Var)>,
+        res: &'a mut FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)>,
     ) -> Self {
         BoundVarsInPat {
             sema,
@@ -1184,7 +1191,7 @@ impl<T> Index<ClauseId> for InFunctionBody<T> {
 #[derive(Debug, Clone)]
 pub struct InFunctionClauseBody<T> {
     pub body: Arc<FunctionClauseBody>,
-    pub function_id: InFile<FunctionId>,
+    pub function_clause_id: InFile<FunctionClauseId>,
     // cache body_map if we already have it when wrapping the value.
     // This field should go away once we fully use the hir API only
     body_map: RefCell<Option<Arc<BodySourceMap>>>,
@@ -1194,13 +1201,13 @@ pub struct InFunctionClauseBody<T> {
 impl<T> InFunctionClauseBody<T> {
     pub fn new(
         body: Arc<FunctionClauseBody>,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
         body_map: Option<Arc<BodySourceMap>>,
         value: T,
     ) -> InFunctionClauseBody<T> {
         InFunctionClauseBody {
             body,
-            function_id,
+            function_clause_id,
             body_map: body_map.into(),
             value,
         }
@@ -1213,22 +1220,22 @@ impl<T> InFunctionClauseBody<T> {
     pub fn with_value<U>(&self, value: U) -> InFunctionClauseBody<U> {
         InFunctionClauseBody {
             body: self.body.clone(),
-            function_id: self.function_id,
+            function_clause_id: self.function_clause_id,
             body_map: self.body_map.clone(),
             value,
         }
     }
 
     pub fn file_id(&self) -> FileId {
-        self.function_id.file_id
+        self.function_clause_id.file_id
     }
 
     pub fn ast_fun_decl(&self, db: &dyn MinDefDatabase) -> ast::FunDecl {
-        let form_list = db.file_form_list(self.function_id.file_id);
-        let function = &form_list[self.function_id.value];
+        let form_list = db.file_form_list(self.function_clause_id.file_id);
+        let function = &form_list[self.function_clause_id.value];
         let function_ast = function
             .form_id
-            .get(&self.function_id.file_syntax(db.upcast()));
+            .get(&self.function_clause_id.file_syntax(db.upcast()));
         function_ast
     }
 
@@ -1246,7 +1253,7 @@ impl<T> InFunctionClauseBody<T> {
             //https://stackoverflow.com/questions/30243606/why-is-a-borrow-still-held-in-the-else-block-of-an-if-let
             return Arc::clone(body_map);
         }
-        let (_body, body_map) = db.function_clause_body_with_source(self.function_id);
+        let (_body, body_map) = db.function_clause_body_with_source(self.function_clause_id);
         *self.body_map.borrow_mut() = Some(body_map.clone());
         body_map
     }
@@ -1306,11 +1313,11 @@ impl<T> InFunctionClauseBody<T> {
     pub fn fold_clause<'a, R>(
         &self,
         strategy: Strategy,
-        function_id: FunctionId,
+        function_clause_id: FunctionClauseId,
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        fold_function_clause_body(strategy, &self.body, function_id, initial, callback)
+        fold_function_clause_body(strategy, &self.body, function_clause_id, initial, callback)
     }
 
     pub fn range(&self, db: &dyn MinDefDatabase) -> TextRange {
@@ -1341,7 +1348,7 @@ impl<T> InFunctionClauseBody<T> {
 
     fn resolver(&self, sema: &Semantic<'_>) -> Resolver {
         // Should this be a field in InFunctionClauseBody?
-        let clause_scopes = sema.db.function_clause_scopes(self.function_id);
+        let clause_scopes = sema.db.function_clause_scopes(self.function_clause_id);
         Resolver::new(clause_scopes.clone())
     }
 
@@ -1382,7 +1389,7 @@ impl<T> InFunctionClauseBody<T> {
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
         match &self[expr_id] {
             Expr::Var(_) => {
-                let clause_scopes = sema.db.function_clause_scopes(self.function_id);
+                let clause_scopes = sema.db.function_clause_scopes(self.function_clause_id);
                 let resolver = Resolver::new(clause_scopes.clone());
                 let (var, original_pat_id, pat_ids) = {
                     let var = self[expr_id].as_var()?;
@@ -1700,11 +1707,15 @@ mod tests {
         let (_clause_id, clause) = sema
             .to_clause_body(InFile::new(position.file_id, &node))
             .unwrap();
-        let function_id = sema
-            .find_enclosing_function_id(position.file_id, &node)
+        let function_clause_id = sema
+            .find_enclosing_function_clause_id(position.file_id, &node)
             .unwrap();
-        let in_clause =
-            InFunctionClauseBody::new(clause, InFile::new(position.file_id, function_id), None, ());
+        let in_clause = InFunctionClauseBody::new(
+            clause,
+            InFile::new(position.file_id, function_clause_id),
+            None,
+            (),
+        );
         let ast = in_clause.ast_fun_decl(&db);
         expect.assert_debug_eq(&ast);
     }

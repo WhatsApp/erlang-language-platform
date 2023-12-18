@@ -43,7 +43,7 @@ use crate::FoldCtx;
 use crate::FormIdx;
 use crate::FormList;
 use crate::Function;
-use crate::FunctionId;
+use crate::FunctionClauseId;
 use crate::InFile;
 use crate::Literal;
 use crate::Name;
@@ -89,7 +89,7 @@ pub struct UnexpandedIndex<'a>(pub &'a Body);
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub function_id: InFile<FunctionDefId>,
-    pub clause_ids: Vec<FunctionId>,
+    pub clause_ids: Vec<FunctionClauseId>,
     pub clauses: Arena<Arc<FunctionClauseBody>>,
 }
 
@@ -269,7 +269,7 @@ impl FunctionBody {
 impl FunctionClauseBody {
     pub(crate) fn function_clause_body_with_source_query(
         db: &dyn MinDefDatabase,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
         fn empty() -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
             (
@@ -283,11 +283,13 @@ impl FunctionClauseBody {
             )
         }
 
-        let form_list = db.file_form_list(function_id.file_id);
-        let function = &form_list[function_id.value];
-        let function_ast = function.form_id.get(&function_id.file_syntax(db.upcast()));
+        let form_list = db.file_form_list(function_clause_id.file_id);
+        let function = &form_list[function_clause_id.value];
+        let function_ast = function
+            .form_id
+            .get(&function_clause_id.file_syntax(db.upcast()));
         if let Some(clause_ast) = function_ast.clause() {
-            let mut ctx = lower::Ctx::new(db, function_id.file_id);
+            let mut ctx = lower::Ctx::new(db, function_clause_id.file_id);
             ctx.set_function_info(&function.name);
             if let Some((body, source_map)) =
                 ctx.lower_clause_or_macro_body(clause_ast, None).next()

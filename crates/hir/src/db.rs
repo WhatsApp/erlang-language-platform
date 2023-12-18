@@ -37,7 +37,7 @@ use crate::DefineId;
 use crate::FormList;
 use crate::FunctionBody;
 use crate::FunctionClauseBody;
-use crate::FunctionId;
+use crate::FunctionClauseId;
 use crate::InFile;
 use crate::InFileAstPtr;
 use crate::IncludeAttributeId;
@@ -66,7 +66,7 @@ pub trait MinDefDatabase:
     #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_query)]
     fn function_clause_body_with_source(
         &self,
-        function_id: InFile<FunctionId>,
+        function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
     #[salsa::invoke(RecordBody::record_body_with_source_query)]
@@ -111,7 +111,10 @@ pub trait MinDefDatabase:
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
     fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
-    fn function_clause_body(&self, function_id: InFile<FunctionId>) -> Arc<FunctionClauseBody>;
+    fn function_clause_body(
+        &self,
+        function_clause_id: InFile<FunctionClauseId>,
+    ) -> Arc<FunctionClauseBody>;
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
@@ -124,7 +127,7 @@ pub trait MinDefDatabase:
     fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
 
     #[salsa::invoke(FunctionScopes::function_clause_scopes_query)]
-    fn function_clause_scopes(&self, fun: InFile<FunctionId>) -> Arc<ExprScopes>;
+    fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes>;
 
     #[salsa::invoke(include::resolve)]
     fn resolve_include(&self, include_id: InFile<IncludeAttributeId>) -> Option<FileId>;
@@ -159,9 +162,9 @@ fn function_body(db: &dyn MinDefDatabase, function_id: InFile<FunctionDefId>) ->
 
 fn function_clause_body(
     db: &dyn MinDefDatabase,
-    function_id: InFile<FunctionId>,
+    function_clause_id: InFile<FunctionClauseId>,
 ) -> Arc<FunctionClauseBody> {
-    db.function_clause_body_with_source(function_id).0
+    db.function_clause_body_with_source(function_clause_id).0
 }
 
 fn type_body(db: &dyn MinDefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {

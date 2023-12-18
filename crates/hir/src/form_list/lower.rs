@@ -94,7 +94,7 @@ impl<'a> Ctx<'a> {
             .flat_map(|form| {
                 let idx = match &form {
                     ast::Form::ModuleAttribute(module_attr) => self.lower_module_attr(module_attr),
-                    ast::Form::FunDecl(function) => self.lower_function(function),
+                    ast::Form::FunDecl(function) => self.lower_function_clause(function),
                     ast::Form::PreprocessorDirective(pp) => self.lower_pp_directive(pp),
                     ast::Form::BehaviourAttribute(behaviour) => self.lower_behaviour(behaviour),
                     ast::Form::Callback(callback) => self.lower_callback(callback),
@@ -210,7 +210,7 @@ impl<'a> Ctx<'a> {
         ))
     }
 
-    fn lower_function(&mut self, function: &ast::FunDecl) -> Option<FormIdx> {
+    fn lower_function_clause(&mut self, function: &ast::FunDecl) -> Option<FormIdx> {
         let cond = self.conditions.last().copied();
         let (name, param_names, is_macro) = function.clauses().find_map(|clause| match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
@@ -252,7 +252,7 @@ impl<'a> Ctx<'a> {
             form_id,
             separator: function.separator().map(|(s, t)| (s, t.text_range())),
         };
-        Some(FormIdx::Function(self.data.functions.alloc(res)))
+        Some(FormIdx::Function(self.data.function_clauses.alloc(res)))
     }
 
     fn lower_pp_directive(&mut self, pp: &ast::PreprocessorDirective) -> Option<FormIdx> {
