@@ -1277,7 +1277,6 @@ impl<T> InFunctionClauseBody<T> {
     pub fn fold_expr<'a, R>(
         &self,
         strategy: Strategy,
-        form_id: FormIdx,
         expr_id: ExprId,
         initial: R,
         callback: AnyCallBack<'a, R>,
@@ -1285,7 +1284,7 @@ impl<T> InFunctionClauseBody<T> {
         FoldCtx::fold_expr(
             strategy,
             &self.body.body,
-            form_id,
+            FormIdx::Function(self.function_clause_id.value),
             expr_id,
             initial,
             callback,
@@ -1295,7 +1294,6 @@ impl<T> InFunctionClauseBody<T> {
     pub fn fold_pat<'a, R>(
         &self,
         strategy: Strategy,
-        form_id: FormIdx,
         pat_id: PatId,
         initial: R,
         callback: AnyCallBack<'a, R>,
@@ -1303,7 +1301,7 @@ impl<T> InFunctionClauseBody<T> {
         FoldCtx::fold_pat(
             strategy,
             &self.body.body,
-            form_id,
+            FormIdx::Function(self.function_clause_id.value),
             pat_id,
             initial,
             callback,
