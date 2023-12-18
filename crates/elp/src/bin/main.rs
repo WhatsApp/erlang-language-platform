@@ -897,11 +897,29 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_ct(buck: bool) {
+    fn lint_ct_default_no_tests(buck: bool) {
         simple_snapshot(
             args_vec![
                 "lint",
                 "--include-ct-diagnostics",
+                "--diagnostic-filter"
+                "W0008"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/elp_lint_ct_no_tests_flag.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_ct_include_tests(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--include-ct-diagnostics",
+                "--include-tests",
                 "--diagnostic-filter"
                 "W0008"
             ],

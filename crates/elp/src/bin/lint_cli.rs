@@ -80,6 +80,7 @@ fn do_parse_all(
     include_generated: bool,
     include_ct_diagnostics: bool,
     include_edoc_diagnostics: bool,
+    include_test_files: bool,
     ignore_apps: &[String],
 ) -> Result<Vec<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
@@ -109,6 +110,7 @@ fn do_parse_all(
                         include_generated,
                         include_ct_diagnostics,
                         include_edoc_diagnostics,
+                        include_test_files,
                     )
                     .unwrap()
                 } else {
@@ -128,7 +130,12 @@ fn do_parse_one(
     include_generated: bool,
     include_ct_diagnostics: bool,
     include_edoc_diagnostics: bool,
+    include_tests: bool,
 ) -> Result<Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
+    if !include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
+        return Ok(None);
+    }
+
     let mut diagnostics = db.diagnostics(config, file_id, include_generated)?;
 
     if include_ct_diagnostics {
@@ -258,6 +265,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         args.include_generated,
                         args.include_ct_diagnostics,
                         args.include_edoc_diagnostics,
+                        args.include_tests,
                         ignore_apps,
                     )?,
                     (Some(file_id), Some(name)) => do_parse_one(
@@ -268,6 +276,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         args.include_generated,
                         args.include_ct_diagnostics,
                         args.include_edoc_diagnostics,
+                        args.include_tests,
                     )?
                     .map_or(vec![], |x| vec![x]),
                     (Some(file_id), _) => {
@@ -341,6 +350,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         args.include_generated,
                         args.include_ct_diagnostics,
                         args.include_edoc_diagnostics,
+                        args.include_tests,
                         *in_place,
                         *recursive,
                         &mut changed_files,
@@ -459,6 +469,7 @@ struct Lints<'a> {
     include_generated: bool,
     include_ct_diagnostics: bool,
     include_edoc_diagnostics: bool,
+    include_tests: bool,
     in_place: bool,
     recursive: bool,
     changed_files: &'a mut FxHashSet<(FileId, String)>,
@@ -487,6 +498,7 @@ impl<'a> Lints<'a> {
         include_generated: bool,
         include_ct_diagnostics: bool,
         include_edoc_diagnostics: bool,
+        include_tests: bool,
         in_place: bool,
         recursive: bool,
         changed_files: &'a mut FxHashSet<(FileId, String)>,
@@ -510,6 +522,7 @@ impl<'a> Lints<'a> {
             include_generated,
             include_ct_diagnostics,
             include_edoc_diagnostics,
+            include_tests,
             in_place,
             recursive,
             changed_files,
@@ -576,6 +589,7 @@ impl<'a> Lints<'a> {
                             self.include_generated,
                             self.include_ct_diagnostics,
                             self.include_edoc_diagnostics,
+                            self.include_tests,
                         )
                     },
                 )
