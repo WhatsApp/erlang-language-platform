@@ -134,9 +134,10 @@ pub(crate) fn process_badmatches(
                 }
             }
         },
-        move |_sema, mut _def_fb, _target, _call_id, diag_extra, _fix_extra, range| {
+        move |_sema, def_fb, _target, _call_id, diag_extra, _fix_extra, range| {
             let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, diag_extra, range)
-                .with_severity(Severity::Warning);
+                .with_severity(Severity::Warning)
+                .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)
         },
     );
@@ -189,11 +190,11 @@ mod tests {
 
             get_mine() ->
                 application:get_env(misc, key).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
 
             get_mine3() ->
                 application:get_env(misc, key, def).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
 
             //- /my_app/src/application.erl
             -module(application).
@@ -228,7 +229,7 @@ mod tests {
 
             steal() ->
                 application:get_env(debug, key).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: module `app_env` belongs to app `misc`, but reads env for `debug`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `app_env` belongs to app `misc`, but reads env for `debug`
 
             //- /misc/src/application.erl app:misc
             -module(application).
@@ -254,7 +255,7 @@ mod tests {
 
             get_mine() ->
                 ?get(misc, key).
-            %%  ^^^^^^^^^^^^^^^ warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
 
             //- /my_app/include/my_header.hrl app:my_app
             -define(get(K,V), application:get_env(K,V)).
