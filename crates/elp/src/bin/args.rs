@@ -225,6 +225,8 @@ pub struct Lint {
     /// Filter out all reported diagnostics except this one, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_filter: Option<String>,
+    /// Only apply elp:ignore fixes
+    pub ignore_fix_only: bool,
     /// Get some configuration from a .elp_lint.toml file instead in the project root
     pub read_config: bool,
     /// Override normal configuration file. When set, acts as if READ_CONFIG is true.

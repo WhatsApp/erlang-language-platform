@@ -880,6 +880,37 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_applies_ignore_fix_if_requested(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--module",
+                "app_b",
+                "--diagnostic-filter",
+                "W0011",
+                "--to",
+                tmp_path,
+                "--apply-fix",
+                "--ignore-fix-only",
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_fix_ignore.stdout"),
+            0,
+            buck,
+            None,
+            tmp_path,
+            Path::new("../resources/test/lint/ignore_app_env"),
+            &[("app_b/src/app_b.erl", "app_b.erl")],
+            false,
+        )
+        .expect("Bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_edoc(buck: bool) {
         simple_snapshot(
             args_vec![

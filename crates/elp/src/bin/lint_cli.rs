@@ -597,7 +597,13 @@ impl<'a> Lints<'a> {
         if let Some(fixes) = &diagnostic.fixes {
             let fixes: Vec<_> = fixes
                 .iter()
-                .filter(|f| f.group != Some(group_label_ignore()))
+                .filter(|f| {
+                    if self.args.ignore_fix_only {
+                        f.group == Some(group_label_ignore())
+                    } else {
+                        f.group != Some(group_label_ignore())
+                    }
+                })
                 .collect();
             if !fixes.is_empty() {
                 if format_normal {
