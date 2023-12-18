@@ -628,11 +628,11 @@ impl DefMap {
             .iter()
             .map(|(_, clause)| clause.function.clone())
             .collect::<Vec<_>>();
-        let function_ids = current
+        let function_clause_ids = current
             .iter()
             .map(|(_, clause)| clause.function_id)
             .collect::<Vec<_>>();
-        let function_id = FunctionDefId(function_ids[0]);
+        let function_id = FunctionDefId(function_clause_ids[0]);
         let na = (current_na).clone();
         let fun = FunctionDef {
             file: current_def.file,
@@ -642,12 +642,12 @@ impl DefMap {
             module: current_def.module.clone(),
             name: (current_na).clone(),
             function,
-            function_ids,
+            function_clause_ids,
             function_id,
         };
-        let function_def_id = FunctionDefId(fun.function_ids[0]);
+        let function_def_id = FunctionDefId(fun.function_clause_ids[0]);
         self.function_by_function_id.extend(
-            fun.function_ids
+            fun.function_clause_ids
                 .iter()
                 .map(|id| (*id, function_def_id.clone())),
         );

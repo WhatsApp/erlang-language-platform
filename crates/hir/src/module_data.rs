@@ -143,7 +143,7 @@ pub struct FunctionDef {
     pub module: Option<ModuleName>,
     pub name: NameArity,
     pub function: Vec<Function>,
-    pub function_ids: Vec<FunctionId>,
+    pub function_clause_ids: Vec<FunctionId>,
     pub function_id: FunctionDefId,
 }
 

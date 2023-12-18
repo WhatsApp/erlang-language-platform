@@ -416,14 +416,14 @@ impl<'db> Semantic<'db> {
         def_map.get_by_function_id(function_id).cloned()
     }
 
-    pub fn clause_function_id(
+    pub fn function_clause_id(
         &self,
         function_id: &InFile<FunctionDefId>,
         clause_id: ClauseId,
     ) -> Option<FunctionId> {
         let function = self.function_def(function_id)?;
         let n: u32 = clause_id.into_raw().into();
-        function.function_ids.get(n as usize).cloned()
+        function.function_clause_ids.get(n as usize).cloned()
     }
 
     /// Return the free and bound variables in a given expression.

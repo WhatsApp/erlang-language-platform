@@ -229,7 +229,7 @@ impl FunctionBody {
             let name = &fun_def.function[0].name;
             ctx.set_function_info(name);
             let (body, source_maps) =
-                ctx.lower_function(function_id, fun_def.function_ids.clone(), &fun_asts);
+                ctx.lower_function(function_id, fun_def.function_clause_ids.clone(), &fun_asts);
             (Arc::new(body), source_maps)
         } else {
             (
