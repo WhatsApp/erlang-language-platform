@@ -75,6 +75,7 @@ mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
 mod effect_free_statement;
+mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
 // @fb-only: mod meta_only;
@@ -325,6 +326,7 @@ pub enum DiagnosticCode {
     DeprecatedFunction,
     UndefinedFunction,
     Unexpected(String),
+    ExpressionCanBeSimplified,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -385,6 +387,7 @@ impl DiagnosticCode {
             DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
             DiagnosticCode::UndefinedFunction => "W0017".to_string(),   // undefined-function
             DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
+            DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
@@ -420,6 +423,7 @@ impl DiagnosticCode {
             DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
             DiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
+            DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
@@ -787,6 +791,7 @@ pub fn semantic_diagnostics(
     unused_record_field::unused_record_field(res, sema, file_id, file_kind);
     mutable_variable::mutable_variable_bug(res, sema, file_id);
     effect_free_statement::effect_free_statement(res, sema, file_id);
+    expression_can_be_simplified::diagnostic(res, sema, file_id);
     application_env::application_env(res, sema, file_id);
     missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
     cross_node_eval::cross_node_eval(res, sema, file_id);
