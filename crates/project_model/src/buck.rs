@@ -214,8 +214,8 @@ impl BuckProject {
         eqwalizer_conf: &EqwalizerConfig,
     ) -> Result<(BuckProject, BuildInfoFile, PathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf)?;
-        let project_app_data = targets_to_project_data(&target_info.targets);
         let otp_root = Otp::find_otp()?;
+        let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
         let build_info_term = build_info(buck_conf, &project_app_data, &otp_root);
         let build_info = save_build_info(build_info_term)?;
         let project = BuckProject {
@@ -659,7 +659,10 @@ fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsP
     None
 }
 
-pub fn targets_to_project_data(targets: &FxHashMap<TargetFullName, Target>) -> Vec<ProjectAppData> {
+pub fn targets_to_project_data(
+    targets: &FxHashMap<TargetFullName, Target>,
+    otp_root: &Path,
+) -> Vec<ProjectAppData> {
     let it = targets
         .values()
         .sorted_by(|a, b| match (a.target_type, b.target_type) {
@@ -696,11 +699,12 @@ pub fn targets_to_project_data(targets: &FxHashMap<TargetFullName, Target>) -> V
         accs.insert(target_dir, acc);
     }
     let mut result: Vec<ProjectAppData> = vec![];
-    let global_inc: Vec<AbsPathBuf> = targets
+    let mut global_inc: Vec<AbsPathBuf> = targets
         .values()
         .filter(|target| target.target_type != TargetType::ErlangTest)
         .filter_map(|target| target.dir.parent().map(|p| p.to_path_buf()))
         .collect();
+    global_inc.push(AbsPathBuf::assert(otp_root.to_path_buf()));
     for (_, mut acc) in accs {
         acc.add_global_includes(global_inc.clone());
         result.push(acc.into());

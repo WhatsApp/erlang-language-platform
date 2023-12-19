@@ -38,8 +38,8 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     };
 
     let target_info = buck::load_buck_targets(&buck)?;
-    let project_app_data = buck::targets_to_project_data(&target_info.targets);
     let otp_root = Otp::find_otp()?;
+    let project_app_data = buck::targets_to_project_data(&target_info.targets, &otp_root);
     let build_info_term = buck::build_info(&buck, &project_app_data, &otp_root);
     let writer = File::create(&args.to)?;
     build_info_term.encode(writer)?;
