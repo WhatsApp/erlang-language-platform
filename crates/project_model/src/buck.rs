@@ -241,14 +241,6 @@ struct BuckTarget {
     labels: FxHashSet<String>,
 }
 
-impl BuckTarget {
-    fn is_supported(&self) -> bool {
-        self.labels.contains("elp_enabled")
-            || (self.labels.contains("user_application")
-                && !self.labels.contains("test_application"))
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Target {
     //full-name, like  waserver//erl/chatd:chatd
@@ -268,6 +260,7 @@ pub enum TargetType {
     ErlangTest,
     //rebar3's deps
     ThirdParty,
+    ErlangTestUtils,
 }
 
 pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
@@ -299,14 +292,7 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
                     .insert(src_file, name.clone());
                 (src, vec![], TargetType::ErlangTest, false, None)
             } else {
-                if !target.is_supported() {
-                    continue;
-                }
-                let target_type = if name.contains("//third-party") {
-                    TargetType::ThirdParty
-                } else {
-                    TargetType::ErlangApp
-                };
+                let target_type = compute_target_type(&name, &target);
                 let mut src_files = vec![];
                 for src in &target.srcs {
                     let src = buck_path_to_abs_path(root, src).unwrap();
@@ -344,6 +330,21 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
     }
     Ok(target_info)
 }
+fn compute_target_type(name: &TargetFullName, target: &BuckTarget) -> TargetType {
+    if name.contains("//third-party") {
+        TargetType::ThirdParty
+    } else {
+        let test_utils = target.labels.contains("test_utils");
+        let test_application = target.labels.contains("test_application");
+        let elp_enabled = target.labels.contains("elp_enabled");
+        match (elp_enabled, test_application, test_utils) {
+            (true, _, _) => TargetType::ErlangApp,
+            (false, false, false) => TargetType::ErlangApp,
+            (_, _, _) => TargetType::ErlangTestUtils,
+        }
+    }
+}
+
 /// finds buck root directory based on buck config, executing `buck2 root`
 fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let _timer = timeit!("loading root");
@@ -754,6 +755,7 @@ impl ProjectAppDataAcc {
             let app_type = match target.target_type {
                 TargetType::ErlangApp => AppType::App,
                 TargetType::ErlangTest => AppType::App,
+                TargetType::ErlangTestUtils => AppType::App,
                 TargetType::ThirdParty => AppType::Dep,
             };
             self.app_type = Some(app_type)
@@ -761,17 +763,20 @@ impl ProjectAppDataAcc {
     }
 
     fn set_name(&mut self, target: &Target) {
-        match target.target_type {
-            TargetType::ErlangApp | TargetType::ThirdParty => {
-                self.name = Some(AppName(target.app_name.clone()))
-            }
-            _ => {
-                self.name = target
-                    .dir
-                    .file_name()
-                    .map(|f| AppName(f.to_string_lossy().to_string()))
-            }
-        };
+        let dir_name = target
+            .dir
+            .file_name()
+            .map(|f| AppName(f.to_string_lossy().to_string()));
+        let target_name = Some(AppName(target.app_name.clone()));
+        if dir_name == target_name {
+            self.name = target_name;
+        } else {
+            match (target.target_type, &self.name) {
+                (TargetType::ErlangApp | TargetType::ThirdParty, None) => self.name = target_name,
+                (_, None) => self.name = dir_name,
+                _ => (),
+            };
+        }
     }
 
     fn set_dir(&mut self, target: &Target) {
@@ -796,7 +801,7 @@ impl ProjectAppDataAcc {
 
                 self.abs_src_dirs.extend(abs_src_dirs);
             }
-            TargetType::ErlangTest => {
+            TargetType::ErlangTest | TargetType::ErlangTestUtils => {
                 let abs_extra_dirs: FxHashSet<AbsPathBuf> = target
                     .src_files
                     .iter()
