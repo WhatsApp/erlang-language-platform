@@ -286,7 +286,7 @@ fn eqwalize(
                     .expect("cancelled")
             })
             .fold(EqwalizerDiagnostics::default, |acc, output| {
-                acc.combine(output)
+                acc.combine((*output).clone())
             })
             .reduce(EqwalizerDiagnostics::default, |acc, other| {
                 acc.combine(other)

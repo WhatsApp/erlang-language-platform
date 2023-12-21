@@ -195,7 +195,7 @@ impl Snapshot {
             .analysis
             .eqwalizer_diagnostics(project_id, vec![file_id])
             .ok()?;
-        match diags {
+        match &*diags {
             EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
                 errors
                     .iter()

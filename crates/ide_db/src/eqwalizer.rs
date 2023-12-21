@@ -84,6 +84,11 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
+    fn eqwalizer_diagnostics(
+        &self,
+        project_id: ProjectId,
+        file_ids: Vec<FileId>,
+    ) -> Arc<EqwalizerDiagnostics>;
     fn eqwalizer_stats(
         &self,
         project_id: ProjectId,
@@ -104,13 +109,15 @@ pub fn eqwalizer_diagnostics(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     file_ids: Vec<FileId>,
-) -> EqwalizerDiagnostics {
+) -> Arc<EqwalizerDiagnostics> {
     let project = db.project_data(project_id);
     if let Some(build_info_path) = &project.build_info_path {
-        db.typecheck(project_id, build_info_path, file_ids)
+        Arc::new(db.typecheck(project_id, build_info_path, file_ids))
     } else {
         log::error!("EqWAlizing in a fixture project");
-        EqwalizerDiagnostics::Error("EqWAlizing in a fixture project".to_string())
+        Arc::new(EqwalizerDiagnostics::Error(
+            "EqWAlizing in a fixture project".to_string(),
+        ))
     }
 }
 
@@ -133,7 +140,7 @@ fn type_at_position(
         return None;
     }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        eqwalizer_diagnostics(db, project_id, vec![position.file_id])
+        &(*eqwalizer_diagnostics(db, project_id, vec![position.file_id]))
     {
         let offset: u32 = position.offset.into();
         let module_index = db.module_index(project_id);

@@ -258,9 +258,16 @@ impl Eqwalizer {
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
         add_env(&mut cmd, build_info_path, None);
 
-        match do_typecheck(cmd, db, project_id) {
-            Ok(diags) => diags,
-            Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
+        if self.mode == Mode::Shell {
+            match shell_typecheck(cmd, db, project_id) {
+                Ok(diags) => diags,
+                Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
+            }
+        } else {
+            match do_typecheck(cmd, db, project_id) {
+                Ok(diags) => diags,
+                Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
+            }
         }
     }
 }
@@ -270,6 +277,122 @@ fn do_typecheck(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
+    let mut handle = IpcHandle::from_command(&mut cmd)
+        .with_context(|| format!("starting eqWAlizer process: {:?}", cmd))?;
+    let _pctx = stdx::panic_context::enter(format!("\neqWAlizing with command: {:?}", cmd));
+    loop {
+        db.unwind_if_cancelled();
+        match handle.receive()? {
+            MsgFromEqWAlizer::GetAstBytes { module, format } => {
+                log::debug!(
+                    "received from eqwalizer: GetAstBytes for module {} (format = {:?})",
+                    module,
+                    format
+                );
+                let module_name = ModuleName::new(&module);
+                let ast = {
+                    match format {
+                        EqWAlizerASTFormat::RawForms => {
+                            db.get_erl_ast_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::ConvertedForms => {
+                            db.converted_ast_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::RawStub => {
+                            db.get_erl_stub_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::ConvertedStub => {
+                            db.converted_stub_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::ExpandedStub => {
+                            db.expanded_stub_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::ContractiveStub => {
+                            db.contractive_stub_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::CovariantStub => {
+                            db.covariant_stub_bytes(project_id, module_name)
+                        }
+                        EqWAlizerASTFormat::TransitiveStub => {
+                            db.transitive_stub_bytes(project_id, module_name)
+                        }
+                    }
+                };
+                match ast {
+                    Ok(ast_bytes) => {
+                        log::debug!(
+                            "sending to eqwalizer: GetAstBytesReply for module {}",
+                            module
+                        );
+                        let ast_bytes_len = ast_bytes.len().try_into()?;
+                        let reply = &MsgToEqWAlizer::GetAstBytesReply { ast_bytes_len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                        handle.send_bytes(&ast_bytes)?;
+                    }
+                    Err(Error::ModuleNotFound(_)) => {
+                        log::debug!(
+                            "module not found, sending to eqwalizer: empty GetAstBytesReply for module {}",
+                            module
+                        );
+                        let ast_bytes_len = 0;
+                        let reply = &MsgToEqWAlizer::GetAstBytesReply { ast_bytes_len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                    }
+                    Err(Error::ParseError) => {
+                        log::debug!(
+                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
+                            module
+                        );
+                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
+                        handle.send(reply)?;
+                        return Ok(EqwalizerDiagnostics::NoAst { module });
+                    }
+                    Err(err) => {
+                        log::debug!(
+                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
+                            err,
+                            module
+                        );
+                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
+                        handle.send(reply)?;
+                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
+                    }
+                }
+            }
+            MsgFromEqWAlizer::EqwalizingStart { module } => db.eqwalizing_start(module),
+            MsgFromEqWAlizer::EqwalizingDone { module } => db.eqwalizing_done(module),
+            MsgFromEqWAlizer::Done {
+                diagnostics,
+                type_info,
+            } => {
+                log::debug!(
+                    "received from eqwalizer: Done with diagnostics length {}",
+                    diagnostics.len()
+                );
+                return Ok(EqwalizerDiagnostics::Diagnostics {
+                    errors: diagnostics,
+                    type_info,
+                });
+            }
+            msg => {
+                log::warn!(
+                    "received unexpected message from eqwalizer, ignoring: {:?}",
+                    msg
+                )
+            }
+        }
+    }
+}
+
+fn shell_typecheck(
+    mut cmd: CommandProxy,
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+) -> Result<EqwalizerDiagnostics, anyhow::Error> {
+    // Never cache the results of this function
+    db.salsa_runtime().report_untracked_read();
     let handle = Arc::new(Mutex::new(
         IpcHandle::from_command(&mut cmd)
             .with_context(|| format!("starting eqWAlizer process: {:?}", cmd))?,
