@@ -19,9 +19,13 @@ use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
+use hir::known;
+use hir::FormIdx;
 use hir::InFile;
 use hir::IncludeAttribute;
+use hir::Name;
 use hir::Semantic;
+use lazy_static::lazy_static;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
@@ -97,8 +101,8 @@ fn is_file_used(
     while let Some(file_id) = todo.iter().next().cloned() {
         todo.remove(&file_id);
 
-        let list = db.file_form_list(file_id);
-        for (include_idx, _) in list.includes() {
+        let form_list = db.file_form_list(file_id);
+        for (include_idx, _) in form_list.includes() {
             let in_file = InFile::new(file_id, include_idx);
             if let Some(include_file_id) = db.resolve_include(in_file) {
                 match cache.get(&include_file_id) {
@@ -179,10 +183,44 @@ fn is_file_used(
             }
         }
 
+        for &form in form_list.forms() {
+            match form {
+                FormIdx::ModuleAttribute(_) => return true,
+                FormIdx::Export(_) => return true,
+                FormIdx::Import(_) => return true,
+                FormIdx::TypeExport(_) => return true,
+                FormIdx::Behaviour(_) => return true,
+                FormIdx::Callback(_) => return true,
+                FormIdx::OptionalCallbacks(_) => return true,
+                FormIdx::Attribute(idx) => {
+                    let attr = &form_list[idx];
+                    if !NO_MARK_USED_ATTRIBUTES.contains(&attr.name) {
+                        return true;
+                    }
+                }
+                FormIdx::CompileOption(_) => return true,
+                FormIdx::DeprecatedAttribute(_) => return true,
+                FormIdx::FeatureAttribute(_) => return true,
+                FormIdx::FunctionClause(_) => {}
+                FormIdx::PPDirective(_) => {}
+                FormIdx::PPCondition(_) => {}
+                FormIdx::TypeAlias(_) => {}
+                FormIdx::Spec(_) => {}
+                FormIdx::Record(_) => {}
+            }
+        }
+
         cache.insert(file_id, false);
     }
 
     false
+}
+
+lazy_static! {
+    /// Attribute names that can occur in a header file without
+    /// regarding the file as being used.
+    static ref NO_MARK_USED_ATTRIBUTES: FxHashSet<Name> =
+        FxHashSet::from_iter([known::author, known::oncall]);
 }
 
 #[cfg(test)]
@@ -469,6 +507,94 @@ foo(Payload) when is_record(Payload, rec, 0) -> ok.
 //- /src/erlang.erl
 -module(erlang).
 is_record(_Term,_RecordTag, _Size) -> false.
+"#,
+        )
+    }
+
+    #[test]
+    fn used_for_compile_attribute() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo() -> ok.
+
+//- /src/header.hrl
+-compile(export_all).
+
+"#,
+        )
+    }
+
+    #[test]
+    fn used_for_dialyzer_attribute() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo() -> ok.
+
+//- /src/header.hrl
+-dialyzer({nowarn_function, delete_at/3}).
+
+"#,
+        )
+    }
+
+    #[test]
+    fn used_for_broken_attribute() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo() -> ok.
+
+//- /src/header.hrl
+%% The following shows up as a wild attribute, which we regard as being used.
+   -defin e(X, 1).
+%%  ^^^^^ 💡 error: misspelled attribute, saw 'defin' but expected 'define'
+
+-def ine(Y, 2).
+"#,
+        )
+    }
+
+    #[test]
+    fn not_used_for_author_attribute() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+  -include("header.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+
+foo() -> ok.
+
+//- /src/header.hrl
+-author("mary").
+"#,
+        )
+    }
+
+    #[test]
+    fn not_used_for_oncall_attribute() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+  -include("header.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+
+foo() -> ok.
+
+//- /src/header.hrl
+-oncall("mary").
 "#,
         )
     }

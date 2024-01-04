@@ -256,5 +256,8 @@ pub mod known {
         nowarn_missing_spec,
         warn_missing_spec_all,
         warn_missing_spec,
+        // Attribute names
+        author,
+        oncall,
     );
 }
