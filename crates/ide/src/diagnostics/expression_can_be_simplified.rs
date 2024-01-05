@@ -103,7 +103,7 @@ fn simplify_binary_op(
 
         // --
         (lhs, BinaryOp::ListOp(ListOp::Subtract), _rhs) if is_empty_list_expr(lhs) => {
-            to_string(&rhs_id, sema, clause_id, def_fb)
+            to_string(&lhs_id, sema, clause_id, def_fb)
         }
         (_lhs, BinaryOp::ListOp(ListOp::Subtract), rhs) if is_empty_list_expr(rhs) => {
             to_string(&lhs_id, sema, clause_id, def_fb)
@@ -212,7 +212,7 @@ mod tests {
         check_fix("f(X) -> []~ ++ X.", "f(X) -> X.");
         check_fix("f(X) -> X ++ ~[].", "f(X) -> X.");
 
-        check_fix("f(X) -> []~ -- X.", "f(X) -> X.");
+        check_fix("f(X) -> []~ -- X.", "f(X) -> [].");
         check_fix("f(X) -> X -- ~[].", "f(X) -> X.");
     }
 
