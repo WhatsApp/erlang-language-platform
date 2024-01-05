@@ -11,6 +11,7 @@
 //
 // Return a warning if nothing is used from an include file
 
+use elp_ide_assists::helpers::extend_form_range_for_delete;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::SearchScope;
@@ -59,9 +60,11 @@ pub(crate) fn unused_includes(
                 .get(&source_file.tree())
                 .syntax()
                 .text_range();
+            let edit_text_rage =
+                extend_form_range_for_delete(attr.form_id().get(&source_file.tree()).syntax());
 
             let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(inc_text_rage);
+            edit_builder.delete(edit_text_rage);
             let edit = edit_builder.finish();
 
             let diagnostic = Diagnostic::new(
@@ -229,6 +232,7 @@ mod tests {
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_fix;
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
@@ -595,6 +599,30 @@ foo() -> ok.
 
 //- /src/header.hrl
 -oncall("mary").
+"#,
+        )
+    }
+
+    #[test]
+    fn fixes_unused_include() {
+        check_fix(
+            r#"
+//- /src/main.erl
+-module(main).
+  -incl~ude("header.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+
+foo() -> ok.
+
+//- /src/header.hrl
+-oncall("mary").
+"#,
+            r#"
+-module(main).
+  %%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+
+foo() -> ok.
+
 "#,
         )
     }
