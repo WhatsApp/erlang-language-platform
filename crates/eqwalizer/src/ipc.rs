@@ -82,7 +82,7 @@ pub struct IpcHandle {
     _child_for_drop: JodChild,
 }
 
-const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+const WRITE_TIMEOUT: Duration = Duration::from_secs(240);
 const READ_TIMEOUT: Duration = Duration::from_secs(240);
 
 impl IpcHandle {
