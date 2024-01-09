@@ -31,6 +31,11 @@ use crate::FileId;
 use crate::Semantic;
 
 pub(crate) fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    if sema.db.is_generated(file_id) {
+        // No point asking for changes to generated files
+        return;
+    }
+
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_, fun_def)| {

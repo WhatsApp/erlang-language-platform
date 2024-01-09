@@ -46,6 +46,10 @@ use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
 pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    if sema.db.is_generated(file_id) {
+        // No point asking for changes to generated files
+        return;
+    }
     sema.def_map(file_id)
         .get_function_clauses()
         .for_each(|(_, def)| {
