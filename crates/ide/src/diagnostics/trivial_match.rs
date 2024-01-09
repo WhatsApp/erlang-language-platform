@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic if a match will trivially always succeed and offer to
 //! remove the lhs as a fix.
-//!
 
 use std::collections::HashMap;
 

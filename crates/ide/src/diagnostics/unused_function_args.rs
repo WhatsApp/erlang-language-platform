@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic if a function has an argument that is not used in
 //! the function body, and offer to add an underscore to the name as fix.
-//!
 
 use std::collections::HashMap;
 use std::collections::HashSet;

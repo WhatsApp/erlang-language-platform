@@ -114,7 +114,6 @@ impl Fixture {
     ///  line 2
     ///  //- other meta
     ///  ```
-    ///
     pub fn parse(fixture: &str) -> Vec<Fixture> {
         let fixture = trim_indent(fixture);
         let mut res: Vec<Fixture> = Vec::new();

@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic whenever we have A = B, with A unbound, and offer to inline
 //! A as a fix.
-//!
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;

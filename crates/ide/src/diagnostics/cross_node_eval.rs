@@ -10,7 +10,6 @@
 //! Lint: cross_node_eval
 //!
 //! Return a diagnostic for rpc calls to remote nodes.
-//!
 
 use elp_ide_db::elp_base_db::FileId;
 use hir::FunctionDef;

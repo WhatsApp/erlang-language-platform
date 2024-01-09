@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic if an expression can be trivially simplified. Covers things like
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
-//!
 
 use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::ClauseId;

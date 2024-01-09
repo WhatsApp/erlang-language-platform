@@ -156,7 +156,6 @@ fn make_function_name(ctx: &AssistContext<'_>) -> String {
 ///     ~
 ///   }
 ///   ```
-///
 fn extraction_target(
     ctx: &AssistContext,
     node: &SyntaxNode,

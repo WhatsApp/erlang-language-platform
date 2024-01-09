@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic if a given (noop) function is used,
 //! and a fix to replace it by something else.
-//!
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;

@@ -11,7 +11,6 @@
 //!
 //! Return a diagnostic if a statement is just a literal or a variable, and
 //! offer to remove the statement as a fix.
-//!
 
 use std::iter;
 

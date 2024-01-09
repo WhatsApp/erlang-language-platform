@@ -9,7 +9,6 @@
 
 /// This module provides a check for auto-imported functions from the `erlang` module
 /// module.
-///
 pub fn in_erlang_module(f: &str, a: usize) -> bool {
     is_erlang_fun(f, a) || is_erlang_type(f, a)
 }
