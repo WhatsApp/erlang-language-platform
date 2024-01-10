@@ -105,6 +105,7 @@ struct Args<'a> {
     parsed: InFile<SourceFile>,
     trigger: Option<char>,
     previous_tokens: Option<Vec<(SyntaxKind, SyntaxToken)>>,
+    next_token: Option<SyntaxToken>,
     file_position: FilePosition,
 }
 
@@ -119,12 +120,14 @@ pub fn completions(
     let ctx = Ctx::new(node, file_position.offset);
     let mut acc = Vec::new();
     let previous_tokens = get_previous_tokens(node, file_position);
+    let next_token = right_biased_token(node, file_position);
     let args = &Args {
         db,
         sema,
         parsed,
         file_position,
         previous_tokens,
+        next_token,
         trigger,
     };
 
@@ -188,4 +191,8 @@ fn get_previous_tokens(
             .map(|tok| (tok.kind(), tok))
             .collect::<Vec<_>>(),
     )
+}
+
+fn right_biased_token(node: &SyntaxNode, file_position: FilePosition) -> Option<SyntaxToken> {
+    node.token_at_offset(file_position.offset).right_biased()
 }

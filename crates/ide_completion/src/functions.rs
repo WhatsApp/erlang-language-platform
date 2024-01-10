@@ -10,6 +10,7 @@
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_syntax::AstNode;
+use elp_syntax::SyntaxToken;
 use hir::FunctionDef;
 use hir::NameArity;
 use hir::Semantic;
@@ -28,6 +29,7 @@ pub(crate) fn add_completions(
         trigger,
         file_position,
         previous_tokens,
+        next_token,
         ..
     }: &Args,
 ) -> DoneFlag {
@@ -77,13 +79,21 @@ pub(crate) fn add_completions(
                 file_position.file_id,
                 module.text(),
                 name_prefix.text(),
+                next_token,
                 acc,
             );
             true
         }
         // mod:
         [.., (K::ATOM, module), (K::ANON_COLON, _)] if matches!(trigger, Some(':') | None) => {
-            complete_remote_function_call(sema, file_position.file_id, module.text(), "", acc);
+            complete_remote_function_call(
+                sema,
+                file_position.file_id,
+                module.text(),
+                "",
+                next_token,
+                acc,
+            );
             true
         }
         // foo
@@ -95,24 +105,14 @@ pub(crate) fn add_completions(
                 .filter_map(|(na, _)| {
                     let function_name = na.name();
                     let def = def_map.get_function(na)?;
-                    let args = def
-                        .function_clauses
-                        .get(0)?
-                        .param_names
-                        .iter()
-                        .enumerate()
-                        .map(|(i, param_name)| {
-                            let n = i + 1;
-                            format!("${{{n}:{param_name}}}")
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
                     let fun_decl_ast = def.source(sema.db.upcast());
                     let deprecated = def_map.is_deprecated(na);
+                    let contents =
+                        function_contents(def, &function_name, should_include_args(next_token))?;
                     Some(Completion {
                         label: na.to_string(),
                         kind: Kind::Function,
-                        contents: Contents::Snippet(format!("{function_name}({args})")),
+                        contents,
                         position: Some(FilePosition {
                             file_id: def.file.file_id,
                             offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
@@ -121,7 +121,6 @@ pub(crate) fn add_completions(
                         deprecated,
                     })
                 });
-
             acc.extend(completions);
             false
         }
@@ -134,6 +133,7 @@ fn complete_remote_function_call<'a>(
     from_file: FileId,
     module_name: &'a str,
     fun_prefix: &'a str,
+    next_token: &Option<SyntaxToken>,
     acc: &mut Vec<Completion>,
 ) {
     || -> Option<_> {
@@ -149,7 +149,8 @@ fn complete_remote_function_call<'a>(
                 })
             });
             let deprecated = def_map.is_deprecated(na);
-            name_arity_to_call_completion(def, na, fun_prefix, position, deprecated)
+            let include_args = should_include_args(next_token);
+            name_arity_to_call_completion(def, na, fun_prefix, position, deprecated, include_args)
         });
         acc.extend(completions);
         Some(())
@@ -162,19 +163,11 @@ fn name_arity_to_call_completion(
     prefix: &str,
     position: Option<FilePosition>,
     deprecated: bool,
+    include_args: bool,
 ) -> Option<Completion> {
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(helpers::format_call(na.name(), na.arity())), |def| {
-            let arg_names = def
-                .function_clauses
-                .get(0)?
-                .param_names
-                .iter()
-                .enumerate()
-                .map(|(i, param)| format!("${{{}:{}}}", i + 1, param))
-                .collect::<Vec<_>>()
-                .join(", ");
-            Some(Contents::Snippet(format!("{}({})", na.name(), arg_names)))
+            function_contents(def, na.name(), include_args)
         })?;
         Some(Completion {
             label: na.to_string(),
@@ -186,6 +179,44 @@ fn name_arity_to_call_completion(
         })
     } else {
         None
+    }
+}
+
+fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
+    match next_token {
+        Some(token) => token.kind() != elp_syntax::SyntaxKind::ANON_LPAREN,
+        _ => true,
+    }
+}
+
+fn function_arg_names(def: &FunctionDef) -> Option<String> {
+    let res = def
+        .function_clauses
+        .get(0)?
+        .param_names
+        .iter()
+        .enumerate()
+        .map(|(i, param_name)| {
+            let n = i + 1;
+            format!("${{{n}:{param_name}}}")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    Some(res)
+}
+
+fn function_contents(
+    def: &FunctionDef,
+    function_name: &str,
+    include_args: bool,
+) -> Option<Contents> {
+    if include_args {
+        let function_arg_names = function_arg_names(def)?;
+        Some(Contents::Snippet(format!(
+            "{function_name}({function_arg_names})"
+        )))
+    } else {
+        Some(Contents::Snippet(format!("{function_name}")))
     }
 }
 
@@ -677,6 +708,46 @@ mod test {
             expect![[
                 r#"{label:my_function/0, kind:Function, contents:Snippet("my_function()"), position:Some(FilePosition { file_id: FileId(1), offset: 41 })}"#
             ]],
+        );
+    }
+
+    #[test]
+    fn test_local_call_parentheses() {
+        check(
+            r#"
+    -module(sample).
+    test() ->
+        fo~(something).
+    foo(X) -> ok.
+            "#,
+            None,
+            expect![[
+                r#"{label:foo/1, kind:Function, contents:Snippet("foo"), position:Some(FilePosition { file_id: FileId(0), offset: 46 })}"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn test_remote_call_parentheses() {
+        check(
+            r#"
+    //- /src/sample1.erl
+    -module(sample1).
+    local() ->
+        sample2:fo~().
+    //- /src/sample2.erl
+    -module(sample2).
+    -export([foo/0]).
+    -export([foon/2]).
+    -export([bar/2]).
+    foo() -> ok.
+    foon(A, B) -> ok.
+    bar(A, B, C) -> ok.
+            "#,
+            None,
+            expect![[r#"
+                {label:foo/0, kind:Function, contents:Snippet("foo"), position:Some(FilePosition { file_id: FileId(1), offset: 73 })}
+                {label:foon/2, kind:Function, contents:Snippet("foon"), position:Some(FilePosition { file_id: FileId(1), offset: 86 })}"#]],
         );
     }
 }
