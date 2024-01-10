@@ -797,6 +797,7 @@ impl ProjectAppDataAcc {
                     .iter()
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
+                    .filter(|dir| dir.file_name() != Some(&OsStr::new("test")))
                     .collect();
 
                 self.abs_src_dirs.extend(abs_src_dirs);
@@ -807,6 +808,7 @@ impl ProjectAppDataAcc {
                     .iter()
                     .filter_map(|extra| extra.parent())
                     .map(|extra| extra.to_path_buf())
+                    .filter(|dir| dir.file_name() != Some(&OsStr::new("src")))
                     .collect();
 
                 let extra_src_dirs: Vec<String> = abs_extra_dirs
@@ -816,7 +818,6 @@ impl ProjectAppDataAcc {
                     .collect();
 
                 for abs_extra in &abs_extra_dirs {
-                    self.abs_src_dirs.remove(abs_extra);
                     self.add_parent_if_not_exist(abs_extra);
                 }
 

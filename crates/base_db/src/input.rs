@@ -75,10 +75,10 @@ impl SourceRoot {
     ) -> impl Iterator<Item = (FileId, FileSource, &'a VfsPath)> + 'a {
         self.iter().flat_map(move |file_id| {
             let path = self.path_for_file(&file_id)?;
-            if app_data.is_extra_src_file(path) {
-                Some((file_id, FileSource::Extra, path))
-            } else if app_data.is_src_file(path) {
+            if app_data.is_src_file(path) {
                 Some((file_id, FileSource::Src, path))
+            } else if app_data.is_extra_src_file(path) {
+                Some((file_id, FileSource::Extra, path))
             } else {
                 None
             }
