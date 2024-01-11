@@ -10,6 +10,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 
@@ -34,6 +35,7 @@ use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::Includes;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::Analysis;
 use elp_project_model::AppType;
@@ -46,6 +48,7 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 
 use crate::args::ParseAllElp;
+use crate::reporting;
 
 #[derive(Debug)]
 struct ParseResult {
@@ -69,14 +72,18 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
 
     let (file_id, name) = match &args.module {
         Some(module) => {
-            writeln!(cli, "module specified: {}", module)?;
+            if args.is_format_normal() {
+                writeln!(cli, "module specified: {}", module)?;
+            }
             let file_id = analysis.module_file_id(loaded.project_id, module)?;
             (file_id, analysis.module_name(file_id.unwrap())?)
         }
 
         None => match &args.file {
             Some(file_name) => {
-                writeln!(cli, "file specified: {}", file_name)?;
+                if args.is_format_normal() {
+                    writeln!(cli, "file specified: {}", file_name)?;
+                }
                 let path_buf = fs::canonicalize(file_name).unwrap();
                 let path = AbsPath::assert(&path_buf);
                 let path = path.as_os_str().to_str().unwrap();
@@ -124,38 +131,39 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
     let url = lsp_types::Url::parse("file:///unused_url").ok().unwrap();
 
     if res.is_empty() {
-        writeln!(cli, "No errors reported")?;
+        if args.is_format_normal() {
+            writeln!(cli, "No errors reported")?;
+        }
         Ok(())
     } else {
-        writeln!(cli, "Diagnostics reported in {} modules:", res.len())?;
+        if args.is_format_normal() {
+            writeln!(cli, "Diagnostics reported in {} modules:", res.len())?;
+        }
         res.sort_by(|a, b| a.name.cmp(&b.name));
         let mut err_in_diag = false;
         for diags in res {
             let mut combined = attach_related_diagnostics(diags.native, &diags.erlang_service);
-            writeln!(cli, "  {}: {}", diags.name, combined.len())?;
+            if args.is_format_normal() {
+                writeln!(cli, "  {}: {}", diags.name, combined.len())?;
+            }
             if args.print_diags {
                 let line_index = db.file_line_index(diags.file_id);
                 combined.sort_by(|a, b| a.1.range.start().cmp(&b.1.range.start()));
                 for (_, diag) in combined {
-                    let diag = convert::ide_to_lsp_diagnostic(&line_index, &url, &diag);
-                    let severity = match diag.severity {
-                        None => DiagnosticSeverity::ERROR,
-                        Some(sev) => {
-                            err_in_diag |= sev == DiagnosticSeverity::ERROR;
-                            sev
-                        }
-                    };
-                    writeln!(
-                        cli,
-                        "      {}:{}-{}:{}::[{:?}] [{}] {}",
-                        diag.range.start.line,
-                        diag.range.start.character,
-                        diag.range.end.line,
-                        diag.range.end.character,
-                        severity,
-                        maybe_code_as_string(diag.code),
-                        diag.message
-                    )?;
+                    if args.is_format_json() {
+                        err_in_diag = true;
+                        let vfs_path = loaded.vfs.file_path(diags.file_id);
+                        let analysis = loaded.analysis();
+                        let root_path = &analysis
+                            .project_data(diags.file_id)
+                            .unwrap_or_else(|_err| panic!("could not find project data"))
+                            .unwrap_or_else(|| panic!("could not find project data"))
+                            .root_dir;
+                        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+                        print_diagnostic_json(&diag, &analysis, diags.file_id, relative_path, cli)?;
+                    } else {
+                        print_diagnostic(&diag, &line_index, &url, &mut err_in_diag, cli)?;
+                    }
                 }
             }
         }
@@ -165,6 +173,55 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn print_diagnostic_json(
+    diagnostic: &diagnostics::Diagnostic,
+    analysis: &Analysis,
+    file_id: FileId,
+    path: &Path,
+    cli: &mut dyn Cli,
+) -> Result<(), anyhow::Error> {
+    let line_index = analysis.line_index(file_id)?;
+    let converted_diagnostic = convert::ide_to_arc_diagnostic(&line_index, path, diagnostic);
+    writeln!(
+        cli,
+        "{}",
+        serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
+            "print_diagnostics_json failed for '{:?}': {}",
+            converted_diagnostic, err
+        ))
+    )?;
+    Ok(())
+}
+
+fn print_diagnostic(
+    diag: &diagnostics::Diagnostic,
+    line_index: &LineIndex,
+    url: &lsp_types::Url,
+    err_in_diag: &mut bool,
+    cli: &mut dyn Cli,
+) -> Result<(), anyhow::Error> {
+    let diag = convert::ide_to_lsp_diagnostic(&line_index, &url, &diag);
+    let severity = match diag.severity {
+        None => DiagnosticSeverity::ERROR,
+        Some(sev) => {
+            *err_in_diag |= sev == DiagnosticSeverity::ERROR;
+            sev
+        }
+    };
+    writeln!(
+        cli,
+        "      {}:{}-{}:{}::[{:?}] [{}] {}",
+        diag.range.start.line,
+        diag.range.start.character,
+        diag.range.end.line,
+        diag.range.end.character,
+        severity,
+        maybe_code_as_string(diag.code),
+        diag.message
+    )?;
+    Ok(())
 }
 
 fn maybe_code_as_string(mc: Option<NumberOrString>) -> String {

@@ -50,6 +50,14 @@ pub struct ParseAllElp {
     pub include_generated: bool,
     /// Parse the files serially, not in parallel
     pub serial: bool,
+    /// Show diagnostics in JSON format
+    #[bpaf(
+        argument("FORMAT"),
+        complete(format_completer),
+        fallback(None),
+        guard(format_guard, "Please use json")
+    )]
+    pub format: Option<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -546,6 +554,16 @@ pub fn gen_completions(shell: &str) -> String {
 }
 
 impl Lint {
+    pub fn is_format_normal(&self) -> bool {
+        self.format.is_none()
+    }
+
+    pub fn is_format_json(&self) -> bool {
+        self.format == Some("json".to_string())
+    }
+}
+
+impl ParseAllElp {
     pub fn is_format_normal(&self) -> bool {
         self.format.is_none()
     }

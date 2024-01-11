@@ -410,6 +410,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_json(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "diagnostics", "--format", "json"],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_diagnostics_json.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_related(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "cascading",],
