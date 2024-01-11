@@ -25,6 +25,7 @@ pub enum Ctx {
     Type,
     Export,
     ExportType,
+    Spec,
     Other,
 }
 
@@ -42,6 +43,8 @@ impl Ctx {
             Self::Other
         } else if Self::is_type(node, offset) {
             Self::Type
+        } else if Self::is_spec(node, offset) {
+            Self::Spec
         } else if Self::is_expr(node, offset) {
             Self::Expr
         } else if Self::is_pp_define(node, offset) {
@@ -69,6 +72,9 @@ impl Ctx {
     }
     fn is_export_type(node: &SyntaxNode, offset: TextSize) -> bool {
         algo::find_node_at_offset::<ast::ExportTypeAttribute>(node, offset).is_some()
+    }
+    fn is_spec(node: &SyntaxNode, offset: TextSize) -> bool {
+        algo::find_node_at_offset::<ast::Spec>(node, offset).is_some()
     }
     fn is_pp_define(node: &SyntaxNode, offset: TextSize) -> bool {
         algo::find_node_at_offset::<ast::PpDefine>(node, offset).is_some()
@@ -175,11 +181,20 @@ impl Ctx {
 
     fn is_type(node: &SyntaxNode, offset: TextSize) -> bool {
         if let Some(ancestors) = algo::ancestors_at_offset(node, offset) {
+            let mut error_seen = false;
             for n in ancestors {
+                if n.kind() == SyntaxKind::ERROR {
+                    error_seen = true;
+                }
                 match_ast! {
                     match n {
-                        ast::Spec(_) => {
-                            return true;
+                        ast::Spec(spec) => {
+                            // For an incomplete spec, the name shows
+                            // up in an ERROR node, and the following
+                            // fun as the spec.
+                            if !error_seen {
+                                return true;
+                            }
                         },
                         ast::TypeName(_) => {
                             return false;
@@ -479,6 +494,19 @@ mod ctx_tests {
         ])
         "#),
             Ctx::ExportType
+        );
+    }
+
+    #[test]
+    fn test_spec_ctx() {
+        assert_eq!(
+            ctx(r#"
+        -module(sample).
+        -spec t~
+        table() -> ok.
+        ])
+        "#),
+            Ctx::Spec
         );
     }
 

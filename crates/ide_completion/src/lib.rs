@@ -36,6 +36,7 @@ mod macros;
 // @fb-only: mod meta_only;
 mod modules;
 mod records;
+mod spec;
 mod types;
 mod vars;
 
@@ -147,6 +148,9 @@ pub fn completions(
         }
         Ctx::ExportType => {
             export_types::add_completions(&mut acc, args);
+        }
+        Ctx::Spec => {
+            spec::add_completions(&mut acc, args);
         }
         Ctx::Other => {
             let _ = attributes::add_completions(&mut acc, args)

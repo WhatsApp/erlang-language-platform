@@ -335,7 +335,7 @@ impl<'db> Semantic<'db> {
         }
     }
 
-    fn find_form<T: FindForm>(&self, ast: InFile<&T>) -> Option<T::Form> {
+    pub fn find_form<T: FindForm>(&self, ast: InFile<&T>) -> Option<T::Form> {
         FindForm::find(self, ast)
     }
 
