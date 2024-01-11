@@ -17,7 +17,6 @@ use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
-use hir::db::MinDefDatabase;
 use hir::InFile;
 use hir::Semantic;
 
@@ -100,7 +99,6 @@ pub enum Kind {
 }
 
 struct Args<'a> {
-    db: &'a dyn MinDefDatabase,
     sema: &'a Semantic<'a>,
     parsed: InFile<SourceFile>,
     trigger: Option<char>,
@@ -122,7 +120,6 @@ pub fn completions(
     let previous_tokens = get_previous_tokens(node, file_position);
     let next_token = right_biased_token(node, file_position);
     let args = &Args {
-        db,
         sema,
         parsed,
         file_position,

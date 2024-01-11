@@ -27,7 +27,6 @@ pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Args) -> DoneFla
 pub(crate) fn add_in_create_or_update(
     acc: &mut Vec<Completion>,
     Args {
-        db,
         file_position,
         parsed,
         sema,
@@ -55,7 +54,7 @@ pub(crate) fn add_in_create_or_update(
                     algo::find_node_at_offset::<ast::RecordField>(node, file_position.offset)?;
                 let prefix = &field.name()?.text()?;
                 let completions = record
-                    .field_names(*db)
+                    .field_names(sema.db)
                     .filter(|field_name| field_name.starts_with(prefix))
                     .map(field_name_to_completion_with_equals);
 
@@ -73,7 +72,6 @@ fn add_token_based_completions(
         file_position,
         previous_tokens,
         sema,
-        db,
         trigger,
         ..
     }: &Args,
@@ -105,7 +103,7 @@ fn add_token_based_completions(
                 .map(|(_, rec)| rec);
             if let Some(record) = record_opt {
                 let completions = record
-                    .field_names(*db)
+                    .field_names(sema.db)
                     .filter(|name| name.as_str().starts_with(field_prefix))
                     .map(field_name_to_completion);
                 acc.extend(completions);
