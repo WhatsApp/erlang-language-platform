@@ -67,7 +67,7 @@ pub fn ide_to_lsp_diagnostic(
     url: &Url,
     d: &Diagnostic,
 ) -> lsp_types::Diagnostic {
-    let code_description = match &d.uri {
+    let code_description = match &d.code_doc_uri {
         Some(uri) => match lsp_types::Url::parse(uri) {
             Ok(href) => Some(lsp_types::CodeDescription { href }),
             Err(_) => None,

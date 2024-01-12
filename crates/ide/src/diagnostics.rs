@@ -110,7 +110,7 @@ pub struct Diagnostic {
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
-    pub uri: Option<String>,
+    pub code_doc_uri: Option<String>,
     // Used to combine syntax errors with erlang_service ones. If we
     // have a syntax error in the range, we filter out erlang_service
     // ones in the same range. We set it to the range of the enclosing form.
@@ -139,7 +139,7 @@ impl Diagnostic {
             categories: HashSet::new(),
             fixes: None,
             related_info: None,
-            uri: code.as_uri(),
+            code_doc_uri: code.as_uri(),
             form_range: None,
         }
     }
@@ -173,7 +173,7 @@ impl Diagnostic {
     }
 
     pub(crate) fn with_uri(mut self, uri: Option<String>) -> Diagnostic {
-        self.uri = uri;
+        self.code_doc_uri = uri;
         self
     }
 
@@ -1917,7 +1917,7 @@ baz(1)->4.
                         fixes: None,
                         related_info: None,
                         code: "L1227".into(),
-                        uri: None,
+                        code_doc_uri: None,
                         form_range: None,
                     },
                 ),
@@ -1931,7 +1931,7 @@ baz(1)->4.
                         fixes: None,
                         related_info: None,
                         code: "L1227".into(),
-                        uri: None,
+                        code_doc_uri: None,
                         form_range: None,
                     },
                 ),
@@ -1945,7 +1945,7 @@ baz(1)->4.
                         fixes: None,
                         related_info: None,
                         code: "L1308".into(),
-                        uri: None,
+                        code_doc_uri: None,
                         form_range: None,
                     },
                 ),
@@ -1963,7 +1963,7 @@ baz(1)->4.
                     fixes: None,
                     related_info: None,
                     code: "P1711".into(),
-                    uri: None,
+                    code_doc_uri: None,
                     form_range: None,
                 },
             )],
