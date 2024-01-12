@@ -1,0 +1,5 @@
+module specified: erlang_diagnostics_errors_gen
+Diagnostics reported in 1 modules:
+  erlang_diagnostics_errors_gen: 2
+      3:0-3:4::[Warning] [L1230] function main/0 is unused
+      4:4-4:10::[Warning] [L1268] variable 'Unused' is unused

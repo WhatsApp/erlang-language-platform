@@ -10,7 +10,7 @@ Available options:
         --as <PROFILE>       Rebar3 profile to pickup (default is test)
         --dump-includes      Report the resolution of include directives for comparison with OTP ones
         --rebar              Run with rebar
-        --include-generated  Also eqwalize opted-in generated modules from application
+        --include-generated  Also process generated modules
         --serial             Parse the files serially, not in parallel
         --format <FORMAT>    Show diagnostics in JSON format
     -h, --help               Prints help information

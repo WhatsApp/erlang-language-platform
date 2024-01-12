@@ -325,7 +325,7 @@ fn do_parse_one(
 ) -> Result<Option<ParseResult>> {
     let url = file_id_to_url(vfs, file_id);
     let native = db.diagnostics(config, file_id, include_generated)?;
-    let erlang_service_diagnostics = db.erlang_service_diagnostics(file_id)?;
+    let erlang_service_diagnostics = db.erlang_service_diagnostics(file_id, include_generated)?;
     let line_index = db.line_index(file_id)?;
 
     // Should we return the included file diagnostics as well? Not doing so now.

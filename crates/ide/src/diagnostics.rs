@@ -1008,87 +1008,92 @@ pub(crate) fn make_unexpected_diagnostic(
 pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
+    include_generated: bool,
 ) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
-    // Use the same format as eqwalizer, so we can re-use the salsa cache entry
-    let format = erlang_service::Format::OffsetEtf;
+    if include_generated || !db.is_generated(file_id) {
+        // Use the same format as eqwalizer, so we can re-use the salsa cache entry
+        let format = erlang_service::Format::OffsetEtf;
 
-    let res = db.module_ast(file_id, format);
+        let res = db.module_ast(file_id, format);
 
-    // We use a BTreeSet of a tuple because neither ParseError nor
-    // Diagnostic nor TextRange has an Ord instance
-    let mut error_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
-        BTreeSet::default();
-    let mut warning_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
-        BTreeSet::default();
+        // We use a BTreeSet of a tuple because neither ParseError nor
+        // Diagnostic nor TextRange has an Ord instance
+        let mut error_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
+            BTreeSet::default();
+        let mut warning_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
+            BTreeSet::default();
 
-    res.errors
-        .iter()
-        .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
-        .for_each(|val| {
-            error_info.insert(val);
-        });
-    res.warnings
-        .iter()
-        .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
-        .for_each(|val| {
-            warning_info.insert(val);
-        });
+        res.errors
+            .iter()
+            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
+            .for_each(|val| {
+                error_info.insert(val);
+            });
+        res.warnings
+            .iter()
+            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
+            .for_each(|val| {
+                warning_info.insert(val);
+            });
 
-    let diags: Vec<(FileId, Diagnostic)> = error_info
-        .into_iter()
-        .map(|(file_id, start, end, code, msg)| {
-            (
-                file_id,
-                Diagnostic::new(
-                    DiagnosticCode::ErlangService(code),
-                    msg,
-                    TextRange::new(start, end),
-                )
-                .with_severity(Severity::Error),
-            )
-        })
-        .chain(
-            warning_info
-                .into_iter()
-                .map(|(file_id, start, end, code, msg)| {
-                    (
-                        file_id,
-                        Diagnostic::new(
-                            DiagnosticCode::ErlangService(code),
-                            msg,
-                            TextRange::new(start, end),
-                        )
-                        .with_severity(Severity::Warning),
-                    )
-                }),
-        )
-        .collect();
-
-    // Remove diagnostics already reported by ELP
-    let file_kind = db.file_kind(file_id);
-    let diags: Vec<(FileId, Diagnostic)> = diags
-        .into_iter()
-        .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
-        .collect();
-    let diags = if diags.is_empty() {
-        // If there are no diagnostics reported, return an empty list
-        // against the `file_id` to clear the list of diagnostics for
-        // the file.
-        vec![(file_id, vec![])]
-    } else {
-        let mut diags_map: FxHashMap<FileId, Vec<Diagnostic>> = FxHashMap::default();
-        diags.into_iter().for_each(|(file_id, diag)| {
-            diags_map
-                .entry(file_id)
-                .and_modify(|existing| existing.push(diag.clone()))
-                .or_insert(vec![diag.clone()]);
-        });
-        diags_map
+        let diags: Vec<(FileId, Diagnostic)> = error_info
             .into_iter()
-            .map(|(file_id, ds)| (file_id, ds))
-            .collect()
-    };
-    label_erlang_service_diagnostics(diags)
+            .map(|(file_id, start, end, code, msg)| {
+                (
+                    file_id,
+                    Diagnostic::new(
+                        DiagnosticCode::ErlangService(code),
+                        msg,
+                        TextRange::new(start, end),
+                    )
+                    .with_severity(Severity::Error),
+                )
+            })
+            .chain(
+                warning_info
+                    .into_iter()
+                    .map(|(file_id, start, end, code, msg)| {
+                        (
+                            file_id,
+                            Diagnostic::new(
+                                DiagnosticCode::ErlangService(code),
+                                msg,
+                                TextRange::new(start, end),
+                            )
+                            .with_severity(Severity::Warning),
+                        )
+                    }),
+            )
+            .collect();
+
+        // Remove diagnostics already reported by ELP
+        let file_kind = db.file_kind(file_id);
+        let diags: Vec<(FileId, Diagnostic)> = diags
+            .into_iter()
+            .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
+            .collect();
+        let diags = if diags.is_empty() {
+            // If there are no diagnostics reported, return an empty list
+            // against the `file_id` to clear the list of diagnostics for
+            // the file.
+            vec![(file_id, vec![])]
+        } else {
+            let mut diags_map: FxHashMap<FileId, Vec<Diagnostic>> = FxHashMap::default();
+            diags.into_iter().for_each(|(file_id, diag)| {
+                diags_map
+                    .entry(file_id)
+                    .and_modify(|existing| existing.push(diag.clone()))
+                    .or_insert(vec![diag.clone()]);
+            });
+            diags_map
+                .into_iter()
+                .map(|(file_id, ds)| (file_id, ds))
+                .collect()
+        };
+        label_erlang_service_diagnostics(diags)
+    } else {
+        vec![]
+    }
 }
 
 /// We label erlang service diagnostics with any references to

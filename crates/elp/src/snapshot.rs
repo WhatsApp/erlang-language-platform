@@ -264,6 +264,7 @@ impl Snapshot {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
+        include_generated: bool,
     ) -> Option<Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
@@ -271,7 +272,10 @@ impl Snapshot {
         });
         let line_index = self.analysis.line_index(file_id).ok()?;
 
-        let diags = &*self.analysis.erlang_service_diagnostics(file_id).ok()?;
+        let diags = &*self
+            .analysis
+            .erlang_service_diagnostics(file_id, include_generated)
+            .ok()?;
 
         Some(
             diags

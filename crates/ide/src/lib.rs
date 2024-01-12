@@ -266,8 +266,9 @@ impl Analysis {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
+        include_generated: bool,
     ) -> Cancellable<Vec<(FileId, LabeledDiagnostics<Diagnostic>)>> {
-        self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id))
+        self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, include_generated))
     }
 
     /// Low-level access to eqwalizer

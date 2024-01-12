@@ -46,7 +46,7 @@ pub struct ParseAllElp {
     pub dump_include_resolutions: bool,
     /// Run with rebar
     pub rebar: bool,
-    /// Also eqwalize opted-in generated modules from application
+    /// Also process generated modules
     pub include_generated: bool,
     /// Parse the files serially, not in parallel
     pub serial: bool,

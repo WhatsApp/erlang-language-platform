@@ -422,6 +422,39 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_exclude_generated(buck: bool) {
+        simple_snapshot(
+            args_vec!["parse-elp", "--module", "erlang_diagnostics_errors_gen"],
+            "diagnostics",
+            expect_file!(
+                "../resources/test/standard/parse_all_diagnostics_exclude_generated.jsonl"
+            ),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_include_generated(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "parse-elp",
+                "--module",
+                "erlang_diagnostics_errors_gen",
+                "--include-generated"
+            ],
+            "diagnostics",
+            expect_file!(
+                "../resources/test/standard/parse_all_diagnostics_include_generated.jsonl"
+            ),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_related(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "cascading",],
