@@ -188,7 +188,7 @@ impl Ctx {
                 }
                 match_ast! {
                     match n {
-                        ast::Spec(spec) => {
+                        ast::Spec(_) => {
                             // For an incomplete spec, the name shows
                             // up in an ERROR node, and the following
                             // fun as the spec.
