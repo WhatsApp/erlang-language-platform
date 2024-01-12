@@ -28,7 +28,7 @@ use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use lsp_types::Diagnostic;
+use lsp_types;
 use lsp_types::SemanticTokens;
 use lsp_types::Url;
 use parking_lot::Mutex;
@@ -156,7 +156,10 @@ impl Snapshot {
         Ok(ai_completion.complete(prefix.to_string()))
     }
 
-    pub fn native_diagnostics(&self, file_id: FileId) -> Option<LabeledDiagnostics<Diagnostic>> {
+    pub fn native_diagnostics(
+        &self,
+        file_id: FileId,
+    ) -> Option<LabeledDiagnostics<lsp_types::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
@@ -175,7 +178,7 @@ impl Snapshot {
         )
     }
 
-    pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+    pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<lsp_types::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
 
@@ -214,7 +217,10 @@ impl Snapshot {
         }
     }
 
-    pub fn edoc_diagnostics(&self, file_id: FileId) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
+    pub fn edoc_diagnostics(
+        &self,
+        file_id: FileId,
+    ) -> Option<Vec<(FileId, Vec<lsp_types::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics {
             file_url: file_url.clone()
@@ -238,7 +244,7 @@ impl Snapshot {
         )
     }
 
-    pub fn ct_diagnostics(&self, file_id: FileId) -> Option<Vec<Diagnostic>> {
+    pub fn ct_diagnostics(&self, file_id: FileId) -> Option<Vec<lsp_types::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::CommonTestDiagnostics {
             file_url: file_url.clone()

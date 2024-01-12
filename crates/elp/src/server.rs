@@ -56,11 +56,11 @@ use lsp_server::Notification;
 use lsp_server::Request;
 use lsp_server::RequestId;
 use lsp_server::Response;
+use lsp_types;
 use lsp_types::notification;
 use lsp_types::notification::Notification as _;
 use lsp_types::request;
 use lsp_types::request::Request as _;
-use lsp_types::Diagnostic;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::ShowMessageParams;
@@ -111,11 +111,11 @@ pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
     FetchProject(Vec<Project>),
-    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
-    EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
-    EdocDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
-    CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<Diagnostic>)>),
-    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<Diagnostic>)>),
+    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>),
+    EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    EdocDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
@@ -821,7 +821,7 @@ impl Server {
 
     fn native_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<Diagnostic>)>,
+        diags: Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_native(file_id, diagnostics);
@@ -903,19 +903,22 @@ impl Server {
         });
     }
 
-    fn eqwalizer_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
+    fn eqwalizer_diagnostics_completed(
+        &mut self,
+        diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>,
+    ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_eqwalizer(file_id, diagnostics);
         }
     }
 
-    fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
+    fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_edoc(file_id, diagnostics);
         }
     }
 
-    fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<Diagnostic>)>) {
+    fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_ct(file_id, diagnostics);
         }
@@ -947,7 +950,7 @@ impl Server {
 
     fn erlang_service_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<Diagnostic>)>,
+        diags: Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_erlang_service(file_id, diagnostics);
