@@ -31,7 +31,6 @@ pub mod build;
 pub mod cli;
 pub mod config;
 pub mod convert;
-pub mod diagnostics;
 pub mod document;
 mod from_proto;
 mod handlers;
