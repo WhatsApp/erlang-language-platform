@@ -15,6 +15,7 @@ use anyhow::Result;
 use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics;
+use elp_ide::diagnostics::eqwalizer_to_diagnostic;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -175,7 +176,7 @@ impl Snapshot {
         )
     }
 
-    pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<lsp_types::Diagnostic>> {
+    pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<diagnostics::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
 
@@ -189,8 +190,6 @@ impl Snapshot {
             return Some(vec![]);
         }
 
-        let line_index = self.analysis.line_index(file_id).ok()?;
-
         let diags = self
             .analysis
             .eqwalizer_diagnostics(project_id, vec![file_id])
@@ -200,9 +199,9 @@ impl Snapshot {
                 errors
                     .iter()
                     .flat_map(|(_, diags)| {
-                        diags.iter().map(|d| {
-                            convert::eqwalizer_to_lsp_diagnostic(d, &line_index, eqwalizer_enabled)
-                        })
+                        diags
+                            .iter()
+                            .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
                     })
                     .collect(),
             ),

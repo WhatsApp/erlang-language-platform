@@ -13,6 +13,7 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
 use elp_ide_assists::GroupLabel;
@@ -282,6 +283,7 @@ pub enum Severity {
     // the problems pane, has an unobtrusive underline, but does show
     // up on hover if the cursor is placed on it.
     WeakWarning,
+    Information,
 }
 
 impl Default for Severity {
@@ -651,6 +653,37 @@ impl<D> LabeledDiagnostics<D> {
 /// Convert a `TextRange` into a form suitable for a `TextRangeSet`
 fn to_range(range: &TextRange) -> RangeInclusive<u32> {
     RangeInclusive::new(range.start().into(), range.end().into())
+}
+
+pub fn eqwalizer_to_diagnostic(d: &EqwalizerDiagnostic, eqwalizer_enabled: bool) -> Diagnostic {
+    let range = d.range;
+    let severity = if eqwalizer_enabled {
+        Severity::Error
+    } else {
+        Severity::Information
+    };
+    let explanation = match &d.explanation {
+        Some(s) => format!("\n\n{}", s),
+        None => "".to_string(),
+    };
+    let message = format!(
+        "{}{}{}\n        See {}",
+        d.expr_string(),
+        d.message,
+        explanation,
+        d.uri
+    );
+    Diagnostic {
+        range,
+        severity,
+        code: DiagnosticCode::Eqwalizer(d.code.clone()),
+        message,
+        categories: FxHashSet::default(),
+        fixes: None,
+        related_info: None,
+        code_doc_uri: Some(d.uri.clone()),
+        form_range: None,
+    }
 }
 
 /// Main entry point to calculate ELP-native diagnostics for a file

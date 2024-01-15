@@ -14,6 +14,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use anyhow::Result;
 use elp_ide::diagnostics::Diagnostic;
+use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::RelatedInformation;
 use elp_ide::diagnostics::Severity;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
@@ -59,6 +60,7 @@ pub fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity 
         Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
         Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
         Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
+        Severity::Information => lsp_types::DiagnosticSeverity::INFORMATION,
     }
 }
 
@@ -74,12 +76,16 @@ pub fn ide_to_lsp_diagnostic(
         },
         None => None,
     };
+    let (source, code) = match &d.code {
+        DiagnosticCode::Eqwalizer(code) => (Some("eqWAlizer".into()), code.clone()),
+        _ => (Some("elp".into()), d.code.to_string()),
+    };
     lsp_types::Diagnostic {
         range: range(line_index, d.range),
         severity: Some(diagnostic_severity(d.severity)),
-        code: Some(lsp_types::NumberOrString::String(d.code.to_string())),
+        code: Some(lsp_types::NumberOrString::String(code)),
         code_description,
-        source: Some("elp".into()),
+        source,
         message: d.message.clone(),
         related_information: from_related(line_index, url, &d.related_info),
         tags: None,
@@ -99,45 +105,6 @@ pub fn lsp_to_assist_context_diagnostic(
         }
     } else {
         None
-    }
-}
-
-pub fn eqwalizer_to_lsp_diagnostic(
-    d: &EqwalizerDiagnostic,
-    line_index: &LineIndex,
-    eqwalizer_enabled: bool,
-) -> lsp_types::Diagnostic {
-    let range = range(line_index, d.range);
-    let severity = if eqwalizer_enabled {
-        lsp_types::DiagnosticSeverity::ERROR
-    } else {
-        lsp_types::DiagnosticSeverity::INFORMATION
-    };
-    let explanation = match &d.explanation {
-        Some(s) => format!("\n\n{}", s),
-        None => "".to_string(),
-    };
-    let message = format!(
-        "{}{}{}\n        See {}",
-        expr_string(d),
-        d.message,
-        explanation,
-        d.uri
-    );
-    let code_description = match lsp_types::Url::parse(&d.uri) {
-        Ok(href) => Some(lsp_types::CodeDescription { href }),
-        Err(_) => None,
-    };
-    lsp_types::Diagnostic {
-        range,
-        severity: Some(severity),
-        code: Some(lsp_types::NumberOrString::String(d.code.to_string())),
-        code_description,
-        source: Some("eqWAlizer".into()),
-        message,
-        related_information: None,
-        tags: None,
-        data: None,
     }
 }
 
@@ -171,7 +138,7 @@ pub fn eqwalizer_to_arc_diagnostic(
 ```
 {}
 {}",
-        expr_string(d),
+        d.expr_string(),
         d.message,
         explanation,
         link
@@ -186,13 +153,6 @@ pub fn eqwalizer_to_arc_diagnostic(
         message,
         d.expression.clone(),
     )
-}
-
-fn expr_string(d: &EqwalizerDiagnostic) -> String {
-    match &d.expression {
-        Some(s) => format!("`{}`.\n", s),
-        None => "".to_string(),
-    }
 }
 
 fn from_related(
@@ -261,6 +221,7 @@ fn ide_to_arc_severity(severity: Severity) -> arc_types::Severity {
         Severity::Error => arc_types::Severity::Error,
         Severity::Warning => arc_types::Severity::Warning,
         Severity::WeakWarning => arc_types::Severity::Advice,
+        Severity::Information => arc_types::Severity::Advice,
     }
 }
 

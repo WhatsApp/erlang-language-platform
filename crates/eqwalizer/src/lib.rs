@@ -108,6 +108,15 @@ pub struct EqwalizerDiagnostic {
     pub explanation: Option<String>,
 }
 
+impl EqwalizerDiagnostic {
+    pub fn expr_string(&self) -> String {
+        match &self.expression {
+            Some(s) => format!("`{}`.\n", s),
+            None => "".to_string(),
+        }
+    }
+}
+
 impl EqwalizerDiagnostics {
     pub fn combine(mut self, other: Self) -> Self {
         match &mut self {

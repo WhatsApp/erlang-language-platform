@@ -113,7 +113,7 @@ pub enum Task {
     ShowMessage(lsp_types::ShowMessageParams),
     FetchProject(Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
-    EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
@@ -910,7 +910,7 @@ impl Server {
 
     fn eqwalizer_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>,
+        diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_eqwalizer(file_id, diagnostics);

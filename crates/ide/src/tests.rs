@@ -222,6 +222,7 @@ fn convert_diagnostics_to_annotations(
                 Severity::Error => "error",
                 Severity::Warning => "warning",
                 Severity::WeakWarning => "weak",
+                Severity::Information => "information",
             });
             annotation.push_str(": ");
             annotation.push_str(&d.message);
