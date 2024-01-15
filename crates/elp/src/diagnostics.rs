@@ -10,7 +10,6 @@
 // From https://github.com/rust-lang/rust-analyzer/blob/cf44953210cbfe189043417690fabd0037a6e74e/crates/rust-analyzer/src/diagnostics.rs
 
 use std::mem;
-use std::str::FromStr;
 
 use elp_ide::diagnostics::already_reported;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -167,21 +166,6 @@ fn set_labeled_diagnostics(
         map.remove(&file_id);
     } else {
         map.insert(file_id, new);
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum DiagnosticSource {
-    ErlangLsCompiler,
-}
-
-impl FromStr for DiagnosticSource {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Compiler" => Ok(DiagnosticSource::ErlangLsCompiler),
-            unknown => Err(format!("Unknown DiagnosticSource: '{unknown}'")),
-        }
     }
 }
 
