@@ -99,8 +99,6 @@ pub use from_config::ReplaceCallAction;
 pub use replace_call::Replacement;
 
 #[derive(Debug, Clone)]
-// For the doc please refer to
-// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
 pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
