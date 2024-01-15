@@ -211,7 +211,7 @@ impl Analysis {
         config: &DiagnosticsConfig,
         file_id: FileId,
         include_generated: bool,
-    ) -> Cancellable<LabeledDiagnostics<Diagnostic>> {
+    ) -> Cancellable<LabeledDiagnostics> {
         self.with_db(|db| diagnostics::diagnostics(db, config, file_id, include_generated))
     }
 
@@ -268,7 +268,7 @@ impl Analysis {
         &self,
         file_id: FileId,
         include_generated: bool,
-    ) -> Cancellable<Vec<(FileId, LabeledDiagnostics<Diagnostic>)>> {
+    ) -> Cancellable<Vec<(FileId, LabeledDiagnostics)>> {
         self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, include_generated))
     }
 

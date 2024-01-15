@@ -113,11 +113,11 @@ pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
     FetchProject(Vec<Project>),
-    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
+    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
-    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
+    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
@@ -830,10 +830,7 @@ impl Server {
         });
     }
 
-    fn native_diagnostics_completed(
-        &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
-    ) {
+    fn native_diagnostics_completed(&mut self, diags: Vec<(FileId, LabeledDiagnostics)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_native(file_id, diagnostics);
         }
@@ -962,10 +959,7 @@ impl Server {
         });
     }
 
-    fn erlang_service_diagnostics_completed(
-        &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
-    ) {
+    fn erlang_service_diagnostics_completed(&mut self, diags: Vec<(FileId, LabeledDiagnostics)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_erlang_service(file_id, diagnostics);
         }

@@ -19,8 +19,8 @@ use crate::LabeledDiagnostics;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticCollection {
-    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
-    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics>,
+    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) ct: FxHashMap<FileId, Vec<Diagnostic>>,
@@ -28,7 +28,7 @@ pub struct DiagnosticCollection {
 }
 
 impl DiagnosticCollection {
-    pub fn set_native(&mut self, file_id: FileId, diagnostics: LabeledDiagnostics<Diagnostic>) {
+    pub fn set_native(&mut self, file_id: FileId, diagnostics: LabeledDiagnostics) {
         if !are_all_labeled_diagnostics_equal(&self.native, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.native, file_id, diagnostics);
             self.changes.insert(file_id);
@@ -56,11 +56,7 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_erlang_service(
-        &mut self,
-        file_id: FileId,
-        diagnostics: LabeledDiagnostics<Diagnostic>,
-    ) {
+    pub fn set_erlang_service(&mut self, file_id: FileId, diagnostics: LabeledDiagnostics) {
         if !are_all_labeled_diagnostics_equal(&self.erlang_service, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.erlang_service, file_id, diagnostics);
             self.changes.insert(file_id);
@@ -108,9 +104,9 @@ fn are_all_diagnostics_equal(
 }
 
 fn are_all_labeled_diagnostics_equal(
-    map: &FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    map: &FxHashMap<FileId, LabeledDiagnostics>,
     file_id: FileId,
-    new: &LabeledDiagnostics<Diagnostic>,
+    new: &LabeledDiagnostics,
 ) -> bool {
     let empty_diags = LabeledDiagnostics::default();
     let existing = map.get(&file_id).unwrap_or(&empty_diags);
@@ -155,9 +151,9 @@ fn set_diagnostics(
 }
 
 fn set_labeled_diagnostics(
-    map: &mut FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    map: &mut FxHashMap<FileId, LabeledDiagnostics>,
     file_id: FileId,
-    new: LabeledDiagnostics<Diagnostic>,
+    new: LabeledDiagnostics,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
@@ -256,7 +252,7 @@ mod tests {
     #[track_caller]
     pub(crate) fn check_diagnostics_with_config_and_extra(
         config: DiagnosticsConfig,
-        extra_diags: &LabeledDiagnostics<Diagnostic>,
+        extra_diags: &LabeledDiagnostics,
         elp_fixture: &str,
     ) {
         let (db, files) = RootDatabase::with_many_files(elp_fixture);

@@ -579,18 +579,18 @@ impl<'a> DiagnosticsConfig<'a> {
     }
 }
 
-pub type Labeled<T> = FxHashMap<Option<Label>, Vec<(TextRange, T)>>;
+pub type Labeled = FxHashMap<Option<Label>, Vec<(TextRange, Diagnostic)>>;
 
 pub type TextRangeSet = RangeSet<[RangeInclusive<u32>; 1]>;
 
 #[derive(Debug, Clone)]
-pub struct LabeledDiagnostics<D> {
+pub struct LabeledDiagnostics {
     pub syntax_error_form_ranges: TextRangeSet,
-    pub normal: Vec<(TextRange, D)>,
-    pub labeled: Labeled<D>,
+    pub normal: Vec<(TextRange, Diagnostic)>,
+    pub labeled: Labeled,
 }
 
-impl<D: Default> Default for LabeledDiagnostics<D> {
+impl Default for LabeledDiagnostics {
     fn default() -> Self {
         Self {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
@@ -600,8 +600,8 @@ impl<D: Default> Default for LabeledDiagnostics<D> {
     }
 }
 
-impl<D> LabeledDiagnostics<D> {
-    pub fn default() -> LabeledDiagnostics<D> {
+impl LabeledDiagnostics {
+    pub fn default() -> LabeledDiagnostics {
         LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
@@ -609,7 +609,7 @@ impl<D> LabeledDiagnostics<D> {
         }
     }
 
-    pub fn new(diagnostics: Vec<(TextRange, D)>) -> LabeledDiagnostics<D> {
+    pub fn new(diagnostics: Vec<(TextRange, Diagnostic)>) -> LabeledDiagnostics {
         LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: diagnostics,
@@ -617,7 +617,7 @@ impl<D> LabeledDiagnostics<D> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &D> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &Diagnostic> + '_ {
         self.normal
             .iter()
             .chain(self.labeled.values().flatten())
@@ -632,20 +632,7 @@ impl<D> LabeledDiagnostics<D> {
         self.normal.len() + self.labeled.len()
     }
 
-    pub fn convert<T>(&self, convert: &dyn Fn(&D) -> T) -> LabeledDiagnostics<T> {
-        let do_convert = |(text_range, d): &(TextRange, D)| (*text_range, convert(d));
-        LabeledDiagnostics {
-            syntax_error_form_ranges: self.syntax_error_form_ranges.clone(),
-            normal: self.normal.iter().map(do_convert).collect_vec(),
-            labeled: FxHashMap::from_iter(
-                self.labeled
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.iter().map(do_convert).collect_vec())),
-            ),
-        }
-    }
-
-    pub fn extend<I: IntoIterator<Item = (TextRange, D)>>(&mut self, iter: I) {
+    pub fn extend<I: IntoIterator<Item = (TextRange, Diagnostic)>>(&mut self, iter: I) {
         self.normal.extend(iter.into_iter())
     }
 }
@@ -692,7 +679,7 @@ pub fn diagnostics(
     config: &DiagnosticsConfig,
     file_id: FileId,
     include_generated: bool,
-) -> LabeledDiagnostics<Diagnostic> {
+) -> LabeledDiagnostics {
     lazy_static! {
         static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
     };
@@ -771,8 +758,8 @@ fn get_form_range(syntax: &SyntaxNode, range: TextRange) -> Option<TextRange> {
 fn group_syntax_errors(
     source_file: &SourceFile,
     diagnostics: impl Iterator<Item = Diagnostic>,
-) -> (Labeled<Diagnostic>, TextRangeSet) {
-    let mut map: Labeled<Diagnostic> = FxHashMap::default();
+) -> (Labeled, TextRangeSet) {
+    let mut map: Labeled = FxHashMap::default();
     let mut ranges = RangeSet::from_elements(vec![]);
     diagnostics.for_each(|d| {
         if let Some(range) = d.form_range {
@@ -1045,7 +1032,7 @@ pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
     include_generated: bool,
-) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
+) -> Vec<(FileId, LabeledDiagnostics)> {
     if include_generated || !db.is_generated(file_id) {
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
         let format = erlang_service::Format::OffsetEtf;
@@ -1138,11 +1125,11 @@ pub fn erlang_service_diagnostics(
 /// same label.
 fn label_erlang_service_diagnostics(
     diagnostics: Vec<(FileId, Vec<Diagnostic>)>,
-) -> Vec<(FileId, LabeledDiagnostics<Diagnostic>)> {
+) -> Vec<(FileId, LabeledDiagnostics)> {
     diagnostics
         .into_iter()
         .map(|(file_id, ds)| {
-            let mut labeled: Labeled<Diagnostic> = FxHashMap::default();
+            let mut labeled: Labeled = FxHashMap::default();
             ds.into_iter().for_each(|d| {
                 labeled
                     .entry(erlang_service_label(&d))
@@ -1480,8 +1467,8 @@ fn location_range(location: Location, line_index: &LineIndex) -> TextRange {
 /// Combine the ELP and erlang_service diagnostics.  In particular,
 /// flatten any cascading diagnostics if possible.
 pub fn attach_related_diagnostics(
-    native: LabeledDiagnostics<Diagnostic>,
-    erlang_service: &LabeledDiagnostics<Diagnostic>,
+    native: LabeledDiagnostics,
+    erlang_service: &LabeledDiagnostics,
 ) -> Vec<(TextRange, Diagnostic)> {
     // `native` is labelled with the MFA of functions having syntax
     // errors in them. `erlang_service` is labelled with the MFA of

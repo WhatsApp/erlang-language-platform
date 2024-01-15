@@ -256,7 +256,7 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixtu
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config_and_extra(
     config: DiagnosticsConfig,
-    extra_diags: &LabeledDiagnostics<Diagnostic>,
+    extra_diags: &LabeledDiagnostics,
     elp_fixture: &str,
 ) {
     let (db, files) = RootDatabase::with_many_files(elp_fixture);

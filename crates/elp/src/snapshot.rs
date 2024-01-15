@@ -158,10 +158,7 @@ impl Snapshot {
         Ok(ai_completion.complete(prefix.to_string()))
     }
 
-    pub fn native_diagnostics(
-        &self,
-        file_id: FileId,
-    ) -> Option<LabeledDiagnostics<diagnostics::Diagnostic>> {
+    pub fn native_diagnostics(&self, file_id: FileId) -> Option<LabeledDiagnostics> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
@@ -245,7 +242,7 @@ impl Snapshot {
         &self,
         file_id: FileId,
         include_generated: bool,
-    ) -> Option<Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
+    ) -> Option<Vec<(FileId, LabeledDiagnostics)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
             file_url: file_url.clone()

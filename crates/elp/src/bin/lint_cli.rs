@@ -78,7 +78,7 @@ fn do_parse_all(
     config: &DiagnosticsConfig,
     args: &Lint,
     ignore_apps: &[String],
-) -> Result<Vec<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
+) -> Result<Vec<(String, FileId, LabeledDiagnostics)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
     let module_iter = module_index.iter_own();
 
@@ -114,7 +114,7 @@ fn do_parse_one(
     file_id: FileId,
     name: &str,
     args: &Lint,
-) -> Result<Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
+) -> Result<Option<(String, FileId, LabeledDiagnostics)>> {
     if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
         return Ok(None);
     }
@@ -367,7 +367,7 @@ fn filter_diagnostics<'a>(
     db: &Analysis,
     module: &'a Option<String>,
     allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
-    diags: &'a [(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)],
+    diags: &'a [(String, FileId, LabeledDiagnostics)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     Ok(diags
@@ -498,9 +498,7 @@ impl<'a> Lints<'a> {
                          changes,
                          diff: _,
                      }|
-                     -> Result<
-                        Option<(String, FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
-                    > {
+                     -> Result<Option<(String, FileId, LabeledDiagnostics)>> {
                         self.changed_files.insert((file_id, name.clone()));
                         let path = self.vfs.file_path(file_id);
                         self.vfs
