@@ -29,7 +29,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::group_label_ignore;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
-use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
 use elp_ide::elp_ide_assists::Assist;
@@ -52,6 +52,7 @@ use fxhash::FxHashSet;
 use hir::FormIdx;
 use hir::InFile;
 use indicatif::ParallelProgressIterator;
+use itertools::Itertools;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use text_edit::TextSize;
@@ -78,7 +79,7 @@ fn do_parse_all(
     config: &DiagnosticsConfig,
     args: &Lint,
     ignore_apps: &[String],
-) -> Result<Vec<(String, FileId, LabeledDiagnostics)>> {
+) -> Result<Vec<(String, FileId, DiagnosticCollection)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
     let module_iter = module_index.iter_own();
 
@@ -114,27 +115,26 @@ fn do_parse_one(
     file_id: FileId,
     name: &str,
     args: &Lint,
-) -> Result<Option<(String, FileId, LabeledDiagnostics)>> {
+) -> Result<Option<(String, FileId, DiagnosticCollection)>> {
     if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
         return Ok(None);
     }
 
-    let mut diagnostics = db.diagnostics(config, file_id, args.include_generated)?;
+    let mut diagnostics = DiagnosticCollection::default();
+    let native = db.diagnostics(config, file_id, args.include_generated)?;
+    diagnostics.set_native(file_id, native);
 
     if args.include_ct_diagnostics {
-        let ct_diagnostics = db
-            .ct_diagnostics(file_id)?
-            .into_iter()
-            .map(|d| (d.range, d));
-        diagnostics.extend(ct_diagnostics);
+        diagnostics.set_ct(file_id, db.ct_diagnostics(file_id)?);
     }
     if args.include_edoc_diagnostics {
         let edoc_diagnostics = db
             .edoc_diagnostics(file_id)?
             .into_iter()
             .filter(|(f, _)| *f == file_id)
-            .flat_map(|(_, ds)| ds.into_iter().map(|d| (d.range, d)));
-        diagnostics.extend(edoc_diagnostics);
+            .flat_map(|(_, ds)| ds.into_iter().map(|d| d))
+            .collect_vec();
+        diagnostics.set_edoc(file_id, edoc_diagnostics);
     }
 
     if !diagnostics.is_empty() {
@@ -367,7 +367,7 @@ fn filter_diagnostics<'a>(
     db: &Analysis,
     module: &'a Option<String>,
     allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
-    diags: &'a [(String, FileId, LabeledDiagnostics)],
+    diags: &'a [(String, FileId, DiagnosticCollection)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     Ok(diags
@@ -376,6 +376,7 @@ fn filter_diagnostics<'a>(
         .filter_map(|(m, file_id, ds)| {
             if module.is_none() || &Some(m.to_string()) == module {
                 let ds2 = ds
+                    .diagnostics_for(file_id)
                     .iter()
                     .filter(|d| {
                         let form_id = get_form_id_at_offset(db, file_id, d.range.start())
@@ -498,7 +499,7 @@ impl<'a> Lints<'a> {
                          changes,
                          diff: _,
                      }|
-                     -> Result<Option<(String, FileId, LabeledDiagnostics)>> {
+                     -> Result<Option<(String, FileId, DiagnosticCollection)>> {
                         self.changed_files.insert((file_id, name.clone()));
                         let path = self.vfs.file_path(file_id);
                         self.vfs

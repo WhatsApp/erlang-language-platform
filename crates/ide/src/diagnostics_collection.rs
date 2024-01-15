@@ -87,6 +87,24 @@ impl DiagnosticCollection {
         }
         Some(mem::take(&mut self.changes))
     }
+
+    pub fn is_empty(&self) -> bool {
+        // Use a match to ensure we check all fields, future proofing
+        let DiagnosticCollection {
+            native,
+            erlang_service,
+            eqwalizer,
+            edoc,
+            ct,
+            changes,
+        } = self;
+        native.is_empty()
+            && erlang_service.is_empty()
+            && eqwalizer.is_empty()
+            && edoc.is_empty()
+            && ct.is_empty()
+            && changes.is_empty()
+    }
 }
 
 fn are_all_diagnostics_equal(
