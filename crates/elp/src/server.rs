@@ -114,7 +114,7 @@ pub enum Task {
     FetchProject(Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
-    EdocDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    EdocDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     CompileDeps(Spinner),
@@ -917,7 +917,7 @@ impl Server {
         }
     }
 
-    fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>) {
+    fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_edoc(file_id, diagnostics);
         }

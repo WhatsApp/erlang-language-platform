@@ -216,26 +216,18 @@ impl Snapshot {
     pub fn edoc_diagnostics(
         &self,
         file_id: FileId,
-    ) -> Option<Vec<(FileId, Vec<lsp_types::Diagnostic>)>> {
+    ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics {
             file_url: file_url.clone()
         });
-        let line_index = self.analysis.line_index(file_id).ok()?;
 
         let diags = &*self.analysis.edoc_diagnostics(file_id).ok()?;
 
         Some(
             diags
                 .iter()
-                .map(|(file_id, ds)| {
-                    (
-                        *file_id,
-                        ds.iter()
-                            .map(|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d))
-                            .collect(),
-                    )
-                })
+                .map(|(file_id, ds)| (*file_id, ds.clone()))
                 .collect(),
         )
     }

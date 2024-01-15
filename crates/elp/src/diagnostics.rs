@@ -33,7 +33,7 @@ pub(crate) struct DiagnosticCollection {
     pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
-    pub(crate) edoc: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) edoc: FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
     pub(crate) ct: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
@@ -57,9 +57,9 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_edoc(&mut self, file_id: FileId, diagnostics: Vec<lsp_types::Diagnostic>) {
-        if !are_all_diagnostics_equal_lsp(&self.edoc, file_id, &diagnostics) {
-            set_diagnostics_lsp(&mut self.edoc, file_id, diagnostics);
+    pub fn set_edoc(&mut self, file_id: FileId, diagnostics: Vec<diagnostics::Diagnostic>) {
+        if !are_all_diagnostics_equal(&self.edoc, file_id, &diagnostics) {
+            set_diagnostics(&mut self.edoc, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
@@ -102,7 +102,12 @@ impl DiagnosticCollection {
             .into_iter()
             .flatten()
             .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
-        let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
+        let edoc = self
+            .edoc
+            .get(&file_id)
+            .into_iter()
+            .flatten()
+            .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer);
         combined.extend(edoc);
