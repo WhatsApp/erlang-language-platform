@@ -21,6 +21,7 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
+use elp_ide::diagnostics;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
@@ -111,11 +112,11 @@ pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
     FetchProject(Vec<Project>),
-    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>),
+    NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
-    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>),
+    ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
@@ -461,9 +462,11 @@ impl Server {
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             log::info!("changed diagnostics: {:?}", diagnostic_changes);
 
+            let snapshot = self.snapshot();
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read(), file_id);
-                let diagnostics = self.diagnostics.diagnostics_for(file_id, &url);
+                let line_index = snapshot.analysis.line_index(file_id)?;
+                let diagnostics = self.diagnostics.diagnostics_for(file_id, &url, &line_index);
                 let version = convert::vfs_path(&url)
                     .map(|path| self.open_document_versions.read().get(&path).cloned())
                     .unwrap_or_default();
@@ -823,7 +826,7 @@ impl Server {
 
     fn native_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>,
+        diags: Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_native(file_id, diagnostics);
@@ -955,7 +958,7 @@ impl Server {
 
     fn erlang_service_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>,
+        diags: Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_erlang_service(file_id, diagnostics);

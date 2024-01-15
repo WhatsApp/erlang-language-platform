@@ -98,7 +98,7 @@ pub use from_config::ReplaceCall;
 pub use from_config::ReplaceCallAction;
 pub use replace_call::Replacement;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
@@ -122,11 +122,7 @@ pub fn group_label_ignore() -> GroupLabel {
 }
 
 impl Diagnostic {
-    pub(crate) fn new(
-        code: DiagnosticCode,
-        message: impl Into<String>,
-        range: TextRange,
-    ) -> Diagnostic {
+    pub fn new(code: DiagnosticCode, message: impl Into<String>, range: TextRange) -> Diagnostic {
         let message = message.into();
         Diagnostic {
             code: code.clone(),
@@ -277,7 +273,7 @@ impl fmt::Display for Diagnostic {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Severity {
     Error,
     Warning,
@@ -286,6 +282,12 @@ pub enum Severity {
     // the problems pane, has an unobtrusive underline, but does show
     // up on hover if the cursor is placed on it.
     WeakWarning,
+}
+
+impl Default for Severity {
+    fn default() -> Self {
+        Self::Warning // Pick one
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1486,6 +1488,7 @@ pub fn attach_related_diagnostics(
         .into_iter()
         .chain(updated)
         .chain(es.cloned())
+        // TODO:AZ: consider returning an iterator
         .collect_vec()
 }
 

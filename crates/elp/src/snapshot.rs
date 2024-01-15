@@ -14,6 +14,7 @@ use anyhow::Context;
 use anyhow::Result;
 use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
+use elp_ide::diagnostics;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -159,12 +160,9 @@ impl Snapshot {
     pub fn native_diagnostics(
         &self,
         file_id: FileId,
-    ) -> Option<LabeledDiagnostics<lsp_types::Diagnostic>> {
+    ) -> Option<LabeledDiagnostics<diagnostics::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
-
-        let line_index = self.analysis.line_index(file_id).ok()?;
-        let url = file_id_to_url(&self.vfs.read(), file_id);
 
         Some(
             self.analysis
@@ -173,8 +171,7 @@ impl Snapshot {
                     file_id,
                     false,
                 )
-                .ok()?
-                .convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &url, d)),
+                .ok()?,
         )
     }
 
@@ -265,12 +262,11 @@ impl Snapshot {
         &self,
         file_id: FileId,
         include_generated: bool,
-    ) -> Option<Vec<(FileId, LabeledDiagnostics<lsp_types::Diagnostic>)>> {
+    ) -> Option<Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
             file_url: file_url.clone()
         });
-        let line_index = self.analysis.line_index(file_id).ok()?;
 
         let diags = &*self
             .analysis
@@ -279,13 +275,8 @@ impl Snapshot {
 
         Some(
             diags
-                .iter()
-                .map(|(file_id, ds)| {
-                    (
-                        *file_id,
-                        ds.convert(&|d| convert::ide_to_lsp_diagnostic(&line_index, &file_url, d)),
-                    )
-                })
+                .into_iter()
+                .map(|(file_id, ds)| (*file_id, ds.clone()))
                 .collect(),
         )
     }

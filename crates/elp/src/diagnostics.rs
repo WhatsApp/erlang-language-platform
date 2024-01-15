@@ -11,9 +11,12 @@
 
 use std::mem;
 
+use elp_ide::diagnostics;
 use elp_ide::diagnostics::already_reported;
+use elp_ide::diagnostics::attach_related_diagnostics;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -23,10 +26,12 @@ use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;
 
+use crate::convert::ide_to_lsp_diagnostic;
+
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
-    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
+    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
+    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     pub(crate) ct: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
@@ -37,7 +42,7 @@ impl DiagnosticCollection {
     pub fn set_native(
         &mut self,
         file_id: FileId,
-        diagnostics: LabeledDiagnostics<lsp_types::Diagnostic>,
+        diagnostics: LabeledDiagnostics<diagnostics::Diagnostic>,
     ) {
         if !are_all_labeled_diagnostics_equal(&self.native, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.native, file_id, diagnostics);
@@ -69,7 +74,7 @@ impl DiagnosticCollection {
     pub fn set_erlang_service(
         &mut self,
         file_id: FileId,
-        diagnostics: LabeledDiagnostics<lsp_types::Diagnostic>,
+        diagnostics: LabeledDiagnostics<diagnostics::Diagnostic>,
     ) {
         if !are_all_labeled_diagnostics_equal(&self.erlang_service, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.erlang_service, file_id, diagnostics);
@@ -81,12 +86,16 @@ impl DiagnosticCollection {
         &'a mut self,
         file_id: FileId,
         url: &'a Url,
+        line_index: &LineIndex,
     ) -> Vec<lsp_types::Diagnostic> {
         let empty_diags = LabeledDiagnostics::default();
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
-        let mut combined = attach_related_diagnostics(url, native, erlang_service);
-
+        let mut combined: Vec<lsp_types::Diagnostic> =
+            attach_related_diagnostics(native.clone(), erlang_service)
+                .iter()
+                .map(|(_, d)| ide_to_lsp_diagnostic(&line_index, &url, d))
+                .collect();
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
@@ -115,13 +124,13 @@ fn are_all_diagnostics_equal(
         && new
             .iter()
             .zip(existing)
-            .all(|(left, right)| are_diagnostics_equal(left, right))
+            .all(|(left, right)| are_diagnostics_equal_lsp(left, right))
 }
 
 fn are_all_labeled_diagnostics_equal(
-    map: &FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
+    map: &FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     file_id: FileId,
-    new: &LabeledDiagnostics<lsp_types::Diagnostic>,
+    new: &LabeledDiagnostics<diagnostics::Diagnostic>,
 ) -> bool {
     let empty_diags = LabeledDiagnostics::default();
     let existing = map.get(&file_id).unwrap_or(&empty_diags);
@@ -138,7 +147,23 @@ fn are_all_labeled_diagnostics_equal(
 }
 
 #[derive(Debug)]
-struct CompareDiagnostic<'a>(&'a lsp_types::Diagnostic);
+struct CompareDiagnosticLsp<'a>(&'a lsp_types::Diagnostic);
+
+impl PartialEq for CompareDiagnosticLsp<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        are_diagnostics_equal_lsp(self.0, other.0)
+    }
+}
+
+fn are_diagnostics_equal_lsp(left: &lsp_types::Diagnostic, right: &lsp_types::Diagnostic) -> bool {
+    left.source == right.source
+        && left.severity == right.severity
+        && left.range == right.range
+        && left.message == right.message
+}
+
+#[derive(Debug)]
+struct CompareDiagnostic<'a>(&'a diagnostics::Diagnostic);
 
 impl PartialEq for CompareDiagnostic<'_> {
     fn eq(&self, other: &Self) -> bool {
@@ -146,8 +171,8 @@ impl PartialEq for CompareDiagnostic<'_> {
     }
 }
 
-fn are_diagnostics_equal(left: &lsp_types::Diagnostic, right: &lsp_types::Diagnostic) -> bool {
-    left.source == right.source
+fn are_diagnostics_equal(left: &diagnostics::Diagnostic, right: &diagnostics::Diagnostic) -> bool {
+    left.code == right.code
         && left.severity == right.severity
         && left.range == right.range
         && left.message == right.message
@@ -166,9 +191,9 @@ fn set_diagnostics(
 }
 
 fn set_labeled_diagnostics(
-    map: &mut FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
+    map: &mut FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     file_id: FileId,
-    new: LabeledDiagnostics<lsp_types::Diagnostic>,
+    new: LabeledDiagnostics<diagnostics::Diagnostic>,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
@@ -181,7 +206,7 @@ fn set_labeled_diagnostics(
 
 /// Combine the ELP and erlang_service diagnostics.  In particular,
 /// flatten any cascading diagnostics if possible.
-pub fn attach_related_diagnostics(
+pub fn attach_related_diagnostics_lsp(
     url: &Url,
     native: &LabeledDiagnostics<lsp_types::Diagnostic>,
     erlang_service: &LabeledDiagnostics<lsp_types::Diagnostic>,
@@ -283,31 +308,39 @@ mod tests {
     #[test]
     fn does_not_mark_change_from_empty_to_empty() {
         let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
-        let (_db, file_id) = RootDatabase::with_single_file(
+        let (db, file_id) = RootDatabase::with_single_file(
             r#"
             -module(test).
             "#,
         );
         let mut diagnostics = DiagnosticCollection::default();
+        let line_index = db.file_line_index(file_id);
 
         diagnostics.set_eqwalizer(file_id, vec![]);
         diagnostics.set_native(file_id, LabeledDiagnostics::default());
 
         assert_eq!(diagnostics.take_changes(), None);
-        assert_eq!(diagnostics.diagnostics_for(file_id, &url).len(), 0);
+        assert_eq!(
+            diagnostics
+                .diagnostics_for(file_id, &url, &line_index)
+                .len(),
+            0
+        );
     }
 
     #[test]
     fn resets_diagnostics() {
         let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
-        let (_db, file_id) = RootDatabase::with_single_file(
+        let (db, file_id) = RootDatabase::with_single_file(
             r#"
             -module(test).
             "#,
         );
         let mut diagnostics = DiagnosticCollection::default();
+        let line_index = db.file_line_index(file_id);
 
-        let diagnostic = lsp_types::Diagnostic::default();
+        let diagnostic = diagnostics::Diagnostic::default();
+        let diagnostic_lsp = ide_to_lsp_diagnostic(&line_index, &url, &diagnostic);
         let text_range = TextRange::new(0.into(), 0.into());
 
         // Set some diagnostic initially
@@ -321,15 +354,20 @@ mod tests {
         expected_changes.insert(file_id);
         assert_eq!(changes.as_ref(), Some(&expected_changes));
 
-        let stored = diagnostics.diagnostics_for(file_id, &url);
-        assert_eq!(stored, vec![diagnostic]);
+        let stored = diagnostics.diagnostics_for(file_id, &url, &line_index);
+        assert_eq!(stored, vec![diagnostic_lsp]);
 
         // Reset to empty
         diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![]));
 
         let changes = diagnostics.take_changes();
         assert_eq!(changes.as_ref(), Some(&expected_changes));
-        assert_eq!(diagnostics.diagnostics_for(file_id, &url).len(), 0);
+        assert_eq!(
+            diagnostics
+                .diagnostics_for(file_id, &url, &line_index)
+                .len(),
+            0
+        );
     }
 
     // -----------------------------------------------------------------
@@ -347,7 +385,7 @@ mod tests {
             let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
             let diagnostics = diagnostics.convert(&|d| ide_to_lsp_diagnostic(&line_index, &url, d));
 
-            let combined = attach_related_diagnostics(&url, &diagnostics, extra_diags);
+            let combined = attach_related_diagnostics_lsp(&url, &diagnostics, extra_diags);
             let expected = extract_annotations(&db.file_text(file_id));
             let mut actual = combined
                 .into_iter()
@@ -370,7 +408,7 @@ mod tests {
         }
     }
 
-    fn make_diag(
+    fn make_diag_lsp(
         message: &str,
         code: &str,
         line: u32,
@@ -393,19 +431,36 @@ mod tests {
         )
     }
 
+    fn make_diag(
+        message: &str,
+        code: &str,
+        range: TextRange,
+    ) -> (TextRange, diagnostics::Diagnostic) {
+        (
+            TextRange::new(0.into(), 0.into()),
+            diagnostics::Diagnostic::new(code.into(), message, range),
+        )
+    }
+
     #[test]
     fn group_related_diagnostics() {
         let labeled = FxHashMap::from_iter([(
             Some(Label::new_raw("foo/0")),
             vec![
-                make_diag("function foo/0 undefined", "L1227", 3, 1, 2),
-                make_diag("function foo/0 undefined", "L1227", 3, 6, 7),
-                make_diag("spec for undefined function foo/0", "L1308", 8, 1, 2),
+                make_diag_lsp("function foo/0 undefined", "L1227", 3, 1, 2),
+                make_diag_lsp("function foo/0 undefined", "L1227", 3, 6, 7),
+                make_diag_lsp("spec for undefined function foo/0", "L1308", 8, 1, 2),
             ],
         )]);
         let extra_diags = LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
-            normal: vec![make_diag("syntax error before: '->'", "P1711", 8, 10, 12)],
+            normal: vec![make_diag_lsp(
+                "syntax error before: '->'",
+                "P1711",
+                8,
+                10,
+                12,
+            )],
             labeled,
         };
 
@@ -433,13 +488,25 @@ mod tests {
     fn are_labeled_diagnostics_equal() {
         let labeled_one = FxHashMap::from_iter([(
             None,
-            vec![make_diag("function foo/0 undefined", "L1227", 3, 1, 2)],
+            vec![make_diag(
+                "function foo/0 undefined",
+                "L1227",
+                TextRange::new(3.into(), 5.into()),
+            )],
         )]);
         let labeled_two = FxHashMap::from_iter([(
             None,
             vec![
-                make_diag("function foo/0 undefined", "L1227", 3, 1, 2),
-                make_diag("spec for undefined function foo/0", "L1308", 8, 1, 2),
+                make_diag(
+                    "function foo/0 undefined",
+                    "L1227",
+                    TextRange::new(3.into(), 5.into()),
+                ),
+                make_diag(
+                    "spec for undefined function foo/0",
+                    "L1308",
+                    TextRange::new(8.into(), 10.into()),
+                ),
             ],
         )]);
         let diags_one = LabeledDiagnostics {
