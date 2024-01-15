@@ -24,9 +24,9 @@ use elp::otp_file_to_ignore;
 use elp::server::file_id_to_url;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
-use elp_ide::diagnostics::attach_related_diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
@@ -54,8 +54,7 @@ use crate::reporting;
 struct ParseResult {
     name: String,
     file_id: FileId,
-    native: LabeledDiagnostics<diagnostics::Diagnostic>,
-    erlang_service: LabeledDiagnostics<diagnostics::Diagnostic>,
+    diagnostics: DiagnosticCollection,
 }
 
 pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
@@ -142,14 +141,15 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
         res.sort_by(|a, b| a.name.cmp(&b.name));
         let mut err_in_diag = false;
         for diags in res {
-            let mut combined = attach_related_diagnostics(diags.native, &diags.erlang_service);
+            let mut combined: Vec<diagnostics::Diagnostic> =
+                diags.diagnostics.diagnostics_for(diags.file_id);
             if args.is_format_normal() {
                 writeln!(cli, "  {}: {}", diags.name, combined.len())?;
             }
             if args.print_diags {
                 let line_index = db.file_line_index(diags.file_id);
-                combined.sort_by(|a, b| a.1.range.start().cmp(&b.1.range.start()));
-                for (_, diag) in combined {
+                combined.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
+                for diag in combined {
                     if args.is_format_json() {
                         err_in_diag = true;
                         let vfs_path = loaded.vfs.file_path(diags.file_id);
@@ -349,11 +349,13 @@ fn do_parse_one(
         }
     }
     if !(native.is_empty() && erlang_service.is_empty()) {
+        let mut diagnostics = DiagnosticCollection::default();
+        diagnostics.set_native(file_id, native);
+        diagnostics.set_erlang_service(file_id, erlang_service);
         let res = ParseResult {
             name: name.to_string(),
             file_id,
-            native,
-            erlang_service,
+            diagnostics,
         };
         Ok(Some(res))
     } else {
