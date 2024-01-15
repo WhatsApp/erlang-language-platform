@@ -76,6 +76,7 @@ use self::progress::ProgressTask;
 use self::progress::Spinner;
 use crate::config::Config;
 use crate::convert;
+use crate::convert::ide_to_lsp_diagnostic;
 use crate::diagnostics::DiagnosticCollection;
 use crate::document::Document;
 use crate::handlers;
@@ -466,7 +467,12 @@ impl Server {
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read(), file_id);
                 let line_index = snapshot.analysis.line_index(file_id)?;
-                let diagnostics = self.diagnostics.diagnostics_for(file_id, &url, &line_index);
+                let diagnostics = self
+                    .diagnostics
+                    .diagnostics_for(file_id)
+                    .iter()
+                    .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
+                    .collect();
                 let version = convert::vfs_path(&url)
                     .map(|path| self.open_document_versions.read().get(&path).cloned())
                     .unwrap_or_default();

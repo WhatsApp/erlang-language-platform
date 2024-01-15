@@ -16,7 +16,6 @@ use elp_ide::diagnostics::already_reported;
 use elp_ide::diagnostics::attach_related_diagnostics;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::LineIndex;
 use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -25,8 +24,6 @@ use lsp_types;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;
-
-use crate::convert::ide_to_lsp_diagnostic;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
@@ -82,38 +79,18 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn diagnostics_for<'a>(
-        &'a mut self,
-        file_id: FileId,
-        url: &'a Url,
-        line_index: &LineIndex,
-    ) -> Vec<lsp_types::Diagnostic> {
+    pub fn diagnostics_for<'a>(&'a mut self, file_id: FileId) -> Vec<diagnostics::Diagnostic> {
         let empty_diags = LabeledDiagnostics::default();
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
-        let mut combined: Vec<lsp_types::Diagnostic> =
+        let mut combined: Vec<diagnostics::Diagnostic> =
             attach_related_diagnostics(native.clone(), erlang_service)
                 .iter()
-                .map(|(_, d)| ide_to_lsp_diagnostic(&line_index, &url, d))
+                .map(|(_, d)| d.clone())
                 .collect();
-        let eqwalizer = self
-            .eqwalizer
-            .get(&file_id)
-            .into_iter()
-            .flatten()
-            .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
-        let edoc = self
-            .edoc
-            .get(&file_id)
-            .into_iter()
-            .flatten()
-            .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
-        let ct = self
-            .ct
-            .get(&file_id)
-            .into_iter()
-            .flatten()
-            .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
+        let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
+        let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
+        let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer);
         combined.extend(edoc);
         combined.extend(ct);
@@ -320,42 +297,41 @@ mod tests {
     use crate::convert::ide_to_lsp_diagnostic;
     use crate::from_proto;
 
+    fn are_diagnostics_equal_vec(
+        old: &[diagnostics::Diagnostic],
+        new: &[diagnostics::Diagnostic],
+    ) -> bool {
+        new.iter()
+            .zip(old)
+            .all(|(left, right)| are_diagnostics_equal(left, right))
+    }
+
     #[test]
     fn does_not_mark_change_from_empty_to_empty() {
-        let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
-        let (db, file_id) = RootDatabase::with_single_file(
+        let (_db, file_id) = RootDatabase::with_single_file(
             r#"
             -module(test).
             "#,
         );
         let mut diagnostics = DiagnosticCollection::default();
-        let line_index = db.file_line_index(file_id);
 
         diagnostics.set_eqwalizer(file_id, vec![]);
         diagnostics.set_native(file_id, LabeledDiagnostics::default());
 
         assert_eq!(diagnostics.take_changes(), None);
-        assert_eq!(
-            diagnostics
-                .diagnostics_for(file_id, &url, &line_index)
-                .len(),
-            0
-        );
+        assert_eq!(diagnostics.diagnostics_for(file_id).len(), 0);
     }
 
     #[test]
     fn resets_diagnostics() {
-        let url = lsp_types::Url::parse("file:///foo").ok().unwrap();
-        let (db, file_id) = RootDatabase::with_single_file(
+        let (_db, file_id) = RootDatabase::with_single_file(
             r#"
             -module(test).
             "#,
         );
         let mut diagnostics = DiagnosticCollection::default();
-        let line_index = db.file_line_index(file_id);
 
         let diagnostic = diagnostics::Diagnostic::default();
-        let diagnostic_lsp = ide_to_lsp_diagnostic(&line_index, &url, &diagnostic);
         let text_range = TextRange::new(0.into(), 0.into());
 
         // Set some diagnostic initially
@@ -369,20 +345,15 @@ mod tests {
         expected_changes.insert(file_id);
         assert_eq!(changes.as_ref(), Some(&expected_changes));
 
-        let stored = diagnostics.diagnostics_for(file_id, &url, &line_index);
-        assert_eq!(stored, vec![diagnostic_lsp]);
+        let stored = diagnostics.diagnostics_for(file_id);
+        assert!(are_diagnostics_equal_vec(&stored, &vec![diagnostic]),);
 
         // Reset to empty
         diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![]));
 
         let changes = diagnostics.take_changes();
         assert_eq!(changes.as_ref(), Some(&expected_changes));
-        assert_eq!(
-            diagnostics
-                .diagnostics_for(file_id, &url, &line_index)
-                .len(),
-            0
-        );
+        assert_eq!(diagnostics.diagnostics_for(file_id).len(), 0);
     }
 
     // -----------------------------------------------------------------
