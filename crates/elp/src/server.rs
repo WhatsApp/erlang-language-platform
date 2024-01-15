@@ -115,7 +115,7 @@ pub enum Task {
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
-    CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics<diagnostics::Diagnostic>)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
@@ -923,7 +923,7 @@ impl Server {
         }
     }
 
-    fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<lsp_types::Diagnostic>)>) {
+    fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
             self.diagnostics.set_ct(file_id, diagnostics);
         }

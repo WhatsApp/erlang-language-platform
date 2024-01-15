@@ -34,7 +34,7 @@ pub(crate) struct DiagnosticCollection {
     pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<diagnostics::Diagnostic>>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
-    pub(crate) ct: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) ct: FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
 
@@ -64,9 +64,9 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<lsp_types::Diagnostic>) {
-        if !are_all_diagnostics_equal_lsp(&self.ct, file_id, &diagnostics) {
-            set_diagnostics_lsp(&mut self.ct, file_id, diagnostics);
+    pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<diagnostics::Diagnostic>) {
+        if !are_all_diagnostics_equal(&self.ct, file_id, &diagnostics) {
+            set_diagnostics(&mut self.ct, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
@@ -108,7 +108,12 @@ impl DiagnosticCollection {
             .into_iter()
             .flatten()
             .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
-        let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
+        let ct = self
+            .ct
+            .get(&file_id)
+            .into_iter()
+            .flatten()
+            .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d));
         combined.extend(eqwalizer);
         combined.extend(edoc);
         combined.extend(ct);
@@ -135,20 +140,6 @@ fn are_all_diagnostics_equal(
             .iter()
             .zip(existing)
             .all(|(left, right)| are_diagnostics_equal(left, right))
-}
-
-fn are_all_diagnostics_equal_lsp(
-    map: &FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
-    file_id: FileId,
-    new: &[lsp_types::Diagnostic],
-) -> bool {
-    let existing = map.get(&file_id).map(Vec::as_slice).unwrap_or_default();
-
-    existing.len() == new.len()
-        && new
-            .iter()
-            .zip(existing)
-            .all(|(left, right)| are_diagnostics_equal_lsp(left, right))
 }
 
 fn are_all_labeled_diagnostics_equal(
@@ -206,18 +197,6 @@ fn set_diagnostics(
     map: &mut FxHashMap<FileId, Vec<diagnostics::Diagnostic>>,
     file_id: FileId,
     new: Vec<diagnostics::Diagnostic>,
-) {
-    if new.is_empty() {
-        map.remove(&file_id);
-    } else {
-        map.insert(file_id, new);
-    }
-}
-
-fn set_diagnostics_lsp(
-    map: &mut FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
-    file_id: FileId,
-    new: Vec<lsp_types::Diagnostic>,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
