@@ -8,7 +8,6 @@
  */
 
 use std::collections::BTreeSet;
-use std::collections::HashSet;
 use std::fmt;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
@@ -106,7 +105,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
-    pub categories: HashSet<Category>,
+    pub categories: FxHashSet<Category>,
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
@@ -136,7 +135,7 @@ impl Diagnostic {
             message,
             range,
             severity: Severity::Error,
-            categories: HashSet::new(),
+            categories: FxHashSet::default(),
             fixes: None,
             related_info: None,
             code_doc_uri: code.as_uri(),
@@ -1918,7 +1917,7 @@ baz(1)->4.
                         message: "function foo/0 undefined".to_string(),
                         range: TextRange::new(21.into(), 43.into()),
                         severity: Severity::Error,
-                        categories: HashSet::default(),
+                        categories: FxHashSet::default(),
                         fixes: None,
                         related_info: None,
                         code: "L1227".into(),
@@ -1932,7 +1931,7 @@ baz(1)->4.
                         message: "function foo/0 undefined".to_string(),
                         range: TextRange::new(74.into(), 79.into()),
                         severity: Severity::Error,
-                        categories: HashSet::default(),
+                        categories: FxHashSet::default(),
                         fixes: None,
                         related_info: None,
                         code: "L1227".into(),
@@ -1946,7 +1945,7 @@ baz(1)->4.
                         message: "spec for undefined function foo/0".to_string(),
                         range: TextRange::new(82.into(), 99.into()),
                         severity: Severity::Error,
-                        categories: HashSet::default(),
+                        categories: FxHashSet::default(),
                         fixes: None,
                         related_info: None,
                         code: "L1308".into(),
@@ -1964,7 +1963,7 @@ baz(1)->4.
                     message: "syntax error before: '->'".to_string(),
                     range: TextRange::new(106.into(), 108.into()),
                     severity: Severity::Error,
-                    categories: HashSet::default(),
+                    categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
                     code: "P1711".into(),
