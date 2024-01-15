@@ -18,44 +18,48 @@ use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use itertools::Itertools;
-use lsp_types::Diagnostic;
+use lsp_types;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
-    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
-    pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
-    pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
-    pub(crate) ct: FxHashMap<FileId, Vec<Diagnostic>>,
+    pub(crate) native: FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
+    pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
+    pub(crate) eqwalizer: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) edoc: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) ct: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
 
 impl DiagnosticCollection {
-    pub fn set_native(&mut self, file_id: FileId, diagnostics: LabeledDiagnostics<Diagnostic>) {
+    pub fn set_native(
+        &mut self,
+        file_id: FileId,
+        diagnostics: LabeledDiagnostics<lsp_types::Diagnostic>,
+    ) {
         if !are_all_labeled_diagnostics_equal(&self.native, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.native, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
 
-    pub fn set_eqwalizer(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+    pub fn set_eqwalizer(&mut self, file_id: FileId, diagnostics: Vec<lsp_types::Diagnostic>) {
         if !are_all_diagnostics_equal(&self.eqwalizer, file_id, &diagnostics) {
             set_diagnostics(&mut self.eqwalizer, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
 
-    pub fn set_edoc(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+    pub fn set_edoc(&mut self, file_id: FileId, diagnostics: Vec<lsp_types::Diagnostic>) {
         if !are_all_diagnostics_equal(&self.edoc, file_id, &diagnostics) {
             set_diagnostics(&mut self.edoc, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
 
-    pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+    pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<lsp_types::Diagnostic>) {
         if !are_all_diagnostics_equal(&self.ct, file_id, &diagnostics) {
             set_diagnostics(&mut self.ct, file_id, diagnostics);
             self.changes.insert(file_id);
@@ -65,7 +69,7 @@ impl DiagnosticCollection {
     pub fn set_erlang_service(
         &mut self,
         file_id: FileId,
-        diagnostics: LabeledDiagnostics<Diagnostic>,
+        diagnostics: LabeledDiagnostics<lsp_types::Diagnostic>,
     ) {
         if !are_all_labeled_diagnostics_equal(&self.erlang_service, file_id, &diagnostics) {
             set_labeled_diagnostics(&mut self.erlang_service, file_id, diagnostics);
@@ -73,7 +77,11 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn diagnostics_for<'a>(&'a mut self, file_id: FileId, url: &'a Url) -> Vec<Diagnostic> {
+    pub fn diagnostics_for<'a>(
+        &'a mut self,
+        file_id: FileId,
+        url: &'a Url,
+    ) -> Vec<lsp_types::Diagnostic> {
         let empty_diags = LabeledDiagnostics::default();
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
@@ -97,9 +105,9 @@ impl DiagnosticCollection {
 }
 
 fn are_all_diagnostics_equal(
-    map: &FxHashMap<FileId, Vec<Diagnostic>>,
+    map: &FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     file_id: FileId,
-    new: &[Diagnostic],
+    new: &[lsp_types::Diagnostic],
 ) -> bool {
     let existing = map.get(&file_id).map(Vec::as_slice).unwrap_or_default();
 
@@ -111,9 +119,9 @@ fn are_all_diagnostics_equal(
 }
 
 fn are_all_labeled_diagnostics_equal(
-    map: &FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    map: &FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
     file_id: FileId,
-    new: &LabeledDiagnostics<Diagnostic>,
+    new: &LabeledDiagnostics<lsp_types::Diagnostic>,
 ) -> bool {
     let empty_diags = LabeledDiagnostics::default();
     let existing = map.get(&file_id).unwrap_or(&empty_diags);
@@ -130,7 +138,7 @@ fn are_all_labeled_diagnostics_equal(
 }
 
 #[derive(Debug)]
-struct CompareDiagnostic<'a>(&'a Diagnostic);
+struct CompareDiagnostic<'a>(&'a lsp_types::Diagnostic);
 
 impl PartialEq for CompareDiagnostic<'_> {
     fn eq(&self, other: &Self) -> bool {
@@ -138,7 +146,7 @@ impl PartialEq for CompareDiagnostic<'_> {
     }
 }
 
-fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
+fn are_diagnostics_equal(left: &lsp_types::Diagnostic, right: &lsp_types::Diagnostic) -> bool {
     left.source == right.source
         && left.severity == right.severity
         && left.range == right.range
@@ -146,9 +154,9 @@ fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
 }
 
 fn set_diagnostics(
-    map: &mut FxHashMap<FileId, Vec<Diagnostic>>,
+    map: &mut FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     file_id: FileId,
-    new: Vec<Diagnostic>,
+    new: Vec<lsp_types::Diagnostic>,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
@@ -158,9 +166,9 @@ fn set_diagnostics(
 }
 
 fn set_labeled_diagnostics(
-    map: &mut FxHashMap<FileId, LabeledDiagnostics<Diagnostic>>,
+    map: &mut FxHashMap<FileId, LabeledDiagnostics<lsp_types::Diagnostic>>,
     file_id: FileId,
-    new: LabeledDiagnostics<Diagnostic>,
+    new: LabeledDiagnostics<lsp_types::Diagnostic>,
 ) {
     if new.is_empty() {
         map.remove(&file_id);
@@ -232,14 +240,14 @@ pub fn attach_related_diagnostics(
 // ---------------------------------------------------------------------
 
 fn with_related(
-    mut diagnostic: Diagnostic,
+    mut diagnostic: lsp_types::Diagnostic,
     related: Vec<DiagnosticRelatedInformation>,
-) -> Diagnostic {
+) -> lsp_types::Diagnostic {
     diagnostic.related_information = Some(related);
     diagnostic
 }
 
-fn as_related(diagnostic: &Diagnostic, url: &Url) -> DiagnosticRelatedInformation {
+fn as_related(diagnostic: &lsp_types::Diagnostic, url: &Url) -> DiagnosticRelatedInformation {
     DiagnosticRelatedInformation {
         location: Location::new(url.clone(), diagnostic.range),
         message: diagnostic.message.clone(),
@@ -299,7 +307,7 @@ mod tests {
         );
         let mut diagnostics = DiagnosticCollection::default();
 
-        let diagnostic = Diagnostic::default();
+        let diagnostic = lsp_types::Diagnostic::default();
         let text_range = TextRange::new(0.into(), 0.into());
 
         // Set some diagnostic initially
@@ -329,7 +337,7 @@ mod tests {
     #[track_caller]
     pub(crate) fn check_diagnostics_with_config_and_extra(
         config: DiagnosticsConfig,
-        extra_diags: &LabeledDiagnostics<Diagnostic>,
+        extra_diags: &LabeledDiagnostics<lsp_types::Diagnostic>,
         elp_fixture: &str,
     ) {
         let (db, files) = RootDatabase::with_many_files(elp_fixture);
@@ -368,10 +376,10 @@ mod tests {
         line: u32,
         cols: u32,
         cole: u32,
-    ) -> (TextRange, Diagnostic) {
+    ) -> (TextRange, lsp_types::Diagnostic) {
         (
             TextRange::new(0.into(), 0.into()),
-            Diagnostic {
+            lsp_types::Diagnostic {
                 message: message.to_string(),
                 range: Range::new(Position::new(line, cols), Position::new(line, cole)),
                 severity: Some(DiagnosticSeverity::ERROR),
