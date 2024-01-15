@@ -329,6 +329,8 @@ pub enum DiagnosticCode {
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
+    // Wrapper for EqWAlizer diagnostic codes
+    Eqwalizer(String),
     // Used for ad-hoc diagnostics via lints/codemods
     AdHoc(String),
     // @fb-only: MetaOnly(MetaOnlyDiagnosticCode),
@@ -388,6 +390,7 @@ impl DiagnosticCode {
             DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
             DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
             DiagnosticCode::ErlangService(c) => c.to_string(),
+            DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
         }
@@ -424,6 +427,7 @@ impl DiagnosticCode {
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
             DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
+            DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
         }
