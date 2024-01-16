@@ -9,11 +9,13 @@
 
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
+use elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
 use hir::FunctionDef;
 use hir::NameArity;
 use hir::Semantic;
+use hir::SpecDef;
 
 use crate::helpers;
 use crate::Args;
@@ -106,9 +108,15 @@ pub(crate) fn add_completions(
                     let function_name = na.name();
                     let def = def_map.get_function(na)?;
                     let fun_decl_ast = def.source(sema.db.upcast());
+                    let spec_def = def_map.get_spec(na);
                     let deprecated = def_map.is_deprecated(na);
-                    let contents =
-                        function_contents(def, &function_name, should_include_args(next_token))?;
+                    let contents = function_contents(
+                        sema.db.upcast(),
+                        def,
+                        spec_def,
+                        &function_name,
+                        should_include_args(next_token),
+                    )?;
                     Some(Completion {
                         label: na.to_string(),
                         kind: Kind::Function,
@@ -149,8 +157,18 @@ fn complete_remote_function_call<'a>(
                 })
             });
             let deprecated = def_map.is_deprecated(na);
+            let spec_def = def_map.get_spec(na);
             let include_args = should_include_args(next_token);
-            name_arity_to_call_completion(def, na, fun_prefix, position, deprecated, include_args)
+            name_arity_to_call_completion(
+                sema.db.upcast(),
+                def,
+                spec_def,
+                na,
+                fun_prefix,
+                position,
+                deprecated,
+                include_args,
+            )
         });
         acc.extend(completions);
         Some(())
@@ -158,7 +176,9 @@ fn complete_remote_function_call<'a>(
 }
 
 fn name_arity_to_call_completion(
+    db: &dyn SourceDatabase,
     def: Option<&FunctionDef>,
+    spec_def: Option<&SpecDef>,
     na: &NameArity,
     prefix: &str,
     position: Option<FilePosition>,
@@ -167,7 +187,7 @@ fn name_arity_to_call_completion(
 ) -> Option<Completion> {
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(helpers::format_call(na.name(), na.arity())), |def| {
-            function_contents(def, na.name(), include_args)
+            function_contents(db, def, spec_def, na.name(), include_args)
         })?;
         Some(Completion {
             label: na.to_string(),
@@ -189,11 +209,22 @@ fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
     }
 }
 
-fn function_arg_names(def: &FunctionDef) -> Option<String> {
-    let res = def
-        .function_clauses
-        .get(0)?
-        .param_names
+fn function_arg_names(
+    db: &dyn SourceDatabase,
+    def: &FunctionDef,
+    spec_def: Option<&SpecDef>,
+) -> Option<String> {
+    let param_names = match spec_def {
+        None => def
+            .function_clauses
+            .get(0)?
+            .param_names
+            .iter()
+            .map(|param_name| param_name.to_string())
+            .collect(),
+        Some(spec_def) => spec_def.arg_names(db),
+    };
+    let res = param_names
         .iter()
         .enumerate()
         .map(|(i, param_name)| {
@@ -206,12 +237,14 @@ fn function_arg_names(def: &FunctionDef) -> Option<String> {
 }
 
 fn function_contents(
+    db: &dyn SourceDatabase,
     def: &FunctionDef,
+    spec_def: Option<&SpecDef>,
     function_name: &str,
     include_args: bool,
 ) -> Option<Contents> {
     if include_args {
-        let function_arg_names = function_arg_names(def)?;
+        let function_arg_names = function_arg_names(db, def, spec_def)?;
         Some(Contents::Snippet(format!(
             "{function_name}({function_arg_names})"
         )))
@@ -748,6 +781,49 @@ mod test {
             expect![[r#"
                 {label:foo/0, kind:Function, contents:Snippet("foo"), position:Some(FilePosition { file_id: FileId(1), offset: 73 })}
                 {label:foon/2, kind:Function, contents:Snippet("foon"), position:Some(FilePosition { file_id: FileId(1), offset: 86 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_remote_call_with_spec() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+
+        check(
+            r#"
+    //- /src/sample1.erl
+    -module(sample1).
+    local() ->
+        sample2:~.
+    //- /src/sample2.erl
+    -module(sample2).
+    -export([foo/1, foo/2]).
+    -spec foo(Override :: integer()) -> ok.
+    foo(X) -> ok.
+    foo(X, Y) -> ok.
+    "#,
+            None,
+            expect![[r#"
+                {label:foo/1, kind:Function, contents:Snippet("foo(${1:Override})"), position:Some(FilePosition { file_id: FileId(1), offset: 83 })}
+                {label:foo/2, kind:Function, contents:Snippet("foo(${1:X}, ${2:Y})"), position:Some(FilePosition { file_id: FileId(1), offset: 97 })}"#]],
+        );
+        check(
+            r#"
+//- /src/sample1.erl
+-module(sample1).
+local() ->
+    sample2:~.
+//- /src/sample2.erl
+-module(sample2).
+-export([foo/1, foo/2]).
+-spec foo(Override :: integer()) -> ok.
+foo(X) -> ok.
+-spec foo(Override :: integer(), integer()) -> ok.
+foo(X, Y) -> ok.
+"#,
+            None,
+            expect![[r#"
+            {label:foo/1, kind:Function, contents:Snippet("foo(${1:Override})"), position:Some(FilePosition { file_id: FileId(1), offset: 83 })}
+            {label:foo/2, kind:Function, contents:Snippet("foo(${1:Override}, ${2:Arg2})"), position:Some(FilePosition { file_id: FileId(1), offset: 148 })}"#]],
         );
     }
 }
