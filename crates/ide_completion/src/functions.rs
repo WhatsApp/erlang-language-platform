@@ -15,7 +15,6 @@ use elp_syntax::SyntaxToken;
 use hir::FunctionDef;
 use hir::NameArity;
 use hir::Semantic;
-use hir::SpecArgName;
 use hir::SpecDef;
 
 use crate::helpers;
@@ -210,36 +209,12 @@ fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
     }
 }
 
-fn all_arg_names_are_generated(names: &Vec<SpecArgName>) -> bool {
-    !names.iter().any(|name| match name {
-        SpecArgName::Name(_) => true,
-        SpecArgName::Generated(_) => false,
-    })
-}
-
 fn function_arg_names(
     db: &dyn SourceDatabase,
     def: &FunctionDef,
     spec_def: Option<&SpecDef>,
 ) -> Option<String> {
-    let param_names = match spec_def {
-        Some(spec_def) => match spec_def.arg_names(db) {
-            Some(arg_names_from_spec) => {
-                if all_arg_names_are_generated(&arg_names_from_spec) {
-                    def.first_clause_arg_names()
-                } else {
-                    Some(
-                        arg_names_from_spec
-                            .iter()
-                            .map(|arg_name| arg_name.name())
-                            .collect(),
-                    )
-                }
-            }
-            None => def.first_clause_arg_names(),
-        },
-        None => def.first_clause_arg_names(),
-    };
+    let param_names = def.arg_names(spec_def, db);
     let res = param_names?
         .iter()
         .enumerate()

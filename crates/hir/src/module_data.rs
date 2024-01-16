@@ -203,8 +203,39 @@ impl FunctionDef {
             .collect();
         Some(res)
     }
+
+    pub fn arg_names(
+        &self,
+        spec_def: Option<&SpecDef>,
+        db: &dyn SourceDatabase,
+    ) -> Option<Vec<String>> {
+        match spec_def {
+            Some(spec_def) => match spec_def.arg_names(db) {
+                Some(arg_names_from_spec) => {
+                    if all_spec_arg_names_are_generated(&arg_names_from_spec) {
+                        self.first_clause_arg_names()
+                    } else {
+                        Some(
+                            arg_names_from_spec
+                                .iter()
+                                .map(|arg_name| arg_name.name())
+                                .collect(),
+                        )
+                    }
+                }
+                None => self.first_clause_arg_names(),
+            },
+            None => self.first_clause_arg_names(),
+        }
+    }
 }
 
+fn all_spec_arg_names_are_generated(names: &Vec<SpecArgName>) -> bool {
+    !names.iter().any(|name| match name {
+        SpecArgName::Name(_) => true,
+        SpecArgName::Generated(_) => false,
+    })
+}
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SpecDef {
     pub file: File,

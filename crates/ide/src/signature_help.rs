@@ -25,6 +25,7 @@ use hir::FunctionDef;
 use hir::InFile;
 use hir::Name;
 use hir::Semantic;
+use hir::SpecDef;
 use itertools::Itertools;
 use stdx::format_to;
 
@@ -153,11 +154,13 @@ fn signature_help_for_call(
     for name_arity in functions {
         match def_map.get_function(name_arity) {
             Some(def) => {
+                let spec_def = def_map.get_spec(name_arity);
                 let help = build_signature_help(
                     db,
                     &sema,
                     file_id,
                     def,
+                    spec_def,
                     active_parameter,
                     module_name.clone(),
                     &fun_name,
@@ -170,11 +173,13 @@ fn signature_help_for_call(
                     if let Some(module) = sema.resolve_module_name(file_id, module_name) {
                         let def_map = sema.def_map(module.file.file_id);
                         if let Some(def) = def_map.get_function(name_arity) {
+                            let spec_def = def_map.get_spec(name_arity);
                             let help = build_signature_help(
                                 db,
                                 &sema,
                                 module.file.file_id,
                                 def,
+                                spec_def,
                                 active_parameter,
                                 Some(module_name.clone()),
                                 &fun_name,
@@ -193,6 +198,7 @@ fn build_signature_help(
     sema: &Semantic,
     file_id: FileId,
     def: &FunctionDef,
+    spec_def: Option<&SpecDef>,
     active_parameter: Option<usize>,
     module_name: Option<Name>,
     fun_name: &Name,
@@ -210,13 +216,12 @@ fn build_signature_help(
         Some(m) => format_to!(help.signature, "{m}:{fun_name}("),
         None => format_to!(help.signature, "{fun_name}("),
     }
-    if let Some(function) = def.function_clauses.get(0) {
-        let parameters = &function.param_names;
+    if let Some(parameters) = def.arg_names(spec_def, db) {
         for parameter in parameters {
-            help.push_param(parameter);
+            help.push_param(&parameter);
         }
-        help.signature.push(')');
     }
+    help.signature.push(')');
     help
 }
 
@@ -641,6 +646,47 @@ main() ->
                 ------
                 one:add(This, That, Extra)
                         ^^^^  ----  -----
+                ======
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_spec_arg_names() {
+        check(
+            r#"
+//- /one.erl
+-module(one).
+-compile(export_all).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(One :: integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+//- /two.erl
+-module(two).
+-import(one, [add/2, add/3]).
+main() ->
+  add(~, That).
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+                ------
+                one:add(This, That)
+                        ^^^^  ----
+                ======
+                ```erlang
+                -spec add(One :: integer(), integer(), integer()) -> integer().
+                ```
+                ------
+                one:add(One, Arg2, Arg3)
+                        ^^^  ----  ----
                 ======
             "#]],
         );
