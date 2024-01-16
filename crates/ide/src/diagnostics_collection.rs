@@ -68,10 +68,7 @@ impl DiagnosticCollection {
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
         let mut combined: Vec<Diagnostic> =
-            attach_related_diagnostics(native.clone(), erlang_service)
-                .iter()
-                .map(|(_, d)| d.clone())
-                .collect();
+            attach_related_diagnostics(native.clone(), erlang_service);
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
@@ -241,13 +238,9 @@ mod tests {
         let mut diagnostics = DiagnosticCollection::default();
 
         let diagnostic = Diagnostic::default();
-        let text_range = TextRange::new(0.into(), 0.into());
 
         // Set some diagnostic initially
-        diagnostics.set_native(
-            file_id,
-            LabeledDiagnostics::new(vec![(text_range, diagnostic.clone())]),
-        );
+        diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![diagnostic.clone()]));
 
         let changes = diagnostics.take_changes();
         let mut expected_changes = FxHashSet::default();
@@ -281,7 +274,7 @@ mod tests {
             let expected = extract_annotations(&db.file_text(file_id));
             let mut actual = combined
                 .into_iter()
-                .map(|(_, d)| {
+                .map(|d| {
                     let mut annotation = String::new();
                     annotation.push_str(match d.severity {
                         Severity::Error => "error",
@@ -299,11 +292,8 @@ mod tests {
         }
     }
 
-    fn make_diag(message: &str, code: &str, range: TextRange) -> (TextRange, Diagnostic) {
-        (
-            TextRange::new(0.into(), 0.into()),
-            Diagnostic::new(code.into(), message, range),
-        )
+    fn make_diag(message: &str, code: &str, range: TextRange) -> Diagnostic {
+        Diagnostic::new(code.into(), message, range)
     }
 
     #[test]

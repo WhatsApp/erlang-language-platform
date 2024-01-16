@@ -579,14 +579,14 @@ impl<'a> DiagnosticsConfig<'a> {
     }
 }
 
-pub type Labeled = FxHashMap<Option<Label>, Vec<(TextRange, Diagnostic)>>;
+pub type Labeled = FxHashMap<Option<Label>, Vec<Diagnostic>>;
 
 pub type TextRangeSet = RangeSet<[RangeInclusive<u32>; 1]>;
 
 #[derive(Debug, Clone)]
 pub struct LabeledDiagnostics {
     pub syntax_error_form_ranges: TextRangeSet,
-    pub normal: Vec<(TextRange, Diagnostic)>,
+    pub normal: Vec<Diagnostic>,
     pub labeled: Labeled,
 }
 
@@ -609,7 +609,7 @@ impl LabeledDiagnostics {
         }
     }
 
-    pub fn new(diagnostics: Vec<(TextRange, Diagnostic)>) -> LabeledDiagnostics {
+    pub fn new(diagnostics: Vec<Diagnostic>) -> LabeledDiagnostics {
         LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: diagnostics,
@@ -618,10 +618,7 @@ impl LabeledDiagnostics {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Diagnostic> + '_ {
-        self.normal
-            .iter()
-            .chain(self.labeled.values().flatten())
-            .map(|(_, v)| v)
+        self.normal.iter().chain(self.labeled.values().flatten())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -632,7 +629,7 @@ impl LabeledDiagnostics {
         self.normal.len() + self.labeled.len()
     }
 
-    pub fn extend<I: IntoIterator<Item = (TextRange, Diagnostic)>>(&mut self, iter: I) {
+    pub fn extend<I: IntoIterator<Item = Diagnostic>>(&mut self, iter: I) {
         self.normal.extend(iter.into_iter())
     }
 }
@@ -744,7 +741,7 @@ pub fn diagnostics(
 
     LabeledDiagnostics {
         syntax_error_form_ranges: form_ranges,
-        normal: res.into_iter().map(|d| (d.range, d)).collect(),
+        normal: res,
         labeled: syntax_errors_by_function,
     }
 }
@@ -767,7 +764,7 @@ fn group_syntax_errors(
         }
         map.entry(function_label(&d, source_file))
             .or_default()
-            .push((d.range, d));
+            .push(d);
     });
     (map, ranges)
 }
@@ -1131,10 +1128,7 @@ fn label_erlang_service_diagnostics(
         .map(|(file_id, ds)| {
             let mut labeled: Labeled = FxHashMap::default();
             ds.into_iter().for_each(|d| {
-                labeled
-                    .entry(erlang_service_label(&d))
-                    .or_default()
-                    .push((d.range, d));
+                labeled.entry(erlang_service_label(&d)).or_default().push(d);
             });
             (
                 file_id,
@@ -1469,7 +1463,7 @@ fn location_range(location: Location, line_index: &LineIndex) -> TextRange {
 pub fn attach_related_diagnostics(
     native: LabeledDiagnostics,
     erlang_service: &LabeledDiagnostics,
-) -> Vec<(TextRange, Diagnostic)> {
+) -> Vec<Diagnostic> {
     // `native` is labelled with the MFA of functions having syntax
     // errors in them. `erlang_service` is labelled with the MFA of
     // undefined functions.  For each labeled one in `native`, add the
@@ -1489,10 +1483,10 @@ pub fn attach_related_diagnostics(
         .flat_map(|(label, diags)| {
             if let Some(related) = erlang_service.labeled.get(label) {
                 to_remove.insert(label);
-                let related_info = related.iter().map(|(_, d)| d.as_related()).collect_vec();
+                let related_info = related.iter().map(|d| d.as_related()).collect_vec();
                 diags
                     .iter()
-                    .map(|(r, d)| (*r, d.clone().with_related(Some(related_info.clone()))))
+                    .map(|d| d.clone().with_related(Some(related_info.clone())))
                     .collect_vec()
             } else {
                 diags.to_vec()
@@ -1505,7 +1499,7 @@ pub fn attach_related_diagnostics(
         .iter()
         .filter(|(k, _)| !to_remove.contains(k))
         .flat_map(|(_, v)| v)
-        .filter(|(r, _)| !already_reported(&native.syntax_error_form_ranges, r));
+        .filter(|d| !already_reported(&native.syntax_error_form_ranges, &d.range));
 
     native
         .normal
@@ -1936,66 +1930,54 @@ baz(1)->4.
         let labeled = FxHashMap::from_iter([(
             Some(Label::new_raw("foo/0")),
             vec![
-                (
-                    TextRange::new(21.into(), 43.into()),
-                    Diagnostic {
-                        message: "function foo/0 undefined".to_string(),
-                        range: TextRange::new(21.into(), 43.into()),
-                        severity: Severity::Error,
-                        categories: FxHashSet::default(),
-                        fixes: None,
-                        related_info: None,
-                        code: "L1227".into(),
-                        code_doc_uri: None,
-                        form_range: None,
-                    },
-                ),
-                (
-                    TextRange::new(74.into(), 79.into()),
-                    Diagnostic {
-                        message: "function foo/0 undefined".to_string(),
-                        range: TextRange::new(74.into(), 79.into()),
-                        severity: Severity::Error,
-                        categories: FxHashSet::default(),
-                        fixes: None,
-                        related_info: None,
-                        code: "L1227".into(),
-                        code_doc_uri: None,
-                        form_range: None,
-                    },
-                ),
-                (
-                    TextRange::new(82.into(), 99.into()),
-                    Diagnostic {
-                        message: "spec for undefined function foo/0".to_string(),
-                        range: TextRange::new(82.into(), 99.into()),
-                        severity: Severity::Error,
-                        categories: FxHashSet::default(),
-                        fixes: None,
-                        related_info: None,
-                        code: "L1308".into(),
-                        code_doc_uri: None,
-                        form_range: None,
-                    },
-                ),
-            ],
-        )]);
-        let extra_diags = LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
-            normal: vec![(
-                TextRange::new(106.into(), 108.into()),
                 Diagnostic {
-                    message: "syntax error before: '->'".to_string(),
-                    range: TextRange::new(106.into(), 108.into()),
+                    message: "function foo/0 undefined".to_string(),
+                    range: TextRange::new(21.into(), 43.into()),
                     severity: Severity::Error,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
-                    code: "P1711".into(),
+                    code: "L1227".into(),
                     code_doc_uri: None,
                     form_range: None,
                 },
-            )],
+                Diagnostic {
+                    message: "function foo/0 undefined".to_string(),
+                    range: TextRange::new(74.into(), 79.into()),
+                    severity: Severity::Error,
+                    categories: FxHashSet::default(),
+                    fixes: None,
+                    related_info: None,
+                    code: "L1227".into(),
+                    code_doc_uri: None,
+                    form_range: None,
+                },
+                Diagnostic {
+                    message: "spec for undefined function foo/0".to_string(),
+                    range: TextRange::new(82.into(), 99.into()),
+                    severity: Severity::Error,
+                    categories: FxHashSet::default(),
+                    fixes: None,
+                    related_info: None,
+                    code: "L1308".into(),
+                    code_doc_uri: None,
+                    form_range: None,
+                },
+            ],
+        )]);
+        let extra_diags = LabeledDiagnostics {
+            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
+            normal: vec![Diagnostic {
+                message: "syntax error before: '->'".to_string(),
+                range: TextRange::new(106.into(), 108.into()),
+                severity: Severity::Error,
+                categories: FxHashSet::default(),
+                fixes: None,
+                related_info: None,
+                code: "P1711".into(),
+                code_doc_uri: None,
+                form_range: None,
+            }],
             labeled,
         };
 

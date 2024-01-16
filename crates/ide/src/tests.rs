@@ -207,12 +207,10 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
     check_diagnostics_with_config(config, ra_fixture)
 }
 
-fn convert_diagnostics_to_annotations(
-    diagnostics: Vec<(TextRange, Diagnostic)>,
-) -> Vec<(TextRange, String)> {
+fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(TextRange, String)> {
     let mut actual = diagnostics
         .into_iter()
-        .map(|(r, d)| {
+        .map(|d| {
             let mut annotation = String::new();
             if let Some(fixes) = &d.fixes {
                 assert!(!fixes.is_empty());
@@ -226,7 +224,7 @@ fn convert_diagnostics_to_annotations(
             });
             annotation.push_str(": ");
             annotation.push_str(&d.message);
-            (r, annotation)
+            (d.range, annotation)
         })
         .collect::<Vec<_>>();
     actual.sort_by_key(|(range, _)| range.start());
@@ -239,10 +237,7 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let file_id = pos.file_id;
     let project_id = analysis.project_id(file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);
-    let diagnostics = diagnostics::ct_diagnostics(&analysis.db, file_id)
-        .into_iter()
-        .map(|d| (d.range, d))
-        .collect();
+    let diagnostics = diagnostics::ct_diagnostics(&analysis.db, file_id);
     let expected = extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
     assert_eq!(expected, actual);
