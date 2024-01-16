@@ -192,6 +192,17 @@ impl FunctionDef {
         let file_edoc = db.file_edoc_comments(form.file_id())?;
         file_edoc.get(&form).cloned()
     }
+
+    pub fn first_clause_arg_names(&self) -> Option<Vec<String>> {
+        let res = self
+            .function_clauses
+            .get(0)?
+            .param_names
+            .iter()
+            .map(|param_name| param_name.to_string())
+            .collect();
+        Some(res)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -207,15 +218,17 @@ impl SpecDef {
         self.spec.form_id.get(&source_file)
     }
 
-    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Vec<String> {
+    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<String>> {
         let spec = self.source(db);
-        let first_sig = spec.sigs().next().unwrap();
-        first_sig.args().map_or(Vec::new(), |args| {
-            args.args()
+        let first_sig = spec.sigs().next()?;
+        Some(
+            first_sig
+                .args()?
+                .args()
                 .enumerate()
                 .map(|(arg_idx, expr)| arg_name(arg_idx + 1, expr))
-                .collect()
-        })
+                .collect(),
+        )
     }
 }
 

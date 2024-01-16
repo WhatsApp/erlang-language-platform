@@ -215,16 +215,10 @@ fn function_arg_names(
     spec_def: Option<&SpecDef>,
 ) -> Option<String> {
     let param_names = match spec_def {
-        None => def
-            .function_clauses
-            .get(0)?
-            .param_names
-            .iter()
-            .map(|param_name| param_name.to_string())
-            .collect(),
         Some(spec_def) => spec_def.arg_names(db),
+        None => def.first_clause_arg_names(),
     };
-    let res = param_names
+    let res = param_names?
         .iter()
         .enumerate()
         .map(|(i, param_name)| {

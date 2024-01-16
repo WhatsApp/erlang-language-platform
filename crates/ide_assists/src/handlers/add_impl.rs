@@ -53,48 +53,45 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let name_text = name.text()?;
     let insert = spec.syntax().text_range().end();
     let target = name.syntax().text_range();
+    let arg_names = spec_def.arg_names(ctx.db().upcast())?;
 
     acc.add(
         AssistId("add_impl", AssistKind::Generate),
         "Add implementation",
         target,
         None,
-        |builder| {
-            let arg_names = spec_def.arg_names(ctx.db().upcast());
-
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let mut snippet_idx = 0;
-                    let args_snippets = arg_names
-                        .iter()
-                        .map(|arg_name| {
-                            snippet_idx += 1;
-                            format!("${{{}:{}}}, ", snippet_idx, arg_name)
-                        })
-                        .collect::<String>();
-                    snippet_idx += 1;
-                    let snippet = format!(
-                        "\n{}({}) ->\n  ${{{}:error(\"not implemented\").}}\n",
-                        name_text,
-                        args_snippets.trim_end_matches(", "),
-                        snippet_idx
-                    );
-                    builder.edit_file(ctx.frange.file_id);
-                    builder.insert_snippet(cap, insert, snippet);
-                }
-                None => {
-                    let args_text = arg_names
-                        .iter()
-                        .map(|arg_name| format!("{}, ", arg_name))
-                        .collect::<String>();
-                    let text = format!(
-                        "\n{}({}) ->\n  error(\"not implemented\").\n",
-                        name_text,
-                        args_text.trim_end_matches(", ")
-                    );
-                    builder.edit_file(ctx.frange.file_id);
-                    builder.insert(insert, text)
-                }
+        |builder| match ctx.config.snippet_cap {
+            Some(cap) => {
+                let mut snippet_idx = 0;
+                let args_snippets = arg_names
+                    .iter()
+                    .map(|arg_name| {
+                        snippet_idx += 1;
+                        format!("${{{}:{}}}, ", snippet_idx, arg_name)
+                    })
+                    .collect::<String>();
+                snippet_idx += 1;
+                let snippet = format!(
+                    "\n{}({}) ->\n  ${{{}:error(\"not implemented\").}}\n",
+                    name_text,
+                    args_snippets.trim_end_matches(", "),
+                    snippet_idx
+                );
+                builder.edit_file(ctx.frange.file_id);
+                builder.insert_snippet(cap, insert, snippet);
+            }
+            None => {
+                let args_text = arg_names
+                    .iter()
+                    .map(|arg_name| format!("{}, ", arg_name))
+                    .collect::<String>();
+                let text = format!(
+                    "\n{}({}) ->\n  error(\"not implemented\").\n",
+                    name_text,
+                    args_text.trim_end_matches(", ")
+                );
+                builder.edit_file(ctx.frange.file_id);
+                builder.insert(insert, text)
             }
         },
     )
