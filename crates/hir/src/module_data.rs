@@ -218,7 +218,7 @@ impl SpecDef {
         self.spec.form_id.get(&source_file)
     }
 
-    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<String>> {
+    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<SpecArgName>> {
         let spec = self.source(db);
         let first_sig = spec.sigs().next()?;
         Some(
@@ -232,24 +232,38 @@ impl SpecDef {
     }
 }
 
-fn arg_name(arg_idx: usize, expr: ast::Expr) -> String {
+pub enum SpecArgName {
+    Name(String),
+    Generated(String),
+}
+
+impl SpecArgName {
+    pub fn name(&self) -> String {
+        match self {
+            SpecArgName::Name(name) => name.clone(),
+            SpecArgName::Generated(name) => name.clone(),
+        }
+    }
+}
+
+fn arg_name(arg_idx: usize, expr: ast::Expr) -> SpecArgName {
     // -spec f(A) -> ok.
     //   f(A) -> ok.
     if let ast::Expr::ExprMax(ast::ExprMax::Var(var)) = expr {
-        var.text().to_string()
+        SpecArgName::Name(var.text().to_string())
 
     // -spec f(A :: foo()) -> ok.
     //   f(A) -> ok.
     } else if let ast::Expr::AnnType(ann) = expr {
         ann.var()
             .and_then(|var| var.var())
-            .map(|var| var.text().to_string())
-            .unwrap_or_else(|| format!("Arg{}", arg_idx))
+            .map(|var| SpecArgName::Name(var.text().to_string()))
+            .unwrap_or_else(|| SpecArgName::Generated(format!("Arg{}", arg_idx)))
 
     // -spec f(bar()) -> ok.
     //   f(Arg1) -> ok.
     } else {
-        format!("Arg{}", arg_idx)
+        SpecArgName::Generated(format!("Arg{}", arg_idx))
     }
 }
 

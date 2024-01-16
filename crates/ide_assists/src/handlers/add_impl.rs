@@ -67,7 +67,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     .iter()
                     .map(|arg_name| {
                         snippet_idx += 1;
-                        format!("${{{}:{}}}, ", snippet_idx, arg_name)
+                        format!("${{{}:{}}}, ", snippet_idx, arg_name.name())
                     })
                     .collect::<String>();
                 snippet_idx += 1;
@@ -83,7 +83,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             None => {
                 let args_text = arg_names
                     .iter()
-                    .map(|arg_name| format!("{}, ", arg_name))
+                    .map(|arg_name| format!("{}, ", arg_name.name()))
                     .collect::<String>();
                 let text = format!(
                     "\n{}({}) ->\n  error(\"not implemented\").\n",

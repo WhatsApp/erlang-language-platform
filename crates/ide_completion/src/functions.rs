@@ -15,6 +15,7 @@ use elp_syntax::SyntaxToken;
 use hir::FunctionDef;
 use hir::NameArity;
 use hir::Semantic;
+use hir::SpecArgName;
 use hir::SpecDef;
 
 use crate::helpers;
@@ -209,13 +210,34 @@ fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
     }
 }
 
+fn all_arg_names_are_generated(names: &Vec<SpecArgName>) -> bool {
+    !names.iter().any(|name| match name {
+        SpecArgName::Name(_) => true,
+        SpecArgName::Generated(_) => false,
+    })
+}
+
 fn function_arg_names(
     db: &dyn SourceDatabase,
     def: &FunctionDef,
     spec_def: Option<&SpecDef>,
 ) -> Option<String> {
     let param_names = match spec_def {
-        Some(spec_def) => spec_def.arg_names(db),
+        Some(spec_def) => match spec_def.arg_names(db) {
+            Some(arg_names_from_spec) => {
+                if all_arg_names_are_generated(&arg_names_from_spec) {
+                    def.first_clause_arg_names()
+                } else {
+                    Some(
+                        arg_names_from_spec
+                            .iter()
+                            .map(|arg_name| arg_name.name())
+                            .collect(),
+                    )
+                }
+            }
+            None => def.first_clause_arg_names(),
+        },
         None => def.first_clause_arg_names(),
     };
     let res = param_names?
@@ -818,6 +840,25 @@ foo(X, Y) -> ok.
             expect![[r#"
             {label:foo/1, kind:Function, contents:Snippet("foo(${1:Override})"), position:Some(FilePosition { file_id: FileId(1), offset: 83 })}
             {label:foo/2, kind:Function, contents:Snippet("foo(${1:Override}, ${2:Arg2})"), position:Some(FilePosition { file_id: FileId(1), offset: 148 })}"#]],
+        );
+        check(
+            r#"
+//- /src/sample1.erl
+-module(sample1).
+local() ->
+    sample2:~.
+//- /src/sample2.erl
+-module(sample2).
+-export([foo/1, foo/2]).
+-spec foo(integer()) -> ok.
+foo(X) -> ok.
+-spec foo(Override :: integer(), integer()) -> ok.
+foo(X, Y) -> ok.
+"#,
+            None,
+            expect![[r#"
+            {label:foo/1, kind:Function, contents:Snippet("foo(${1:X})"), position:Some(FilePosition { file_id: FileId(1), offset: 71 })}
+            {label:foo/2, kind:Function, contents:Snippet("foo(${1:Override}, ${2:Arg2})"), position:Some(FilePosition { file_id: FileId(1), offset: 136 })}"#]],
         );
     }
 }
