@@ -49,6 +49,7 @@ use crate::NameArity;
 use crate::OptionalCallbacks;
 use crate::PPDirective;
 use crate::RecordDef;
+use crate::SpecId;
 use crate::TypeAliasDef;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -64,6 +65,8 @@ pub struct DefMap {
     function_by_function_id: FxHashMap<FunctionClauseId, FunctionDefId>,
 
     specs: FxHashMap<NameArity, SpecDef>,
+    spec_by_spec_id: FxHashMap<InFile<SpecId>, NameArity>,
+
     exported_functions: FxHashSet<NameArity>,
     deprecated: Deprecated,
     optional_callbacks: FxHashSet<NameArity>,
@@ -244,14 +247,18 @@ impl DefMap {
                 }
                 FormIdx::Spec(idx) => {
                     let spec = form_list[idx].clone();
+                    let spec_name = &spec.name.clone();
                     def_map.specs.insert(
-                        spec.name.clone(),
+                        spec_name.clone(),
                         SpecDef {
                             file,
                             spec,
                             spec_id: idx,
                         },
                     );
+                    def_map
+                        .spec_by_spec_id
+                        .insert(InFile::new(file_id, idx), spec_name.clone());
                 }
                 //https://github.com/erlang/otp/blob/69aa665f3f48a59f83ad48dea63fdf1476d1d46a/lib/stdlib/src/erl_lint.erl#L1123
                 FormIdx::DeprecatedAttribute(idx) => match &form_list[idx] {
@@ -359,6 +366,10 @@ impl DefMap {
 
     pub fn get_spec(&self, name: &NameArity) -> Option<&SpecDef> {
         self.specs.get(name)
+    }
+
+    pub fn get_by_spec_id(&self, spec_id: &InFile<SpecId>) -> Option<&NameArity> {
+        self.spec_by_spec_id.get(spec_id)
     }
 
     pub fn get_specd_function(&self, name: &NameArity) -> Option<SpecdFunctionDef> {
@@ -532,6 +543,12 @@ impl DefMap {
                 .specs
                 .iter()
                 .map(|(name, def)| (name.clone(), def.clone())),
+        );
+        self.spec_by_spec_id.extend(
+            other
+                .spec_by_spec_id
+                .iter()
+                .map(|(id, def)| (id.clone(), def.clone())),
         );
         self.exported_functions
             .extend(other.exported_functions.iter().cloned());
@@ -752,6 +769,7 @@ impl DefMap {
             function_clauses,
             functions,
             specs,
+            spec_by_spec_id,
             deprecated,
             exported_functions,
             imported_functions,
@@ -772,6 +790,7 @@ impl DefMap {
         function_clauses.shrink_to_fit();
         functions.shrink_to_fit();
         specs.shrink_to_fit();
+        spec_by_spec_id.shrink_to_fit();
         exported_functions.shrink_to_fit();
         imported_functions.shrink_to_fit();
         types.shrink_to_fit();
