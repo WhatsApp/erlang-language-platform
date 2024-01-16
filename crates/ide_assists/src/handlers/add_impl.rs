@@ -9,7 +9,6 @@
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast;
 use elp_syntax::ast::Spec;
 use elp_syntax::AstNode;
 use hir::InFile;
@@ -37,10 +36,14 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         ctx.file_id(),
         ctx.sema.find_enclosing_spec(ctx.file_id(), spec.syntax())?,
     );
+    let def_map = ctx.db().def_map(spec_id.file_id);
+    let (_na, spec_def) = def_map
+        .get_specs()
+        .iter()
+        .find(|(_, spec_def)| spec_def.spec_id == spec_id.value)
+        .unwrap();
 
-    let has_impl_already = ctx
-        .db()
-        .def_map(spec_id.file_id)
+    let has_impl_already = def_map
         .get_specd_functions()
         .iter()
         .any(|(_, SpecdFunctionDef { spec_def, .. })| spec_def.spec_id == spec_id.value);
@@ -60,13 +63,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         target,
         None,
         |builder| {
-            let first_sig = spec.sigs().next().unwrap();
-            let arg_names = first_sig.args().map_or(Vec::new(), |args| {
-                args.args()
-                    .enumerate()
-                    .map(|(arg_idx, expr)| arg_name(arg_idx + 1, expr))
-                    .collect()
-            });
+            let arg_names = spec_def.arg_names(ctx.db().upcast());
 
             match ctx.config.snippet_cap {
                 Some(cap) => {
@@ -104,27 +101,6 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             }
         },
     )
-}
-
-pub fn arg_name(arg_idx: usize, expr: ast::Expr) -> String {
-    // -spec f(A) -> ok.
-    //   f(A) -> ok.
-    if let ast::Expr::ExprMax(ast::ExprMax::Var(var)) = expr {
-        var.text().to_string()
-
-    // -spec f(A :: foo()) -> ok.
-    //   f(A) -> ok.
-    } else if let ast::Expr::AnnType(ann) = expr {
-        ann.var()
-            .and_then(|var| var.var())
-            .map(|var| var.text().to_string())
-            .unwrap_or_else(|| format!("Arg{}", arg_idx))
-
-    // -spec f(bar()) -> ok.
-    //   f(Arg1) -> ok.
-    } else {
-        format!("Arg{}", arg_idx)
-    }
 }
 
 #[cfg(test)]
