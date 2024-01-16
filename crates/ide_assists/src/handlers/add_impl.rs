@@ -37,8 +37,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         ctx.sema.find_enclosing_spec(ctx.file_id(), spec.syntax())?,
     );
     let def_map = ctx.db().def_map(spec_id.file_id);
-    let na = def_map.get_by_spec_id(&spec_id)?;
-    let spec_def = def_map.get_spec(na)?;
+    let spec_def = def_map.get_spec_by_id(&spec_id)?;
 
     let has_impl_already = def_map
         .get_specd_functions()

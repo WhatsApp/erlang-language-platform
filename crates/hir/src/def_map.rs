@@ -247,7 +247,7 @@ impl DefMap {
                 }
                 FormIdx::Spec(idx) => {
                     let spec = form_list[idx].clone();
-                    let spec_name = &spec.name.clone();
+                    let spec_name = spec.name.clone();
                     def_map.specs.insert(
                         spec_name.clone(),
                         SpecDef {
@@ -258,7 +258,7 @@ impl DefMap {
                     );
                     def_map
                         .spec_by_spec_id
-                        .insert(InFile::new(file_id, idx), spec_name.clone());
+                        .insert(InFile::new(file_id, idx), spec_name);
                 }
                 //https://github.com/erlang/otp/blob/69aa665f3f48a59f83ad48dea63fdf1476d1d46a/lib/stdlib/src/erl_lint.erl#L1123
                 FormIdx::DeprecatedAttribute(idx) => match &form_list[idx] {
@@ -366,6 +366,11 @@ impl DefMap {
 
     pub fn get_spec(&self, name: &NameArity) -> Option<&SpecDef> {
         self.specs.get(name)
+    }
+
+    pub fn get_spec_by_id(&self, spec_id: &InFile<SpecId>) -> Option<&SpecDef> {
+        let na = self.get_by_spec_id(spec_id)?;
+        self.get_spec(na)
     }
 
     pub fn get_by_spec_id(&self, spec_id: &InFile<SpecId>) -> Option<&NameArity> {
