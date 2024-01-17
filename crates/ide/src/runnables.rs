@@ -72,8 +72,11 @@ impl Runnable {
             RunnableKind::Suite => "".to_string(),
         }
     }
-    pub fn buck2_args(&self, target: String) -> Vec<String> {
+    pub fn buck2_args(&self, target: String, coverage_enabled: bool) -> Vec<String> {
         let mut args = Vec::new();
+        if coverage_enabled {
+            args.push("@//mode/cover".to_string())
+        };
         match &self.kind {
             RunnableKind::Test { .. } => {
                 args.push(target);
@@ -90,6 +93,9 @@ impl Runnable {
                 args.push("--run-disabled".to_string());
             }
         }
+        if coverage_enabled {
+            args.push("--collect-coverage".to_string())
+        };
         args
     }
 

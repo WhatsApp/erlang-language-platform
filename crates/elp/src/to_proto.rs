@@ -609,6 +609,7 @@ pub(crate) fn runnable(
     snap: &Snapshot,
     runnable: Runnable,
     project_build_data: &ProjectBuildData,
+    coverage_enabled: bool,
 ) -> Result<lsp_ext::Runnable, String> {
     let file_id = runnable.nav.file_id;
     let file_path = snap.file_id_to_path(file_id);
@@ -636,7 +637,7 @@ pub(crate) fn runnable(
                         args: lsp_ext::Buck2RunnableArgs {
                             workspace_root: workspace_root.into(),
                             command: "test".to_string(),
-                            args: runnable.buck2_args(target.clone()),
+                            args: runnable.buck2_args(target.clone(), coverage_enabled),
                             target,
                             id: runnable.id(),
                         },
@@ -662,7 +663,7 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
             let run_title = &run.run_title();
             let debug_title = &run.debug_title();
-            match runnable(snap, run, project_build_data) {
+            match runnable(snap, run, project_build_data, lens_config.run_coverage) {
                 Ok(r) => {
                     if lens_config.run {
                         let run_command = command::run_single(&r, run_title);
