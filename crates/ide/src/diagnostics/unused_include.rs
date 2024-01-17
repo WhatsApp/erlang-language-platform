@@ -7,7 +7,7 @@
  * of this source tree.
  */
 
-// Diagnostic: unused include (L1500)
+// Diagnostic: unused include
 //
 // Return a warning if nothing is used from an include file
 
@@ -76,6 +76,22 @@ pub(crate) fn unused_includes(
             .with_fixes(Some(vec![fix(
                 "remove_unused_include",
                 "Remove unused include",
+                SourceChange::from_text_edit(file_id, edit.clone()),
+                inc_text_rage,
+            )]));
+
+            // TODO(T175171121): temporarily produce a second diagnostic with the deprecated code,
+            // in addition to the first one.
+            // This allows us to migrate to the new diagnostic code in a backward compatible way.
+            let deprecated_diagnostic = Diagnostic::new(
+                DiagnosticCode::UnusedIncludeDeprecated,
+                format!("Unused file: {}", path),
+                inc_text_rage,
+            )
+            .with_severity(Severity::Warning)
+            .with_fixes(Some(vec![fix(
+                "remove_unused_include",
+                "Remove unused include",
                 SourceChange::from_text_edit(file_id, edit),
                 inc_text_rage,
             )]));
@@ -83,6 +99,7 @@ pub(crate) fn unused_includes(
             log::debug!("Found unused include {:?}", path);
 
             diagnostics.push(diagnostic);
+            diagnostics.push(deprecated_diagnostic);
         }
     }
 }
@@ -250,6 +267,7 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
 %%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
         "#,
         );
     }
@@ -277,6 +295,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
 %%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
         "#,
         );
@@ -306,6 +325,7 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
 %%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
         "#,
         );
     }
@@ -334,6 +354,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
 %%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
         "#,
         );
@@ -577,6 +598,7 @@ foo() -> ok.
 -module(main).
   -include("header.hrl").
 %%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
 
 foo() -> ok.
 
@@ -593,6 +615,7 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
   -include("header.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
 %%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
 
 foo() -> ok.

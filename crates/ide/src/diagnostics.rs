@@ -308,6 +308,7 @@ pub enum DiagnosticCode {
     MissingModule,
     ModuleMismatch,
     UnusedInclude,
+    UnusedIncludeDeprecated,
     BoundVarInPattern,
     UnusedMacro,
     UnusedRecordField,
@@ -368,8 +369,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::DefaultCodeForEnumIter => "DEFAULT-UNUSED-CONSTRUCTOR".to_string(),
             DiagnosticCode::MissingModule => "L1201".to_string(),
-            DiagnosticCode::UnusedInclude => "L1500".to_string(), // Unused file
-            DiagnosticCode::HeadMismatch => "P1700".to_string(),  // "head-mismatch"
+            DiagnosticCode::HeadMismatch => "P1700".to_string(), // "head-mismatch"
             DiagnosticCode::SyntaxError => "P1711".to_string(),
             DiagnosticCode::BoundVarInPattern => "W0000".to_string(),
             DiagnosticCode::ModuleMismatch => "W0001".to_string(), // "module-mismatch"
@@ -391,6 +391,8 @@ impl DiagnosticCode {
             DiagnosticCode::UndefinedFunction => "W0017".to_string(),   // undefined-function
             DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
             DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
+            DiagnosticCode::UnusedInclude => "W0020".to_string(), // Unused include (previously known as L1500 due to a bug)
+            DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated)
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -403,6 +405,7 @@ impl DiagnosticCode {
             DiagnosticCode::DefaultCodeForEnumIter => "DEFAULT-UNUSED-CONSTRUCTOR".to_string(),
             DiagnosticCode::MissingModule => "missing_module".to_string(),
             DiagnosticCode::UnusedInclude => "unused_include".to_string(),
+            DiagnosticCode::UnusedIncludeDeprecated => "unused_include_deprecated".to_string(),
             DiagnosticCode::HeadMismatch => "head_mismatch".to_string(),
             DiagnosticCode::SyntaxError => "syntax_error".to_string(),
             DiagnosticCode::BoundVarInPattern => "bound_var_in_pattern".to_string(),
