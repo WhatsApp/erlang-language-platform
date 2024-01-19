@@ -17,33 +17,12 @@ You are free to copy, modify, and distribute ELP with attribution under the
 terms of the Apache-2.0 and MIT licences.  See [LICENCE-APACHE](./LICENCE-APACHE) and
 [LICENCE-MIT](./LICENSE-MIT) for details.
 
-## Prerequisites
+## Install
 
-### VS Code
+There are installation instructions for:
 
-An ELP extension is [available via the VS Code marketplace](https://marketplace.visualstudio.com/items?itemName=erlang-language-platform.erlang-language-platform).
-
-### Emacs
-1. Download the appropriate elp executable from https://github.com/WhatsApp/erlang-language-platform/releases, and make sure it is on your `$PATH`.
-1. Add the following to your emacs init file
-
-```elisp
-(use-package lsp-mode
-  :custom
-  (lsp-semantic-tokens-enable t)
-
-  :config
-  ;; Enable LSP automatically for Erlang files
-  (add-hook 'erlang-mode-hook #'lsp)
-
-  ;; ELP, added as priority 0 (> -1) so takes priority over the built-in one
-  (lsp-register-client
-   (make-lsp-client :new-connection (lsp-stdio-connection '("elp" "server"))
-                    :major-modes '(erlang-mode)
-                    :priority 0
-                    :server-id 'erlang-language-platform))
-  )
-```
+* [Emacs](https://whatsapp.github.io/erlang-language-platform/docs/get-started/emacs/)
+* [VS Code](https://whatsapp.github.io/erlang-language-platform/docs/get-started/vscode/)
 
 ## How to use ELP
 
