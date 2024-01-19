@@ -25,9 +25,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
-use elp_ide_db::erlang_service::Location;
 use elp_ide_db::erlang_service::ParseError;
-use elp_ide_db::erlang_service::StartLocation;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::LineCol;
@@ -1335,18 +1333,16 @@ fn parse_error_to_diagnostic_info(
         Some(DiagnosticLocation::Included {
             directive_location,
             error_location,
-        }) => included_file_file_id(db, file_id, Location::TextRange(directive_location)).map(
-            |included_file_id| {
-                (
-                    included_file_id,
-                    error_location.start(),
-                    error_location.end(),
-                    parse_error.code.clone(),
-                    parse_error.msg.clone(),
-                )
-            },
-        ),
-        Some(DiagnosticLocation::Normal(Location::TextRange(range))) => {
+        }) => included_file_file_id(db, file_id, directive_location).map(|included_file_id| {
+            (
+                included_file_id,
+                error_location.start(),
+                error_location.end(),
+                parse_error.code.clone(),
+                parse_error.msg.clone(),
+            )
+        }),
+        Some(DiagnosticLocation::Normal(range)) => {
             let default_range = (
                 file_id,
                 range.start(),
@@ -1380,22 +1376,6 @@ fn parse_error_to_diagnostic_info(
                 _ => Some(default_range),
             }
         }
-        Some(DiagnosticLocation::Normal(Location::StartLocation(StartLocation {
-            line: _,
-            column: _,
-        }))) => {
-            log::error!(
-                "Expecting TextRange, erlang_service provided Location: {:?}",
-                parse_error.location
-            );
-            Some((
-                file_id,
-                TextSize::default(),
-                TextSize::default(),
-                parse_error.code.clone(),
-                parse_error.msg.clone(),
-            ))
-        }
         None => Some((
             file_id,
             TextSize::default(),
@@ -1427,11 +1407,8 @@ fn record_name_range(db: &RootDatabase, file_id: FileId, range: TextRange) -> Op
 pub fn included_file_file_id(
     db: &RootDatabase,
     file_id: FileId,
-    directive_location: Location,
+    directive_range: TextRange,
 ) -> Option<FileId> {
-    let line_index = db.file_line_index(file_id);
-
-    let directive_range = location_range(directive_location, &line_index);
     let parsed = db.parse(file_id);
     let form_list = db.file_form_list(file_id);
     let include = form_list.includes().find_map(|(idx, include)| {
@@ -1443,22 +1420,6 @@ pub fn included_file_file_id(
         }
     })?;
     Some(include)
-}
-
-fn location_range(location: Location, line_index: &LineIndex) -> TextRange {
-    match location {
-        Location::TextRange(range) => range,
-        Location::StartLocation(StartLocation { line, column }) => {
-            let line_col = LineCol {
-                line,
-                col_utf16: column,
-            };
-            // Temporary for T147609435
-            let _pctx = stdx::panic_context::enter("\ndiagnostics::location_range".to_string());
-            let pos = line_index.offset(line_col);
-            TextRange::new(pos, pos)
-        }
-    }
 }
 
 /// Combine the ELP and erlang_service diagnostics.  In particular,

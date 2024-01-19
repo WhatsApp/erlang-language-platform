@@ -55,9 +55,7 @@ WARNINGS
         path: "fixtures/misplaced_comment_error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    35..111,
-                ),
+                35..111,
             ),
         ),
         msg: "function bad_hint_arg/0 is unused",
@@ -67,9 +65,7 @@ WARNINGS
         path: "fixtures/misplaced_comment_error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    114..248,
-                ),
+                114..248,
             ),
         ),
         msg: "function bad_hint_comprehension/0 is unused",

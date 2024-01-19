@@ -22,12 +22,9 @@ use elp::convert;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::elp_ide_db::LineCol;
 use elp_ide::erlang_service;
 use elp_ide::erlang_service::DiagnosticLocation;
-use elp_ide::erlang_service::Location;
 use elp_ide::Analysis;
-use elp_ide::TextRange;
 use elp_log::timeit;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
@@ -130,17 +127,10 @@ pub fn do_parse_one(
                 let relative_path: &Path = err.path.strip_prefix(root_dir).unwrap_or(&err.path);
                 let (range, line_num) = match err.location {
                     None => (None, convert::position(&line_index, 0.into()).line + 1),
-                    Some(DiagnosticLocation::Normal(Location::TextRange(range))) => (
+                    Some(DiagnosticLocation::Normal(range)) => (
                         Some(range),
                         convert::position(&line_index, range.start()).line + 1,
                     ),
-                    Some(DiagnosticLocation::Normal(Location::StartLocation(start))) => {
-                        let offset = line_index.offset(LineCol {
-                            line: start.line - 1,
-                            col_utf16: start.column - 1,
-                        });
-                        (Some(TextRange::empty(offset)), start.line)
-                    }
                     Some(DiagnosticLocation::Included {
                         directive_location,
                         error_location: _,

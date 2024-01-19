@@ -12,7 +12,6 @@ use std::io::BufReader;
 use std::io::BufWriter;
 use std::io::Read;
 use std::io::Write;
-use std::iter;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::ChildStdin;
@@ -45,28 +44,9 @@ use text_size::TextRange;
 
 pub mod common_test;
 
-// Location information of a warning/error may come in different flavors:
-// * Eqwalizer: byte offset for range.
-// * Default parser: line, column for start.
-// Note: Using byte offset everywhere would complicate the code,
-//       since conversion requires access to source file and its encoding.
-
-/// Start location, as returned by erl parser (see erl_anno:location()).
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct StartLocation {
-    pub line: u32,
-    pub column: u32,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum Location {
-    TextRange(TextRange),
-    StartLocation(StartLocation),
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DiagnosticLocation {
-    Normal(Location),
+    Normal(TextRange),
     Included {
         directive_location: TextRange, // Location of include directive in the file compiled
         error_location: TextRange,     // Location of the error in the included file
@@ -730,7 +710,7 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                     path: path.into(),
                     location: match position {
                         pattern::Union3::A((a, b)) => Some(DiagnosticLocation::Normal(
-                            Location::TextRange(TextRange::new(a.into(), b.into())),
+                            TextRange::new(a.into(), b.into()),
                         )),
                         pattern::Union3::B(((a, b), (c, d))) => {
                             Some(DiagnosticLocation::Included {
@@ -756,14 +736,10 @@ impl ParseRequest {
     }
 
     fn encode(self) -> Vec<u8> {
-        let location = eetf::Atom::from("offset").into();
-        let location_tuple =
-            eetf::Tuple::from(vec![eetf::Atom::from("location").into(), location]).into();
         let options = self
             .options
             .into_iter()
             .map(|option| option.into())
-            .chain(iter::once(location_tuple))
             .collect::<Vec<eetf::Term>>();
         let list = eetf::List::from(vec![
             path_into_list(self.path).into(),

@@ -21,9 +21,7 @@ WARNINGS
         path: "fixtures/unused_record.erl",
         location: Some(
             Normal(
-                TextRange(
-                    25..55,
-                ),
+                25..55,
             ),
         ),
         msg: "record my_record is unused",

@@ -28,7 +28,7 @@
 
 -module(elp_escript).
 
--export([extract/2]).
+-export([extract/1]).
 
 -record(state, {
     file :: file:filename(),
@@ -43,19 +43,19 @@
 -record(sections, {shebang :: shebang() | 'undefined', body}).
 -type sections() :: #sections{}.
 
--spec extract(atom(), file:filename()) -> any().
-extract(Module, File) ->
+-spec extract(file:filename()) -> any().
+extract(File) ->
     {HeaderSz, NextLineNo, Fd, _Sections} = parse_header(File),
-    Forms = do_parse_file(Module, File, Fd, NextLineNo, HeaderSz),
+    Forms = do_parse_file(File, Fd, NextLineNo, HeaderSz),
     ok = file:close(Fd),
     Forms.
 
--spec do_parse_file(atom(), any(), any(), pos_integer(), any()) ->
+-spec do_parse_file(any(), any(), pos_integer(), any()) ->
     [any()].
-do_parse_file(Module, File, Fd, NextLineNo, HeaderSz) ->
+do_parse_file(File, Fd, NextLineNo, HeaderSz) ->
     S = initial_state(File),
     #state{forms_or_bin = FormsOrBin} =
-        parse_source(Module, S, File, Fd, NextLineNo, HeaderSz),
+        parse_source(S, File, Fd, NextLineNo, HeaderSz),
     FormsOrBin.
 
 -spec initial_state(_) -> state().
@@ -127,27 +127,26 @@ get_line(P) ->
             Line
     end.
 
--spec parse_source(atom(), state(), _, _, pos_integer(), _) -> state().
-parse_source(Module, S, File, Fd, StartLine, HeaderSz) ->
+-spec parse_source(state(), _, _, pos_integer(), _) -> state().
+parse_source(S, File, Fd, StartLine, HeaderSz) ->
     {PreDefMacros, DefModule} = pre_def_macros(File),
     IncludePath = [],
     %% Read the encoding on the second line, if there is any:
     {ok, _} = file:position(Fd, 0),
     _ = io:get_line(Fd, ''),
-    Encoding = Module:set_encoding(Fd),
+    Encoding = elp_epp:set_encoding(Fd),
     {ok, _} = file:position(Fd, HeaderSz),
-    {ok, Epp} = epp_open(Module, File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros),
+    {ok, Epp} = epp_open(File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros),
     _ = [io:setopts(Fd, [{encoding, Encoding}]) || Encoding =/= none],
-    {ok, FileForm} = Module:parse_erl_form(Epp),
-    OptModRes = Module:parse_erl_form(Epp),
+    {ok, FileForm} = elp_epp:parse_erl_form(Epp),
+    OptModRes = elp_epp:parse_erl_form(Epp),
     S2 =
         case OptModRes of
             {ok, {attribute, _, module, M} = Form} ->
-                epp_parse_file(Module, Epp, S#state{module = M}, [Form, FileForm]);
+                epp_parse_file(Epp, S#state{module = M}, [Form, FileForm]);
             {ok, _} ->
                 ModForm = {attribute, erl_anno:new(1), module, DefModule},
                 epp_parse_file2(
-                    Module,
                     Epp,
                     S#state{module = DefModule},
                     [ModForm, FileForm],
@@ -155,7 +154,6 @@ parse_source(Module, S, File, Fd, StartLine, HeaderSz) ->
                 );
             {error, _} ->
                 epp_parse_file2(
-                    Module,
                     Epp,
                     S#state{module = DefModule},
                     [FileForm],
@@ -164,31 +162,20 @@ parse_source(Module, S, File, Fd, StartLine, HeaderSz) ->
             {eof, LastLine} ->
                 S#state{forms_or_bin = [FileForm, {eof, LastLine}]}
         end,
-    ok = Module:close(Epp),
+    ok = elp_epp:close(Epp),
     ok = file:close(Fd),
     check_source(S2).
 
--spec epp_open(atom(),_, _, pos_integer(), pos_integer(), _, _) -> {ok, term()}.
-epp_open(Module, File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros) ->
-    Offset = case Module of
-                   elp_epp -> HeaderSz;
-                   _       -> StartLine
-               end,
-    %% We use apply in order to fool dialyzer not not analyze this path
-    apply(
-        Module,
-        open,
-        [
-            [
-                {fd, Fd},
-                {name, File},
-                {location, StartLine},
-                {offset, Offset},
-                {includes, IncludePath},
-                {macros, PreDefMacros}
-            ]
-        ]
-    ).
+-spec epp_open(_, _, pos_integer(), pos_integer(), _, _) -> {ok, term()}.
+epp_open(File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros) ->
+    elp_epp:open([
+        {fd, Fd},
+        {name, File},
+        {location, StartLine},
+        {offset, HeaderSz},
+        {includes, IncludePath},
+        {macros, PreDefMacros}
+    ]).
 
 -spec check_source(state()) -> state().
 check_source(S) ->
@@ -232,36 +219,36 @@ pre_def_macros(File) ->
     ],
     {PreDefMacros, Module}.
 
--spec epp_parse_file(atom(), _, state(), [any()]) -> state().
-epp_parse_file(Module, Epp, S, Forms) ->
-    Parsed = Module:parse_erl_form(Epp),
-    epp_parse_file2(Module, Epp, S, Forms, Parsed).
+-spec epp_parse_file(_, state(), [any()]) -> state().
+epp_parse_file(Epp, S, Forms) ->
+    Parsed = elp_epp:parse_erl_form(Epp),
+    epp_parse_file2(Epp, S, Forms, Parsed).
 
--spec epp_parse_file2(atom(), _, state(), [any()], any()) -> state().
-epp_parse_file2(Module, Epp, S, Forms, Parsed) ->
+-spec epp_parse_file2(_, state(), [any()], any()) -> state().
+epp_parse_file2(Epp, S, Forms, Parsed) ->
     case Parsed of
         {ok, {attribute, Ln, mode, Mode} = Form} ->
             case is_valid(Mode) of
                 true ->
-                    epp_parse_file(Module, Epp, S, [Form | Forms]);
+                    epp_parse_file(Epp, S, [Form | Forms]);
                 false ->
                     Args = lists:flatten(
                         io_lib:format("illegal mode attribute: ~p", [Mode])
                     ),
                     Error = {error, {Ln, erl_parse, Args}},
-                    epp_parse_file(Module, Epp, S, [Error | Forms])
+                    epp_parse_file(Epp, S, [Error | Forms])
             end;
         {ok, {attribute, _, export, Fs} = Form} ->
             case lists:member({main, 1}, Fs) of
                 false ->
-                    epp_parse_file(Module, Epp, S, [Form | Forms]);
+                    epp_parse_file(Epp, S, [Form | Forms]);
                 true ->
-                    epp_parse_file(Module, Epp, S#state{exports_main = true}, [Form | Forms])
+                    epp_parse_file(Epp, S#state{exports_main = true}, [Form | Forms])
             end;
         {ok, Form} ->
-            epp_parse_file(Module, Epp, S, [Form | Forms]);
+            epp_parse_file(Epp, S, [Form | Forms]);
         {error, _} = Form ->
-            epp_parse_file(Module, Epp, S, [Form | Forms]);
+            epp_parse_file(Epp, S, [Form | Forms]);
         {eof, LastLine} ->
             S#state{forms_or_bin = lists:reverse([{eof, LastLine} | Forms])}
     end.

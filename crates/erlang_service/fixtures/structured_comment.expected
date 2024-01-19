@@ -21,9 +21,7 @@ WARNINGS
         path: "fixtures/structured_comment.erl",
         location: Some(
             Normal(
-                TextRange(
-                    30..74,
-                ),
+                30..74,
             ),
         ),
         msg: "function test/1 is unused",
@@ -33,9 +31,7 @@ WARNINGS
         path: "fixtures/structured_comment.erl",
         location: Some(
             Normal(
-                TextRange(
-                    77..126,
-                ),
+                77..126,
             ),
         ),
         msg: "function test2/1 is unused",

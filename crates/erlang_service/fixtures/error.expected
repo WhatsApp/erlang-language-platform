@@ -103,9 +103,7 @@ WARNINGS
         path: "fixtures/error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    48..122,
-                ),
+                48..122,
             ),
         ),
         msg: "function unrecognized1/0 is unused",
@@ -115,9 +113,7 @@ WARNINGS
         path: "fixtures/error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    156..239,
-                ),
+                156..239,
             ),
         ),
         msg: "function unrecognized2/0 is unused",
@@ -127,9 +123,7 @@ WARNINGS
         path: "fixtures/error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    273..374,
-                ),
+                273..374,
             ),
         ),
         msg: "function unrecognized3/0 is unused",
@@ -139,9 +133,7 @@ WARNINGS
         path: "fixtures/error.erl",
         location: Some(
             Normal(
-                TextRange(
-                    408..483,
-                ),
+                408..483,
             ),
         ),
         msg: "function unrecognized4/0 is unused",

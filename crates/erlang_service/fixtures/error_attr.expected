@@ -21,9 +21,7 @@ ERRORS
         path: "fixtures/error_attr.erl",
         location: Some(
             Normal(
-                TextRange(
-                    23..28,
-                ),
+                23..28,
             ),
         ),
         msg: "-error(\"alamakota\").",
@@ -33,9 +31,7 @@ ERRORS
         path: "fixtures/error_attr.erl",
         location: Some(
             Normal(
-                TextRange(
-                    45..50,
-                ),
+                45..50,
             ),
         ),
         msg: "badly formed 'error'",
@@ -45,9 +41,7 @@ ERRORS
         path: "fixtures/error_attr.erl",
         location: Some(
             Normal(
-                TextRange(
-                    70..75,
-                ),
+                70..75,
             ),
         ),
         msg: "badly formed 'error'",

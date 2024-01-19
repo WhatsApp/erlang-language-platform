@@ -21,7 +21,6 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
         end,
     %% Match WASERVER/erl/rebar.config.script erl_opts
     Options2 = [nowarn_underscore_match | Options1],
-    Module = epp_module(Options2),
     %% TODO workaround to enable parsing third-party deps
     %% remove it after merge of https://github.com/jlouis/graphql-erlang/pull/225
     Options3 =
@@ -31,7 +30,7 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
             _ ->
                 Options2
         end,
-    case extract_forms(FileName, Module, Options3) of
+    case extract_forms(FileName, Options3) of
         {ok, Forms0} ->
             Transforms0 = proplists:get_value(parse_transforms, Options3, []),
             {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
@@ -86,14 +85,6 @@ lint_file(Forms, FileName, Options0) ->
         end,
     elp_lint:module(Forms, FileName, Options).
 
-epp_module(Options) ->
-    case proplists:get_value(location, Options) of
-        offset ->
-            elp_epp;
-        _ ->
-            epp
-    end.
-
 collect_parse_transforms([], Forms, Transforms) ->
     {Transforms, lists:reverse(Forms)};
 collect_parse_transforms(
@@ -124,11 +115,10 @@ transform(cth_readable_transform, Forms, _Options) ->
 %% MS transform can add a -compile attribute with unexpected line position,
 %% we fix it up to something we can consume.
 %% Setting it to {0, 0} crashes erl_lint, so we set to {0, 1}
-transform(ms_transform, Forms, Options) ->
-    Loc = proplists:get_value(location, Options),
+transform(ms_transform, Forms, _Options) ->
     [First | Rest] = ms_transform:parse_transform(Forms, []),
     case First of
-        {attribute, 0, compile, Value} when Loc =:= offset ->
+        {attribute, 0, compile, Value} ->
             [{attribute, {0, 1}, compile, Value} | Rest];
         _ ->
             [First | Rest]
@@ -244,14 +234,14 @@ inclusion_range(Forms, Path) ->
             {1, 1}
     end.
 
-extract_forms(FileName, Module, Options) ->
+extract_forms(FileName, Options) ->
     case filename:extension(FileName) of
         ".erl" ->
-            Module:parse_file(FileName, Options);
+            elp_epp:parse_file(FileName, Options);
         ".hrl" ->
-            Module:parse_file(FileName, Options);
+            elp_epp:parse_file(FileName, Options);
         ".escript" ->
-            Forms = elp_escript:extract(Module, FileName),
+            Forms = elp_escript:extract(FileName),
             {ok, Forms};
         _Ext ->
             {error, "Skipping diagnostics due to extension"}
