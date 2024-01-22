@@ -49,6 +49,9 @@ pub mod otp;
 pub mod rebar;
 pub mod test_fixture;
 
+pub const ELP_CONFIG_FILE: &str = ".elp.toml";
+pub const BUILD_INFO_FILE: &str = "build_info.json";
+
 pub struct CommandProxy<'a>(MutexGuard<'a, ()>, Command);
 
 impl<'a> Deref for CommandProxy<'a> {
@@ -175,7 +178,7 @@ impl ProjectManifest {
 
     fn discover_toml(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover toml");
-        let toml_path = Self::find_in_dir(path.as_ref(), &[".elp.toml"]).next();
+        let toml_path = Self::find_in_dir(path.as_ref(), &[ELP_CONFIG_FILE]).next();
         if let Some(path) = toml_path {
             let toml = buck::ElpConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Toml(toml)))
@@ -186,7 +189,7 @@ impl ProjectManifest {
 
     fn discover_static(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover static");
-        let json_path = Self::find_in_dir(path.as_ref(), &["build_info.json"]).next();
+        let json_path = Self::find_in_dir(path.as_ref(), &[BUILD_INFO_FILE]).next();
         if let Some(path) = json_path {
             let json = json::JsonConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Json(json)))
@@ -746,7 +749,7 @@ mod tests {
                 include_dirs: vec!["include".to_string()],
                 macros: vec![],
             };
-            let build_info_path = dir_path.join("build_info.json");
+            let build_info_path = dir_path.join(BUILD_INFO_FILE);
             let expected_config = JsonConfig::new(
                 vec![json_app_a, json_app_b],
                 vec![],
@@ -971,7 +974,7 @@ mod tests {
             ));
             if let Ok(ProjectManifest::Toml(toml)) = manifest {
                 let expected_config = buck::ElpConfig::new(
-                    AbsPathBuf::assert(dir.path().join(".elp.toml")),
+                    AbsPathBuf::assert(dir.path().join(ELP_CONFIG_FILE)),
                     None,
                     EqwalizerConfig::default(),
                 );

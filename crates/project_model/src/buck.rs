@@ -46,10 +46,9 @@ use crate::BuildInfoFile;
 use crate::CommandProxy;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
+use crate::ELP_CONFIG_FILE;
 
 pub type TargetFullName = String;
-
-pub const ELP_CONFIG_FILE: &str = ".elp.toml";
 
 lazy_static! {
     static ref DIRS: Vec<RelPathBuf> = vec!["src", "test", "include"]
