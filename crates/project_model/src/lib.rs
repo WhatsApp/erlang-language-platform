@@ -12,6 +12,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::fs;
 use std::iter;
 use std::mem;
 use std::ops::Deref;
@@ -25,11 +26,14 @@ use std::vec;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use buck::BuckConfig;
 use buck::EqwalizerConfig;
 use elp_log::timeit;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
+use paths::RelPath;
+use serde::Deserialize;
 use tempfile::NamedTempFile;
 use tempfile::TempPath;
 use thiserror::Error;
@@ -128,7 +132,7 @@ pub enum ProjectModelError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectManifest {
     Rebar(RebarConfig),
-    Toml(buck::ElpConfig),
+    Toml(ElpConfig),
     Json(JsonConfig),
     NoManifest(no_manifest::NoManifestConfig),
 }
@@ -180,7 +184,7 @@ impl ProjectManifest {
         let _timer = timeit!("discover toml");
         let toml_path = Self::find_in_dir(path.as_ref(), &[ELP_CONFIG_FILE]).next();
         if let Some(path) = toml_path {
-            let toml = buck::ElpConfig::try_parse(&path)?;
+            let toml = ElpConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Toml(toml)))
         } else {
             Ok(None)
@@ -250,6 +254,59 @@ pub struct StaticProject {
     pub apps: Vec<ProjectAppData>,
     pub deps: Vec<ProjectAppData>,
     pub config_path: AbsPathBuf,
+}
+
+// Sample config:
+// ```
+// [buck]
+// enabled = true
+// deps_target = "waserver//third-party/..."
+// build_deps = true
+// included_targets = [ "waserver//erl/..." ]
+// source_root = "erl"
+//
+// [eqwalizer]
+// enable_all = true
+//```
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+pub struct ElpConfig {
+    #[serde(skip_deserializing)]
+    config_path: Option<AbsPathBuf>,
+    pub buck: Option<BuckConfig>,
+    #[serde(default)]
+    pub eqwalizer: EqwalizerConfig,
+}
+
+impl ElpConfig {
+    pub fn new(
+        config_path: AbsPathBuf,
+        buck: Option<BuckConfig>,
+        eqwalizer: EqwalizerConfig,
+    ) -> Self {
+        Self {
+            config_path: Some(config_path),
+            buck,
+            eqwalizer,
+        }
+    }
+    pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
+        let p = Path::new(ELP_CONFIG_FILE);
+        let path = if !path.ends_with(RelPath::new_unchecked(p)) {
+            path.join(p)
+        } else {
+            path.to_path_buf()
+        };
+        let config_content = fs::read_to_string(&path)?;
+        let mut config: ElpConfig = toml::from_str(config_content.as_str())?;
+        BuckConfig::make_config(&path, &mut config)?;
+        config.config_path = Some(path);
+
+        Ok(config)
+    }
+
+    pub fn config_path(&self) -> &AbsPath {
+        self.config_path.as_ref().unwrap()
+    }
 }
 
 #[derive(Clone)]
@@ -973,7 +1030,7 @@ mod tests {
                 dir.path().join("app_a/src/app.erl"),
             ));
             if let Ok(ProjectManifest::Toml(toml)) = manifest {
-                let expected_config = buck::ElpConfig::new(
+                let expected_config = ElpConfig::new(
                     AbsPathBuf::assert(dir.path().join(ELP_CONFIG_FILE)),
                     None,
                     EqwalizerConfig::default(),

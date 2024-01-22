@@ -14,7 +14,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::ffi::OsStr;
-use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -33,7 +32,6 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
-use paths::RelPath;
 use paths::RelPathBuf;
 use serde::Deserialize;
 use serde::Serialize;
@@ -44,9 +42,9 @@ use crate::AppName;
 use crate::AppType;
 use crate::BuildInfoFile;
 use crate::CommandProxy;
+use crate::ElpConfig;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
-use crate::ELP_CONFIG_FILE;
 
 pub type TargetFullName = String;
 
@@ -55,59 +53,6 @@ lazy_static! {
         .into_iter()
         .flat_map(|dir| dir.try_into())
         .collect();
-}
-
-// Sample config:
-// ```
-// [buck]
-// enabled = true
-// deps_target = "waserver//third-party/..."
-// build_deps = true
-// included_targets = [ "waserver//erl/..." ]
-// source_root = "erl"
-//
-// [eqwalizer]
-// enable_all = true
-//```
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
-pub struct ElpConfig {
-    #[serde(skip_deserializing)]
-    config_path: Option<AbsPathBuf>,
-    pub buck: Option<BuckConfig>,
-    #[serde(default)]
-    pub eqwalizer: EqwalizerConfig,
-}
-
-impl ElpConfig {
-    pub fn new(
-        config_path: AbsPathBuf,
-        buck: Option<BuckConfig>,
-        eqwalizer: EqwalizerConfig,
-    ) -> Self {
-        Self {
-            config_path: Some(config_path),
-            buck,
-            eqwalizer,
-        }
-    }
-    pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
-        let p = Path::new(ELP_CONFIG_FILE);
-        let path = if !path.ends_with(RelPath::new_unchecked(p)) {
-            path.join(p)
-        } else {
-            path.to_path_buf()
-        };
-        let config_content = fs::read_to_string(&path)?;
-        let mut config: ElpConfig = toml::from_str(config_content.as_str())?;
-        BuckConfig::make_config(&path, &mut config)?;
-        config.config_path = Some(path);
-
-        Ok(config)
-    }
-
-    pub fn config_path(&self) -> &AbsPath {
-        self.config_path.as_ref().unwrap()
-    }
 }
 
 #[derive(
@@ -156,7 +101,7 @@ impl BuckConfig {
         }
     }
 
-    fn make_config(path: &AbsPath, config: &mut ElpConfig) -> Result<()> {
+    pub(crate) fn make_config(path: &AbsPath, config: &mut ElpConfig) -> Result<()> {
         let buck_conf = match &mut config.buck {
             Some(conf) => conf,
             None => return Ok(()),
