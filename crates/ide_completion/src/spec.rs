@@ -15,7 +15,6 @@ use hir::InFile;
 use crate::helpers;
 use crate::Args;
 use crate::Completion;
-use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
@@ -25,7 +24,7 @@ pub(crate) fn add_completions(
         sema,
         trigger,
         previous_tokens,
-        ..
+        next_token,
     }: &Args,
 ) {
     use elp_syntax::SyntaxKind as K;
@@ -42,11 +41,14 @@ pub(crate) fn add_completions(
                 algo::find_node_at_offset::<ast::Spec>(parsed.value.syntax(), file_position.offset)
             {
                 if let Some(sp) = sema.find_form::<ast::Spec>(InFile::new(parsed.file_id, &spec)) {
-                    if let Some(completion) = helpers::name_slash_arity_completion(
+                    if let Some(mut completion) = helpers::name_arity_to_call_completion(
+                        sema,
+                        file_position.file_id,
                         &sp.name,
                         spec_fun_prefix.text(),
-                        Kind::Function,
+                        next_token,
                     ) {
+                        fun_completion_to_spec(&mut completion);
                         acc.push(completion);
                     }
                 }
@@ -55,13 +57,36 @@ pub(crate) fn add_completions(
             let def_map = sema.def_map(file_position.file_id);
 
             let completions = def_map.get_functions().filter_map(|(na, _)| {
-                helpers::name_slash_arity_completion(na, spec_fun_prefix.text(), Kind::Function)
+                if let Some(mut completion) = helpers::name_arity_to_call_completion(
+                    sema,
+                    file_position.file_id,
+                    na,
+                    spec_fun_prefix.text(),
+                    next_token,
+                ) {
+                    fun_completion_to_spec(&mut completion);
+                    Some(completion)
+                } else {
+                    None
+                }
             });
             acc.extend(completions);
             true
         }
         _ => false,
     };
+}
+
+fn fun_completion_to_spec(completion: &mut Completion) {
+    match &completion.contents {
+        crate::Contents::SameAsLabel => {}
+        crate::Contents::String(s) => {
+            completion.contents = crate::Contents::String(format!("{s} -> return_type()."));
+        }
+        crate::Contents::Snippet(s) => {
+            completion.contents = crate::Contents::Snippet(format!("{s} -> return_type()."));
+        }
+    }
 }
 
 #[cfg(test)]
@@ -93,8 +118,28 @@ mod test {
         "#,
             None,
             expect![[r#"
-                {label:foo/0, kind:Function, contents:SameAsLabel, position:None}
-                {label:frog/0, kind:Function, contents:SameAsLabel, position:None}"#]],
+                {label:foo/0, kind:Function, contents:Snippet("foo() -> return_type()."), position:None}
+                {label:frog/0, kind:Function, contents:Snippet("frog() -> return_type()."), position:Some(FilePosition { file_id: FileId(0), offset: 18 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_spec_with_args() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+
+        check(
+            r#"
+        -module(sample).
+
+        frog(A, B) -> {A, B}.
+
+        -spec f~
+        foo(X, Y) -> {X,Y}.
+        "#,
+            None,
+            expect![[r#"
+                {label:foo/2, kind:Function, contents:Snippet("foo(${1:Arg1}, ${2:Arg2}) -> return_type()."), position:None}
+                {label:frog/2, kind:Function, contents:Snippet("frog(${1:A}, ${2:B}) -> return_type()."), position:Some(FilePosition { file_id: FileId(0), offset: 18 })}"#]],
         );
     }
 }
