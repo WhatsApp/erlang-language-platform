@@ -629,6 +629,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.1",
  "paths",
+ "regex",
  "serde",
  "serde_json",
  "stdx",

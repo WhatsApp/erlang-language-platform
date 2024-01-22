@@ -224,12 +224,12 @@ impl ProjectManifest {
         ProjectManifest::NoManifest(no_manifest)
     }
 
+    /// Given the path of a file in a project, discover its
+    /// configuration.
     pub fn discover(path: &AbsPath) -> Result<ProjectManifest> {
         let _timer = timeit!("discover all projects");
-        if cfg!(feature = "buck") {
-            if let Some(t) = Self::discover_toml(path)? {
-                return Ok(t);
-            }
+        if let Some(t) = Self::discover_toml(path)? {
+            return Ok(t);
         }
         if let Some(r) = Self::discover_rebar(path, None)? {
             return Ok(r);
@@ -297,11 +297,18 @@ impl ElpConfig {
             path.to_path_buf()
         };
         let config_content = fs::read_to_string(&path)?;
-        let mut config: ElpConfig = toml::from_str(config_content.as_str())?;
-        BuckConfig::make_config(&path, &mut config)?;
-        config.config_path = Some(path);
+        match toml::from_str(config_content.as_str()) {
+            Ok(mut config) => {
+                BuckConfig::make_config(&path, &mut config)?;
+                config.config_path = Some(path);
 
-        Ok(config)
+                Ok(config)
+            }
+            Err(err) => bail!(
+                "unable to read {}: {err}",
+                path.as_path().as_os_str().to_string_lossy()
+            ),
+        }
     }
 
     pub fn config_path(&self) -> &AbsPath {
@@ -715,6 +722,9 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
 mod tests {
     use std::fs;
 
+    use expect_test::expect;
+    use regex::Regex;
+
     use super::*;
     use crate::json::JsonProjectAppData;
     use crate::no_manifest::NoManifestConfig;
@@ -1039,6 +1049,30 @@ mod tests {
             } else {
                 panic!("Expected Ok(Some(Toml)), got {:?}", manifest)
             }
+        }
+    }
+
+    #[test]
+    fn test_toml_syntax_error() {
+        let spec = r#"
+        //- /.elp.toml
+        buggy stuff, oops
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = Fixture::gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        if let Err(err) = manifest {
+            let re = Regex::new(r" [^ ]+/\.elp.toml:").unwrap();
+            let err_str = format!("{err}");
+            let res = re.replace(&err_str, " TMPDIR/.elp.toml");
+
+            expect![[r#"
+                "unable to read TMPDIR/.elp.toml expected an equals, found an identifier at line 1 column 7"
+            "#]].assert_debug_eq(&res);
+        } else {
+            panic!("Expected syntax error, got {:?}", manifest)
         }
     }
 
