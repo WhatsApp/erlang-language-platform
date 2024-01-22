@@ -110,7 +110,7 @@ pub(crate) fn add_completions(
                         def,
                         spec_def,
                         &function_name,
-                        should_include_args(next_token),
+                        helpers::should_include_args(next_token),
                     )?;
                     Some(Completion {
                         label: na.to_string(),
@@ -143,38 +143,17 @@ fn complete_remote_function_call<'a>(
         let module = sema.resolve_module_name(from_file, module_name)?;
         let def_map = sema.def_map(module.file.file_id);
         let completions = def_map.get_exported_functions().iter().filter_map(|na| {
-            let def = def_map.get_function(na);
-            let position = def.and_then(|def| {
-                let fun_decl_ast = def.source(sema.db.upcast());
-                Some(FilePosition {
-                    file_id: def.file.file_id,
-                    offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
-                })
-            });
-            let deprecated = def_map.is_deprecated(na);
-            let spec_def = def_map.get_spec(na);
-            let include_args = should_include_args(next_token);
             helpers::name_arity_to_call_completion(
-                sema.db.upcast(),
-                def,
-                spec_def,
+                sema,
+                module.file.file_id,
                 na,
                 fun_prefix,
-                position,
-                deprecated,
-                include_args,
+                next_token,
             )
         });
         acc.extend(completions);
         Some(())
     }();
-}
-
-fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
-    match next_token {
-        Some(token) => token.kind() != elp_syntax::SyntaxKind::ANON_LPAREN,
-        _ => true,
-    }
 }
 
 #[cfg(test)]

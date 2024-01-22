@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
@@ -16,10 +17,12 @@ use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
+use elp_syntax::SyntaxToken;
 use elp_syntax::TextSize;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::NameArity;
+use hir::Semantic;
 use hir::SpecDef;
 
 use crate::Completion;
@@ -85,15 +88,27 @@ pub(crate) fn split_remote(remote: &ast::Remote) -> Option<(ast::Atom, SmolStr)>
 }
 
 pub(crate) fn name_arity_to_call_completion(
-    db: &dyn SourceDatabase,
-    def: Option<&FunctionDef>,
-    spec_def: Option<&SpecDef>,
+    sema: &Semantic,
+    file_id: FileId,
     na: &NameArity,
     prefix: &str,
-    position: Option<FilePosition>,
-    deprecated: bool,
-    include_args: bool,
+    next_token: &Option<SyntaxToken>,
 ) -> Option<Completion> {
+    let db = sema.db.upcast();
+    let def_map = sema.def_map(file_id);
+
+    let def = def_map.get_function(na);
+    let position = def.and_then(|def| {
+        let fun_decl_ast = def.source(sema.db.upcast());
+        Some(FilePosition {
+            file_id: def.file.file_id,
+            offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
+        })
+    });
+    let deprecated = def_map.is_deprecated(na);
+    let spec_def = def_map.get_spec(na);
+    let include_args = should_include_args(next_token);
+
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(format_call(na.name(), na.arity())), |def| {
             function_contents(db, def, spec_def, na.name(), include_args)
@@ -108,6 +123,13 @@ pub(crate) fn name_arity_to_call_completion(
         })
     } else {
         None
+    }
+}
+
+pub(crate) fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
+    match next_token {
+        Some(token) => token.kind() != elp_syntax::SyntaxKind::ANON_LPAREN,
+        _ => true,
     }
 }
 
