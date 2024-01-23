@@ -25,7 +25,6 @@ use std::marker::PhantomData;
 pub use self::erlang::in_erlang_module;
 pub use self::erlang::is_erlang_fun;
 pub use self::erlang::is_erlang_type;
-pub use self::generated::nodes::*;
 pub use self::node_ext::Arity;
 pub use self::node_ext::ClauseSeparator;
 pub use self::node_ext::HasArity;
