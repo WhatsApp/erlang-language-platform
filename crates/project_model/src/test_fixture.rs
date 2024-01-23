@@ -105,7 +105,11 @@ pub struct Fixture {
     pub scratch_buffer: Option<PathBuf>,
 }
 
-impl Fixture {
+pub struct FixtureWithProjectMeta {
+    pub fixture: Vec<Fixture>,
+}
+
+impl FixtureWithProjectMeta {
     /// Parses text which looks like this:
     ///
     ///  ```not_rust
@@ -114,7 +118,7 @@ impl Fixture {
     ///  line 2
     ///  //- other meta
     ///  ```
-    pub fn parse(fixture: &str) -> Vec<Fixture> {
+    pub fn parse(fixture: &str) -> FixtureWithProjectMeta {
         let fixture = trim_indent(fixture);
         let mut res: Vec<Fixture> = Vec::new();
 
@@ -141,7 +145,7 @@ impl Fixture {
             }
 
             if line.starts_with("//-") {
-                let meta = Fixture::parse_meta_line(line);
+                let meta = FixtureWithProjectMeta::parse_meta_line(line);
                 res.push(meta)
             } else {
                 if line.starts_with("// ")
@@ -158,13 +162,13 @@ impl Fixture {
             }
         }
 
-        res
+        FixtureWithProjectMeta { fixture: res }
     }
 
     pub fn gen_project(spec: &str) -> TempDir {
-        let fixtures = Fixture::parse(spec);
+        let fixtures = FixtureWithProjectMeta::parse(spec);
         let tmp_dir = TempDir::new().unwrap();
-        for fixture in &fixtures {
+        for fixture in &fixtures.fixture {
             let path = tmp_dir.path().join(&fixture.path[1..]);
             let parent = path.parent().unwrap();
             fs::create_dir_all(parent).unwrap();
@@ -276,12 +280,12 @@ mod tests {
     use expect_test::expect;
     use paths::AbsPath;
 
-    use super::Fixture;
+    use super::FixtureWithProjectMeta;
 
     #[test]
     #[should_panic]
     fn parse_fixture_checks_further_indented_metadata() {
-        Fixture::parse(
+        FixtureWithProjectMeta::parse(
             r"
         //- /lib.rs
           mod bar;
@@ -295,7 +299,7 @@ mod tests {
 
     #[test]
     fn parse_fixture_multiple_files() {
-        let parsed = Fixture::parse(
+        let fixture = FixtureWithProjectMeta::parse(
             r#"
 //- /foo.erl
 -module(foo).
@@ -305,7 +309,7 @@ foo() -> ok.
 bar() -> ok.
 "#,
         );
-        // assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
+        let parsed = fixture.fixture;
         assert_eq!(2, parsed.len());
 
         let meta0 = &parsed[0];
@@ -321,7 +325,7 @@ bar() -> ok.
 
     #[test]
     fn parse_fixture_gets_app_data() {
-        let parsed = Fixture::parse(
+        let fixture = FixtureWithProjectMeta::parse(
             r#"
 //- /include/foo.hrl include_path:/include
 -define(FOO,3).
@@ -333,7 +337,7 @@ foo() -> ok.
 bar() -> ok.
 "#,
         );
-        // assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
+        let parsed = fixture.fixture;
         assert_eq!(3, parsed.len());
 
         let app_data = parsed[0].app_data.as_ref().unwrap();

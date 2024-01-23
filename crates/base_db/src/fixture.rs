@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
-use elp_project_model::test_fixture::Fixture;
+use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
@@ -92,8 +92,9 @@ pub struct ChangeFixture {
 }
 
 impl ChangeFixture {
-    fn parse(text_fixture: &str) -> (ChangeFixture, Change) {
-        let fixture = Fixture::parse(text_fixture);
+    fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
+        let FixtureWithProjectMeta { fixture } = FixtureWithProjectMeta::parse(test_fixture);
+
         let mut change = Change::new();
 
         let mut files = Vec::new();

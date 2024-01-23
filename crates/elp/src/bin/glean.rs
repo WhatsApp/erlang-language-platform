@@ -646,7 +646,7 @@ mod tests {
     use std::path::PathBuf;
 
     use elp::cli::Fake;
-    use elp_project_model::test_fixture::Fixture;
+    use elp_project_model::test_fixture::FixtureWithProjectMeta;
     use expect_test::expect_file;
 
     use super::*;
@@ -978,7 +978,7 @@ mod tests {
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
         let mut cli = Fake::default();
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
 
         let args = Glean {
             project: dir.into_path().join("glean").join("app_glean"),

@@ -875,7 +875,7 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_fixture::Fixture;
+    use crate::test_fixture::FixtureWithProjectMeta;
 
     #[test]
     fn test_find_app_root_src() {
@@ -883,7 +883,7 @@ mod tests {
         //- /app_a/src/app.erl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
@@ -905,7 +905,7 @@ mod tests {
         //- /app_a/include/app.hrl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
@@ -927,7 +927,7 @@ mod tests {
         //- /app_a/test/app_SUITE.erl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
@@ -951,7 +951,7 @@ mod tests {
         //- /app_a/entity/entity.erl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
@@ -977,7 +977,7 @@ mod tests {
         //- /app_a/app.hrl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
@@ -1000,7 +1000,7 @@ mod tests {
         //- /app_a/sub/app.hrl
         //- /app_a/BUCK
         "#;
-        let dir = Fixture::gen_project(spec);
+        let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
         let target_name = "waserver//app_a:app_a".to_string();
         let target = BuckTarget {
