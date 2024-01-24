@@ -76,7 +76,8 @@ mod tests {
         let path_str = "../../test_projects/buck_tests";
         let path: PathBuf = path_str.into();
 
-        let buck_config = ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
+        let (_, buck_config) =
+            ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
 
         let project = Project::load(&buck_config).unwrap();
 

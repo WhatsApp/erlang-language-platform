@@ -48,9 +48,12 @@ pub fn load_project_at(
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert(root);
-    let manifest = match conf.rebar {
+    let manifest: Option<ProjectManifest> = match conf.rebar {
         true => ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
-        false => Some(ProjectManifest::discover(&root)?),
+        false => {
+            let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
+            Some(manifest)
+        }
     };
     let manifest = if let Some(manifest) = manifest {
         manifest

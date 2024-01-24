@@ -29,7 +29,7 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let manifest = ProjectManifest::discover(&root);
 
     let config = match manifest {
-        Ok(ProjectManifest::Toml(buck)) => buck,
+        Ok((_elp_config, ProjectManifest::Toml(buck))) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
     let buck = match config.buck {
@@ -69,7 +69,7 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
 }
 
 fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
-    let manifest = ProjectManifest::discover(root)?;
+    let (_elp_config, manifest) = ProjectManifest::discover(root)?;
     let project = Project::load(&manifest)?;
     Ok((manifest, project))
 }

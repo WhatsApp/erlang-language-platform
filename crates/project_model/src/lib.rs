@@ -226,18 +226,18 @@ impl ProjectManifest {
 
     /// Given the path of a file in a project, discover its
     /// configuration.
-    pub fn discover(path: &AbsPath) -> Result<ProjectManifest> {
+    pub fn discover(path: &AbsPath) -> Result<(ElpConfig, ProjectManifest)> {
         let _timer = timeit!("discover all projects");
-        if let Some(t) = Self::discover_toml(path)? {
-            return Ok(t);
+        if let Some(ProjectManifest::Toml(toml)) = Self::discover_toml(path)? {
+            return Ok((toml.clone(), ProjectManifest::Toml(toml)));
         }
         if let Some(r) = Self::discover_rebar(path, None)? {
-            return Ok(r);
+            return Ok((ElpConfig::default(), r));
         }
         if let Some(s) = Self::discover_static(path)? {
-            return Ok(s);
+            return Ok((ElpConfig::default(), s));
         }
-        Ok(Self::discover_no_manifest(path))
+        Ok((ElpConfig::default(), Self::discover_no_manifest(path)))
     }
 }
 
@@ -268,7 +268,17 @@ pub struct StaticProject {
 // [eqwalizer]
 // enable_all = true
 //```
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Default
+)]
 pub struct ElpConfig {
     #[serde(skip_deserializing)]
     config_path: Option<AbsPathBuf>,
@@ -616,12 +626,16 @@ impl Project {
                 )
             }
             ProjectManifest::Toml(config) => match &config.buck {
-                Some(buck) => {
+                Some(buck) if buck.enabled => {
                     let (project, build_info, otp_root) =
                         BuckProject::load_from_config(buck, &config.eqwalizer)?;
                     (ProjectBuildData::Buck(project), Some(build_info), otp_root)
                 }
-                None => {
+                _ => {
+                    // TODO: repeat project discovery, with constraints
+                    //  - only in this dir
+                    //  - ignore .elp.toml
+                    // T175153411, done further up this stack
                     let otp_root = Otp::find_otp()?;
                     let config_path = config.config_path().to_path_buf();
                     let project = StaticProject {
@@ -754,7 +768,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
-        if let Ok(ProjectManifest::Rebar(config)) = manifest {
+        if let Ok((_, ProjectManifest::Rebar(config))) = manifest {
             let expected_config = RebarConfig {
                 config_file: AbsPathBuf::assert(dir.path().join("rebar.config")),
                 profile: Profile("test".to_string()),
@@ -797,7 +811,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
-        if let Ok(ProjectManifest::Json(config)) = manifest {
+        if let Ok((_, ProjectManifest::Json(config))) = manifest {
             let json_app_a = JsonProjectAppData {
                 name: "app_a".into(),
                 dir: "app_a".to_string(),
@@ -977,7 +991,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
-        if let Ok(ProjectManifest::NoManifest(config)) = manifest {
+        if let Ok((_, ProjectManifest::NoManifest(config))) = manifest {
             let path = AbsPathBuf::assert(dir.path().join("app_b"));
             let name: AppName = "app_b".into();
             let abs_src = AbsPathBuf::assert(dir.path().join("app_b/src"));
@@ -1039,7 +1053,7 @@ mod tests {
             let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
                 dir.path().join("app_a/src/app.erl"),
             ));
-            if let Ok(ProjectManifest::Toml(toml)) = manifest {
+            if let Ok((_, ProjectManifest::Toml(toml))) = manifest {
                 let expected_config = ElpConfig::new(
                     AbsPathBuf::assert(dir.path().join(ELP_CONFIG_FILE)),
                     None,

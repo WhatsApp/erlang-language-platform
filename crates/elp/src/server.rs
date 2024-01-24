@@ -1161,7 +1161,7 @@ impl Server {
                         let mut projects = vec![];
                         for path in paths {
                             let manifest = loader.load_manifest_if_new(&path);
-                            if let Some((main, fallback)) = manifest {
+                            if let Some((_elp_config, main, fallback)) = manifest {
                                 if let Ok(project) =
                                     Server::load_project_or_fallback(&path, main, fallback, &sender)
                                 {
@@ -1237,7 +1237,7 @@ impl Server {
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
                 let project = match manifest {
-                    Some((main, fallback)) => {
+                    Some((_elp_config, main, fallback)) => {
                         Server::load_project_or_fallback(&path, main, fallback, &sender)
                     }
                     None => return,

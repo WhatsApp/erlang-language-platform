@@ -14,6 +14,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::telemetry;
 use elp_project_model::otp::Otp;
+use elp_project_model::ElpConfig;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashMap;
 
@@ -55,8 +56,14 @@ impl ProjectLoader {
         result
     }
 
-    pub fn load_manifest(&mut self, path: &AbsPath) -> (Result<ProjectManifest>, ProjectManifest) {
-        let manifest = ProjectManifest::discover(path);
+    pub fn load_manifest(
+        &mut self,
+        path: &AbsPath,
+    ) -> (ElpConfig, Result<ProjectManifest>, ProjectManifest) {
+        let (config, manifest) = match ProjectManifest::discover(path) {
+            Ok((config, manifest)) => (config, Ok(manifest)),
+            Err(x) => (ElpConfig::default(), Err(x)),
+        };
         let fallback = ProjectManifest::discover_no_manifest(path);
 
         match manifest {
@@ -66,7 +73,7 @@ impl ProjectLoader {
                     self.project_roots
                         .insert(root.to_path_buf(), Some(manifest.clone()));
                 }
-                (Ok(manifest), fallback)
+                (config, Ok(manifest), fallback)
             }
             Err(err) => {
                 //cache parent path not to discover project for every file without project
@@ -74,7 +81,7 @@ impl ProjectLoader {
                     self.project_roots
                         .insert(parent.to_path_buf(), Some(fallback.clone()));
                 }
-                (Err(err), fallback)
+                (config, Err(err), fallback)
             }
         }
     }
@@ -82,7 +89,7 @@ impl ProjectLoader {
     pub fn load_manifest_if_new(
         &mut self,
         path: &AbsPath,
-    ) -> Option<(Result<ProjectManifest>, ProjectManifest)> {
+    ) -> Option<(ElpConfig, Result<ProjectManifest>, ProjectManifest)> {
         let mut path_it = path;
         while let Some(path) = path_it.parent() {
             if self.project_roots.contains_key(path) {
