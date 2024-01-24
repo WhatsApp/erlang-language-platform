@@ -30,12 +30,8 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let root = AbsPathBuf::assert(root);
     let manifest = ProjectManifest::discover(&root);
 
-    let config = match manifest {
-        Ok((_elp_config, ProjectManifest::Toml(buck))) => buck,
-        _ => bail!("Can't find buck root for {:?}", root),
-    };
-    let buck = match config.buck {
-        Some(buck) => buck,
+    let buck = match manifest {
+        Ok((_elp_config, ProjectManifest::TomlBuck(buck))) => buck,
         _ => bail!("Can't find buck root for {:?}", root),
     };
 

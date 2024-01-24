@@ -68,6 +68,9 @@ lazy_static! {
 )]
 pub struct BuckConfig {
     #[serde(skip_deserializing)]
+    /// Location of ELP_CONFIG_FILE this config was loaded from
+    config_path: Option<AbsPathBuf>,
+    #[serde(skip_deserializing)]
     buck_root: Option<AbsPathBuf>,
     pub enabled: bool,
     pub deps_target: Option<String>,
@@ -108,6 +111,7 @@ impl BuckConfig {
         };
         //assign any file from buck monorepo in order to find root
         buck_conf.buck_root = Some(path.parent().unwrap().to_path_buf());
+        buck_conf.config_path = Some(path.to_path_buf());
 
         let root = find_root(buck_conf)?;
         buck_conf.buck_root = Some(root);
@@ -119,6 +123,10 @@ impl BuckConfig {
             }
         }
         Ok(())
+    }
+
+    pub(crate) fn config_path(&self) -> &AbsPath {
+        self.config_path.as_ref().unwrap()
     }
 }
 

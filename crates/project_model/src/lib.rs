@@ -133,7 +133,7 @@ pub enum ProjectModelError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectManifest {
     Rebar(RebarConfig),
-    Toml(ElpConfig),
+    TomlBuck(BuckConfig),
     Json(JsonConfig),
     NoManifest(no_manifest::NoManifestConfig),
 }
@@ -148,7 +148,7 @@ impl ProjectManifest {
     pub fn root(&self) -> &AbsPath {
         match self {
             ProjectManifest::Rebar(conf) => conf.config_path(),
-            ProjectManifest::Toml(conf) => conf.config_path(),
+            ProjectManifest::TomlBuck(conf) => conf.config_path(),
             ProjectManifest::Json(conf) => conf.config_path(),
             ProjectManifest::NoManifest(conf) => conf.config_path(),
         }
@@ -197,13 +197,13 @@ impl ProjectManifest {
         }
     }
 
-    fn discover_toml(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    fn discover_toml(path: &AbsPath) -> Result<Option<ElpConfig>> {
         let _timer = timeit!("discover toml");
         let toml_path =
             Self::find_in_dir(path.as_ref(), &[ELP_CONFIG_FILE], IncludeParentDirs::Yes).next();
         if let Some(path) = toml_path {
             let toml = ElpConfig::try_parse(&path)?;
-            Ok(Some(ProjectManifest::Toml(toml)))
+            Ok(Some(toml))
         } else {
             Ok(None)
         }
@@ -253,8 +253,19 @@ impl ProjectManifest {
     /// configuration.
     pub fn discover(path: &AbsPath) -> Result<(ElpConfig, ProjectManifest)> {
         let _timer = timeit!("discover all projects");
-        if let Some(ProjectManifest::Toml(toml)) = Self::discover_toml(path)? {
-            return Ok((toml.clone(), ProjectManifest::Toml(toml)));
+        if let Some(elp_config) = Self::discover_toml(path)? {
+            if elp_config
+                .clone()
+                .buck
+                .map(|c| c.enabled.clone())
+                .unwrap_or(false)
+            {
+                let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
+                return Ok((elp_config.clone(), ProjectManifest::TomlBuck(buck)));
+            } else {
+                let manifest = ProjectManifest::discover_in_place(path)?;
+                return Ok((elp_config.clone(), manifest));
+            }
         }
         if let Some(r) = Self::discover_rebar(path, None, IncludeParentDirs::Yes)? {
             return Ok((ElpConfig::default(), r));
@@ -660,26 +671,11 @@ impl Project {
                     otp_root,
                 )
             }
-            ProjectManifest::Toml(config) => match &config.buck {
-                Some(buck) if buck.enabled => {
-                    let (project, build_info, otp_root) = BuckProject::load_from_config(buck)?;
-                    (ProjectBuildData::Buck(project), Some(build_info), otp_root)
-                }
-                _ => {
-                    // TODO: repeat project discovery, with constraints
-                    //  - only in this dir
-                    //  - ignore .elp.toml
-                    // T175153411, done further up this stack
-                    let otp_root = Otp::find_otp()?;
-                    let config_path = config.config_path().to_path_buf();
-                    let project = StaticProject {
-                        apps: vec![],
-                        deps: vec![],
-                        config_path,
-                    };
-                    (ProjectBuildData::Static(project), None, otp_root)
-                }
-            },
+            ProjectManifest::TomlBuck(buck) => {
+                // We only select this manifest if buck is actually enabled
+                let (project, build_info, otp_root) = BuckProject::load_from_config(buck)?;
+                (ProjectBuildData::Buck(project), Some(build_info), otp_root)
+            }
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
@@ -1085,18 +1081,18 @@ mod tests {
         -module(app).
         "#;
             let dir = FixtureWithProjectMeta::gen_project(spec);
-            let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
+            let discovered = ProjectManifest::discover(&AbsPathBuf::assert(
                 dir.path().join("app_a/src/app.erl"),
             ));
-            if let Ok((_, ProjectManifest::Toml(toml))) = manifest {
+            if let Ok((elp_config, ProjectManifest::NoManifest(_config))) = discovered {
                 let expected_config = ElpConfig::new(
                     AbsPathBuf::assert(dir.path().join(ELP_CONFIG_FILE)),
                     None,
                     EqwalizerConfig::default(),
                 );
-                assert_eq!(expected_config, toml)
+                assert_eq!(expected_config, elp_config)
             } else {
-                panic!("Expected Ok(Some(Toml)), got {:?}", manifest)
+                panic!("Expected Ok(Some(Toml)), got {:?}", discovered)
             }
         }
     }
