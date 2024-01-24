@@ -263,12 +263,6 @@ pub struct RelatedInformation {
     pub message: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct ErlangServiceDiagnosticsConfig {
-    pub include_generated: bool,
-    pub compile_options: Vec<CompileOption>,
-}
-
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -556,11 +550,23 @@ pub struct DiagnosticsConfig<'a> {
     pub disabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: Arc<LintsFromConfig>,
+    pub include_generated: bool,
+    pub compile_options: Vec<CompileOption>,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
     pub fn set_disable_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
         self.disable_experimental = value;
+        self
+    }
+
+    pub fn set_include_generated(mut self, value: bool) -> DiagnosticsConfig<'a> {
+        self.include_generated = value;
+        self
+    }
+
+    pub fn set_compile_options(mut self, options: Vec<CompileOption>) -> DiagnosticsConfig<'a> {
+        self.compile_options = options;
         self
     }
 
@@ -682,7 +688,6 @@ pub fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
     file_id: FileId,
-    include_generated: bool,
 ) -> LabeledDiagnostics {
     lazy_static! {
         static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
@@ -700,7 +705,7 @@ pub fn diagnostics(
 
         if is_erl_module {
             no_module_definition_diagnostic(&mut res, &parse);
-            if include_generated || !db.is_generated(file_id) {
+            if config.include_generated || !db.is_generated(file_id) {
                 unused_include::unused_includes(&sema, db, &mut res, file_id);
             }
         }
@@ -1035,7 +1040,7 @@ pub(crate) fn make_unexpected_diagnostic(
 pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
-    config: &ErlangServiceDiagnosticsConfig,
+    config: &DiagnosticsConfig,
 ) -> Vec<(FileId, LabeledDiagnostics)> {
     if config.include_generated || !db.is_generated(file_id) {
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
@@ -1701,10 +1706,8 @@ baz(1)->4.
 
     #[test]
     fn filter_experimental() {
-        let config = DiagnosticsConfig {
-            disable_experimental: false,
-            disabled: FxHashSet::default(),
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        let config = DiagnosticsConfig::default()
+            .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
                 replace_call::replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -1717,11 +1720,9 @@ baz(1)->4.
                     sema,
                     file_id,
                 )
-            }],
-            lints_from_config: Arc::new(LintsFromConfig::default()),
-        }
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .disable(DiagnosticCode::UndefinedFunction);
+            }])
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UndefinedFunction);
         check_diagnostics_with_config(
             DiagnosticsConfig {
                 disable_experimental: false,

@@ -121,7 +121,7 @@ fn do_parse_one(
     }
 
     let mut diagnostics = DiagnosticCollection::default();
-    let native = db.diagnostics(config, file_id, args.include_generated)?;
+    let native = db.diagnostics(config, file_id)?;
     diagnostics.set_native(file_id, native);
 
     if args.include_ct_diagnostics {
@@ -194,6 +194,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             }
 
             let mut cfg = DiagnosticsConfig::default();
+            cfg.include_generated = args.include_generated;
             cfg.disable_experimental = args.experimental_diags;
             cfg.disabled = disabled_diagnostics;
             let cfg = cfg.from_config(&Arc::new(cfg_from_file.ad_hoc_lints));

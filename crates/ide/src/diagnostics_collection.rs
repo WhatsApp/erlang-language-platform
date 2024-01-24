@@ -268,7 +268,7 @@ mod tests {
     ) {
         let (db, files) = RootDatabase::with_many_files(elp_fixture);
         for file_id in files {
-            let diagnostics = diagnostics::diagnostics(&db, &config, file_id, true);
+            let diagnostics = diagnostics::diagnostics(&db, &config, file_id);
 
             let combined = attach_related_diagnostics(diagnostics, extra_diags);
             let expected = extract_annotations(&db.file_text(file_id));

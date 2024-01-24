@@ -146,13 +146,8 @@ fn make_diagnostic(
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use fxhash::FxHashSet;
-
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
-    use crate::diagnostics::LintsFromConfig;
     use crate::fixture;
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
@@ -186,18 +181,11 @@ mod tests {
     -di~alyzer({nowarn_function, f/0}).
             "#,
         );
-        let mut config = DiagnosticsConfig {
-            disable_experimental: true,
-            disabled: FxHashSet::default(),
-            adhoc_semantic_diagnostics: vec![],
-            lints_from_config: Arc::new(LintsFromConfig::default()),
-        };
+        let mut config = DiagnosticsConfig::default();
         config
             .disabled
             .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-        let diags = analysis
-            .diagnostics(&config, position.file_id, true)
-            .unwrap();
+        let diags = analysis.diagnostics(&config, position.file_id).unwrap();
         assert!(
             diags.is_empty(),
             "didn't expect diagnostic errors in files: {:?}",
@@ -215,18 +203,11 @@ mod tests {
     f(#dyalizer{field = Bar}) -> Bar.
             "#,
         );
-        let mut config = DiagnosticsConfig {
-            disable_experimental: true,
-            disabled: FxHashSet::default(),
-            adhoc_semantic_diagnostics: vec![],
-            lints_from_config: Arc::new(LintsFromConfig::default()),
-        };
+        let mut config = DiagnosticsConfig::default();
         config
             .disabled
             .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-        let diags = analysis
-            .diagnostics(&config, position.file_id, true)
-            .unwrap();
+        let diags = analysis.diagnostics(&config, position.file_id).unwrap();
         assert!(
             diags.is_empty(),
             "didn't expect diagnostic errors in files: {:?}",

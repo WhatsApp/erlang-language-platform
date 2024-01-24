@@ -25,7 +25,6 @@ use elp::server::file_id_to_url;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
-use elp_ide::diagnostics::ErlangServiceDiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
@@ -104,42 +103,20 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
 
     let mut cfg = DiagnosticsConfig::default();
     cfg.disable_experimental = args.experimental_diags;
+    cfg.include_generated = args.include_generated;
 
-    let mut compile_options = vec![];
     if args.force_warn_missing_spec_all {
-        compile_options.push(CompileOption::ForceWarnMissingSpecAll);
+        cfg.compile_options
+            .push(CompileOption::ForceWarnMissingSpecAll);
     }
 
-    let erlang_service_diagnostics_config = ErlangServiceDiagnosticsConfig {
-        include_generated: args.include_generated,
-        compile_options,
-    };
-
     let mut res = match (file_id, name, args.serial) {
-        (None, _, true) => do_parse_all_seq(
-            cli,
-            &loaded,
-            &cfg,
-            &args.to,
-            &erlang_service_diagnostics_config,
-        )?,
-        (None, _, false) => do_parse_all_par(
-            cli,
-            &loaded,
-            &cfg,
-            &args.to,
-            &erlang_service_diagnostics_config,
-        )?,
-        (Some(file_id), Some(name), _) => do_parse_one(
-            &analysis,
-            &loaded.vfs,
-            &cfg,
-            &args.to,
-            file_id,
-            &name,
-            &erlang_service_diagnostics_config,
-        )?
-        .map_or(vec![], |x| vec![x]),
+        (None, _, true) => do_parse_all_seq(cli, &loaded, &cfg, &args.to)?,
+        (None, _, false) => do_parse_all_par(cli, &loaded, &cfg, &args.to)?,
+        (Some(file_id), Some(name), _) => {
+            do_parse_one(&analysis, &loaded.vfs, &cfg, &args.to, file_id, &name)?
+                .map_or(vec![], |x| vec![x])
+        }
         (Some(file_id), _, _) => panic!("Could not get name from file_id for {:?}", file_id),
     };
 
@@ -263,7 +240,6 @@ fn do_parse_all_par(
     loaded: &LoadResult,
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
-    erlang_service_diagnostics_config: &ErlangServiceDiagnosticsConfig,
 ) -> Result<Vec<ParseResult>> {
     let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
     let module_iter = module_index.iter_own();
@@ -281,16 +257,7 @@ fn do_parse_all_par(
                     && file_source == FileSource::Src
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                 {
-                    do_parse_one(
-                        db,
-                        vfs,
-                        config,
-                        to,
-                        file_id,
-                        module_name.as_str(),
-                        erlang_service_diagnostics_config,
-                    )
-                    .unwrap()
+                    do_parse_one(db, vfs, config, to, file_id, module_name.as_str()).unwrap()
                 } else {
                     None
                 }
@@ -305,7 +272,6 @@ fn do_parse_all_seq(
     loaded: &LoadResult,
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
-    erlang_service_diagnostics_config: &ErlangServiceDiagnosticsConfig,
 ) -> Result<Vec<ParseResult>> {
     let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
     let module_iter = module_index.iter_own();
@@ -321,16 +287,7 @@ fn do_parse_all_seq(
                 && file_source == FileSource::Src
                 && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
             {
-                do_parse_one(
-                    &db,
-                    vfs,
-                    config,
-                    to,
-                    file_id,
-                    module_name.as_str(),
-                    erlang_service_diagnostics_config,
-                )
-                .unwrap()
+                do_parse_one(&db, vfs, config, to, file_id, module_name.as_str()).unwrap()
             } else {
                 None
             }
@@ -345,16 +302,10 @@ fn do_parse_one(
     to: &Option<PathBuf>,
     file_id: FileId,
     name: &str,
-    erlang_service_diagnostics_config: &ErlangServiceDiagnosticsConfig,
 ) -> Result<Option<ParseResult>> {
     let url = file_id_to_url(vfs, file_id);
-    let native = db.diagnostics(
-        config,
-        file_id,
-        erlang_service_diagnostics_config.include_generated,
-    )?;
-    let erlang_service_diagnostics =
-        db.erlang_service_diagnostics(file_id, &erlang_service_diagnostics_config)?;
+    let native = db.diagnostics(config, file_id)?;
+    let erlang_service_diagnostics = db.erlang_service_diagnostics(file_id, config)?;
     let line_index = db.line_index(file_id)?;
 
     // Should we return the included file diagnostics as well? Not doing so now.

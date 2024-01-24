@@ -14,7 +14,6 @@ use anyhow::Result;
 use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
-use diagnostics::ErlangServiceDiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
 use elp_eqwalizer::ast::types::Type;
 use elp_ide_assists::Assist;
@@ -212,9 +211,8 @@ impl Analysis {
         &self,
         config: &DiagnosticsConfig,
         file_id: FileId,
-        include_generated: bool,
     ) -> Cancellable<LabeledDiagnostics> {
-        self.with_db(|db| diagnostics::diagnostics(db, config, file_id, include_generated))
+        self.with_db(|db| diagnostics::diagnostics(db, config, file_id))
     }
 
     /// Computes the set of eqwalizer diagnostics for the given file.
@@ -269,7 +267,7 @@ impl Analysis {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
-        config: &ErlangServiceDiagnosticsConfig,
+        config: &DiagnosticsConfig,
     ) -> Cancellable<Vec<(FileId, LabeledDiagnostics)>> {
         self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, config))
     }
@@ -403,7 +401,7 @@ impl Analysis {
 
         self.with_db(|db| {
             let diagnostic_assists = if include_fixes {
-                diagnostics::diagnostics(db, diagnostics_config, frange.file_id, false)
+                diagnostics::diagnostics(db, diagnostics_config, frange.file_id)
                     .iter()
                     .filter_map(|it| it.fixes.clone())
                     .flatten()
