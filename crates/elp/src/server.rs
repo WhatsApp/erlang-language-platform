@@ -50,6 +50,7 @@ use elp_log::telemetry::TelemetryMessage;
 use elp_log::timeit;
 use elp_log::Logger;
 use elp_log::TimeIt;
+use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use lsp_server::Connection;
@@ -396,7 +397,7 @@ impl Server {
             Event::Task(mut task) => loop {
                 match task {
                     Task::Response(response) => self.send_response(response),
-                    Task::FetchProject(project) => self.fetch_project_completed(project)?,
+                    Task::FetchProject(projects) => self.fetch_project_completed(projects)?,
                     Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
                     Task::EqwalizerDiagnostics(spinner, diags) => {
                         spinner.end();
@@ -1161,10 +1162,10 @@ impl Server {
                         let mut projects = vec![];
                         for path in paths {
                             let manifest = loader.load_manifest_if_new(&path);
-                            if let Some((_elp_config, main, fallback)) = manifest {
-                                if let Ok(project) =
-                                    Server::load_project_or_fallback(&path, main, fallback, &sender)
-                                {
+                            if let Some((elp_config, main, fallback)) = manifest {
+                                if let Ok(project) = Server::load_project_or_fallback(
+                                    &path, elp_config, main, fallback, &sender,
+                                ) {
                                     projects.push(project);
                                 }
                             }
@@ -1181,6 +1182,7 @@ impl Server {
 
     fn load_project_or_fallback(
         path: &AbsPath,
+        elp_config: ElpConfig,
         main: Result<ProjectManifest>,
         fallback: ProjectManifest,
         sender: &Sender<Task>,
@@ -1200,7 +1202,7 @@ impl Server {
                 fallback.clone()
             }
         };
-        let mut project = Project::load(&manifest);
+        let mut project = Project::load(&manifest, elp_config.eqwalizer.clone());
         if let Err(err) = &project {
             log::error!(
                 "Failed to load project for manifest {:?}, error: {:?}",
@@ -1209,7 +1211,7 @@ impl Server {
             );
             errors.push(err.to_string());
             if !fallback_used {
-                project = Project::load(&fallback);
+                project = Project::load(&fallback, elp_config.eqwalizer);
                 if let Err(err) = &project {
                     log::error!(
                         "Failed to load project for fallback manifest {:?}, error: {:?}",
@@ -1237,8 +1239,8 @@ impl Server {
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
                 let project = match manifest {
-                    Some((_elp_config, main, fallback)) => {
-                        Server::load_project_or_fallback(&path, main, fallback, &sender)
+                    Some((elp_config, main, fallback)) => {
+                        Server::load_project_or_fallback(&path, elp_config, main, fallback, &sender)
                     }
                     None => return,
                 };
@@ -1252,8 +1254,8 @@ impl Server {
         })
     }
 
-    fn fetch_project_completed(&mut self, project: Vec<Project>) -> Result<()> {
-        if let Err(err) = self.switch_workspaces(project) {
+    fn fetch_project_completed(&mut self, projects: Vec<Project>) -> Result<()> {
+        if let Err(err) = self.switch_workspaces(projects) {
             let params = lsp_types::ShowMessageParams {
                 typ: lsp_types::MessageType::ERROR,
                 message: err.to_string(),

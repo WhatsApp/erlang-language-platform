@@ -17,6 +17,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck;
 use elp_project_model::otp::Otp;
+use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 
@@ -69,13 +70,14 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
 }
 
 fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
-    let (_elp_config, manifest) = ProjectManifest::discover(root)?;
-    let project = Project::load(&manifest)?;
+    let (elp_config, manifest) = ProjectManifest::discover(root)?;
+    let project = Project::load(&manifest, elp_config.eqwalizer)?;
     Ok((manifest, project))
 }
 
 fn load_fallback(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
     let manifest = ProjectManifest::discover_no_manifest(root);
-    let project = Project::load(&manifest)?;
+    let elp_config = ElpConfig::default();
+    let project = Project::load(&manifest, elp_config.eqwalizer)?;
     Ok((manifest, project))
 }

@@ -76,10 +76,10 @@ mod tests {
         let path_str = "../../test_projects/buck_tests";
         let path: PathBuf = path_str.into();
 
-        let (_, buck_config) =
+        let (elp_config, buck_config) =
             ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
 
-        let project = Project::load(&buck_config).unwrap();
+        let project = Project::load(&buck_config, elp_config.eqwalizer).unwrap();
 
         let project = match project.project_build_data {
             ProjectBuildData::Buck(project) => project,

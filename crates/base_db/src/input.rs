@@ -341,7 +341,7 @@ impl<'a> ProjectApps<'a> {
                 build_info_path: project.build_info_file(),
                 otp_project_id: self.otp_project_id,
                 app_roots,
-                eqwalizer_config: project.eqwalizer_config(),
+                eqwalizer_config: project.eqwalizer_config.clone(),
             };
             app_structure.add_project_data(project_id, project_data);
         }

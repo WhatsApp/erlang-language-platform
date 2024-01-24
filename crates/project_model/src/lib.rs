@@ -331,6 +331,7 @@ pub struct Project {
     build_info_file: Option<BuildInfoFile>,
     pub otp: Otp,
     pub project_build_data: ProjectBuildData,
+    pub eqwalizer_config: EqwalizerConfig,
 }
 
 #[derive(Clone)]
@@ -357,6 +358,7 @@ impl Project {
             build_info_file: None,
             otp,
             project_build_data: ProjectBuildData::Otp,
+            eqwalizer_config: EqwalizerConfig::default(),
         }
     }
 
@@ -365,6 +367,7 @@ impl Project {
             build_info_file: None,
             otp,
             project_build_data: ProjectBuildData::Rebar(Default::default()),
+            eqwalizer_config: EqwalizerConfig::default(),
         }
     }
 
@@ -421,15 +424,6 @@ impl Project {
                 .flat_map(|app| &app.ebin)
                 .cloned()
                 .collect(),
-        }
-    }
-
-    pub fn eqwalizer_config(&self) -> EqwalizerConfig {
-        match &self.project_build_data {
-            ProjectBuildData::Buck(buck) => buck.eqwalizer_conf.clone(),
-            ProjectBuildData::Otp => EqwalizerConfig::default(),
-            ProjectBuildData::Rebar(_) => EqwalizerConfig::default(),
-            ProjectBuildData::Static(_) => EqwalizerConfig::default(),
         }
     }
 }
@@ -591,7 +585,7 @@ impl Project {
         }
     }
 
-    pub fn load(manifest: &ProjectManifest) -> Result<Project> {
+    pub fn load(manifest: &ProjectManifest, eqwalizer_config: EqwalizerConfig) -> Result<Project> {
         let (project_build_info, build_info, otp_root) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
@@ -627,8 +621,7 @@ impl Project {
             }
             ProjectManifest::Toml(config) => match &config.buck {
                 Some(buck) if buck.enabled => {
-                    let (project, build_info, otp_root) =
-                        BuckProject::load_from_config(buck, &config.eqwalizer)?;
+                    let (project, build_info, otp_root) = BuckProject::load_from_config(buck)?;
                     (ProjectBuildData::Buck(project), Some(build_info), otp_root)
                 }
                 _ => {
@@ -696,6 +689,7 @@ impl Project {
             build_info_file: build_info,
             otp: Otp::discover(otp_root),
             project_build_data: project_build_info,
+            eqwalizer_config,
         })
     }
 
@@ -811,7 +805,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
-        if let Ok((_, ProjectManifest::Json(config))) = manifest {
+        if let Ok((elp_config, ProjectManifest::Json(config))) = manifest {
             let json_app_a = JsonProjectAppData {
                 name: "app_a".into(),
                 dir: "app_a".to_string(),
@@ -838,8 +832,8 @@ mod tests {
             );
             //discover only app_b since path was from app_b
             assert_eq!(expected_config, config);
-            let project =
-                Project::load(&ProjectManifest::Json(config)).expect("project must be ok");
+            let project = Project::load(&ProjectManifest::Json(config), elp_config.eqwalizer)
+                .expect("project must be ok");
             assert!(project.build_info_file.is_some());
             let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
             let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
@@ -991,7 +985,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
-        if let Ok((_, ProjectManifest::NoManifest(config))) = manifest {
+        if let Ok((elp_config, ProjectManifest::NoManifest(config))) = manifest {
             let path = AbsPathBuf::assert(dir.path().join("app_b"));
             let name: AppName = "app_b".into();
             let abs_src = AbsPathBuf::assert(dir.path().join("app_b/src"));
@@ -1001,8 +995,8 @@ mod tests {
             //discover only app_b since path was from app_b
             assert_eq!(&expected_config, &config);
 
-            let project =
-                Project::load(&ProjectManifest::NoManifest(config)).expect("project must be ok");
+            let project = Project::load(&ProjectManifest::NoManifest(config), elp_config.eqwalizer)
+                .expect("project must be ok");
             assert!(project.build_info_file.is_some());
             let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
             let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);

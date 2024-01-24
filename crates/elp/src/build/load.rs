@@ -32,6 +32,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::AnalysisHost;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 
@@ -48,11 +49,14 @@ pub fn load_project_at(
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert(root);
-    let manifest: Option<ProjectManifest> = match conf.rebar {
-        true => ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
+    let (elp_config, manifest): (ElpConfig, Option<ProjectManifest>) = match conf.rebar {
+        true => (
+            ElpConfig::default(),
+            ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
+        ),
         false => {
-            let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
-            Some(manifest)
+            let (elp_config, manifest) = ProjectManifest::discover(&root)?;
+            (elp_config, Some(manifest))
         }
     };
     let manifest = if let Some(manifest) = manifest {
@@ -63,7 +67,7 @@ pub fn load_project_at(
 
     log::info!("Discovered project: {:?}", manifest);
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(&manifest)?;
+    let project = Project::load(&manifest, elp_config.eqwalizer.clone())?;
     pb.finish();
 
     load_project(cli, project, include_otp, eqwalizer_mode)

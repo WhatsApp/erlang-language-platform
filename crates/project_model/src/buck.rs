@@ -149,13 +149,11 @@ pub struct BuckProject {
     pub target_info: TargetInfo,
     pub project_app_data: Vec<ProjectAppData>,
     pub buck_conf: BuckConfig,
-    pub eqwalizer_conf: EqwalizerConfig,
 }
 
 impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
-        eqwalizer_conf: &EqwalizerConfig,
     ) -> Result<(BuckProject, BuildInfoFile, PathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf)?;
         let otp_root = Otp::find_otp()?;
@@ -166,7 +164,6 @@ impl BuckProject {
             target_info,
             project_app_data,
             buck_conf: buck_conf.clone(),
-            eqwalizer_conf: eqwalizer_conf.clone(),
         };
         Ok((project, build_info, otp_root))
     }
