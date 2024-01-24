@@ -102,7 +102,7 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
     };
 
     let mut cfg = DiagnosticsConfig::default();
-    cfg.disable_experimental = args.experimental_diags;
+    cfg.experimental = args.experimental_diags;
     cfg.include_generated = args.include_generated;
 
     if args.force_warn_missing_spec_all {

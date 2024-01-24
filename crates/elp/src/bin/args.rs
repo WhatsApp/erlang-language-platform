@@ -441,7 +441,7 @@ fn parse_print_diags() -> impl Parser<bool> {
 fn parse_experimental_diags() -> impl Parser<bool> {
     long("experimental")
         .help("Report experimental diagnostics too, if diagnostics are enabled")
-        .flag(/* present */ false, true)
+        .flag(/* present */ true, false)
 }
 
 #[derive(Deserialize)]

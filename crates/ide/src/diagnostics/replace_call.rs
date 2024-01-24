@@ -369,6 +369,7 @@ mod tests {
 
     use super::*;
     use crate::codemod_helpers::CheckCallCtx;
+    use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::diagnostics::Lint;
     use crate::diagnostics::LintsFromConfig;
     use crate::diagnostics::ReplaceCall;
@@ -376,10 +377,51 @@ mod tests {
     use crate::tests::check_fix_with_config;
     use crate::DiagnosticsConfig;
 
+    #[track_caller]
+    pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(
+        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+        fixture_before: &str,
+        fixture_after: &str,
+    ) {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UndefinedFunction)
+            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
+        check_fix_with_config(config, fixture_before, fixture_after)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_fix_with_lints_from_config<'a>(
+        lints_from_config: LintsFromConfig,
+        fixture_before: &str,
+        fixture_after: &str,
+    ) {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UndefinedFunction)
+            .from_config(&Arc::new(lints_from_config));
+        check_fix_with_config(config, fixture_before, fixture_after)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics_with_ad_hoc_semantics<'a>(
+        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+        fixture: &str,
+    ) {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UndefinedFunction)
+            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
+        check_diagnostics_with_config(config, fixture)
+    }
+
     #[test]
     fn check_fix_remove_call_use_ok() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -393,14 +435,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -423,8 +457,8 @@ mod tests {
 
     #[test]
     fn check_fix_remove_call_use_call_args() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -438,14 +472,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -470,8 +496,8 @@ mod tests {
 
     #[test]
     fn check_remove_call_site_if_args_match_uses_match() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_diagnostics_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site_if_args_match(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -493,14 +519,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_diagnostics_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -521,8 +539,8 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_first() {
-        let config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -535,13 +553,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-                .disable(DiagnosticCode::UndefinedFunction)
-        };
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -573,8 +584,8 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_middle() {
-        let config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -587,13 +598,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-                .disable(DiagnosticCode::UndefinedFunction)
-        };
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -625,8 +629,8 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_last() {
-        let config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -639,13 +643,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-                .disable(DiagnosticCode::UndefinedFunction)
-        };
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -677,8 +674,8 @@ mod tests {
 
     #[test]
     fn check_fix_remove_fun_ref_from_list_singleton() {
-        let config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -691,13 +688,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-                .disable(DiagnosticCode::UndefinedFunction)
-        };
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -724,8 +714,8 @@ mod tests {
 
     #[test]
     fn check_fix_replace_call_replace_call() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -741,14 +731,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -773,8 +755,8 @@ mod tests {
 
     #[test]
     fn check_fix_replace_call_permutation() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -790,14 +772,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -822,8 +796,8 @@ mod tests {
 
     #[test]
     fn check_fix_replace_call_permutation_expand_arity() {
-        let mut config = DiagnosticsConfig {
-            adhoc_semantic_diagnostics: vec![&|acc, sema, file_id, _ext| {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
                     &FunctionMatch::MFA(MFA {
                         module: "foo".into(),
@@ -839,14 +813,6 @@ mod tests {
                     file_id,
                 )
             }],
-            ..DiagnosticsConfig::default()
-        };
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-
-        check_fix_with_config(
-            config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).
@@ -879,15 +845,9 @@ mod tests {
             }),
             action: crate::diagnostics::ReplaceCallAction::RemoveFromList,
         })];
-        let config = DiagnosticsConfig {
-            lints_from_config: Arc::new(LintsFromConfig { lints }),
-            ..DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-                .disable(DiagnosticCode::UndefinedFunction)
-        };
-
-        check_fix_with_config(
-            config,
+        let lints_from_config = LintsFromConfig { lints };
+        check_fix_with_lints_from_config(
+            lints_from_config,
             r#"
             //- /src/blah_SUITE.erl
             -module(blah_SUITE).

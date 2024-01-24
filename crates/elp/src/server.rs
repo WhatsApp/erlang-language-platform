@@ -1081,7 +1081,7 @@ impl Server {
             .reconfigure(LOGGER_NAME, self.config.log_filter());
         self.logger.reconfigure("default", self.config.log_filter());
 
-        if !self.config.disable_experimental() {
+        if self.config.enable_experimental_diagnostics() {
             // Read the lint config file
             let loader = self.project_loader.clone();
             let loader = loader.lock();

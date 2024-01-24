@@ -546,7 +546,7 @@ impl<F> AdhocSemanticDiagnostics for F where
 
 #[derive(Default, Clone)]
 pub struct DiagnosticsConfig<'a> {
-    pub disable_experimental: bool,
+    pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: Arc<LintsFromConfig>,
@@ -555,8 +555,8 @@ pub struct DiagnosticsConfig<'a> {
 }
 
 impl<'a> DiagnosticsConfig<'a> {
-    pub fn set_disable_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
-        self.disable_experimental = value;
+    pub fn set_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
+        self.experimental = value;
         self
     }
 
@@ -719,13 +719,7 @@ pub fn diagnostics(
         config
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
-        semantic_diagnostics(
-            &mut res,
-            &sema,
-            file_id,
-            file_kind,
-            config.disable_experimental,
-        );
+        semantic_diagnostics(&mut res, &sema, file_id, file_kind, config.experimental);
         // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
 
@@ -747,7 +741,8 @@ pub fn diagnostics(
     //       In which case we must check syntax_errors_by_function
     res.retain(|d| {
         !config.disabled.contains(&d.code)
-            && !(config.disable_experimental && d.has_category(Category::Experimental))
+            && (config.experimental && d.has_category(Category::Experimental)
+                || !d.has_category(Category::Experimental))
             && !d.should_be_ignored(&line_index, &parse.syntax_node())
     });
 
@@ -811,10 +806,10 @@ pub fn semantic_diagnostics(
     sema: &Semantic,
     file_id: FileId,
     file_kind: FileKind,
-    disable_experimental: bool,
+    experimental: bool,
 ) {
     // TODO: disable this check when T151727890 and T151605845 are resolved
-    if !disable_experimental {
+    if experimental {
         unused_function_args::unused_function_args(res, sema, file_id);
         redundant_assignment::redundant_assignment(res, sema, file_id);
         trivial_match::trivial_match(res, sema, file_id);
@@ -1725,7 +1720,7 @@ baz(1)->4.
             .disable(DiagnosticCode::UndefinedFunction);
         check_diagnostics_with_config(
             DiagnosticsConfig {
-                disable_experimental: false,
+                experimental: true,
                 ..config.clone()
             },
             r#"
@@ -1743,7 +1738,7 @@ baz(1)->4.
         );
         check_diagnostics_with_config(
             DiagnosticsConfig {
-                disable_experimental: true,
+                experimental: false,
                 ..config
             },
             r#"

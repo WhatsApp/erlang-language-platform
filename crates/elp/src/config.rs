@@ -193,15 +193,15 @@ impl Config {
         )
     }
 
-    pub fn disable_experimental(&self) -> bool {
-        !self.data.diagnostics_enableExperimental
+    pub fn enable_experimental_diagnostics(&self) -> bool {
+        self.data.diagnostics_enableExperimental
     }
 
     pub fn diagnostics(&self, lints_from_config: Arc<LintsFromConfig>) -> DiagnosticsConfig {
         // Look up disabled diagnostics using both label and code.
         let mut config = DiagnosticsConfig::default()
             .from_config(&lints_from_config)
-            .set_disable_experimental(!self.data.diagnostics_enableExperimental);
+            .set_experimental(self.data.diagnostics_enableExperimental);
         for code in self
             .data
             .diagnostics_disabled
