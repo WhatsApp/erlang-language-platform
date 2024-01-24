@@ -558,18 +558,17 @@ pub struct DiagnosticsConfig<'a> {
 }
 
 impl<'a> DiagnosticsConfig<'a> {
-    pub fn new(
-        disable_experimental: bool,
-        disabled: FxHashSet<DiagnosticCode>,
-        adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
-        lints_from_config: Arc<LintsFromConfig>,
+    pub fn set_disable_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
+        self.disable_experimental = value;
+        self
+    }
+
+    pub fn set_ad_hoc_semantic_diagnostics(
+        mut self,
+        diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     ) -> DiagnosticsConfig<'a> {
-        DiagnosticsConfig {
-            disable_experimental,
-            disabled,
-            adhoc_semantic_diagnostics,
-            lints_from_config,
-        }
+        self.adhoc_semantic_diagnostics = diagnostics;
+        self
     }
 
     pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {

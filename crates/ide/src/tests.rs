@@ -10,8 +10,6 @@
 // To run the tests via cargo
 // cargo test --package elp_ide --lib
 
-use std::sync::Arc;
-
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
@@ -20,7 +18,6 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::trim_indent;
-use fxhash::FxHashSet;
 use itertools::Itertools;
 use text_edit::TextRange;
 
@@ -28,7 +25,6 @@ use crate::diagnostics;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::LabeledDiagnostics;
-use crate::diagnostics::LintsFromConfig;
 use crate::diagnostics::Severity;
 use crate::fixture;
 use crate::Analysis;
@@ -37,14 +33,10 @@ use crate::NavigationTarget;
 
 #[track_caller]
 pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
-    let config = DiagnosticsConfig::new(
-        true,
-        FxHashSet::default(),
-        vec![],
-        Arc::new(LintsFromConfig::default()),
-    )
-    .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-    .disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default()
+        .set_disable_experimental(true)
+        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+        .disable(DiagnosticCode::UndefinedFunction);
     check_ct_fix_with_config(fixture_before, fixture_after, config);
 }
 
@@ -268,14 +260,10 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
 #[track_caller]
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
-    let config = DiagnosticsConfig::new(
-        true,
-        FxHashSet::default(),
-        vec![],
-        Arc::new(LintsFromConfig::default()),
-    )
-    .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-    .disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default()
+        .set_disable_experimental(true)
+        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+        .disable(DiagnosticCode::UndefinedFunction);
     check_no_parse_errors_with_config(analysis, file_id, config);
 }
 

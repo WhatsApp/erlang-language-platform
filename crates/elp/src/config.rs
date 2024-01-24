@@ -199,16 +199,18 @@ impl Config {
 
     pub fn diagnostics(&self, lints_from_config: Arc<LintsFromConfig>) -> DiagnosticsConfig {
         // Look up disabled diagnostics using both label and code.
-        DiagnosticsConfig::new(
-            !self.data.diagnostics_enableExperimental,
-            self.data
-                .diagnostics_disabled
-                .iter()
-                .filter_map(DiagnosticCode::maybe_from_string)
-                .collect(),
-            vec![],
-            lints_from_config,
-        )
+        let mut config = DiagnosticsConfig::default()
+            .from_config(&lints_from_config)
+            .set_disable_experimental(!self.data.diagnostics_enableExperimental);
+        for code in self
+            .data
+            .diagnostics_disabled
+            .iter()
+            .filter_map(|x| DiagnosticCode::maybe_from_string(x))
+        {
+            config = config.disable(code);
+        }
+        config
     }
 
     pub fn code_action_group(&self) -> bool {

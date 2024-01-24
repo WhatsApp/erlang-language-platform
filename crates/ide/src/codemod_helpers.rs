@@ -416,10 +416,8 @@ pub(crate) fn find_call_in_function<T>(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
 
     use elp_ide_db::elp_base_db::FileId;
-    use fxhash::FxHashSet;
     use hir::FunctionDef;
     use hir::Semantic;
 
@@ -428,7 +426,6 @@ mod tests {
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
-    use crate::diagnostics::LintsFromConfig;
     use crate::diagnostics::Severity;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
@@ -484,15 +481,13 @@ mod tests {
     #[track_caller]
     fn check_adhoc_function_match(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
         check_diagnostics_with_config(
-            DiagnosticsConfig::new(
-                false,
-                FxHashSet::default(),
-                vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
-                Arc::new(LintsFromConfig::default()),
-            )
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-            .disable(DiagnosticCode::CrossNodeEval)
-            .disable(DiagnosticCode::UndefinedFunction),
+            DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::CrossNodeEval)
+                .disable(DiagnosticCode::UndefinedFunction)
+                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
+                    check_functions(acc, sema, file_id, match_spec)
+                }]),
             fixture,
         );
     }
@@ -504,15 +499,13 @@ mod tests {
         fixture_after: &str,
     ) {
         check_fix_with_config(
-            DiagnosticsConfig::new(
-                false,
-                FxHashSet::default(),
-                vec![&|acc, sema, file_id, _ext| check_functions(acc, sema, file_id, match_spec)],
-                Arc::new(LintsFromConfig::default()),
-            )
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-            .disable(DiagnosticCode::CrossNodeEval)
-            .disable(DiagnosticCode::UndefinedFunction),
+            DiagnosticsConfig::default()
+                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+                .disable(DiagnosticCode::CrossNodeEval)
+                .disable(DiagnosticCode::UndefinedFunction)
+                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
+                    check_functions(acc, sema, file_id, match_spec)
+                }]),
             fixture_before,
             fixture_after,
         );
