@@ -1,0 +1,51 @@
+AST
+{attribute,{0,0},file,{"fixtures/override_warn_missing_spec_all.erl",0}}.
+{attribute,{0,39},module,override_warn_missing_spec_all}.
+{attribute,{41,74},compile,nowarn_missing_spec_all}.
+{attribute,{77,94},export,[{main,0}]}.
+{attribute,{97,115},
+           spec,
+           {{main,0},
+            [{type,{107,115},
+                   'fun',
+                   [{type,{107,115},product,[]},{atom,{113,115},ok}]}]}}.
+{function,{117,141},
+          main,0,
+          [{clause,{117,141},
+                   [],[],
+                   [{call,{127,141},{atom,{127,139},not_exported},[]}]}]}.
+{function,{144,164},
+          not_exported,0,
+          [{clause,{144,164},[],[],[{atom,{162,164},ok}]}]}.
+{eof,{166,166}}.
+
+
+STUB
+{attribute,{0,0},file,{"fixtures/override_warn_missing_spec_all.erl",0}}.
+{attribute,{0,39},module,override_warn_missing_spec_all}.
+{attribute,{41,74},compile,nowarn_missing_spec_all}.
+{attribute,{77,94},export,[{main,0}]}.
+{attribute,{97,115},
+           spec,
+           {{main,0},
+            [{type,{107,115},
+                   'fun',
+                   [{type,{107,115},product,[]},{atom,{113,115},ok}]}]}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "fixtures/override_warn_missing_spec_all.erl",
+        location: Some(
+            Normal(
+                144..164,
+            ),
+        ),
+        msg: "missing specification for function not_exported/0",
+        code: "L1309",
+    },
+]
+
+ERRORS
+[]

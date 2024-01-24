@@ -352,7 +352,7 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
         .par_iter()
         .progress_with(pb.clone())
         .for_each_with(analysis, |analysis, &file_id| {
-            let _ = analysis.module_ast(file_id, erlang_service::Format::OffsetEtf);
+            let _ = analysis.module_ast(file_id, erlang_service::Format::OffsetEtf, false);
         });
     pb.finish();
 }

@@ -48,6 +48,8 @@ pub struct ParseAllElp {
     pub rebar: bool,
     /// Also process generated modules
     pub include_generated: bool,
+    /// Force warning about missing specs for all functions
+    pub force_warn_missing_spec_all: bool,
     /// Parse the files serially, not in parallel
     pub serial: bool,
     /// Show diagnostics in JSON format

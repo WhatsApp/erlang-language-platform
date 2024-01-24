@@ -14,6 +14,7 @@ use anyhow::Result;
 use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
+use diagnostics::ErlangServiceDiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
 use elp_eqwalizer::ast::types::Type;
 use elp_ide_assists::Assist;
@@ -267,9 +268,9 @@ impl Analysis {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
-        include_generated: bool,
+        config: &ErlangServiceDiagnosticsConfig,
     ) -> Cancellable<Vec<(FileId, LabeledDiagnostics)>> {
-        self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, include_generated))
+        self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, config))
     }
 
     /// Low-level access to eqwalizer
@@ -294,8 +295,9 @@ impl Analysis {
         &self,
         file_id: FileId,
         format: erlang_service::Format,
+        force_warn_missing_spec_all: bool,
     ) -> Cancellable<Arc<ParseResult>> {
-        self.with_db(|db| db.module_ast(file_id, format))
+        self.with_db(|db| db.module_ast(file_id, format, force_warn_missing_spec_all))
     }
 
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {

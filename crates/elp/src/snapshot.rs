@@ -16,6 +16,7 @@ use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::eqwalizer_to_diagnostic;
+use elp_ide::diagnostics::ErlangServiceDiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -241,7 +242,7 @@ impl Snapshot {
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
-        include_generated: bool,
+        config: &ErlangServiceDiagnosticsConfig,
     ) -> Option<Vec<(FileId, LabeledDiagnostics)>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
@@ -250,7 +251,7 @@ impl Snapshot {
 
         let diags = &*self
             .analysis
-            .erlang_service_diagnostics(file_id, include_generated)
+            .erlang_service_diagnostics(file_id, config)
             .ok()?;
 
         Some(

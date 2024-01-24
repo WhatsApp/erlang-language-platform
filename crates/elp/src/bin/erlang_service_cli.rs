@@ -109,7 +109,7 @@ pub fn do_parse_one(
         panic!("text format is for test purposes only!")
     }
 
-    let result = db.module_ast(file_id, format)?;
+    let result = db.module_ast(file_id, format, false)?;
     if result.is_ok() {
         if let Some((name, to)) = to {
             let to_path = to.join(format!("{}.etf", name));

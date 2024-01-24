@@ -22,6 +22,7 @@ use crossbeam_channel::Sender;
 use dispatch::NotificationDispatcher;
 use elp_ai::AiCompletion;
 use elp_ide::diagnostics;
+use elp_ide::diagnostics::ErlangServiceDiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
@@ -210,6 +211,7 @@ pub struct Server {
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
+    force_warn_missing_spec_all: bool,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -255,6 +257,7 @@ impl Server {
             ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
             include_generated: true,
+            force_warn_missing_spec_all: false,
         };
 
         // Run config-based initialisation
@@ -946,12 +949,15 @@ impl Server {
             .into_iter()
             .filter(|file_id| is_supported_by_parse_server(&snapshot.analysis, *file_id))
             .collect();
-        let include_generated = self.include_generated;
+        let erlang_service_diagnostics_config = ErlangServiceDiagnosticsConfig {
+            include_generated: self.include_generated,
+            force_warn_missing_spec_all: self.force_warn_missing_spec_all,
+        };
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
                 .into_iter()
                 .filter_map(|file_id| {
-                    snapshot.erlang_service_diagnostics(file_id, include_generated)
+                    snapshot.erlang_service_diagnostics(file_id, &erlang_service_diagnostics_config)
                 })
                 .flatten()
                 .collect();

@@ -57,7 +57,9 @@ mod tests {
             let prj_id = analisys.project_id(file_id).unwrap();
             let prj_id = prj_id.expect(&format!("Can't find project id for {module}"));
             assert_eq!(prj_id, project_id);
-            let ast = analisys.module_ast(file_id, Format::OffsetEtf).unwrap();
+            let ast = analisys
+                .module_ast(file_id, Format::OffsetEtf, false)
+                .unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analisys
                 .is_eqwalizer_enabled(file_id, false)

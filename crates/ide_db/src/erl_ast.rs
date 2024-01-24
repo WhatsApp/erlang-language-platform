@@ -33,6 +33,7 @@ pub trait AstLoader {
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
+        force_warn_missing_spec_all: bool,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult;
@@ -46,6 +47,7 @@ impl AstLoader for crate::RootDatabase {
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
+        force_warn_missing_spec_all: bool,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
@@ -53,12 +55,15 @@ impl AstLoader for crate::RootDatabase {
             .iter()
             .map(|path| path.clone().into())
             .collect();
-        let options = vec![
+        let mut options = vec![
             CompileOption::Includes(includes),
             CompileOption::Macros(macros.to_vec()),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
+        if force_warn_missing_spec_all {
+            options.push(CompileOption::ForceWarnMissingSpecAll);
+        };
         let path = path.to_path_buf().into();
         let req = ParseRequest {
             options,
@@ -82,10 +87,20 @@ impl AstLoader for crate::RootDatabase {
 
 #[salsa::query_group(ErlAstDatabaseStorage)]
 pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
-    fn module_ast(&self, file_id: FileId, format: Format) -> Arc<ParseResult>;
+    fn module_ast(
+        &self,
+        file_id: FileId,
+        format: Format,
+        force_warn_missing_spec_all: bool,
+    ) -> Arc<ParseResult>;
 }
 
-fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<ParseResult> {
+fn module_ast(
+    db: &dyn ErlAstDatabase,
+    file_id: FileId,
+    format: Format,
+    force_warn_missing_spec_all: bool,
+) -> Arc<ParseResult> {
     // Dummy read of file revision and global revision ID to make DB
     // track changes
     let _ = db.file_revision(file_id);
@@ -113,6 +128,7 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
         &app_data.include_path,
         &app_data.macros,
         &app_data.parse_transforms,
+        force_warn_missing_spec_all,
         metadata,
         format,
     ))
