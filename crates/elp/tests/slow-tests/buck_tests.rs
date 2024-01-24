@@ -40,7 +40,7 @@ mod tests {
                     "Can't load project from path {}",
                     &path.to_string_lossy()
                 ));
-        let analisys = &result.analysis();
+        let analysis = &result.analysis();
         let modules = vec![
             ("test_elp", true),
             ("test_elp_SUITE", false),
@@ -49,25 +49,25 @@ mod tests {
         ];
         let project_id = result.project_id;
         for (module, eqwalizer_enabled) in modules {
-            let file_id = analisys.module_file_id(project_id, module).unwrap();
+            let file_id = analysis.module_file_id(project_id, module).unwrap();
             let file_id = file_id.expect(&format!("Can't find file id for {module}"));
-            analisys
+            analysis
                 .file_text(file_id)
                 .expect(&format!("No file text for {module}"));
-            let prj_id = analisys.project_id(file_id).unwrap();
+            let prj_id = analysis.project_id(file_id).unwrap();
             let prj_id = prj_id.expect(&format!("Can't find project id for {module}"));
             assert_eq!(prj_id, project_id);
-            let ast = analisys
+            let ast = analysis
                 .module_ast(file_id, Format::OffsetEtf, false)
                 .unwrap();
             assert_eq!(ast.errors, vec![]);
-            let eq_enabled = analisys
+            let eq_enabled = analysis
                 .is_eqwalizer_enabled(file_id, false)
                 .expect(&format!(
                     "Failed to check if eqwalizer enabled for {module}"
                 ));
             assert_eq!(eq_enabled, eqwalizer_enabled);
-            let project_data = analisys.project_data(file_id).unwrap();
+            let project_data = analysis.project_data(file_id).unwrap();
             project_data.expect(&format!("Can't find project data for {module}"));
         }
     }
