@@ -29,6 +29,7 @@ use anyhow::Result;
 use buck::BuckConfig;
 use buck::EqwalizerConfig;
 use elp_log::timeit;
+use itertools::Either;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -137,6 +138,12 @@ pub enum ProjectManifest {
     NoManifest(no_manifest::NoManifestConfig),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IncludeParentDirs {
+    Yes,
+    No,
+}
+
 impl ProjectManifest {
     pub fn root(&self) -> &AbsPath {
         match self {
@@ -150,12 +157,17 @@ impl ProjectManifest {
     fn find_in_dir<'a>(
         path: &'a Path,
         manifests: &'a [&str],
+        include_parents: IncludeParentDirs,
     ) -> impl Iterator<Item = AbsPathBuf> + 'a {
-        let mut curr: Option<&Path> = Some(path);
-        let ancestors = iter::from_fn(move || {
-            let next = curr.and_then(|path| path.parent());
-            mem::replace(&mut curr, next)
-        });
+        let ancestors = if include_parents == IncludeParentDirs::Yes {
+            let mut curr: Option<&Path> = Some(path);
+            Either::Left(iter::from_fn(move || {
+                let next = curr.and_then(|path| path.parent());
+                mem::replace(&mut curr, next)
+            }))
+        } else {
+            Either::Right(iter::once(path))
+        };
         ancestors.flat_map(|path| {
             manifests
                 .iter()
@@ -168,10 +180,15 @@ impl ProjectManifest {
     pub fn discover_rebar(
         path: &AbsPath,
         profile: Option<Profile>,
+        include_parents: IncludeParentDirs,
     ) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover rebar");
-        let path =
-            Self::find_in_dir(path.as_ref(), &["rebar.config", "rebar.config.script"]).last();
+        let path = Self::find_in_dir(
+            path.as_ref(),
+            &["rebar.config", "rebar.config.script"],
+            include_parents,
+        )
+        .last();
         if let Some(path) = path {
             let rebar = RebarConfig::from_config_path(path, profile.unwrap_or_default())?;
             Ok(Some(ProjectManifest::Rebar(rebar)))
@@ -182,7 +199,8 @@ impl ProjectManifest {
 
     fn discover_toml(path: &AbsPath) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover toml");
-        let toml_path = Self::find_in_dir(path.as_ref(), &[ELP_CONFIG_FILE]).next();
+        let toml_path =
+            Self::find_in_dir(path.as_ref(), &[ELP_CONFIG_FILE], IncludeParentDirs::Yes).next();
         if let Some(path) = toml_path {
             let toml = ElpConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Toml(toml)))
@@ -191,9 +209,13 @@ impl ProjectManifest {
         }
     }
 
-    fn discover_static(path: &AbsPath) -> Result<Option<ProjectManifest>> {
+    fn discover_static(
+        path: &AbsPath,
+        include_parents: IncludeParentDirs,
+    ) -> Result<Option<ProjectManifest>> {
         let _timer = timeit!("discover static");
-        let json_path = Self::find_in_dir(path.as_ref(), &[BUILD_INFO_FILE]).next();
+        let json_path =
+            Self::find_in_dir(path.as_ref(), &[BUILD_INFO_FILE], include_parents).next();
         if let Some(path) = json_path {
             let json = json::JsonConfig::try_parse(&path)?;
             Ok(Some(ProjectManifest::Json(json)))
@@ -202,9 +224,12 @@ impl ProjectManifest {
         }
     }
 
-    pub fn discover_no_manifest(path: &AbsPath) -> ProjectManifest {
+    pub fn discover_no_manifest(
+        path: &AbsPath,
+        include_parents: IncludeParentDirs,
+    ) -> ProjectManifest {
         let _timer = timeit!("discover simple");
-        let src_path = Self::find_in_dir(path.as_ref(), &["src"]).next();
+        let src_path = Self::find_in_dir(path.as_ref(), &["src"], include_parents).next();
         let root_path = if let Some(src_path) = &src_path {
             src_path.parent().map(|path| path.to_path_buf())
         } else {
@@ -231,13 +256,29 @@ impl ProjectManifest {
         if let Some(ProjectManifest::Toml(toml)) = Self::discover_toml(path)? {
             return Ok((toml.clone(), ProjectManifest::Toml(toml)));
         }
-        if let Some(r) = Self::discover_rebar(path, None)? {
+        if let Some(r) = Self::discover_rebar(path, None, IncludeParentDirs::Yes)? {
             return Ok((ElpConfig::default(), r));
         }
-        if let Some(s) = Self::discover_static(path)? {
+        if let Some(s) = Self::discover_static(path, IncludeParentDirs::Yes)? {
             return Ok((ElpConfig::default(), s));
         }
-        Ok((ElpConfig::default(), Self::discover_no_manifest(path)))
+        Ok((
+            ElpConfig::default(),
+            Self::discover_no_manifest(path, IncludeParentDirs::Yes),
+        ))
+    }
+
+    /// Given the path of the `ELP_CONFIG_FILE` file, discover its configuration.
+    pub fn discover_in_place(path: &AbsPath) -> Result<ProjectManifest> {
+        let _timer = timeit!("discover projects in place");
+        // We skip looking for the TOML file since we have already found it.
+        if let Some(r) = Self::discover_rebar(path, None, IncludeParentDirs::No)? {
+            return Ok(r);
+        }
+        if let Some(s) = Self::discover_static(path, IncludeParentDirs::No)? {
+            return Ok(s);
+        }
+        Ok(Self::discover_no_manifest(path, IncludeParentDirs::No))
     }
 }
 
@@ -1087,7 +1128,8 @@ mod tests {
     #[test]
     fn test_discover() {
         let root = AbsPathBuf::assert(Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures"));
-        let manifest = ProjectManifest::discover_rebar(&root.join("nested"), None);
+        let manifest =
+            ProjectManifest::discover_rebar(&root.join("nested"), None, IncludeParentDirs::Yes);
         match manifest {
             Ok(Some(ProjectManifest::Rebar(RebarConfig {
                 config_file: actual,

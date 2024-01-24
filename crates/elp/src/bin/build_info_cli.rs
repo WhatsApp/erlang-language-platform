@@ -18,6 +18,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck;
 use elp_project_model::otp::Otp;
 use elp_project_model::ElpConfig;
+use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 
@@ -76,7 +77,7 @@ fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
 }
 
 fn load_fallback(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
-    let manifest = ProjectManifest::discover_no_manifest(root);
+    let manifest = ProjectManifest::discover_no_manifest(root, IncludeParentDirs::Yes);
     let elp_config = ElpConfig::default();
     let project = Project::load(&manifest, elp_config.eqwalizer)?;
     Ok((manifest, project))

@@ -15,6 +15,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::telemetry;
 use elp_project_model::otp::Otp;
 use elp_project_model::ElpConfig;
+use elp_project_model::IncludeParentDirs;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashMap;
 
@@ -64,7 +65,7 @@ impl ProjectLoader {
             Ok((config, manifest)) => (config, Ok(manifest)),
             Err(x) => (ElpConfig::default(), Err(x)),
         };
-        let fallback = ProjectManifest::discover_no_manifest(path);
+        let fallback = ProjectManifest::discover_no_manifest(path, IncludeParentDirs::Yes);
 
         match manifest {
             Ok(manifest) => {

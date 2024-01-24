@@ -33,6 +33,7 @@ use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::AnalysisHost;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ElpConfig;
+use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 
@@ -52,7 +53,11 @@ pub fn load_project_at(
     let (elp_config, manifest): (ElpConfig, Option<ProjectManifest>) = match conf.rebar {
         true => (
             ElpConfig::default(),
-            ProjectManifest::discover_rebar(&root, Some(conf.rebar_profile))?,
+            ProjectManifest::discover_rebar(
+                &root,
+                Some(conf.rebar_profile),
+                IncludeParentDirs::Yes,
+            )?,
         ),
         false => {
             let (elp_config, manifest) = ProjectManifest::discover(&root)?;
