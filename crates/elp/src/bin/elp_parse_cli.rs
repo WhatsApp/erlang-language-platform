@@ -38,6 +38,7 @@ use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::Includes;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
+use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
@@ -104,9 +105,14 @@ pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
     let mut cfg = DiagnosticsConfig::default();
     cfg.disable_experimental = args.experimental_diags;
 
+    let mut compile_options = vec![];
+    if args.force_warn_missing_spec_all {
+        compile_options.push(CompileOption::ForceWarnMissingSpecAll);
+    }
+
     let erlang_service_diagnostics_config = ErlangServiceDiagnosticsConfig {
         include_generated: args.include_generated,
-        force_warn_missing_spec_all: args.force_warn_missing_spec_all,
+        compile_options,
     };
 
     let mut res = match (file_id, name, args.serial) {

@@ -60,6 +60,7 @@ use elp_syntax::ast;
 use elp_syntax::label::Label;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
+use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
 use handlers::goto_definition;
@@ -295,9 +296,9 @@ impl Analysis {
         &self,
         file_id: FileId,
         format: erlang_service::Format,
-        force_warn_missing_spec_all: bool,
+        compile_options: Vec<CompileOption>,
     ) -> Cancellable<Arc<ParseResult>> {
-        self.with_db(|db| db.module_ast(file_id, format, force_warn_missing_spec_all))
+        self.with_db(|db| db.module_ast(file_id, format, compile_options))
     }
 
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {

@@ -47,6 +47,7 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use erlang_service::CompileOption;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::db::MinDefDatabase;
@@ -265,7 +266,7 @@ pub struct RelatedInformation {
 #[derive(Debug, Clone)]
 pub struct ErlangServiceDiagnosticsConfig {
     pub include_generated: bool,
-    pub force_warn_missing_spec_all: bool,
+    pub compile_options: Vec<CompileOption>,
 }
 
 impl fmt::Display for Diagnostic {
@@ -1040,7 +1041,7 @@ pub fn erlang_service_diagnostics(
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
         let format = erlang_service::Format::OffsetEtf;
 
-        let res = db.module_ast(file_id, format, config.force_warn_missing_spec_all);
+        let res = db.module_ast(file_id, format, config.compile_options.clone());
 
         // We use a BTreeSet of a tuple because neither ParseError nor
         // Diagnostic nor TextRange has an Ord instance
@@ -1160,7 +1161,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
     // so let's return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, false);
+    let ast = db.module_ast(file_id, format, vec![]);
     if !ast.is_ok() {
         return vec![];
     };
@@ -1255,7 +1256,7 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     // If the file cannot be parsed, return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, false);
+    let ast = db.module_ast(file_id, format, vec![]);
     if !ast.is_ok() {
         return Arc::new(CommonTestInfo::BadAST);
     }

@@ -44,6 +44,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_log::telemetry;
@@ -211,7 +212,7 @@ pub struct Server {
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
-    force_warn_missing_spec_all: bool,
+    compile_options: Vec<CompileOption>,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -257,7 +258,7 @@ impl Server {
             ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
             include_generated: true,
-            force_warn_missing_spec_all: false,
+            compile_options: vec![],
         };
 
         // Run config-based initialisation
@@ -951,7 +952,7 @@ impl Server {
             .collect();
         let erlang_service_diagnostics_config = ErlangServiceDiagnosticsConfig {
             include_generated: self.include_generated,
-            force_warn_missing_spec_all: self.force_warn_missing_spec_all,
+            compile_options: self.compile_options.clone(),
         };
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents

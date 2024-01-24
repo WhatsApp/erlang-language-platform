@@ -33,7 +33,7 @@ pub trait AstLoader {
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
-        force_warn_missing_spec_all: bool,
+        compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult;
@@ -47,7 +47,7 @@ impl AstLoader for crate::RootDatabase {
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
-        force_warn_missing_spec_all: bool,
+        compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
@@ -61,9 +61,9 @@ impl AstLoader for crate::RootDatabase {
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
-        if force_warn_missing_spec_all {
-            options.push(CompileOption::ForceWarnMissingSpecAll);
-        };
+        for option in compile_options {
+            options.push(option.clone());
+        }
         let path = path.to_path_buf().into();
         let req = ParseRequest {
             options,
@@ -91,7 +91,7 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
         &self,
         file_id: FileId,
         format: Format,
-        force_warn_missing_spec_all: bool,
+        compile_options: Vec<CompileOption>,
     ) -> Arc<ParseResult>;
 }
 
@@ -99,7 +99,7 @@ fn module_ast(
     db: &dyn ErlAstDatabase,
     file_id: FileId,
     format: Format,
-    force_warn_missing_spec_all: bool,
+    compile_options: Vec<CompileOption>,
 ) -> Arc<ParseResult> {
     // Dummy read of file revision and global revision ID to make DB
     // track changes
@@ -128,7 +128,7 @@ fn module_ast(
         &app_data.include_path,
         &app_data.macros,
         &app_data.parse_transforms,
-        force_warn_missing_spec_all,
+        compile_options,
         metadata,
         format,
     ))

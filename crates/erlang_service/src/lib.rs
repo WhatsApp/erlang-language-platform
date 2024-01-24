@@ -74,7 +74,7 @@ pub struct Connection {
     _for_drop: Arc<SharedState>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum CompileOption {
     Includes(Vec<PathBuf>),
     Macros(Vec<eetf::Term>),

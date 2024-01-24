@@ -58,7 +58,7 @@ mod tests {
             let prj_id = prj_id.expect(&format!("Can't find project id for {module}"));
             assert_eq!(prj_id, project_id);
             let ast = analysis
-                .module_ast(file_id, Format::OffsetEtf, false)
+                .module_ast(file_id, Format::OffsetEtf, vec![])
                 .unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analysis
