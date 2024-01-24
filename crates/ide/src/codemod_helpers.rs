@@ -7,13 +7,10 @@
  * of this source tree.
  */
 
-use std::iter;
-
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
-use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
@@ -50,26 +47,21 @@ pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
     let node = expr.syntax();
     let node_range = node.text_range();
 
-    let elements_to_the_right = iter::successors(node.next_sibling_or_token(), |n| {
-        (*n).next_sibling_or_token()
-    });
+    let mut right = node.last_token().and_then(|tok| tok.next_token());
     let mut searching_for_comma = true;
     let final_node_range;
 
     let mut node_range_right = node_range;
-    for element in elements_to_the_right {
-        if let Some(t) = &SyntaxElement::into_token(element) {
-            match t.kind() {
-                SyntaxKind::WHITESPACE => node_range_right = t.text_range(),
-                SyntaxKind::ANON_COMMA if searching_for_comma => {
-                    node_range_right = t.text_range();
-                    searching_for_comma = false
-                }
-                _ => break,
+    while let Some(tok) = right {
+        match tok.kind() {
+            SyntaxKind::WHITESPACE => node_range_right = tok.text_range(),
+            SyntaxKind::ANON_COMMA if searching_for_comma => {
+                node_range_right = tok.text_range();
+                searching_for_comma = false
             }
-        } else {
-            break;
+            _ => break,
         }
+        right = tok.next_token();
     }
 
     if !searching_for_comma {
@@ -77,24 +69,19 @@ pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
     } else {
         // We didn't find a trailing comma, so let's see if there is a preceding comma
 
-        let elements_to_the_left = iter::successors(node.prev_sibling_or_token(), |n| {
-            (*n).prev_sibling_or_token()
-        });
+        let mut left = node.first_token().and_then(|tok| tok.prev_token());
 
         let mut node_range_left = node_range;
-        for element in elements_to_the_left {
-            if let Some(t) = &SyntaxElement::into_token(element) {
-                match t.kind() {
-                    SyntaxKind::WHITESPACE => node_range_left = t.text_range(),
-                    SyntaxKind::ANON_COMMA if searching_for_comma => {
-                        node_range_left = t.text_range();
-                        searching_for_comma = false
-                    }
-                    _ => break,
+        while let Some(tok) = left {
+            match tok.kind() {
+                SyntaxKind::WHITESPACE => node_range_left = tok.text_range(),
+                SyntaxKind::ANON_COMMA if searching_for_comma => {
+                    node_range_left = tok.text_range();
+                    searching_for_comma = false
                 }
-            } else {
-                break;
+                _ => break,
             }
+            left = tok.prev_token();
         }
 
         if !searching_for_comma {
