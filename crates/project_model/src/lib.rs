@@ -126,8 +126,6 @@ pub enum ProjectModelError {
         "build-info plugin was not installed. Please follow the instructions on https://github.com/WhatsApp/eqwalizer"
     )]
     NoBuildInfo,
-    #[error("Failed to parse build info json")]
-    InvalidBuildInfoJson(#[source] anyhow::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -945,14 +943,12 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
-        match manifest
-            .expect_err("Must be err")
-            .downcast_ref::<ProjectModelError>()
-        {
-            Some(ProjectModelError::InvalidBuildInfoJson(_)) => (),
-            Some(err) => panic!("Wrong err {:?}", err),
-            None => panic!("Must be error"),
-        };
+        expect![[r#"
+            Err(
+                Error("key must be a string", line: 2, column: 5),
+            )
+        "#]]
+        .assert_debug_eq(&manifest)
     }
 
     #[test]

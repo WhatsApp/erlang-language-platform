@@ -12,7 +12,6 @@ extern crate serde;
 use std::fs;
 use std::path::Path;
 
-use anyhow::anyhow;
 use anyhow::Result;
 use eetf::Atom;
 use eetf::Term;
@@ -27,7 +26,6 @@ use crate::eqwalizer_support;
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
-use crate::ProjectModelError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct JsonConfig {
@@ -102,8 +100,7 @@ impl JsonConfig {
 
     pub fn try_parse(path: &AbsPath) -> Result<JsonConfig> {
         let config_content = fs::read_to_string(path)?;
-        let mut config: JsonConfig = serde_json::from_str(&config_content)
-            .map_err(|err| ProjectModelError::InvalidBuildInfoJson(anyhow!(err)))?;
+        let mut config: JsonConfig = serde_json::from_str(&config_content)?;
         config.config_path = Some(path.to_path_buf());
         Ok(config)
     }
