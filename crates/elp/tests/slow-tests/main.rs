@@ -36,19 +36,21 @@ const PROFILE: &str = "";
 
 #[test]
 fn test_run_mock_lsp() {
-    let workspace_root =
-        AbsPathBuf::assert(Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/end_to_end"));
+    if cfg!(feature = "buck") {
+        let workspace_root = AbsPathBuf::assert(
+            Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/end_to_end"),
+        );
 
-    // Sanity check
-    assert!(std::fs::metadata(&workspace_root).is_ok());
+        // Sanity check
+        assert!(std::fs::metadata(&workspace_root).is_ok());
 
-    // This is an end to end test, mocking the a client,
-    // requesting all quick fixes available ("assist").
-    code_action_project(
-        &workspace_root,
-        r#"assist_examples/src/head_mismatch.erl"#,
-        Range::new(Position::new(3, 0), Position::new(5, 10)),
-        expect![[r#"
+        // This is an end to end test, mocking the a client,
+        // requesting all quick fixes available ("assist").
+        code_action_project(
+            &workspace_root,
+            r#"assist_examples/src/head_mismatch.erl"#,
+            Range::new(Position::new(3, 0), Position::new(5, 10)),
+            expect![[r#"
             [
               {
                 "edit": {
@@ -180,21 +182,24 @@ fn test_run_mock_lsp() {
                 "title": "Export the function `bar/1`"
               }
             ]"#]],
-    );
+        );
+    }
 }
 
 #[test]
 fn test_e2e_eqwalizer_module() {
-    let workspace_root =
-        AbsPathBuf::assert(Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"));
+    if cfg!(feature = "buck") {
+        let workspace_root = AbsPathBuf::assert(
+            Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"),
+        );
 
-    // Sanity check
-    assert!(std::fs::metadata(&workspace_root).is_ok());
+        // Sanity check
+        assert!(std::fs::metadata(&workspace_root).is_ok());
 
-    diagnostic_project(
-        &workspace_root,
-        r"app_a/src/app_a.erl",
-        expect![[r#"
+        diagnostic_project(
+            &workspace_root,
+            r"app_a/src/app_a.erl",
+            expect![[r#"
             {
               "diagnostics": [
                 {
@@ -334,7 +339,8 @@ fn test_e2e_eqwalizer_module() {
               "uri": "file:///[..]/test_projects/standard/app_a/src/app_a.erl",
               "version": 0
             }"#]],
-    );
+        );
+    }
 }
 
 // This used to fail because of trigerring eqwalizer for non-modules
