@@ -109,17 +109,19 @@ impl BuckConfig {
             Some(conf) => conf,
             None => return Ok(()),
         };
-        //assign any file from buck monorepo in order to find root
-        buck_conf.buck_root = Some(path.parent().unwrap().to_path_buf());
-        buck_conf.config_path = Some(path.to_path_buf());
+        if buck_conf.enabled {
+            //assign any file from buck monorepo in order to find root
+            buck_conf.buck_root = Some(path.parent().unwrap().to_path_buf());
+            buck_conf.config_path = Some(path.to_path_buf());
 
-        let root = find_root(buck_conf)?;
-        buck_conf.buck_root = Some(root);
+            let root = find_root(buck_conf)?;
+            buck_conf.buck_root = Some(root);
 
-        for excluded in buck_conf.excluded_targets.iter_mut() {
-            let pat = "/...";
-            if excluded.ends_with(pat) {
-                excluded.truncate(excluded.len() - pat.len());
+            for excluded in buck_conf.excluded_targets.iter_mut() {
+                let pat = "/...";
+                if excluded.ends_with(pat) {
+                    excluded.truncate(excluded.len() - pat.len());
+                }
             }
         }
         Ok(())
