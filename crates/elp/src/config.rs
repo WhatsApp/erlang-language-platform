@@ -206,7 +206,7 @@ impl Config {
             .data
             .diagnostics_disabled
             .iter()
-            .filter_map(|x| DiagnosticCode::maybe_from_string(x))
+            .filter_map(DiagnosticCode::maybe_from_string)
         {
             config = config.disable(code);
         }
