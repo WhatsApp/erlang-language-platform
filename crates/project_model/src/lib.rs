@@ -263,7 +263,7 @@ impl ProjectManifest {
                 let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
                 return Ok((elp_config.clone(), ProjectManifest::TomlBuck(buck)));
             } else {
-                let manifest = ProjectManifest::discover_in_place(path)?;
+                let manifest = ProjectManifest::discover_in_place(elp_config.config_path())?;
                 return Ok((elp_config.clone(), manifest));
             }
         }
