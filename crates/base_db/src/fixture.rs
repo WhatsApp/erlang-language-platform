@@ -145,8 +145,9 @@ impl ChangeFixture {
         let root = AbsPathBuf::assert("/".into());
         let apps = app_map.all_apps().cloned().collect();
         let apps_with_includes = RebarProject::add_app_includes(apps, &vec![], &otp.lib_dir);
-        let rebar_project = RebarProject::new(apps_with_includes, vec![], root, Default::default());
+        let rebar_project = RebarProject::new(root, Default::default());
         let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
+        project.add_apps(apps_with_includes);
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
         let projects = [project];
 

@@ -424,12 +424,14 @@ impl Project {
         }
     }
 
+    pub fn add_apps(&mut self, apps: Vec<ProjectAppData>) {
+        self.project_apps.extend(apps.into_iter());
+    }
+
     pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         match &self.project_build_data {
-            ProjectBuildData::Otp => Either::Left(Either::Left(self.project_apps.iter())),
-            ProjectBuildData::Rebar(rebar) => {
-                Either::Left(Either::Right(rebar.apps.iter().chain(rebar.deps.iter())))
-            }
+            ProjectBuildData::Otp => Either::Left(Either::Left(self.otp_apps())), // Which be all project_apps
+            ProjectBuildData::Rebar(_) => Either::Left(Either::Right(self.apps())),
             ProjectBuildData::Buck(buck) => {
                 Either::Right(Either::Left(buck.project_app_data.iter()))
             }
@@ -438,6 +440,19 @@ impl Project {
             }
         }
     }
+
+    fn apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+        self.project_apps
+            .iter()
+            .filter(|app| app.app_type != AppType::Otp)
+    }
+
+    fn deps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+        self.project_apps
+            .iter()
+            .filter(|app| app.app_type == AppType::Dep)
+    }
+
     pub fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
@@ -472,9 +487,7 @@ impl Project {
     pub fn deps_ebins(&self) -> Vec<AbsPathBuf> {
         match &self.project_build_data {
             ProjectBuildData::Otp => vec![],
-            ProjectBuildData::Rebar(rebar) => {
-                rebar.deps.iter().flat_map(|app| app.ebin.clone()).collect()
-            }
+            ProjectBuildData::Rebar(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
             ProjectBuildData::Buck(buck) => buck
                 .target_info
                 .targets
@@ -650,7 +663,7 @@ impl Project {
     }
 
     pub fn load(manifest: &ProjectManifest, eqwalizer_config: EqwalizerConfig) -> Result<Project> {
-        let (project_build_info, build_info, otp_root) = match manifest {
+        let (project_build_info, mut project_apps, build_info, otp_root) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
@@ -669,7 +682,7 @@ impl Project {
                         rebar_version
                     )
                 })?;
-                let (rebar_project, otp_root) =
+                let (rebar_project, otp_root, apps) =
                     RebarProject::from_rebar_build_info(&loaded, rebar_setting.clone())
                         .with_context(|| {
                             format!(
@@ -679,6 +692,7 @@ impl Project {
                         })?;
                 (
                     ProjectBuildData::Rebar(rebar_project),
+                    apps,
                     Some(BuildInfoFile(Arc::new(loaded))),
                     otp_root,
                 )
@@ -686,7 +700,12 @@ impl Project {
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
                 let (project, build_info, otp_root) = BuckProject::load_from_config(buck)?;
-                (ProjectBuildData::Buck(project), Some(build_info), otp_root)
+                (
+                    ProjectBuildData::Buck(project),
+                    vec![],
+                    Some(build_info),
+                    otp_root,
+                )
             }
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
@@ -703,6 +722,7 @@ impl Project {
                 };
                 (
                     ProjectBuildData::Static(project),
+                    vec![],
                     Some(build_info),
                     otp_root,
                 )
@@ -728,13 +748,15 @@ impl Project {
                 };
                 (
                     ProjectBuildData::Static(project),
+                    vec![],
                     Some(build_info),
                     otp_root,
                 )
             }
         };
 
-        let (otp, project_apps) = Otp::discover(otp_root);
+        let (otp, otp_project_apps) = Otp::discover(otp_root);
+        project_apps.extend(otp_project_apps.into_iter());
         Ok(Project {
             build_info_file: build_info,
             otp,

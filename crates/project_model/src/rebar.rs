@@ -32,8 +32,6 @@ use crate::ProjectModelError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RebarProject {
-    pub apps: Vec<ProjectAppData>,
-    pub deps: Vec<ProjectAppData>,
     pub root: AbsPathBuf,
     pub(crate) rebar_config: RebarConfig,
 }
@@ -111,31 +109,21 @@ fn check_build_info(config: &RebarConfig) -> Result<()> {
 }
 
 impl RebarProject {
-    pub fn new(
-        apps: Vec<ProjectAppData>,
-        deps: Vec<ProjectAppData>,
-        root: AbsPathBuf,
-        rebar_config: RebarConfig,
-    ) -> Self {
-        Self {
-            apps,
-            deps,
-            root,
-            rebar_config,
-        }
+    pub fn new(root: AbsPathBuf, rebar_config: RebarConfig) -> Self {
+        Self { root, rebar_config }
     }
 
     pub fn from_rebar_build_info(
         path: impl AsRef<Path>,
         rebar_config: RebarConfig,
-    ) -> Result<(RebarProject, PathBuf)> {
+    ) -> Result<(RebarProject, PathBuf, Vec<ProjectAppData>)> {
         Self::_from_rebar_build_info(path.as_ref(), rebar_config)
     }
 
     fn _from_rebar_build_info(
         path: &Path,
         rebar_config: RebarConfig,
-    ) -> Result<(RebarProject, PathBuf)> {
+    ) -> Result<(RebarProject, PathBuf, Vec<ProjectAppData>)> {
         let data = fs::read(path)?;
         let build_info = eetf::Term::decode(&*data)?;
         let otp_root = to_abs_path(map_get(&build_info, "otp_lib_dir")?)?;
@@ -150,10 +138,12 @@ impl RebarProject {
             .collect::<Result<_>>()?;
         let root = to_abs_path(map_get(&build_info, "source_root")?)?;
 
-        let apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
+        let mut apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
+        apps_with_includes.extend(deps.into_iter());
         return Ok((
-            RebarProject::new(apps_with_includes, deps, root, rebar_config),
+            RebarProject::new(root, rebar_config),
             otp_root.into(),
+            apps_with_includes,
         ));
 
         fn to_app_data(term: &eetf::Term, is_dep: AppType) -> Result<ProjectAppData> {
@@ -213,12 +203,10 @@ impl RebarProject {
     }
 }
 
-//Temporary for Buck
+//Temporary for Project::empty()
 impl Default for RebarProject {
     fn default() -> Self {
         RebarProject {
-            apps: vec![],
-            deps: vec![],
             root: AbsPathBuf::assert("/".into()).normalize(),
             rebar_config: Default::default(),
         }

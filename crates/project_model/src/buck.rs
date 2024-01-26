@@ -860,6 +860,7 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
             app_type: acc.app_type.unwrap(),
             // we sort to speed up parse-server
             // local folders goes first, than common, like /erl
+            // TODO:AZ why only for buck?
             include_path: acc
                 .include_path
                 .into_iter()
