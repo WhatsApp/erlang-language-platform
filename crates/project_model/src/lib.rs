@@ -796,12 +796,16 @@ mod tests {
     use std::fs;
 
     use expect_test::expect;
-    use regex::Regex;
 
     use super::*;
-    use crate::json::JsonProjectAppData;
-    use crate::no_manifest::NoManifestConfig;
     use crate::test_fixture::FixtureWithProjectMeta;
+
+    fn debug_normalise_temp_dir(dir: tempfile::TempDir, actual: &impl fmt::Debug) -> String {
+        let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
+        let actual_debug = format!("{:#?}\n", actual);
+        let replaced = actual_debug.replace(&dir_str.as_str(), "TMPDIR");
+        replaced
+    }
 
     #[test]
     fn test_discover_rebar() {
@@ -827,15 +831,31 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
-        if let Ok((_, ProjectManifest::Rebar(config))) = manifest {
-            let expected_config = RebarConfig {
-                config_file: AbsPathBuf::assert(dir.path().join("rebar.config")),
-                profile: Profile("test".to_string()),
-            };
-            assert_eq!(expected_config, config)
-        } else {
-            panic!("Expected Ok(Some(RebarManifest)), got {:?}", manifest)
-        }
+
+        expect![[r#"
+            Ok(
+                (
+                    ElpConfig {
+                        config_path: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                        },
+                    },
+                    Rebar(
+                        RebarConfig {
+                            config_file: AbsPathBuf(
+                                "TMPDIR/rebar.config",
+                            ),
+                            profile: Profile(
+                                "test",
+                            ),
+                        },
+                    ),
+                ),
+            )
+        "#]]
+        .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
     }
 
     #[test]
@@ -870,88 +890,58 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
-        if let Ok((elp_config, ProjectManifest::Json(config))) = manifest {
-            let json_app_a = JsonProjectAppData {
-                name: "app_a".into(),
-                dir: "app_a".to_string(),
-                src_dirs: vec!["src".to_string()],
-                ebin: None,
-                extra_src_dirs: vec![],
-                include_dirs: vec![],
-                macros: vec![],
-            };
-            let json_app_b = JsonProjectAppData {
-                name: "app_b".into(),
-                dir: "app_b".to_string(),
-                src_dirs: vec!["src".to_string()],
-                ebin: None,
-                extra_src_dirs: vec!["test".to_string()],
-                include_dirs: vec!["include".to_string()],
-                macros: vec![],
-            };
-            let build_info_path = dir_path.join(BUILD_INFO_FILE);
-            let expected_config = JsonConfig::new(
-                vec![json_app_a, json_app_b],
-                vec![],
-                build_info_path.clone(),
-            );
-            //discover only app_b since path was from app_b
-            assert_eq!(expected_config, config);
-            let project = Project::load(&ProjectManifest::Json(config), elp_config.eqwalizer)
-                .expect("project must be ok");
-            assert!(project.build_info_file.is_some());
-            let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
-            let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
-            if let ProjectBuildData::Static(build_data) = &project.project_build_data {
-                let app_a_path = dir_path.join("app_a");
-                let app_a_src = app_a_path.join("src");
-                let app_data_a = ProjectAppData {
-                    name: "app_a".into(),
-                    dir: app_a_path,
-                    ebin: None,
-                    extra_src_dirs: vec![],
-                    include_dirs: vec![],
-                    abs_src_dirs: vec![app_a_src.clone()],
-                    macros: vec![],
-                    parse_transforms: vec![],
-                    app_type: AppType::App,
-                    include_path: vec![project.otp.lib_dir.clone(), dir_path.clone(), app_a_src],
-                };
-                let app_b_path = dir_path.join("app_b");
-                let app_b_src = app_b_path.join("src");
-                let app_b_include = app_b_path.join("include");
-                let app_data_b = ProjectAppData {
-                    name: "app_b".into(),
-                    dir: app_b_path,
-                    ebin: None,
-                    extra_src_dirs: vec!["test".to_string()],
-                    include_dirs: vec![app_b_include.clone()],
-                    abs_src_dirs: vec![app_b_src.clone()],
-                    macros: vec![],
-                    parse_transforms: vec![],
-                    app_type: AppType::App,
-                    include_path: vec![
-                        project.otp.lib_dir.clone(),
-                        dir_path,
-                        app_b_include,
-                        app_b_src,
-                    ],
-                };
-                let expected_build_data = StaticProject {
-                    apps: vec![app_data_a, app_data_b],
-                    deps: vec![eqwalizer_support],
-                    config_path: build_info_path,
-                };
-                assert_eq!(&expected_build_data, build_data)
-            } else {
-                panic!(
-                    "expected staticproject got {:?}",
-                    project.project_build_data
-                )
-            }
-        } else {
-            panic!("Expected Ok(Some(NoManifest)), got {:?}", manifest)
-        }
+        expect![[r#"
+            Ok(
+                (
+                    ElpConfig {
+                        config_path: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                        },
+                    },
+                    Json(
+                        JsonConfig {
+                            apps: [
+                                JsonProjectAppData {
+                                    name: "app_a",
+                                    dir: "app_a",
+                                    src_dirs: [
+                                        "src",
+                                    ],
+                                    ebin: None,
+                                    extra_src_dirs: [],
+                                    include_dirs: [],
+                                    macros: [],
+                                },
+                                JsonProjectAppData {
+                                    name: "app_b",
+                                    dir: "app_b",
+                                    src_dirs: [
+                                        "src",
+                                    ],
+                                    ebin: None,
+                                    extra_src_dirs: [
+                                        "test",
+                                    ],
+                                    include_dirs: [
+                                        "include",
+                                    ],
+                                    macros: [],
+                                },
+                            ],
+                            deps: [],
+                            config_path: Some(
+                                AbsPathBuf(
+                                    "TMPDIR/build_info.json",
+                                ),
+                            ),
+                        },
+                    ),
+                ),
+            )
+        "#]]
+        .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
     }
 
     #[test]
@@ -1048,78 +1038,103 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
-        if let Ok((elp_config, ProjectManifest::NoManifest(config))) = manifest {
-            let path = AbsPathBuf::assert(dir.path().join("app_b"));
-            let name: AppName = "app_b".into();
-            let abs_src = AbsPathBuf::assert(dir.path().join("app_b/src"));
-            let includes = AbsPathBuf::assert(dir.path().join("app_b/include"));
-            let expected_config =
-                NoManifestConfig::new(path.clone(), name.clone(), vec![abs_src.clone()]);
-            //discover only app_b since path was from app_b
-            assert_eq!(&expected_config, &config);
 
-            let project = Project::load(&ProjectManifest::NoManifest(config), elp_config.eqwalizer)
-                .expect("project must be ok");
-            assert!(project.build_info_file.is_some());
-            let otp_root = AbsPathBuf::assert(Otp::find_otp().unwrap());
-            let (eqwalizer_support, _) = eqwalizer_support::eqwalizer_suppport_data(&otp_root);
-            if let ProjectBuildData::Static(build_data) = &project.project_build_data {
-                let app_data = ProjectAppData {
-                    name,
-                    dir: path.clone(),
-                    ebin: None,
-                    extra_src_dirs: vec!["test".to_string()],
-                    include_dirs: vec![includes.clone()],
-                    abs_src_dirs: vec![abs_src.clone()],
-                    macros: vec![],
-                    parse_transforms: vec![],
-                    app_type: AppType::App,
-                    include_path: vec![
-                        project.otp.lib_dir.clone(),
-                        includes,
-                        abs_src,
-                        AbsPathBuf::assert(dir.path().to_path_buf()),
-                    ],
-                };
-                let expected_build_data = StaticProject {
-                    apps: vec![app_data],
-                    deps: vec![eqwalizer_support],
-                    config_path: path.join(".static"),
-                };
-                assert_eq!(&expected_build_data, build_data)
-            } else {
-                panic!(
-                    "expected staticproject got {:?}",
-                    project.project_build_data
-                )
-            }
-        } else {
-            panic!("Expected Ok(Some(NoManifest)), got {:?}", manifest)
-        }
+        expect![[r#"
+            Ok(
+                (
+                    ElpConfig {
+                        config_path: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                        },
+                    },
+                    NoManifest(
+                        NoManifestConfig {
+                            root_path: AbsPathBuf(
+                                "TMPDIR/app_b",
+                            ),
+                            config_path: AbsPathBuf(
+                                "TMPDIR/app_b/.static",
+                            ),
+                            name: AppName(
+                                "app_b",
+                            ),
+                            abs_src_dirs: [
+                                AbsPathBuf(
+                                    "TMPDIR/app_b/src",
+                                ),
+                            ],
+                            include_dirs: [
+                                AbsPathBuf(
+                                    "TMPDIR/app_b/include",
+                                ),
+                            ],
+                            extra_src_dirs: [
+                                "test",
+                            ],
+                        },
+                    ),
+                ),
+            )
+        "#]]
+        .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
     }
 
     #[test]
     fn test_toml_empty() {
+        // This one is a real worst-case. We force discovery to happen in
+        // the directory where .elp.toml is found, so it does not find the
+        // app structure below. Perhaps it can be improved in future, but
+        // it is very low priority, and an unlikely scenario.
         if cfg!(feature = "buck") {
             let spec = r#"
-        //- /.elp.toml
-        //- /app_a/src/app.erl
+        //- /root/.elp.toml
+        //- /root/app_a/src/app.erl
         -module(app).
         "#;
             let dir = FixtureWithProjectMeta::gen_project(spec);
             let discovered = ProjectManifest::discover(&AbsPathBuf::assert(
-                dir.path().join("app_a/src/app.erl"),
+                dir.path().join("root/app_a/src/app.erl"),
             ));
-            if let Ok((elp_config, ProjectManifest::NoManifest(_config))) = discovered {
-                let expected_config = ElpConfig::new(
-                    AbsPathBuf::assert(dir.path().join(ELP_CONFIG_FILE)),
-                    None,
-                    EqwalizerConfig::default(),
-                );
-                assert_eq!(expected_config, elp_config)
-            } else {
-                panic!("Expected Ok(Some(Toml)), got {:?}", discovered)
-            }
+            expect![[r#"
+                Ok(
+                    (
+                        ElpConfig {
+                            config_path: Some(
+                                AbsPathBuf(
+                                    "TMPDIR/root/.elp.toml",
+                                ),
+                            ),
+                            buck: None,
+                            eqwalizer: EqwalizerConfig {
+                                enable_all: true,
+                            },
+                        },
+                        NoManifest(
+                            NoManifestConfig {
+                                root_path: AbsPathBuf(
+                                    "TMPDIR/root",
+                                ),
+                                config_path: AbsPathBuf(
+                                    "TMPDIR/root/.static",
+                                ),
+                                name: AppName(
+                                    "root",
+                                ),
+                                abs_src_dirs: [
+                                    AbsPathBuf(
+                                        "TMPDIR/root",
+                                    ),
+                                ],
+                                include_dirs: [],
+                                extra_src_dirs: [],
+                            },
+                        ),
+                    ),
+                )
+            "#]]
+            .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
         }
     }
 
@@ -1134,17 +1149,15 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let manifest =
             ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
-        if let Err(err) = manifest {
-            let re = Regex::new(r" [^ ]+/\.elp.toml:").unwrap();
-            let err_str = format!("{err}");
-            let res = re.replace(&err_str, " TMPDIR/.elp.toml");
 
-            expect![[r#"
-                "unable to read TMPDIR/.elp.toml expected an equals, found an identifier at line 1 column 7"
-            "#]].assert_debug_eq(&res);
-        } else {
-            panic!("Expected syntax error, got {:?}", manifest)
-        }
+        expect![[r#"
+            Err(
+                "unable to read TMPDIR/.elp.toml: expected an equals, found an identifier at line 1 column 7",
+            )
+        "#]]
+            // .assert_debug_eq(&res);
+
+        .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
     }
 
     #[test]
