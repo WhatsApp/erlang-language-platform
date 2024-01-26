@@ -112,20 +112,11 @@ fn check_build_info(config: &RebarConfig) -> Result<()> {
 
 impl RebarProject {
     pub fn new(
-        mut apps: Vec<ProjectAppData>,
+        apps: Vec<ProjectAppData>,
         deps: Vec<ProjectAppData>,
         root: AbsPathBuf,
         rebar_config: RebarConfig,
-        otp_root: &AbsPathBuf,
     ) -> Self {
-        let global_includes = RebarProject::global_includes(&apps, &deps);
-        for app in &mut apps {
-            let mut include_paths = global_includes.clone();
-            include_paths.extend(app.include_dirs());
-            include_paths.push(otp_root.to_path_buf());
-            app.include_path = include_paths;
-        }
-
         Self {
             apps,
             deps,
@@ -149,18 +140,19 @@ impl RebarProject {
         let build_info = eetf::Term::decode(&*data)?;
         let otp_root = to_abs_path(map_get(&build_info, "otp_lib_dir")?)?;
 
-        let apps = to_vec(map_get(&build_info, "apps")?)?
+        let apps: Vec<_> = to_vec(map_get(&build_info, "apps")?)?
             .iter()
             .map(|term| to_app_data(term, AppType::App))
             .collect::<Result<_>>()?;
-        let deps = to_vec(map_get(&build_info, "deps")?)?
+        let deps: Vec<_> = to_vec(map_get(&build_info, "deps")?)?
             .iter()
             .map(|term| to_app_data(term, AppType::Dep))
             .collect::<Result<_>>()?;
         let root = to_abs_path(map_get(&build_info, "source_root")?)?;
 
+        let apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
         return Ok((
-            RebarProject::new(apps, deps, root, rebar_config, &otp_root),
+            RebarProject::new(apps_with_includes, deps, root, rebar_config),
             otp_root.into(),
         ));
 
@@ -190,6 +182,21 @@ impl RebarProject {
                 abs_src_dirs,
             })
         }
+    }
+
+    pub fn add_app_includes(
+        mut apps: Vec<ProjectAppData>,
+        deps: &[ProjectAppData],
+        otp_root: &AbsPathBuf,
+    ) -> Vec<ProjectAppData> {
+        let global_includes = RebarProject::global_includes(&apps, &deps);
+        for app in &mut apps {
+            let mut include_paths = global_includes.clone();
+            include_paths.extend(app.include_dirs());
+            include_paths.push(otp_root.to_path_buf());
+            app.include_path = include_paths;
+        }
+        apps
     }
 
     /// Replicates behaviour of -include_lib through
