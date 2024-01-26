@@ -259,16 +259,21 @@ impl<'a> ProjectApps<'a> {
         // We assume that all of the `Project`s use the same OTP.
         // And so we treat the very first one as another
         // `RebarProject`, but for OTP.
-        let otp = &projects[0].otp;
+        let otp_project = &projects[0];
         let mut projects: Vec<_> = projects.into();
         let otp_project_id = if include_otp == IncludeOtp::Yes {
             let otp_project_id = ProjectId(projects.len() as u32);
-            let mut all_otp_apps: Vec<(ProjectId, &ProjectAppData)> =
-                otp.apps.iter().map(|app| (otp_project_id, app)).collect();
+            let mut all_otp_apps: Vec<(ProjectId, &ProjectAppData)> = otp_project
+                .otp_apps()
+                .map(|app| (otp_project_id, app))
+                .collect();
             all_apps.append(&mut all_otp_apps);
             // The only part of this we (currently) use in
-            // ProjectRootMap::app_structure() is Project.otp
-            let otp_project = Project::otp(otp.clone());
+            // ProjectApps::app_structure() is Project.otp
+            let otp_project = Project::otp(
+                otp_project.otp.clone(),
+                otp_project.otp_apps().cloned().collect(),
+            );
             projects.push(otp_project);
             Some(otp_project_id)
         } else {

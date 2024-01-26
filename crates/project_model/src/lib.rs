@@ -404,12 +404,12 @@ impl PartialEq for Project {
 }
 
 impl Project {
-    pub fn otp(otp: Otp) -> Self {
+    pub fn otp(otp: Otp, project_apps: Vec<ProjectAppData>) -> Self {
         Self {
             build_info_file: None,
-            otp: otp.clone(), // Temporary, until apps move out
+            otp,
             project_build_data: ProjectBuildData::Otp,
-            project_apps: otp.apps,
+            project_apps,
             eqwalizer_config: EqwalizerConfig::default(),
         }
     }
@@ -424,13 +424,24 @@ impl Project {
         }
     }
 
-    pub fn all_apps(&self) -> Vec<&ProjectAppData> {
+    pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         match &self.project_build_data {
-            ProjectBuildData::Otp => self.project_apps.iter().collect(),
-            ProjectBuildData::Rebar(rebar) => rebar.apps.iter().chain(rebar.deps.iter()).collect(),
-            ProjectBuildData::Buck(buck) => buck.project_app_data.iter().collect(),
-            ProjectBuildData::Static(stat) => stat.apps.iter().chain(stat.deps.iter()).collect(),
+            ProjectBuildData::Otp => Either::Left(Either::Left(self.project_apps.iter())),
+            ProjectBuildData::Rebar(rebar) => {
+                Either::Left(Either::Right(rebar.apps.iter().chain(rebar.deps.iter())))
+            }
+            ProjectBuildData::Buck(buck) => {
+                Either::Right(Either::Left(buck.project_app_data.iter()))
+            }
+            ProjectBuildData::Static(stat) => {
+                Either::Right(Either::Right(stat.apps.iter().chain(stat.deps.iter())))
+            }
         }
+    }
+    pub fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+        self.project_apps
+            .iter()
+            .filter(|app| app.app_type == AppType::Otp)
     }
 
     pub fn root(&self) -> Cow<AbsPathBuf> {
@@ -723,12 +734,12 @@ impl Project {
             }
         };
 
-        let otp = Otp::discover(otp_root);
+        let (otp, project_apps) = Otp::discover(otp_root);
         Ok(Project {
             build_info_file: build_info,
-            otp: otp.clone(), // Temporary, will remove clone when apps move out
+            otp,
             project_build_data: project_build_info,
-            project_apps: otp.apps,
+            project_apps,
             eqwalizer_config,
         })
     }

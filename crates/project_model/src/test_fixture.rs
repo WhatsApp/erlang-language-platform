@@ -100,7 +100,7 @@ use crate::ProjectAppData;
 pub struct Fixture {
     pub path: String,
     pub text: String,
-    pub app_data: Option<ProjectAppData>,
+    pub app_data: ProjectAppData,
     pub otp: Option<Otp>,
     pub scratch_buffer: Option<PathBuf>,
 }
@@ -214,10 +214,7 @@ impl FixtureWithProjectMeta {
                     let versioned_name = path.file_name().unwrap().to_str().unwrap().to_string();
                     let app = ProjectAppData::otp_app_data(&versioned_name, path);
 
-                    otp = Some(Otp {
-                        lib_dir,
-                        apps: vec![app],
-                    });
+                    otp = Some((Otp { lib_dir }, app));
                 }
                 "extra" => {
                     // We have an extra directory, such as for a test suite
@@ -237,8 +234,8 @@ impl FixtureWithProjectMeta {
             }
         }
 
-        let app_data = if otp.is_some() {
-            None
+        let (otp, app_data) = if let Some((otp, app)) = otp {
+            (Some(otp), app)
         } else {
             // Try inferring dir - parent once to get to ./src, parent twice to get to app root
             let dir = AbsPath::assert(Path::new(&path)).parent().unwrap();
@@ -254,13 +251,10 @@ impl FixtureWithProjectMeta {
                     }
                 }
             }
-            Some(ProjectAppData::fixture_app_data(
-                app_name,
-                dir,
-                include_dirs,
-                src_dirs,
-                extra_dirs,
-            ))
+            (
+                None,
+                ProjectAppData::fixture_app_data(app_name, dir, include_dirs, src_dirs, extra_dirs),
+            )
         };
 
         Fixture {
@@ -340,7 +334,7 @@ bar() -> ok.
         let parsed = fixture.fixture;
         assert_eq!(3, parsed.len());
 
-        let app_data = parsed[0].app_data.as_ref().unwrap();
+        let app_data = &parsed[0].app_data;
         assert_eq!(
             vec![AbsPath::assert(&PathBuf::from("/include")).normalize()],
             app_data.include_dirs
@@ -385,6 +379,6 @@ bar() -> ok.
                 app_type: App,
                 include_path: [],
             }"#]]
-        .assert_eq(format!("{:#?}", meta0.app_data.as_ref().unwrap()).as_str());
+        .assert_eq(format!("{:#?}", meta0.app_data).as_str());
     }
 }

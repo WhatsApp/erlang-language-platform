@@ -22,7 +22,6 @@ use crate::ProjectAppData;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Otp {
     pub lib_dir: AbsPathBuf,
-    pub apps: Vec<ProjectAppData>,
 }
 
 impl Otp {
@@ -49,12 +48,14 @@ impl Otp {
         Ok(result)
     }
 
-    pub fn discover(path: PathBuf) -> Otp {
+    pub fn discover(path: PathBuf) -> (Otp, Vec<ProjectAppData>) {
         let apps = Self::discover_otp_apps(&path);
-        Otp {
-            lib_dir: AbsPathBuf::assert(path),
+        (
+            Otp {
+                lib_dir: AbsPathBuf::assert(path),
+            },
             apps,
-        }
+        )
     }
 
     fn discover_otp_apps(path: &Path) -> Vec<ProjectAppData> {
@@ -72,10 +73,5 @@ impl Otp {
         } else {
             vec![]
         }
-    }
-
-    /// Used to combine more than one OTP definition in a test suite
-    pub fn combine(&mut self, other: Otp) {
-        self.apps.extend(other.apps);
     }
 }

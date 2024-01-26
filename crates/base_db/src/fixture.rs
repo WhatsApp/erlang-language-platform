@@ -23,6 +23,7 @@ use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
+use elp_project_model::AppType;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
@@ -119,23 +120,14 @@ impl ChangeFixture {
 
             assert!(entry.path.starts_with(&source_root_prefix));
 
-            let app_name = if let Some(otp) = &entry.otp {
-                otp.apps[0].name.clone()
-            } else {
-                entry.app_data.as_ref().unwrap().name.clone()
-            };
-
-            if let Some(app_data) = entry.app_data {
-                app_map.combine(app_data);
-            }
+            let app_name = entry.app_data.name.clone();
 
             if let Some(otp_extra) = entry.otp {
-                if let Some(otp) = &mut otp {
-                    otp.combine(otp_extra);
-                } else {
-                    otp = Some(otp_extra)
+                if otp.is_none() {
+                    otp = Some(otp_extra);
                 }
-            };
+            }
+            app_map.combine(entry.app_data);
 
             change.change_file(file_id, Some(Arc::from(text)));
 
@@ -149,12 +141,11 @@ impl ChangeFixture {
         let otp = otp.unwrap_or_else(|| Otp {
             // We only care about the otp lib_dir for the tests
             lib_dir: AbsPathBuf::assert("/".into()),
-            apps: Default::default(),
         });
         let root = AbsPathBuf::assert("/".into());
-        let apps = app_map.app_map.values().cloned().collect();
+        let apps = app_map.all_apps().cloned().collect();
         let rebar_project = RebarProject::new(apps, vec![], root, Default::default(), &otp.lib_dir);
-        let mut project = Project::empty(otp);
+        let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
         let projects = [project];
 
@@ -245,6 +236,18 @@ impl AppMap {
                 vacant.insert(other);
             }
         }
+    }
+
+    fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+        self.app_map
+            .values()
+            .filter(|pd| pd.app_type == AppType::Otp)
+    }
+
+    fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+        self.app_map
+            .values()
+            .filter(|pd| pd.app_type != AppType::Otp)
     }
 }
 
