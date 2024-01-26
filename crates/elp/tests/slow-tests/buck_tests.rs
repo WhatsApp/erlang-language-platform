@@ -22,7 +22,6 @@ mod tests {
     use elp_project_model::DiscoverConfig;
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
-    use elp_project_model::ProjectBuildData;
     use elp_project_model::ProjectManifest;
     use itertools::Itertools;
 
@@ -83,14 +82,14 @@ mod tests {
 
         let project = Project::load(&buck_config, elp_config.eqwalizer).unwrap();
 
-        let project = match project.project_build_data {
-            ProjectBuildData::Buck(project) => project,
-            _ => panic!("not reachable"),
-        };
+        // let project = match project.project_build_data {
+        //     ProjectBuildData::Buck(project) => project,
+        //     _ => panic!("not reachable"),
+        // };
 
         let project_data: Vec<ProjectAppData> = project
-            .project_app_data
-            .into_iter()
+            .apps()
+            .cloned()
             .filter(|app| app.app_type == AppType::App)
             .filter(|app| {
                 !app.dir

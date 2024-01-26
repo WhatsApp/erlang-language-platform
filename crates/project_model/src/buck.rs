@@ -157,14 +157,14 @@ pub struct TargetInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BuckProject {
     pub target_info: TargetInfo,
-    pub project_app_data: Vec<ProjectAppData>,
+    // pub project_app_data: Vec<ProjectAppData>,
     pub buck_conf: BuckConfig,
 }
 
 impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
-    ) -> Result<(BuckProject, BuildInfoFile, PathBuf), anyhow::Error> {
+    ) -> Result<(BuckProject, Vec<ProjectAppData>, BuildInfoFile, PathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf)?;
         let otp_root = Otp::find_otp()?;
         let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
@@ -172,10 +172,9 @@ impl BuckProject {
         let build_info = save_build_info(build_info_term)?;
         let project = BuckProject {
             target_info,
-            project_app_data,
             buck_conf: buck_conf.clone(),
         };
-        Ok((project, build_info, otp_root))
+        Ok((project, project_app_data, build_info, otp_root))
     }
 }
 

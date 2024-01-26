@@ -432,16 +432,14 @@ impl Project {
         match &self.project_build_data {
             ProjectBuildData::Otp => Either::Left(Either::Left(self.otp_apps())), // Which be all project_apps
             ProjectBuildData::Rebar(_) => Either::Left(Either::Right(self.apps())),
-            ProjectBuildData::Buck(buck) => {
-                Either::Right(Either::Left(buck.project_app_data.iter()))
-            }
+            ProjectBuildData::Buck(_) => Either::Right(Either::Left(self.apps())),
             ProjectBuildData::Static(stat) => {
                 Either::Right(Either::Right(stat.apps.iter().chain(stat.deps.iter())))
             }
         }
     }
 
-    fn apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+    pub fn apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
             .filter(|app| app.app_type != AppType::Otp)
@@ -488,13 +486,7 @@ impl Project {
         match &self.project_build_data {
             ProjectBuildData::Otp => vec![],
             ProjectBuildData::Rebar(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
-            ProjectBuildData::Buck(buck) => buck
-                .target_info
-                .targets
-                .values()
-                .flat_map(|target| &target.ebin)
-                .cloned()
-                .collect(),
+            ProjectBuildData::Buck(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
             ProjectBuildData::Static(stat) => stat
                 .deps
                 .iter()
@@ -699,10 +691,10 @@ impl Project {
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, build_info, otp_root) = BuckProject::load_from_config(buck)?;
+                let (project, apps, build_info, otp_root) = BuckProject::load_from_config(buck)?;
                 (
                     ProjectBuildData::Buck(project),
-                    vec![],
+                    apps,
                     Some(build_info),
                     otp_root,
                 )
