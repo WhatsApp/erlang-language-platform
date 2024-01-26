@@ -888,7 +888,7 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        let dir_path = AbsPathBuf::assert(dir.path().to_path_buf());
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         expect![[r#"
             Ok(
