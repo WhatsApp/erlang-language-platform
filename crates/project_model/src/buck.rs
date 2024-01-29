@@ -157,7 +157,6 @@ pub struct TargetInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BuckProject {
     pub target_info: TargetInfo,
-    // pub project_app_data: Vec<ProjectAppData>,
     pub buck_conf: BuckConfig,
 }
 

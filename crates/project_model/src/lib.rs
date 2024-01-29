@@ -301,8 +301,6 @@ pub enum ProjectBuildData {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StaticProject {
-    pub apps: Vec<ProjectAppData>,
-    pub deps: Vec<ProjectAppData>,
     pub config_path: AbsPathBuf,
 }
 
@@ -430,12 +428,8 @@ impl Project {
 
     pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         match &self.project_build_data {
-            ProjectBuildData::Otp => Either::Left(Either::Left(self.otp_apps())), // Which be all project_apps
-            ProjectBuildData::Rebar(_) => Either::Left(Either::Right(self.apps())),
-            ProjectBuildData::Buck(_) => Either::Right(Either::Left(self.apps())),
-            ProjectBuildData::Static(stat) => {
-                Either::Right(Either::Right(stat.apps.iter().chain(stat.deps.iter())))
-            }
+            ProjectBuildData::Otp => Either::Left(self.otp_apps()),
+            _ => Either::Right(self.apps()),
         }
     }
 
@@ -487,12 +481,7 @@ impl Project {
             ProjectBuildData::Otp => vec![],
             ProjectBuildData::Rebar(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
             ProjectBuildData::Buck(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
-            ProjectBuildData::Static(stat) => stat
-                .deps
-                .iter()
-                .flat_map(|app| &app.ebin)
-                .cloned()
-                .collect(),
+            ProjectBuildData::Static(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
         }
     }
 }
@@ -702,19 +691,16 @@ impl Project {
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
-                let (apps, deps, terms, deps_terms) =
+                let (mut apps, deps, terms, deps_terms) =
                     json::gen_app_data(config, AbsPath::assert(&otp_root));
                 let build_info_term =
                     buck::make_build_info(terms, deps_terms, &otp_root, &config_path);
                 let build_info = buck::save_build_info(build_info_term)?;
-                let project = StaticProject {
-                    apps,
-                    deps,
-                    config_path,
-                };
+                let project = StaticProject { config_path };
+                apps.extend(deps.into_iter());
                 (
                     ProjectBuildData::Static(project),
-                    vec![],
+                    apps,
                     Some(build_info),
                     otp_root,
                 )
@@ -723,7 +709,7 @@ impl Project {
                 let otp_root = Otp::find_otp()?;
                 let abs_otp_root = AbsPath::assert(&otp_root);
                 let config_path = config.config_path().to_path_buf();
-                let (apps, terms) = config.to_project_app_data(abs_otp_root);
+                let (mut apps, terms) = config.to_project_app_data(abs_otp_root);
                 let (eqwalizer_support_app, eqwalizer_support_term) =
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
                 let build_info_term = buck::make_build_info(
@@ -733,14 +719,11 @@ impl Project {
                     &config_path,
                 );
                 let build_info = buck::save_build_info(build_info_term)?;
-                let project = StaticProject {
-                    apps,
-                    deps: vec![eqwalizer_support_app],
-                    config_path,
-                };
+                let project = StaticProject { config_path };
+                apps.push(eqwalizer_support_app);
                 (
                     ProjectBuildData::Static(project),
-                    vec![],
+                    apps,
                     Some(build_info),
                     otp_root,
                 )
