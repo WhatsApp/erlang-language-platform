@@ -97,7 +97,7 @@ fn check_build_info(config: &RebarConfig) -> Result<()> {
                 (_, Some(1), out) if out.contains("Unknown task build_info") => {
                     bail!(ProjectModelError::NoBuildInfo)
                 }
-                (_, _, out) => bail!("Failed to run rebar3 help buil-info: {:?}", out),
+                (_, _, out) => bail!("Failed to run rebar3 help build_info: {:?}", out),
             }
         }
         Err(error) => {
