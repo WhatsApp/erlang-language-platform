@@ -4,7 +4,6 @@ edition.workspace = true
 version.workspace = true
 
 [features]
-default = ["buck"]
 buck = []
 
 [dependencies]
