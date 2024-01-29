@@ -11,7 +11,8 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
-use elp_syntax::TextSize;
+use elp_syntax::AstPtr;
+use hir::InFileAstPtr;
 
 use crate::helpers::prev_form_nodes;
 use crate::AssistContext;
@@ -43,14 +44,14 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let clause = ast::FunctionClause::cast(name.syntax().parent()?)?;
     let function = ast::FunDecl::cast(clause.syntax().parent()?)?;
 
-    let already_has_edoc = prev_form_nodes(function.syntax())
-        .filter(|syntax| syntax.kind() == elp_syntax::SyntaxKind::COMMENT)
-        .filter_map(|comment| {
-            let text = comment.text();
-            let at = text.find_char('@')?;
-            Some((text, at))
-        })
-        .any(|(text, at)| text.slice(at..(at + TextSize::of("@doc"))) == "@doc");
+    let form = ast::Form::FunDecl(function.clone());
+    let ast_pointer = AstPtr::new(&form);
+    let in_file_ast_pointer = InFileAstPtr::new(ctx.file_id(), ast_pointer);
+
+    let existing_edocs = ctx.db().file_edoc_comments(ctx.file_id());
+    let already_has_edoc = existing_edocs
+        .is_some_and(|existing_edocs| existing_edocs.contains_key(&in_file_ast_pointer));
+
     if already_has_edoc {
         return None;
     }
@@ -209,5 +210,33 @@ bar() -> ok.
 ~foo(Foo, some_atom) -> ok.
 "#,
         );
+    }
+
+    #[test]
+    fn test_module_has_edoc() {
+        check_assist(
+            add_edoc,
+            "Add edoc comment",
+            r#"
+            %% @doc
+            %% My test module
+            %% @end
+            -module(main).
+            -export([foo/0]).
+
+            ~foo() -> ok.
+            "#,
+            expect![[r#"
+            %% @doc
+            %% My test module
+            %% @end
+            -module(main).
+            -export([foo/0]).
+
+            %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
+            %% @returns ${2:Return description}
+            foo() -> ok.
+            "#]],
+        )
     }
 }
