@@ -91,43 +91,51 @@ pub(crate) fn signature_help(
 
     let mut res = Vec::new();
 
-    if let hir::Expr::Call { target, args } = &call_expr[call_expr.value] {
-        let arity = args.len() as u32;
-        match target {
-            CallTarget::Local { name } => {
-                let fun_atom = &call_expr[*name].as_atom()?;
-                let fun_name = sema.db.lookup_atom(*fun_atom);
-                signature_help_for_call(
-                    &mut res,
-                    sema,
-                    db,
-                    position.file_id,
-                    None,
-                    fun_name,
-                    arity,
-                    active_parameter,
-                )
-            }
-            CallTarget::Remote { module, name } => {
-                let module_atom = &call_expr[*module].as_atom()?;
-                let module_name = sema.db.lookup_atom(*module_atom);
-                let fun_atom = &call_expr[*name].as_atom()?;
-                let fun_name = sema.db.lookup_atom(*fun_atom);
-                let module = sema.resolve_module_name(position.file_id, module_name.as_str())?;
-                signature_help_for_call(
-                    &mut res,
-                    sema,
-                    db,
-                    module.file.file_id,
-                    Some(module_name),
-                    fun_name,
-                    arity,
-                    active_parameter,
-                )
-            }
+    if let Some(args) = call.args() {
+        if args
+            .syntax()
+            .text_range()
+            .contains_range(token.text_range())
+        {
+            if let hir::Expr::Call { target, args } = &call_expr[call_expr.value] {
+                let arity = args.len() as u32;
+                match target {
+                    CallTarget::Local { name } => {
+                        let fun_atom = &call_expr[*name].as_atom()?;
+                        let fun_name = sema.db.lookup_atom(*fun_atom);
+                        signature_help_for_call(
+                            &mut res,
+                            sema,
+                            db,
+                            position.file_id,
+                            None,
+                            fun_name,
+                            arity,
+                            active_parameter,
+                        )
+                    }
+                    CallTarget::Remote { module, name } => {
+                        let module_atom = &call_expr[*module].as_atom()?;
+                        let module_name = sema.db.lookup_atom(*module_atom);
+                        let fun_atom = &call_expr[*name].as_atom()?;
+                        let fun_name = sema.db.lookup_atom(*fun_atom);
+                        let module =
+                            sema.resolve_module_name(position.file_id, module_name.as_str())?;
+                        signature_help_for_call(
+                            &mut res,
+                            sema,
+                            db,
+                            module.file.file_id,
+                            Some(module_name),
+                            fun_name,
+                            arity,
+                            active_parameter,
+                        )
+                    }
+                }
+            };
         }
-    };
-
+    }
     Some((res, active_parameter))
 }
 
@@ -547,6 +555,33 @@ add(This, That, Extra) ->
 
 main() ->
   main:add(~
+"#,
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_after_closing_parenthesis() {
+        check(
+            r#"
+-module(main).
+
+-compile(export_all).
+
+-spec add(integer()) -> integer().
+add(This) ->
+  add(This, 0, 0).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+main() ->
+  main:add(1, 2)~
 "#,
             expect![""],
         );
