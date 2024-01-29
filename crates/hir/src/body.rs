@@ -193,6 +193,27 @@ impl Body {
             .find_map(|(k, v)| if v == expr { Some(k) } else { None })
     }
 
+    pub fn is_macro(&self, id: AnyExprId) -> bool {
+        match id {
+            AnyExprId::Expr(idx) => match &self.exprs[idx] {
+                Expr::MacroCall { .. } => true,
+                _ => false,
+            },
+            AnyExprId::Pat(idx) => match &self.pats[idx] {
+                Pat::MacroCall { .. } => true,
+                _ => false,
+            },
+            AnyExprId::TypeExpr(idx) => match &self.type_exprs[idx] {
+                TypeExpr::MacroCall { .. } => true,
+                _ => false,
+            },
+            AnyExprId::Term(idx) => match &self.terms[idx] {
+                Term::MacroCall { .. } => true,
+                _ => false,
+            },
+        }
+    }
+
     pub fn fold_expr<'a, T>(
         &self,
         strategy: Strategy,
@@ -711,5 +732,66 @@ impl BodySourceMap {
         self.macro_map
             .get(&InFileAstPtr::from_infile(call))
             .copied()
+    }
+}
+
+#[cfg(test)]
+mod local_tests {
+    use elp_base_db::fixture::WithFixture;
+    use elp_base_db::SourceDatabase;
+    use elp_syntax::algo::find_node_at_offset;
+    use elp_syntax::ast;
+
+    use crate::test_db::TestDB;
+    use crate::AnyExprId;
+    use crate::InFile;
+    use crate::Semantic;
+
+    fn check_is_macro_expr(fixture: &str) {
+        let (db, position) = TestDB::with_position(fixture);
+        let sema = Semantic::new(&db);
+
+        let file_syntax = db.parse(position.file_id).syntax_node();
+        let expr: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let macro_call = sema.to_expr(InFile::new(position.file_id, &expr)).unwrap();
+        assert!(
+            macro_call
+                .body()
+                .is_macro(AnyExprId::Expr(macro_call.value))
+        );
+    }
+
+    fn check_is_macro_pat(fixture: &str) {
+        let (db, position) = TestDB::with_position(fixture);
+        let sema = Semantic::new(&db);
+
+        let file_syntax = db.parse(position.file_id).syntax_node();
+        let pat: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let macro_call = sema.to_pat(InFile::new(position.file_id, &pat)).unwrap();
+        assert!(macro_call.body().is_macro(AnyExprId::Pat(macro_call.value)));
+    }
+
+    #[test]
+    fn in_macro_expr() {
+        check_is_macro_expr(
+            r#"
+            -module(main).
+            -define(SOME_CONST, 1).
+
+            foo() -> ~?SOME_CONST * 1024.
+            "#,
+        )
+    }
+
+    #[test]
+    fn in_macro_pat() {
+        check_is_macro_pat(
+            r#"
+            -module(main).
+            -define(SOME_CONST, 1).
+
+            foo(~?SOME_CONST) -> 1024.
+            "#,
+        )
     }
 }

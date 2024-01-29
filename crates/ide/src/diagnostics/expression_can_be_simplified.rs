@@ -13,6 +13,7 @@
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
 
 use elp_ide_db::source_change::SourceChangeBuilder;
+use hir::AnyExprId;
 use hir::ClauseId;
 use hir::FunctionDef;
 use hir::InFunctionBody;
@@ -95,6 +96,9 @@ fn simplify_binary_op(
     def_fb: &InFunctionBody<&FunctionDef>,
 ) -> Option<String> {
     let body = def_fb.body(clause_id);
+    if body.is_macro(AnyExprId::Expr(lhs_id)) || body.is_macro(AnyExprId::Expr(rhs_id)) {
+        return None;
+    }
     match (&body[lhs_id], op, &body[rhs_id]) {
         // ==== LIST OPS ====
         // ++
@@ -233,5 +237,17 @@ mod tests {
 
         check_fix("f(X) -> X div ~1.", "f(X) -> X.");
         check_fix("f(X) -> X rem ~1.", "f(X) -> 0.");
+    }
+
+    #[test]
+    fn not_in_macro() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(SOME_CONST, 1).
+
+            foo() -> ?SOME_CONST * 1024.
+            "#,
+        )
     }
 }
