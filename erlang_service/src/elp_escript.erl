@@ -40,7 +40,7 @@
 
 -type shebang() :: string().
 
--record(sections, {shebang :: shebang() | 'undefined', body}).
+-record(sections, {shebang :: shebang() | 'undefined'}).
 -type sections() :: #sections{}.
 
 -spec extract(file:filename()) -> any().
