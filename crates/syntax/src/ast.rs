@@ -22,6 +22,7 @@ mod traits;
 
 use std::marker::PhantomData;
 
+pub use self::erlang::erlang_funs;
 pub use self::erlang::in_erlang_module;
 pub use self::erlang::is_erlang_fun;
 pub use self::erlang::is_erlang_type;

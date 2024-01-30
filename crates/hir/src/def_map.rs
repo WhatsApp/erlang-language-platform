@@ -34,6 +34,7 @@ use crate::form_list::DeprecatedFa;
 use crate::known;
 use crate::module_data::SpecDef;
 use crate::module_data::SpecdFunctionDef;
+use crate::name::erlang_funs;
 use crate::name::AsName;
 use crate::CallbackDef;
 use crate::DefineDef;
@@ -454,7 +455,10 @@ impl DefMap {
     }
 
     pub fn get_functions_in_scope(&self) -> impl Iterator<Item = &NameArity> {
-        self.get_imports().keys().chain(self.functions_by_fa.keys())
+        self.get_imports()
+            .keys()
+            .chain(self.functions_by_fa.keys())
+            .chain(erlang_funs().iter())
     }
 
     // TODO: tweak API T127375780
@@ -1094,5 +1098,12 @@ foo(X,Y, Z) -> ok.
                 fun foo/3 exported: false
             "#]],
         )
+    }
+
+    #[test]
+    fn test_erlang_functions_in_scope() {
+        let def_map = DefMap::default();
+        let mut functions = def_map.get_functions_in_scope();
+        assert!(functions.any(|f| f.name() == "is_atom"))
     }
 }

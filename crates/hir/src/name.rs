@@ -12,8 +12,10 @@
 // @fb-only: pub mod meta_only;
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fmt;
 use std::ops::Deref;
+use std::sync::OnceLock;
 
 use elp_base_db::to_quoted_string;
 use elp_syntax::ast;
@@ -197,6 +199,17 @@ impl AsName for ast::MacroName {
             ast::MacroName::Var(var) => var.as_name(),
         }
     }
+}
+
+pub fn erlang_funs() -> &'static HashSet<NameArity> {
+    static ERLANG_FUNS: OnceLock<HashSet<NameArity>> = OnceLock::new();
+    ERLANG_FUNS.get_or_init(|| {
+        HashSet::from_iter(
+            ast::erlang_funs()
+                .iter()
+                .map(|&f| NameArity::new(Name::new_inline(f.0), f.1.try_into().unwrap())),
+        )
+    })
 }
 
 pub mod known {
