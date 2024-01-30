@@ -61,8 +61,8 @@ jobs:
       - name: Set up cross-compiler
         if: matrix.platform-arch == 'ubuntu-20.04-arm'
         run: |
-          apt update
-          apt install -y crossbuild-essential-arm64
+          sudo apt-get update
+          sudo apt-get install -y crossbuild-essential-arm64
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
