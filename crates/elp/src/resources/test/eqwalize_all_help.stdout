@@ -1,7 +1,7 @@
 Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated]
 
 Available options:
-        --project <PROJECT>  Path to directory with project (defaults to `.`)
+        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --as <PROFILE>       Rebar3 profile to pickup (default is test)
         --format <FORMAT>    Show diagnostics in JSON format
         --rebar              Run with rebar

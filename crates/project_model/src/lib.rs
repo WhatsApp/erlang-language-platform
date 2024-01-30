@@ -251,6 +251,12 @@ impl ProjectManifest {
     /// configuration.
     pub fn discover(path: &AbsPath) -> Result<(ElpConfig, ProjectManifest)> {
         let _timer = timeit!("discover all projects");
+        // First check for a json config file as the path.
+        if let Some("json") = path.extension().and_then(|e| e.to_str()) {
+            let json = json::JsonConfig::try_parse(&path)?;
+            return Ok((ElpConfig::default(), ProjectManifest::Json(json)));
+        }
+
         if let Some(elp_config) = Self::discover_toml(path)? {
             if elp_config.buck_enabled() {
                 let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
@@ -928,6 +934,132 @@ mod tests {
             )
         "#]]
         .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
+    }
+
+    #[test]
+    fn test_json_project() {
+        let spec = r#"
+        //- /build_info.json
+        {
+          "apps": [
+            {
+              "name": "app_a",
+              "dir": "app_a",
+              "ebin": "../_build/test/lib/app_a/ebin",
+              "extra_src_dirs": ["test"],
+              "include_dirs": ["include"],
+              "macros": ["TEST"],
+              "src_dirs": ["src"]
+            },
+            {
+              "name": "app_b",
+              "dir": "app_b",
+              "ebin": "../_build/test/lib/app_b/ebin",
+              "macros": ["TEST"],
+              "src_dirs": ["src"]
+            },
+            {
+              "name": "eqwalizer",
+              "dir": "eqwalizer",
+              "ebin": "../_build/test/lib/eqwalizer/ebin",
+              "macros": ["TEST"],
+              "src_dirs": ["src"]
+            }
+          ],
+          "deps": [
+
+          ],
+          "root": ""
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        //- /app_b/src/app.erl
+        -module(app).
+        //- /app_b/include/app.hrl
+        %% comment
+        //- /app_b/test/suite.erl
+        %% test
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        if let Ok((elp_config, ProjectManifest::Json(mut manifest))) =
+            ProjectManifest::discover(&dir_path.join("build_info.json"))
+        {
+            manifest.config_path = Some(AbsPathBuf::assert("/tmp/foo".into()));
+            expect![[r#"
+                (
+                    ElpConfig {
+                        config_path: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                        },
+                    },
+                    JsonConfig {
+                        apps: [
+                            JsonProjectAppData {
+                                name: "app_a",
+                                dir: "app_a",
+                                src_dirs: [
+                                    "src",
+                                ],
+                                ebin: Some(
+                                    "../_build/test/lib/app_a/ebin",
+                                ),
+                                extra_src_dirs: [
+                                    "test",
+                                ],
+                                include_dirs: [
+                                    "include",
+                                ],
+                                macros: [
+                                    "TEST",
+                                ],
+                            },
+                            JsonProjectAppData {
+                                name: "app_b",
+                                dir: "app_b",
+                                src_dirs: [
+                                    "src",
+                                ],
+                                ebin: Some(
+                                    "../_build/test/lib/app_b/ebin",
+                                ),
+                                extra_src_dirs: [],
+                                include_dirs: [],
+                                macros: [
+                                    "TEST",
+                                ],
+                            },
+                            JsonProjectAppData {
+                                name: "eqwalizer",
+                                dir: "eqwalizer",
+                                src_dirs: [
+                                    "src",
+                                ],
+                                ebin: Some(
+                                    "../_build/test/lib/eqwalizer/ebin",
+                                ),
+                                extra_src_dirs: [],
+                                include_dirs: [],
+                                macros: [
+                                    "TEST",
+                                ],
+                            },
+                        ],
+                        deps: [],
+                        config_path: Some(
+                            AbsPathBuf(
+                                "/tmp/foo",
+                            ),
+                        ),
+                    },
+                )
+            "#]]
+            .assert_debug_eq(&(elp_config, manifest));
+        } else {
+            panic!("bad manifest");
+        }
     }
 
     #[test]

@@ -238,7 +238,7 @@ mod tests {
             if !buck {
                 args.push("--rebar".into());
             }
-            let (args, path) = add_project(args, project, None);
+            let (args, path) = add_project(args, project, None, None);
             let fast_str = if fast { "_fast" } else { "" };
             let exp_path = expect_file!(format!(
                 "../resources/test/{}/eqwalize_{}{}.pretty",
@@ -405,6 +405,20 @@ mod tests {
             expect_file!("../resources/test/diagnostics/parse_all_diagnostics1.stdout"),
             buck,
             None,
+        );
+    }
+
+    #[test]
+    // Can only be buck test, --rebar ignores other config
+    fn eqwalize_all_reads_json_config() {
+        simple_snapshot_with_json_config(
+            args_vec!["parse-elp", "--module", "diagnostics",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_diagnostics1.stdout"),
+            true,
+            None,
+            Some("test_build_info.json"),
+            101,
         );
     }
 
@@ -1123,6 +1137,7 @@ mod tests {
         assert_eq!(code, 0);
     }
 
+    #[track_caller]
     fn simple_snapshot(
         args: Vec<OsString>,
         project: &str,
@@ -1130,24 +1145,39 @@ mod tests {
         buck: bool,
         file: Option<&str>,
     ) {
+        simple_snapshot_with_json_config(args, project, expected, buck, file, None, 0)
+    }
+
+    #[track_caller]
+    fn simple_snapshot_with_json_config(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        buck: bool,
+        file: Option<&str>,
+        json: Option<&str>,
+        expected_code: i32,
+    ) {
         if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file);
+            let (mut args, path) = add_project(args, project, file, json);
             if !buck {
                 args.push("--rebar".into());
             }
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
-                code, 0,
-                "failed with exit code: {}\nstdout:\n{}\nstderr:\n{}",
-                code, stdout, stderr
+                code, expected_code,
+                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
+                code, expected_code, stdout, stderr
             );
             assert_normalised_file(expected, &stdout, path);
-            assert_eq!(
-                stderr.is_empty(),
-                true,
-                "expected stderr to be empty, got:\n{}",
-                stderr
-            )
+            if expected_code == 0 {
+                assert_eq!(
+                    stderr.is_empty(),
+                    true,
+                    "expected stderr to be empty, got:\n{}",
+                    stderr
+                )
+            }
         }
     }
 
@@ -1159,7 +1189,7 @@ mod tests {
         file: Option<&str>,
     ) {
         if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file);
+            let (mut args, path) = add_project(args, project, file, None);
             if !buck {
                 args.push("--rebar".into());
             }
@@ -1181,7 +1211,7 @@ mod tests {
         file: Option<&str>,
     ) {
         if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file);
+            let (mut args, path) = add_project(args, project, file, None);
             if !buck {
                 args.push("--rebar".into());
             }
@@ -1236,7 +1266,7 @@ mod tests {
         expected_stderr: Option<Expect>,
     ) -> Result<()> {
         if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file);
+            let (mut args, path) = add_project(args, project, file, None);
             if !buck {
                 args.push("--rebar".into());
             }
@@ -1281,11 +1311,17 @@ mod tests {
         mut args: Vec<OsString>,
         project: &str,
         file: Option<&str>,
+        json: Option<&str>,
     ) -> (Vec<OsString>, PathBuf) {
         let path_str = project_path(project);
         let project_path: PathBuf = path_str.clone().into();
         args.push("--project".into());
-        args.push(path_str.into());
+        if let Some(json_file) = json {
+            let full_file = format!("{}/{}", path_str, json_file);
+            args.push(full_file.into());
+        } else {
+            args.push(path_str.into());
+        }
         if let Some(file) = file {
             args.push("--file".into());
             let file_path = project_path.join(file).into();

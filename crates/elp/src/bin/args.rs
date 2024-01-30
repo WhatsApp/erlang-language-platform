@@ -23,7 +23,7 @@ use crate::args::Command::Help;
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct ParseAllElp {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Parse a single module from the project, not the entire project
@@ -64,7 +64,7 @@ pub struct ParseAllElp {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct ParseAll {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Path to a directory where to dump .etf files
@@ -81,7 +81,7 @@ pub struct ParseAll {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct Eqwalize {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Rebar3 profile to pickup (default is test)
@@ -96,7 +96,7 @@ pub struct Eqwalize {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct EqwalizeAll {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Rebar3 profile to pickup (default is test)
@@ -118,7 +118,7 @@ pub struct EqwalizeAll {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct EqwalizeTarget {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Also eqwalize opted-in generated modules from application
@@ -130,7 +130,7 @@ pub struct EqwalizeTarget {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct EqwalizeApp {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Rebar3 profile to pickup (default is test)
@@ -147,7 +147,7 @@ pub struct EqwalizeApp {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct EqwalizeStats {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Rebar3 profile to pickup (default is test)
@@ -161,7 +161,7 @@ pub struct EqwalizeStats {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct BuildInfo {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Path to a directory where to dump wa.build_info
@@ -184,7 +184,7 @@ pub struct Version {}
 
 #[derive(Debug, Clone, Bpaf)]
 pub struct Lint {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Parse a single module from the project, not the entire project.
@@ -256,14 +256,14 @@ pub struct Explain {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct Shell {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
 }
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct ProjectInfo {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     /// Path to a directory where to dump wa.build_info
@@ -273,7 +273,7 @@ pub struct ProjectInfo {
 
 #[derive(Clone, Debug, Bpaf)]
 pub struct Glean {
-    /// Path to directory with project (defaults to `.`)
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
     #[bpaf(argument("MODULE"))]

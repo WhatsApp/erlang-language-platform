@@ -1,6 +1,6 @@
 Usage: [--project PROJECT] [--to TO]
 
 Available options:
-        --project <PROJECT>  Path to directory with project (defaults to `.`)
+        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --to <TO>            Path to a directory where to dump wa.build_info
     -h, --help               Prints help information

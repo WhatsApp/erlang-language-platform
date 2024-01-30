@@ -1,0 +1,22 @@
+{
+  "apps": [
+    {
+      "dir": "app_a",
+      "extra_src_dirs": [
+        "test"
+      ],
+      "include_dirs": [
+        "include"
+      ],
+      "macros": [
+        "TEST",
+        "COMMON_TEST"
+      ],
+      "name": "app_a",
+      "src_dirs": [
+        "src"
+      ]
+    }
+  ],
+  "deps": []
+}

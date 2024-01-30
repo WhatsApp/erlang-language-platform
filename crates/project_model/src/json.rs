@@ -12,6 +12,7 @@ extern crate serde;
 use std::fs;
 use std::path::Path;
 
+use anyhow::Context;
 use anyhow::Result;
 use eetf::Atom;
 use eetf::Term;
@@ -34,7 +35,7 @@ pub struct JsonConfig {
     #[serde(default)]
     pub deps: Vec<JsonProjectAppData>,
     #[serde(skip_deserializing)]
-    config_path: Option<AbsPathBuf>,
+    pub config_path: Option<AbsPathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -52,11 +53,19 @@ pub struct JsonProjectAppData {
     pub macros: Vec<String>,
 }
 
+fn default_src_dirs() -> Vec<String> {
+    vec!["src".to_string()]
+}
+
 impl JsonProjectAppData {
     pub fn to_project_app_data(&self, root_path: &AbsPath, is_dep: bool) -> Result<ProjectAppData> {
-        let dir = canonicalize(root_path.join(&self.dir))?;
+        let dir = canonicalize(root_path.join(&self.dir))
+            .with_context(|| format!("Checking dir: {}", &self.dir))?;
         let ebin = match &self.ebin {
-            Some(ebin) => Some(canonicalize(dir.join(ebin))?),
+            Some(ebin) => Some(
+                canonicalize(dir.join(ebin))
+                    .with_context(|| format!("Checking ebin dir: {ebin}"))?,
+            ),
             None => None,
         };
         let include_dirs = self.include_dirs.iter().map(|inc| dir.join(inc)).collect();
@@ -164,10 +173,6 @@ pub(crate) fn gen_app_data(
     deps.push(eqwalizer_support_app);
 
     (apps, deps, terms, vec![eqwalizer_support_term])
-}
-
-fn default_src_dirs() -> Vec<String> {
-    vec!["src".to_string()]
 }
 
 fn canonicalize(path: impl AsRef<Path>) -> Result<AbsPathBuf> {

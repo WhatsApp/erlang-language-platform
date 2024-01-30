@@ -1,7 +1,7 @@
 Usage: [--project PROJECT] [--module MODULE] [--to TO]
 
 Available options:
-        --project <PROJECT>  Path to directory with project (defaults to `.`)
+        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --module <MODULE>
         --to <TO>            Path to a directory where to dump result
     -h, --help               Prints help information
