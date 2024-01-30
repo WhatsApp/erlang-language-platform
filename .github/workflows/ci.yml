@@ -91,7 +91,7 @@ jobs:
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
       - name: Test elp
         # Do not run the tests in case of cross-compilation
-        if: matrix.platform-arch != 'macos-latest-arm'
+        if: (matrix.platform-arch != 'macos-latest-arm') && (matrix.platform-arch != 'ubuntu-20.04-arm')
         run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
       - name: Build elp
         run: 'cargo build --release  --target ${{ matrix.target }}'
