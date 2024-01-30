@@ -429,11 +429,11 @@ impl Project {
     pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         match &self.project_build_data {
             ProjectBuildData::Otp => Either::Left(self.otp_apps()),
-            _ => Either::Right(self.apps()),
+            _ => Either::Right(self.non_otp_apps()),
         }
     }
 
-    pub fn apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
+    pub fn non_otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
             .filter(|app| app.app_type != AppType::Otp)

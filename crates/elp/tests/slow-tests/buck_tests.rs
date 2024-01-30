@@ -82,13 +82,8 @@ mod tests {
 
         let project = Project::load(&buck_config, elp_config.eqwalizer).unwrap();
 
-        // let project = match project.project_build_data {
-        //     ProjectBuildData::Buck(project) => project,
-        //     _ => panic!("not reachable"),
-        // };
-
         let project_data: Vec<ProjectAppData> = project
-            .apps()
+            .non_otp_apps()
             .cloned()
             .filter(|app| app.app_type == AppType::App)
             .filter(|app| {
