@@ -45,17 +45,16 @@
 
 -spec extract(file:filename()) -> any().
 extract(File) ->
-    {HeaderSz, NextLineNo, Fd, _Sections} = parse_header(File),
-    Forms = do_parse_file(File, Fd, NextLineNo, HeaderSz),
+    {HeaderSz, Fd, _Sections} = parse_header(File),
+    Forms = do_parse_file(File, Fd, HeaderSz),
     ok = file:close(Fd),
     Forms.
 
--spec do_parse_file(any(), any(), pos_integer(), any()) ->
+-spec do_parse_file(any(), any(), any()) ->
     [any()].
-do_parse_file(File, Fd, NextLineNo, HeaderSz) ->
+do_parse_file(File, Fd, HeaderSz) ->
     S = initial_state(File),
-    #state{forms_or_bin = FormsOrBin} =
-        parse_source(S, File, Fd, NextLineNo, HeaderSz),
+    #state{forms_or_bin = FormsOrBin} = parse_source(S, File, Fd, HeaderSz),
     FormsOrBin.
 
 -spec initial_state(_) -> state().
@@ -66,7 +65,7 @@ initial_state(File) ->
     }.
 
 %% Skip header and make a heuristic guess about the script type
--spec parse_header(file:filename()) -> {any(), any(), any(), sections()}.
+-spec parse_header(file:filename()) -> {any(), any(), sections()}.
 parse_header(File) ->
     {ok, Fd} = file:open(File, [read]),
 
@@ -79,7 +78,7 @@ parse_header(File) ->
             find_first_body_line(Fd, #sections{})
     end.
 
--spec find_first_body_line(_, sections()) -> {any(), any(), any(), sections()}.
+-spec find_first_body_line(_, sections()) -> {any(), any(), sections()}.
 find_first_body_line(Fd, Sections) ->
     {ok, HeaderSz1} = file:position(Fd, cur),
     %% Look for special comment on second line
@@ -88,7 +87,7 @@ find_first_body_line(Fd, Sections) ->
     case classify_line(Line2) of
         emu_args ->
             %% Skip special comment on second line
-            {HeaderSz2, 3, Fd, Sections};
+            {HeaderSz2, Fd, Sections};
         comment ->
             %% Look for special comment on third line
             Line3 = get_line(Fd),
@@ -97,14 +96,14 @@ find_first_body_line(Fd, Sections) ->
             case Line3Type of
                 emu_args ->
                     %% Skip special comment on third line
-                    {HeaderSz3, 4, Fd, Sections};
+                    {HeaderSz3, Fd, Sections};
                 _ ->
                     %% Skip shebang on first line and comment on second
-                    {HeaderSz2, 3, Fd, Sections}
+                    {HeaderSz2, Fd, Sections}
             end;
         _ ->
             %% Just skip shebang on first line
-            {HeaderSz1, 2, Fd, Sections#sections{}}
+            {HeaderSz1, Fd, Sections#sections{}}
     end.
 
 -spec classify_line(_) -> atom().
@@ -127,8 +126,8 @@ get_line(P) ->
             Line
     end.
 
--spec parse_source(state(), _, _, pos_integer(), _) -> state().
-parse_source(S, File, Fd, StartLine, HeaderSz) ->
+-spec parse_source(state(), _, _, _) -> state().
+parse_source(S, File, Fd, HeaderSz) ->
     {PreDefMacros, DefModule} = pre_def_macros(File),
     IncludePath = [],
     %% Read the encoding on the second line, if there is any:
@@ -136,7 +135,7 @@ parse_source(S, File, Fd, StartLine, HeaderSz) ->
     _ = io:get_line(Fd, ''),
     Encoding = elp_epp:set_encoding(Fd),
     {ok, _} = file:position(Fd, HeaderSz),
-    {ok, Epp} = epp_open(File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros),
+    {ok, Epp} = epp_open(File, Fd, HeaderSz, IncludePath, PreDefMacros),
     _ = [io:setopts(Fd, [{encoding, Encoding}]) || Encoding =/= none],
     {ok, FileForm} = elp_epp:parse_erl_form(Epp),
     OptModRes = elp_epp:parse_erl_form(Epp),
@@ -166,12 +165,11 @@ parse_source(S, File, Fd, StartLine, HeaderSz) ->
     ok = file:close(Fd),
     check_source(S2).
 
--spec epp_open(_, _, pos_integer(), pos_integer(), _, _) -> {ok, term()}.
-epp_open(File, Fd, StartLine, HeaderSz, IncludePath, PreDefMacros) ->
+-spec epp_open(_, _, pos_integer(), _, _) -> {ok, term()}.
+epp_open(File, Fd, HeaderSz, IncludePath, PreDefMacros) ->
     elp_epp:open([
         {fd, Fd},
         {name, File},
-        {location, StartLine},
         {offset, HeaderSz},
         {includes, IncludePath},
         {macros, PreDefMacros}

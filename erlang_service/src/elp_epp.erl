@@ -138,7 +138,6 @@ when
         | {'source_name', SourceName :: file:name()}
         | {'macros', PredefMacros :: macros()}
         | {'name', FileName :: file:name()}
-        | {'location', StartLocation :: erl_anno:location()}
         | {'fd', FileDescriptor :: file:io_device()}
         | 'extra'
     ],
@@ -202,7 +201,7 @@ scan_erl_form(Epp) ->
 when
     Epp :: epp_handle(),
     AbsForm :: elp_parse:abstract_form(),
-    Location :: erl_anno:location(),
+    Location :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     WarningInfo :: warning_info().
 
@@ -287,7 +286,7 @@ when
         | {'default_encoding', DefEncoding :: source_encoding()}
     ],
     Form :: elp_scan:tokens() | {'error', ErrorInfo} | {'eof', Loc},
-    Loc :: erl_anno:location(),
+    Loc :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info(),
     Extra :: [{'encoding', source_encoding() | 'none'}],
     OpenError :: file:posix() | badarg | system_limit.
@@ -319,7 +318,7 @@ when
     IncludePath :: [DirectoryName :: file:name()],
     Form :: elp_parse:abstract_form() | {'error', ErrorInfo} | {'eof', Location},
     PredefMacros :: macros(),
-    Location :: erl_anno:location(),
+    Location :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     OpenError :: file:posix() | badarg | system_limit.
 
@@ -335,14 +334,13 @@ when
         | {'source_name', SourceName :: file:name()}
         | {'macros', PredefMacros :: macros()}
         | {'default_encoding', DefEncoding :: source_encoding()}
-        | {'location', StartLocation :: erl_anno:location()}
         | 'extra'
     ],
     Form ::
         elp_parse:abstract_form()
         | {'error', ErrorInfo}
         | {'eof', Location},
-    Location :: erl_anno:location(),
+    Location :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     Extra :: [{'encoding', source_encoding() | 'none'}],
     OpenError :: file:posix() | badarg | system_limit.
