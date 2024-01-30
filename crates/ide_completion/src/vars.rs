@@ -168,4 +168,21 @@ mod test {
                 {label:Contents, kind:Variable, contents:SameAsLabel, position:None}"#]],
         );
     }
+
+    #[test]
+    fn test_local_variables_in_macro_arg() {
+        check(
+            r#"
+        -module(main).
+        -define(MY_MACRO(A, B), A + B).
+        main(This, That) ->
+            ?MY_MACRO(Th~)
+                "#,
+            None,
+            expect![[r#"
+                {label:MY_MACRO/2, kind:Macro, contents:Snippet("MY_MACRO(${1:Arg1}, ${2:Arg2})"), position:None}
+                {label:That, kind:Variable, contents:SameAsLabel, position:None}
+                {label:This, kind:Variable, contents:SameAsLabel, position:None}"#]],
+        );
+    }
 }

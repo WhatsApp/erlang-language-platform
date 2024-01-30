@@ -57,7 +57,8 @@ pub(crate) fn add_completions(
                 .map(built_in_macro_name_to_completion);
             acc.extend(predefined);
 
-            true
+            // If we have a trigger character, it means we are completing a macro name. No need to compute other completions.
+            trigger.is_some()
         }
     }
 }
