@@ -180,7 +180,6 @@ mod test {
                 "#,
             None,
             expect![[r#"
-                {label:MY_MACRO/2, kind:Macro, contents:Snippet("MY_MACRO(${1:Arg1}, ${2:Arg2})"), position:None}
                 {label:That, kind:Variable, contents:SameAsLabel, position:None}
                 {label:This, kind:Variable, contents:SameAsLabel, position:None}"#]],
         );

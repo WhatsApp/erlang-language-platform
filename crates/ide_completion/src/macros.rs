@@ -40,12 +40,17 @@ pub(crate) fn add_completions(
     match algo::find_node_at_offset::<ast::MacroCallExpr>(node, file_position.offset) {
         None => false,
         Some(call) => {
-            let prefix = &call.name().map(|n| n.to_string()).unwrap_or_default();
+            let prefix =
+                match algo::find_node_at_offset::<ast::MacroName>(node, file_position.offset) {
+                    Some(prefix) => prefix.text(),
+                    None => call.name().map(|n| n.to_string()),
+                }
+                .unwrap_or_default();
             let def_map = sema.def_map(file_position.file_id);
             let user_defined = def_map
                 .get_macros()
                 .keys()
-                .filter(|macro_name| macro_name.name().starts_with(prefix))
+                .filter(|macro_name| macro_name.name().starts_with(&prefix))
                 .map(macro_name_to_completion);
 
             acc.extend(user_defined);
@@ -53,7 +58,7 @@ pub(crate) fn add_completions(
             let built_in = BUILT_IN;
             let predefined = built_in
                 .iter()
-                .filter(|name| name.starts_with(prefix))
+                .filter(|name| name.starts_with(&prefix))
                 .map(built_in_macro_name_to_completion);
             acc.extend(predefined);
 
