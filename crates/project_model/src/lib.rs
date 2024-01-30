@@ -262,8 +262,22 @@ impl ProjectManifest {
                 let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
                 return Ok((elp_config.clone(), ProjectManifest::TomlBuck(buck)));
             } else {
-                let manifest = ProjectManifest::discover_in_place(elp_config.config_path())?;
-                return Ok((elp_config.clone(), manifest));
+                // Not a buck project, check if explicit build info given
+                if let Some(absolute_path) = elp_config.build_info_path() {
+                    match json::JsonConfig::try_parse(&absolute_path) {
+                        Ok(json) => return Ok((elp_config.clone(), ProjectManifest::Json(json))),
+                        Err(err) => {
+                            bail!(
+                                "Reading build_info file {}, found in {}: {err}",
+                                absolute_path.as_path().as_os_str().to_string_lossy(),
+                                elp_config.config_path().as_os_str().to_string_lossy()
+                            );
+                        }
+                    }
+                } else {
+                    let manifest = ProjectManifest::discover_in_place(elp_config.config_path())?;
+                    return Ok((elp_config.clone(), manifest));
+                }
             }
         }
         if let Some(r) = Self::discover_rebar(path, None, IncludeParentDirs::Yes)? {
@@ -332,6 +346,8 @@ pub struct ElpConfig {
     #[serde(skip_deserializing)]
     config_path: Option<AbsPathBuf>,
     pub buck: Option<BuckConfig>,
+    /// Path to the `BUILD_INFO_FILE`.
+    pub build_info: Option<PathBuf>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
 }
@@ -340,11 +356,13 @@ impl ElpConfig {
     pub fn new(
         config_path: AbsPathBuf,
         buck: Option<BuckConfig>,
+        build_info: Option<PathBuf>,
         eqwalizer: EqwalizerConfig,
     ) -> Self {
         Self {
             config_path: Some(config_path),
             buck,
+            build_info,
             eqwalizer,
         }
     }
@@ -380,6 +398,20 @@ impl ElpConfig {
 
     pub fn config_path(&self) -> &AbsPath {
         self.config_path.as_ref().unwrap()
+    }
+
+    pub fn build_info_path(&self) -> Option<AbsPathBuf> {
+        let build_info_file = self.build_info.clone()?;
+        let absolute_path = if build_info_file.is_absolute() {
+            AbsPathBuf::assert(build_info_file)
+        } else {
+            self.config_path()
+                .parent()
+                .unwrap()
+                .to_path_buf()
+                .join(build_info_file)
+        };
+        Some(absolute_path)
     }
 }
 
@@ -830,6 +862,7 @@ mod tests {
                     ElpConfig {
                         config_path: None,
                         buck: None,
+                        build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
@@ -888,6 +921,7 @@ mod tests {
                     ElpConfig {
                         config_path: None,
                         buck: None,
+                        build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
@@ -991,6 +1025,7 @@ mod tests {
                     ElpConfig {
                         config_path: None,
                         buck: None,
+                        build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
@@ -1163,6 +1198,7 @@ mod tests {
                     ElpConfig {
                         config_path: None,
                         buck: None,
+                        build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
@@ -1225,6 +1261,7 @@ mod tests {
                                 ),
                             ),
                             buck: None,
+                            build_info: None,
                             eqwalizer: EqwalizerConfig {
                                 enable_all: true,
                             },
@@ -1276,6 +1313,113 @@ mod tests {
             // .assert_debug_eq(&res);
 
         .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
+    }
+
+    #[test]
+    fn test_toml_incorrect_build_info_path() {
+        let spec = r#"
+        //- /.elp.toml
+        build_info = "nonexistent_file"
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        if let Err(err) = manifest {
+            let res = normalise_temp_dir_in_err(dir, err);
+            expect![[r#"
+                "Reading build_info file TMPDIR//nonexistent_file, found in TMPDIR//.elp.toml: No such file or directory (os error 2)"
+            "#]]
+            .assert_debug_eq(&res);
+        } else {
+            panic!("Expected syntax error, got {:?}", manifest)
+        }
+    }
+
+    fn normalise_temp_dir_in_err(dir: tempfile::TempDir, err: anyhow::Error) -> String {
+        let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
+        let err_str = format!("{err}");
+        let res = err_str.replace(&dir_str.as_str(), "TMPDIR/");
+        res
+    }
+
+    #[test]
+    fn test_toml_build_info_parse_error() {
+        let spec = r#"
+        //- /.elp.toml
+        build_info = "info.json"
+        //- /info.json
+        {
+        syntax error!
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let manifest =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        if let Err(err) = manifest {
+            let res = normalise_temp_dir_in_err(dir, err);
+            expect![[r#"
+                "Reading build_info file TMPDIR//info.json, found in TMPDIR//.elp.toml: key must be a string at line 2 column 1"
+            "#]]
+            .assert_debug_eq(&res);
+        } else {
+            panic!("Expected syntax error, got {:?}", manifest)
+        }
+    }
+
+    #[test]
+    fn test_toml_build_info_manifest() {
+        let spec = r#"
+        //- /.elp.toml
+        build_info = "info.json"
+        //- /info.json
+        {
+            "apps": [
+                {
+                    "name": "app_a",
+                    "dir": "app_a",
+                    "src_dirs": ["src"]
+                }
+            ]
+        }
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        if let Ok((_elp_config, ProjectManifest::Json(mut json_config))) =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")))
+        {
+            json_config.config_path = Some(AbsPathBuf::assert("/tmp/dummy".into()));
+            expect![[r#"
+                JsonConfig {
+                    apps: [
+                        JsonProjectAppData {
+                            name: "app_a",
+                            dir: "app_a",
+                            src_dirs: [
+                                "src",
+                            ],
+                            ebin: None,
+                            extra_src_dirs: [],
+                            include_dirs: [],
+                            macros: [],
+                        },
+                    ],
+                    deps: [],
+                    config_path: Some(
+                        AbsPathBuf(
+                            "/tmp/dummy",
+                        ),
+                    ),
+                }
+            "#]]
+            .assert_debug_eq(&json_config);
+        } else {
+            panic!()
+        }
     }
 
     #[test]
