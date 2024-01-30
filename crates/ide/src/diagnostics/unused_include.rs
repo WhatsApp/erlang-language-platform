@@ -649,4 +649,21 @@ foo() -> ok.
 "#,
         )
     }
+
+    #[test]
+    fn record_in_macro() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+-define(RECORD_NAME, record_name).
+foo(?RECORD_NAME) -> ok.
+
+//- /src/header.hrl
+-record(record_name, {field :: string()}).
+"#,
+        )
+    }
 }

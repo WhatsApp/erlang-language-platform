@@ -22,6 +22,7 @@ use elp_syntax::SyntaxToken;
 use hir::db::MinDefDatabase;
 use hir::known;
 use hir::AnyExprRef;
+use hir::AsName;
 use hir::CallDef;
 use hir::CallTarget;
 use hir::CallbackDef;
@@ -221,9 +222,18 @@ impl SymbolClass {
                     .or_else(|| from_is_record(sema, &token, args.syntax()))
                         .or_else(|| from_wrapper(sema, &token, wrapper))
                 },
-                _ => {
-                    from_wrapper(sema, &token, wrapper)
-                }
+                ast::PpDefine(_) => {
+                    if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
+                        // We have an atom in a `-define` directive.
+                        // Check if it might be a record name
+                        let def_map = sema.def_map(token.file_id);
+                        reference_other(def_map.get_record(&atom.as_name()).cloned())
+                         .or_else(|| from_wrapper(sema, &token, wrapper))
+                    } else {
+                        from_wrapper(sema, &token, wrapper)
+                    }
+                },
+                _ => from_wrapper(sema, &token, wrapper),
             }
         }
     }
