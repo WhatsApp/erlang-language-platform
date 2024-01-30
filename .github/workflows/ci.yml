@@ -58,6 +58,11 @@ jobs:
           java-version: '17'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up cross-compiler
+        if: matrix.platform-arch == 'ubuntu-20.04-arm'
+        uses: cyberjunk/gha-ubuntu-cross@v2
+        with:
+          arch: arm64
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
