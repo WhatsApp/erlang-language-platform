@@ -252,12 +252,7 @@ impl ProjectManifest {
     pub fn discover(path: &AbsPath) -> Result<(ElpConfig, ProjectManifest)> {
         let _timer = timeit!("discover all projects");
         if let Some(elp_config) = Self::discover_toml(path)? {
-            if elp_config
-                .clone()
-                .buck
-                .map(|c| c.enabled.clone())
-                .unwrap_or(false)
-            {
+            if elp_config.buck_enabled() {
                 let buck = elp_config.clone().buck.unwrap(); // Safe from prior line
                 return Ok((elp_config.clone(), ProjectManifest::TomlBuck(buck)));
             } else {
@@ -366,6 +361,14 @@ impl ElpConfig {
                 "unable to read {}: {err}",
                 path.as_path().as_os_str().to_string_lossy()
             ),
+        }
+    }
+
+    pub fn buck_enabled(&self) -> bool {
+        if let Some(buck) = &self.buck {
+            buck.enabled
+        } else {
+            false
         }
     }
 
