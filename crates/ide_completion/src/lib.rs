@@ -100,6 +100,7 @@ pub enum Kind {
 }
 
 struct Args<'a> {
+    ctx: Ctx,
     sema: &'a Semantic<'a>,
     parsed: InFile<SourceFile>,
     trigger: Option<char>,
@@ -121,6 +122,7 @@ pub fn completions(
     let previous_tokens = get_previous_tokens(node, file_position);
     let next_token = right_biased_token(node, file_position);
     let args = &Args {
+        ctx: ctx.clone(),
         sema,
         parsed,
         file_position,
@@ -151,6 +153,9 @@ pub fn completions(
         }
         Ctx::Spec => {
             spec::add_completions(&mut acc, args);
+        }
+        Ctx::Dialyzer => {
+            functions::add_completions(&mut acc, args);
         }
         Ctx::Other => {
             let _ = attributes::add_completions(&mut acc, args)

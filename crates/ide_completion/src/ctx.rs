@@ -26,6 +26,7 @@ pub enum Ctx {
     Export,
     ExportType,
     Spec,
+    Dialyzer,
     Other,
 }
 
@@ -45,6 +46,8 @@ impl Ctx {
             Self::Type
         } else if Self::is_spec(node, offset) {
             Self::Spec
+        } else if Self::is_dialyzer(node, offset) {
+            Self::Dialyzer
         } else if Self::is_expr(node, offset) {
             Self::Expr
         } else if Self::is_pp_define(node, offset) {
@@ -75,6 +78,14 @@ impl Ctx {
     }
     fn is_spec(node: &SyntaxNode, offset: TextSize) -> bool {
         algo::find_node_at_offset::<ast::Spec>(node, offset).is_some()
+    }
+    fn is_dialyzer(node: &SyntaxNode, offset: TextSize) -> bool {
+        if let Some(wild_attr) = algo::find_node_at_offset::<ast::WildAttribute>(node, offset) {
+            if let Some(name) = wild_attr.name() {
+                return name.syntax().text() == "-dialyzer";
+            }
+        }
+        false
     }
     fn is_pp_define(node: &SyntaxNode, offset: TextSize) -> bool {
         algo::find_node_at_offset::<ast::PpDefine>(node, offset).is_some()

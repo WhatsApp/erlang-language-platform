@@ -25,6 +25,7 @@ pub(crate) fn add_completions(
         trigger,
         previous_tokens,
         next_token,
+        ..
     }: &Args,
 ) {
     use elp_syntax::SyntaxKind as K;
