@@ -13,26 +13,26 @@ use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Name;
 
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
-pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Args) -> DoneFlag {
+pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Ctx) -> DoneFlag {
     add_in_create_or_update(acc, args) || add_token_based_completions(acc, args)
 }
 
 /// #rec{field1~} or X#rec{field1~}
 pub(crate) fn add_in_create_or_update(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     let node = parsed.value.syntax();
     match trigger {
@@ -68,13 +68,13 @@ pub(crate) fn add_in_create_or_update(
 
 fn add_token_based_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         previous_tokens,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     let add_record_name_completions = |name_prefix: &str, acc: &mut Vec<Completion>| {
         let def_map = sema.def_map(file_position.file_id);

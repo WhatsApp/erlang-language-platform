@@ -15,21 +15,21 @@ use hir::MacroName;
 use hir::Name;
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     match trigger {
         Some('?') | None => (),

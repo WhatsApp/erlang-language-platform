@@ -15,22 +15,22 @@ use hir::InFile;
 use hir::NameArity;
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
-pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Args) -> DoneFlag {
+pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Ctx) -> DoneFlag {
     add_remote(acc, args) || add_local(acc, args)
 }
 
 pub(crate) fn add_remote(
     acc: &mut Vec<Completion>,
-    args @ Args {
+    args @ Ctx {
         file_position,
         parsed,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     let node = parsed.value.syntax();
     match algo::find_node_at_offset::<ast::Remote>(node, file_position.offset) {
@@ -48,12 +48,12 @@ pub(crate) fn add_remote(
 
 fn complete_remote_name(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
     module_atom: &Atom,
     fun_prefix: &str,
 ) -> Option<()> {
@@ -75,13 +75,13 @@ fn complete_remote_name(
 
 pub(crate) fn add_local(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     if trigger.is_some() {
         return false;

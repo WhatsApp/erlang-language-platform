@@ -7,21 +7,21 @@
  * of this source tree.
  */
 
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         sema,
         previous_tokens,
         file_position,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     use elp_syntax::SyntaxKind as K;
     let default = vec![];

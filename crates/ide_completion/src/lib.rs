@@ -9,7 +9,7 @@
 
 use std::fmt;
 
-use ctx::Ctx;
+use ctx::CtxKind;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
 use elp_syntax::AstNode;
@@ -99,8 +99,8 @@ pub enum Kind {
     AiAssist,
 }
 
-struct Args<'a> {
-    ctx: Ctx,
+struct Ctx<'a> {
+    ctx_kind: CtxKind,
     sema: &'a Semantic<'a>,
     parsed: InFile<SourceFile>,
     trigger: Option<char>,
@@ -117,12 +117,12 @@ pub fn completions(
     let sema = &Semantic::new(db);
     let parsed = sema.parse(file_position.file_id);
     let node = parsed.value.syntax();
-    let ctx = Ctx::new(node, file_position.offset);
+    let ctx_kind = CtxKind::new(node, file_position.offset);
     let mut acc = Vec::new();
     let previous_tokens = get_previous_tokens(node, file_position);
     let next_token = right_biased_token(node, file_position);
-    let args = &Args {
-        ctx: ctx.clone(),
+    let ctx = &Ctx {
+        ctx_kind: ctx_kind.clone(),
         sema,
         parsed,
         file_position,
@@ -131,36 +131,36 @@ pub fn completions(
         trigger,
     };
 
-    match ctx {
-        Ctx::Expr => {
-            let _ = macros::add_completions(&mut acc, args)
-                || records::add_completions(&mut acc, args)
-                || functions::add_completions(&mut acc, args)
-                || vars::add_completions(&mut acc, args)
-                || modules::add_completions(&mut acc, args)
-                || keywords::add_completions(&mut acc, args);
+    match ctx_kind {
+        CtxKind::Expr => {
+            let _ = macros::add_completions(&mut acc, ctx)
+                || records::add_completions(&mut acc, ctx)
+                || functions::add_completions(&mut acc, ctx)
+                || vars::add_completions(&mut acc, ctx)
+                || modules::add_completions(&mut acc, ctx)
+                || keywords::add_completions(&mut acc, ctx);
         }
-        Ctx::Type => {
-            let _ = macros::add_completions(&mut acc, args)
-                || types::add_completions(&mut acc, args)
-                || modules::add_completions(&mut acc, args);
+        CtxKind::Type => {
+            let _ = macros::add_completions(&mut acc, ctx)
+                || types::add_completions(&mut acc, ctx)
+                || modules::add_completions(&mut acc, ctx);
         }
-        Ctx::Export => {
-            export_functions::add_completions(&mut acc, args);
+        CtxKind::Export => {
+            export_functions::add_completions(&mut acc, ctx);
         }
-        Ctx::ExportType => {
-            export_types::add_completions(&mut acc, args);
+        CtxKind::ExportType => {
+            export_types::add_completions(&mut acc, ctx);
         }
-        Ctx::Spec => {
-            spec::add_completions(&mut acc, args);
+        CtxKind::Spec => {
+            spec::add_completions(&mut acc, ctx);
         }
-        Ctx::Dialyzer => {
-            functions::add_completions(&mut acc, args);
+        CtxKind::Dialyzer => {
+            functions::add_completions(&mut acc, ctx);
         }
-        Ctx::Other => {
-            let _ = attributes::add_completions(&mut acc, args)
-                // @fb-only: || meta_only::add_completions(&mut acc, args)
-                || vars::add_completions(&mut acc, args);
+        CtxKind::Other => {
+            let _ = attributes::add_completions(&mut acc, ctx)
+                // @fb-only: || meta_only::add_completions(&mut acc, ctx)
+                || vars::add_completions(&mut acc, ctx);
         }
     }
     // Sort for maintainable snapshot tests:

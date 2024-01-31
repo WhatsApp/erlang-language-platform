@@ -9,9 +9,9 @@
 
 use lazy_static::lazy_static;
 
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 
 lazy_static! {
@@ -48,7 +48,7 @@ lazy_static! {
     ].iter().map(|label| Completion{ label: label.to_string(), kind: crate::Kind::Keyword, contents: Contents::SameAsLabel, position: None, sort_text: None, deprecated: false}).collect();
 }
 
-pub(crate) fn add_completions(acc: &mut Vec<Completion>, Args { trigger, .. }: &Args) -> DoneFlag {
+pub(crate) fn add_completions(acc: &mut Vec<Completion>, Ctx { trigger, .. }: &Ctx) -> DoneFlag {
     if trigger.is_some() {
         return false;
     }

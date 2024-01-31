@@ -14,22 +14,22 @@ use elp_syntax::SyntaxToken;
 use hir::Semantic;
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         sema,
         trigger,
         file_position,
         previous_tokens,
         next_token,
-        ctx,
+        ctx_kind: ctx,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     use elp_syntax::SyntaxKind as K;
     let default = vec![];
@@ -148,7 +148,7 @@ pub(crate) fn add_completions(
                     let spec_def = def_map.get_spec(na);
                     let deprecated = def_map.is_deprecated(na);
                     match ctx {
-                        crate::ctx::Ctx::Dialyzer => helpers::name_slash_arity_completion(
+                        crate::ctx::CtxKind::Dialyzer => helpers::name_slash_arity_completion(
                             na,
                             function_prefix.text(),
                             Kind::Function,

@@ -12,18 +12,18 @@ use elp_syntax::ast;
 use elp_syntax::AstNode;
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
+use crate::Ctx;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
         ..
-    }: &Args,
+    }: &Ctx,
 ) {
     let node = parsed.value.syntax();
     let prefix = &match algo::find_node_at_offset::<ast::Fa>(node, file_position.offset) {

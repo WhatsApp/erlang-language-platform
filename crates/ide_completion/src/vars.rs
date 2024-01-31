@@ -12,21 +12,21 @@ use std::iter;
 use elp_syntax::SyntaxToken;
 use fxhash::FxHashSet;
 
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         sema: _,
         trigger,
         file_position,
         previous_tokens,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     use elp_syntax::SyntaxKind as K;
     let default = vec![];

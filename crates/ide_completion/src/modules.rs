@@ -8,21 +8,21 @@
  */
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
 use crate::Contents;
+use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
         trigger,
         ..
-    }: &Args,
+    }: &Ctx,
 ) -> DoneFlag {
     if trigger.is_some() {
         return false;

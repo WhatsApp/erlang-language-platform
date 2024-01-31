@@ -13,12 +13,12 @@ use elp_syntax::AstNode;
 use hir::InFile;
 
 use crate::helpers;
-use crate::Args;
 use crate::Completion;
+use crate::Ctx;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
-    Args {
+    Ctx {
         file_position,
         parsed,
         sema,
@@ -26,7 +26,7 @@ pub(crate) fn add_completions(
         previous_tokens,
         next_token,
         ..
-    }: &Args,
+    }: &Ctx,
 ) {
     use elp_syntax::SyntaxKind as K;
     let default = vec![];

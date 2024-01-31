@@ -20,7 +20,7 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextSize;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Ctx {
+pub enum CtxKind {
     Expr,
     Type,
     Export,
@@ -30,7 +30,7 @@ pub enum Ctx {
     Other,
 }
 
-impl Ctx {
+impl CtxKind {
     pub fn new(node: &SyntaxNode, offset: TextSize) -> Self {
         if Self::is_atom_colon(node, offset) && Self::is_expr(node, offset) {
             Self::Expr
@@ -256,15 +256,15 @@ mod ctx_tests {
     use elp_syntax::AstNode;
     use hir::Semantic;
 
-    use crate::Ctx;
+    use crate::CtxKind;
 
-    fn ctx(code: &str) -> Ctx {
+    fn ctx(code: &str) -> CtxKind {
         let (db, FilePosition { file_id, offset }) = RootDatabase::with_position(code);
         let sema = Semantic::new(&db);
         let parsed = sema.parse(file_id);
         let node = parsed.value.syntax();
         let offset = db.clamp_offset(file_id, offset);
-        Ctx::new(node, offset)
+        CtxKind::new(node, offset)
     }
 
     #[test]
@@ -275,7 +275,7 @@ mod ctx_tests {
         test() ->
             ~X.
         "#),
-            Ctx::Expr
+            CtxKind::Expr
         );
 
         assert_eq!(
@@ -286,7 +286,7 @@ mod ctx_tests {
                 1 -> ~2
             end.
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -295,7 +295,7 @@ mod ctx_tests {
         test() ->
             fun(_) -> ~X end.
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -311,7 +311,7 @@ mod ctx_tests {
                 _:_ -> ok
             end.
         "#),
-            Ctx::Expr
+            CtxKind::Expr
         );
 
         assert_eq!(
@@ -320,7 +320,7 @@ mod ctx_tests {
         main(_) ->
             #{(maps:from_list([~])) => 3}.
         "#),
-            Ctx::Expr
+            CtxKind::Expr
         );
     }
 
@@ -335,7 +335,7 @@ mod ctx_tests {
             ok = preload_modules(),
             ok.
         "#),
-            Ctx::Expr // Ctx::Other
+            CtxKind::Expr // Ctx::Other
         );
     }
 
@@ -347,7 +347,7 @@ mod ctx_tests {
         test(Y, X) ->
             ~Y = X.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -358,7 +358,7 @@ mod ctx_tests {
                 {X~} -> true
             end.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -367,7 +367,7 @@ mod ctx_tests {
         test(X) ->
             fun(X~) -> 1 end.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -378,7 +378,7 @@ mod ctx_tests {
                 [X~] -> true
             end.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -392,7 +392,7 @@ mod ctx_tests {
                 _:_ -> ok
             end.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -405,7 +405,7 @@ mod ctx_tests {
             end.
 
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -414,7 +414,7 @@ mod ctx_tests {
         test(X~) ->
             ok.
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
 
         assert_eq!(
@@ -425,7 +425,7 @@ mod ctx_tests {
                 X~ ->
 
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -437,7 +437,7 @@ mod ctx_tests {
             catch
                 X~ -> ok
         "#),
-            Ctx::Other,
+            CtxKind::Other,
         );
     }
 
@@ -454,7 +454,7 @@ mod ctx_tests {
 
         "#),
             // should be Ctx::Other
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -467,7 +467,7 @@ mod ctx_tests {
                 X~
         "#),
             // should be Ctx::Other
-            Ctx::Expr,
+            CtxKind::Expr,
         );
     }
 
@@ -478,7 +478,7 @@ mod ctx_tests {
         -module(sample).
         -type ty(s~) :: ok.
         "#),
-            Ctx::Other
+            CtxKind::Other
         );
     }
 
@@ -491,7 +491,7 @@ mod ctx_tests {
             f~
         ])
         "#),
-            Ctx::Export
+            CtxKind::Export
         );
     }
 
@@ -504,7 +504,7 @@ mod ctx_tests {
             t~
         ])
         "#),
-            Ctx::ExportType
+            CtxKind::ExportType
         );
     }
 
@@ -517,7 +517,7 @@ mod ctx_tests {
         table() -> ok.
         ])
         "#),
-            Ctx::Spec
+            CtxKind::Spec
         );
     }
 
@@ -529,7 +529,7 @@ mod ctx_tests {
         -spec test() -> ~
         test() -> ok.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -538,7 +538,7 @@ mod ctx_tests {
         -spec test() -> o~k
         test() -> ok.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -547,7 +547,7 @@ mod ctx_tests {
         -spec test(o~) -> ok.
         test() -> ok.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -555,7 +555,7 @@ mod ctx_tests {
         -module(sample).
         -record(foo, {field1, field2 :: X~}).
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -563,7 +563,7 @@ mod ctx_tests {
         -module(sample).
         -opaque test() :: ~.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -571,7 +571,7 @@ mod ctx_tests {
         -module(sample).
         -type test() :: m~
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -579,7 +579,7 @@ mod ctx_tests {
         -module(sample).
         -spec test() -> ~ok.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
     }
 
@@ -591,7 +591,7 @@ mod ctx_tests {
         test() ->
             ~
         "#),
-            Ctx::Expr
+            CtxKind::Expr
         );
 
         assert_eq!(
@@ -600,7 +600,7 @@ mod ctx_tests {
         test() ->
             X + ~
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -609,7 +609,7 @@ mod ctx_tests {
         test() ->
             X + ~.
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -620,7 +620,7 @@ mod ctx_tests {
                 1 -> ~X
 
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -630,7 +630,7 @@ mod ctx_tests {
             (erlang:term_to_binary(~
 
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -640,7 +640,7 @@ mod ctx_tests {
             (erlang:term_to_binary(~.
 
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
 
         assert_eq!(
@@ -648,7 +648,7 @@ mod ctx_tests {
         -module(sample).
         -type ty() :: ~
         "#),
-            Ctx::Other
+            CtxKind::Other
         );
 
         assert_eq!(
@@ -656,7 +656,7 @@ mod ctx_tests {
         -module(sample).
         -type ty() :: l~.
         "#),
-            Ctx::Type
+            CtxKind::Type
         );
 
         assert_eq!(
@@ -664,7 +664,7 @@ mod ctx_tests {
         -module(sample).
         -record(rec, {field = lists:map(fun(X) -> X + 1 end, [1, ~])}).
         "#),
-            Ctx::Expr,
+            CtxKind::Expr,
         );
     }
 }
