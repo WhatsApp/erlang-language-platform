@@ -28,6 +28,8 @@ use anyhow::Context;
 use anyhow::Result;
 use buck::BuckConfig;
 use buck::EqwalizerConfig;
+use eetf::Term;
+use eetf::Term::Atom;
 use elp_log::timeit;
 use itertools::Either;
 use parking_lot::MutexGuard;
@@ -734,9 +736,8 @@ impl Project {
                 let config_path = config.config_path().to_path_buf();
                 let (mut apps, deps, terms, deps_terms) =
                     json::gen_app_data(config, AbsPath::assert(&otp_root));
-                let build_info_term =
-                    buck::make_build_info(terms, deps_terms, &otp_root, &config_path);
-                let build_info = buck::save_build_info(build_info_term)?;
+                let build_info_term = make_build_info(terms, deps_terms, &otp_root, &config_path);
+                let build_info = save_build_info(build_info_term)?;
                 let project = StaticProject { config_path };
                 apps.extend(deps.into_iter());
                 (
@@ -753,13 +754,13 @@ impl Project {
                 let (mut apps, terms) = config.to_project_app_data(abs_otp_root);
                 let (eqwalizer_support_app, eqwalizer_support_term) =
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
-                let build_info_term = buck::make_build_info(
+                let build_info_term = make_build_info(
                     terms,
                     vec![eqwalizer_support_term],
                     abs_otp_root,
                     &config_path,
                 );
-                let build_info = buck::save_build_info(build_info_term)?;
+                let build_info = save_build_info(build_info_term)?;
                 let project = StaticProject { config_path };
                 apps.push(eqwalizer_support_app);
                 (
@@ -813,6 +814,42 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
         }
     }
     Ok(stdout.trim().to_string())
+}
+
+pub fn make_build_info(
+    apps: Vec<Term>,
+    deps: Vec<Term>,
+    otp_root: impl AsRef<Path>,
+    source_root: impl AsRef<Path>,
+) -> Term {
+    let apps = Term::List(apps.into());
+    let deps = Term::List(deps.into());
+    let otp_lib_dir = path_to_binary(otp_root);
+    let source_root = path_to_binary(source_root);
+    Term::Map(
+        vec![
+            (Atom("apps".into()), apps),
+            (Atom("deps".into()), deps),
+            (Atom("otp_lib_dir".into()), otp_lib_dir),
+            (Atom("source_root".into()), source_root),
+        ]
+        .into(),
+    )
+}
+
+fn str_to_binary(s: &str) -> Term {
+    Term::Binary(s.as_bytes().into())
+}
+
+fn path_to_binary(path: impl AsRef<Path>) -> Term {
+    str_to_binary(path.as_ref().as_os_str().to_str().unwrap())
+}
+
+pub fn save_build_info(term: Term) -> Result<BuildInfoFile> {
+    let mut out_file = NamedTempFile::new()?;
+    term.encode(&mut out_file)?;
+    let build_info_path = out_file.into_temp_path();
+    Ok(BuildInfoFile(Arc::new(build_info_path)))
 }
 
 #[cfg(test)]

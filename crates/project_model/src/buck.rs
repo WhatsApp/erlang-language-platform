@@ -17,7 +17,6 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Arc;
 
 use anyhow::bail;
 use anyhow::Result;
@@ -35,9 +34,12 @@ use paths::AbsPathBuf;
 use paths::RelPathBuf;
 use serde::Deserialize;
 use serde::Serialize;
-use tempfile::NamedTempFile;
 
+use crate::make_build_info;
 use crate::otp::Otp;
+use crate::path_to_binary;
+use crate::save_build_info;
+use crate::str_to_binary;
 use crate::AppName;
 use crate::AppType;
 use crate::BuildInfoFile;
@@ -439,14 +441,6 @@ fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
     }
 }
 
-fn str_to_binary(s: &str) -> Term {
-    Term::Binary(s.as_bytes().into())
-}
-
-fn path_to_binary(path: impl AsRef<Path>) -> Term {
-    str_to_binary(path.as_ref().as_os_str().to_str().unwrap())
-}
-
 /// creates erlang term for an app in a format required by eqwalizer
 pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> Term {
     let dir = path_to_binary(&project_data.dir);
@@ -518,34 +512,6 @@ pub fn build_info(config: &BuckConfig, project_apps: &[ProjectAppData], otp_root
     }
     let path = &config.source_root();
     make_build_info(apps, deps, otp_root, path.as_ref())
-}
-
-pub fn make_build_info(
-    apps: Vec<Term>,
-    deps: Vec<Term>,
-    otp_root: impl AsRef<Path>,
-    source_root: impl AsRef<Path>,
-) -> Term {
-    let apps = Term::List(apps.into());
-    let deps = Term::List(deps.into());
-    let otp_lib_dir = path_to_binary(otp_root);
-    let source_root = path_to_binary(source_root);
-    Term::Map(
-        vec![
-            (Atom("apps".into()), apps),
-            (Atom("deps".into()), deps),
-            (Atom("otp_lib_dir".into()), otp_lib_dir),
-            (Atom("source_root".into()), source_root),
-        ]
-        .into(),
-    )
-}
-
-pub fn save_build_info(term: Term) -> Result<BuildInfoFile> {
-    let mut out_file = NamedTempFile::new()?;
-    term.encode(&mut out_file)?;
-    let build_info_path = out_file.into_temp_path();
-    Ok(BuildInfoFile(Arc::new(build_info_path)))
 }
 
 /// convert waserver//erl/chatd:chatd into abs path ~/local/whatsapp/server/erl/chatd
