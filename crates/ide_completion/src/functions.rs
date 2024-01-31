@@ -34,6 +34,7 @@ pub(crate) fn add_completions(
     let default = vec![];
     let previous_tokens: &[_] = previous_tokens.as_ref().unwrap_or(&default);
     match previous_tokens {
+        // fun function_name_prefix~
         [.., (K::ANON_FUN, _), (K::ATOM, function_prefix)] if trigger.is_none() => {
             let def_map = sema.def_map(file_position.file_id);
 
@@ -81,6 +82,28 @@ pub(crate) fn add_completions(
             );
             true
         }
+        // ?MODULE:function_name_prefix~
+        [
+            ..,
+            (K::ANON_QMARK, _),
+            (K::VAR, module),
+            (K::ANON_COLON, _),
+            (K::ATOM, name_prefix),
+        ] if matches!(trigger, Some(':') | None) && module.text() == "MODULE" => {
+            if let Some(module_name) = sema.module_name(file_position.file_id) {
+                complete_remote_function_call(
+                    sema,
+                    file_position.file_id,
+                    module_name.as_str(),
+                    name_prefix.text(),
+                    next_token,
+                    acc,
+                );
+                true
+            } else {
+                false
+            }
+        }
         // mod:
         [.., (K::ATOM, module), (K::ANON_COLON, _)] if matches!(trigger, Some(':') | None) => {
             complete_remote_function_call(
@@ -92,6 +115,24 @@ pub(crate) fn add_completions(
                 acc,
             );
             true
+        }
+        // ?MODULE:
+        [.., (K::ANON_QMARK, _), (K::VAR, module), (K::ANON_COLON, _)]
+            if matches!(trigger, Some(':') | None) && module.text() == "MODULE" =>
+        {
+            if let Some(module_name) = sema.module_name(file_position.file_id) {
+                complete_remote_function_call(
+                    sema,
+                    file_position.file_id,
+                    module_name.as_str(),
+                    "",
+                    next_token,
+                    acc,
+                );
+                true
+            } else {
+                false
+            }
         }
         // foo
         [.., (K::ATOM, function_prefix)] if trigger.is_none() => {
@@ -746,6 +787,66 @@ foo(X, Y) -> ok.
             expect![[r#"
             {label:foo/1, kind:Function, contents:Snippet("foo(${1:X})"), position:Some(FilePosition { file_id: FileId(1), offset: 71 })}
             {label:foo/2, kind:Function, contents:Snippet("foo(${1:Override}, ${2:Arg2})"), position:Some(FilePosition { file_id: FileId(1), offset: 136 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_remote_call_same_module() {
+        check(
+            r#"
+    -module(main).
+    -export([main/0, do_not_use_me/0]).
+    -deprecated({do_not_use_me, 0, "Because I said so"}).
+    main() ->
+        main:~
+        ok.
+    do_not_use_me() ->
+        i_am_useless.
+            "#,
+            None,
+            expect![[r#"
+                {label:do_not_use_me/0, kind:Function, contents:Snippet("do_not_use_me()"), position:Some(FilePosition { file_id: FileId(0), offset: 133 }), deprecated:true}
+                {label:main/0, kind:Function, contents:Snippet("main()"), position:Some(FilePosition { file_id: FileId(0), offset: 105 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_remote_call_same_module_macro() {
+        check(
+            r#"
+    -module(main).
+    -export([main/0, do_not_use_me/0]).
+    -deprecated({do_not_use_me, 0, "Because I said so"}).
+    main() ->
+        ?MODULE:~
+        ok.
+    do_not_use_me() ->
+        i_am_useless.
+            "#,
+            None,
+            expect![[r#"
+                {label:do_not_use_me/0, kind:Function, contents:Snippet("do_not_use_me()"), position:Some(FilePosition { file_id: FileId(0), offset: 136 }), deprecated:true}
+                {label:main/0, kind:Function, contents:Snippet("main()"), position:Some(FilePosition { file_id: FileId(0), offset: 105 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_remote_call_same_module_macro_prefix() {
+        check(
+            r#"
+    -module(main).
+    -export([main/0, do_not_use_me/0]).
+    -deprecated({do_not_use_me, 0, "Because I said so"}).
+    main() ->
+        ?MODULE:do~
+        ok.
+    do_not_use_me() ->
+        i_am_useless.
+            "#,
+            None,
+            expect![[
+                r#"{label:do_not_use_me/0, kind:Function, contents:Snippet("do_not_use_me()"), position:Some(FilePosition { file_id: FileId(0), offset: 138 }), deprecated:true}"#
+            ]],
         );
     }
 }
