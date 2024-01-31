@@ -97,9 +97,18 @@ jobs:
       - name: Test elp
         # Do not run the tests in case of cross-compilation
         if: (matrix.platform-arch != 'macos-latest-arm') && (matrix.platform-arch != 'ubuntu-20.04-arm')
-        run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
+        run: |
+          cargo test \
+            --no-default-features \
+            --workspace \
+            --target ${{ matrix.target }} \
+            --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
       - name: Build elp
-        run: 'cargo build --release  --target ${{ matrix.target }}'
+        run: |
+          cargo build \
+            --release  \
+            --target ${{ matrix.target }} \
+            --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
       - name: Add elp to path
         run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
       - name: Upload elp binary
