@@ -1434,6 +1434,10 @@ impl<T> InFunctionClauseBody<T> {
             None
         }
     }
+
+    pub fn tree_print_any_expr(&self, db: &dyn MinDefDatabase, expr: AnyExprId) -> String {
+        self.body().tree_print_any_expr(db.upcast(), expr)
+    }
 }
 
 impl<T> Index<ExprId> for InFunctionClauseBody<T> {

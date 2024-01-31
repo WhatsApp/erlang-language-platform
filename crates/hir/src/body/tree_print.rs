@@ -299,10 +299,14 @@ impl<'a> Printer<'a> {
             Expr::Map { fields } => {
                 self.print_herald("Expr::Map", &mut |this| {
                     fields.iter().for_each(|(name, value)| {
+                        writeln!(this, "{{").ok();
+                        this.indent();
                         this.print_expr(&this.body[*name]);
                         writeln!(this, ",").ok();
                         this.print_expr(&this.body[*value]);
                         writeln!(this, ",").ok();
+                        this.dedent();
+                        writeln!(this, "}},").ok();
                     });
                 });
             }
@@ -672,10 +676,14 @@ impl<'a> Printer<'a> {
             Pat::Map { fields } => {
                 self.print_herald("Pat::Map", &mut |this| {
                     fields.iter().for_each(|(name, value)| {
+                        writeln!(this, "{{").ok();
+                        this.indent();
                         this.print_expr(&this.body[*name]);
                         writeln!(this, ",").ok();
                         this.print_pat(&this.body[*value]);
                         writeln!(this, ",").ok();
+                        this.dedent();
+                        writeln!(this, "}},").ok();
                     });
                 });
             }
@@ -747,10 +755,14 @@ impl<'a> Printer<'a> {
             Term::Map { fields } => {
                 self.print_herald("Term::Map", &mut |this| {
                     fields.iter().for_each(|(name, value)| {
+                        writeln!(this, "{{").ok();
+                        this.indent();
                         this.print_term(&this.body[*name]);
                         write!(this, " => ").ok();
                         this.print_term(&this.body[*value]);
                         writeln!(this, ",").ok();
+                        this.dedent();
+                        writeln!(this, "}},").ok();
                     });
                 });
             }
@@ -1266,8 +1278,12 @@ mod tests {
             expect![[r#"
                 -compile(
                     Term::Map {
-                        Literal(Atom('xx')) => Literal(Float(5.3)),
-                        Literal(Atom('yy')) => Literal(Integer(3)),
+                        {
+                            Literal(Atom('xx')) => Literal(Float(5.3)),
+                        },
+                        {
+                            Literal(Atom('yy')) => Literal(Integer(3)),
+                        },
                     }
                 ).
             "#]],
@@ -1522,17 +1538,21 @@ mod tests {
                     guards
                     exprs
                         Expr::Map {
-                            Literal(Atom('foo')),
-                            Expr::BinaryOp {
-                                lhs
-                                    Literal(Atom('a'))
-                                rhs
-                                    Literal(Integer(3))
-                                op
-                                    ArithOp(Add),
+                            {
+                                Literal(Atom('foo')),
+                                Expr::BinaryOp {
+                                    lhs
+                                        Literal(Atom('a'))
+                                    rhs
+                                        Literal(Integer(3))
+                                    op
+                                        ArithOp(Add),
+                                },
                             },
-                            Literal(Atom('bar')),
-                            Literal(Char($v)),
+                            {
+                                Literal(Atom('bar')),
+                                Literal(Char($v)),
+                            },
                         },
                 }.
             "#]],
@@ -1553,8 +1573,10 @@ mod tests {
                         Expr::MapUpdate {
                             expr
                                 Expr::Map {
-                                    Literal(Atom('a')),
-                                    Literal(Atom('b')),
+                                    {
+                                        Literal(Atom('a')),
+                                        Literal(Atom('b')),
+                                    },
                                 }
                             fields
                                 Literal(Atom('a'))
@@ -2387,28 +2409,32 @@ mod tests {
                 Clause {
                     pats
                         Pat::Map {
-                            Expr::BinaryOp {
-                                lhs
-                                    Literal(Integer(1))
-                                rhs
-                                    Literal(Integer(2))
-                                op
-                                    ArithOp(Add),
-                            },
-                            Pat::BinaryOp {
-                                lhs
-                                    Literal(Integer(3))
-                                rhs
-                                    Literal(Integer(4))
-                                op
-                                    ArithOp(Add),
+                            {
+                                Expr::BinaryOp {
+                                    lhs
+                                        Literal(Integer(1))
+                                    rhs
+                                        Literal(Integer(2))
+                                    op
+                                        ArithOp(Add),
+                                },
+                                Pat::BinaryOp {
+                                    lhs
+                                        Literal(Integer(3))
+                                    rhs
+                                        Literal(Integer(4))
+                                    op
+                                        ArithOp(Add),
+                                },
                             },
                         },
                     guards
                     exprs
                         Expr::Map {
-                            Literal(Atom('a')),
-                            Literal(Atom('b')),
+                            {
+                                Literal(Atom('a')),
+                                Literal(Atom('b')),
+                            },
                         },
                 }.
             "#]],
