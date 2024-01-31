@@ -9,6 +9,8 @@
 
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
+use elp_syntax::algo;
+use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
 use hir::Semantic;
@@ -27,7 +29,7 @@ pub(crate) fn add_completions(
         file_position,
         previous_tokens,
         next_token,
-        ..
+        parsed,
     }: &Args,
 ) -> DoneFlag {
     use elp_syntax::SyntaxKind as K;
@@ -146,24 +148,37 @@ pub(crate) fn add_completions(
                     let fun_decl_ast = def.source(sema.db.upcast());
                     let spec_def = def_map.get_spec(na);
                     let deprecated = def_map.is_deprecated(na);
-                    let contents = helpers::function_contents(
-                        sema.db.upcast(),
-                        def,
-                        spec_def,
-                        &function_name,
-                        helpers::should_include_args(next_token),
-                    )?;
-                    Some(Completion {
-                        label: na.to_string(),
-                        kind: Kind::Function,
-                        contents,
-                        position: Some(FilePosition {
-                            file_id: def.file.file_id,
-                            offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
-                        }),
-                        sort_text: None,
-                        deprecated,
-                    })
+                    let is_wild_attribute = algo::find_node_at_offset::<ast::WildAttribute>(
+                        parsed.value.syntax(),
+                        file_position.offset,
+                    )
+                    .is_some();
+                    if is_wild_attribute {
+                        helpers::name_slash_arity_completion(
+                            na,
+                            function_prefix.text(),
+                            Kind::Function,
+                        )
+                    } else {
+                        let contents = helpers::function_contents(
+                            sema.db.upcast(),
+                            def,
+                            spec_def,
+                            &function_name,
+                            helpers::should_include_args(next_token),
+                        )?;
+                        Some(Completion {
+                            label: na.to_string(),
+                            kind: Kind::Function,
+                            contents,
+                            position: Some(FilePosition {
+                                file_id: def.file.file_id,
+                                offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
+                            }),
+                            sort_text: None,
+                            deprecated,
+                        })
+                    }
                 });
             acc.extend(completions);
             false
@@ -847,6 +862,26 @@ foo(X, Y) -> ok.
             expect![[
                 r#"{label:do_not_use_me/0, kind:Function, contents:Snippet("do_not_use_me()"), position:Some(FilePosition { file_id: FileId(0), offset: 138 }), deprecated:true}"#
             ]],
+        );
+    }
+
+    #[test]
+    fn test_in_dialyzer_attribute() {
+        check(
+            r#"
+    -module(main).
+    -export([
+        foo/1,
+        is_internal/1
+    ]).
+    foo(X) when is_binary(X) ->
+        X.
+    -dialyzer({nowarn, is~})
+    is_internal(Y) ->
+        is_internal_impl(foo(Y)).
+    "#,
+            None,
+            expect!["{label:is_internal/1, kind:Function, contents:SameAsLabel, position:None}"],
         );
     }
 }
