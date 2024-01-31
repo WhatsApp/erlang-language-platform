@@ -158,6 +158,10 @@ impl FunctionDef {
             .collect()
     }
 
+    pub fn first_clause_name(&self, db: &dyn SourceDatabase) -> Option<ast::Name> {
+        self.source(db).get(0)?.name()
+    }
+
     pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
         let sources = self.source(db);
         let start = sources.first()?;

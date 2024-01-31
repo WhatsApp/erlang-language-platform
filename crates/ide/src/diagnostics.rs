@@ -328,6 +328,7 @@ pub enum DiagnosticCode {
     UndefinedFunction,
     Unexpected(String),
     ExpressionCanBeSimplified,
+    CannotEvaluateCTCallbacks,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -392,6 +393,7 @@ impl DiagnosticCode {
             DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
             DiagnosticCode::UnusedInclude => "W0020".to_string(), // Unused include (previously known as L1500 due to a bug)
             DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated)
+            DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -418,6 +420,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnusedFunctionArg => "unused_function_arg".to_string(),
             DiagnosticCode::RedundantAssignment => "redundant_assignment".to_string(),
             DiagnosticCode::UnreachableTest => "unreachable_test".to_string(),
+            DiagnosticCode::CannotEvaluateCTCallbacks => "cannot_evaluate_ct_callbacks".to_string(),
             DiagnosticCode::MissingCompileWarnMissingSpec => {
                 // Match the name in the original
                 "compile-warn-missing-spec".to_string()
@@ -1277,6 +1280,10 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
                 common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
             common_test::unreachable_test(&mut res, &sema, file_id, &testcases);
             // @fb-only: meta_only::ct_diagnostics(&mut res, &sema, file_id, testcases);
+        }
+        CommonTestInfo::EvalError(_error) => {
+            // The error currently does not contain anything useful, so we ignore it
+            common_test::ct_info_eval_error(&mut res, &sema, file_id);
         }
         _ => (),
     };
