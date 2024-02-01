@@ -44,7 +44,7 @@ jobs:
             curl --output graalvm.tar.gz "${GRAALVM_URL}"
             echo "$GRAALVM_SHA256  graalvm.tar.gz" | shasum -a 256 -c
             mkdir graalvm
-            tar -xzvf graalvm.tar.gz -C graalvm --strip-components=1
+            tar -xzf graalvm.tar.gz -C graalvm --strip-components=1
           dockerRunArgs: |
             --volume "${PWD}/graalvm:/graalvm"
             --volume "${PWD}/artifacts:/artifacts"
