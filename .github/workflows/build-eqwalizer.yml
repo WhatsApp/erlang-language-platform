@@ -49,9 +49,8 @@ jobs:
             --volume "${PWD}/graalvm:/graalvm"
             --volume "${PWD}/artifacts:/artifacts"
           run: |
-            apt-get update
-            apt-get install -y gcc
-            /usr/bin/gcc -v
+            apt-get -q update
+            apt-get -q install -y zlib1g-dev build-essential
             /graalvm/bin/native-image \
               -H:IncludeResources=application.conf \
               --no-server \
