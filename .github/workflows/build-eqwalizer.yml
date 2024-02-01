@@ -49,6 +49,9 @@ jobs:
             --volume "${PWD}/graalvm:/graalvm"
             --volume "${PWD}/artifacts:/artifacts"
           run: |
+            apt-get update
+            apt-get install -y gcc
+            /usr/bin/gcc -v
             /graalvm/bin/native-image \
               -H:IncludeResources=application.conf \
               --no-server \
