@@ -535,12 +535,7 @@ impl Project {
     }
 
     pub fn deps_ebins(&self) -> Vec<AbsPathBuf> {
-        match &self.project_build_data {
-            ProjectBuildData::Otp => vec![],
-            ProjectBuildData::Rebar(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
-            ProjectBuildData::Buck(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
-            ProjectBuildData::Static(_) => self.deps().flat_map(|app| app.ebin.clone()).collect(),
-        }
+        self.deps().flat_map(|app| app.ebin.clone()).collect()
     }
 }
 
