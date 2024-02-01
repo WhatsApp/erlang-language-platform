@@ -15,8 +15,9 @@ use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_project_model::buck;
-use elp_project_model::otp::Otp;
+use elp_project_model::buck::EqwalizerConfig;
+use elp_project_model::json::JsonConfig;
+use elp_project_model::json::JsonProjectAppData;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
@@ -28,20 +29,36 @@ use crate::args::ProjectInfo;
 pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
-    let manifest = ProjectManifest::discover(&root);
+    let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
 
-    let buck = match manifest {
-        Ok((_elp_config, ProjectManifest::TomlBuck(buck))) => buck,
-        _ => bail!("Can't find buck root for {:?}", root),
-    };
+    let project = Project::load(&manifest, EqwalizerConfig::default())?;
+    let project_app_data = project.non_otp_apps().cloned().collect::<Vec<_>>();
 
-    let target_info = buck::load_buck_targets(&buck)?;
-    let otp_root = Otp::find_otp()?;
-    let project_app_data = buck::targets_to_project_data(&target_info.targets, &otp_root);
-    let build_info_term = buck::build_info(&buck, &project_app_data, &otp_root);
-    let writer = File::create(&args.to)?;
-    build_info_term.encode(writer)?;
-    Ok(())
+    if args.json {
+        let mut writer = File::create(&args.to)?;
+        let json_app_data: Vec<_> = project_app_data
+            .iter()
+            .map(|project_app_data| {
+                JsonProjectAppData::from_project_app_data(&root, project_app_data)
+            })
+            .collect();
+        let json = JsonConfig {
+            apps: json_app_data,
+            deps: vec![],
+            config_path: None,
+        };
+
+        let json_str = serde_json::to_string_pretty::<JsonConfig>(&json)?;
+        writer.write_all(json_str.as_bytes())?;
+        Ok(())
+    } else {
+        if let Some(build_info_file) = project.build_info_file() {
+            std::fs::copy(build_info_file, args.to)?;
+            Ok(())
+        } else {
+            bail!("Loaded project does not have build info generated")
+        }
+    }
 }
 
 pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {

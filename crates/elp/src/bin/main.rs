@@ -574,6 +574,62 @@ mod tests {
         );
     }
 
+    #[test]
+    fn build_info_json() {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        let tmp_file = tmp_path.join("test_build_info.json");
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        let project = "diagnostics";
+        let path_str = project_path(project);
+        let args = args_vec![
+            "build-info",
+            "--to",
+            tmp_file.clone(),
+            "--json",
+            "--project",
+            path_str
+        ];
+        let (stdout, stderr, code) = elp(args);
+        assert_eq!(
+            code, 0,
+            "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
+            code, 0, stdout, stderr
+        );
+        assert_eq!(
+            stderr.is_empty(),
+            true,
+            "expected stderr to be empty, got:\n{}",
+            stderr
+        );
+        assert!(PathBuf::from(tmp_file.clone()).exists());
+        let content = fs::read_to_string(tmp_file).unwrap();
+        expect![[r#"
+            {
+              "apps": [
+                {
+                  "name": "app_a",
+                  "dir": "app_a",
+                  "src_dirs": [
+                    "src"
+                  ],
+                  "extra_src_dirs": [
+                    "test"
+                  ],
+                  "include_dirs": [
+                    "include"
+                  ],
+                  "macros": [
+                    "TEST",
+                    "COMMON_TEST"
+                  ]
+                }
+              ],
+              "deps": []
+            }"#]]
+        .assert_eq(content.as_str());
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_1(buck: bool) {
@@ -1083,6 +1139,16 @@ mod tests {
             .run_inner(Args::from(&["lint", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/lint_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn build_info_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["build-info", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/build_info_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }

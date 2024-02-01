@@ -21,6 +21,7 @@ use indexmap::IndexSet;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use serde::Deserialize;
+use serde::Serialize;
 
 use crate::buck;
 use crate::eqwalizer_support;
@@ -28,22 +29,23 @@ use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct JsonConfig {
     #[serde(default)]
     pub apps: Vec<JsonProjectAppData>,
     #[serde(default)]
     pub deps: Vec<JsonProjectAppData>,
-    #[serde(skip_deserializing)]
+    #[serde(skip_deserializing, skip_serializing)]
     pub config_path: Option<AbsPathBuf>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct JsonProjectAppData {
     pub name: String,
     pub dir: String,
     #[serde(default = "default_src_dirs")]
     pub src_dirs: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ebin: Option<String>,
     #[serde(default)]
     pub extra_src_dirs: Vec<String>,
@@ -91,6 +93,47 @@ impl JsonProjectAppData {
             app_type,
             include_path: vec![],
         })
+    }
+
+    pub fn from_project_app_data(
+        root: &AbsPathBuf,
+        project_app_data: &ProjectAppData,
+    ) -> JsonProjectAppData {
+        JsonProjectAppData {
+            name: project_app_data.name.0.clone(),
+            dir: abs_path_buf_to_relative_string(&project_app_data.dir, root),
+            src_dirs: project_app_data
+                .abs_src_dirs
+                .iter()
+                .map(|p| abs_path_buf_to_relative_string(p, &project_app_data.dir))
+                .collect(),
+            ebin: project_app_data
+                .ebin
+                .clone()
+                .map(|p| abs_path_buf_to_relative_string(&p, &project_app_data.dir)),
+            extra_src_dirs: project_app_data.extra_src_dirs.clone(),
+            include_dirs: project_app_data
+                .include_dirs
+                .iter()
+                .map(|p| abs_path_buf_to_relative_string(p, &project_app_data.dir))
+                .collect(),
+            macros: project_app_data.macros.iter().map(convert_macro).collect(),
+        }
+    }
+}
+
+fn convert_macro(mac: &eetf::Term) -> String {
+    match mac {
+        Term::Atom(atom) => atom.name.clone(),
+        _ => panic!("Macro should be an Atom"),
+    }
+}
+
+fn abs_path_buf_to_relative_string(abs_path: &AbsPathBuf, base: &AbsPathBuf) -> String {
+    if let Some(relative) = abs_path.strip_prefix(base) {
+        relative.as_ref().as_os_str().to_string_lossy().to_string()
+    } else {
+        abs_path.as_os_str().to_string_lossy().to_string()
     }
 }
 

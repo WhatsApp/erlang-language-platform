@@ -167,6 +167,8 @@ pub struct BuildInfo {
     /// Path to a directory where to dump wa.build_info
     #[bpaf(argument("TO"))]
     pub to: PathBuf,
+    /// Generate JSON output rather than Erlang terms
+    pub json: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
