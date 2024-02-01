@@ -18,6 +18,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck::EqwalizerConfig;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::json::JsonProjectAppData;
+use elp_project_model::AppName;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
@@ -33,13 +34,26 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
 
     let project = Project::load(&manifest, EqwalizerConfig::default())?;
     let project_app_data = project.non_otp_apps().cloned().collect::<Vec<_>>();
+    let root_without_file = if root.as_path().as_ref().is_file() {
+        root.parent().unwrap_or(&root).to_path_buf()
+    } else {
+        root
+    };
 
     if args.json {
         let mut writer = File::create(&args.to)?;
         let json_app_data: Vec<_> = project_app_data
             .iter()
-            .map(|project_app_data| {
-                JsonProjectAppData::from_project_app_data(&root, project_app_data)
+            .filter_map(|project_app_data| {
+                if project_app_data.name == AppName("eqwalizer_support".to_string()) {
+                    // This is derived from OTP when the project is loaded again
+                    None
+                } else {
+                    Some(JsonProjectAppData::from_project_app_data(
+                        &root_without_file,
+                        project_app_data,
+                    ))
+                }
             })
             .collect();
         let json = JsonConfig {
