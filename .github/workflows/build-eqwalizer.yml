@@ -54,6 +54,7 @@ jobs:
             /graalvm/bin/native-image \
               -H:IncludeResources=application.conf \
               -H:+BuildReport \
+              -H:+ReportExceptionStackTraces \
               --no-server \
               --no-fallback \
               -jar /artifacts/eqwalizer.jar \
@@ -107,6 +108,7 @@ jobs:
           native-image \
             -H:IncludeResources=application.conf \
             -H:+BuildReport \
+            -H:+ReportExceptionStackTraces \
             --no-server \
             --no-fallback \
             -jar eqwalizer.jar \
