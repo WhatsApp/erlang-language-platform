@@ -13,8 +13,10 @@
 // The originial motivation and discussion is in T107133234
 
 use elp_ide_db::elp_base_db::FileId;
+use hir::AnyExprId;
 use hir::ExprId;
 use hir::FunctionDef;
+use hir::InFunctionClauseBody;
 use hir::Semantic;
 use lazy_static::lazy_static;
 
@@ -62,12 +64,21 @@ pub(crate) enum BadEnvCallAction {
     /// The `tag` must match, and we check the `index`th part of the
     /// second tuple element
     /// e.g. `our_mod:a_fun(Context, Location, [..., {cfg, {Application, Flag}}, ...], Format, Args)
-    #[allow(dead_code)] // @oss-only
+    #[allow(dead_code)]
     OptionsArg {
         /// Which argument contains the list of options to be checked
         arg_index: usize,
         /// The option tag we are looking for
         tag: String,
+    },
+    #[allow(dead_code)] // @oss-only
+    MapArg {
+        /// Which argument contains the map of options to be checked
+        arg_index: usize,
+        /// The sequence of map keys we are looking for. we chain
+        /// through, expecting each to return a map that we check the
+        /// next in
+        keys: Vec<String>,
     },
 }
 
@@ -117,18 +128,35 @@ pub(crate) fn process_badmatches(
                                 let val = exprs.get(1)?;
                                 let key_name = in_clause.as_atom_name(sema.db, key)?;
                                 if tag == key_name.as_str() {
-                                    if let hir::Expr::Tuple { exprs } = &in_clause[*val] {
-                                        let app = exprs.get(0)?;
-                                        check_valid_application(sema, in_clause, app, def)
-                                    } else {
-                                        None
-                                    }
+                                    check_tuple(in_clause, val, sema, def)
                                 } else {
                                     None
                                 }
                             }
                             _ => None,
                         })
+                    }
+                    _ => None,
+                }
+            }
+            BadEnvCallAction::MapArg { arg_index, keys } => {
+                // We expect the `arg_index`'th argument to contain a
+                // map.  We chase through the keys, expecting each to
+                // return another map, which we look up the next key
+                // in. At the end we expect a tuple, and check the
+                // first arg of that.
+                let arg = args.get(*arg_index)?;
+                match &in_clause[*arg] {
+                    hir::Expr::Map { fields: _ } => {
+                        if let Some(AnyExprId::Expr(rhs)) = in_clause.body().lookup_map_path(
+                            sema.db.upcast(),
+                            AnyExprId::Expr(*arg),
+                            keys,
+                        ) {
+                            check_tuple(in_clause, &rhs, sema, def)
+                        } else {
+                            None
+                        }
                     }
                     _ => None,
                 }
@@ -141,6 +169,20 @@ pub(crate) fn process_badmatches(
             Some(diag)
         },
     );
+}
+
+fn check_tuple(
+    in_clause: &InFunctionClauseBody<&FunctionDef>,
+    val: &ExprId,
+    sema: &Semantic,
+    def: &FunctionDef,
+) -> Option<(String, String)> {
+    if let hir::Expr::Tuple { exprs } = &in_clause[*val] {
+        let app = exprs.get(0)?;
+        check_valid_application(sema, in_clause, app, def)
+    } else {
+        None
+    }
 }
 
 fn check_valid_application(
