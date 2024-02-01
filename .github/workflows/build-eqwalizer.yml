@@ -53,6 +53,7 @@ jobs:
             apt-get -q install -y zlib1g-dev build-essential
             /graalvm/bin/native-image \
               -H:IncludeResources=application.conf \
+              -H:+BuildReport \
               --no-server \
               --no-fallback \
               -jar /artifacts/eqwalizer.jar \
