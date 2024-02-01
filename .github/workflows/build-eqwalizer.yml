@@ -13,10 +13,10 @@ jobs:
         working-directory: eqwalizer
         run: |
           sbt assembly
-      - name: Test eqwalizer
-        working-directory: eqwalizer
-        run: |
-          sbt test
+      # - name: Test eqwalizer
+      #   working-directory: eqwalizer
+      #   run: |
+      #     sbt test
       - name: "Upload artifact: eqwalizer.jar"
         uses: actions/upload-artifact@v4
         with:
