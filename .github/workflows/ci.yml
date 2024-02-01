@@ -2,188 +2,95 @@ name: ELP CI
 on:
   push: {}
   release:
-    types: [published]
-env:
-  EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
-  ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer
+    types: [created]
+
 
 jobs:
-  ci:
+  eqwalizer:
+    uses: ./.github/workflows/build-eqwalizer.yml
+
+  elp:
+    needs: eqwalizer
+    uses: ./.github/workflows/build-elp.yml
+
+  vscode-extension:
+    needs: [elp, eqwalizer]
+    uses: ./.github/workflows/build-vscode-extension.yml
+
+  publish-release-assets:
+    if: github.event_name == 'release'
+    needs: [elp, vscode-extension]
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, ubuntu-20.04-arm, macos-latest-x64, macos-latest-arm]
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
         otp-version: [25.3, 26.0]
-        include:
-          - otp-version: 25.3
-            brew-otp-version: 25
-            vscode-publish: true
-          - platform-arch: ubuntu-20.04-x64
-            platform: ubuntu-20.04
-            os: linux
-            target: x86_64-unknown-linux-gnu
-            vscode-target: linux-x64
-          - platform-arch: ubuntu-20.04-arm
-            platform: ubuntu-20.04
-            os: linux
-            target: aarch64-unknown-linux-gnu
-            vscode-target: linux-arm64
-          - platform-arch: macos-latest-x64
-            platform: macos-latest
-            os: macos
-            target: x86_64-apple-darwin
-            vscode-target: darwin-x64
-          - platform-arch: macos-latest-arm
-            platform: macos-latest
-            os: macos
-            target: aarch64-apple-darwin
-            vscode-target: darwin-arm64
-        exclude:
-          # Formula not available yet (2023-09-06)
-          - platform-arch: macos-latest-x64
-            otp-version: 26.0
-          - platform-arch: macos-latest-arm
-            otp-version: 26.0
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-20.04
     steps:
-      - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
+      - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
+        uses: actions/download-artifact@v4
         with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
+          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
+          path: elp
+      - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
+        uses: actions/download-artifact@v4
         with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up cross-compiler
-        if: matrix.platform-arch == 'ubuntu-20.04-arm'
+          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+          path: elp.vsix
+      - name: "Prepare elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
         run: |
-          sudo apt-get update
-          sudo apt-get install -y crossbuild-essential-arm64
-      - name: Set up rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+          chmod +x ./elp
+          tar -zcvf \
+            elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz \
+            elp
+      - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          target: ${{ matrix.target }}
-      - name: Install Erlang/OTP (Linux Only)
-        if: matrix.os == 'linux'
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{ matrix.otp-version }}
-          install-rebar: false
-          install-hex: false
-      - name: Install Erlang/OTP (MacOS Only)
-        if: matrix.os == 'macos'
-        run: brew install erlang@${{ matrix.brew-otp-version }}
-      - name: Add erl to path (MacOS Only)
-        if: matrix.os == 'macos'
-        run: "echo '/usr/local/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH"
-      - name: Verify Erlang version
-        run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
-      - name: Install rebar3
-        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
-      - name: Add rebar3 to path
-        run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
-      - name: Verify rebar3 version
-        run: rebar3 version
-      - name: Assemble eqwalizer.jar
-        working-directory: eqwalizer/eqwalizer
-        run: "sbt assembly"
-      - name: Assemble eqwalizer binary
-        working-directory: eqwalizer/eqwalizer
-        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
-      - name: Test elp
-        # Do not run the tests in case of cross-compilation
-        if: (matrix.platform-arch != 'macos-latest-arm') && (matrix.platform-arch != 'ubuntu-20.04-arm')
-        run: |
-          cargo test \
-            --no-default-features \
-            --workspace \
-            --target ${{ matrix.target }} \
-            --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
-      - name: Build elp
-        run: |
-          cargo build \
-            --release  \
-            --target ${{ matrix.target }} \
-            --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
-      - name: Add elp to path
-        run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
-      - name: Upload elp binary
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: target/${{ matrix.target}}/release/elp
-      - name: Test eqwalizer
-        working-directory: eqwalizer
-        run: 'sbt test'
-      - name: Upload eqwalizer native binary
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: ./eqwalizer/eqwalizer/eqwalizer
-      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        id: get_release_url
-        name: Get release url
-        if: ${{ github.event_name == 'release' }}
-        uses: "bruceadams/get-release@v1.3.2"
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload release elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-        if: ${{ github.event_name == 'release' }}
-        uses: "actions/upload-release-asset@v1.0.2"
-        with:
+          upload_url: ${{ github.event.release.upload_url }} 
+          asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
+          asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
           asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
-          asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }} 
+          asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+          asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+          asset_content_type: application/octet-stream
+
+  publish-vscode-extension:
+    if: github.event_name == 'release'
+    needs: vscode-extension
+    runs-on: ubuntu-20.04
+    steps:
+      - name: "Download artifacts: elp.*.vsix"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: elp.*.vsix
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: lts
       - name: Install VSCE
-        run: npm install -g vsce
-      - name: Prepare VS Code Extension to host binaries
-        run: mkdir -p editors/code/bin
-      - name: Package eqWAlizer binary into VS Code Extension
-        run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
-      - name: Package ELP binary into VS Code Extension
-        run: cp target/${{ matrix.target}}/release/elp editors/code/bin
-      - name: Ensure binaries are executable
-        run: chmod +x editors/code/bin/*
-      - name: npm install
-        working-directory: editors/code
-        run: npm install
-      - name: npm run compile
-        working-directory: editors/code
-        run: npm run compile
-      - name: Package Extension
-        working-directory: editors/code
-        run: vsce package --target ${{ matrix.vscode-target }}
-      - name: Rename Package
-        working-directory: editors/code
-        run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
-      - name: Upload Extension
-        uses: "actions/upload-artifact@v3"
-        with:
-          name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
-          path: editors/code/erlang-language-platform.vsix
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload Extension Package
-        if: ${{ github.event_name == 'release' }}
-        uses: "actions/upload-release-asset@v1.0.2"
-        with:
-          asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
-          asset_path: editors/code/erlang-language-platform.vsix
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
-      - name: Publish extension to marketplace
-        working-directory: editors/code
-        if: ${{ github.event_name == 'release' && matrix.vscode-publish }}
-        run: vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath erlang-language-platform.vsix
+        run: |
+          npm install -g @vscode/vsce
+      - name: Publish
+        run: |
+          vsce publish \
+            --pat ${{ secrets.VSCE_PAT }} \
+            --packagePath \
+              elp.otp-25.3.x86_64-unknown-linux-gnu.vsix \
+              elp.otp-25.3.aarch64-unknown-linux-gnu.vsix \
+              elp.otp-25.3.x86_64-apple-darwin.vsix \
+              elp.otp-25.3.aarch64-apple-darwin.vsix \
+              elp.otp-26.x86_64-unknown-linux-gnu.vsix \
+              elp.otp-26.aarch64-unknown-linux-gnu.vsix \
+              elp.otp-26.x86_64-apple-darwin.vsix \
+              elp.otp-26.aarch64-apple-darwin.vsix

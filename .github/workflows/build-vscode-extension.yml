@@ -1,0 +1,62 @@
+on:
+  workflow_call:
+
+jobs:
+  vscode-extension:
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+        otp-version: [25.3, 26.0]
+        include:
+          - target: x86_64-unknown-linux-gnu
+            vscode-target: linux-x64
+          - target: aarch64-unknown-linux-gnu
+            vscode-target: linux-arm64
+          - target: x86_64-apple-darwin
+            vscode-target: darwin-x64
+          - target: aarch64-apple-darwin
+            vscode-target: darwin-arm64
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout erlang-language-platform
+        uses: actions/checkout@v4
+      - name: Prepare VS Code Extension to host binaries
+        run: |
+          mkdir -p editors/code/bin
+      - name: "Download artifact: eqwalizer.${{ matrix.target }}"
+        uses: actions/download-artifact@v4
+        with:
+          name: eqwalizer.${{ matrix.target }}
+          path: editors/code/bin/eqwalizer
+      - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
+        uses: actions/download-artifact@v4
+        with:
+          name: elp.${{ matrix.target }}
+          path: editors/code/bin/elp
+      - name: Ensure binaries are executable
+        run: |
+          chmod +x editors/code/bin/*
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts
+      - name: Install VSCE
+        run: |
+          npm install -g @vscode/vsce
+      - name: Build extension
+        working-directory: editors/code
+        run: |
+          npm install
+          npm run compile
+          vsce package \
+            --target ${{ matrix.vscode-target }} \
+            --out erlang-language-platform.vsix
+      - name: "Upload artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
+        uses: actions/upload-artifact@v4
+        with:
+          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+          path: editors/code/erlang-language-platform.vsix
