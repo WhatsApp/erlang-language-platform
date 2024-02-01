@@ -96,7 +96,7 @@ fn simplify_binary_op(
     def_fb: &InFunctionBody<&FunctionDef>,
 ) -> Option<String> {
     let body = def_fb.body(clause_id);
-    if body.is_macro(AnyExprId::Expr(lhs_id)) || body.is_macro(AnyExprId::Expr(rhs_id)) {
+    if body.is_macro(AnyExprId::Expr(lhs_id)) || body.is_macro(rhs_id.into()) {
         return None;
     }
     match (&body[lhs_id], op, &body[rhs_id]) {

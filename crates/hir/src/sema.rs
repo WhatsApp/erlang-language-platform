@@ -675,7 +675,7 @@ impl<'db> Semantic<'db> {
                                 .intersection(&FxHashSet::from_iter(ds))
                                 .any(|_| true)
                             {
-                                Some((AnyExprId::Expr(expr_id), *v))
+                                Some((expr_id.into(), *v))
                             } else {
                                 None
                             }

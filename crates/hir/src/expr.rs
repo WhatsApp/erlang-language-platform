@@ -53,6 +53,85 @@ pub enum AnyExprRef<'a> {
     Term(&'a Term),
 }
 
+// ---------------------------------------------------------------------
+
+impl From<ExprId> for AnyExprId {
+    fn from(id: ExprId) -> Self {
+        AnyExprId::Expr(id)
+    }
+}
+
+impl From<PatId> for AnyExprId {
+    fn from(id: PatId) -> Self {
+        AnyExprId::Pat(id)
+    }
+}
+
+impl From<TypeExprId> for AnyExprId {
+    fn from(id: TypeExprId) -> Self {
+        AnyExprId::TypeExpr(id)
+    }
+}
+
+impl From<TermId> for AnyExprId {
+    fn from(id: TermId) -> Self {
+        AnyExprId::Term(id)
+    }
+}
+// ---------------------------------------------------------------------
+
+impl From<Expr> for AnyExpr {
+    fn from(item: Expr) -> Self {
+        AnyExpr::Expr(item)
+    }
+}
+
+impl From<Pat> for AnyExpr {
+    fn from(item: Pat) -> Self {
+        AnyExpr::Pat(item)
+    }
+}
+
+impl From<TypeExpr> for AnyExpr {
+    fn from(item: TypeExpr) -> Self {
+        AnyExpr::TypeExpr(item)
+    }
+}
+
+impl From<Term> for AnyExpr {
+    fn from(item: Term) -> Self {
+        AnyExpr::Term(item)
+    }
+}
+
+// ---------------------------------------------------------------------
+
+impl<'a> From<&'a Expr> for AnyExprRef<'a> {
+    fn from(item: &'a Expr) -> Self {
+        AnyExprRef::Expr(item)
+    }
+}
+
+impl<'a> From<&'a Pat> for AnyExprRef<'a> {
+    fn from(item: &'a Pat) -> Self {
+        AnyExprRef::Pat(item)
+    }
+}
+
+impl<'a> From<&'a TypeExpr> for AnyExprRef<'a> {
+    fn from(item: &'a TypeExpr) -> Self {
+        AnyExprRef::TypeExpr(item)
+    }
+}
+
+impl<'a> From<&'a Term> for AnyExprRef<'a> {
+    fn from(item: &'a Term) -> Self {
+        AnyExprRef::Term(item)
+    }
+}
+
+// ---------------------------------------------------------------------
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Literal {
     String(String),
