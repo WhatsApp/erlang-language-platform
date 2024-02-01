@@ -235,6 +235,115 @@ impl Body {
     ) -> T {
         FoldCtx::fold_pat(strategy, self, form_id, pat_id, initial, callback)
     }
+
+    // -----------------------------------------------------------------
+    // HIR API. Perhaps move to its own struct some time.
+
+    /// Given an HIR `AnyExprId` for a `Map` literal possibly
+    /// containing maps as key values, look up the series of keys in
+    /// the `path`.
+    pub fn lookup_map_path(
+        &self,
+        db: &dyn MinInternDatabase,
+        map_id: AnyExprId,
+        path: &[String],
+    ) -> Option<AnyExprId> {
+        let key = path.get(0)?;
+        match map_id {
+            AnyExprId::Expr(id) => {
+                match &self[id] {
+                    Expr::Map { fields } => fields.iter().find_map(|(key_id, val_id)| match &self
+                        [*key_id]
+                    {
+                        Expr::Literal(Literal::Atom(atom)) => {
+                            if &atom.as_string(db) == key {
+                                if path.len() == 1 {
+                                    Some(AnyExprId::Expr(*val_id))
+                                } else {
+                                    self.lookup_map_path(db, AnyExprId::Expr(*val_id), &path[1..])
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }),
+                    _ => None,
+                }
+            }
+            AnyExprId::Pat(id) => match &self[id] {
+                Pat::Map { fields } => {
+                    fields
+                        .iter()
+                        .find_map(|(key_id, val_id)| match &self[*key_id] {
+                            Expr::Literal(Literal::Atom(atom)) => {
+                                if &atom.as_string(db) == key {
+                                    if path.len() == 1 {
+                                        Some(AnyExprId::Pat(*val_id))
+                                    } else {
+                                        self.lookup_map_path(
+                                            db,
+                                            AnyExprId::Pat(*val_id),
+                                            &path[1..],
+                                        )
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        })
+                }
+                _ => None,
+            },
+            AnyExprId::TypeExpr(id) => match &self[id] {
+                TypeExpr::Map { fields } => {
+                    fields
+                        .iter()
+                        .find_map(|(key_id, _op, val_id)| match &self[*key_id] {
+                            TypeExpr::Literal(Literal::Atom(atom)) => {
+                                if &atom.as_string(db) == key {
+                                    if path.len() == 1 {
+                                        Some(AnyExprId::TypeExpr(*val_id))
+                                    } else {
+                                        self.lookup_map_path(
+                                            db,
+                                            AnyExprId::TypeExpr(*val_id),
+                                            &path[1..],
+                                        )
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        })
+                }
+                _ => None,
+            },
+            AnyExprId::Term(id) => {
+                match &self[id] {
+                    Term::Map { fields } => fields.iter().find_map(|(key_id, val_id)| match &self
+                        [*key_id]
+                    {
+                        Term::Literal(Literal::Atom(atom)) => {
+                            if &atom.as_string(db) == key {
+                                if path.len() == 1 {
+                                    Some(AnyExprId::Term(*val_id))
+                                } else {
+                                    self.lookup_map_path(db, AnyExprId::Term(*val_id), &path[1..])
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }),
+                    _ => None,
+                }
+            }
+        }
+    }
 }
 
 impl FunctionBody {
@@ -741,6 +850,7 @@ mod local_tests {
     use elp_base_db::SourceDatabase;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
+    use elp_syntax::AstNode;
 
     use crate::test_db::TestDB;
     use crate::AnyExprId;
@@ -791,6 +901,69 @@ mod local_tests {
             -define(SOME_CONST, 1).
 
             foo(~?SOME_CONST) -> 1024.
+            "#,
+        )
+    }
+
+    // #[track_caller]
+    fn check_map_path_expr(path: &[&str], valid: bool, fixture: &str) {
+        let (db, position) = TestDB::with_position(fixture);
+        let sema = Semantic::new(&db);
+
+        let file_syntax = db.parse(position.file_id).syntax_node();
+        let val: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let fun: ast::FunDecl = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let map = fun
+            .syntax()
+            .descendants()
+            .find_map(ast::MapExpr::cast)
+            .unwrap();
+        let in_clause = sema
+            .to_expr(InFile::new(position.file_id, &ast::Expr::MapExpr(map)))
+            .unwrap();
+        let path = path.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        if let Some(found) = in_clause
+            .body()
+            .lookup_map_path(&db, in_clause.value.into(), &path)
+        {
+            let astptr_found = in_clause.get_body_map(&db).any(found).unwrap().value();
+            let ast_found = astptr_found.to_node(&file_syntax);
+            if valid {
+                debug_assert_eq!(val, ast_found);
+            } else {
+                panic!("expected invalid path, found {:?}", ast_found);
+            }
+        } else {
+            if valid {
+                panic!("expected valid path, nothing found");
+            } else {
+                // pass
+            }
+        }
+    }
+
+    #[test]
+    fn map_path_expr() {
+        check_map_path_expr(
+            &vec!["k1", "k2"],
+            true,
+            r#"
+            -module(main).
+
+            foo() -> #{ k1 => #{ k2 => v~al}}.
+            "#,
+        )
+    }
+
+    #[test]
+    fn map_path_expr_not_found() {
+        check_map_path_expr(
+            &vec!["k1", "k3"],
+            false,
+            r#"
+            -module(main).
+
+            foo() -> #{ k1 => #{ k2 => v~al}}.
             "#,
         )
     }

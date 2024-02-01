@@ -46,6 +46,12 @@ impl salsa::InternKey for Var {
     }
 }
 
+impl Atom {
+    pub fn as_string(&self, db: &dyn MinInternDatabase) -> String {
+        db.lookup_atom(*self).to_string()
+    }
+}
+
 impl Var {
     pub fn as_string(&self, db: &dyn MinInternDatabase) -> String {
         db.lookup_var(*self).to_string()
