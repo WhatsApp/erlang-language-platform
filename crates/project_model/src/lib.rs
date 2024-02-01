@@ -417,6 +417,21 @@ impl ElpConfig {
     }
 }
 
+/// This is the key data structure related to project discovery and
+/// loading.
+///
+/// It can be populated using any mechanism at all, and currently has
+/// support for loading from a rebar3 config (using the
+/// eqwalizer_rebar3 plugin to give build_info), buck2, a JSON config
+/// file, or just deducing it from the directory structure.  We also
+/// generate them from declarative test configurations using
+/// `WithFixture`.
+///
+/// Any novel project discovery/representation schemes should aim to
+/// produce one of these, and it will be able to work with ELP.
+///
+/// Once we have a `Vec<Project>`, we use it in the test runners, LSP
+/// server, and CLI invocations to set up ELP for use.
 #[derive(Clone)]
 pub struct Project {
     build_info_file: Option<BuildInfoFile>,

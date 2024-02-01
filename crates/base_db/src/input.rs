@@ -99,6 +99,7 @@ impl SourceRoot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ProjectId(pub u32);
 
+/// `ProjectData` is stored in salsa, indexed by `ProjectId`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectData {
     pub source_roots: Vec<SourceRootId>,
@@ -110,6 +111,8 @@ pub struct ProjectData {
     pub eqwalizer_config: EqwalizerConfig,
 }
 
+/// `AppData` is stored in salsa, indexed by `SourceRootId`.
+/// We create a `SourceRoot` for every app in every `Project`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppData {
     pub project_id: ProjectId,
@@ -257,13 +260,14 @@ impl<'a> ProjectApps<'a> {
             .collect();
 
         // We assume that all of the `Project`s use the same OTP.
-        // And so we treat the very first one as another
-        // `RebarProject`, but for OTP.
-        let otp_project = &projects[0];
+        // And so we extract the OTP apps from the first one, and put
+        // them into a `Project` specifically for OTP, so we do not
+        // duplicate it for every project. .
+        let first_project = &projects[0];
         let mut projects: Vec<_> = projects.into();
         let otp_project_id = if include_otp == IncludeOtp::Yes {
             let otp_project_id = ProjectId(projects.len() as u32);
-            let mut all_otp_apps: Vec<(ProjectId, &ProjectAppData)> = otp_project
+            let mut all_otp_apps: Vec<(ProjectId, &ProjectAppData)> = first_project
                 .otp_apps()
                 .map(|app| (otp_project_id, app))
                 .collect();
@@ -271,8 +275,8 @@ impl<'a> ProjectApps<'a> {
             // The only part of this we (currently) use in
             // ProjectApps::app_structure() is Project.otp
             let otp_project = Project::otp(
-                otp_project.otp.clone(),
-                otp_project.otp_apps().cloned().collect(),
+                first_project.otp.clone(),
+                first_project.otp_apps().cloned().collect(),
             );
             projects.push(otp_project);
             Some(otp_project_id)
