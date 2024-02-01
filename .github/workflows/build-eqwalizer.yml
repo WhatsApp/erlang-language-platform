@@ -41,6 +41,9 @@ jobs:
           dockerRunArgs: |
             --volume "${PWD}/artifacts:/artifacts"
           run: |
+            apt-get -q update
+            apt-get -q install -y zlib1g-dev build-essential curl
+
             GRAALVM_URL=https://download.oracle.com/graalvm/17/latest/graalvm-jdk-17_linux-aarch64_bin.tar.gz
             GRAALVM_SHA256=$(curl -s "${GRAALVM_URL}.sha256")
             curl --output graalvm.tar.gz "${GRAALVM_URL}"
@@ -48,8 +51,6 @@ jobs:
             mkdir /graalvm
             tar -xzf graalvm.tar.gz -C /graalvm --strip-components=1
 
-            apt-get -q update
-            apt-get -q install -y zlib1g-dev build-essential
             /graalvm/bin/native-image \
               -H:IncludeResources=application.conf \
               -H:+BuildReport \
