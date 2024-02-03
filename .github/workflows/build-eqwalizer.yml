@@ -44,7 +44,7 @@ jobs:
             apt-get -q update
             apt-get -q install -y curl gcc zlib1g-dev
 
-            GRAALVM_URL=https://download.oracle.com/graalvm/17/latest/graalvm-jdk-17_linux-aarch64_bin.tar.gz
+            GRAALVM_URL=https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_linux-aarch64_bin.tar.gz
             GRAALVM_SHA256=$(curl -s "${GRAALVM_URL}.sha256")
             curl --output graalvm.tar.gz "${GRAALVM_URL}"
             echo "$GRAALVM_SHA256  graalvm.tar.gz" | sha256sum -c
@@ -56,9 +56,8 @@ jobs:
               -H:+ReportExceptionStackTraces \
               --no-server \
               --no-fallback \
-              -jar /artifacts/eqwalizer.jar \
-              /tmp/eqwalizer
-            cp /tmp/eqwalizer /artifacts/eqwalizer.aarch64-unknown-linux-gnu
+              -jar /elp/eqwalizer.jar \
+              /artifacts/eqwalizer.aarch64-unknown-linux-gnu
       - name: "Upload artifact: eqwalizer.aarch64-unknown-linux-gnu"
         uses: actions/upload-artifact@v4
         with:
