@@ -24,7 +24,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
           - x86_64-apple-darwin
           - aarch64-apple-darwin
         otp-version: [25.3, 26.0]
@@ -87,10 +87,8 @@ jobs:
             --pat ${{ secrets.VSCE_PAT }} \
             --packagePath \
               elp.otp-25.3.x86_64-unknown-linux-gnu.vsix \
-              elp.otp-25.3.aarch64-unknown-linux-gnu.vsix \
               elp.otp-25.3.x86_64-apple-darwin.vsix \
               elp.otp-25.3.aarch64-apple-darwin.vsix \
               elp.otp-26.x86_64-unknown-linux-gnu.vsix \
-              elp.otp-26.aarch64-unknown-linux-gnu.vsix \
               elp.otp-26.x86_64-apple-darwin.vsix \
               elp.otp-26.aarch64-apple-darwin.vsix

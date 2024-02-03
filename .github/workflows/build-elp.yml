@@ -10,7 +10,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
           - x86_64-apple-darwin
           - aarch64-apple-darwin
         otp-version: [25.3, 26.0]
@@ -19,10 +19,10 @@ jobs:
             os: ubuntu
             os-version: 20.04
             arch: x86_64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu
-            os-version: 20.04
-            arch: aarch64
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu
+          #   os-version: 20.04
+          #   arch: aarch64
           - target: x86_64-apple-darwin
             os: macos
             os-version: latest
