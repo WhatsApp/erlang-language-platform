@@ -64,55 +64,55 @@ jobs:
           name: eqwalizer.aarch64-unknown-linux-gnu
           path: artifacts/eqwalizer.aarch64-unknown-linux-gnu
 
-  # eqwalizer-native:
-  #   needs: eqwalizer-jar
-  #   strategy:
-  #     matrix:
-  #       target:
-  #         - x86_64-unknown-linux-gnu
-  #         # - aarch64-unknown-linux-gnu
-  #         - x86_64-apple-darwin
-  #         - aarch64-apple-darwin
-  #       include:
-  #         - target: x86_64-unknown-linux-gnu
-  #           os: ubuntu
-  #           os-version: 20.04
-  #           arch: x86_64
-  #         # - target: aarch64-unknown-linux-gnu
-  #         #   os: ubuntu
-  #         #   os-version: 20.04
-  #         #   arch: aarch64
-  #         - target: x86_64-apple-darwin
-  #           os: macos
-  #           os-version: latest
-  #           arch: x86_64
-  #         - target: aarch64-apple-darwin
-  #           os: macos
-  #           os-version: latest
-  #           arch: aarch64
-  #   runs-on: ${{ matrix.os }}-${{ matrix.os-version }}
-  #   steps:
-  #     - name: "Download artifact: equalizer.jar"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: eqwalizer.jar
-  #     - name: Set up GraalVM
-  #       uses: graalvm/setup-graalvm@v1
-  #       with:
-  #         java-version: '17'
-  #         distribution: 'graalvm'
-  #         github-token: ${{ github.token }}
-  #     - name: Assemble eqwalizer binary
-  #       run: |
-  #         native-image \
-  #           -H:IncludeResources=application.conf \
-  #           -H:+ReportExceptionStackTraces \
-  #           --no-server \
-  #           --no-fallback \
-  #           -jar eqwalizer.jar \
-  #           eqwalizer.${{ matrix.target }}
-  #     - name: "Upload artifact: eqwalizer.${{ matrix.target }}"
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: eqwalizer.${{ matrix.target }}
-  #         path: eqwalizer.${{ matrix.target }}
+  eqwalizer-native:
+    needs: eqwalizer-jar
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu
+            os-version: 20.04
+            arch: x86_64
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu
+          #   os-version: 20.04
+          #   arch: aarch64
+          - target: x86_64-apple-darwin
+            os: macos
+            os-version: latest
+            arch: x86_64
+          - target: aarch64-apple-darwin
+            os: macos
+            os-version: latest
+            arch: aarch64
+    runs-on: ${{ matrix.os }}-${{ matrix.os-version }}
+    steps:
+      - name: "Download artifact: equalizer.jar"
+        uses: actions/download-artifact@v4
+        with:
+          name: eqwalizer.jar
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '17'
+          distribution: 'graalvm'
+          github-token: ${{ github.token }}
+      - name: Assemble eqwalizer binary
+        run: |
+          native-image \
+            -H:IncludeResources=application.conf \
+            -H:+ReportExceptionStackTraces \
+            --no-server \
+            --no-fallback \
+            -jar eqwalizer.jar \
+            eqwalizer.${{ matrix.target }}
+      - name: "Upload artifact: eqwalizer.${{ matrix.target }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqwalizer.${{ matrix.target }}
+          path: eqwalizer.${{ matrix.target }}
