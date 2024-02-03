@@ -56,7 +56,7 @@ jobs:
               -H:+ReportExceptionStackTraces \
               --no-server \
               --no-fallback \
-              -jar /elp/eqwalizer.jar \
+              -jar /artifacts/eqwalizer.jar \
               /artifacts/eqwalizer.aarch64-unknown-linux-gnu
       - name: "Upload artifact: eqwalizer.aarch64-unknown-linux-gnu"
         uses: actions/upload-artifact@v4
