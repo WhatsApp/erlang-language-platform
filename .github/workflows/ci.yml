@@ -15,9 +15,9 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-apple-darwin
-          # - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     uses: ./.github/workflows/build-eqwalizer-native.yml
     with:
       target: ${{ matrix.target }}
@@ -28,9 +28,9 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-apple-darwin
-          # - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
         otp-version:
           - "26.2"
     uses: ./.github/workflows/build-elp.yml
@@ -44,9 +44,9 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-apple-darwin
-          # - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
         otp-version:
           - "26.2"
     uses: ./.github/workflows/build-vscode-extension.yml
@@ -60,9 +60,9 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-apple-darwin
-          # - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
         otp-version:
           - "26.2"
     uses: ./.github/workflows/publish-release-assets.yml
@@ -76,9 +76,9 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          # - x86_64-apple-darwin
-          # - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
         otp-version:
           - "26.2"
     uses: ./.github/workflows/publish-vscode-extension.yml
