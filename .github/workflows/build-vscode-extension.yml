@@ -38,6 +38,7 @@ jobs:
       - name: Move elp/eqwalizer binaries
         run: |
           mkdir -p editors/code/bin/
+          ls -lh
           mv eqwalizer.${{ matrix.target }} editors/code/bin/eqwalizer
           mv elp.otp-${{ matrix.otp-version }}.${{ matrix.target }} editors/code/bin/elp
           chmod +x editors/code/bin/*
