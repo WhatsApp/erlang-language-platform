@@ -38,12 +38,13 @@ jobs:
           target: ${{ inputs.target }}
 
       - name: Install Erlang/OTP (Linux Only)
-        if: ${{ runner.os == 'Ubuntu' }}
+        if: ${{ runner.os == 'Linux' }}
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ inputs.otp-version }}
           install-rebar: false
           install-hex: false
+
       - name: Install Erlang/OTP (MacOS Only)
         if: ${{ runner.os == 'macOS' }}
         run: |
@@ -51,17 +52,21 @@ jobs:
           otp_version_major=${otp_version%%.*}
           brew install erlang@${otp_version_major}
           echo "/usr/local/opt/erlang@${otp_version_major}/bin" >> $GITHUB_PATH
+
       - name: Verify Erlang/OTP version
         run: |
           erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+
       - name: Install rebar3
         run: |
           mkdir rebar3
           curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3
           chmod +x rebar3/rebar3
           echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH
+
       - name: Verify rebar3 version
         run: rebar3 version
+
       - name: Build elp
         env:
           EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
@@ -71,9 +76,11 @@ jobs:
             --release  \
             --target ${{ inputs.target }} \
             --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
+
       - name: "Prepare elp for uploading"
         run: |
           mv target/${{ inputs.target }}/release/elp target/${{ inputs.target }}/release/elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+
       - name: "Upload artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}"
         uses: "actions/upload-artifact@v4"
         with:
