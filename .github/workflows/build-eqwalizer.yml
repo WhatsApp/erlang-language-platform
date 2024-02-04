@@ -3,12 +3,12 @@ on:
     inputs:
       target:
         required: true
-        type: choice
-        options:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
+        type: string
+        # options:
+        #   - x86_64-unknown-linux-gnu
+        #   - aarch64-unknown-linux-gnu
+        #   - x86_64-apple-darwin
+        #   - aarch64-apple-darwin
 
 jobs:
   vars:
