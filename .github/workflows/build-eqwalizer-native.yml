@@ -12,7 +12,6 @@ on:
 
 jobs:
   equalizer-native:
-    needs: [vars, eqwalizer-jar]
     runs-on: ${{ endsWith('linux-gnu', inputs.target) && 'ubuntu-latest' || 'macos-latest' }}
     steps:
       - name: "Download artifact: eqwalizer.jar"
