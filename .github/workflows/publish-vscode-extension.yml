@@ -29,7 +29,7 @@ jobs:
         if: ${{ github.event_name == 'release' }}
         uses: actions/setup-node@v4
         with:
-          node-version: lts
+          node-version: 20
 
       - name: Install VSCE
         if: ${{ github.event_name == 'release' }}
