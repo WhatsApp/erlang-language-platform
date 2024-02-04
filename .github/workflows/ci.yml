@@ -85,3 +85,5 @@ jobs:
     with:
       target: ${{ matrix.target }}
       otp-version: ${{ matrix.otp-version }}
+    secrets:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
