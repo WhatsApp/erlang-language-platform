@@ -50,6 +50,9 @@ jobs:
         otp-version:
           - "26.2"
     uses: ./.github/workflows/build-vscode-extension.yml
+    with:
+      target: ${{ matrix.target }}
+      otp-version: ${{ matrix.otp-version }}
 
   publish-release-assets:
     needs: [elp, vscode-extension]
@@ -63,6 +66,9 @@ jobs:
         otp-version:
           - "26.2"
     uses: ./.github/workflows/publish-release-assets.yml
+    with:
+      target: ${{ matrix.target }}
+      otp-version: ${{ matrix.otp-version }}
 
   publish-vscode-extension:
     needs: vscode-extension
@@ -76,3 +82,6 @@ jobs:
         otp-version:
           - "26.2"
     uses: ./.github/workflows/publish-vscode-extension.yml
+    with:
+      target: ${{ matrix.target }}
+      otp-version: ${{ matrix.otp-version }}
