@@ -1,0 +1,44 @@
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      otp-version:
+        required: true
+        type: string
+    secrets:
+      VSCE_PAT:
+        required: true
+
+jobs:
+  release-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix"
+        uses: actions/download-artifact@v4
+        with:
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+
+      - name: Verify extension
+        run: |
+          ls -lh \
+            elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+
+      - name: Setup Node
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts
+
+      - name: Install VSCE
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          npm install -g @vscode/vsce
+
+      - name: "Publish extension ${{ inputs.target }}"
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          vsce publish \
+            --pat ${{ secrets.VSCE_PAT }} \
+            --packagePath elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix

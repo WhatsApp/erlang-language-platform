@@ -1,64 +1,77 @@
 on:
   workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      otp-version:
+        required: true
+        type: string
 
 jobs:
   vscode-extension:
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
-        otp-version: [25.3, 26.0]
-        include:
-          - target: x86_64-unknown-linux-gnu
-            vscode-target: linux-x64
-          # - target: aarch64-unknown-linux-gnu
-          #   vscode-target: linux-arm64
-          - target: x86_64-apple-darwin
-            vscode-target: darwin-x64
-          - target: aarch64-apple-darwin
-            vscode-target: darwin-arm64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout erlang-language-platform
         uses: actions/checkout@v4
+
       - name: Prepare VS Code Extension to host binaries
         run: |
           mkdir -p editors/code/bin
-      - name: "Download artifact: eqwalizer.${{ matrix.target }}"
+
+      - name: "Download artifact: eqwalizer.${{ inputs.target }}"
         uses: actions/download-artifact@v4
         with:
-          name: eqwalizer.${{ matrix.target }}
-      - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
+          name: eqwalizer.${{ inputs.target }}
+
+      - name: "Download artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}"
         uses: actions/download-artifact@v4
         with:
-          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+
       - name: Move elp/eqwalizer binaries
         run: |
           mkdir -p editors/code/bin/
           ls -lh
-          mv eqwalizer.${{ matrix.target }} editors/code/bin/eqwalizer
-          mv elp.otp-${{ matrix.otp-version }}.${{ matrix.target }} editors/code/bin/elp
+          mv eqwalizer.${{ inputs.target }} editors/code/bin/eqwalizer
+          mv elp.otp-${{ inputs.otp-version }}.${{ inputs.target }} editors/code/bin/elp
           chmod +x editors/code/bin/*
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: lts
+
       - name: Install VSCE
         run: |
           npm install -g @vscode/vsce
+
       - name: Build extension
         working-directory: editors/code
         run: |
+          echo "::group::Determining vscode target"
+          echo "::notice::target = ${{ inputs.target }}"
+          case "${{ inputs.target }}" in
+            "x86_64-unknown-linux-gnu") vscode_target="linux-x64" ;;
+            "aarch64-unknown-linux-gnu") vscode_target="linux-arm64" ;;
+            "x86_64-apple-darwin") vscode_target="darwin-x64" ;;
+            "aarch64-apple-darwin") vscode_target="darwin-arm64" ;;
+            *)
+              echo "::error::Unsupported target platform"
+              exit 1
+          esac
+          echo "::notice::vscode-target = ${vscode_target}"
+          echo "::endgroup::"
+
+          echo "::group::Build extension"
           npm install
           npm run compile
           vsce package \
-            --target ${{ matrix.vscode-target }} \
-            --out erlang-language-platform.vsix
-      - name: "Upload artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
+            --target "${vscode_target}" \
+            --out "elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix"
+          echo "::endgroup::"
+      - name: "Upload artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix"
         uses: actions/upload-artifact@v4
         with:
-          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-          path: editors/code/erlang-language-platform.vsix
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+          path: editors/code/elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix

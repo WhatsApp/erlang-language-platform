@@ -1,66 +1,53 @@
 on:
   workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      otp-version:
+        required: true
+        type: string
 
 jobs:
   elp:
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          # - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
-        otp-version: [25.3, 26.0]
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu
-            os-version: 20.04
-            arch: x86_64
-          # - target: aarch64-unknown-linux-gnu
-          #   os: ubuntu
-          #   os-version: 20.04
-          #   arch: aarch64
-          - target: x86_64-apple-darwin
-            os: macos
-            os-version: latest
-            arch: x86_64
-          - target: aarch64-apple-darwin
-            os: macos
-            os-version: latest
-            arch: aarch64
-    runs-on: ${{ matrix.os }}-${{ matrix.os-version }}
+    runs-on: ${{ endsWith('linux-gnu', inputs.target) && 'ubuntu-latest' || 'macos-latest' }}
     steps:
       - name: Checkout erlang-language-platform
         uses: actions/checkout@v4
+
       - name: Checkout eqwalizer
         uses: actions/checkout@v4
         with:
           repository: WhatsApp/eqwalizer
           path: eqwalizer
-      - name: "Download artifact: eqwalizer.${{ matrix.target }}"
+
+      - name: "Download artifact: eqwalizer.${{ inputs.target }}"
         uses: actions/download-artifact@v4
         with:
-          name: eqwalizer.${{ matrix.target }}
+          name: eqwalizer.${{ inputs.target }}
+
       - name: Set up cross-compiler
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: inputs.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y crossbuild-essential-arm64
+
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.target }}
+          target: ${{ inputs.target }}
+
       - name: Install Erlang/OTP (Linux Only)
-        if: matrix.os == 'ubuntu'
+        if: ${{ runner.os == 'Ubuntu' }}
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp-version }}
+          otp-version: ${{ inputs.otp-version }}
           install-rebar: false
           install-hex: false
       - name: Install Erlang/OTP (MacOS Only)
-        if: matrix.os == 'macos'
+        if: ${{ runner.os == 'macOS' }}
         run: |
-          otp_version=${{ matrix.otp-version }}
+          otp_version=${{ inputs.otp-version }}
           otp_version_major=${otp_version%%.*}
           brew install erlang@${otp_version_major}
           echo "/usr/local/opt/erlang@${otp_version_major}/bin" >> $GITHUB_PATH
@@ -78,14 +65,17 @@ jobs:
       - name: Build elp
         env:
           EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
-          ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer.${{ matrix.target }}
+          ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer.${{ inputs.target }}
         run: |
           cargo build \
             --release  \
-            --target ${{ matrix.target }} \
+            --target ${{ inputs.target }} \
             --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
-      - name: "Upload artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
+      - name: "Prepare elp for uploading"
+        run: |
+          mv target/${{ inputs.target }}/release/elp target/${{ inputs.target }}/release/elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+      - name: "Upload artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}"
         uses: "actions/upload-artifact@v4"
         with:
-          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/elp
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+          path: target/${{ inputs.target }}/release/elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}

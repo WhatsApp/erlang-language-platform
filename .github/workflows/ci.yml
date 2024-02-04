@@ -16,98 +16,63 @@ jobs:
         target:
           - x86_64-unknown-linux-gnu
           # - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
+          # - x86_64-apple-darwin
           # - aarch64-apple-darwin
     uses: ./.github/workflows/build-eqwalizer-native.yml
     with:
       target: ${{ matrix.target }}
 
-  # elp:
-  #   needs: eqwalizer
-  #   uses: ./.github/workflows/build-elp.yml
+  elp:
+    needs: eqwalizer-native
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
+        otp-version:
+          - "26.2"
+    uses: ./.github/workflows/build-elp.yml
+    with:
+      target: ${{ matrix.target }}
+      otp-version: ${{ matrix.otp-version }}
 
-  # vscode-extension:
-  #   needs: [elp, eqwalizer]
-  #   uses: ./.github/workflows/build-vscode-extension.yml
+  vscode-extension:
+    needs: [elp, eqwalizer-native]
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
+        otp-version:
+          - "26.2"
+    uses: ./.github/workflows/build-vscode-extension.yml
 
-  # publish-release-assets:
-  #   # if: github.event_name == 'release'
-  #   needs: [elp, vscode-extension]
-  #   strategy:
-  #     matrix:
-  #       target:
-  #         - x86_64-unknown-linux-gnu
-  #         # - aarch64-unknown-linux-gnu
-  #         - x86_64-apple-darwin
-  #         - aarch64-apple-darwin
-  #       otp-version: [25.3, 26.0]
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
-  #     - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-  #     - name: "Prepare elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
-  #       run: |
-  #         chmod +x ./elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
-  #         tar -zcvf \
-  #           elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz \
-  #           elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
-  #     # - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
-  #     #   uses: actions/upload-release-asset@v1
-  #     #   env:
-  #     #     GITHUB_TOKEN: ${{ github.token }}
-  #     #   with:
-  #     #     upload_url: ${{ github.event.release.upload_url }} 
-  #     #     asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
-  #     #     asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
-  #     #     asset_content_type: application/octet-stream
-  #     # - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
-  #     #   uses: actions/upload-release-asset@v1
-  #     #   env:
-  #     #     GITHUB_TOKEN: ${{ github.token }}
-  #     #   with:
-  #     #     upload_url: ${{ github.event.release.upload_url }} 
-  #     #     asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-  #     #     asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-  #     #     asset_content_type: application/octet-stream
-  #     - name: Publish
-  #       run: |
-  #         ls -lh \
-  #           elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz \
-  #           elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+  publish-release-assets:
+    needs: [elp, vscode-extension]
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
+        otp-version:
+          - "26.2"
+    uses: ./.github/workflows/publish-release-assets.yml
 
-  # publish-vscode-extension:
-  #   # if: github.event_name == 'release'
-  #   needs: vscode-extension
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - name: "Download artifacts: elp.*.vsix"
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         pattern: elp.*.vsix
-  #         merge-multiple: true
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: lts
-  #     - name: Install VSCE
-  #       run: |
-  #         npm install -g @vscode/vsce
-  #     - name: Publish
-  #       run: |
-  #         ls -lh *.vsix
-  #       # run: |
-  #       #   vsce publish \
-  #       #     --pat ${{ secrets.VSCE_PAT }} \
-  #       #     --packagePath \
-  #       #       elp.otp-25.3.x86_64-unknown-linux-gnu.vsix \
-  #       #       elp.otp-25.3.x86_64-apple-darwin.vsix \
-  #       #       elp.otp-25.3.aarch64-apple-darwin.vsix \
-  #       #       elp.otp-26.x86_64-unknown-linux-gnu.vsix \
-  #       #       elp.otp-26.x86_64-apple-darwin.vsix \
-  #       #       elp.otp-26.aarch64-apple-darwin.vsix
+  publish-vscode-extension:
+    needs: vscode-extension
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          # - aarch64-unknown-linux-gnu
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
+        otp-version:
+          - "26.2"
+    uses: ./.github/workflows/publish-vscode-extension.yml

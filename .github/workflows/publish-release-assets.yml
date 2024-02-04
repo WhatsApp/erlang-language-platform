@@ -1,0 +1,58 @@
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      otp-version:
+        required: true
+        type: string
+
+jobs:
+  release-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}"
+        uses: actions/download-artifact@v4
+        with:
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+
+      - name: "Download artifact: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix"
+        uses: actions/download-artifact@v4
+        with:
+          name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+
+      - name: "Prepare elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz"
+        run: |
+          chmod +x ./elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+          tar -zcvf \
+            elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz \
+            elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}
+
+      - name: Verify assets
+        run: |
+          ls -lh \
+            elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz \
+            elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+
+      - name: "Upload elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz"
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }} 
+          asset_path: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz
+          asset_name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.tar.gz
+          asset_content_type: application/octet-stream
+
+      - name: "Upload elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix"
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }} 
+          asset_path: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+          asset_name: elp.otp-${{ inputs.otp-version }}.${{ inputs.target }}.vsix
+          asset_content_type: application/octet-stream
