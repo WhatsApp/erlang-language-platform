@@ -64,8 +64,10 @@ jobs:
       - name: Install Erlang/OTP (MacOS Only)
         if: matrix.os == 'macos'
         run: |
-          brew install erlang@${{ matrix.otp-version }}
-          echo '/usr/local/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH
+          otp_version=${{ matrix.otp-version }}
+          otp_version_major=${otp_version%%.*}
+          brew install erlang@${otp_version_major}
+          echo "/usr/local/opt/erlang@${otp_version_major}/bin" >> $GITHUB_PATH
       - name: Verify Erlang/OTP version
         run: |
           erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
