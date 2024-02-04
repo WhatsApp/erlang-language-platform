@@ -1,8 +1,5 @@
 on:
   workflow_call:
-env:
-  EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
-  ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer
 
 jobs:
   elp:
@@ -44,7 +41,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: eqwalizer.${{ matrix.target }}
-          path: ${{ env.ELP_EQWALIZER_PATH }}
       - name: Set up cross-compiler
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
@@ -55,7 +51,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
       - name: Install Erlang/OTP (Linux Only)
-        if: matrix.os == 'linux'
+        if: matrix.os == 'ubuntu'
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp-version }}
@@ -80,6 +76,9 @@ jobs:
       - name: Verify rebar3 version
         run: rebar3 version
       - name: Build elp
+        env:
+          EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
+          ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer.${{ matrix.target }}
         run: |
           cargo build \
             --release  \
