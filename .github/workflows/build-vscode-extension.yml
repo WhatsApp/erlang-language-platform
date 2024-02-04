@@ -31,14 +31,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: eqwalizer.${{ matrix.target }}
-          path: editors/code/bin/eqwalizer
       - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}"
         uses: actions/download-artifact@v4
         with:
-          name: elp.${{ matrix.target }}
-          path: editors/code/bin/elp
-      - name: Ensure binaries are executable
+          name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
+      - name: Move elp/eqwalizer binaries
         run: |
+          mkdir -p editors/code/bin/
+          mv eqwalizer.${{ matrix.target }} editors/code/bin/eqwalizer
+          mv elp.otp-${{ matrix.otp-version }}.${{ matrix.target }} editors/code/bin/elp
           chmod +x editors/code/bin/*
       - name: Setup Node
         uses: actions/setup-node@v4

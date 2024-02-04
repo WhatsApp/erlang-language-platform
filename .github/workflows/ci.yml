@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/build-vscode-extension.yml
 
   publish-release-assets:
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
     needs: [elp, vscode-extension]
     strategy:
       matrix:
@@ -34,39 +34,42 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
-          path: elp
       - name: "Download artifact: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
         uses: actions/download-artifact@v4
         with:
           name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-          path: elp.vsix
       - name: "Prepare elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
         run: |
-          chmod +x ./elp
+          chmod +x ./elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
           tar -zcvf \
             elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz \
-            elp
-      - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }} 
-          asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
-          asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
-          asset_content_type: application/octet-stream
-      - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }} 
-          asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-          asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
-          asset_content_type: application/octet-stream
+            elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}
+      # - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz"
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }} 
+      #     asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
+      #     asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz
+      #     asset_content_type: application/octet-stream
+      # - name: "Upload elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix"
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }} 
+      #     asset_path: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+      #     asset_name: elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
+      #     asset_content_type: application/octet-stream
+      - name: Publish
+        run: |
+          ls -lh \
+            elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.tar.gz \
+            elp.otp-${{ matrix.otp-version }}.${{ matrix.target }}.vsix
 
   publish-vscode-extension:
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
     needs: vscode-extension
     runs-on: ubuntu-20.04
     steps:
@@ -74,6 +77,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: elp.*.vsix
+          merge-multiple: true
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -83,12 +87,14 @@ jobs:
           npm install -g @vscode/vsce
       - name: Publish
         run: |
-          vsce publish \
-            --pat ${{ secrets.VSCE_PAT }} \
-            --packagePath \
-              elp.otp-25.3.x86_64-unknown-linux-gnu.vsix \
-              elp.otp-25.3.x86_64-apple-darwin.vsix \
-              elp.otp-25.3.aarch64-apple-darwin.vsix \
-              elp.otp-26.x86_64-unknown-linux-gnu.vsix \
-              elp.otp-26.x86_64-apple-darwin.vsix \
-              elp.otp-26.aarch64-apple-darwin.vsix
+          ls -lh *.vsix
+        # run: |
+        #   vsce publish \
+        #     --pat ${{ secrets.VSCE_PAT }} \
+        #     --packagePath \
+        #       elp.otp-25.3.x86_64-unknown-linux-gnu.vsix \
+        #       elp.otp-25.3.x86_64-apple-darwin.vsix \
+        #       elp.otp-25.3.aarch64-apple-darwin.vsix \
+        #       elp.otp-26.x86_64-unknown-linux-gnu.vsix \
+        #       elp.otp-26.x86_64-apple-darwin.vsix \
+        #       elp.otp-26.aarch64-apple-darwin.vsix
