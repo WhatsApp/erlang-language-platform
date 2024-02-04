@@ -52,12 +52,12 @@ jobs:
           echo "::group::Determining vscode target"
           echo "target = ${{ inputs.target }}"
           case "${{ inputs.target }}" in
-            "x86_64-unknown-linux-gnu") vscode_target="linux-x64" ;;
-            "aarch64-unknown-linux-gnu") vscode_target="linux-arm64" ;;
-            "x86_64-apple-darwin") vscode_target="darwin-x64" ;;
-            "aarch64-apple-darwin") vscode_target="darwin-arm64" ;;
+            x86_64-unknown-linux-gnu) vscode_target=linux-x64 ;;
+            aarch64-unknown-linux-gnu) vscode_target=linux-arm64 ;;
+            x86_64-apple-darwin) vscode_target=darwin-x64 ;;
+            aarch64-apple-darwin) vscode_target=darwin-arm64 ;;
             *)
-              echo "Unsupported target platform" > &2
+              echo "Unsupported target platform" >&2
               exit 1
           esac
           echo "vscode-target = ${vscode_target}"
