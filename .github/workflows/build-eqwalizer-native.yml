@@ -12,7 +12,7 @@ on:
 
 jobs:
   equalizer-native:
-    runs-on: ${{ endsWith('linux-gnu', inputs.target) && 'ubuntu-latest' || 'macos-latest' }}
+    runs-on: ${{ endsWith(inputs.target, 'linux-gnu') && 'ubuntu-latest' || 'macos-latest' }}
     steps:
       - name: "Download artifact: eqwalizer.jar"
         uses: actions/download-artifact@v4

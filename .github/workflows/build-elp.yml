@@ -10,7 +10,7 @@ on:
 
 jobs:
   elp:
-    runs-on: ${{ endsWith('linux-gnu', inputs.target) && 'ubuntu-latest' || 'macos-latest' }}
+    runs-on: ${{ endsWith(inputs.target, 'linux-gnu') && 'ubuntu-latest' || 'macos-latest' }}
     steps:
       - name: Checkout erlang-language-platform
         uses: actions/checkout@v4
