@@ -37,7 +37,7 @@ jobs:
             --no-server \
             --no-fallback \
             -jar artifacts/eqwalizer.jar \
-            eqwalizer.${{ inputs.target }}
+            artifacts/eqwalizer.${{ inputs.target }}
 
       - name: Assemble eqwalizer binary (aarch64-unknown-linux-gnu)
         if: ${{ inputs.target == 'aarch64-unknown-linux-gnu' }}
