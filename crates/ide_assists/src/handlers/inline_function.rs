@@ -115,6 +115,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                         if let Some(clause) =
                             function_body.clauses.iter().next().map(|(_, clause)| {
                                 InFunctionClauseBody::new(
+                                    &ctx.sema,
                                     clause.clone(),
                                     InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                                     None,
@@ -738,6 +739,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                 ScopeAnalysis::clause_vars_in_scope(
                     &ctx.sema,
                     &InFunctionClauseBody::new(
+                        &ctx.sema,
                         clause.clone(),
                         InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                         None,
@@ -754,6 +756,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
             .iter()
             .filter_map(|(_, clause)| {
                 simple_param_vars(&InFunctionClauseBody::new(
+                    &ctx.sema,
                     clause.clone(),
                     InFile::new(fun.file.file_id, function_body.clause_ids[0]),
                     None,

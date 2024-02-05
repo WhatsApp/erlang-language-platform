@@ -48,7 +48,7 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
             }
             let source_file = sema.parse(file_id);
 
-            let in_clause = def.in_clause(sema.db, def);
+            let in_clause = def.in_clause(sema, def);
             let body_map = in_clause.get_body_map(sema.db);
             let clause = in_clause.clone().body;
 

@@ -40,6 +40,7 @@ use crate::Name;
 use crate::NameArity;
 use crate::Record;
 use crate::RecordField;
+use crate::Semantic;
 use crate::Spec;
 use crate::SpecId;
 use crate::TypeAlias;
@@ -115,15 +116,20 @@ impl FunctionClauseDef {
         self.function_clause.form_id.get(&source_file)
     }
 
-    pub fn in_clause<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionClauseBody<T>
+    pub fn in_clause<'a, T>(
+        &self,
+        sema: &'a Semantic<'a>,
+        value: T,
+    ) -> crate::InFunctionClauseBody<'a, T>
     where
         T: Clone,
     {
-        let function_clause_body = db.function_clause_body(InFile::new(
+        let function_clause_body = sema.db.function_clause_body(InFile::new(
             self.file.file_id,
             self.function_clause_id.clone(),
         ));
         InFunctionClauseBody::new(
+            sema,
             function_clause_body,
             InFile::new(self.file.file_id, self.function_clause_id.clone()),
             None,
@@ -170,13 +176,19 @@ impl FunctionDef {
         Some(start.syntax().text_range().cover(end.syntax().text_range()))
     }
 
-    pub fn in_function_body<T>(&self, db: &dyn MinDefDatabase, value: T) -> crate::InFunctionBody<T>
+    pub fn in_function_body<'a, T>(
+        &self,
+        sema: &'a Semantic<'a>,
+        value: T,
+    ) -> crate::InFunctionBody<'a, T>
     where
         T: Clone,
     {
-        let function_body =
-            db.function_body(InFile::new(self.file.file_id, self.function_id.clone()));
+        let function_body = sema
+            .db
+            .function_body(InFile::new(self.file.file_id, self.function_id.clone()));
         InFunctionBody::new(
+            sema,
             function_body,
             InFile::new(self.file.file_id, self.function_id.clone()),
             value,

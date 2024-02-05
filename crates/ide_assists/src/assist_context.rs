@@ -175,17 +175,26 @@ impl<'a> AssistContext<'a> {
 
     #[allow(dead_code)]
     pub(crate) fn in_clause(
-        &self,
+        &'a self,
         syntax: &SyntaxNode,
         file_id: FileId,
-    ) -> Option<(InFile<FunctionClauseId>, ClauseId, InFunctionClauseBody<()>)> {
+    ) -> Option<(
+        InFile<FunctionClauseId>,
+        ClauseId,
+        InFunctionClauseBody<'a, ()>,
+    )> {
         let function_clause_id = self
             .sema
             .find_enclosing_function_clause_id(self.file_id(), syntax)?;
         let infile_function = InFile::new(self.file_id(), function_clause_id);
         let (clause_id, body) = self.sema.to_clause_body(InFile::new(file_id, syntax))?;
-        let in_clause =
-            InFunctionClauseBody::new(body, InFile::new(file_id, function_clause_id), None, ());
+        let in_clause = InFunctionClauseBody::new(
+            &self.sema,
+            body,
+            InFile::new(file_id, function_clause_id),
+            None,
+            (),
+        );
         Some((infile_function, clause_id, in_clause))
     }
 

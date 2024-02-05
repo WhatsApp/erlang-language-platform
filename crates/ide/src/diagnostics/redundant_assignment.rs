@@ -49,7 +49,7 @@ pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic,
 }
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    let def_fb = def.in_function_body(sema.db, def);
+    let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy::InvisibleMacros,
         (),

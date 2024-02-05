@@ -261,7 +261,7 @@ pub fn remove_fun_ref_from_list(
     let matcher = FunctionMatcher::new(&mfas);
     sema.def_map(file_id).get_functions().for_each(|(_, def)| {
         if def.file.file_id == file_id {
-            let def_fb = def.in_function_body(sema.db, def);
+            let def_fb = def.in_function_body(sema, def);
             let source_file = sema.parse(file_id);
             def_fb.clone().fold_function(
                 Strategy::InvisibleMacros,

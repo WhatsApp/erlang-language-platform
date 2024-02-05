@@ -43,7 +43,7 @@ pub(crate) fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
                 return;
             }
 
-            let def_fb = fun_def.in_function_body(sema.db, fun_def);
+            let def_fb = fun_def.in_function_body(sema, fun_def);
 
             def_fb.fold_function(
                 Strategy::SurfaceOnly,

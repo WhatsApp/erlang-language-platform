@@ -8,6 +8,7 @@
  */
 
 use std::cell::RefCell;
+use std::fmt;
 use std::iter::FromIterator;
 use std::ops::Index;
 use std::sync::Arc;
@@ -100,6 +101,14 @@ pub struct Semantic<'db> {
     pub db: &'db dyn MinDefDatabase,
 }
 
+impl<'db> fmt::Debug for Semantic<'db> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Information-free print, to allow `fmt::Debug` on structs
+        // containing this.
+        write!(f, "Semantic{{}}")
+    }
+}
+
 impl<'db> Semantic<'db> {
     pub fn new<Db: MinDefDatabase>(db: &'db Db) -> Self {
         Self { db }
@@ -136,6 +145,7 @@ impl<'db> Semantic<'db> {
             .function_clause_body_with_source(expr.with_value(function_id));
         let expr_id = &body_map.expr_id(expr)?;
         Some(InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id: expr.with_value(function_id),
             body_map: Some(body_map).into(),
@@ -151,6 +161,7 @@ impl<'db> Semantic<'db> {
             .function_clause_body_with_source(expr.with_value(function_id));
         let pat_id = &body_map.pat_id(expr)?;
         Some(InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id: expr.with_value(function_id),
             body_map: Some(body_map).into(),
@@ -160,7 +171,7 @@ impl<'db> Semantic<'db> {
 
     pub fn to_function_body(&self, function_id: InFile<FunctionDefId>) -> InFunctionBody<()> {
         let body = self.db.function_body(function_id);
-        InFunctionBody::new(body, function_id, ())
+        InFunctionBody::new(self, body, function_id, ())
     }
 
     pub fn to_function_clause_body(
@@ -169,6 +180,7 @@ impl<'db> Semantic<'db> {
     ) -> InFunctionClauseBody<()> {
         let (body, body_map) = self.db.function_clause_body_with_source(function_clause_id);
         InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id,
             body_map: Some(body_map).into(),
@@ -408,6 +420,7 @@ impl<'db> Semantic<'db> {
             value: expr,
         })?;
         self.free_vars(&InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id: infile_function_id,
             body_map: Some(source_map).into(),
@@ -512,6 +525,7 @@ impl<'db> Semantic<'db> {
         let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
         Some(InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id,
             body_map: None.into(), // We may not need it, do not get it now
@@ -527,6 +541,7 @@ impl<'db> Semantic<'db> {
         let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
         Some(InFunctionClauseBody {
+            sema: self,
             body,
             function_clause_id,
             body_map: None.into(), // We may not need it, do not get it now
@@ -953,7 +968,7 @@ fn fold_function_clause_body<'a, T>(
 
 struct BoundVarsInPat<'a> {
     sema: &'a Semantic<'a>,
-    resolver: &'a mut InFunctionClauseBody<Resolver>,
+    resolver: &'a mut InFunctionClauseBody<'a, Resolver>,
     file_id: FileId,
     res: &'a mut FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)>,
 }
@@ -961,7 +976,7 @@ struct BoundVarsInPat<'a> {
 impl<'a> BoundVarsInPat<'a> {
     fn new(
         sema: &'a Semantic<'a>,
-        resolver: &'a mut InFunctionClauseBody<Resolver>,
+        resolver: &'a mut InFunctionClauseBody<'a, Resolver>,
         file_id: FileId,
         res: &'a mut FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)>,
     ) -> Self {
@@ -1050,15 +1065,16 @@ impl ScopeAnalysis {
 }
 
 #[derive(Debug, Clone)]
-pub struct InFunctionBody<T> {
+pub struct InFunctionBody<'a, T> {
     body: Arc<FunctionBody>,
     function_id: InFile<FunctionDefId>,
-    clause_bodies: Arena<InFunctionClauseBody<T>>,
+    clause_bodies: Arena<InFunctionClauseBody<'a, T>>,
     pub value: T,
 }
 
-impl<T: Clone> InFunctionBody<T> {
+impl<'a, T: Clone> InFunctionBody<'a, T> {
     pub fn new(
+        sema: &'a Semantic<'a>,
         body: Arc<FunctionBody>,
         function_id: InFile<FunctionDefId>,
         value: T,
@@ -1069,6 +1085,7 @@ impl<T: Clone> InFunctionBody<T> {
             .zip(body.clause_ids.iter())
             .map(|((_, clause), clause_function_id)| {
                 InFunctionClauseBody::new(
+                    sema,
                     clause.clone(),
                     function_id.with_value(*clause_function_id),
                     None,
@@ -1128,11 +1145,11 @@ impl<T: Clone> InFunctionBody<T> {
         self.body.clauses.iter()
     }
 
-    pub fn clause<'a>(&'a self, clause_id: ClauseId) -> &'a Arc<FunctionClauseBody> {
+    pub fn clause(&'a self, clause_id: ClauseId) -> &'a Arc<FunctionClauseBody> {
         &self.body.clauses[clause_id]
     }
 
-    pub fn in_clause<'a>(&'a self, clause_id: ClauseId) -> &'a InFunctionClauseBody<T> {
+    pub fn in_clause(&'a self, clause_id: ClauseId) -> &'a InFunctionClauseBody<T> {
         let idx = Idx::from_raw(clause_id.into_raw());
         &self.clause_bodies[idx]
     }
@@ -1141,7 +1158,7 @@ impl<T: Clone> InFunctionBody<T> {
         self.body.clauses[clause_id].body.clone()
     }
 
-    pub fn fold_function<'a, R>(
+    pub fn fold_function<R>(
         &self,
         strategy: Strategy,
         initial: R,
@@ -1178,7 +1195,7 @@ impl<T: Clone> InFunctionBody<T> {
     }
 }
 
-impl<T> Index<ClauseId> for InFunctionBody<T> {
+impl<'a, T> Index<ClauseId> for InFunctionBody<'a, T> {
     type Output = FunctionClauseBody;
 
     fn index(&self, index: ClauseId) -> &Self::Output {
@@ -1189,7 +1206,8 @@ impl<T> Index<ClauseId> for InFunctionBody<T> {
 // ---------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
-pub struct InFunctionClauseBody<T> {
+pub struct InFunctionClauseBody<'a, T> {
+    pub sema: &'a Semantic<'a>,
     pub body: Arc<FunctionClauseBody>,
     pub function_clause_id: InFile<FunctionClauseId>,
     // cache body_map if we already have it when wrapping the value.
@@ -1198,14 +1216,16 @@ pub struct InFunctionClauseBody<T> {
     pub value: T,
 }
 
-impl<T> InFunctionClauseBody<T> {
+impl<'a, T> InFunctionClauseBody<'a, T> {
     pub fn new(
+        sema: &'a Semantic<'a>,
         body: Arc<FunctionClauseBody>,
         function_clause_id: InFile<FunctionClauseId>,
         body_map: Option<Arc<BodySourceMap>>,
         value: T,
     ) -> InFunctionClauseBody<T> {
         InFunctionClauseBody {
+            sema,
             body,
             function_clause_id,
             body_map: body_map.into(),
@@ -1219,6 +1239,7 @@ impl<T> InFunctionClauseBody<T> {
 
     pub fn with_value<U>(&self, value: U) -> InFunctionClauseBody<U> {
         InFunctionClauseBody {
+            sema: self.sema,
             body: self.body.clone(),
             function_clause_id: self.function_clause_id,
             body_map: self.body_map.clone(),
@@ -1274,7 +1295,7 @@ impl<T> InFunctionClauseBody<T> {
         self.body.body.clone()
     }
 
-    pub fn fold_expr<'a, R>(
+    pub fn fold_expr<R>(
         &self,
         strategy: Strategy,
         expr_id: ExprId,
@@ -1291,7 +1312,7 @@ impl<T> InFunctionClauseBody<T> {
         )
     }
 
-    pub fn fold_pat<'a, R>(
+    pub fn fold_pat<R>(
         &self,
         strategy: Strategy,
         pat_id: PatId,
@@ -1308,7 +1329,7 @@ impl<T> InFunctionClauseBody<T> {
         )
     }
 
-    pub fn fold_clause<'a, R>(
+    pub fn fold_clause<R>(
         &self,
         strategy: Strategy,
         function_clause_id: FunctionClauseId,
@@ -1440,7 +1461,7 @@ impl<T> InFunctionClauseBody<T> {
     }
 }
 
-impl<T> Index<ExprId> for InFunctionClauseBody<T> {
+impl<'a, T> Index<ExprId> for InFunctionClauseBody<'a, T> {
     type Output = Expr;
 
     fn index(&self, index: ExprId) -> &Self::Output {
@@ -1448,7 +1469,7 @@ impl<T> Index<ExprId> for InFunctionClauseBody<T> {
     }
 }
 
-impl<T> Index<PatId> for InFunctionClauseBody<T> {
+impl<'a, T> Index<PatId> for InFunctionClauseBody<'a, T> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
@@ -1456,7 +1477,7 @@ impl<T> Index<PatId> for InFunctionClauseBody<T> {
     }
 }
 
-impl<T> Index<TypeExprId> for InFunctionClauseBody<T> {
+impl<'a, T> Index<TypeExprId> for InFunctionClauseBody<'a, T> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
@@ -1464,7 +1485,7 @@ impl<T> Index<TypeExprId> for InFunctionClauseBody<T> {
     }
 }
 
-impl<T> Index<TermId> for InFunctionClauseBody<T> {
+impl<'a, T> Index<TermId> for InFunctionClauseBody<'a, T> {
     type Output = Term;
 
     fn index(&self, index: TermId) -> &Self::Output {
@@ -1713,6 +1734,7 @@ mod tests {
             .find_enclosing_function_clause_id(position.file_id, &node)
             .unwrap();
         let in_clause = InFunctionClauseBody::new(
+            &sema,
             clause,
             InFile::new(position.file_id, function_clause_id),
             None,

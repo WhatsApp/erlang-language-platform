@@ -106,7 +106,7 @@ pub(crate) fn check_function(
     matches: &[(&FunctionMatch, DeprecationDetails)],
 ) {
     let matcher = FunctionMatcher::new(matches);
-    let def_fb = def.in_function_body(sema.db, def);
+    let def_fb = def.in_function_body(sema, def);
     def_fb
         .clone()
         .fold_function(Strategy::VisibleMacros, (), &mut |acc, clause_id, ctx| {

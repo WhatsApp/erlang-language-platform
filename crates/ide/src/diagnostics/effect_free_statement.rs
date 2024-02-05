@@ -45,7 +45,7 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
         if def.file.file_id == file_id {
             let source_file = sema.parse(file_id);
 
-            let def_fb = def.in_function_body(sema.db, def);
+            let def_fb = def.in_function_body(sema, def);
             def_fb.fold_function(
                 Strategy::InvisibleMacros,
                 (),

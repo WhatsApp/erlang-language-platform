@@ -59,7 +59,7 @@ pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
 }
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionClauseDef) {
-    let in_clause = def.in_clause(sema.db, def);
+    let in_clause = def.in_clause(sema, def);
     let body_map = in_clause.get_body_map(sema.db);
     let source_file = sema.parse(def.file.file_id);
 

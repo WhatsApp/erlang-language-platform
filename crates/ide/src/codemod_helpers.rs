@@ -342,7 +342,7 @@ pub struct CheckCallCtx<'a, T> {
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
     pub args: &'a [ExprId],
-    pub in_clause: &'a InFunctionClauseBody<&'a FunctionDef>,
+    pub in_clause: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
 }
 
 /// Check a specific call instance, and return extra info for a
@@ -366,7 +366,7 @@ pub(crate) fn find_call_in_function<T>(
     ) -> Option<Diagnostic>
     + Copy,
 ) -> Option<()> {
-    let def_fb = def.in_function_body(sema.db, def);
+    let def_fb = def.in_function_body(sema, def);
     let matcher = FunctionMatcher::new(mfas);
     def_fb
         .clone()

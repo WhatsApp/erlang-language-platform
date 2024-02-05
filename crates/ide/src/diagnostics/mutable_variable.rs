@@ -63,7 +63,7 @@ pub(crate) fn mutable_variable_bug(
         .for_each(|(_, def)| {
             if def.file.file_id == file_id {
                 if let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id) {
-                    let in_clause = def.in_clause(sema.db, def);
+                    let in_clause = def.in_clause(sema, def);
                     in_clause.fold_clause(
                         Strategy::InvisibleMacros,
                         def.function_clause_id,
