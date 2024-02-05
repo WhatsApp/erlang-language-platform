@@ -9,10 +9,9 @@
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast::Spec;
+use elp_syntax::ast;
 use elp_syntax::AstNode;
 use hir::InFile;
-use hir::SpecdFunctionDef;
 
 use crate::AssistContext;
 use crate::Assists;
@@ -31,27 +30,12 @@ use crate::Assists;
 //   error("not implemented").
 // ```
 pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let spec = ctx.find_node_at_offset::<Spec>()?;
-    let spec_id = InFile::new(
-        ctx.file_id(),
-        ctx.sema.find_enclosing_spec(ctx.file_id(), spec.syntax())?,
-    );
-    let def_map = ctx.db().def_map(spec_id.file_id);
-    let spec_def = def_map.get_spec_by_id(&spec_id)?;
+    let spec = ctx.find_node_at_offset::<ast::Spec>()?;
+    let spec_form = ctx.sema.find_form(InFile::new(ctx.file_id(), &spec))?;
+    let def_map = ctx.db().def_map(ctx.file_id());
+    let spec_def = def_map.get_unowned_spec(&spec_form.name)?;
 
-    let has_impl_already = def_map
-        .get_specd_functions()
-        .iter()
-        .any(|(_, SpecdFunctionDef { spec_def, .. })| spec_def.spec_id == spec_id.value);
-
-    if has_impl_already {
-        return None;
-    }
-
-    let name = spec.fun()?;
-    let name_text = name.text()?;
-    let insert = spec.syntax().text_range().end();
-    let target = name.syntax().text_range();
+    let target = spec.fun()?.syntax().text_range();
     let arg_names = spec_def.arg_names(ctx.db().upcast())?;
 
     acc.add(
@@ -59,38 +43,42 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         "Add implementation",
         target,
         None,
-        |builder| match ctx.config.snippet_cap {
-            Some(cap) => {
-                let mut snippet_idx = 0;
-                let args_snippets = arg_names
-                    .iter()
-                    .map(|arg_name| {
-                        snippet_idx += 1;
-                        format!("${{{}:{}}}, ", snippet_idx, arg_name.name())
-                    })
-                    .collect::<String>();
-                snippet_idx += 1;
-                let snippet = format!(
-                    "\n{}({}) ->\n  ${{{}:error(\"not implemented\").}}\n",
-                    name_text,
-                    args_snippets.trim_end_matches(", "),
-                    snippet_idx
-                );
-                builder.edit_file(ctx.frange.file_id);
-                builder.insert_snippet(cap, insert, snippet);
-            }
-            None => {
-                let args_text = arg_names
-                    .iter()
-                    .map(|arg_name| format!("{}, ", arg_name.name()))
-                    .collect::<String>();
-                let text = format!(
-                    "\n{}({}) ->\n  error(\"not implemented\").\n",
-                    name_text,
-                    args_text.trim_end_matches(", ")
-                );
-                builder.edit_file(ctx.frange.file_id);
-                builder.insert(insert, text)
+        |builder| {
+            let insert = spec.syntax().text_range().end();
+            let name = spec_def.spec.name.name();
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let mut snippet_idx = 0;
+                    let args_snippets = arg_names
+                        .iter()
+                        .map(|arg_name| {
+                            snippet_idx += 1;
+                            format!("${{{}:{}}}, ", snippet_idx, arg_name.name())
+                        })
+                        .collect::<String>();
+                    snippet_idx += 1;
+                    let snippet = format!(
+                        "\n{}({}) ->\n  ${{{}:error(\"not implemented\").}}\n",
+                        name,
+                        args_snippets.trim_end_matches(", "),
+                        snippet_idx
+                    );
+                    builder.edit_file(ctx.frange.file_id);
+                    builder.insert_snippet(cap, insert, snippet);
+                }
+                None => {
+                    let args_text = arg_names
+                        .iter()
+                        .map(|arg_name| format!("{}, ", arg_name.name()))
+                        .collect::<String>();
+                    let text = format!(
+                        "\n{}({}) ->\n  error(\"not implemented\").\n",
+                        name,
+                        args_text.trim_end_matches(", ")
+                    );
+                    builder.edit_file(ctx.frange.file_id);
+                    builder.insert(insert, text)
+                }
             }
         },
     )

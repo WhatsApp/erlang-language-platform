@@ -23,7 +23,6 @@ use hir::FunctionDef;
 use hir::InFile;
 use hir::NameArity;
 use hir::Semantic;
-use hir::SpecDef;
 
 use crate::Completion;
 use crate::Contents;
@@ -106,12 +105,11 @@ pub(crate) fn name_arity_to_call_completion(
         })
     });
     let deprecated = def_map.is_deprecated(na);
-    let spec_def = def_map.get_spec(na);
     let include_args = should_include_args(next_token);
 
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(format_call(na.name(), na.arity())), |def| {
-            function_contents(db, def, spec_def, na.name(), include_args)
+            function_contents(db, def, na.name(), include_args)
         })?;
         Some(Completion {
             label: na.to_string(),
@@ -133,12 +131,8 @@ pub(crate) fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
     }
 }
 
-fn function_arg_names(
-    db: &dyn SourceDatabase,
-    def: &FunctionDef,
-    spec_def: Option<&SpecDef>,
-) -> Option<String> {
-    let param_names = def.arg_names(spec_def, db);
+fn function_arg_names(db: &dyn SourceDatabase, def: &FunctionDef) -> Option<String> {
+    let param_names = def.arg_names(db);
     let res = param_names?
         .iter()
         .enumerate()
@@ -154,12 +148,11 @@ fn function_arg_names(
 pub(crate) fn function_contents(
     db: &dyn SourceDatabase,
     def: &FunctionDef,
-    spec_def: Option<&SpecDef>,
     function_name: &str,
     include_args: bool,
 ) -> Option<Contents> {
     if include_args {
-        let function_arg_names = function_arg_names(db, def, spec_def)?;
+        let function_arg_names = function_arg_names(db, def)?;
         Some(Contents::Snippet(format!(
             "{function_name}({function_arg_names})"
         )))

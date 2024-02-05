@@ -35,13 +35,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         _ => None,
     }?;
 
-    let has_spec_already = ctx
-        .sema
-        .def_map(ctx.file_id())
-        .get_spec(&function_def.name)
-        .is_some();
-
-    if has_spec_already {
+    if function_def.spec.is_some() {
         return None;
     }
 

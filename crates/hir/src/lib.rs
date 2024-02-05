@@ -131,7 +131,6 @@ pub use module_data::RecordDef;
 pub use module_data::RecordFieldDef;
 pub use module_data::SpecArgName;
 pub use module_data::SpecDef;
-pub use module_data::SpecdFunctionDef;
 pub use module_data::TypeAliasDef;
 pub use module_data::TypeAliasSource;
 pub use module_data::VarDef;

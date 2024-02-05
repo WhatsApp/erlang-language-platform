@@ -34,7 +34,6 @@ use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
 use crate::known;
 use crate::module_data::SpecDef;
-use crate::module_data::SpecdFunctionDef;
 use crate::name::erlang_funs;
 use crate::name::AsName;
 use crate::CallbackDef;
@@ -51,7 +50,6 @@ use crate::NameArity;
 use crate::OptionalCallbacks;
 use crate::PPDirective;
 use crate::RecordDef;
-use crate::SpecId;
 use crate::TypeAliasDef;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -66,8 +64,8 @@ pub struct DefMap {
     functions_by_fa: FxHashMap<NameArity, InFile<FunctionDefId>>,
     function_by_function_id: FxHashMap<FunctionClauseId, FunctionDefId>,
 
-    specs: FxHashMap<NameArity, SpecDef>,
-    spec_by_spec_id: FxHashMap<InFile<SpecId>, NameArity>,
+    /// Specs that aren't associated to any defined function
+    unowned_specs: FxHashMap<NameArity, SpecDef>,
 
     exported_functions: FxHashSet<NameArity>,
     deprecated: Deprecated,
@@ -250,7 +248,7 @@ impl DefMap {
                 FormIdx::Spec(idx) => {
                     let spec = form_list[idx].clone();
                     let spec_name = spec.name.clone();
-                    def_map.specs.insert(
+                    def_map.unowned_specs.insert(
                         spec_name.clone(),
                         SpecDef {
                             file,
@@ -258,9 +256,6 @@ impl DefMap {
                             spec_id: idx,
                         },
                     );
-                    def_map
-                        .spec_by_spec_id
-                        .insert(InFile::new(file_id, idx), spec_name);
                 }
                 //https://github.com/erlang/otp/blob/69aa665f3f48a59f83ad48dea63fdf1476d1d46a/lib/stdlib/src/erl_lint.erl#L1123
                 FormIdx::DeprecatedAttribute(idx) => match &form_list[idx] {
@@ -366,26 +361,8 @@ impl DefMap {
         self.deprecated.is_deprecated(name)
     }
 
-    pub fn get_spec(&self, name: &NameArity) -> Option<&SpecDef> {
-        self.specs.get(name)
-    }
-
-    pub fn get_spec_by_id(&self, spec_id: &InFile<SpecId>) -> Option<&SpecDef> {
-        let na = self.get_by_spec_id(spec_id)?;
-        self.get_spec(na)
-    }
-
-    pub fn get_by_spec_id(&self, spec_id: &InFile<SpecId>) -> Option<&NameArity> {
-        self.spec_by_spec_id.get(spec_id)
-    }
-
-    pub fn get_specd_function(&self, name: &NameArity) -> Option<SpecdFunctionDef> {
-        let (spec_def, function_def) =
-            Option::zip(self.get_spec(name).cloned(), self.get_function(name))?;
-        Some(SpecdFunctionDef {
-            spec_def,
-            function_def: function_def.clone(),
-        })
+    pub fn get_unowned_spec(&self, name: &NameArity) -> Option<&SpecDef> {
+        self.unowned_specs.get(name)
     }
 
     pub fn get_exported_functions(&self) -> &FxHashSet<NameArity> {
@@ -427,28 +404,6 @@ impl DefMap {
         );
         v.sort_by(|(ka, _), (kb, _)| ka.into_raw().cmp(&kb.into_raw()));
         v
-    }
-
-    pub fn get_specs(&self) -> &FxHashMap<NameArity, SpecDef> {
-        &self.specs
-    }
-
-    pub fn get_specd_functions(&self) -> FxHashMap<NameArity, SpecdFunctionDef> {
-        let specs = self.get_specs();
-        let name_arities = self.functions_by_fa.keys().chain(specs.keys());
-        name_arities
-            .filter_map(|na| {
-                specs.get(na).zip(self.get_function(na)).map(|(s, f)| {
-                    (
-                        na.clone(),
-                        SpecdFunctionDef {
-                            spec_def: s.clone(),
-                            function_def: f.clone(),
-                        },
-                    )
-                })
-            })
-            .collect()
     }
 
     pub fn get_imports(&self) -> &FxHashMap<NameArity, Name> {
@@ -548,17 +503,11 @@ impl DefMap {
                 .iter()
                 .map(|(name, def)| (name.clone(), def.clone())),
         );
-        self.specs.extend(
+        self.unowned_specs.extend(
             other
-                .specs
+                .unowned_specs
                 .iter()
                 .map(|(name, def)| (name.clone(), def.clone())),
-        );
-        self.spec_by_spec_id.extend(
-            other
-                .spec_by_spec_id
-                .iter()
-                .map(|(id, def)| (id.clone(), def.clone())),
         );
         self.exported_functions
             .extend(other.exported_functions.iter().cloned());
@@ -661,6 +610,7 @@ impl DefMap {
             .map(|(_, clause)| clause.function_clause)
             .collect::<Vec<_>>();
         let function_id = FunctionDefId(function_clause_ids[0]);
+        let spec = self.unowned_specs.remove(&current_na);
         let fun = FunctionDef {
             file,
             exported: false,
@@ -671,6 +621,7 @@ impl DefMap {
             function_clauses,
             function_clause_ids,
             function_id,
+            spec,
         };
         let function_def_id = FunctionDefId(fun.function_clause_ids[0]);
         self.function_by_function_id.extend(
@@ -776,8 +727,7 @@ impl DefMap {
             included,
             function_clauses,
             functions,
-            specs,
-            spec_by_spec_id,
+            unowned_specs: specs,
             deprecated,
             exported_functions,
             imported_functions,
@@ -798,7 +748,6 @@ impl DefMap {
         function_clauses.shrink_to_fit();
         functions.shrink_to_fit();
         specs.shrink_to_fit();
-        spec_by_spec_id.shrink_to_fit();
         exported_functions.shrink_to_fit();
         imported_functions.shrink_to_fit();
         types.shrink_to_fit();

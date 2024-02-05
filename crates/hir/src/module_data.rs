@@ -147,6 +147,7 @@ pub struct FunctionDef {
     pub function_clauses: Vec<FunctionClause>,
     pub function_clause_ids: Vec<FunctionClauseId>,
     pub function_id: FunctionDefId,
+    pub spec: Option<SpecDef>,
 }
 
 impl FunctionDef {
@@ -208,12 +209,8 @@ impl FunctionDef {
         Some(res)
     }
 
-    pub fn arg_names(
-        &self,
-        spec_def: Option<&SpecDef>,
-        db: &dyn SourceDatabase,
-    ) -> Option<Vec<String>> {
-        match spec_def {
+    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<String>> {
+        match &self.spec {
             Some(spec_def) => match spec_def.arg_names(db) {
                 Some(arg_names_from_spec) => {
                     if all_spec_arg_names_are_generated(&arg_names_from_spec) {
@@ -300,12 +297,6 @@ fn arg_name(arg_idx: usize, expr: ast::Expr) -> SpecArgName {
     } else {
         SpecArgName::Generated(format!("Arg{}", arg_idx))
     }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SpecdFunctionDef {
-    pub spec_def: SpecDef,
-    pub function_def: FunctionDef,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

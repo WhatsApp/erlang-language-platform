@@ -145,7 +145,6 @@ pub(crate) fn add_completions(
                     let function_name = na.name();
                     let def = def_map.get_function(na)?;
                     let fun_decl_ast = def.source(sema.db.upcast());
-                    let spec_def = def_map.get_spec(na);
                     let deprecated = def_map.is_deprecated(na);
                     match ctx {
                         crate::ctx::CtxKind::Dialyzer => helpers::name_slash_arity_completion(
@@ -157,7 +156,6 @@ pub(crate) fn add_completions(
                             let contents = helpers::function_contents(
                                 sema.db.upcast(),
                                 def,
-                                spec_def,
                                 &function_name,
                                 helpers::should_include_args(next_token),
                             )?;
