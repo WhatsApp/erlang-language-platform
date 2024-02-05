@@ -99,8 +99,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                         if let Some(label) = target.label(arity, &sema, body) {
                             nav.name = label
                         }
-                        if let Some(expr) =
-                            &function_body.get_body_map(db, clause_id).any(ctx.item_id)
+                        if let Some(expr) = &function_body.get_body_map(clause_id).any(ctx.item_id)
                         {
                             if let Some(node) = expr.to_node(&source_file) {
                                 if let Some(call) = algo::find_node_at_offset::<ast::Call>(

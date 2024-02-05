@@ -905,7 +905,7 @@ mod local_tests {
         )
     }
 
-    // #[track_caller]
+    #[track_caller]
     fn check_map_path_expr(path: &[&str], valid: bool, fixture: &str) {
         let (db, position) = TestDB::with_position(fixture);
         let sema = Semantic::new(&db);
@@ -926,7 +926,7 @@ mod local_tests {
             .body()
             .lookup_map_path(&db, in_clause.value.into(), &path)
         {
-            let astptr_found = in_clause.get_body_map(&db).any(found).unwrap().value();
+            let astptr_found = in_clause.get_body_map().any(found).unwrap().value();
             let ast_found = astptr_found.to_node(&file_syntax);
             if valid {
                 debug_assert_eq!(val, ast_found);

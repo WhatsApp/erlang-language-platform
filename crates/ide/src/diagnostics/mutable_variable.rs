@@ -72,9 +72,7 @@ pub(crate) fn mutable_variable_bug(
                             if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
                                 if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
                                     if bound_vars.contains(lhs) {
-                                        if let Some(range) =
-                                            in_clause.range_for_any(sema.db, ctx.item_id)
-                                        {
+                                        if let Some(range) = in_clause.range_for_any(ctx.item_id) {
                                             diags.push(Diagnostic::new(
                                                 DiagnosticCode::MutableVarBug,
                                                 "Possible mutable variable bug",

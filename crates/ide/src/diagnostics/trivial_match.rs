@@ -60,7 +60,7 @@ pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionClauseDef) {
     let in_clause = def.in_clause(sema, def);
-    let body_map = in_clause.get_body_map(sema.db);
+    let body_map = in_clause.get_body_map();
     let source_file = sema.parse(def.file.file_id);
 
     in_clause.fold_clause(
@@ -71,8 +71,8 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
             if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
                 let rhs = &rhs.clone();
                 if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
-                    let maybe_lhs_range = &in_clause.range_for_any(sema.db, AnyExprId::Pat(lhs));
-                    let maybe_full_range = &in_clause.range_for_any(sema.db, ctx.item_id);
+                    let maybe_lhs_range = &in_clause.range_for_any(AnyExprId::Pat(lhs));
+                    let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
                     if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range)
                     {
                         let rhs_ast = body_map

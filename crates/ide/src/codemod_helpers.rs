@@ -132,7 +132,7 @@ pub(crate) fn check_is_only_place_where_var_is_defined(
     let usages = sema.find_local_usages(var)?;
     let num_definitions = usages
         .iter()
-        .filter(|(id, _v)| var.to_var_def_any(sema, *id).map_or(false, is_definition))
+        .filter(|(id, _v)| var.to_var_def_any(*id).map_or(false, is_definition))
         .count();
     if num_definitions == 1 { Some(()) } else { None }
 }
@@ -158,7 +158,7 @@ pub(crate) fn check_var_has_no_references(
 ) -> Option<()> {
     let usages = sema.find_local_usages(var)?;
     let definition_found = usages.iter().any(|(id, _v)| {
-        var.to_var_def_any(sema, *id)
+        var.to_var_def_any(*id)
             .map_or(false, |dor| !is_definition(dor))
     });
     if !definition_found { Some(()) } else { None }
@@ -390,8 +390,7 @@ pub(crate) fn find_call_in_function<T>(
                         } else {
                             ctx.item_id
                         };
-                        if let Some(range) = &def_fb.range_for_any(sema.db, clause_id, call_expr_id)
-                        {
+                        if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
                             if let Some(diag) = make_diag(
                                 sema,
                                 in_clause,

@@ -176,7 +176,7 @@ fn replace_call(
         Replacement::UseCallArg { n } => {
             let &nth = args.get(*n as usize)?;
 
-            let body_map = in_clause.get_body_map(sema.db);
+            let body_map = in_clause.get_body_map();
             let source_file = sema.parse(file_id);
 
             let nth_str = body_map.expr(nth)?.to_node(&source_file)?.to_string();
@@ -186,14 +186,14 @@ fn replace_call(
         Replacement::Invocation { replacement } => {
             let range: TextRange = match target {
                 CallTarget::Local { name } => in_clause
-                    .range_for_expr(sema.db, name.to_owned())
+                    .range_for_expr(name.to_owned())
                     .expect("name in local call not found in function body."),
                 CallTarget::Remote { module, name } => {
                     let range_module = in_clause
-                        .range_for_expr(sema.db, module.to_owned())
+                        .range_for_expr(module.to_owned())
                         .expect("module in remote call not found in function body.");
                     let range_name = in_clause
-                        .range_for_expr(sema.db, name.to_owned())
+                        .range_for_expr(name.to_owned())
                         .expect("name in remote call not found in function body.");
                     TextRange::new(range_module.start(), range_name.end())
                 }
@@ -202,7 +202,7 @@ fn replace_call(
             Some(edit_builder.finish())
         }
         Replacement::ArgsPermutation { perm } => {
-            let body_map = in_clause.get_body_map(sema.db);
+            let body_map = in_clause.get_body_map();
             let source_file = sema.parse(file_id);
             let opt_args_str: Option<Vec<String>> = args
                 .iter()
@@ -234,7 +234,7 @@ fn replace_call(
                         .iter()
                         .map(|&id| {
                             in_clause
-                                .range_for_expr(sema.db, id)
+                                .range_for_expr(id)
                                 .expect("arg in permutation not found in function body.")
                         })
                         .reduce(|a, b| a.cover(b))
@@ -267,7 +267,7 @@ pub fn remove_fun_ref_from_list(
                 Strategy::InvisibleMacros,
                 (),
                 &mut |_acc, clause_id, ctx| {
-                    let body_map = def_fb.get_body_map(sema.db, clause_id);
+                    let body_map = def_fb.get_body_map(clause_id);
                     let in_clause = def_fb.in_clause(clause_id);
                     match ctx.item_id {
                         AnyExprId::Expr(expr_id) => {
@@ -289,11 +289,9 @@ pub fn remove_fun_ref_from_list(
                                             &def_fb.body(clause_id),
                                             file_id,
                                         )?;
-                                        let range = def_fb.clone().range_for_expr(
-                                            sema.db,
-                                            clause_id,
-                                            *matched_funref_id,
-                                        )?;
+                                        let range = def_fb
+                                            .clone()
+                                            .range_for_expr(clause_id, *matched_funref_id)?;
                                         let diag = diagnostic_builder(&mfa, "", range)?;
                                         diags.push(diag.with_fixes(Some(vec![fix(
                                             "remove_fun_ref_from_list",

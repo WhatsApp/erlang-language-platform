@@ -126,7 +126,7 @@ pub(crate) fn process_badmatches(
                             hir::Expr::Tuple { exprs } => {
                                 let key = exprs.get(0)?;
                                 let val = exprs.get(1)?;
-                                let key_name = in_clause.as_atom_name(sema.db, key)?;
+                                let key_name = in_clause.as_atom_name(key)?;
                                 if tag == key_name.as_str() {
                                     check_tuple(in_clause, val, sema, def)
                                 } else {
@@ -191,7 +191,7 @@ fn check_valid_application(
     arg: &ExprId,
     def: &FunctionDef,
 ) -> Option<(String, String)> {
-    let arg_name = def_fb.as_atom_name(sema.db, arg)?;
+    let arg_name = def_fb.as_atom_name(arg)?;
     let form_list = sema.form_list(def.file.file_id);
     // We need the app from the calling function location.
     let app = sema.db.file_app_name(def_fb.file_id())?;

@@ -49,7 +49,7 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
             let source_file = sema.parse(file_id);
 
             let in_clause = def.in_clause(sema, def);
-            let body_map = in_clause.get_body_map(sema.db);
+            let body_map = in_clause.get_body_map();
             let clause = in_clause.clone().body;
 
             let pats = &clause.clause.pats;
@@ -85,7 +85,7 @@ pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic,
                     pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
                 {
                     for (pat_id, new_name) in replacements.iter() {
-                        if let Some(range) = in_clause.range_for_pat(sema.db, *pat_id) {
+                        if let Some(range) = in_clause.range_for_pat(*pat_id) {
                             diags.push(make_diagnostic(file_id, range, new_name.clone()));
                         }
                     }

@@ -128,7 +128,7 @@ pub(crate) fn check_function(
                         } else {
                             ctx.item_id
                         };
-                        if let Some(range) = def_fb.range_for_any(sema.db, clause_id, expr_id) {
+                        if let Some(range) = def_fb.range_for_any(clause_id, expr_id) {
                             let d = make_diagnostic(range, &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
                                     sema,

@@ -90,13 +90,13 @@ fn is_var_assignment_to_unused_var(
     rhs: ExprId,
 ) -> Option<Diagnostic> {
     let source_file = sema.parse(file_id);
-    let body_map = in_clause.get_body_map(sema.db);
+    let body_map = in_clause.get_body_map();
 
     let rhs_name = body_map.expr(rhs)?.to_node(&source_file)?.to_string();
 
     let renamings = try_rename_usages(sema, &body_map, &source_file, lhs, rhs_name)?;
 
-    let range = in_clause.range_for_expr(sema.db, expr_id)?;
+    let range = in_clause.range_for_expr(expr_id)?;
 
     let diag = Diagnostic::new(
         DiagnosticCode::RedundantAssignment,

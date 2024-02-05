@@ -59,7 +59,7 @@ pub(crate) fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
                         None => {}
                         Some(replacement_str) => {
                             let expr_id = as_expr_id(ctx.item_id)?;
-                            let range = def_fb.range_for_expr(sema.db, clause_id, expr_id)?;
+                            let range = def_fb.range_for_expr(clause_id, expr_id)?;
 
                             let mut changes = SourceChangeBuilder::new(file_id);
                             changes.replace(range, &replacement_str);
@@ -173,7 +173,7 @@ fn to_string(
     clause_id: ClauseId,
     def_fb: &InFunctionBody<&FunctionDef>,
 ) -> Option<String> {
-    let body_map = def_fb.get_body_map(sema.db, clause_id);
+    let body_map = def_fb.get_body_map(clause_id);
     let source_file = sema.parse(def_fb.file_id());
     let str = body_map.expr(*expr_id)?.to_node(&source_file)?.to_string();
     Some(str)

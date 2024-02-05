@@ -260,11 +260,11 @@ impl<'db> Semantic<'db> {
             self.find_enclosing_function_clause_id(var_in.file_id, var_in.value.syntax())?;
         let resolver = self.ast_clause_resolver(var_in.with_value(function_id))?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
-        if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
+        if let Some(expr_id) = resolver.expr_id_ast(var_in.with_value(&expr)) {
             let var = resolver[expr_id].as_var()?;
             resolver.value.resolve_expr_id(&var, expr_id).cloned()
         } else {
-            let pat_id = resolver.pat_id_ast(self.db, var_in.with_value(&expr))?;
+            let pat_id = resolver.pat_id_ast(var_in.with_value(&expr))?;
             let var = resolver[pat_id].as_var()?;
             resolver.value.resolve_pat_id(&var, pat_id).cloned()
         }
@@ -283,11 +283,11 @@ impl<'db> Semantic<'db> {
             self.find_enclosing_function_clause_id(var_in.file_id, var_in.value.syntax())?;
         let resolver = self.ast_clause_resolver(var_in.with_value(function_clause_id))?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
-        if let Some(expr_id) = resolver.expr_id_ast(self.db, var_in.with_value(&expr)) {
+        if let Some(expr_id) = resolver.expr_id_ast(var_in.with_value(&expr)) {
             let scope = resolver.value.scopes.scope_for_expr(expr_id)?;
             Some((resolver.value, scope))
         } else {
-            let pat_id = resolver.pat_id_ast(self.db, var_in.with_value(&expr))?;
+            let pat_id = resolver.pat_id_ast(var_in.with_value(&expr))?;
             let scope = resolver.value.scopes.scope_for_pat(pat_id)?;
             Some((resolver.value, scope))
         }
@@ -630,7 +630,7 @@ impl<'db> Semantic<'db> {
         // TypeExpr::Var in future).
         in_clause: &InFunctionClauseBody<AnyExprId>,
     ) -> Option<Vec<(AnyExprId, crate::Var)>> {
-        let resolver = in_clause.resolver(&self);
+        let resolver = in_clause.resolver();
         let var_resolved: Vec<_> = match in_clause.value {
             AnyExprId::Expr(expr_id) => {
                 let var = in_clause[expr_id].as_var()?;
@@ -832,7 +832,7 @@ impl<'db> Semantic<'db> {
         file_id: FileId,
     ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
         let parse = self.parse(file_id);
-        let body_map = &resolver.get_body_map(self.db);
+        let body_map = &resolver.get_body_map();
         FoldCtx::fold_pat(
             Strategy::InvisibleMacros,
             &resolver.body.body,
@@ -1133,8 +1133,8 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         self.function_id.value
     }
 
-    pub fn get_body_map(&self, db: &dyn MinDefDatabase, clause_id: ClauseId) -> Arc<BodySourceMap> {
-        self.in_clause(clause_id).get_body_map(db)
+    pub fn get_body_map(&self, clause_id: ClauseId) -> Arc<BodySourceMap> {
+        self.in_clause(clause_id).get_body_map()
     }
 
     pub fn valid_clause_id(&self, ast_clause_id: AstClauseId) -> Option<ClauseId> {
@@ -1167,31 +1167,16 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         fold_function_body(strategy, &self.body, initial, callback)
     }
 
-    pub fn range_for_expr(
-        &self,
-        db: &dyn MinDefDatabase,
-        clause_id: ClauseId,
-        expr_id: ExprId,
-    ) -> Option<TextRange> {
-        self.in_clause(clause_id).range_for_expr(db, expr_id)
+    pub fn range_for_expr(&self, clause_id: ClauseId, expr_id: ExprId) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_expr(expr_id)
     }
 
-    pub fn range_for_any(
-        &self,
-        db: &dyn MinDefDatabase,
-        clause_id: ClauseId,
-        id: AnyExprId,
-    ) -> Option<TextRange> {
-        self.in_clause(clause_id).range_for_any(db, id)
+    pub fn range_for_any(&self, clause_id: ClauseId, id: AnyExprId) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_any(id)
     }
 
-    pub fn range_for_pat(
-        &mut self,
-        db: &dyn MinDefDatabase,
-        clause_id: ClauseId,
-        pat_id: PatId,
-    ) -> Option<TextRange> {
-        self.in_clause(clause_id).range_for_pat(db, pat_id)
+    pub fn range_for_pat(&mut self, clause_id: ClauseId, pat_id: PatId) -> Option<TextRange> {
+        self.in_clause(clause_id).range_for_pat(pat_id)
     }
 }
 
@@ -1251,12 +1236,12 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         self.function_clause_id.file_id
     }
 
-    pub fn ast_fun_decl(&self, db: &dyn MinDefDatabase) -> ast::FunDecl {
-        let form_list = db.file_form_list(self.function_clause_id.file_id);
+    pub fn ast_fun_decl(&self) -> ast::FunDecl {
+        let form_list = self.sema.db.file_form_list(self.function_clause_id.file_id);
         let function = &form_list[self.function_clause_id.value];
         let function_ast = function
             .form_id
-            .get(&self.function_clause_id.file_syntax(db.upcast()));
+            .get(&self.function_clause_id.file_syntax(self.sema.db.upcast()));
         function_ast
     }
 
@@ -1268,13 +1253,16 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         self.body.body.pats.iter()
     }
 
-    pub fn get_body_map(&self, db: &dyn MinDefDatabase) -> Arc<BodySourceMap> {
+    pub fn get_body_map(&self) -> Arc<BodySourceMap> {
         if let Some(body_map) = &self.body_map.borrow().as_ref() {
             //return explicitly here because borrow is still held in else statement
             //https://stackoverflow.com/questions/30243606/why-is-a-borrow-still-held-in-the-else-block-of-an-if-let
             return Arc::clone(body_map);
         }
-        let (_body, body_map) = db.function_clause_body_with_source(self.function_clause_id);
+        let (_body, body_map) = self
+            .sema
+            .db
+            .function_clause_body_with_source(self.function_clause_id);
         *self.body_map.borrow_mut() = Some(body_map.clone());
         body_map
     }
@@ -1283,12 +1271,12 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         self.body.body.expr_id(expr)
     }
 
-    pub fn expr_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<ExprId> {
-        self.get_body_map(db).expr_id(expr)
+    pub fn expr_id_ast(&self, expr: InFile<&ast::Expr>) -> Option<ExprId> {
+        self.get_body_map().expr_id(expr)
     }
 
-    pub fn pat_id_ast(&self, db: &dyn MinDefDatabase, expr: InFile<&ast::Expr>) -> Option<PatId> {
-        self.get_body_map(db).pat_id(expr)
+    pub fn pat_id_ast(&self, expr: InFile<&ast::Expr>) -> Option<PatId> {
+        self.get_body_map().pat_id(expr)
     }
 
     pub fn body(&self) -> Arc<Body> {
@@ -1339,63 +1327,61 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         fold_function_clause_body(strategy, &self.body, function_clause_id, initial, callback)
     }
 
-    pub fn range(&self, db: &dyn MinDefDatabase) -> TextRange {
-        self.ast_fun_decl(db).syntax().text_range()
+    pub fn range(&self) -> TextRange {
+        self.ast_fun_decl().syntax().text_range()
     }
 
-    pub fn range_for_expr(&self, db: &dyn MinDefDatabase, expr_id: ExprId) -> Option<TextRange> {
-        let body_map = self.get_body_map(db);
+    pub fn range_for_expr(&self, expr_id: ExprId) -> Option<TextRange> {
+        let body_map = self.get_body_map();
         let ast = body_map.expr(expr_id)?;
         Some(ast.range())
     }
 
-    pub fn range_for_any(&self, db: &dyn MinDefDatabase, id: AnyExprId) -> Option<TextRange> {
-        let body_map = self.get_body_map(db);
+    pub fn range_for_any(&self, id: AnyExprId) -> Option<TextRange> {
+        let body_map = self.get_body_map();
         let ast = body_map.any(id)?;
         Some(ast.range())
     }
 
-    pub fn range_for_pat(&self, db: &dyn MinDefDatabase, pat_id: PatId) -> Option<TextRange> {
-        let body_map = self.get_body_map(db);
+    pub fn range_for_pat(&self, pat_id: PatId) -> Option<TextRange> {
+        let body_map = self.get_body_map();
         let ast = body_map.pat(pat_id)?;
         Some(ast.range())
     }
 
-    pub fn as_atom_name(&self, db: &dyn MinDefDatabase, expr: &ExprId) -> Option<Name> {
-        Some(db.lookup_atom(self[*expr].as_atom()?))
+    pub fn as_atom_name(&self, expr: &ExprId) -> Option<Name> {
+        Some(self.sema.db.lookup_atom(self[*expr].as_atom()?))
     }
 
-    fn resolver(&self, sema: &Semantic<'_>) -> Resolver {
+    fn resolver(&self) -> Resolver {
         // Should this be a field in InFunctionClauseBody?
-        let clause_scopes = sema.db.function_clause_scopes(self.function_clause_id);
+        let clause_scopes = self.sema.db.function_clause_scopes(self.function_clause_id);
         Resolver::new(clause_scopes.clone())
     }
 
     pub fn to_var_def_any(
         &self,
-        sema: &Semantic,
         id: AnyExprId,
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
         match id {
-            AnyExprId::Expr(expr_id) => self.to_var_def_expr(sema, expr_id),
-            AnyExprId::Pat(pat_id) => self.to_var_def_pat(sema, pat_id),
+            AnyExprId::Expr(expr_id) => self.to_var_def_expr(expr_id),
+            AnyExprId::Pat(pat_id) => self.to_var_def_pat(pat_id),
             _ => None,
         }
     }
 
     pub fn to_var_def_pat(
         &self,
-        sema: &Semantic,
         pat_id: PatId,
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
         match &self[pat_id] {
             Pat::Var(_) => {
-                let resolver = self.resolver(sema);
+                let resolver = self.resolver();
                 let (var, original_pat_id, pat_ids) = {
                     let var = self[pat_id].as_var()?;
                     (var, Some(pat_id), resolver.resolve_pat_id(&var, pat_id)?)
                 };
-                self.to_var_def(sema, pat_ids, var, original_pat_id)
+                self.to_var_def(pat_ids, var, original_pat_id)
             }
             _ => None,
         }
@@ -1403,18 +1389,17 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
 
     pub fn to_var_def_expr(
         &self,
-        sema: &Semantic,
         expr_id: ExprId,
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {
         match &self[expr_id] {
             Expr::Var(_) => {
-                let clause_scopes = sema.db.function_clause_scopes(self.function_clause_id);
+                let clause_scopes = self.sema.db.function_clause_scopes(self.function_clause_id);
                 let resolver = Resolver::new(clause_scopes.clone());
                 let (var, original_pat_id, pat_ids) = {
                     let var = self[expr_id].as_var()?;
                     (var, None, resolver.resolve_expr_id(&var, expr_id)?)
                 };
-                self.to_var_def(sema, pat_ids, var, original_pat_id)
+                self.to_var_def(pat_ids, var, original_pat_id)
             }
             _ => None,
         }
@@ -1422,7 +1407,6 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
 
     pub fn to_var_def(
         &self,
-        sema: &Semantic,
         pat_ids: &Vec<PatId>,
         var: Var,
         original_pat_id: Option<PatId>,
@@ -1431,7 +1415,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         let mut resolved = pat_ids
             .iter()
             .filter_map(|&pat_id| {
-                let var_def = self.get_body_map(sema.db).pat(pat_id)?;
+                let var_def = self.get_body_map().pat(pat_id)?;
                 let def = VarDef {
                     file: File {
                         file_id: var_def.file_id(),
@@ -1456,8 +1440,8 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         }
     }
 
-    pub fn tree_print_any_expr(&self, db: &dyn MinDefDatabase, expr: AnyExprId) -> String {
-        self.body().tree_print_any_expr(db.upcast(), expr)
+    pub fn tree_print_any_expr(&self, expr: AnyExprId) -> String {
+        self.body().tree_print_any_expr(self.sema.db.upcast(), expr)
     }
 }
 
@@ -1530,7 +1514,7 @@ mod tests {
             .unwrap();
         let usages: Vec<_> = usages
             .iter()
-            .map(|(id, v)| (in_clause.range_for_any(&db, *id).unwrap(), v.as_string(&db)))
+            .map(|(id, v)| (in_clause.range_for_any(*id).unwrap(), v.as_string(&db)))
             .sorted_by_key(|(r, _)| r.start())
             .collect();
         expect.assert_debug_eq(&usages);
@@ -1740,7 +1724,7 @@ mod tests {
             None,
             (),
         );
-        let ast = in_clause.ast_fun_decl(&db);
+        let ast = in_clause.ast_fun_decl();
         expect.assert_debug_eq(&ast);
     }
 

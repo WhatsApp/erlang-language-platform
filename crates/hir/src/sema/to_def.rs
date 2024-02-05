@@ -469,16 +469,11 @@ impl ToDef for ast::Var {
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast.value.clone()));
         if let Some(expr_id) = body_map.expr_id(ast.with_value(&expr)) {
             let var = body.body[expr_id].as_var()?;
-            in_clause.to_var_def(sema, resolver.resolve_expr_id(&var, expr_id)?, var, None)
+            in_clause.to_var_def(resolver.resolve_expr_id(&var, expr_id)?, var, None)
         } else {
             let pat_id = body_map.pat_id(ast.with_value(&expr))?;
             let var = body.body[pat_id].as_var()?;
-            in_clause.to_var_def(
-                sema,
-                resolver.resolve_pat_id(&var, pat_id)?,
-                var,
-                Some(pat_id),
-            )
+            in_clause.to_var_def(resolver.resolve_pat_id(&var, pat_id)?, var, Some(pat_id))
         }
     }
 }

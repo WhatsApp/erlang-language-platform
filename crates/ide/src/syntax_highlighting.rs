@@ -178,7 +178,7 @@ fn find_deprecated_range(
     function_body: &InFunctionClauseBody<()>,
 ) -> Option<TextRange> {
     let fun_atom = &function_body[*name].as_atom()?;
-    let range = function_body.range_for_expr(sema.db, *name)?;
+    let range = function_body.range_for_expr(*name)?;
     if range_to_highlight.intersect(range).is_some() {
         let name = sema.db.lookup_atom(*fun_atom);
         if def_map.is_deprecated(&NameArity::new(name, arity)) {

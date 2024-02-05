@@ -768,13 +768,10 @@ mod tests {
         let body = db.function_body(InFile::new(file_id, function));
 
         let expr_id = in_clause
-            .expr_id_ast(
-                &db,
-                InFile {
-                    file_id: file_id.into(),
-                    value: &marker,
-                },
-            )
+            .expr_id_ast(InFile {
+                file_id: file_id.into(),
+                value: &marker,
+            })
             .unwrap();
         let clause_id = body.valid_clause_id(ast_clause_id).unwrap();
         let clause_scope = scopes.get(clause_id).unwrap();
