@@ -67,10 +67,14 @@ jobs:
       - name: Verify rebar3 version
         run: rebar3 version
 
+      - name: Move eqwalizer to the right location
+        run: |
+          mv "eqwalizer.${{ inputs.target }}" eqwalizer/eqwalizer/eqwalizer
+
       - name: Build elp
         env:
           EQWALIZER_DIR: ${{ github.workspace }}/eqwalizer/eqwalizer
-          ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer.${{ inputs.target }}
+          ELP_EQWALIZER_PATH: ${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer
         run: |
           cargo build \
             --release  \
