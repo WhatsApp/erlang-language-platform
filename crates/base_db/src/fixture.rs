@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
+use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
@@ -90,11 +91,15 @@ impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
+    pub diagnostics_enabled: DiagnosticsEnabled,
 }
 
 impl ChangeFixture {
     fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
-        let FixtureWithProjectMeta { fixture } = FixtureWithProjectMeta::parse(test_fixture);
+        let FixtureWithProjectMeta {
+            fixture,
+            diagnostics_enabled,
+        } = FixtureWithProjectMeta::parse(test_fixture);
 
         let mut change = Change::new();
 
@@ -165,6 +170,7 @@ impl ChangeFixture {
             ChangeFixture {
                 file_position,
                 files,
+                diagnostics_enabled,
             },
             change,
         )

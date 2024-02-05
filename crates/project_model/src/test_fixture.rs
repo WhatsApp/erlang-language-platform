@@ -105,8 +105,15 @@ pub struct Fixture {
     pub scratch_buffer: Option<PathBuf>,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct DiagnosticsEnabled {
+    pub use_erlang_service: bool,
+    pub use_ct: bool,
+}
+
 pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
+    pub diagnostics_enabled: DiagnosticsEnabled,
 }
 
 impl FixtureWithProjectMeta {
@@ -118,9 +125,30 @@ impl FixtureWithProjectMeta {
     ///  line 2
     ///  //- other meta
     ///  ```
+    #[track_caller]
     pub fn parse(fixture: &str) -> FixtureWithProjectMeta {
         let fixture = trim_indent(fixture);
+        let mut fixture = fixture.as_str();
         let mut res: Vec<Fixture> = Vec::new();
+        let mut diagnostics_enabled = DiagnosticsEnabled::default();
+
+        // ---------------------------------------
+        // Each of the following is optional, but they must always
+        // appear in the same (alphabetical) order
+        if let Some(meta) = fixture.strip_prefix("//- common_test") {
+            let (_meta, remain) = meta.split_once('\n').unwrap();
+            diagnostics_enabled.use_ct = true;
+            fixture = remain;
+        }
+
+        if let Some(meta) = fixture.strip_prefix("//- erlang_service") {
+            let (_meta, remain) = meta.split_once('\n').unwrap();
+            diagnostics_enabled.use_erlang_service = true;
+            fixture = remain;
+        }
+
+        // End of optional top-level meta info
+        // ---------------------------------------
 
         let default = if fixture.contains("//-") {
             None
@@ -162,7 +190,10 @@ impl FixtureWithProjectMeta {
             }
         }
 
-        FixtureWithProjectMeta { fixture: res }
+        FixtureWithProjectMeta {
+            fixture: res,
+            diagnostics_enabled,
+        }
     }
 
     pub fn gen_project(spec: &str) -> TempDir {
@@ -303,6 +334,8 @@ foo() -> ok.
 bar() -> ok.
 "#,
         );
+        assert_eq!(fixture.diagnostics_enabled.use_ct, false);
+        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, false);
         let parsed = fixture.fixture;
         assert_eq!(2, parsed.len());
 
@@ -315,6 +348,49 @@ bar() -> ok.
         assert_eq!("/foo.erl", meta0.path);
 
         assert_eq!("/bar.erl", meta1.path);
+    }
+
+    #[test]
+    fn parse_fixture_erlang_service() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- erlang_service
+//- /foo.erl
+-module(foo).
+foo() -> ok.
+//- /bar.erl
+-module(bar).
+bar() -> ok.
+"#,
+        );
+        assert_eq!(fixture.diagnostics_enabled.use_ct, false);
+        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, true);
+        let parsed = fixture.fixture;
+        assert_eq!(2, parsed.len());
+
+        let meta0 = &parsed[0];
+        assert_eq!("-module(foo).\nfoo() -> ok.\n", meta0.text);
+
+        let meta1 = &parsed[1];
+        assert_eq!("-module(bar).\nbar() -> ok.\n", meta1.text);
+
+        assert_eq!("/foo.erl", meta0.path);
+
+        assert_eq!("/bar.erl", meta1.path);
+    }
+
+    #[test]
+    fn parse_fixture_common_test() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- common_test
+//- /foo.erl
+-module(foo).
+foo() -> ok.
+"#,
+        );
+        assert_eq!(fixture.diagnostics_enabled.use_ct, true);
+        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, false);
     }
 
     #[test]
