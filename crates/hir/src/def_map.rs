@@ -16,6 +16,7 @@
 //! They are constructed recursively and separately for all headers and modules -
 //! this makes sure that we need to do a minimal amount of re-computation on changes.
 
+use std::mem;
 use std::sync::Arc;
 
 use elp_base_db::module_name;
@@ -623,7 +624,7 @@ impl DefMap {
         self.get_function_clauses_ordered()
             .iter()
             .for_each(|(_next_id, next_def)| {
-                if let Some((current_na, current_def)) = current.get(0) {
+                if let Some((current_na, _def)) = current.get(0) {
                     if current_na == &next_def.function_clause.name
                         || (next_def.function_clause.is_macro
                             && prior_separator == Some(ast::ClauseSeparator::Semi))
@@ -632,8 +633,8 @@ impl DefMap {
                     } else {
                         // We have a new one, create a FunctionDef with
                         // the ones in current.
-                        self.insert_fun(&current, current_na, current_def);
-                        current = Vec::default();
+                        let so_far = mem::take(&mut current);
+                        self.insert_fun(so_far);
                         current.push((next_def.function_clause.name.clone(), next_def.clone()));
                     }
                 } else {
@@ -641,34 +642,32 @@ impl DefMap {
                 }
                 prior_separator = next_def.function_clause.separator.clone().map(|s| s.0);
             });
-        if let Some((current_na, current_def)) = current.get(0) {
-            self.insert_fun(&current, current_na, current_def);
+        if !current.is_empty() {
+            self.insert_fun(current)
         }
     }
 
-    fn insert_fun(
-        &mut self,
-        current: &Vec<(NameArity, FunctionClauseDef)>,
-        current_na: &NameArity,
-        current_def: &FunctionClauseDef,
-    ) {
-        let function_clauses = current
-            .iter()
-            .map(|(_, clause)| clause.function_clause.clone())
-            .collect::<Vec<_>>();
+    fn insert_fun(&mut self, current: Vec<(NameArity, FunctionClauseDef)>) {
+        let (current_na, current_def) = &current[0];
+        let current_na = current_na.clone();
+        let module = current_def.module.clone();
+        let file = current_def.file;
         let function_clause_ids = current
             .iter()
             .map(|(_, clause)| clause.function_clause_id)
             .collect::<Vec<_>>();
+        let function_clauses = current
+            .into_iter()
+            .map(|(_, clause)| clause.function_clause)
+            .collect::<Vec<_>>();
         let function_id = FunctionDefId(function_clause_ids[0]);
-        let na = (current_na).clone();
         let fun = FunctionDef {
-            file: current_def.file,
+            file,
             exported: false,
             deprecated: false,
             deprecated_desc: None,
-            module: current_def.module.clone(),
-            name: (current_na).clone(),
+            module,
+            name: current_na.clone(),
             function_clauses,
             function_clause_ids,
             function_id,
@@ -679,9 +678,9 @@ impl DefMap {
                 .iter()
                 .map(|id| (*id, function_def_id.clone())),
         );
-        let id = InFile::new(current_def.file.file_id, function_def_id.clone());
-        self.functions.insert(id, fun.clone());
-        self.functions_by_fa.insert(na, id);
+        let id = InFile::new(file.file_id, function_def_id);
+        self.functions.insert(id, fun);
+        self.functions_by_fa.insert(current_na, id);
     }
 
     fn is_exported(&self, fun_def_id: &InFile<FunctionDefId>) -> bool {
