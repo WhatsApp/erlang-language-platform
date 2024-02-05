@@ -92,8 +92,10 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
     };
     writer.write_all(b"================manifest================\n")?;
     writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
-    writer.write_all(b"================project_data================\n")?;
-    writer.write_all(format!("{:#?}\n", &project).as_bytes())?;
+    writer.write_all(b"================project_build_data================\n")?;
+    writer.write_all(format!("{:#?}\n", &project.project_build_data).as_bytes())?;
+    writer.write_all(b"================project_app_data================\n")?;
+    writer.write_all(format!("{:#?}\n", &project.project_apps).as_bytes())?;
     Ok(())
 }
 
