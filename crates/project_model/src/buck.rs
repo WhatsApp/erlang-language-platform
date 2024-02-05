@@ -57,6 +57,10 @@ lazy_static! {
         .collect();
 }
 
+lazy_static! {
+    static ref ERL_EXT: &'static OsStr = OsStr::new("erl");
+}
+
 #[derive(
     Debug,
     Clone,
@@ -710,6 +714,7 @@ impl ProjectAppDataAcc {
                 let abs_src_dirs: FxHashSet<AbsPathBuf> = target
                     .src_files
                     .iter()
+                    .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
                     .filter(|dir| dir.file_name() != Some(&OsStr::new("test")))
@@ -721,6 +726,7 @@ impl ProjectAppDataAcc {
                 let abs_extra_dirs: FxHashSet<AbsPathBuf> = target
                     .src_files
                     .iter()
+                    .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|extra| extra.parent())
                     .map(|extra| extra.to_path_buf())
                     .filter(|dir| dir.file_name() != Some(&OsStr::new("src")))
