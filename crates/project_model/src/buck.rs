@@ -385,10 +385,16 @@ fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullNa
         .output()?;
 
     if !output.status.success() {
+        let reason = match output.status.code() {
+            Some(code) => format!("Exited with status code: {code}"),
+            None => format!("Process terminated by signal"),
+        };
+        let details = match String::from_utf8(output.stderr) {
+            Ok(err) => err,
+            Err(_) => "".to_string(),
+        };
         bail!(
-            "Failed to load buck2 targets, error code: {:?}, stderr: {:?}",
-            output.status.code(),
-            String::from_utf8(output.stderr)
+            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Reason: {reason}. Details: {details}",
         );
     }
 

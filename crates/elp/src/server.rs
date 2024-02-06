@@ -1210,7 +1210,7 @@ impl Server {
         };
         let mut project = Project::load(&manifest, elp_config.eqwalizer.clone());
         if let Err(err) = &project {
-            log::error!(
+            log::warn!(
                 "Failed to load project for manifest {:?}, error: {:?}",
                 manifest,
                 err
