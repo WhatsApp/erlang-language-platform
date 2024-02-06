@@ -46,13 +46,15 @@ pub(crate) fn check_ct_fix_with_config(
     config: DiagnosticsConfig,
 ) {
     let after = trim_indent(fixture_after);
-    let (analysis, pos, _) = fixture::position(fixture_before);
-    let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
-    let _ = analysis.db.ensure_erlang_service(project_id);
+    let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
+    diagnostics_enabled.assert_ct_enabled();
 
-    check_no_parse_errors_with_config(&analysis, pos.file_id, config);
+    check_no_parse_errors_with_config(&analysis, pos.file_id, &config);
 
-    let diagnostic = diagnostics::ct_diagnostics(&analysis.db, pos.file_id)
+    let diagnostics =
+        fixture::diagnostics_for(&analysis, pos.file_id, &config, diagnostics_enabled);
+    let diagnostic = diagnostics
+        .diagnostics_for(pos.file_id)
         .iter()
         .last()
         .expect("no diagnostics")
@@ -227,11 +229,11 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
 
 #[track_caller]
 pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
-    let (analysis, pos, _) = fixture::position(elp_fixture);
+    let (analysis, pos, diagnostics_enabled) = fixture::position(elp_fixture);
     let file_id = pos.file_id;
-    let project_id = analysis.project_id(file_id).unwrap().unwrap();
-    let _ = analysis.db.ensure_erlang_service(project_id);
-    let diagnostics = diagnostics::ct_diagnostics(&analysis.db, file_id);
+    let config = DiagnosticsConfig::default();
+    let diagnostics = fixture::diagnostics_for(&analysis, file_id, &config, diagnostics_enabled);
+    let diagnostics = diagnostics.diagnostics_for(file_id);
     let expected = extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
     assert_eq!(expected, actual);
@@ -265,14 +267,14 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .disable(DiagnosticCode::UndefinedFunction);
-    check_no_parse_errors_with_config(analysis, file_id, config);
+    check_no_parse_errors_with_config(analysis, file_id, &config);
 }
 
 #[track_caller]
 pub fn check_no_parse_errors_with_config(
     analysis: &Analysis,
     file_id: FileId,
-    config: DiagnosticsConfig,
+    config: &DiagnosticsConfig,
 ) {
     let diags = analysis.diagnostics(&config, file_id).unwrap();
     assert!(

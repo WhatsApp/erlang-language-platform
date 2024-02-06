@@ -111,6 +111,23 @@ pub struct DiagnosticsEnabled {
     pub use_ct: bool,
 }
 
+impl DiagnosticsEnabled {
+    pub fn needs_erlang_service(&self) -> bool {
+        let DiagnosticsEnabled {
+            use_erlang_service,
+            use_ct,
+        } = self;
+        *use_erlang_service || *use_ct
+    }
+
+    #[track_caller]
+    pub fn assert_ct_enabled(&self) {
+        if !self.use_ct {
+            panic!("Expecting `//- common_test` at top of fixture");
+        }
+    }
+}
+
 pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
     pub diagnostics_enabled: DiagnosticsEnabled,
@@ -196,6 +213,7 @@ impl FixtureWithProjectMeta {
         }
     }
 
+    /// Create an on-disk image of a test fixture in a temporary directory
     pub fn gen_project(spec: &str) -> TempDir {
         let fixtures = FixtureWithProjectMeta::parse(spec);
         let tmp_dir = TempDir::new().unwrap();

@@ -13,10 +13,13 @@ use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::fixture::CURSOR_MARKER;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 
+use crate::diagnostics::DiagnosticsConfig;
+use crate::diagnostics_collection::DiagnosticCollection;
 use crate::Analysis;
 use crate::AnalysisHost;
 use crate::FilePosition;
@@ -31,6 +34,16 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
 pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEnabled) {
     let (db, position, diagnostics_enabled) = RootDatabase::with_position(fixture);
+    if diagnostics_enabled.needs_erlang_service() {
+        // This is test driver code, so unwrap() is ok, it is a cheap
+        // way to let the dev know there is a problem.
+        // Erlang: let it crash
+        let project_id: ProjectId = db
+            .app_data(db.file_source_root(position.file_id))
+            .unwrap()
+            .project_id;
+        db.ensure_erlang_service(project_id).unwrap();
+    }
     let host = AnalysisHost { db };
     (host.analysis(), position, diagnostics_enabled)
 }
@@ -65,4 +78,27 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) -> Option<()>
         assert_eq!(format!("{:?}\nin\n{text}", errors), "");
     };
     Some(())
+}
+
+// TODO: Further up the stack, once all diagnostics sources populated:
+//   Move to Analysis, using ? not unwrap()
+//   And then used in elp_lint too
+pub fn diagnostics_for(
+    analysis: &Analysis,
+    file_id: FileId,
+    config: &DiagnosticsConfig,
+    diagnostics_enabled: DiagnosticsEnabled,
+) -> DiagnosticCollection {
+    let mut diagnostics = DiagnosticCollection::default();
+    let DiagnosticsEnabled {
+        use_erlang_service,
+        use_ct,
+    } = diagnostics_enabled;
+    if use_erlang_service {
+        diagnostics.set_native(file_id, analysis.diagnostics(config, file_id).unwrap());
+    }
+    if use_ct {
+        diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id).unwrap());
+    }
+    diagnostics
 }

@@ -328,6 +328,7 @@ mod tests {
     fn test_unreachable_test() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/unreachable_SUITE.erl scratch_buffer:true
    -module(unreachable_SUITE).~
    -export([all/0]).
@@ -346,6 +347,7 @@ mod tests {
     fn test_unreachable_test_init_end() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/unreachable_init_SUITE.erl scratch_buffer:true
    -module(unreachable_init_SUITE).~
    -export([all/0]).
@@ -367,6 +369,7 @@ mod tests {
     fn test_unreachable_test_dynamic_all() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/unreachable_dynamic_SUITE.erl scratch_buffer:true
    -module(unreachable_dynamic_SUITE).~
    -export([all/0]).
@@ -389,6 +392,7 @@ mod tests {
     fn test_unreachable_test_ignore() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/unreachable_ignore_SUITE.erl scratch_buffer:true
    -module(unreachable_ignore_SUITE).~
    -export([all/0]).
@@ -409,6 +413,7 @@ mod tests {
     fn test_unreachable_test_ignore_by_label() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/unreachable_ignore_label_SUITE.erl scratch_buffer:true
    -module(unreachable_ignore_label_SUITE).~
    -export([all/0]).
@@ -430,6 +435,7 @@ mod tests {
     fn test_unreachable_test_fix() {
         check_ct_diagnostics(
             r#"
+ //- common_test
  //- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
     -module(unreachable_fix_SUITE).~
     -export([all/0]).
@@ -447,6 +453,7 @@ mod tests {
         );
         check_ct_fix(
             r#"
+//- common_test
 //- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
 -module(unreachable_fix_SUITE).
 -export([all/0]).
@@ -479,6 +486,7 @@ c(_Config) ->
     fn test_cannot_eval_all() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/cannot_eval_all_SUITE.erl scratch_buffer:true
    -module(cannot_eval_all_SUITE).~
    -export([all/0]).
@@ -499,6 +507,7 @@ c(_Config) ->
     fn test_cannot_eval_groups() {
         check_ct_diagnostics(
             r#"
+//- common_test
 //- /my_app/test/cannot_eval_all_groups_SUITE.erl scratch_buffer:true
    -module(cannot_eval_all_groups_SUITE).~
    -export([all/0, groups/0]).
