@@ -14,6 +14,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use elp_eqwalizer::EqwalizerDiagnostic;
+use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
 use elp_ide_assists::GroupLabel;
@@ -23,10 +24,12 @@ use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::eqwalizer;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::LineCol;
 use elp_ide_db::LineIndex;
@@ -1150,6 +1153,45 @@ fn label_erlang_service_diagnostics(
             )
         })
         .collect_vec()
+}
+
+pub fn eqwalizer_diagnostics(
+    db: &RootDatabase,
+    file_id: FileId,
+    include_generated: bool,
+) -> Option<Vec<Diagnostic>> {
+    // Check, if the file is actually a module
+    let app_data = db.app_data(db.file_source_root(file_id))?;
+    let _ = db
+        .module_index(app_data.project_id)
+        .module_for_file(file_id)
+        .cloned();
+
+    let project_id = app_data.project_id;
+
+    let eqwalizer_enabled = db.is_eqwalizer_enabled(file_id, include_generated);
+    if !eqwalizer_enabled {
+        return Some(vec![]);
+    }
+
+    let diags = eqwalizer::eqwalizer_diagnostics(db, project_id, vec![file_id]);
+    match &*diags {
+        EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
+            errors
+                .iter()
+                .flat_map(|(_, diags)| {
+                    diags
+                        .iter()
+                        .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
+                })
+                .collect(),
+        ),
+        EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
+        EqwalizerDiagnostics::Error(err) => {
+            log::error!("EqWAlizer failed for {:?}: {}", file_id, err);
+            Some(vec![])
+        }
+    }
 }
 
 pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<Diagnostic>)> {

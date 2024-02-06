@@ -215,7 +215,18 @@ impl Analysis {
         self.with_db(|db| diagnostics::diagnostics(db, config, file_id))
     }
 
-    /// Computes the set of eqwalizer diagnostics for the given file.
+    /// Computes the set of eqwalizer diagnostics for the given files,
+    /// including checking for disabled. Returns standard diagnostics.
+    pub fn eqwalizer_diagnostics_for_file(
+        &self,
+        file_id: FileId,
+        include_generated: bool,
+    ) -> Cancellable<Option<Vec<Diagnostic>>> {
+        self.with_db(|db| diagnostics::eqwalizer_diagnostics(db, file_id, include_generated))
+    }
+
+    /// Computes the set of eqwalizer diagnostics for the given files,
+    /// without checking if disabled. Returns EqwalizerDiagnostics
     pub fn eqwalizer_diagnostics(
         &self,
         project_id: ProjectId,

@@ -15,7 +15,6 @@ use anyhow::Result;
 use elp_ai::AiCompletion;
 use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics;
-use elp_ide::diagnostics::eqwalizer_to_diagnostic;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
@@ -25,7 +24,6 @@ use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::elp_ide_db::EqwalizerDiagnostics;
 use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
@@ -173,38 +171,9 @@ impl Snapshot {
     pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<diagnostics::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
-
-        // Check, if the file is actually a module
-        let _ = self.analysis.module_name(file_id).ok()??;
-
-        let project_id = self.analysis.project_id(file_id).ok()??;
-
-        let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id, false).ok()?;
-        if !eqwalizer_enabled {
-            return Some(vec![]);
-        }
-
-        let diags = self
-            .analysis
-            .eqwalizer_diagnostics(project_id, vec![file_id])
-            .ok()?;
-        match &*diags {
-            EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
-                errors
-                    .iter()
-                    .flat_map(|(_, diags)| {
-                        diags
-                            .iter()
-                            .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
-                    })
-                    .collect(),
-            ),
-            EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
-            EqwalizerDiagnostics::Error(err) => {
-                log::error!("EqWAlizer failed for {:?}: {}", file_id, err);
-                Some(vec![])
-            }
-        }
+        self.analysis
+            .eqwalizer_diagnostics_for_file(file_id, false)
+            .ok()?
     }
 
     pub fn edoc_diagnostics(
