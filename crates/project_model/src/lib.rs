@@ -32,6 +32,7 @@ use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
 use itertools::Either;
+use json::JsonProjectAppData;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -536,6 +537,34 @@ impl Project {
 
     pub fn deps_ebins(&self) -> Vec<AbsPathBuf> {
         self.deps().flat_map(|app| app.ebin.clone()).collect()
+    }
+
+    pub fn as_json(&self, root: AbsPathBuf) -> JsonConfig {
+        let project_app_data = self.non_otp_apps().cloned().collect::<Vec<_>>();
+        let root_without_file = if root.as_path().as_ref().is_file() {
+            root.parent().unwrap_or(&root).to_path_buf()
+        } else {
+            root
+        };
+        let json_app_data: Vec<_> = project_app_data
+            .iter()
+            .filter_map(|project_app_data| {
+                if project_app_data.name == AppName("eqwalizer_support".to_string()) {
+                    // This is derived from OTP when the project is loaded again
+                    None
+                } else {
+                    Some(JsonProjectAppData::from_project_app_data(
+                        &root_without_file,
+                        project_app_data,
+                    ))
+                }
+            })
+            .collect();
+        JsonConfig {
+            apps: json_app_data,
+            deps: vec![],
+            config_path: None,
+        }
     }
 }
 
