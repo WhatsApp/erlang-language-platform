@@ -61,6 +61,14 @@ lazy_static! {
     static ref ERL_EXT: &'static OsStr = OsStr::new("erl");
 }
 
+lazy_static! {
+    static ref SRC_EXT: &'static OsStr = OsStr::new("src");
+}
+
+lazy_static! {
+    static ref TEST_EXT: &'static OsStr = OsStr::new("test");
+}
+
 #[derive(
     Debug,
     Clone,
@@ -717,7 +725,7 @@ impl ProjectAppDataAcc {
                     .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
-                    .filter(|dir| dir.file_name() != Some(&OsStr::new("test")))
+                    .filter(|dir| dir.file_name() != Some(&TEST_EXT))
                     .collect();
 
                 self.abs_src_dirs.extend(abs_src_dirs);
@@ -729,7 +737,7 @@ impl ProjectAppDataAcc {
                     .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|extra| extra.parent())
                     .map(|extra| extra.to_path_buf())
-                    .filter(|dir| dir.file_name() != Some(&OsStr::new("src")))
+                    .filter(|dir| dir.file_name() != Some(&SRC_EXT))
                     .collect();
 
                 let extra_src_dirs: Vec<String> = abs_extra_dirs
