@@ -93,6 +93,7 @@ pub fn diagnostics_for(
     let DiagnosticsEnabled {
         use_native,
         use_erlang_service,
+        use_eqwalizer,
         use_ct,
     } = diagnostics_enabled;
     if *use_native {
@@ -104,6 +105,15 @@ pub fn diagnostics_for(
             .unwrap();
         for (file_id, diags) in erlang_service_diagnostics {
             diagnostics.set_erlang_service(file_id, diags)
+        }
+    }
+    if *use_eqwalizer {
+        let include_generated = true;
+        if let Some(diags) = analysis
+            .eqwalizer_diagnostics_for_file(file_id, include_generated)
+            .unwrap()
+        {
+            diagnostics.set_eqwalizer(file_id, diags);
         }
     }
     if *use_ct {

@@ -109,6 +109,7 @@ pub struct Fixture {
 pub struct DiagnosticsEnabled {
     pub use_native: bool,
     pub use_erlang_service: bool,
+    pub use_eqwalizer: bool,
     pub use_ct: bool,
 }
 
@@ -117,9 +118,10 @@ impl DiagnosticsEnabled {
         let DiagnosticsEnabled {
             use_native: _,
             use_erlang_service,
+            use_eqwalizer,
             use_ct,
         } = self;
-        *use_erlang_service || *use_ct
+        *use_erlang_service || *use_ct || *use_eqwalizer
     }
 
     #[track_caller]
@@ -136,9 +138,10 @@ impl DiagnosticsEnabled {
         let DiagnosticsEnabled {
             use_native: _,
             use_erlang_service,
+            use_eqwalizer,
             use_ct,
         } = &self;
-        if !(*use_erlang_service || *use_ct) {
+        if !(*use_erlang_service || *use_ct || *use_eqwalizer) {
             self.use_native = true;
         }
     }
