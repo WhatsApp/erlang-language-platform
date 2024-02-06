@@ -59,9 +59,9 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, fixture.files)
     }
 
-    fn with_position(fixture: &str) -> (Self, FilePosition) {
+    fn with_position(fixture: &str) -> (Self, FilePosition, DiagnosticsEnabled) {
         let (db, fixture) = Self::with_fixture(fixture);
-        (db, fixture.position())
+        (db, fixture.position(), fixture.diagnostics_enabled)
     }
 
     fn with_range(fixture: &str) -> (Self, FileRange) {

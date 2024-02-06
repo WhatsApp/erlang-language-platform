@@ -265,7 +265,7 @@ mod tests {
     use crate::RootDatabase;
 
     fn check(fixture: &str, expect: Expect) {
-        let (db, position) = RootDatabase::with_position(fixture);
+        let (db, position, _) = RootDatabase::with_position(fixture);
         let sig_help = crate::signature_help::signature_help(&db, position);
         let actual = match sig_help {
             Some((sig_help, _active_parameter)) => {

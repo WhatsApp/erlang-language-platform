@@ -1498,7 +1498,7 @@ mod tests {
 
     #[track_caller]
     fn check_local_usages(fixture_before: &str, expect: Expect) {
-        let (db, position) = TestDB::with_position(fixture_before);
+        let (db, position, _) = TestDB::with_position(fixture_before);
         let sema = Semantic::new(&db);
 
         let file_syntax = db.parse(position.file_id).syntax_node();
@@ -1702,7 +1702,7 @@ mod tests {
 
     #[track_caller]
     fn check_in_clause_ast(fixture_before: &str, expect: Expect) {
-        let (db, position) = TestDB::with_position(fixture_before);
+        let (db, position, _) = TestDB::with_position(fixture_before);
         let sema = Semantic::new(&db);
 
         let file_syntax = db.parse(position.file_id).syntax_node();

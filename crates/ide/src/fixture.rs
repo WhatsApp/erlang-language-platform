@@ -29,7 +29,7 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
 pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition) {
-    let (db, position) = RootDatabase::with_position(fixture);
+    let (db, position, _) = RootDatabase::with_position(fixture);
     let host = AnalysisHost { db };
     (host.analysis(), position)
 }

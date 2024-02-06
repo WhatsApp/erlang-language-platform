@@ -109,7 +109,7 @@ pub(crate) fn check_nth_fix(
 ) {
     let after = trim_indent(fixture_after);
 
-    let (db, file_position) = RootDatabase::with_position(fixture_before);
+    let (db, file_position, _) = RootDatabase::with_position(fixture_before);
     let diagnostic = diagnostics::diagnostics(&db, &config, file_position.file_id)
         .iter()
         .last()
@@ -158,7 +158,7 @@ pub(crate) fn check_specific_fix_with_config(
 ) {
     let after = trim_indent(fixture_after);
 
-    let (db, file_position) = RootDatabase::with_position(fixture_before);
+    let (db, file_position, _) = RootDatabase::with_position(fixture_before);
     let diagnostics = diagnostics::diagnostics(&db, &config, file_position.file_id);
     let diagnostic: &Diagnostic = if let Some(label) = assist_label {
         if let Some(diagnostic) = diagnostics.iter().find(|d| d.message == label) {
