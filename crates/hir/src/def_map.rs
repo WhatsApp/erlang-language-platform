@@ -774,7 +774,7 @@ mod tests {
     use crate::TypeAlias;
 
     fn check_functions(fixture: &str, expect: Expect) {
-        let (db, files) = TestDB::with_many_files(fixture);
+        let (db, files, _) = TestDB::with_many_files(fixture);
         let file_id = files[0];
         let def_map = db.def_map(file_id);
         let mut resolved = def_map
@@ -802,7 +802,7 @@ mod tests {
     }
 
     fn check_functions_by_id(fixture: &str, expect: Expect) {
-        let (db, files) = TestDB::with_many_files(fixture);
+        let (db, files, _) = TestDB::with_many_files(fixture);
         let file_id = files[0];
         let def_map = db.def_map(file_id);
         let mut resolved = def_map
@@ -830,7 +830,7 @@ mod tests {
     }
 
     fn check_callbacks(fixture: &str, expect: Expect) {
-        let (db, files) = TestDB::with_many_files(fixture);
+        let (db, files, _) = TestDB::with_many_files(fixture);
         let file_id = files[0];
         let def_map = db.def_map(file_id);
         let mut resolved = def_map

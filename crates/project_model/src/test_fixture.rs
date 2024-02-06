@@ -107,6 +107,7 @@ pub struct Fixture {
 
 #[derive(Clone, Debug, Default)]
 pub struct DiagnosticsEnabled {
+    pub use_native: bool,
     pub use_erlang_service: bool,
     pub use_ct: bool,
 }
@@ -114,6 +115,7 @@ pub struct DiagnosticsEnabled {
 impl DiagnosticsEnabled {
     pub fn needs_erlang_service(&self) -> bool {
         let DiagnosticsEnabled {
+            use_native: _,
             use_erlang_service,
             use_ct,
         } = self;
@@ -124,6 +126,20 @@ impl DiagnosticsEnabled {
     pub fn assert_ct_enabled(&self) {
         if !self.use_ct {
             panic!("Expecting `//- common_test` at top of fixture");
+        }
+    }
+
+    /// If no other diagnostics are enabled, enable native.
+    /// If any are explicitly enabled, then native must also be
+    /// explicitly enabled.
+    fn set_default_native(&mut self) {
+        let DiagnosticsEnabled {
+            use_native: _,
+            use_erlang_service,
+            use_ct,
+        } = &self;
+        if !(*use_erlang_service || *use_ct) {
+            self.use_native = true;
         }
     }
 }
@@ -163,6 +179,14 @@ impl FixtureWithProjectMeta {
             diagnostics_enabled.use_erlang_service = true;
             fixture = remain;
         }
+
+        if let Some(meta) = fixture.strip_prefix("//- native") {
+            let (_meta, remain) = meta.split_once('\n').unwrap();
+            diagnostics_enabled.use_native = true;
+            fixture = remain;
+        }
+
+        diagnostics_enabled.set_default_native();
 
         // End of optional top-level meta info
         // ---------------------------------------

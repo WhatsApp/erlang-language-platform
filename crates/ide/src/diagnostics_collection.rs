@@ -266,7 +266,7 @@ mod tests {
         extra_diags: &LabeledDiagnostics,
         elp_fixture: &str,
     ) {
-        let (db, files) = RootDatabase::with_many_files(elp_fixture);
+        let (db, files, _diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
         for file_id in files {
             let diagnostics = diagnostics::diagnostics(&db, &config, file_id);
 

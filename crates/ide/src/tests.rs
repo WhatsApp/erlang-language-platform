@@ -28,6 +28,7 @@ use crate::diagnostics::LabeledDiagnostics;
 use crate::diagnostics::Severity;
 use crate::fixture;
 use crate::Analysis;
+use crate::AnalysisHost;
 use crate::DiagnosticsConfig;
 use crate::NavigationTarget;
 
@@ -52,7 +53,7 @@ pub(crate) fn check_ct_fix_with_config(
     check_no_parse_errors_with_config(&analysis, pos.file_id, &config);
 
     let diagnostics =
-        fixture::diagnostics_for(&analysis, pos.file_id, &config, diagnostics_enabled);
+        fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
     let diagnostic = diagnostics
         .diagnostics_for(pos.file_id)
         .iter()
@@ -196,11 +197,11 @@ pub(crate) fn check_specific_fix_with_config(
 }
 
 #[track_caller]
-pub(crate) fn check_diagnostics(ra_fixture: &str) {
+pub(crate) fn check_diagnostics(fixture: &str) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .set_experimental(true);
-    check_diagnostics_with_config(config, ra_fixture)
+    check_diagnostics_with_config(config, fixture)
 }
 
 fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(TextRange, String)> {
@@ -232,7 +233,7 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let (analysis, pos, diagnostics_enabled) = fixture::position(elp_fixture);
     let file_id = pos.file_id;
     let config = DiagnosticsConfig::default();
-    let diagnostics = fixture::diagnostics_for(&analysis, file_id, &config, diagnostics_enabled);
+    let diagnostics = fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
     let diagnostics = diagnostics.diagnostics_for(file_id);
     let expected = extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
@@ -241,7 +242,19 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
 
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
-    check_diagnostics_with_config_and_extra(config, &LabeledDiagnostics::default(), elp_fixture)
+    let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    let host = AnalysisHost { db };
+    let analysis = host.analysis();
+    for file_id in files {
+        let diagnostics =
+            fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
+        let diagnostics = diagnostics.diagnostics_for(file_id);
+
+        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
+        expected.sort_by_key(|(r1, _)| r1.start());
+        let actual = convert_diagnostics_to_annotations(diagnostics);
+        assert_eq!(expected, actual);
+    }
 }
 
 #[track_caller]
@@ -250,12 +263,14 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     extra_diags: &LabeledDiagnostics,
     elp_fixture: &str,
 ) {
-    let (db, files) = RootDatabase::with_many_files(elp_fixture);
+    let (db, files, _diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    let host = AnalysisHost { db };
+    let analysis = host.analysis();
     for file_id in files {
-        let diagnostics = diagnostics::diagnostics(&db, &config, file_id);
+        let diagnostics = diagnostics::diagnostics(&analysis.db, &config, file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
 
-        let mut expected = extract_annotations(&db.file_text(file_id));
+        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);

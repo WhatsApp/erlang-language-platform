@@ -21,7 +21,7 @@ use crate::SpecOrCallback;
 
 #[track_caller]
 fn check(ra_fixture: &str, expect: Expect) {
-    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let (db, file_ids, _) = TestDB::with_many_files(ra_fixture);
     let file_id = file_ids[0];
     let form_list = db.file_form_list(file_id);
     let pretty = form_list

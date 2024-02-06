@@ -109,7 +109,7 @@ mod tests {
     use crate::test_db::TestDB;
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (db, files) = TestDB::with_many_files(ra_fixture);
+        let (db, files, _) = TestDB::with_many_files(ra_fixture);
         let file_id = files[0];
         let form_list = db.file_form_list(file_id);
         let mut resolved = form_list

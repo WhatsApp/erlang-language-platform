@@ -53,10 +53,10 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, fixture.files[0])
     }
 
-    fn with_many_files(fixture: &str) -> (Self, Vec<FileId>) {
+    fn with_many_files(fixture: &str) -> (Self, Vec<FileId>, DiagnosticsEnabled) {
         let (db, fixture) = Self::with_fixture(fixture);
         assert!(fixture.file_position.is_none());
-        (db, fixture.files)
+        (db, fixture.files, fixture.diagnostics_enabled)
     }
 
     fn with_position(fixture: &str) -> (Self, FilePosition, DiagnosticsEnabled) {

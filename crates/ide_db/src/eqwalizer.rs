@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn test_has_eqwalizer_app_marker() {
-        let (db, file_ids) = RootDatabase::with_many_files(
+        let (db, file_ids, _) = RootDatabase::with_many_files(
             r#"
 //- /src/test.erl
 -module(test).
@@ -511,7 +511,7 @@ mod tests {
         let source_root = db.file_source_root(file_ids[0]);
         assert!(!db.has_eqwalizer_app_marker(source_root));
 
-        let (db, file_ids) = RootDatabase::with_many_files(
+        let (db, file_ids, _) = RootDatabase::with_many_files(
             r#"
 //- /src/test.erl
 -module(test).

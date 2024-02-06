@@ -87,17 +87,26 @@ pub fn diagnostics_for(
     analysis: &Analysis,
     file_id: FileId,
     config: &DiagnosticsConfig,
-    diagnostics_enabled: DiagnosticsEnabled,
+    diagnostics_enabled: &DiagnosticsEnabled,
 ) -> DiagnosticCollection {
     let mut diagnostics = DiagnosticCollection::default();
     let DiagnosticsEnabled {
+        use_native,
         use_erlang_service,
         use_ct,
     } = diagnostics_enabled;
-    if use_erlang_service {
+    if *use_native {
         diagnostics.set_native(file_id, analysis.diagnostics(config, file_id).unwrap());
     }
-    if use_ct {
+    if *use_erlang_service {
+        let erlang_service_diagnostics = analysis
+            .erlang_service_diagnostics(file_id, config)
+            .unwrap();
+        for (file_id, diags) in erlang_service_diagnostics {
+            diagnostics.set_erlang_service(file_id, diags)
+        }
+    }
+    if *use_ct {
         diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id).unwrap());
     }
     diagnostics
