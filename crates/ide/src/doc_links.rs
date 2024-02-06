@@ -46,7 +46,7 @@ mod tests {
     use crate::fixture;
 
     pub(crate) fn check_links(fixture: &str, expected_links: Vec<&str>) {
-        let (analysis, position) = fixture::position(fixture);
+        let (analysis, position, _) = fixture::position(fixture);
         let actual_links: Vec<String> = analysis
             .external_docs(position)
             .ok()

@@ -249,7 +249,7 @@ mod tests {
     use crate::fixture;
 
     fn do_check(before: &str, afters: &[&str]) {
-        let (analysis, position) = fixture::position(before);
+        let (analysis, position, _) = fixture::position(before);
         let before = analysis.file_text(position.file_id).unwrap();
         let range = TextRange::empty(position.offset);
         let mut frange = FileRange {

@@ -52,7 +52,7 @@ mod tests {
 
     #[track_caller]
     fn check(fixture: &str, expected: Vec<HoverAction>) {
-        let (analysis, position) = fixture::position(fixture);
+        let (analysis, position, _) = fixture::position(fixture);
         let actual = analysis
             .hover_actions(position, &HoverActionsConfig { doc_links: true })
             .unwrap();

@@ -136,7 +136,7 @@ mod tests {
         let fixture_after_str = &trim_indent(fixture_after_str);
         let analysis_after = fixture::multi_file(fixture_after_str);
 
-        let (analysis, position) = fixture::position(fixture_before);
+        let (analysis, position, _) = fixture::position(fixture_before);
         let rename_result = analysis
             .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{}' was cancelled: {}", new_name, err));

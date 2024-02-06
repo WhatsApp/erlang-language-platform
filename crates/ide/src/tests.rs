@@ -46,7 +46,7 @@ pub(crate) fn check_ct_fix_with_config(
     config: DiagnosticsConfig,
 ) {
     let after = trim_indent(fixture_after);
-    let (analysis, pos) = fixture::position(fixture_before);
+    let (analysis, pos, _) = fixture::position(fixture_before);
     let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);
 
@@ -227,7 +227,7 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
 
 #[track_caller]
 pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
-    let (analysis, pos) = fixture::position(elp_fixture);
+    let (analysis, pos, _) = fixture::position(elp_fixture);
     let file_id = pos.file_id;
     let project_id = analysis.project_id(file_id).unwrap().unwrap();
     let _ = analysis.db.ensure_erlang_service(project_id);

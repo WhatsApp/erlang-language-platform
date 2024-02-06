@@ -67,7 +67,7 @@ mod tests {
     }
 
     fn check_unresolved(fixture: &str) {
-        let (analysis, position) = fixture::position(fixture);
+        let (analysis, position, _) = fixture::position(fixture);
         check_no_parse_errors(&analysis, position.file_id);
 
         match analysis.goto_definition(position).unwrap() {

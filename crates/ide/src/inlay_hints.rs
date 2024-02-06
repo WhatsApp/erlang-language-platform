@@ -220,7 +220,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_with_config(config: InlayHintsConfig, fixture: &str) {
-        let (analysis, pos) = fixture::position(fixture);
+        let (analysis, pos, _) = fixture::position(fixture);
         let mut expected = extract_annotations(&analysis.file_text(pos.file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(&config, pos.file_id, None).unwrap();
         let actual = inlay_hints

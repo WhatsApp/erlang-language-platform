@@ -68,7 +68,7 @@ mod tests {
     use crate::fixture;
 
     fn check(elp_fixture: &str, expect: Expect) {
-        let (analysis, pos) = fixture::position(elp_fixture);
+        let (analysis, pos, _) = fixture::position(elp_fixture);
 
         let expansion = match analysis.expand_macro(pos).unwrap() {
             Some(it) => format!("{}{}", it.name, it.expansion),

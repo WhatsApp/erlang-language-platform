@@ -15,6 +15,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::RootDatabase;
+use elp_project_model::test_fixture::DiagnosticsEnabled;
 
 use crate::Analysis;
 use crate::AnalysisHost;
@@ -28,10 +29,10 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 }
 
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
-pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition) {
-    let (db, position, _) = RootDatabase::with_position(fixture);
+pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEnabled) {
+    let (db, position, diagnostics_enabled) = RootDatabase::with_position(fixture);
     let host = AnalysisHost { db };
-    (host.analysis(), position)
+    (host.analysis(), position, diagnostics_enabled)
 }
 
 /// Creates analysis from a multi-file fixture
