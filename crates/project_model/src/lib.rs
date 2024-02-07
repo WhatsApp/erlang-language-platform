@@ -55,6 +55,7 @@ pub mod json;
 pub mod no_manifest;
 pub mod otp;
 pub mod rebar;
+pub mod temp_dir;
 pub mod test_fixture;
 
 pub const ELP_CONFIG_FILE: &str = ".elp.toml";
