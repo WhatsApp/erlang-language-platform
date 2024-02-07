@@ -90,9 +90,9 @@ use paths::AbsPath;
 use paths::AbsPathBuf;
 pub use stdx::trim_indent;
 use tempfile::tempdir;
-use tempfile::TempDir;
 
 use crate::otp::Otp;
+use crate::temp_dir::TempDir;
 use crate::AppName;
 use crate::ProjectAppData;
 
@@ -243,7 +243,7 @@ impl FixtureWithProjectMeta {
     /// Create an on-disk image of a test fixture in a temporary directory
     pub fn gen_project(spec: &str) -> TempDir {
         let fixtures = FixtureWithProjectMeta::parse(spec);
-        let tmp_dir = TempDir::new().unwrap();
+        let tmp_dir = TempDir::new();
         for fixture in &fixtures.fixture {
             let path = tmp_dir.path().join(&fixture.path[1..]);
             let parent = path.parent().unwrap();

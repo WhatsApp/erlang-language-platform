@@ -981,7 +981,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
 
         let args = Glean {
-            project: dir.into_path().join("glean").join("app_glean"),
+            project: dir.path().join("glean").join("app_glean"),
             module: Some(module.into()),
             to: None,
         };

@@ -898,10 +898,11 @@ mod tests {
 
     use expect_test::expect;
 
+    use self::temp_dir::TempDir;
     use super::*;
     use crate::test_fixture::FixtureWithProjectMeta;
 
-    fn debug_normalise_temp_dir(dir: tempfile::TempDir, actual: &impl fmt::Debug) -> String {
+    fn debug_normalise_temp_dir(dir: TempDir, actual: &impl fmt::Debug) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let actual_debug = format!("{:#?}\n", actual);
         let replaced = actual_debug.replace(&dir_str.as_str(), "TMPDIR");
@@ -1414,7 +1415,7 @@ mod tests {
         }
     }
 
-    fn normalise_temp_dir_in_err(dir: tempfile::TempDir, err: anyhow::Error) -> String {
+    fn normalise_temp_dir_in_err(dir: TempDir, err: anyhow::Error) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let err_str = format!("{err}");
         let res = err_str.replace(&dir_str.as_str(), "TMPDIR/");
