@@ -21,6 +21,7 @@ use elp_erlang_service::common_test::ConversionError;
 use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::common_test::TestDef;
 use elp_erlang_service::CTInfoRequest;
+use elp_project_model::temp_dir::TempDir;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -28,9 +29,6 @@ use hir::db::MinDefDatabase;
 use hir::DefMap;
 use hir::Name;
 use hir::NameArity;
-use lazy_static::lazy_static;
-use tempfile::Builder;
-use tempfile::TempDir;
 
 use crate::erlang_service::CompileOption;
 
@@ -53,37 +51,31 @@ pub trait CommonTestDatabase: MinDefDatabase + SourceDatabase + CommonTestLoader
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
 }
 
-lazy_static! {
-    static ref CT_INFO_TMP_DIR: Option<TempDir> =
-        Builder::new().prefix("elp_ct_info_").tempdir().ok();
-}
-
 fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     let text = db.file_text(file_id);
-    if let Some(tmp_dir) = &*CT_INFO_TMP_DIR {
-        // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nct_info: {:?}", file_id));
-        let root_id = db.file_source_root(file_id);
-        let root = db.source_root(root_id);
-        if let Some(path) = root.path_for_file(&file_id) {
-            if let Some((filename, Some(extension))) = path.name_and_extension() {
-                let tmp_filename = tmp_dir.path().join(format!("{filename}.{extension}"));
-                let _ = fs::write(tmp_filename.clone(), String::from(&*text));
-                let def_map = db.def_map(file_id);
-                if let Some(project_id) = db.file_project_id(file_id) {
-                    if let Some(app_data) = db.app_data(root_id) {
-                        let module_index = db.module_index(project_id);
-                        if let Some(module_name) = module_index.module_for_file(file_id) {
-                            return Arc::new(db.check(
-                                project_id,
-                                module_name,
-                                &def_map,
-                                tmp_filename,
-                                &app_data.include_path,
-                                &app_data.macros,
-                                &app_data.parse_transforms,
-                            ));
-                        }
+    let tmp_dir = TempDir::new();
+    // Context for T171541590
+    let _ = stdx::panic_context::enter(format!("\nct_info: {:?}", file_id));
+    let root_id = db.file_source_root(file_id);
+    let root = db.source_root(root_id);
+    if let Some(path) = root.path_for_file(&file_id) {
+        if let Some((filename, Some(extension))) = path.name_and_extension() {
+            let tmp_filename = tmp_dir.path().join(format!("{filename}.{extension}"));
+            let _ = fs::write(tmp_filename.clone(), String::from(&*text));
+            let def_map = db.def_map(file_id);
+            if let Some(project_id) = db.file_project_id(file_id) {
+                if let Some(app_data) = db.app_data(root_id) {
+                    let module_index = db.module_index(project_id);
+                    if let Some(module_name) = module_index.module_for_file(file_id) {
+                        return Arc::new(db.check(
+                            project_id,
+                            module_name,
+                            &def_map,
+                            tmp_filename,
+                            &app_data.include_path,
+                            &app_data.macros,
+                            &app_data.parse_transforms,
+                        ));
                     }
                 }
             }
