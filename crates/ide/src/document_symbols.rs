@@ -226,7 +226,7 @@ mod tests {
     use crate::fixture;
 
     fn check(fixture: &str) {
-        let (analysis, pos, mut expected) = fixture::annotations(fixture);
+        let (analysis, pos, _diagnostics_enabled, mut expected) = fixture::annotations(fixture);
         let file_id = pos.file_id;
         let symbols = analysis.document_symbols(file_id).unwrap();
 

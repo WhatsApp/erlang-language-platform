@@ -159,7 +159,8 @@ mod tests {
 
     #[track_caller]
     fn check_runnables(fixture: &str) {
-        let (analysis, pos, mut annotations) = fixture::annotations(trim_indent(fixture).as_str());
+        let (analysis, pos, _diagnostics_enabled, mut annotations) =
+            fixture::annotations(trim_indent(fixture).as_str());
         let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
         let _ = analysis.db.ensure_erlang_service(project_id);
         let runnables = analysis.runnables(pos.file_id).unwrap();

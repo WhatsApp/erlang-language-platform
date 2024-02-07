@@ -66,7 +66,14 @@ pub(crate) fn multi_file(fixture: &str) -> Analysis {
 
 /// Creates analysis from a multi-file fixture, returns first position marked with [`CURSOR_MARKER`]
 /// and annotations marked with sequence of %% ^^^
-pub fn annotations(fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
+pub fn annotations(
+    fixture: &str,
+) -> (
+    Analysis,
+    FilePosition,
+    DiagnosticsEnabled,
+    Vec<(FileRange, String)>,
+) {
     let (db, fixture) = RootDatabase::with_fixture(fixture);
     start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
     let (file_id, range_or_offset) = fixture
@@ -76,7 +83,12 @@ pub fn annotations(fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, St
 
     let annotations = fixture.annotations(&db);
     let analysis = AnalysisHost { db }.analysis();
-    (analysis, FilePosition { file_id, offset }, annotations)
+    (
+        analysis,
+        FilePosition { file_id, offset },
+        fixture.diagnostics_enabled,
+        annotations,
+    )
 }
 
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) -> Option<()> {
