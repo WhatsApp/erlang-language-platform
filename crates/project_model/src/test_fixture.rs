@@ -493,11 +493,7 @@ bar() -> ok.
                 dir: AbsPathBuf(
                     "/",
                 ),
-                ebin: Some(
-                    AbsPathBuf(
-                        "/ebin",
-                    ),
-                ),
+                ebin: None,
                 extra_src_dirs: [],
                 include_dirs: [
                     AbsPathBuf(

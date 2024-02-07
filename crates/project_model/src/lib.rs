@@ -639,7 +639,7 @@ impl ProjectAppData {
     ) -> ProjectAppData {
         ProjectAppData {
             name,
-            ebin: Some(dir.join("ebin")),
+            ebin: None,
             extra_src_dirs,
             include_dirs,
             dir,

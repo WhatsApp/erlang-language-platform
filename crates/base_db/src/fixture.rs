@@ -822,11 +822,7 @@ bar() -> ?FOO.
                                 macros: [],
                                 parse_transforms: [],
                                 app_type: App,
-                                ebin_path: Some(
-                                    AbsPathBuf(
-                                        "/ebin",
-                                    ),
-                                ),
+                                ebin_path: None,
                             },
                         ),
                         SourceRootId(
@@ -895,11 +891,7 @@ bar() -> ?FOO.
                                 macros: [],
                                 parse_transforms: [],
                                 app_type: App,
-                                ebin_path: Some(
-                                    AbsPathBuf(
-                                        "/ebin",
-                                    ),
-                                ),
+                                ebin_path: None,
                             },
                         ),
                         SourceRootId(
@@ -1061,11 +1053,7 @@ foo() -> ?BAR.
                                 macros: [],
                                 parse_transforms: [],
                                 app_type: App,
-                                ebin_path: Some(
-                                    AbsPathBuf(
-                                        "/extra/ebin",
-                                    ),
-                                ),
+                                ebin_path: None,
                             },
                         ),
                         SourceRootId(
