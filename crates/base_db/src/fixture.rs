@@ -16,10 +16,13 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fs;
+use std::fs::File;
+use std::io::Write;
 use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 
+use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
@@ -30,6 +33,7 @@ use elp_project_model::AppType;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
+use elp_project_model::ProjectManifest;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
@@ -79,8 +83,8 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, file_id, range_or_offset)
     }
 
-    fn with_fixture(fixture: &str) -> (Self, ChangeFixture) {
-        let (fixture, change) = ChangeFixture::parse(fixture);
+    fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
+        let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
         change.apply(&mut db);
         (db, fixture)
@@ -96,12 +100,10 @@ pub struct ChangeFixture {
     pub diagnostics_enabled: DiagnosticsEnabled,
 }
 
-#[allow(unused)]
 struct Builder {
     project_dir: Option<TempDir>,
 }
 
-#[allow(unused)]
 impl Builder {
     fn new(diagnostics_enabled: DiagnosticsEnabled) -> Builder {
         let project_dir = if diagnostics_enabled.needs_erlang_service() {
@@ -118,12 +120,11 @@ impl Builder {
             #[cfg(target_os = "macos")]
             let tmp_dir_path = tmp_dir_path.canonicalize().unwrap();
 
-            let tmp_dir = TempDir {
+            Some(TempDir {
                 path: tmp_dir_path.to_path_buf(),
                 // When trying to debug a fixture, set this to true.
                 keep: false,
-            };
-            Some(tmp_dir)
+            })
         } else {
             None
         };
@@ -147,11 +148,13 @@ impl Builder {
 
 impl ChangeFixture {
     fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
+        let fixture_with_meta = FixtureWithProjectMeta::parse(test_fixture);
         let FixtureWithProjectMeta {
             fixture,
             mut diagnostics_enabled,
-        } = FixtureWithProjectMeta::parse(test_fixture);
+        } = fixture_with_meta.clone();
 
+        let builder = Builder::new(diagnostics_enabled.clone());
         let mut change = Change::new();
 
         let mut files = Vec::new();
@@ -163,7 +166,7 @@ impl ChangeFixture {
         let mut otp: Option<Otp> = None;
         let mut app_files = SourceRootMap::default();
 
-        for entry in fixture {
+        for entry in fixture.clone() {
             let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
             if let Some(scratch_buffer) = entry.scratch_buffer {
                 let _ = fs::create_dir_all(scratch_buffer.parent().unwrap());
@@ -187,7 +190,16 @@ impl ChangeFixture {
 
             change.change_file(file_id, Some(Arc::from(text)));
 
-            let path = VfsPath::new_real_path(entry.path);
+            let path = if diagnostics_enabled.needs_erlang_service()
+                && entry.path.char_indices().nth(0) == Some((0, '/'))
+            {
+                let mut path = entry.path.clone();
+                path.remove(0);
+                let path: String = builder.absolute_path(path);
+                VfsPath::new_real_path(path)
+            } else {
+                VfsPath::new_real_path(entry.path)
+            };
             app_files.insert(app_name, file_id, path);
             files.push(file_id);
 
@@ -198,6 +210,7 @@ impl ChangeFixture {
             // We only care about the otp lib_dir for the tests
             lib_dir: AbsPathBuf::assert("/".into()),
         });
+
         let root = AbsPathBuf::assert("/".into());
         let apps = app_map.all_apps().cloned().collect();
         let apps_with_includes = RebarProject::add_app_includes(apps, &vec![], &otp.lib_dir);
@@ -205,9 +218,60 @@ impl ChangeFixture {
         let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
         project.add_apps(apps_with_includes);
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
+
+        if let Some(project_dir) = builder.project_dir() {
+            // Dump a copy of the fixture into a temp dir
+            let files: Vec<(String, String)> = fixture
+                .iter()
+                .map(|entry| {
+                    let (text, _file_pos) = Self::get_text_and_pos(&entry.text, FileId(0));
+                    (entry.path.clone(), text)
+                })
+                .collect();
+            let project_dir_str = project_dir.as_os_str().to_str().unwrap();
+
+            let tmp_dir_path = project_dir;
+            for (path, text) in files {
+                let path = tmp_dir_path.join(&path[1..]);
+                let parent = path.parent().unwrap();
+                fs::create_dir_all(parent).unwrap();
+                let mut tmp_file = File::create(path).unwrap();
+                write!(tmp_file, "{}", &text).unwrap();
+            }
+
+            let json_config_file = format!("{}/build_info.json", project_dir_str);
+
+            let mut writer = File::create(&json_config_file).unwrap();
+
+            let json_str = serde_json::to_string_pretty::<JsonConfig>(
+                &project.as_json(AbsPathBuf::assert(project_dir.to_path_buf())),
+            )
+            .unwrap();
+            writer.write_all(json_str.as_bytes()).unwrap();
+
+            let first_fixture = &fixture_with_meta.fixture[0];
+
+            if first_fixture.path.char_indices().nth(0) == Some((0, '/')) {
+                let mut path = first_fixture.path.clone();
+                path.remove(0);
+                project_dir.join(path)
+            } else {
+                project_dir.join(first_fixture.path.clone())
+            };
+            let (elp_config, manifest) =
+                ProjectManifest::discover(&AbsPathBuf::assert(json_config_file.into())).unwrap();
+            let loaded_project = Project::load(&manifest, elp_config.eqwalizer).unwrap();
+            project = loaded_project;
+        }
+
         let projects = [project];
 
-        let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
+        let project_apps = if diagnostics_enabled.needs_erlang_service() {
+            // The static manifest already includes OTP
+            ProjectApps::new(&projects, IncludeOtp::No)
+        } else {
+            ProjectApps::new(&projects, IncludeOtp::Yes)
+        };
         change.set_app_structure(project_apps.app_structure());
 
         let mut roots = Vec::new();
@@ -215,11 +279,16 @@ impl ChangeFixture {
             let root = SourceRoot::new(mem::take(file_set));
             roots.push(root);
         }
+        if diagnostics_enabled.needs_erlang_service() {
+            // Add a root for eqwalizer-support
+            let root = SourceRoot::new(FileSet::default());
+            roots.push(root);
+        }
         change.set_roots(roots);
 
         // Store the projects so the buildinfo does not get dropped
         // prematurely and the tempdir deleted.
-        diagnostics_enabled.projects = projects.to_vec();
+        diagnostics_enabled.tmp_dir = builder.project_dir.map(|d| (projects.to_vec(), d));
         (
             ChangeFixture {
                 file_position,
@@ -249,6 +318,14 @@ impl ChangeFixture {
         FilePosition {
             file_id,
             offset: range_or_offset.expect_offset(),
+        }
+    }
+
+    pub fn file_id(&self) -> FileId {
+        if let Some((file_id, _range_or_offset)) = self.file_position {
+            file_id
+        } else {
+            FileId(0)
         }
     }
 

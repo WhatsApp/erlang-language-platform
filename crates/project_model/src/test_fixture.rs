@@ -97,7 +97,7 @@ use crate::AppName;
 use crate::Project;
 use crate::ProjectAppData;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fixture {
     pub path: String,
     pub text: String,
@@ -114,11 +114,12 @@ pub struct DiagnosticsEnabled {
     pub use_ct: bool,
     /// Keep a copy of the project we loaded the fixture from, as it
     /// has a reference to the temporary directory holding build_info
-    /// for Eqwalizer. This is dropped when it goes out of scope, so
-    /// we need to keep it around. This structure is used to manage
-    /// the services that need it, so it is a good place for it to go.
+    /// for Eqwalizer. Ditto for the TempDir we dump the test fixture
+    /// to.  This is dropped when it goes out of scope, so we need to
+    /// keep it around. This structure is used to manage the services
+    /// that need it, so it is a good place for it to go.
     #[allow(unused)]
-    pub projects: Vec<Project>,
+    pub tmp_dir: Option<(Vec<Project>, TempDir)>,
 }
 
 impl DiagnosticsEnabled {
@@ -128,7 +129,7 @@ impl DiagnosticsEnabled {
             use_erlang_service,
             use_eqwalizer,
             use_ct,
-            projects: _,
+            tmp_dir: _,
         } = self;
         *use_erlang_service || *use_ct || *use_eqwalizer
     }
@@ -149,7 +150,7 @@ impl DiagnosticsEnabled {
             use_erlang_service,
             use_eqwalizer,
             use_ct,
-            projects: _,
+            tmp_dir: _,
         } = &self;
         if !(*use_erlang_service || *use_ct || *use_eqwalizer) {
             self.use_native = true;
@@ -157,6 +158,7 @@ impl DiagnosticsEnabled {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
     pub diagnostics_enabled: DiagnosticsEnabled,
@@ -253,6 +255,11 @@ impl FixtureWithProjectMeta {
     /// Create an on-disk image of a test fixture in a temporary directory
     pub fn gen_project(spec: &str) -> TempDir {
         let fixtures = FixtureWithProjectMeta::parse(spec);
+        FixtureWithProjectMeta::gen_project_from_fixture(&fixtures)
+    }
+
+    /// Create an on-disk image of a test fixture in a temporary directory
+    pub fn gen_project_from_fixture(fixtures: &FixtureWithProjectMeta) -> TempDir {
         let tmp_dir = TempDir::new();
         for fixture in &fixtures.fixture {
             let path = tmp_dir.path().join(&fixture.path[1..]);

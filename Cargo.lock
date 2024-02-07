@@ -450,6 +450,7 @@ dependencies = [
  "profile",
  "regex",
  "salsa",
+ "serde_json",
  "stdx",
  "vfs",
 ]

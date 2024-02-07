@@ -436,20 +436,25 @@ impl ElpConfig {
 /// server, and CLI invocations to set up ELP for use.
 #[derive(Clone)]
 pub struct Project {
-    build_info_file: Option<BuildInfoFile>,
+    pub build_info_file: Option<BuildInfoFile>,
     pub otp: Otp,
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
 }
 
-#[derive(Clone)]
-pub struct BuildInfoFile(Arc<TempPath>);
+#[derive(Clone, Debug)]
+pub enum BuildInfoFile {
+    TempPath(Arc<TempPath>),
+    Path(AbsPathBuf),
+}
 
 impl BuildInfoFile {
     pub fn build_info_file(&self) -> AbsPathBuf {
-        let BuildInfoFile(loaded) = &self;
-        AbsPathBuf::assert(loaded.to_path_buf())
+        match &self {
+            BuildInfoFile::TempPath(loaded) => AbsPathBuf::assert(loaded.to_path_buf()),
+            BuildInfoFile::Path(path) => path.clone(),
+        }
     }
 }
 
@@ -757,7 +762,7 @@ impl Project {
                 (
                     ProjectBuildData::Rebar(rebar_project),
                     apps,
-                    Some(BuildInfoFile(Arc::new(loaded))),
+                    Some(BuildInfoFile::TempPath(Arc::new(loaded))),
                     otp_root,
                 )
             }
@@ -889,7 +894,7 @@ pub fn save_build_info(term: Term) -> Result<BuildInfoFile> {
     let mut out_file = NamedTempFile::new()?;
     term.encode(&mut out_file)?;
     let build_info_path = out_file.into_temp_path();
-    Ok(BuildInfoFile(Arc::new(build_info_path)))
+    Ok(BuildInfoFile::TempPath(Arc::new(build_info_path)))
 }
 
 #[cfg(test)]

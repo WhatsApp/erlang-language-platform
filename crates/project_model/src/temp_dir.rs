@@ -20,12 +20,12 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
+#[derive(Debug, Clone)]
 pub struct TempDir {
     pub path: PathBuf,
     pub keep: bool,
 }
 
-#[allow(dead_code)]
 impl TempDir {
     pub fn new() -> TempDir {
         let temp_dir = std::env::temp_dir();

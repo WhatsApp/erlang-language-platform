@@ -133,7 +133,12 @@ fn abs_path_buf_to_relative_string(abs_path: &AbsPathBuf, base: &AbsPathBuf) -> 
     if let Some(relative) = abs_path.strip_prefix(base) {
         relative.as_ref().as_os_str().to_string_lossy().to_string()
     } else {
-        abs_path.as_os_str().to_string_lossy().to_string()
+        let str = abs_path.as_os_str().to_string_lossy().to_string();
+        if let Some(stripped) = str.strip_prefix("/") {
+            stripped.to_string()
+        } else {
+            str
+        }
     }
 }
 
