@@ -424,7 +424,7 @@ pub fn extract_marker_offset(marker: &str, text: &str) -> (TextSize, String) {
 pub const CURSOR_MARKER: &str = "~";
 pub const ESCAPED_CURSOR_MARKER: &str = "\\~";
 
-/// Returns the offset of the first occurrence of `^` marker and the copy of `text`
+/// Returns the offset of the first occurrence of `~` marker and the copy of `text`
 /// without the marker.
 fn try_extract_offset(text: &str) -> Option<(TextSize, String)> {
     try_extract_marker(CURSOR_MARKER, text)
@@ -575,6 +575,9 @@ pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
 /// The `%% ^file text` syntax can be used to attach `text` to the entirety of
 /// the file.
 ///
+/// The `%%<^^^ text` syntax can be used to attach `text` the span
+/// starting at `%%`, rather than the first `^`.
+///
 /// Multiline string values are supported:
 ///
 /// %% ^^^ first line
@@ -617,10 +620,15 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                 match annotation {
                     LineAnnotation::Annotation {
                         mut range,
+                        zero_offset,
                         content,
                         file,
                     } => {
-                        range += annotation_offset;
+                        if zero_offset {
+                            range = TextRange::new(0.into(), range.end() + annotation_offset);
+                        } else {
+                            range += annotation_offset;
+                        };
                         this_line_annotations.push((range.end(), res.len()));
                         let range = if file {
                             TextRange::up_to(TextSize::of(text))
@@ -695,7 +703,7 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*%%\s+(\^)* 💡.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*%%[\s<]+(\^)* 💡.*$").unwrap();
     }
     RE.is_match(line)
 }
@@ -704,6 +712,9 @@ pub fn contains_annotation(line: &str) -> bool {
 enum LineAnnotation {
     Annotation {
         range: TextRange,
+        /// True if the marker starts with `<`, indicating it starts
+        /// at the left margin, i.e. 0
+        zero_offset: bool,
         content: String,
         file: bool,
     },
@@ -717,7 +728,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
     let mut res = Vec::new();
     let mut offset: TextSize = 0.into();
     let marker: fn(char) -> bool = if line.contains('^') {
-        |c| c == '^'
+        |c| c == '^' || c == '<'
     } else {
         |c| c == '|'
     };
@@ -725,7 +736,12 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
         offset += TextSize::try_from(idx).unwrap();
         line = &line[idx..];
 
-        let mut len = line.chars().take_while(|&it| it == '^').count();
+        let len_prefix = line.chars().take_while(|&it| it == '<').count();
+        let mut len = line[len_prefix..]
+            .chars()
+            .take_while(|&it| it == '^')
+            .count();
+        len = len + len_prefix;
         let mut continuation = false;
         if len == 0 {
             assert!(line.starts_with('|'));
@@ -752,6 +768,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
         } else {
             LineAnnotation::Annotation {
                 range,
+                zero_offset: len_prefix > 0,
                 content,
                 file,
             }
@@ -1363,6 +1380,33 @@ meaning_of_life() ->
                     "erlang:spawn(Node, fun() -> ok end)",
                     86..121,
                     "warning:\nProduction code blah\nmore",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn extract_annotations_zero_offset() {
+        let text = stdx::trim_indent(
+            r#"
+            -module(main).
+
+            main() ->
+            %%<^^^
+                 zoo + 1.
+            "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], range, ann))
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                (
+                    "main()",
+                    16..22,
+                    "",
                 ),
             ]
         "#]]
