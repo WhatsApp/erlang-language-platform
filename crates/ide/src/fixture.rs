@@ -34,23 +34,32 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
 pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEnabled) {
     let (db, position, diagnostics_enabled) = RootDatabase::with_position(fixture);
+    start_erlang_service_if_needed(&db, position.file_id, &diagnostics_enabled);
+    let host = AnalysisHost { db };
+    (host.analysis(), position, diagnostics_enabled)
+}
+
+pub(crate) fn start_erlang_service_if_needed(
+    db: &RootDatabase,
+    file_id: FileId,
+    diagnostics_enabled: &DiagnosticsEnabled,
+) {
     if diagnostics_enabled.needs_erlang_service() {
         // This is test driver code, so unwrap() is ok, it is a cheap
         // way to let the dev know there is a problem.
         // Erlang: let it crash
         let project_id: ProjectId = db
-            .app_data(db.file_source_root(position.file_id))
+            .app_data(db.file_source_root(file_id))
             .unwrap()
             .project_id;
         db.ensure_erlang_service(project_id).unwrap();
     }
-    let host = AnalysisHost { db };
-    (host.analysis(), position, diagnostics_enabled)
 }
 
 /// Creates analysis from a multi-file fixture
 pub(crate) fn multi_file(fixture: &str) -> Analysis {
-    let (db, _) = RootDatabase::with_fixture(fixture);
+    let (db, fixture) = RootDatabase::with_fixture(fixture);
+    start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
     let host = AnalysisHost { db };
     host.analysis()
 }
@@ -59,6 +68,7 @@ pub(crate) fn multi_file(fixture: &str) -> Analysis {
 /// and annotations marked with sequence of %% ^^^
 pub fn annotations(fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let (db, fixture) = RootDatabase::with_fixture(fixture);
+    start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
     let (file_id, range_or_offset) = fixture
         .file_position
         .expect(&format!("expected a marker ({})", CURSOR_MARKER));

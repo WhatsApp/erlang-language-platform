@@ -258,6 +258,7 @@ mod tests {
     use elp_ide_db::RootDatabase;
     use itertools::Itertools;
 
+    use crate::fixture::start_erlang_service_if_needed;
     use crate::syntax_highlighting::highlight;
     use crate::HlTag;
 
@@ -274,6 +275,7 @@ mod tests {
         };
 
         let (db, fixture) = RootDatabase::with_fixture(&fixture);
+        start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
         let annotations = fixture.annotations(&db);
         let expected: Vec<_> = annotations
             .into_iter()

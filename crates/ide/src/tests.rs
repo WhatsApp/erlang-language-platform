@@ -15,6 +15,7 @@ use elp_ide_db::elp_base_db::fixture::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::trim_indent;
@@ -231,6 +232,7 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
 #[track_caller]
 pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let (analysis, pos, diagnostics_enabled) = fixture::position(elp_fixture);
+    diagnostics_enabled.assert_ct_enabled();
     let file_id = pos.file_id;
     let config = DiagnosticsConfig::default();
     let diagnostics = fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
@@ -243,6 +245,11 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
     let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    if diagnostics_enabled.needs_erlang_service() {
+        let file_id = FileId(0);
+        let project_id = db.file_project_id(file_id).unwrap();
+        db.ensure_erlang_service(project_id).unwrap();
+    }
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
