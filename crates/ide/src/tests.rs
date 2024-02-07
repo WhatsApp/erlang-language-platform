@@ -221,12 +221,19 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
                 Severity::Information => "information",
             });
             annotation.push_str(": ");
-            annotation.push_str(&d.message);
+            annotation.push_str(&&convert_diagnostic_message(&d));
             (d.range, annotation)
         })
         .collect::<Vec<_>>();
     actual.sort_by_key(|(range, _)| range.start());
     actual
+}
+
+fn convert_diagnostic_message(d: &Diagnostic) -> String {
+    match &d.code {
+        DiagnosticCode::Eqwalizer(_) => d.code.as_code(),
+        _ => d.message.clone(),
+    }
 }
 
 #[track_caller]

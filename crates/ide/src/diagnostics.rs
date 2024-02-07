@@ -2111,4 +2111,19 @@ baz(1)->4.
              "#,
         );
     }
+
+    #[test]
+    fn test_eqwalizer_diagnostics() {
+        check_diagnostics(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+                -module(bar).
+
+                -spec baz() -> ok.
+                baz() -> something_else.
+                %%       ^^^^^^^^^^^^^^  error: eqwalizer: incompatible_types
+            "#,
+        );
+    }
 }

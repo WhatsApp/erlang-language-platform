@@ -189,6 +189,12 @@ impl FixtureWithProjectMeta {
             fixture = remain;
         }
 
+        if let Some(meta) = fixture.strip_prefix("//- eqwalizer") {
+            let (_meta, remain) = meta.split_once('\n').unwrap();
+            diagnostics_enabled.use_eqwalizer = true;
+            fixture = remain;
+        }
+
         if let Some(meta) = fixture.strip_prefix("//- erlang_service") {
             let (_meta, remain) = meta.split_once('\n').unwrap();
             diagnostics_enabled.use_erlang_service = true;
