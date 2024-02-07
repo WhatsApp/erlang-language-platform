@@ -17,10 +17,12 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fs;
 use std::mem;
+use std::path::Path;
 use std::sync::Arc;
 
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
+use elp_project_model::temp_dir::TempDir;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
@@ -92,6 +94,55 @@ pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
     pub diagnostics_enabled: DiagnosticsEnabled,
+}
+
+#[allow(unused)]
+struct Builder {
+    project_dir: Option<TempDir>,
+}
+
+#[allow(unused)]
+impl Builder {
+    fn new(diagnostics_enabled: DiagnosticsEnabled) -> Builder {
+        let project_dir = if diagnostics_enabled.needs_erlang_service() {
+            let tmp_dir = TempDir::new().keep();
+            let tmp_dir_path: &Path = tmp_dir.path();
+
+            // When trying to debug a fixture, you can set it to a
+            // well-known directory location as shown in the next line
+            // let tmp_dir_path = Path::new("/tmp/elp_fixture");
+
+            let _ = fs::create_dir_all(tmp_dir_path);
+
+            // See comment in `TempDir::new` as to why we need this.
+            #[cfg(target_os = "macos")]
+            let tmp_dir_path = tmp_dir_path.canonicalize().unwrap();
+
+            let tmp_dir = TempDir {
+                path: tmp_dir_path.to_path_buf(),
+                // When trying to debug a fixture, set this to true.
+                keep: false,
+            };
+            Some(tmp_dir)
+        } else {
+            None
+        };
+
+        Builder { project_dir }
+    }
+
+    fn absolute_path(&self, path: String) -> String {
+        if let Some(project_dir) = &self.project_dir {
+            let project_dir_str = project_dir.path().as_os_str().to_str().unwrap();
+            format!("{}/{}", project_dir_str, path)
+        } else {
+            path
+        }
+    }
+
+    fn project_dir(&self) -> Option<&Path> {
+        self.project_dir.as_ref().and_then(|d| Some(d.path()))
+    }
 }
 
 impl ChangeFixture {

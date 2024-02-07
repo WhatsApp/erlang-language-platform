@@ -21,13 +21,13 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 pub struct TempDir {
-    path: PathBuf,
-    keep: bool,
+    pub path: PathBuf,
+    pub keep: bool,
 }
 
 #[allow(dead_code)]
 impl TempDir {
-    pub(crate) fn new() -> TempDir {
+    pub fn new() -> TempDir {
         let temp_dir = std::env::temp_dir();
         // On MacOS builders on GitHub actions, the temp dir is a symlink, and
         // that causes problems down the line. Specifically:
@@ -54,8 +54,8 @@ impl TempDir {
         }
         panic!("Failed to create a temporary directory")
     }
-    #[allow(unused)]
-    pub(crate) fn keep(mut self) -> TempDir {
+
+    pub fn keep(mut self) -> TempDir {
         self.keep = true;
         self
     }
