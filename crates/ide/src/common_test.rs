@@ -329,7 +329,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_SUITE.erl
    -module(unreachable_SUITE).~
    -export([all/0]).
    -export([a/1, b/1]).
@@ -348,7 +348,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_init_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_init_SUITE.erl
    -module(unreachable_init_SUITE).~
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
@@ -370,7 +370,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_dynamic_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_dynamic_SUITE.erl
    -module(unreachable_dynamic_SUITE).~
    -export([all/0]).
    -export([init_per_suite/1, end_per_suite/1]).
@@ -393,7 +393,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_ignore_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_ignore_SUITE.erl
    -module(unreachable_ignore_SUITE).~
    -export([all/0]).
    -export([a/1, b/1, c/1]).
@@ -414,7 +414,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_ignore_label_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_ignore_label_SUITE.erl
    -module(unreachable_ignore_label_SUITE).~
    -export([all/0]).
    -export([a/1, b/1, c/1]).
@@ -436,7 +436,7 @@ mod tests {
         check_ct_diagnostics(
             r#"
  //- common_test
- //- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
+ //- /my_app/test/unreachable_fix_SUITE.erl
     -module(unreachable_fix_SUITE).~
     -export([all/0]).
     -export([a/1, b/1, c/1]).
@@ -454,7 +454,7 @@ mod tests {
         check_ct_fix(
             r#"
 //- common_test
-//- /my_app/test/unreachable_fix_SUITE.erl scratch_buffer:true
+//- /my_app/test/unreachable_fix_SUITE.erl
 -module(unreachable_fix_SUITE).
 -export([all/0]).
 -export([a/1, b/1, c/1]).
@@ -487,7 +487,7 @@ c(_Config) ->
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/cannot_eval_all_SUITE.erl scratch_buffer:true
+//- /my_app/test/cannot_eval_all_SUITE.erl
    -module(cannot_eval_all_SUITE).~
    -export([all/0]).
    -export([a/1, b/1, c/1]).
@@ -508,7 +508,7 @@ c(_Config) ->
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/cannot_eval_all_groups_SUITE.erl scratch_buffer:true
+//- /my_app/test/cannot_eval_all_groups_SUITE.erl
    -module(cannot_eval_all_groups_SUITE).~
    -export([all/0, groups/0]).
    -export([a/1, b/1, c/1]).

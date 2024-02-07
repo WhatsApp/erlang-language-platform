@@ -83,8 +83,6 @@ mod tests {
     fn check(fixture: &str) {
         let (analysis, pos, _diagnostics_enabled, mut annotations) =
             fixture::annotations(trim_indent(fixture).as_str());
-        let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
-        let _ = analysis.db.ensure_erlang_service(project_id);
         let mut actual = Vec::new();
         for annotation in analysis.annotations(pos.file_id).unwrap() {
             match annotation.kind {
@@ -109,7 +107,8 @@ mod tests {
     fn annotations_no_suite() {
         check(
             r#"
-//- /main.erl scratch_buffer:true
+//- erlang_service
+//- /main.erl
 -module(main).
 ~
 main() ->
@@ -122,7 +121,8 @@ main() ->
     fn annotations_suite() {
         check(
             r#"
-//- /main_SUITE.erl scratch_buffer:true
+//- erlang_service
+//- /main_SUITE.erl
    ~
    -module(main_SUITE).
 %% ^^^^^^^^^^^^^^^^^^^^ main_SUITE

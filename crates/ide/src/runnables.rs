@@ -189,7 +189,8 @@ mod tests {
     fn runnables_no_suite() {
         check_runnables(
             r#"
- //- /my_app/src/main.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/src/main.erl
     ~
     -module(main).
     -export([all/]).
@@ -203,7 +204,8 @@ mod tests {
     fn runnables_suite() {
         check_runnables(
             r#"
- //- /my_app/test/runnables_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/runnables_SUITE.erl
     ~
     -module(runnables_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -228,7 +230,8 @@ mod tests {
     fn runnables_suite_not_exported() {
         check_runnables(
             r#"
- //- /my_app/test/not_exported_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/not_exported_SUITE.erl
     ~
     -module(not_exported_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -249,7 +252,8 @@ mod tests {
     fn runnables_suite_no_groups() {
         check_runnables(
             r#"
- //- /my_app/test/no_groups_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/no_groups_SUITE.erl
     ~
     -module(no_groups_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -269,7 +273,8 @@ mod tests {
     fn runnables_nested_groups() {
         check_runnables(
             r#"
- //- /my_app/test/nested_groups_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/nested_groups_SUITE.erl
     ~
     -module(nested_groups_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -311,7 +316,8 @@ mod tests {
     fn runnables_suite_recursive_groups() {
         check_runnables(
             r#"
- //- /my_app/test/recursive_groups_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/recursive_groups_SUITE.erl
     ~
     -module(recursive_groups_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -336,7 +342,8 @@ mod tests {
     fn runnables_suite_otp_example_1() {
         check_runnables(
             r#"
- //- /my_app/test/otp_1_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/otp_1_SUITE.erl
     ~
     -module(otp_1_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -366,7 +373,8 @@ mod tests {
     fn runnables_suite_otp_example_2() {
         check_runnables(
             r#"
- //- /my_app/test/otp_2_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/otp_2_SUITE.erl
     ~
     -module(otp_2_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -394,7 +402,8 @@ mod tests {
     fn runnables_suite_otp_example_3() {
         check_runnables(
             r#"
- //- /my_app/test/otp_3_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/otp_3_SUITE.erl
     ~
     -module(otp_3_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -426,7 +435,8 @@ mod tests {
     fn runnables_suite_otp_example_4() {
         check_runnables(
             r#"
- //- /my_app/test/otp_4_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/otp_4_SUITE.erl
     ~
     -module(otp_4_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^ Run All Tests
@@ -464,7 +474,8 @@ mod tests {
         // See https://www.erlang.org/doc/apps/common_test/write_test_chapter#test_case_groups
         check_runnables(
             r#"
- //- /my_app/test/undocumented_group_def_SUITE.erl scratch_buffer:true
+ //- erlang_service
+ //- /my_app/test/undocumented_group_def_SUITE.erl
     ~
     -module(undocumented_group_def_SUITE).
  %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Run All Tests
