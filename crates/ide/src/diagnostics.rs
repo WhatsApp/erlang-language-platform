@@ -1941,6 +1941,20 @@ baz(1)->4.
     }
 
     #[test]
+    fn edoc_diagnostics() {
+        check_diagnostics(
+            r#"
+             //- edoc
+             //- /main/src/main.erl app:main
+             % @generated
+             %%<^^^^^^^^^^  warning: tag @generated not recognized.
+             -module(main).
+
+             "#,
+        );
+    }
+
+    #[test]
     fn group_related_diagnostics_1() {
         let labeled = FxHashMap::from_iter([(
             Some(Label::new_raw("foo/0")),
