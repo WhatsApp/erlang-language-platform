@@ -94,6 +94,7 @@ use tempfile::tempdir;
 use crate::otp::Otp;
 use crate::temp_dir::TempDir;
 use crate::AppName;
+use crate::Project;
 use crate::ProjectAppData;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -111,6 +112,13 @@ pub struct DiagnosticsEnabled {
     pub use_erlang_service: bool,
     pub use_eqwalizer: bool,
     pub use_ct: bool,
+    /// Keep a copy of the project we loaded the fixture from, as it
+    /// has a reference to the temporary directory holding build_info
+    /// for Eqwalizer. This is dropped when it goes out of scope, so
+    /// we need to keep it around. This structure is used to manage
+    /// the services that need it, so it is a good place for it to go.
+    #[allow(unused)]
+    pub projects: Vec<Project>,
 }
 
 impl DiagnosticsEnabled {
@@ -120,6 +128,7 @@ impl DiagnosticsEnabled {
             use_erlang_service,
             use_eqwalizer,
             use_ct,
+            projects: _,
         } = self;
         *use_erlang_service || *use_ct || *use_eqwalizer
     }
@@ -140,6 +149,7 @@ impl DiagnosticsEnabled {
             use_erlang_service,
             use_eqwalizer,
             use_ct,
+            projects: _,
         } = &self;
         if !(*use_erlang_service || *use_ct || *use_eqwalizer) {
             self.use_native = true;

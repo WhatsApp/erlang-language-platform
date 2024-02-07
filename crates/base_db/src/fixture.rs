@@ -98,7 +98,7 @@ impl ChangeFixture {
     fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
         let FixtureWithProjectMeta {
             fixture,
-            diagnostics_enabled,
+            mut diagnostics_enabled,
         } = FixtureWithProjectMeta::parse(test_fixture);
 
         let mut change = Change::new();
@@ -166,6 +166,9 @@ impl ChangeFixture {
         }
         change.set_roots(roots);
 
+        // Store the projects so the buildinfo does not get dropped
+        // prematurely and the tempdir deleted.
+        diagnostics_enabled.projects = projects.to_vec();
         (
             ChangeFixture {
                 file_position,

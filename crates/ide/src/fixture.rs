@@ -95,6 +95,7 @@ pub fn diagnostics_for(
         use_erlang_service,
         use_eqwalizer,
         use_ct,
+        projects: _,
     } = diagnostics_enabled;
     if *use_native {
         diagnostics.set_native(file_id, analysis.diagnostics(config, file_id).unwrap());
