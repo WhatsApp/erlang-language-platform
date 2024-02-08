@@ -27,7 +27,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use buck::BuckConfig;
-use buck::EqwalizerConfig;
 use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
@@ -354,6 +353,22 @@ pub struct ElpConfig {
     pub build_info: Option<PathBuf>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+pub struct EqwalizerConfig {
+    #[serde(default = "eqwalizer_enable_all_default")]
+    pub enable_all: bool,
+}
+
+fn eqwalizer_enable_all_default() -> bool {
+    true
+}
+
+impl Default for EqwalizerConfig {
+    fn default() -> Self {
+        Self { enable_all: true }
+    }
 }
 
 impl ElpConfig {

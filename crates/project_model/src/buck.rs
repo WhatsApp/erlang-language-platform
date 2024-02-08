@@ -146,22 +146,6 @@ impl BuckConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
-pub struct EqwalizerConfig {
-    #[serde(default = "eqwalizer_enable_all_default")]
-    pub enable_all: bool,
-}
-
-fn eqwalizer_enable_all_default() -> bool {
-    true
-}
-
-impl Default for EqwalizerConfig {
-    fn default() -> Self {
-        Self { enable_all: true }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct TargetInfo {
     pub targets: FxHashMap<TargetFullName, Target>,

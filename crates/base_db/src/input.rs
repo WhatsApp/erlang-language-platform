@@ -12,9 +12,9 @@ use std::hash::Hash;
 use std::path::Path;
 use std::sync::Arc;
 
-use elp_project_model::buck::EqwalizerConfig;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
+use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use fxhash::FxHashMap;
