@@ -11,14 +11,14 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm]
+        platform-arch: [ubuntu-22.04-x64, macos-latest-x64, macos-latest-arm]
         otp-version: [25.3, 26.0]
         include:
           - otp-version: 25.3
             brew-otp-version: 25
             vscode-publish: true
-          - platform-arch: ubuntu-20.04-x64
-            platform: ubuntu-20.04
+          - platform-arch: ubuntu-22.04-x64
+            platform: ubuntu-22.04
             os: linux
             target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
@@ -53,6 +53,14 @@ jobs:
           java-version: '17'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Install libc6 for buck2
+      #   run: sudo apt-get install -y libc6
+      - name: Install buck2
+        uses: dtolnay/install-buck2@latest
+        with:
+          prelude-submodule: tools/buck/prelude
+      - name: Update buck2-prelude submodule
+        run: git submodule update --init --remote --no-fetch --depth 1 --single-branch tools/buck/prelude
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
