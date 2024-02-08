@@ -1946,8 +1946,8 @@ baz(1)->4.
             r#"
              //- edoc
              //- /main/src/main.erl app:main
-             % @generated
-             %%<^^^^^^^^^^  warning: tag @generated not recognized.
+             % @unknown
+             %%<^^^^^^^^  warning: tag @unknown not recognized.
              -module(main).
 
              "#,
