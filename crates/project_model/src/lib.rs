@@ -278,7 +278,10 @@ impl ProjectManifest {
                         }
                     }
                 } else {
-                    let manifest = ProjectManifest::discover_in_place(elp_config.config_path())?;
+                    let manifest = ProjectManifest::discover_in_place(
+                        elp_config.config_path(),
+                        elp_config.rebar_profile(),
+                    )?;
                     return Ok((elp_config.clone(), manifest));
                 }
             }
@@ -296,10 +299,10 @@ impl ProjectManifest {
     }
 
     /// Given the path of the `ELP_CONFIG_FILE` file, discover its configuration.
-    pub fn discover_in_place(path: &AbsPath) -> Result<ProjectManifest> {
+    pub fn discover_in_place(path: &AbsPath, rebar_profile: Profile) -> Result<ProjectManifest> {
         let _timer = timeit!("discover projects in place");
         // We skip looking for the TOML file since we have already found it.
-        if let Some(r) = Self::discover_rebar(path, None, IncludeParentDirs::No)? {
+        if let Some(r) = Self::discover_rebar(path, Some(rebar_profile), IncludeParentDirs::No)? {
             return Ok(r);
         }
         if let Some(s) = Self::discover_static(path, IncludeParentDirs::No)? {
@@ -353,6 +356,8 @@ pub struct ElpConfig {
     pub build_info: Option<PathBuf>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
+    #[serde(default)]
+    pub rebar: ElpRebarConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
@@ -367,7 +372,27 @@ fn eqwalizer_enable_all_default() -> bool {
 
 impl Default for EqwalizerConfig {
     fn default() -> Self {
-        Self { enable_all: true }
+        Self {
+            enable_all: eqwalizer_enable_all_default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+pub struct ElpRebarConfig {
+    #[serde(default = "rebar_profile_default")]
+    pub profile: String,
+}
+
+fn rebar_profile_default() -> String {
+    "test".to_string()
+}
+
+impl Default for ElpRebarConfig {
+    fn default() -> Self {
+        Self {
+            profile: rebar_profile_default(),
+        }
     }
 }
 
@@ -377,12 +402,14 @@ impl ElpConfig {
         buck: Option<BuckConfig>,
         build_info: Option<PathBuf>,
         eqwalizer: EqwalizerConfig,
+        rebar: ElpRebarConfig,
     ) -> Self {
         Self {
             config_path: Some(config_path),
             buck,
             build_info,
             eqwalizer,
+            rebar,
         }
     }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
@@ -431,6 +458,10 @@ impl ElpConfig {
                 .join(build_info_file)
         };
         Some(absolute_path)
+    }
+
+    pub fn rebar_profile(&self) -> Profile {
+        Profile(self.rebar.profile.clone())
     }
 }
 
@@ -964,6 +995,9 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
+                        rebar: ElpRebarConfig {
+                            profile: "test",
+                        },
                     },
                     Rebar(
                         RebarConfig {
@@ -1022,6 +1056,9 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                        },
+                        rebar: ElpRebarConfig {
+                            profile: "test",
                         },
                     },
                     Json(
@@ -1126,6 +1163,9 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                        },
+                        rebar: ElpRebarConfig {
+                            profile: "test",
                         },
                     },
                     JsonConfig {
@@ -1300,6 +1340,9 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                         },
+                        rebar: ElpRebarConfig {
+                            profile: "test",
+                        },
                     },
                     NoManifest(
                         NoManifestConfig {
@@ -1362,6 +1405,9 @@ mod tests {
                             build_info: None,
                             eqwalizer: EqwalizerConfig {
                                 enable_all: true,
+                            },
+                            rebar: ElpRebarConfig {
+                                profile: "test",
                             },
                         },
                         NoManifest(
@@ -1515,6 +1561,42 @@ mod tests {
                 }
             "#]]
             .assert_debug_eq(&json_config);
+        } else {
+            panic!()
+        }
+    }
+
+    #[test]
+    fn test_toml_rebar_profile() {
+        let spec = r#"
+        //- /.elp.toml
+        [rebar]
+        profile = "other"
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        if let Ok((elp_config, ProjectManifest::NoManifest(_))) =
+            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")))
+        {
+            expect![[r#"
+                ElpConfig {
+                    config_path: Some(
+                        AbsPathBuf(
+                            "TMPDIR/.elp.toml",
+                        ),
+                    ),
+                    buck: None,
+                    build_info: None,
+                    eqwalizer: EqwalizerConfig {
+                        enable_all: true,
+                    },
+                    rebar: ElpRebarConfig {
+                        profile: "other",
+                    },
+                }
+            "#]]
+            .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
         } else {
             panic!()
         }
