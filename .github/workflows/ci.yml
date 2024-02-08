@@ -95,7 +95,8 @@ jobs:
       - name: Test elp
         # Do not run the tests in case of cross-compilation
         if: matrix.platform-arch != 'macos-latest-arm'
-        run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
+        # run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
+        run: 'cargo test --workspace --target ${{ matrix.target }}'
       - name: Build elp
         run: 'cargo build --release  --target ${{ matrix.target }}'
       - name: Add elp to path
