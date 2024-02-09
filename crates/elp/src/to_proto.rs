@@ -637,7 +637,7 @@ pub(crate) fn runnable(
                         args: lsp_ext::Buck2RunnableArgs {
                             workspace_root: workspace_root.into(),
                             command: "test".to_string(),
-                            args: runnable.buck2_args(target.clone(), coverage_enabled),
+                            args: runnable.buck2_test_args(target.clone(), coverage_enabled),
                             target,
                             id: runnable.id(),
                         },
