@@ -104,6 +104,29 @@ pub struct Runnable {
     pub args: Buck2RunnableArgs,
 }
 
+impl Runnable {
+    pub fn buck2_test(
+        runnable: elp_ide::Runnable,
+        target: String,
+        location: Option<lsp_types::LocationLink>,
+        workspace_root: PathBuf,
+        coverage_enabled: bool,
+    ) -> Self {
+        Self {
+            label: "Buck2".to_string(),
+            location,
+            kind: RunnableKind::Buck2,
+            args: Buck2RunnableArgs {
+                workspace_root,
+                command: "test".to_string(),
+                args: runnable.buck2_test_args(target.clone(), coverage_enabled),
+                target,
+                id: runnable.id(),
+            },
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {

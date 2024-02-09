@@ -605,7 +605,7 @@ pub(crate) fn document_highlight_kind(
     }
 }
 
-pub(crate) fn runnable(
+pub(crate) fn buck2_test_runnable(
     snap: &Snapshot,
     runnable: Runnable,
     project_build_data: &ProjectBuildData,
@@ -630,18 +630,13 @@ pub(crate) fn runnable(
                     };
 
                     let location = location_link(snap, None, runnable.clone().nav).ok();
-                    Ok(lsp_ext::Runnable {
-                        label: "Buck2".to_string(),
+                    Ok(lsp_ext::Runnable::buck2_test(
+                        runnable,
+                        target,
                         location,
-                        kind: lsp_ext::RunnableKind::Buck2,
-                        args: lsp_ext::Buck2RunnableArgs {
-                            workspace_root: workspace_root.into(),
-                            command: "test".to_string(),
-                            args: runnable.buck2_test_args(target.clone(), coverage_enabled),
-                            target,
-                            id: runnable.id(),
-                        },
-                    })
+                        workspace_root.into(),
+                        coverage_enabled,
+                    ))
                 }
                 None => Err("Could not find test target for file".into()),
             },
@@ -663,7 +658,7 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
             let run_title = &run.run_title();
             let debug_title = &run.debug_title();
-            match runnable(snap, run, project_build_data, lens_config.run_coverage) {
+            match buck2_test_runnable(snap, run, project_build_data, lens_config.run_coverage) {
                 Ok(r) => {
                     if lens_config.run {
                         let run_command = command::run_single(&r, run_title);
