@@ -1,4 +1,4 @@
 module specified: cascading
 Diagnostics reported in 1 modules:
   cascading: 1
-      8:4-8:5::[Error] [P1711] Missing ')'
+      8:4-8:5::[Error] [W0004] Missing ')'

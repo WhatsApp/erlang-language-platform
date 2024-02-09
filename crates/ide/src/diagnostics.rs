@@ -502,6 +502,14 @@ impl DiagnosticCode {
         }
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
+
+    fn is_syntax_error(&self) -> bool {
+        match self {
+            DiagnosticCode::SyntaxError => true,
+            DiagnosticCode::Missing(_) => true,
+            _ => false,
+        }
+    }
 }
 
 lazy_static! {
@@ -730,12 +738,17 @@ pub fn diagnostics(
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
-            Diagnostic::error(
-                DiagnosticCode::SyntaxError,
-                widen_range(err.range()),
-                format!("{}", err),
-            )
-            .with_form_range(get_form_range(&parse.syntax_node(), err.range()))
+            let (code, message) = match err {
+                elp_syntax::SyntaxError::Error(_) => {
+                    (DiagnosticCode::SyntaxError, "Syntax Error".to_string())
+                }
+                elp_syntax::SyntaxError::Missing(m, _) => (
+                    DiagnosticCode::Missing("missing".to_string()),
+                    format!("Missing '{}'", m),
+                ),
+            };
+            Diagnostic::error(code, widen_range(err.range()), message)
+                .with_form_range(get_form_range(&parse.syntax_node(), err.range()))
         });
         let source_file = db.parse(file_id).tree();
         group_syntax_errors(&source_file, parse_diagnostics)
@@ -783,7 +796,7 @@ fn group_syntax_errors(
 }
 
 fn function_label(d: &Diagnostic, source_file: &SourceFile) -> Option<Label> {
-    if d.code == DiagnosticCode::SyntaxError {
+    if d.code.is_syntax_error() {
         if let Some(syntax) = source_file
             .syntax()
             .token_at_offset(d.range.start())
@@ -1586,6 +1599,17 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_diagnostics_with_config_and_extra;
     use crate::tests::check_specific_fix;
+
+    #[test]
+    fn syntax_error() {
+        check_diagnostics(
+            r#"
+-module(main).
+foo() -> XX 3.
+    %%      ^ error: Syntax Error
+"#,
+        );
+    }
 
     #[test]
     fn export_attribute_missing_comma() {

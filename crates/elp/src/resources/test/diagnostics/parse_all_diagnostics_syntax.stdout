@@ -2,4 +2,4 @@ module specified: syntax
 Diagnostics reported in 1 modules:
   syntax: 2
       4:45-4:46::[Error] [P1711] syntax error before: ')'
-      10:8-10:9::[Error] [P1711] Missing ')'
+      10:8-10:9::[Error] [W0004] Missing ')'

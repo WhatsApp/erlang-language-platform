@@ -174,11 +174,11 @@ impl<'tree, 'text> Converter<'tree, 'text> {
                 ret = true;
             }
 
-            self.error("Syntax Error", range);
+            self.error_syntax(range);
             ret
         } else if node.is_missing() {
             let text = node.kind();
-            self.error(format!("Missing '{}'", text), range);
+            self.error_missing(format!("{}", text), range);
             false
         } else if node.child_count() == 0 {
             if node.is_named() {
@@ -234,9 +234,14 @@ impl<'tree, 'text> Converter<'tree, 'text> {
         }
     }
 
-    fn error(&mut self, msg: impl Into<String>, range: Range<usize>) {
+    fn error_syntax(&mut self, range: Range<usize>) {
         let range = convert_range(range);
-        self.errors.push(SyntaxError::new(msg, range));
+        self.errors.push(SyntaxError::error(range));
+    }
+
+    fn error_missing(&mut self, msg: impl Into<String>, range: Range<usize>) {
+        let range = convert_range(range);
+        self.errors.push(SyntaxError::missing(msg, range));
     }
 
     fn token(&mut self, kind: SyntaxKind, range: &Range<usize>, root: bool) {
@@ -899,8 +904,7 @@ mod tests {
         let source_code = r#"f() -> #name{field = }."#;
         let parse = ast::SourceFile::parse_text(source_code);
 
-        expect![[r#"[SyntaxError("Syntax Error", 19..20)]"#]]
-            .assert_eq(format!("{:?}", parse.errors()).as_str());
+        expect!["[Error(19..20)]"].assert_eq(format!("{:?}", parse.errors()).as_str());
     }
 
     #[test]
@@ -923,20 +927,16 @@ mod tests {
         let parse = ast::SourceFile::parse_text(source_code);
         expect![[r#"
             [
-                SyntaxError(
-                    "Syntax Error",
+                Error(
                     1..195,
                 ),
-                SyntaxError(
-                    "Syntax Error",
+                Error(
                     94..96,
                 ),
-                SyntaxError(
-                    "Syntax Error",
+                Error(
                     102..103,
                 ),
-                SyntaxError(
-                    "Syntax Error",
+                Error(
                     184..186,
                 ),
             ]

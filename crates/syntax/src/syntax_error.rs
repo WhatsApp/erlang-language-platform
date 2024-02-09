@@ -14,20 +14,37 @@ use crate::TextRange;
 /// Represents the result of unsuccessful tokenization, parsing
 /// or tree validation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SyntaxError(String, TextRange);
+pub enum SyntaxError {
+    Error(TextRange),
+    Missing(String, TextRange),
+}
 
 impl SyntaxError {
-    pub fn new(message: impl Into<String>, range: TextRange) -> Self {
-        Self(message.into(), range)
+    pub fn error(range: TextRange) -> Self {
+        Self::Error(range)
+    }
+
+    pub fn missing(message: impl Into<String>, range: TextRange) -> Self {
+        Self::Missing(message.into(), range)
     }
 
     pub fn range(&self) -> TextRange {
-        self.1
+        match self {
+            SyntaxError::Error(r) => *r,
+            SyntaxError::Missing(_, r) => *r,
+        }
     }
 }
 
 impl fmt::Display for SyntaxError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        match self {
+            SyntaxError::Error(_) => {
+                write!(f, "Syntax Error")
+            }
+            SyntaxError::Missing(m, _) => {
+                write!(f, "Missing '{}'", m)
+            }
+        }
     }
 }
