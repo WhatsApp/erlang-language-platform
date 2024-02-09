@@ -855,7 +855,14 @@ pub(crate) fn handle_code_lens(
             .map(|project| project.project_build_data)
         {
             for a in annotations {
-                to_proto::code_lens(&mut res, &snap, &line_index, a, &project_build_data);
+                to_proto::code_lens(
+                    &mut res,
+                    &snap,
+                    &lens_config,
+                    &line_index,
+                    a,
+                    &project_build_data,
+                );
             }
         }
     }

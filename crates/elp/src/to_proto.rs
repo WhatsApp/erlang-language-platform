@@ -54,6 +54,7 @@ use lsp_types::MarkupKind;
 use text_edit::Indel;
 use text_edit::TextEdit;
 
+use crate::config::LensConfig;
 use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::lsp_ext::CompletionData;
@@ -612,17 +613,12 @@ pub(crate) fn buck2_test_runnable(
     coverage_enabled: bool,
 ) -> lsp_ext::Runnable {
     let file_id = runnable.nav.file_id;
-    let project_data = snap.analysis.project_data(file_id);
-    let workspace_root = match project_data {
-        Ok(Some(data)) => data.root_dir.clone(),
-        _ => snap.config.root_path.clone(),
-    };
     let location = location_link(snap, None, runnable.clone().nav).ok();
     lsp_ext::Runnable::buck2_test(
         runnable,
         target,
         location,
-        workspace_root.into(),
+        snap.workspace_root(file_id).into(),
         coverage_enabled,
     )
 }
@@ -630,11 +626,11 @@ pub(crate) fn buck2_test_runnable(
 pub(crate) fn code_lens(
     acc: &mut Vec<lsp_types::CodeLens>,
     snap: &Snapshot,
+    lens_config: &LensConfig,
     line_index: &LineIndex,
     annotation: elp_ide::Annotation,
     project_build_data: &ProjectBuildData,
 ) {
-    let lens_config = snap.config.lens();
     match annotation.kind {
         AnnotationKind::Runnable(run) => {
             let annotation_range = range(line_index, annotation.range);

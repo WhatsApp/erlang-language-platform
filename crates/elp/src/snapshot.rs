@@ -246,6 +246,14 @@ impl Snapshot {
             };
         }
     }
+
+    pub fn workspace_root(&self, file_id: FileId) -> AbsPathBuf {
+        let project_data = self.analysis.project_data(file_id);
+        match project_data {
+            Ok(Some(project_data)) => project_data.root_dir.clone(),
+            _ => self.config.root_path.clone(),
+        }
+    }
 }
 
 fn set_up_project(project: &Project) -> Result<()> {
