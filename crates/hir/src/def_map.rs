@@ -75,6 +75,7 @@ pub struct DefMap {
     exported_types: FxHashSet<NameArity>,
     records: FxHashMap<Name, RecordDef>,
     callbacks: FxHashMap<NameArity, CallbackDef>,
+    behaviours: FxHashSet<Name>,
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
     pub parse_transform: bool,
@@ -283,6 +284,9 @@ impl DefMap {
                             .insert(form_list[fa].name.clone());
                     });
                 }
+                FormIdx::Behaviour(idx) => {
+                    def_map.behaviours.insert(form_list[idx].name.clone());
+                }
                 _ => {}
             }
         }
@@ -387,6 +391,10 @@ impl DefMap {
                 None
             }
         })
+    }
+
+    pub fn get_behaviours(&self) -> &FxHashSet<Name> {
+        &self.behaviours
     }
 
     pub fn get_function_clauses(
@@ -560,6 +568,7 @@ impl DefMap {
                 .iter()
                 .map(|(name, desc)| (name.clone(), desc.clone())),
         );
+        self.behaviours.extend(other.behaviours.iter().cloned());
     }
 
     fn fixup_functions(&mut self) {
@@ -742,6 +751,7 @@ impl DefMap {
             function_by_function_id: function_by_form_id,
             function_clauses_by_fa,
             functions_by_fa,
+            behaviours,
         } = self;
 
         included.shrink_to_fit();
@@ -760,6 +770,7 @@ impl DefMap {
         function_by_form_id.shrink_to_fit();
         function_clauses_by_fa.shrink_to_fit();
         functions_by_fa.shrink_to_fit();
+        behaviours.shrink_to_fit();
     }
 }
 

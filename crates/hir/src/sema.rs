@@ -55,6 +55,7 @@ use crate::AnyExprId;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
+use crate::CallbackDef;
 use crate::DefMap;
 use crate::Expr;
 use crate::ExprId;
@@ -70,6 +71,7 @@ use crate::Literal;
 use crate::MacroName;
 use crate::Module;
 use crate::Name;
+use crate::NameArity;
 use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
@@ -223,6 +225,29 @@ impl<'db> Semantic<'db> {
         let project_id = self.db.app_data(source_root_id)?.project_id;
         let module_index = self.db.module_index(project_id);
         Some(ModuleIter(module_index))
+    }
+
+    pub fn resolve_behaviour(
+        &self,
+        file_id: FileId,
+        name: &Name,
+    ) -> Option<(Module, FxHashMap<NameArity, CallbackDef>)> {
+        let behaviour = self.resolve_module_name(file_id, name.as_str())?;
+        let behaviour_def_map = self.db.def_map(behaviour.file.file_id);
+        Some((behaviour, behaviour_def_map.get_callbacks().clone()))
+    }
+
+    pub fn resolve_implemented_callbacks(&self, file_id: FileId) -> FxHashSet<NameArity> {
+        let mut res = FxHashSet::default();
+        let def_map = self.def_map(file_id);
+        def_map.get_behaviours().iter().for_each(|name| {
+            if let Some((_behaviour, callbacks)) = self.resolve_behaviour(file_id, name) {
+                callbacks.iter().for_each(|(na, _def)| {
+                    res.insert(na.clone());
+                })
+            };
+        });
+        res
     }
 
     pub fn module_name(&self, file_id: FileId) -> Option<ModuleName> {

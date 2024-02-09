@@ -139,8 +139,12 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
     let mut res = FxHashMap::default();
     let def_map = sema.db.def_map(file_id);
     let functions = def_map.get_functions();
+    let excludes = sema.resolve_implemented_callbacks(file_id);
     for (name_arity, def) in functions {
-        if def.exported && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity) {
+        if def.exported
+            && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity)
+            && !excludes.contains(name_arity)
+        {
             if let Some(name) = def.source(sema.db.upcast()).get(0).and_then(|f| f.name()) {
                 if name_arity.arity() == 1 {
                     res.insert(name_arity.clone(), name.syntax().text_range());
@@ -522,6 +526,32 @@ c(_Config) ->
      ok.
    c(_Config) ->
      ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unreachable_test_with_callback() {
+        check_ct_diagnostics(
+            r#"
+//- common_test
+//- /my_app/test/unreachable_SUITE.erl
+   -module(unreachable_SUITE).~
+   -export([all/0]).
+   -export([a/1, b/1, my_callback/1]).
+   -behaviour(my_behaviour).
+   my_callback(X) -> X.
+   all() -> [a].
+   a(_Config) ->
+     ok.
+   b(_Config) ->
+%% ^ 💡 warning: Unreachable test (b/1)
+     ok.
+//- /my_app/src/my_behaviour.erl
+-module(my_behaviour).
+-export([foo/1]).
+foo(X) -> X.
+-callback my_callback(integer()) -> integer().
             "#,
         );
     }
