@@ -733,7 +733,7 @@ pub fn diagnostics(
             Diagnostic::error(
                 DiagnosticCode::SyntaxError,
                 widen_range(err.range()),
-                format!("Syntax Error: {}", err),
+                format!("{}", err),
             )
             .with_form_range(get_form_range(&parse.syntax_node(), err.range()))
         });
@@ -2025,7 +2025,7 @@ baz(1)->4.
 
              -spec foo() -> ok.
              foo( -> ok. %%
-             %%  ^ error: Syntax Error: Missing )
+             %%  ^ error: Missing ')'
             "#,
         );
     }

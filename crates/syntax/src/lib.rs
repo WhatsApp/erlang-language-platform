@@ -174,11 +174,11 @@ impl<'tree, 'text> Converter<'tree, 'text> {
                 ret = true;
             }
 
-            self.error("Error: ignoring", range);
+            self.error("Syntax Error", range);
             ret
         } else if node.is_missing() {
             let text = node.kind();
-            self.error(format!("Missing {}", text), range);
+            self.error(format!("Missing '{}'", text), range);
             false
         } else if node.child_count() == 0 {
             if node.is_named() {
@@ -899,7 +899,7 @@ mod tests {
         let source_code = r#"f() -> #name{field = }."#;
         let parse = ast::SourceFile::parse_text(source_code);
 
-        expect![[r#"[SyntaxError("Error: ignoring", 19..20)]"#]]
+        expect![[r#"[SyntaxError("Syntax Error", 19..20)]"#]]
             .assert_eq(format!("{:?}", parse.errors()).as_str());
     }
 
@@ -921,7 +921,27 @@ mod tests {
 "#;
 
         let parse = ast::SourceFile::parse_text(source_code);
-        expect![[r#"[SyntaxError("Error: ignoring", 1..195), SyntaxError("Error: ignoring", 94..96), SyntaxError("Error: ignoring", 102..103), SyntaxError("Error: ignoring", 184..186)]"#]].assert_eq(&format!("{:?}", parse.errors()));
+        expect![[r#"
+            [
+                SyntaxError(
+                    "Syntax Error",
+                    1..195,
+                ),
+                SyntaxError(
+                    "Syntax Error",
+                    94..96,
+                ),
+                SyntaxError(
+                    "Syntax Error",
+                    102..103,
+                ),
+                SyntaxError(
+                    "Syntax Error",
+                    184..186,
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&parse.errors().iter().collect::<Vec<_>>());
         expect!["SourceFile { syntax: SOURCE_FILE@0..194 }"]
             .assert_eq(format!("{:?}", parse.tree()).as_str());
     }

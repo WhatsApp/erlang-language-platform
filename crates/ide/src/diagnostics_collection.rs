@@ -343,7 +343,7 @@ mod tests {
 
              -spec foo() -> ok.
              foo( -> ok. %%
-             %%  ^ error: Syntax Error: Missing )
+             %%  ^ error: Missing ')'
             "#,
         );
     }
