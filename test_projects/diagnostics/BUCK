@@ -1,0 +1,18 @@
+erlang_application(
+    name = "diagnostics_app_a",
+    srcs = glob(["app_a/src/*.erl"]),
+    app_src = "app_a/src/app_a.app.src",
+    applications = [
+    ],
+    includes = glob(["app_a/include/*.hrl"]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)
+
+erlang_tests(
+    suites = [
+        "app_a/test/app_a_SUITE.erl",
+    ],
+    deps = [":diagnostics_app_a"],
+)
+

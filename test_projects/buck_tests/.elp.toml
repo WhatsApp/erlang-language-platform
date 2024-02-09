@@ -1,9 +1,12 @@
 [buck]
 enabled = true
 build_deps = false
-included_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests/..." ]
-excluded_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests:test_elp_ignored" ]
-source_root = "whatsapp/elp/test_projects/buck_tests"
+# @fb-only included_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests/..." ]
+# @fb-only excluded_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests:test_elp_ignored" ]
+# @fb-only source_root = "whatsapp/elp/test_projects/buck_tests"
+included_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests/..." ] # @oss-only
+excluded_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests:test_elp_ignored" ] # @oss-only
+source_root = "whatsapp/elp/test_projects/buck_tests" # @oss-only
 
 [eqwalizer]
 enable_all = false

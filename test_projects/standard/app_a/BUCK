@@ -1,0 +1,20 @@
+erlang_application(
+    name = "app_a",
+    srcs = glob(["src/*.erl"]),
+    version = "0.1.0",
+    visibility = ["PUBLIC"],
+)
+
+erlang_tests(
+    suites = [
+        "test/fail_SUITE.erl",
+        "test/pass_SUITE.erl",
+    ],
+    deps = [":beam_sto", "//third-party:meck"],
+    config_files = [":sys.ct.config"],
+)
+
+export_file(
+    name = "sys.ct.config",
+    src = "config/sys.ct.config"
+)

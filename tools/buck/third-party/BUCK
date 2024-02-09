@@ -1,0 +1,28 @@
+erlang_application(
+    name = "jsone",
+    srcs = glob(["jsone/src/*.erl"]),
+    app_src = "jsone/src/jsone.app.src",
+    erl_opts = ["+debug_info", "+inline"],
+    shell_libs = [],
+    use_global_parse_transforms = False,
+    build_edoc_chunks = False,
+    version = "1.8.1",
+    visibility = ["PUBLIC"],
+)
+
+# erlang_application(
+#     name = "meck",
+#     srcs = glob(["meck/src/*.erl"]),
+#     applications = [
+#         "kernel",
+#         "stdlib",
+#         "tools",
+#         "compiler",
+#     ],
+#     shell_libs = [],
+#     erl_opts = ["+debug_info"],
+#     use_global_parse_transforms = False,
+#     visibility = ["PUBLIC"],
+#     build_edoc_chunks = False,
+# )
+

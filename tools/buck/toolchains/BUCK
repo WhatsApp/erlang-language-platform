@@ -1,0 +1,36 @@
+load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
+load(
+    "@prelude//erlang:erlang_toolchain.bzl",
+    "config_erlang_toolchain_rule",
+    "get_primary_tools",
+    "multi_version_toolchain_rule",
+    _toolchain_resources = "toolchain_resources",
+)
+
+system_genrule_toolchain(
+    name = "genrule",
+    visibility = ["PUBLIC"],
+)
+
+config_erlang_toolchain_rule(
+    name = "erlang-local",
+    otp_binaries = "toolchains//otp:local",
+    visibility = ["PUBLIC"],
+    erl_opts = "+nowarn_underscore_match +debug_info +warnings_as_errors -DA_MACRO",
+    emu_flags = "+sbwt very_short +sbwtdcpu very_short +sbwtdio very_short",
+    parse_transforms = [],
+    parse_transforms_filters = {},
+)
+
+multi_version_toolchain_rule(
+    name = "erlang-default",
+    targets = [":erlang-local"],
+    visibility = ["PUBLIC"],
+)
+
+_toolchain_resources(
+    name = "erlang-resources",
+    # jsone = "root//third-party:jsone",
+    jsone = "root//tools/buck/third-party:jsone",
+    visibility = ["PUBLIC"],
+)

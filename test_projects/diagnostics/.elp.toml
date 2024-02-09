@@ -1,8 +1,10 @@
 [buck]
 enabled = true
 build_deps = false
-included_targets = [ "fbcode//whatsapp/elp/test_projects/diagnostics/..." ]
-source_root = "whatsapp/elp/test_projects/diagnostics"
+# included_targets = [ "fbcode//whatsapp/elp/test_projects/diagnostics/..." ]
+# source_root = "whatsapp/elp/test_projects/diagnostics"
+included_targets = [ "root//test_projects/diagnostics/..." ]
+source_root = "test_projects/diagnostics"
 
 [eqwalizer]
 enable_all = false

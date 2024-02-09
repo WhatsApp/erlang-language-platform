@@ -1,3 +1,6 @@
 [submodule "tools/buck/prelude"]
 	path = tools/buck/prelude
 	url = https://github.com/facebook/buck2-prelude
+[submodule "tools/buck/third-party/jsone"]
+	path = tools/buck/third-party/jsone
+	url = https://github.com/sile/jsone.git

@@ -1,0 +1,41 @@
+erlang_application(
+    name = "test_elp_no_private_headers",
+    srcs = glob([
+        "test_elp_no_private_headers/src/*.erl",
+    ]),
+    includes = glob(["test_elp_no_private_headers/include/*.hrl"]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)
+
+erlang_application(
+    name = "test_elp_no_public_headers",
+    srcs = glob([
+        "test_elp_no_public_headers/src/*.erl",
+        "test_elp_no_public_headers/src/*.hrl",
+    ]),
+    includes = glob(["test_elp_no_public_headers/include/*.hrl"]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)
+
+erlang_application(
+    name = "test_elp_flat_outside_target",
+    srcs = glob([
+        "test_elp_flat_outside_target/*.erl",
+    ]),
+    includes = glob([
+        "test_elp_flat_outside_target/*.hrl",
+    ]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)
+
+erlang_application(
+    name = "test_elp_ignored",
+    srcs = glob([
+        "test_elp_ignored/*.erl",
+    ]),
+    version = "1.0.0",
+    labels = ["user_application"],
+)

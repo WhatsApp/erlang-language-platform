@@ -1,0 +1,23 @@
+# -*- mode: toml -*-
+# Based on the example at https://github.com/TheGeorge/buck2_erlang_demo
+
+[repositories]
+root = .
+prelude = ./tools/buck/prelude
+toolchains = ./tools/buck/toolchains
+none = none
+
+[repository_aliases]
+config = prelude
+fbcode = none
+fbsource = none
+buck = none
+
+[parser]
+target_platform_detector_spec = target:root//...->prelude//platforms:default
+
+[buildfile]
+buck2_default_visibility_to_public = true
+
+[erlang]
+build_edoc_chunks=False
