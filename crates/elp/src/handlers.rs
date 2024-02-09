@@ -847,6 +847,7 @@ pub(crate) fn handle_code_lens(
     }
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let line_index = snap.analysis.line_index(file_id)?;
     if let Ok(Some(project_id)) = snap.analysis.project_id(file_id) {
         let annotations = snap.analysis.annotations(file_id)?;
         if let Some(project_build_data) = snap
@@ -854,7 +855,7 @@ pub(crate) fn handle_code_lens(
             .map(|project| project.project_build_data)
         {
             for a in annotations {
-                to_proto::code_lens(&mut res, &snap, a, &project_build_data)?;
+                to_proto::code_lens(&mut res, &snap, &line_index, a, &project_build_data);
             }
         }
     }

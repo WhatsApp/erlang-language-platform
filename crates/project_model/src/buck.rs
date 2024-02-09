@@ -173,6 +173,10 @@ impl BuckProject {
         };
         Ok((project, project_app_data, build_info, otp_root))
     }
+
+    pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
+        self.target_info.path_to_target_name.get(file_path).cloned()
+    }
 }
 
 #[derive(Deserialize, Debug)]

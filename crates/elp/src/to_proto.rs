@@ -608,83 +608,69 @@ pub(crate) fn document_highlight_kind(
 pub(crate) fn buck2_test_runnable(
     snap: &Snapshot,
     runnable: Runnable,
-    project_build_data: &ProjectBuildData,
+    target: String,
     coverage_enabled: bool,
-) -> Result<lsp_ext::Runnable, String> {
+) -> lsp_ext::Runnable {
     let file_id = runnable.nav.file_id;
-    let file_path = snap.file_id_to_path(file_id);
-    match project_build_data {
-        elp_project_model::ProjectBuildData::Buck(buck_project) => match file_path {
-            None => Err("Could not extract file path".into()),
-            Some(file_path) => match buck_project
-                .target_info
-                .path_to_target_name
-                .get(&file_path)
-                .cloned()
-            {
-                Some(target) => {
-                    let project_data = snap.analysis.project_data(file_id);
-                    let workspace_root = match project_data {
-                        Ok(Some(data)) => data.root_dir.clone(),
-                        _ => snap.config.root_path.clone(),
-                    };
-
-                    let location = location_link(snap, None, runnable.clone().nav).ok();
-                    Ok(lsp_ext::Runnable::buck2_test(
-                        runnable,
-                        target,
-                        location,
-                        workspace_root.into(),
-                        coverage_enabled,
-                    ))
-                }
-                None => Err("Could not find test target for file".into()),
-            },
-        },
-        _ => Err("Only Buck2 Projects Supported".into()),
-    }
+    let project_data = snap.analysis.project_data(file_id);
+    let workspace_root = match project_data {
+        Ok(Some(data)) => data.root_dir.clone(),
+        _ => snap.config.root_path.clone(),
+    };
+    let location = location_link(snap, None, runnable.clone().nav).ok();
+    lsp_ext::Runnable::buck2_test(
+        runnable,
+        target,
+        location,
+        workspace_root.into(),
+        coverage_enabled,
+    )
 }
 
 pub(crate) fn code_lens(
     acc: &mut Vec<lsp_types::CodeLens>,
     snap: &Snapshot,
+    line_index: &LineIndex,
     annotation: elp_ide::Annotation,
     project_build_data: &ProjectBuildData,
-) -> Result<()> {
+) {
     let lens_config = snap.config.lens();
     match annotation.kind {
         AnnotationKind::Runnable(run) => {
-            let line_index = snap.analysis.line_index(run.nav.file_id)?;
-            let annotation_range = range(&line_index, annotation.range);
+            let annotation_range = range(line_index, annotation.range);
             let run_title = &run.run_title();
             let debug_title = &run.debug_title();
-            match buck2_test_runnable(snap, run, project_build_data, lens_config.run_coverage) {
-                Ok(r) => {
-                    if lens_config.run {
-                        let run_command = command::run_single(&r, run_title);
-                        acc.push(lsp_types::CodeLens {
-                            range: annotation_range,
-                            command: Some(run_command),
-                            data: None,
-                        });
-                    }
-                    if lens_config.debug {
-                        let debug_command = command::debug_single(&r, debug_title);
-                        acc.push(lsp_types::CodeLens {
-                            range: annotation_range,
-                            command: Some(debug_command),
-                            data: None,
-                        })
+            match project_build_data {
+                ProjectBuildData::Buck(project) => {
+                    let file_id = run.nav.file_id;
+                    if let Some(file_path) = snap.file_id_to_path(file_id) {
+                        if let Some(target) = project.target(&file_path) {
+                            let r =
+                                buck2_test_runnable(snap, run, target, lens_config.run_coverage);
+                            if lens_config.run {
+                                let run_command = command::run_single(&r, run_title);
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(run_command),
+                                    data: None,
+                                });
+                            }
+                            if lens_config.debug {
+                                let debug_command = command::debug_single(&r, debug_title);
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(debug_command),
+                                    data: None,
+                                });
+                            }
+                        }
                     }
                 }
-                Err(e) => {
-                    log::warn!("Error while extracting runnables {e}");
-                }
-            };
+                _ => (),
+            }
         }
         AnnotationKind::Link(link) => {
             if lens_config.links {
-                let line_index = snap.analysis.line_index(link.file_id)?;
                 let annotation_range = range(&line_index, annotation.range);
                 let url = link.url;
                 let text = link.text;
@@ -697,7 +683,6 @@ pub(crate) fn code_lens(
             }
         }
     }
-    Ok(())
 }
 
 pub(crate) mod command {
