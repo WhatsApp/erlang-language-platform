@@ -99,8 +99,30 @@ impl Runnable {
         args
     }
 
+    pub fn buck2_run_args(&self, target: String) -> Vec<String> {
+        let mut args = Vec::new();
+        match &self.kind {
+            RunnableKind::Suite => {
+                args.push(target);
+            }
+            _ => {}
+        }
+        args
+    }
+
     // The Unicode variation selector is appended to the play button to avoid that
     // the play symbol is transformed into an emoji
+    pub fn run_interactive_title(&self) -> String {
+        match &self.kind {
+            RunnableKind::Test { group, .. } => match group {
+                common_test::GroupName::NoGroup => "▶\u{fe0e} Run Interactive".to_string(),
+                common_test::GroupName::Name(name) => {
+                    format!("▶\u{fe0e} Run Interactive (in {})", name)
+                }
+            },
+            RunnableKind::Suite => "▶\u{fe0e} Open Interactive Shell".to_string(),
+        }
+    }
     pub fn run_title(&self) -> String {
         match &self.kind {
             RunnableKind::Test { group, .. } => match group {

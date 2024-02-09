@@ -841,10 +841,6 @@ pub(crate) fn handle_code_lens(
 
     let mut res = Vec::new();
     let lens_config = snap.config.lens();
-    if !lens_config.run {
-        // early return before any db query!
-        return Ok(Some(res));
-    }
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;

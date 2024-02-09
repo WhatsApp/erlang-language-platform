@@ -42,6 +42,7 @@ use elp_ide::InlayHintLabelPart;
 use elp_ide::InlayKind;
 use elp_ide::NavigationTarget;
 use elp_ide::Runnable;
+use elp_ide::RunnableKind;
 use elp_ide::SignatureHelp;
 use elp_ide::TextRange;
 use elp_ide::TextSize;
@@ -623,6 +624,21 @@ pub(crate) fn buck2_test_runnable(
     )
 }
 
+pub(crate) fn buck2_run_runnable(
+    snap: &Snapshot,
+    runnable: Runnable,
+    target: String,
+) -> lsp_ext::Runnable {
+    let file_id = runnable.nav.file_id;
+    let location = location_link(snap, None, runnable.clone().nav).ok();
+    lsp_ext::Runnable::buck2_run(
+        runnable,
+        target,
+        location,
+        snap.workspace_root(file_id).into(),
+    )
+}
+
 pub(crate) fn code_lens(
     acc: &mut Vec<lsp_types::CodeLens>,
     snap: &Snapshot,
@@ -635,14 +651,33 @@ pub(crate) fn code_lens(
         AnnotationKind::Runnable(run) => {
             let annotation_range = range(line_index, annotation.range);
             let run_title = &run.run_title();
+            let run_interactive_title = &run.run_interactive_title();
             let debug_title = &run.debug_title();
             match project_build_data {
                 ProjectBuildData::Buck(project) => {
                     let file_id = run.nav.file_id;
                     if let Some(file_path) = snap.file_id_to_path(file_id) {
                         if let Some(target) = project.target(&file_path) {
-                            let r =
-                                buck2_test_runnable(snap, run, target, lens_config.run_coverage);
+                            let r = buck2_test_runnable(
+                                snap,
+                                run.clone(),
+                                target.clone(),
+                                lens_config.run_coverage,
+                            );
+                            if lens_config.run_interactive {
+                                if run.kind == RunnableKind::Suite {
+                                    let interactive_r = buck2_run_runnable(snap, run, target);
+                                    let run_command = command::open_interactive(
+                                        &interactive_r,
+                                        run_interactive_title,
+                                    );
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(run_command),
+                                        data: None,
+                                    });
+                                }
+                            }
                             if lens_config.run {
                                 let run_command = command::run_single(&r, run_title);
                                 acc.push(lsp_types::CodeLens {
@@ -685,6 +720,17 @@ pub(crate) mod command {
     use serde_json::to_value;
 
     use crate::lsp_ext;
+
+    pub(crate) fn open_interactive(
+        runnable: &lsp_ext::Runnable,
+        title: &str,
+    ) -> lsp_types::Command {
+        lsp_types::Command {
+            title: title.to_string(),
+            command: "elp.openInteractive".into(),
+            arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
 
     pub(crate) fn run_single(runnable: &lsp_ext::Runnable, title: &str) -> lsp_types::Command {
         lsp_types::Command {

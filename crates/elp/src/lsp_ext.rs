@@ -125,6 +125,26 @@ impl Runnable {
             },
         }
     }
+
+    pub fn buck2_run(
+        runnable: elp_ide::Runnable,
+        target: String,
+        location: Option<lsp_types::LocationLink>,
+        workspace_root: PathBuf,
+    ) -> Self {
+        Self {
+            label: "Buck2".to_string(),
+            location,
+            kind: RunnableKind::Buck2,
+            args: Buck2RunnableArgs {
+                workspace_root,
+                command: "run".to_string(),
+                args: runnable.buck2_run_args(target.clone()),
+                target,
+                id: runnable.id(),
+            },
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
