@@ -116,6 +116,7 @@ struct Converter<'tree, 'text> {
     errors: Vec<SyntaxError>,
     builder: GreenNodeBuilder<'static>,
     last_position: usize,
+    pending_syntax_error: Option<Node<'tree>>,
     // Debug counter to try and track down the panic on calling self.builder.finish()
     open_count: isize,
 }
@@ -128,6 +129,7 @@ impl<'tree, 'text> Converter<'tree, 'text> {
             errors: Vec::new(),
             builder: GreenNodeBuilder::new(),
             last_position: 0,
+            pending_syntax_error: None,
             open_count: 0,
         }
     }
@@ -154,6 +156,7 @@ impl<'tree, 'text> Converter<'tree, 'text> {
         let kind = SyntaxKind::from_u16(node.kind_id()).unwrap();
         let range = node.byte_range();
         if node.is_error() {
+            self.pending_syntax_error = Some(node);
             let mut ret = false;
             if is_root {
                 // Our parser has an invariant that the top level
@@ -176,7 +179,6 @@ impl<'tree, 'text> Converter<'tree, 'text> {
                 ret = true;
             }
 
-            self.error_syntax(range);
             ret
         } else if node.is_missing() {
             let text = node.kind();
@@ -199,6 +201,12 @@ impl<'tree, 'text> Converter<'tree, 'text> {
     }
 
     fn exit_node(&mut self, node: Node, is_root: bool) {
+        if let Some(syntax_error_node) = &self.pending_syntax_error {
+            if &node == syntax_error_node {
+                self.error_syntax(node.byte_range());
+                self.pending_syntax_error = None;
+            }
+        }
         if !((is_root && node.is_error()) || node.is_missing() || node.child_count() == 0) {
             let range = node.byte_range();
             self.finish_node(range.end, is_root);
@@ -929,9 +937,6 @@ mod tests {
         let parse = ast::SourceFile::parse_text(source_code);
         expect![[r#"
             [
-                Error(
-                    1..195,
-                ),
                 Error(
                     94..96,
                 ),

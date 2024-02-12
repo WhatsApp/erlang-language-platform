@@ -2164,4 +2164,25 @@ baz(1)->4.
             "#,
         );
     }
+
+    #[test]
+    fn test_nested_syntax_errors() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            run() ->
+                ExitCode =
+                    try
+                        Root = project_root(),
+                        to_exit_code(run1(Root)),
+                    catch
+                        _:Reason -> to_exit_code(Reason)
+            %%          ^^^^^^^^^^^  error: Syntax Error
+                    end,
+            %%      ^^^  error: Syntax Error
+
+                erlang:halt(ExitCode).
+            "#,
+        );
+    }
 }
