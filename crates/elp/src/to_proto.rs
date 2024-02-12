@@ -665,17 +665,30 @@ pub(crate) fn code_lens(
                                 lens_config.run_coverage,
                             );
                             if lens_config.run_interactive {
-                                if run.kind == RunnableKind::Suite {
-                                    let interactive_r = buck2_run_runnable(snap, run, target);
-                                    let run_command = command::open_interactive(
-                                        &interactive_r,
-                                        run_interactive_title,
-                                    );
-                                    acc.push(lsp_types::CodeLens {
-                                        range: annotation_range,
-                                        command: Some(run_command),
-                                        data: None,
-                                    });
+                                let interactive_r = buck2_run_runnable(snap, run.clone(), target);
+                                match run.kind {
+                                    RunnableKind::Suite => {
+                                        let run_command = command::open_interactive(
+                                            &interactive_r,
+                                            run_interactive_title,
+                                        );
+                                        acc.push(lsp_types::CodeLens {
+                                            range: annotation_range,
+                                            command: Some(run_command),
+                                            data: None,
+                                        });
+                                    }
+                                    RunnableKind::Test { .. } => {
+                                        let run_command = command::run_interactive(
+                                            &interactive_r,
+                                            run_interactive_title,
+                                        );
+                                        acc.push(lsp_types::CodeLens {
+                                            range: annotation_range,
+                                            command: Some(run_command),
+                                            data: None,
+                                        });
+                                    }
                                 }
                             }
                             if lens_config.run {
@@ -728,6 +741,14 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.openInteractive".into(),
+            arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn run_interactive(runnable: &lsp_ext::Runnable, title: &str) -> lsp_types::Command {
+        lsp_types::Command {
+            title: title.to_string(),
+            command: "elp.runInteractive".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }

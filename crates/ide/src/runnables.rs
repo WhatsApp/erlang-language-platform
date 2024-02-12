@@ -105,7 +105,9 @@ impl Runnable {
             RunnableKind::Suite => {
                 args.push(target);
             }
-            _ => {}
+            RunnableKind::Test { .. } => {
+                args.push(self.id());
+            }
         }
         args
     }
@@ -115,12 +117,12 @@ impl Runnable {
     pub fn run_interactive_title(&self) -> String {
         match &self.kind {
             RunnableKind::Test { group, .. } => match group {
-                common_test::GroupName::NoGroup => "▶\u{fe0e} Run Interactive".to_string(),
+                common_test::GroupName::NoGroup => "▶\u{fe0e} Run in REPL".to_string(),
                 common_test::GroupName::Name(name) => {
-                    format!("▶\u{fe0e} Run Interactive (in {})", name)
+                    format!("▶\u{fe0e} Run in REPL (in {})", name)
                 }
             },
-            RunnableKind::Suite => "▶\u{fe0e} Open Interactive Shell".to_string(),
+            RunnableKind::Suite => "▶\u{fe0e} Open REPL".to_string(),
         }
     }
     pub fn run_title(&self) -> String {
