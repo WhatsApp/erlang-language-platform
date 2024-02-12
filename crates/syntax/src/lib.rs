@@ -147,30 +147,32 @@ impl<'tree, 'text> Converter<'tree, 'text> {
         (self.builder.finish(), self.errors)
     }
 
-    fn enter_node(&mut self, root: bool) -> bool {
+    // Enter a node, and return a flag as to whether to recurse into
+    // it or not.
+    fn enter_node(&mut self, is_root: bool) -> bool {
         let node = self.cursor.node();
         let kind = SyntaxKind::from_u16(node.kind_id()).unwrap();
         let range = node.byte_range();
         if node.is_error() {
             let mut ret = false;
-            if root {
+            if is_root {
                 // Our parser has an invariant that the top level
                 // node is of kind SOURCE_FILE.  We are aborting after
                 // adding this node, so make sure this is the case
-                self.start_node(SyntaxKind::SOURCE_FILE, range.start, root);
+                self.start_node(SyntaxKind::SOURCE_FILE, range.start, is_root);
 
                 // Make sure we capture whatever structure is wrapped
                 // inside the ERROR node.
                 if node.child_count() == 0 {
-                    self.token(kind, &range, root);
+                    self.token(kind, &range, is_root);
                 } else {
-                    self.start_node(kind, range.start, root);
+                    self.start_node(kind, range.start, is_root);
                     ret = true;
                 };
             } else if node.child_count() == 0 {
-                self.token(kind, &range, root);
+                self.token(kind, &range, is_root);
             } else {
-                self.start_node(kind, range.start, root);
+                self.start_node(kind, range.start, is_root);
                 ret = true;
             }
 
@@ -183,23 +185,23 @@ impl<'tree, 'text> Converter<'tree, 'text> {
         } else if node.child_count() == 0 {
             if node.is_named() {
                 // We capture the node, and its enclosed token
-                self.start_node(kind, range.start, root);
+                self.start_node(kind, range.start, is_root);
                 self.token(kind, &range, false);
-                self.finish_node(range.end, root);
+                self.finish_node(range.end, is_root);
             } else {
-                self.token(kind, &range, root);
+                self.token(kind, &range, is_root);
             }
             false
         } else {
-            self.start_node(kind, range.start, root);
+            self.start_node(kind, range.start, is_root);
             true
         }
     }
 
-    fn exit_node(&mut self, node: Node, root: bool) {
-        if !((root && node.is_error()) || node.is_missing() || node.child_count() == 0) {
+    fn exit_node(&mut self, node: Node, is_root: bool) {
+        if !((is_root && node.is_error()) || node.is_missing() || node.child_count() == 0) {
             let range = node.byte_range();
-            self.finish_node(range.end, root);
+            self.finish_node(range.end, is_root);
         }
     }
 
@@ -244,42 +246,42 @@ impl<'tree, 'text> Converter<'tree, 'text> {
         self.errors.push(SyntaxError::missing(msg, range));
     }
 
-    fn token(&mut self, kind: SyntaxKind, range: &Range<usize>, root: bool) {
-        if root {
-            self.start_node(kind, range.start, root);
+    fn token(&mut self, kind: SyntaxKind, range: &Range<usize>, is_root: bool) {
+        if is_root {
+            self.start_node(kind, range.start, is_root);
         }
 
         self.update_position(range.start, range.end);
         let text = &self.text[range.clone()];
         self.builder.token(ELPLanguage::kind_to_raw(kind), text);
 
-        if root {
-            self.finish_node(range.end, root);
+        if is_root {
+            self.finish_node(range.end, is_root);
         }
     }
 
-    fn start_node(&mut self, kind: SyntaxKind, range_start: usize, root: bool) {
+    fn start_node(&mut self, kind: SyntaxKind, range_start: usize, is_root: bool) {
         // Root node has whitespace inside of it (since there's nothing outside),
         // all other nodes have it outside
-        if !root {
+        if !is_root {
             self.update_position(range_start, range_start);
         }
         self.builder.start_node(ELPLanguage::kind_to_raw(kind));
         self.open_count += 1;
-        if root {
+        if is_root {
             self.update_position(range_start, range_start);
         }
     }
 
-    fn finish_node(&mut self, range_end: usize, root: bool) {
+    fn finish_node(&mut self, range_end: usize, is_root: bool) {
         // Root node has whitespace inside of it (since there's nothing outside),
         // all other nodes have it outside
-        if root {
+        if is_root {
             self.update_position(range_end, range_end);
         }
         self.builder.finish_node();
         self.open_count -= 1;
-        if !root {
+        if !is_root {
             self.update_position(range_end, range_end);
         }
     }
