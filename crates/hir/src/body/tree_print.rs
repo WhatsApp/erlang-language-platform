@@ -14,7 +14,7 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::str;
 
-use crate::db::MinInternDatabase;
+use crate::db::InternDatabase;
 use crate::expr::MaybeExpr;
 use crate::AnyAttribute;
 use crate::AttributeBody;
@@ -41,32 +41,32 @@ use crate::TypeAlias;
 use crate::TypeExpr;
 use crate::TypeExprId;
 
-pub(crate) fn print_expr(db: &dyn MinInternDatabase, body: &Body, expr: ExprId) -> String {
+pub(crate) fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_expr(&body[expr]);
     printer.to_string()
 }
 
-pub(crate) fn print_pat(db: &dyn MinInternDatabase, body: &Body, pat: PatId) -> String {
+pub(crate) fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_pat(&body[pat]);
     printer.to_string()
 }
 
-pub(crate) fn print_type(db: &dyn MinInternDatabase, body: &Body, ty: TypeExprId) -> String {
+pub(crate) fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_type(&body[ty]);
     printer.to_string()
 }
 
-pub(crate) fn print_term(db: &dyn MinInternDatabase, body: &Body, term: TermId) -> String {
+pub(crate) fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_term(&body[term]);
     printer.to_string()
 }
 
 pub(crate) fn print_attribute(
-    db: &dyn MinInternDatabase,
+    db: &dyn InternDatabase,
     body: &AttributeBody,
     form: &AnyAttribute,
 ) -> String {
@@ -86,7 +86,7 @@ pub(crate) fn print_attribute(
     printer.to_string()
 }
 
-pub(crate) fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody) -> String {
+pub(crate) fn print_function(db: &dyn InternDatabase, body: &FunctionBody) -> String {
     let mut out = String::new();
 
     let mut sep = "";
@@ -103,7 +103,7 @@ pub(crate) fn print_function(db: &dyn MinInternDatabase, body: &FunctionBody) ->
 }
 
 pub(crate) fn print_function_clause(
-    db: &dyn MinInternDatabase,
+    db: &dyn InternDatabase,
     clause: &FunctionClauseBody,
 ) -> String {
     let mut out = String::new();
@@ -117,7 +117,7 @@ pub(crate) fn print_function_clause(
 }
 
 pub(crate) fn print_type_alias(
-    db: &dyn MinInternDatabase,
+    db: &dyn InternDatabase,
     body: &crate::TypeBody,
     form: &crate::TypeAlias,
 ) -> String {
@@ -139,7 +139,7 @@ pub(crate) fn print_type_alias(
 }
 
 struct Printer<'a> {
-    db: &'a dyn MinInternDatabase,
+    db: &'a dyn InternDatabase,
     body: &'a Body,
     buf: String,
     indent_level: usize,
@@ -147,7 +147,7 @@ struct Printer<'a> {
 }
 
 impl<'a> Printer<'a> {
-    fn new(db: &'a dyn MinInternDatabase, body: &'a Body) -> Self {
+    fn new(db: &'a dyn InternDatabase, body: &'a Body) -> Self {
         Printer {
             db,
             body,

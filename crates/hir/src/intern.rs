@@ -11,8 +11,8 @@ use elp_base_db::salsa;
 
 use crate::Name;
 
-#[salsa::query_group(MinInternDatabaseStorage)]
-pub trait MinInternDatabase {
+#[salsa::query_group(InternDatabaseStorage)]
+pub trait InternDatabase {
     #[salsa::interned]
     fn atom(&self, name: Name) -> Atom;
 
@@ -47,13 +47,13 @@ impl salsa::InternKey for Var {
 }
 
 impl Atom {
-    pub fn as_string(&self, db: &dyn MinInternDatabase) -> String {
+    pub fn as_string(&self, db: &dyn InternDatabase) -> String {
         db.lookup_atom(*self).to_string()
     }
 }
 
 impl Var {
-    pub fn as_string(&self, db: &dyn MinInternDatabase) -> String {
+    pub fn as_string(&self, db: &dyn InternDatabase) -> String {
         db.lookup_var(*self).to_string()
     }
 }

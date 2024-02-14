@@ -23,8 +23,8 @@ use crate::def_map::FunctionDefId;
 use crate::edoc;
 use crate::edoc::EdocHeader;
 use crate::include;
-pub use crate::intern::MinInternDatabase;
-pub use crate::intern::MinInternDatabaseStorage;
+pub use crate::intern::InternDatabase;
+pub use crate::intern::InternDatabaseStorage;
 use crate::macro_exp;
 use crate::macro_exp::MacroResolution;
 use crate::AttributeBody;
@@ -52,7 +52,7 @@ use crate::TypeBody;
 
 #[salsa::query_group(MinDefDatabaseStorage)]
 pub trait MinDefDatabase:
-    MinInternDatabase + Upcast<dyn MinInternDatabase> + SourceDatabase + Upcast<dyn SourceDatabase>
+    InternDatabase + Upcast<dyn InternDatabase> + SourceDatabase + Upcast<dyn SourceDatabase>
 {
     #[salsa::invoke(FormList::file_form_list_query)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;

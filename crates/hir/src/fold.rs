@@ -1025,7 +1025,7 @@ mod tests {
     use la_arena::RawIdx;
 
     use super::fold_file;
-    use crate::db::MinInternDatabase;
+    use crate::db::InternDatabase;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
     use crate::fold::Strategy;

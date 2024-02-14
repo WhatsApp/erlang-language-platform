@@ -20,13 +20,13 @@ use elp_base_db::FileLoaderDelegate;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 
-use crate::db::MinInternDatabase;
+use crate::db::InternDatabase;
 
 #[salsa::database(
     elp_base_db::SourceDatabaseExtStorage,
     elp_base_db::SourceDatabaseStorage,
     crate::db::MinDefDatabaseStorage,
-    crate::db::MinInternDatabaseStorage
+    crate::db::InternDatabaseStorage
 )]
 #[derive(Default)]
 pub(crate) struct TestDB {
@@ -39,8 +39,8 @@ impl Upcast<dyn SourceDatabase> for TestDB {
     }
 }
 
-impl Upcast<dyn MinInternDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn MinInternDatabase + 'static) {
+impl Upcast<dyn InternDatabase> for TestDB {
+    fn upcast(&self) -> &(dyn InternDatabase + 'static) {
         self
     }
 }

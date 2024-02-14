@@ -20,8 +20,8 @@ use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 
+use crate::db::InternDatabase;
 use crate::db::MinDefDatabase;
-use crate::db::MinInternDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
@@ -473,7 +473,7 @@ impl VarDef {
         self.var.to_node(source_file.syntax())
     }
 
-    pub fn name(&self, db: &dyn MinInternDatabase) -> Name {
+    pub fn name(&self, db: &dyn InternDatabase) -> Name {
         db.lookup_var(self.hir_var).clone()
     }
 }

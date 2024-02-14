@@ -9,7 +9,7 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
-use hir::db::MinInternDatabase;
+use hir::db::InternDatabase;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -79,7 +79,7 @@ pub(super) fn hints(
     Some(())
 }
 
-fn should_hint(db: &dyn MinInternDatabase, param_name: &ParamName, expr: &Expr) -> bool {
+fn should_hint(db: &dyn InternDatabase, param_name: &ParamName, expr: &Expr) -> bool {
     match param_name {
         ParamName::Name(name) => {
             if let Some(var) = expr.as_var() {

@@ -14,7 +14,7 @@ use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
-use hir::db::MinInternDatabase;
+use hir::db::InternDatabase;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::Body;
@@ -95,7 +95,7 @@ pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
     node_range.cover(final_node_range)
 }
 
-pub(crate) fn var_name_starts_with_underscore(db: &dyn MinInternDatabase, var: &hir::Var) -> bool {
+pub(crate) fn var_name_starts_with_underscore(db: &dyn InternDatabase, var: &hir::Var) -> bool {
     var.as_string(db).starts_with('_')
 }
 

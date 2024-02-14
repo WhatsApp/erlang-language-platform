@@ -722,8 +722,8 @@ mod tests {
     use elp_syntax::ast;
     use elp_syntax::AstNode;
 
+    use crate::db::InternDatabase;
     use crate::db::MinDefDatabase;
-    use crate::db::MinInternDatabase;
     use crate::test_db::TestDB;
     use crate::FunctionDefId;
     use crate::InFile;

@@ -31,7 +31,7 @@ use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
-use hir::sema::MinInternDatabase;
+use hir::sema::InternDatabase;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;

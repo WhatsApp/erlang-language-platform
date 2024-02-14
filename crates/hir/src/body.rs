@@ -21,8 +21,8 @@ use la_arena::ArenaMap;
 use la_arena::RawIdx;
 
 use self::lower::MacroInformation;
+use crate::db::InternDatabase;
 use crate::db::MinDefDatabase;
-use crate::db::MinInternDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
@@ -153,7 +153,7 @@ impl Body {
         terms.shrink_to_fit();
     }
 
-    pub fn print_any_expr(&self, db: &dyn MinInternDatabase, expr: AnyExprId) -> String {
+    pub fn print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
         match expr {
             AnyExprId::Expr(expr_id) => pretty::print_expr(db, self, expr_id),
             AnyExprId::Pat(pat_id) => pretty::print_pat(db, self, pat_id),
@@ -162,7 +162,7 @@ impl Body {
         }
     }
 
-    pub fn tree_print_any_expr(&self, db: &dyn MinInternDatabase, expr: AnyExprId) -> String {
+    pub fn tree_print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
         match expr {
             AnyExprId::Expr(expr_id) => tree_print::print_expr(db, self, expr_id),
             AnyExprId::Pat(pat_id) => tree_print::print_pat(db, self, pat_id),
@@ -244,7 +244,7 @@ impl Body {
     /// the `path`.
     pub fn lookup_map_path(
         &self,
-        db: &dyn MinInternDatabase,
+        db: &dyn InternDatabase,
         map_id: AnyExprId,
         path: &[String],
     ) -> Option<AnyExprId> {
@@ -379,11 +379,11 @@ impl FunctionBody {
         Some(FormIdx::FunctionClause(*function_id))
     }
 
-    pub fn print(&self, db: &dyn MinInternDatabase, form: &FunctionClause) -> String {
+    pub fn print(&self, db: &dyn InternDatabase, form: &FunctionClause) -> String {
         pretty::print_function_clause(db, self, form)
     }
 
-    pub fn tree_print(&self, db: &dyn MinInternDatabase) -> String {
+    pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
         tree_print::print_function(db, self)
     }
 
@@ -449,7 +449,7 @@ impl FunctionClauseBody {
         (body, source_map)
     }
 
-    pub fn tree_print(&self, db: &dyn MinInternDatabase) -> String {
+    pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
         tree_print::print_function_clause(db, self)
     }
 }
@@ -469,11 +469,11 @@ impl TypeBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub fn print(&self, db: &dyn MinInternDatabase, form: &TypeAlias) -> String {
+    pub fn print(&self, db: &dyn InternDatabase, form: &TypeAlias) -> String {
         pretty::print_type_alias(db, self, form)
     }
 
-    pub fn tree_print(&self, db: &dyn MinInternDatabase, form: &TypeAlias) -> String {
+    pub fn tree_print(&self, db: &dyn InternDatabase, form: &TypeAlias) -> String {
         tree_print::print_type_alias(db, self, form)
     }
 }
@@ -526,7 +526,7 @@ impl SpecBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub fn print(&self, db: &dyn MinInternDatabase, form: SpecOrCallback) -> String {
+    pub fn print(&self, db: &dyn InternDatabase, form: SpecOrCallback) -> String {
         pretty::print_spec(db, self, form)
     }
 }
@@ -547,7 +547,7 @@ impl RecordBody {
 
     pub fn print(
         &self,
-        db: &dyn MinInternDatabase,
+        db: &dyn InternDatabase,
         form_list: &FormList,
         record_id: RecordId,
     ) -> String {
@@ -590,11 +590,11 @@ impl AttributeBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub fn print(&self, db: &dyn MinInternDatabase, form: AnyAttribute) -> String {
+    pub fn print(&self, db: &dyn InternDatabase, form: AnyAttribute) -> String {
         pretty::print_attribute(db, self, &form)
     }
 
-    pub fn tree_print(&self, db: &dyn MinInternDatabase, form: AnyAttribute) -> String {
+    pub fn tree_print(&self, db: &dyn InternDatabase, form: AnyAttribute) -> String {
         tree_print::print_attribute(db, self, &form)
     }
 }
