@@ -46,8 +46,8 @@ export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="The Erlang Language Platform">
+      title={`${siteConfig.title} - Erlang Language Platform`}
+      description="A scalable, fully incremental, IDE-first library for the semantic analysis of Erlang code, featuring a LSP language server.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
