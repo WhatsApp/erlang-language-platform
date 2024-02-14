@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 2
 ---
 
 # Emacs
@@ -25,10 +25,6 @@ This plugin is required by `ELP` to auto-discover the structure of `rebar3` base
         "eqwalizer_rebar3"}}
 ]}.
 ```
-
-## Install ELP
-
-Please refer to the [installation instructions](./install.md) page.
 
 ## Configure Emacs
 
