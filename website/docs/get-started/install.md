@@ -38,28 +38,8 @@ mv elp ~/bin
 export PATH=$PATH:~/bin
 ```
 
+Follow [these steps](cli.md#verify-elp-is-correctly-installed) to verify ELP is correctly installed.
+
 ## From Source
 
 TBD.
-
-## Verify `elp` is correctly installed
-
-:::tip
-
-On Mac you may get a warning, saying "elp cannot be opened because the developer cannot be verified". To solve this, go to `Preferences -> Security and Privacy -> General` and add an exception for `elp`. Alternatively, you can build the project from source (see below)
-
-:::
-
-Open a terminal and run:
-
-```
-elp version
-```
-
-You should see something like:
-
-```
-elp 1.1.0+build-2024-01-18
-```
-
-If that's the case, you're ready to roll!
