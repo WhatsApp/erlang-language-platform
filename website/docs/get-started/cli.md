@@ -28,7 +28,7 @@ elp 1.1.0+build-2024-01-18
 
 If that's the case, you're ready to roll!
 
-## Help
+## Getting Help
 
 All `elp` commands are available through the help:
 
@@ -59,4 +59,28 @@ Available commands:
     explain               Explain a diagnostic code
     project-info          Generate project info file
     glean                 Glean indexer
+```
+
+## `elp server`
+
+Start a LSP server. The command does not return.
+
+```
+$ elp server
+```
+
+## `elp eqwalize`
+
+Run the _eqWAlizer_ typechecker against an Erlang module.
+
+```
+$ elp eqwalize <module>
+```
+
+## `elp eqwalize-all`
+
+Run the _eqWAlizer_ typechecker against all _src_ modules in a project.
+
+```
+$ elp eqwalize-all
 ```
