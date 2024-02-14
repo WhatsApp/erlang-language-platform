@@ -4,6 +4,43 @@ sidebar_position: 4
 
 # Project Discovery and Configuration
 
+## Configuration for use with rebar3 projects
+
+1. Use OTP 25
+2. Download the `elp` binary for your system from https://github.com/WhatsApp/erlang-language-platform/releases
+
+    > On Mac you will probably get the following message when trying to run the executable the first time: "elp cannot be opened because the developer cannot be verified.".
+    To solve this, go to Preferences > Security and Privacy and add an exception. Alternatively, you can build elp from source.
+
+3. Add `eqwalizer_support` dependency and `eqwalizer_rebar3` plugin
+   to your rebar3 project definition (see below)
+4. From the project directory run:
+  - `elp eqwalize <module>` to type-check a single module
+  - `elp eqwalize-all` to type-check all `src` modules in the project
+
+
+Adding `eqwalizer_support` and `eqwalizer_rebar3`:
+
+```
+{deps, [
+  {eqwalizer_support,
+    {git_subdir,
+        "https://github.com/whatsapp/eqwalizer.git",
+        {branch, "main"},
+        "eqwalizer_support"}}
+]}.
+
+{project_plugins, [
+  {eqwalizer_rebar3,
+    {git_subdir,
+        "https://github.com/whatsapp/eqwalizer.git",
+        {branch, "main"},
+        "eqwalizer_rebar3"}}
+]}.
+```
+
+## Project Discovery
+
 When used as a language server (via the `elp server` command), ELP attempts to automatically discover project configuration when you first open a file.
 
 It does this by searching upward from the file directory until it finds one of
@@ -14,7 +51,7 @@ It does this by searching upward from the file directory until it finds one of
 
 in that order. Processing of each is described below.
 
-## .elp.toml
+### .elp.toml
 
 This file is used as an absolute marker for the root of an ELP project.
 If one is found, it will stop further upward searching for alternative configuration.
@@ -38,11 +75,11 @@ enabled = false
 profile = "test"
 ```
 
-### .elp.toml build_info
+#### .elp.toml build_info
 
 This gives a path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format is described below in [build_info.json](#build_infojson)
 
-### .elp.toml eqwalizer
+#### .elp.toml eqwalizer
 
 By default we enable eqwalizer on all non-test modules. It is also disabled for modules having `@generated` anywhere in their first 2000 characters. This can be overriden per module as follows
 
@@ -52,7 +89,7 @@ By default we enable eqwalizer on all non-test modules. It is also disabled for 
 Putting `enable_all = false` in the `[eqwalizer]` section disables it for
 all modules by default, but still honours the module-specific overrides listed above.
 
-### .elp.toml buck
+#### .elp.toml buck
 
 The `[buck]` section is used to control loading a project that is built using [buck2](https://buck2.build/). It is used internally at Meta, and has Erlang support built in. See [this presentation](https://youtu.be/4ALgsBqNBhQ) for details.
 
@@ -62,13 +99,13 @@ Up to and including the [2024-02-07](https://github.com/WhatsApp/erlang-language
 
 :::
 
-### .elp.toml rebar
+#### .elp.toml rebar
 
 The `[rebar]` section is used to specify the profile to be used by rebar, if the project loads via rebar.  If left out, and a rebar project is loaded, the `test` profile will be used as default.
 
 Note: this section is only consulted if rebar project loading takes place, described in the next section.
 
-## Rebar
+### Rebar
 
 If `rebar.config` or `rebar.config.script` are found, ELP runs
 
@@ -86,7 +123,7 @@ If you are expecting a rebar project to be found, make sure this command succeed
 If so, it loads a the project based on the `build_info` output.
 
 
-## build_info.json
+### build_info.json
 
 If the above checks fail, it looks for a file called `build_info.json`, which contains the same information as output by the `rebar3` `build_info` plugin, just in JSON format.
 
@@ -120,6 +157,6 @@ where an `app` is a map structured as such:
 }
 ```
 
-## Last resort discovery
+### Last resort discovery
 
 Given the discovery process is kicked off when your LSP client opens an erlang file, it starts at that location and searches upwards. If it is in a `src` directory, it assumes you are in an erlang app with the parent of `src` as its name. It is pretty basic, and does not (currently) look for the other normal directories, such as "include" or "test", nor other likely application directories.
