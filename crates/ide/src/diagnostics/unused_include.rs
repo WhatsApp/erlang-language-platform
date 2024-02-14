@@ -19,7 +19,7 @@ use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::known;
 use hir::FormIdx;
 use hir::InFile;
@@ -36,7 +36,7 @@ use crate::fix;
 
 pub(crate) fn unused_includes(
     sema: &Semantic,
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     diagnostics: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
@@ -106,7 +106,7 @@ pub(crate) fn unused_includes(
 
 fn is_file_used(
     sema: &Semantic,
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     include_file_id: FileId,
     target: FileId,
     cache: &mut FxHashMap<FileId, bool>,

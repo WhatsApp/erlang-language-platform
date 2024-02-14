@@ -25,7 +25,7 @@ use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
 use fxhash::FxHashMap;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::CallDef;
 use hir::InFile;
 use hir::Name;
@@ -170,9 +170,7 @@ pub struct FileDoc {
 
 // TODO Add an input so we know when to invalidate?
 #[salsa::query_group(DocDatabaseStorage)]
-pub trait DocDatabase:
-    MinDefDatabase + SourceDatabase + DocLoader + Upcast<dyn MinDefDatabase>
-{
+pub trait DocDatabase: DefDatabase + SourceDatabase + DocLoader + Upcast<dyn DefDatabase> {
     #[salsa::invoke(get_file_docs)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
 }
@@ -269,10 +267,7 @@ fn merge_descriptions_and_specs(
         .collect::<FxHashMap<NameArity, Doc>>()
 }
 
-fn get_file_function_specs(
-    def_db: &dyn MinDefDatabase,
-    file_id: FileId,
-) -> FxHashMap<NameArity, Doc> {
+fn get_file_function_specs(def_db: &dyn DefDatabase, file_id: FileId) -> FxHashMap<NameArity, Doc> {
     def_db
         .file_form_list(file_id)
         .specs()

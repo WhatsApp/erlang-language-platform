@@ -28,7 +28,7 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use profile::Count;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -136,7 +136,7 @@ impl Deprecated {
 }
 
 impl DefMap {
-    pub(crate) fn local_def_map_query(db: &dyn MinDefDatabase, file_id: FileId) -> Arc<DefMap> {
+    pub(crate) fn local_def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
         let mut def_map = Self::default();
         let file = File { file_id };
         let module = module_name(db.upcast(), file_id);
@@ -314,7 +314,7 @@ impl DefMap {
         };
     }
 
-    pub(crate) fn def_map_query(db: &dyn MinDefDatabase, file_id: FileId) -> Arc<DefMap> {
+    pub(crate) fn def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
         let local = db.local_def_map(file_id);
         let form_list = db.file_form_list(file_id);
 
@@ -346,7 +346,7 @@ impl DefMap {
     // This handles the case of headers accidentally forming other cycles.
     // Return just the local def map in such cases, not resolving nested includes at all
     pub(crate) fn recover_cycle(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         _cycle: &[String],
         file_id: &FileId,
     ) -> Arc<DefMap> {

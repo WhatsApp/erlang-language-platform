@@ -25,7 +25,7 @@ use elp_project_model::temp_dir::TempDir;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::DefMap;
 use hir::Name;
 use hir::NameArity;
@@ -46,7 +46,7 @@ pub enum CommonTestInfo {
 }
 
 #[salsa::query_group(CommonTestDatabaseStorage)]
-pub trait CommonTestDatabase: MinDefDatabase + SourceDatabase + CommonTestLoader {
+pub trait CommonTestDatabase: DefDatabase + SourceDatabase + CommonTestLoader {
     #[salsa::invoke(ct_info)]
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
 }

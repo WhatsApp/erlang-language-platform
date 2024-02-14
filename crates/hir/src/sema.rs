@@ -36,7 +36,7 @@ pub use self::to_def::MacroCallDef;
 use self::to_def::ToDef;
 use crate::body::scope::ScopeId;
 use crate::body::FunctionClauseBody;
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::expr::AnyExpr;
@@ -100,7 +100,7 @@ impl IntoIterator for ModuleIter {
 
 /// Primary API to get Semantic information from HIR
 pub struct Semantic<'db> {
-    pub db: &'db dyn MinDefDatabase,
+    pub db: &'db dyn DefDatabase,
 }
 
 impl<'db> fmt::Debug for Semantic<'db> {
@@ -112,7 +112,7 @@ impl<'db> fmt::Debug for Semantic<'db> {
 }
 
 impl<'db> Semantic<'db> {
-    pub fn new<Db: MinDefDatabase>(db: &'db Db) -> Self {
+    pub fn new<Db: DefDatabase>(db: &'db Db) -> Self {
         Self { db }
     }
 }

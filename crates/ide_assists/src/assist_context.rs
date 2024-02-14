@@ -30,7 +30,7 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
 use fxhash::FxHashSet;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::AnyExpr;
 use hir::Body;
 use hir::ClauseId;
@@ -135,7 +135,7 @@ impl<'a> AssistContext<'a> {
         }
     }
 
-    pub(crate) fn db(&self) -> &dyn MinDefDatabase {
+    pub(crate) fn db(&self) -> &dyn DefDatabase {
         self.sema.db
     }
 

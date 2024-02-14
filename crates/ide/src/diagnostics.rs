@@ -53,7 +53,7 @@ use elp_syntax::TextSize;
 use erlang_service::CompileOption;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::InFile;
 use hir::Semantic;
 use itertools::Itertools;

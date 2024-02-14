@@ -26,7 +26,7 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::File;
 use hir::InFile;
 use hir::Semantic;
@@ -113,7 +113,7 @@ impl SearchScope {
         }
     }
 
-    fn project(db: &dyn MinDefDatabase, project_id: ProjectId) -> SearchScope {
+    fn project(db: &dyn DefDatabase, project_id: ProjectId) -> SearchScope {
         let mut entries = FxHashMap::default();
 
         for &source_root_id in &db.project_data(project_id).source_roots {

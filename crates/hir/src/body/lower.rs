@@ -25,7 +25,7 @@ use fxhash::FxHashMap;
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
 use super::TopLevelMacro;
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::MaybeExpr;
 use crate::known;
@@ -84,7 +84,7 @@ pub(crate) struct MacroStackEntry {
 }
 
 pub struct Ctx<'a> {
-    db: &'a dyn MinDefDatabase,
+    db: &'a dyn DefDatabase,
     original_file_id: FileId,
     macro_stack: Vec<MacroStackEntry>,
     macro_stack_id: usize,
@@ -114,7 +114,7 @@ pub(crate) type MacroInformation = (
 );
 
 impl<'a> Ctx<'a> {
-    pub fn new(db: &'a dyn MinDefDatabase, file_id: FileId) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, file_id: FileId) -> Self {
         Self {
             db,
             original_file_id: file_id,

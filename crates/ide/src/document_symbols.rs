@@ -15,7 +15,7 @@ use elp_ide_db::SymbolKind;
 use elp_syntax::ast::FunctionOrMacroClause;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::DefineDef;
 use hir::FunctionDef;
 use hir::Name;
@@ -49,11 +49,11 @@ impl fmt::Display for DocumentSymbol {
 }
 
 pub trait ToDocumentSymbol {
-    fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol;
+    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol;
 }
 
 impl ToDocumentSymbol for FunctionDef {
-    fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol {
+    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
         let source = self.source(db.upcast());
         let range = self
             .range(db.upcast())
@@ -109,7 +109,7 @@ impl ToDocumentSymbol for FunctionDef {
 }
 
 impl ToDocumentSymbol for TypeAliasDef {
-    fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol {
+    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
         let source = self.source(db.upcast());
         let range = source.syntax().text_range();
         let selection_range = match &source.type_name() {
@@ -129,7 +129,7 @@ impl ToDocumentSymbol for TypeAliasDef {
 }
 
 impl ToDocumentSymbol for RecordDef {
-    fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol {
+    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
         let source = self.source(db.upcast());
         let range = source.syntax().text_range();
         let selection_range = match &source.name() {
@@ -149,7 +149,7 @@ impl ToDocumentSymbol for RecordDef {
 }
 
 impl ToDocumentSymbol for DefineDef {
-    fn to_document_symbol(&self, db: &dyn MinDefDatabase) -> DocumentSymbol {
+    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
         let source = self.source(db.upcast());
         let range = source.syntax().text_range();
         let selection_range = if let Some(lhs) = &source.lhs() {

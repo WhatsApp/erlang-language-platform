@@ -50,8 +50,8 @@ use crate::SpecId;
 use crate::TypeAliasId;
 use crate::TypeBody;
 
-#[salsa::query_group(MinDefDatabaseStorage)]
-pub trait MinDefDatabase:
+#[salsa::query_group(DefDatabaseStorage)]
+pub trait DefDatabase:
     InternDatabase + Upcast<dyn InternDatabase> + SourceDatabase + Upcast<dyn SourceDatabase>
 {
     #[salsa::invoke(FormList::file_form_list_query)]
@@ -156,48 +156,42 @@ pub trait MinDefDatabase:
     fn local_def_map(&self, file_id: FileId) -> Arc<DefMap>;
 }
 
-fn function_body(db: &dyn MinDefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
+fn function_body(db: &dyn DefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
     db.function_body_with_source(function_id).0
 }
 
 fn function_clause_body(
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     function_clause_id: InFile<FunctionClauseId>,
 ) -> Arc<FunctionClauseBody> {
     db.function_clause_body_with_source(function_clause_id).0
 }
 
-fn type_body(db: &dyn MinDefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
+fn type_body(db: &dyn DefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
     db.type_body_with_source(type_alias_id).0
 }
 
-fn spec_body(db: &dyn MinDefDatabase, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
+fn spec_body(db: &dyn DefDatabase, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
     db.spec_body_with_source(spec_id).0
 }
 
-fn callback_body(db: &dyn MinDefDatabase, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
+fn callback_body(db: &dyn DefDatabase, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
     db.callback_body_with_source(callback_id).0
 }
 
-fn record_body(db: &dyn MinDefDatabase, record_id: InFile<RecordId>) -> Arc<RecordBody> {
+fn record_body(db: &dyn DefDatabase, record_id: InFile<RecordId>) -> Arc<RecordBody> {
     db.record_body_with_source(record_id).0
 }
 
-fn attribute_body(
-    db: &dyn MinDefDatabase,
-    attribute_id: InFile<AttributeId>,
-) -> Arc<AttributeBody> {
+fn attribute_body(db: &dyn DefDatabase, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody> {
     db.attribute_body_with_source(attribute_id).0
 }
 
-fn compile_body(
-    db: &dyn MinDefDatabase,
-    attribute_id: InFile<CompileOptionId>,
-) -> Arc<AttributeBody> {
+fn compile_body(db: &dyn DefDatabase, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody> {
     db.compile_body_with_source(attribute_id).0
 }
 
-fn define_body(db: &dyn MinDefDatabase, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>> {
+fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>> {
     db.define_body_with_source(define_id)
         .map(|(body, _source)| body)
 }

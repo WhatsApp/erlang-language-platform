@@ -38,7 +38,7 @@ use la_arena::ArenaMap;
 use la_arena::Idx;
 
 use super::UnexpandedIndex;
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
@@ -174,7 +174,7 @@ pub enum AddBinding {
 
 impl FunctionScopes {
     pub(crate) fn function_scopes_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         function_id: InFile<FunctionDefId>,
     ) -> Arc<FunctionScopes> {
         let function_body = db.function_body(function_id);
@@ -188,7 +188,7 @@ impl FunctionScopes {
     }
 
     pub(crate) fn function_clause_scopes_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> Arc<ExprScopes> {
         let function_clause_body = db.function_clause_body(function_clause_id);
@@ -722,8 +722,8 @@ mod tests {
     use elp_syntax::ast;
     use elp_syntax::AstNode;
 
+    use crate::db::DefDatabase;
     use crate::db::InternDatabase;
-    use crate::db::MinDefDatabase;
     use crate::test_db::TestDB;
     use crate::FunctionDefId;
     use crate::InFile;

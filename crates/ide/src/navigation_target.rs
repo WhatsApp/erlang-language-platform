@@ -19,7 +19,7 @@ use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -78,11 +78,11 @@ impl NavigationTarget {
 }
 
 pub trait ToNav {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget;
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget;
 }
 
 impl ToNav for SymbolDefinition {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         match self {
             SymbolDefinition::Module(it) => it.to_nav(db),
             SymbolDefinition::Function(it) => it.to_nav(db),
@@ -98,7 +98,7 @@ impl ToNav for SymbolDefinition {
 }
 
 impl ToNav for hir::Module {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.file.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -117,7 +117,7 @@ impl ToNav for hir::Module {
 }
 
 impl ToNav for hir::FunctionDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = self.range(db.upcast()).unwrap_or_default(); // Should always succeed, but play safe
@@ -142,7 +142,7 @@ impl ToNav for hir::FunctionDef {
 }
 
 impl ToNav for hir::RecordDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -158,7 +158,7 @@ impl ToNav for hir::RecordDef {
 }
 
 impl ToNav for hir::RecordFieldDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.record.file.file_id;
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -174,7 +174,7 @@ impl ToNav for hir::RecordFieldDef {
 }
 
 impl ToNav for hir::TypeAliasDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -190,7 +190,7 @@ impl ToNav for hir::TypeAliasDef {
 }
 
 impl ToNav for hir::CallbackDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -206,7 +206,7 @@ impl ToNav for hir::CallbackDef {
 }
 
 impl ToNav for hir::DefineDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
@@ -222,7 +222,7 @@ impl ToNav for hir::DefineDef {
 }
 
 impl ToNav for hir::File {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         NavigationTarget {
@@ -236,7 +236,7 @@ impl ToNav for hir::File {
 }
 
 impl ToNav for hir::VarDef {
-    fn to_nav(&self, db: &dyn MinDefDatabase) -> NavigationTarget {
+    fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         NavigationTarget {

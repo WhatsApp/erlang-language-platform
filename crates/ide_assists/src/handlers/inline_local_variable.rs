@@ -12,7 +12,7 @@ use elp_ide_db::assists::AssistKind;
 use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
 use elp_syntax::TextRange;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::InFile;
 use hir::Semantic;
 
@@ -185,7 +185,7 @@ fn inline_usage(ctx: &AssistContext, var: ast::Var) -> Option<InlineData> {
 /// from case clauses, cannot be inlined.
 fn find_local_usages(
     sema: &Semantic,
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     var: InFile<&ast::Var>,
 ) -> Option<Vec<ast::Var>> {
     // TODO: replace this function with the appropriate one when the

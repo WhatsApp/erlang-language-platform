@@ -11,7 +11,7 @@ use elp_base_db::fixture::WithFixture;
 use expect_test::expect;
 use expect_test::Expect;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::test_db::TestDB;
 
 fn check(ra_fixture: &str, expect: Expect) {

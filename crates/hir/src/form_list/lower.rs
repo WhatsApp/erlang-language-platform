@@ -26,7 +26,7 @@ use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
 use super::ParamName;
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -63,7 +63,7 @@ use crate::TypeAlias;
 use crate::TypeExport;
 
 pub struct Ctx<'a> {
-    db: &'a dyn MinDefDatabase,
+    db: &'a dyn DefDatabase,
     source_file: &'a ast::SourceFile,
     id_map: FormIdMap,
     map_back: FxHashMap<AstPtr<ast::Form>, FormIdx>,
@@ -74,7 +74,7 @@ pub struct Ctx<'a> {
 }
 
 impl<'a> Ctx<'a> {
-    pub fn new(db: &'a dyn MinDefDatabase, source_file: &'a ast::SourceFile) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, source_file: &'a ast::SourceFile) -> Self {
         Self {
             db,
             source_file,

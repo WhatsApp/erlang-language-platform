@@ -64,7 +64,7 @@ use expand_macro::ExpandedMacro;
 use handlers::get_docs;
 use handlers::goto_definition;
 use handlers::references;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::DefMap;
 use hir::File;
 use hir::FormList;

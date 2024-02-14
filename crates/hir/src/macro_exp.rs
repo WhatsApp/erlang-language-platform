@@ -10,7 +10,7 @@
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::form_list::FormListData;
 use crate::known;
 use crate::name::AsName;
@@ -56,7 +56,7 @@ pub enum ResolvedMacro {
 }
 
 impl ResolvedMacro {
-    pub fn name(&self, db: &dyn MinDefDatabase) -> MacroName {
+    pub fn name(&self, db: &dyn DefDatabase) -> MacroName {
         match self {
             ResolvedMacro::BuiltIn(built_in) => built_in.name(),
             ResolvedMacro::User(def) => {
@@ -75,7 +75,7 @@ pub enum MacroResolution {
 }
 
 pub(crate) fn resolve_query(
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
 ) -> Option<ResolvedMacro> {
@@ -120,7 +120,7 @@ fn resolve_built_in(name: &MacroName) -> Option<Option<BuiltInMacro>> {
 }
 
 pub(crate) fn local_resolve_query(
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
 ) -> MacroResolution {
@@ -161,7 +161,7 @@ pub(crate) fn local_resolve_query(
 
 // This handles the case of headers accidentally forming cycles during macro resolution.
 pub(crate) fn recover_cycle(
-    _db: &dyn MinDefDatabase,
+    _db: &dyn DefDatabase,
     _cycle: &[String],
     _file_id: &FileId,
     _name: &MacroName,
@@ -170,12 +170,12 @@ pub(crate) fn recover_cycle(
 }
 
 pub struct MacroExpCtx<'a> {
-    _db: &'a dyn MinDefDatabase,
+    _db: &'a dyn DefDatabase,
     form_list: &'a FormListData,
 }
 
 impl<'a> MacroExpCtx<'a> {
-    pub(crate) fn new(form_list: &'a FormListData, db: &'a dyn MinDefDatabase) -> Self {
+    pub(crate) fn new(form_list: &'a FormListData, db: &'a dyn DefDatabase) -> Self {
         MacroExpCtx { form_list, _db: db }
     }
 

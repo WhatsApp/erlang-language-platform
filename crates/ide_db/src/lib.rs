@@ -32,8 +32,8 @@ use elp_syntax::SyntaxToken;
 use erlang_service::Connection;
 use fxhash::FxHashMap;
 use helpers::pick_best_token;
+use hir::db::DefDatabase;
 use hir::db::InternDatabase;
-use hir::db::MinDefDatabase;
 use hir::InFile;
 use hir::Semantic;
 use parking_lot::Mutex;
@@ -102,7 +102,7 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     elp_eqwalizer::EqwalizerDiagnosticsDatabaseStorage,
     erl_ast::ErlAstDatabaseStorage,
     hir::db::InternDatabaseStorage,
-    hir::db::MinDefDatabaseStorage
+    hir::db::DefDatabaseStorage
 )]
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
@@ -138,8 +138,8 @@ impl Upcast<dyn InternDatabase> for RootDatabase {
     }
 }
 
-impl Upcast<dyn MinDefDatabase> for RootDatabase {
-    fn upcast(&self) -> &(dyn MinDefDatabase + 'static) {
+impl Upcast<dyn DefDatabase> for RootDatabase {
+    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
         self
     }
 }

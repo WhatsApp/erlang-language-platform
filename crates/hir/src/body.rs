@@ -21,8 +21,8 @@ use la_arena::ArenaMap;
 use la_arena::RawIdx;
 
 use self::lower::MacroInformation;
+use crate::db::DefDatabase;
 use crate::db::InternDatabase;
-use crate::db::MinDefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
@@ -348,7 +348,7 @@ impl Body {
 
 impl FunctionBody {
     pub(crate) fn function_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
         let def_map = db.def_map(function_id.file_id);
@@ -398,7 +398,7 @@ impl FunctionBody {
 
 impl FunctionClauseBody {
     pub(crate) fn function_clause_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
         fn empty() -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
@@ -434,7 +434,7 @@ impl FunctionClauseBody {
     }
 
     pub(crate) fn lower_clause_body(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         file_id: FileId,
         clause_ast: &ast::FunctionClause,
         macrostack: MacroInformation,
@@ -456,7 +456,7 @@ impl FunctionClauseBody {
 
 impl TypeBody {
     pub(crate) fn type_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(type_alias_id.file_id);
@@ -480,7 +480,7 @@ impl TypeBody {
 
 impl DefineBody {
     pub(crate) fn define_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         define_id: InFile<DefineId>,
     ) -> Option<(Arc<DefineBody>, Arc<BodySourceMap>)> {
         let form_list = db.file_form_list(define_id.file_id);
@@ -500,7 +500,7 @@ pub enum SpecOrCallback {
 
 impl SpecBody {
     pub(crate) fn spec_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         spec_id: InFile<SpecId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(spec_id.file_id);
@@ -513,7 +513,7 @@ impl SpecBody {
     }
 
     pub(crate) fn callback_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         callback_id: InFile<CallbackId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(callback_id.file_id);
@@ -533,7 +533,7 @@ impl SpecBody {
 
 impl RecordBody {
     pub(crate) fn record_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         record_id: InFile<RecordId>,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(record_id.file_id);
@@ -563,7 +563,7 @@ pub enum AnyAttribute {
 
 impl AttributeBody {
     pub(crate) fn attribute_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         attribute_id: InFile<AttributeId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(attribute_id.file_id);
@@ -577,7 +577,7 @@ impl AttributeBody {
     }
 
     pub(crate) fn compile_body_with_source_query(
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
         attribute_id: InFile<CompileOptionId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(attribute_id.file_id);

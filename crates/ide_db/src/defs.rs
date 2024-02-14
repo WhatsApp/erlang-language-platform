@@ -19,7 +19,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::known;
 use hir::AnyExprRef;
 use hir::AsName;
@@ -261,7 +261,7 @@ impl SymbolDefinition {
         }
     }
 
-    pub fn search_name(&self, db: &dyn MinDefDatabase) -> SmolStr {
+    pub fn search_name(&self, db: &dyn DefDatabase) -> SmolStr {
         match self {
             SymbolDefinition::Module(it) => it.name(db).raw(),
             SymbolDefinition::Function(it) => it.name.name().raw(),

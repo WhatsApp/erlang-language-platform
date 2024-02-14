@@ -26,7 +26,7 @@ use elp_ide::Analysis;
 use elp_ide::TextRange;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::AstNode;
-use hir::db::MinDefDatabase;
+use hir::db::DefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;

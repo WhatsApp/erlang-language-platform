@@ -24,7 +24,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxNodePtr;
 use fxhash::FxHashMap;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct RawId(u32);
@@ -70,7 +70,7 @@ impl<N: AstNode> FormId<N> {
             .unwrap()
     }
 
-    pub fn get_ast(&self, db: &dyn MinDefDatabase, file_id: FileId) -> N {
+    pub fn get_ast(&self, db: &dyn DefDatabase, file_id: FileId) -> N {
         let parsed = db.parse(file_id);
         self.get(&parsed.tree())
     }

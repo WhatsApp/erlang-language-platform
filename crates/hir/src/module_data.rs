@@ -20,8 +20,8 @@ use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 
+use crate::db::DefDatabase;
 use crate::db::InternDatabase;
-use crate::db::MinDefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
@@ -75,7 +75,7 @@ impl File {
         }
     }
 
-    pub fn def_map(&self, db: &dyn MinDefDatabase) -> Arc<DefMap> {
+    pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
         db.def_map(self.file_id)
     }
 }
@@ -87,17 +87,17 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn module_attribute(&self, db: &dyn MinDefDatabase) -> Option<ModuleAttribute> {
+    pub fn module_attribute(&self, db: &dyn DefDatabase) -> Option<ModuleAttribute> {
         let forms = db.file_form_list(self.file.file_id);
         forms.module_attribute().cloned()
     }
 
-    pub fn name(&self, db: &dyn MinDefDatabase) -> Name {
+    pub fn name(&self, db: &dyn DefDatabase) -> Name {
         let attr = self.module_attribute(db);
         attr.map_or(Name::MISSING, |attr| attr.name)
     }
 
-    pub fn is_in_otp(&self, db: &dyn MinDefDatabase) -> bool {
+    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
         is_in_otp(self.file.file_id, db)
     }
 }
@@ -195,11 +195,11 @@ impl FunctionDef {
         )
     }
 
-    pub fn is_in_otp(&self, db: &dyn MinDefDatabase) -> bool {
+    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
         is_in_otp(self.file.file_id, db)
     }
 
-    pub fn edoc_comments(&self, db: &dyn MinDefDatabase) -> Option<EdocHeader> {
+    pub fn edoc_comments(&self, db: &dyn DefDatabase) -> Option<EdocHeader> {
         let fun_decls = self.source(db.upcast());
         let fun_decl = fun_decls.get(0)?;
         let form = InFileAstPtr::new(
@@ -325,7 +325,7 @@ impl RecordDef {
 
     pub fn fields(
         &self,
-        db: &dyn MinDefDatabase,
+        db: &dyn DefDatabase,
     ) -> impl Iterator<Item = (Name, RecordFieldDef)> + '_ {
         let forms = db.file_form_list(self.file.file_id);
         self.record.fields.clone().map(move |f| {
@@ -339,7 +339,7 @@ impl RecordDef {
         })
     }
 
-    pub fn field_names(&self, db: &dyn MinDefDatabase) -> impl Iterator<Item = Name> {
+    pub fn field_names(&self, db: &dyn DefDatabase) -> impl Iterator<Item = Name> {
         let forms = db.file_form_list(self.file.file_id);
         self.record
             .fields
@@ -347,7 +347,7 @@ impl RecordDef {
             .map(move |f| forms[f].name.clone())
     }
 
-    pub fn find_field_by_id(&self, db: &dyn MinDefDatabase, id: usize) -> Option<RecordFieldDef> {
+    pub fn find_field_by_id(&self, db: &dyn DefDatabase, id: usize) -> Option<RecordFieldDef> {
         let forms = db.file_form_list(self.file.file_id);
         let field = self.record.fields.clone().nth(id)?;
         Some(RecordFieldDef {
@@ -356,7 +356,7 @@ impl RecordDef {
         })
     }
 
-    pub fn find_field(&self, db: &dyn MinDefDatabase, name: &Name) -> Option<RecordFieldDef> {
+    pub fn find_field(&self, db: &dyn DefDatabase, name: &Name) -> Option<RecordFieldDef> {
         let forms = db.file_form_list(self.file.file_id);
         let field = self
             .record
@@ -478,7 +478,7 @@ impl VarDef {
     }
 }
 
-fn is_in_otp(file_id: FileId, db: &dyn MinDefDatabase) -> bool {
+fn is_in_otp(file_id: FileId, db: &dyn DefDatabase) -> bool {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {:?}", file_id));
     let source_root_id = db.file_source_root(file_id);

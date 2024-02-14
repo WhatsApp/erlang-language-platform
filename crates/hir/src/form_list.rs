@@ -63,7 +63,7 @@ use la_arena::Idx;
 use la_arena::IdxRange;
 use profile::Count;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::Diagnostic;
 use crate::MacroName;
 use crate::Name;
@@ -89,7 +89,7 @@ pub struct FormList {
 }
 
 impl FormList {
-    pub(crate) fn file_form_list_query(db: &dyn MinDefDatabase, file_id: FileId) -> Arc<FormList> {
+    pub(crate) fn file_form_list_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<FormList> {
         let _p = profile::span("file_form_list_query").detail(|| format!("{:?}", file_id));
         let syntax = db.parse(file_id).tree();
         let ctx = lower::Ctx::new(db, &syntax);

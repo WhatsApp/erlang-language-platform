@@ -13,27 +13,27 @@ use elp_base_db::FileId;
 use elp_base_db::SourceRoot;
 use elp_base_db::SourceRootId;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::InFile;
 use crate::IncludeAttribute;
 use crate::IncludeAttributeId;
 
 struct IncludeCtx<'a> {
-    db: &'a dyn MinDefDatabase,
+    db: &'a dyn DefDatabase,
     source_root_id: SourceRootId,
     source_root: Arc<SourceRoot>,
     file_id: FileId,
 }
 
 pub(crate) fn resolve(
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
     IncludeCtx::new(db, include_id.file_id).resolve(include_id.value)
 }
 
 impl<'a> IncludeCtx<'a> {
-    fn new(db: &'a dyn MinDefDatabase, file_id: FileId) -> Self {
+    fn new(db: &'a dyn DefDatabase, file_id: FileId) -> Self {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {:?}", file_id));
         let source_root_id = db.file_source_root(file_id);

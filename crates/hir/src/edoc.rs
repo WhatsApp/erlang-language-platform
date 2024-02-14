@@ -40,7 +40,7 @@ use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::db::MinDefDatabase;
+use crate::db::DefDatabase;
 use crate::InFileAstPtr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,7 +111,7 @@ impl EdocTag {
 }
 
 pub fn file_edoc_comments_query(
-    db: &dyn MinDefDatabase,
+    db: &dyn DefDatabase,
     file_id: FileId,
 ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>> {
     let source = db.parse(file_id).tree();

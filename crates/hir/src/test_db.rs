@@ -25,7 +25,7 @@ use crate::db::InternDatabase;
 #[salsa::database(
     elp_base_db::SourceDatabaseExtStorage,
     elp_base_db::SourceDatabaseStorage,
-    crate::db::MinDefDatabaseStorage,
+    crate::db::DefDatabaseStorage,
     crate::db::InternDatabaseStorage
 )]
 #[derive(Default)]
