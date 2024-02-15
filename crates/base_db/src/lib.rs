@@ -279,8 +279,7 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
         .unwrap_or(false);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_kind: {:?}", file_id));
-    let catch_all = db.catch_all_source_root();
-    if source_root_id == catch_all && ignored_path {
+    if ignored_path {
         // not part of the known project model, and on list of ignored
         // sources, do not process
         FileKind::OutsideProjectModel
