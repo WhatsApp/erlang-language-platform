@@ -139,7 +139,9 @@ impl RebarProject {
         let root = to_abs_path(map_get(&build_info, "source_root")?)?;
 
         let mut apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
-        apps_with_includes.extend(deps.into_iter());
+        let deps_with_includes = RebarProject::add_app_includes(deps.clone(), &deps, &otp_root);
+
+        apps_with_includes.extend(deps_with_includes.into_iter());
         return Ok((
             RebarProject::new(root, rebar_config),
             otp_root.into(),
@@ -153,6 +155,10 @@ impl RebarProject {
                 .map(|term| Ok(to_string(term)?.to_owned()))
                 .collect::<Result<_>>()?;
             let abs_src_dirs: Vec<AbsPathBuf> = src_dirs.iter().map(|src| dir.join(src)).collect();
+            let include_dirs: Vec<AbsPathBuf> = to_vec(map_get(term, "include_dirs")?)?
+                .iter()
+                .map(to_abs_path)
+                .collect::<Result<_>>()?;
             Ok(ProjectAppData {
                 name: AppName(to_string(map_get(term, "name")?)?.to_string()),
                 dir,
@@ -161,10 +167,7 @@ impl RebarProject {
                     .iter()
                     .map(|term| Ok(to_string(term)?.to_owned()))
                     .collect::<Result<_>>()?,
-                include_dirs: to_vec(map_get(term, "include_dirs")?)?
-                    .iter()
-                    .map(to_abs_path)
-                    .collect::<Result<_>>()?,
+                include_dirs,
                 macros: to_vec(map_get(term, "macros")?)?.to_owned(),
                 parse_transforms: to_vec(map_get(term, "parse_transforms")?)?.to_owned(),
                 app_type: is_dep,
