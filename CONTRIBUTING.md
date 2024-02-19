@@ -12,38 +12,7 @@ requests as described below.
 
 The gold standard is the current config in [ci.yml](.github/workflows/ci.yml).
 
-A summary of these is
-
-Check out [eqwalizer](https://github.com/WhatsApp/eqwalizer/) next to erlang-language-platform (this repo).
-
-Install [sbt](https://www.scala-sbt.org/), and java >= 11
-
-```sh
-cd $PATH_TO_REPO/eqwalizer/eqwalizer
-sbt assembly
-```
-
-It gives a path to the file
-
-```sh
-export ELP_EQWALIZER_PATH=<the path>
-```
-
-e.g. on a particular machine this would be
-
-```sh
-export ELP_EQWALIZER_PATH=/home/alanz/mysrc/github/WhatsApp/eqwalizer/eqwalizer/target/scala-2.13/eqwalizer.jar
-```
-
-Then use `cargo build` as usual from this repository.
-
-Note: if you set `ELP_EQWALIZER_PATH` in your shell profile, it will be used by rust_analyzer in your IDE too.
-
-An alternative way to build is
-
-```sh
-ELP_EQWALIZER_PATH=../../../eqwalizer/eqwalizer/target/scala-2.13/eqwalizer.jar cargo build
-```
+You can find detailed instructions on how to compile ELP from source [here](./website/docs/get-started/install.md).
 
 ## Pull Requests
 
