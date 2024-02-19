@@ -84,7 +84,7 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
-    fn eqwalizer_diagnostics(
+    fn eqwalizer_diagnostics_by_project(
         &self,
         project_id: ProjectId,
         file_ids: Vec<FileId>,
@@ -105,7 +105,7 @@ pub trait EqwalizerDatabase:
     fn is_eqwalizer_enabled(&self, file_id: FileId, include_generated: bool) -> bool;
 }
 
-pub fn eqwalizer_diagnostics(
+pub fn eqwalizer_diagnostics_by_project(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     file_ids: Vec<FileId>,
@@ -140,7 +140,7 @@ fn type_at_position(
         return None;
     }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        &(*eqwalizer_diagnostics(db, project_id, vec![position.file_id]))
+        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![position.file_id]))
     {
         let offset: u32 = position.offset.into();
         let module_index = db.module_index(project_id);

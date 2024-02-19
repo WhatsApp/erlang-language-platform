@@ -1187,7 +1187,7 @@ pub fn eqwalizer_diagnostics(
         return Some(vec![]);
     }
 
-    let diags = eqwalizer::eqwalizer_diagnostics(db, project_id, vec![file_id]);
+    let diags = eqwalizer::eqwalizer_diagnostics_by_project(db, project_id, vec![file_id]);
     match &*diags {
         EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
             errors

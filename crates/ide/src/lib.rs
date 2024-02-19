@@ -232,7 +232,9 @@ impl Analysis {
         project_id: ProjectId,
         file_ids: Vec<FileId>,
     ) -> Cancellable<Arc<EqwalizerDiagnostics>> {
-        self.with_db(|db| elp_ide_db::eqwalizer::eqwalizer_diagnostics(db, project_id, file_ids))
+        self.with_db(|db| {
+            elp_ide_db::eqwalizer::eqwalizer_diagnostics_by_project(db, project_id, file_ids)
+        })
     }
 
     pub fn eqwalizer_stats(
