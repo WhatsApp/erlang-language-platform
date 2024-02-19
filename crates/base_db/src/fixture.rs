@@ -1092,6 +1092,7 @@ bar() -> ?FOO.
                             },
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
+                                max_tasks: 4,
                             },
                         },
                         ProjectId(
@@ -1124,6 +1125,7 @@ bar() -> ?FOO.
                             },
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
+                                max_tasks: 4,
                             },
                         },
                     },
@@ -1235,6 +1237,7 @@ foo() -> ?BAR.
                             },
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
+                                max_tasks: 4,
                             },
                         },
                         ProjectId(
@@ -1257,6 +1260,7 @@ foo() -> ?BAR.
                             },
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
+                                max_tasks: 4,
                             },
                         },
                     },

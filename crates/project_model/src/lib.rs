@@ -364,16 +364,23 @@ pub struct ElpConfig {
 pub struct EqwalizerConfig {
     #[serde(default = "eqwalizer_enable_all_default")]
     pub enable_all: bool,
+    #[serde(default = "eqwalizer_max_tasks_default")]
+    pub max_tasks: usize,
 }
 
 fn eqwalizer_enable_all_default() -> bool {
     true
 }
 
+fn eqwalizer_max_tasks_default() -> usize {
+    4
+}
+
 impl Default for EqwalizerConfig {
     fn default() -> Self {
         Self {
             enable_all: eqwalizer_enable_all_default(),
+            max_tasks: eqwalizer_max_tasks_default(),
         }
     }
 }
@@ -994,6 +1001,7 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            max_tasks: 4,
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1056,6 +1064,7 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            max_tasks: 4,
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1163,6 +1172,7 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            max_tasks: 4,
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1339,6 +1349,7 @@ mod tests {
                         build_info: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
+                            max_tasks: 4,
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1405,6 +1416,7 @@ mod tests {
                             build_info: None,
                             eqwalizer: EqwalizerConfig {
                                 enable_all: true,
+                                max_tasks: 4,
                             },
                             rebar: ElpRebarConfig {
                                 profile: "test",
@@ -1590,6 +1602,7 @@ mod tests {
                     build_info: None,
                     eqwalizer: EqwalizerConfig {
                         enable_all: true,
+                        max_tasks: 4,
                     },
                     rebar: ElpRebarConfig {
                         profile: "other",

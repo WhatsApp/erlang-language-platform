@@ -42,12 +42,6 @@ use crate::erlang_service_cli;
 use crate::reporting;
 use crate::reporting::Reporter;
 
-/// Max parallel eqWAlizer tasks.
-///
-/// There are diminishing returns on parallelisation due to IPC performance and GC
-/// so we don't fully parallelise.
-const MAX_EQWALIZER_TASKS: usize = 32;
-
 struct EqwalizerInternalArgs<'a> {
     analysis: &'a Analysis,
     loaded: &'a LoadResult,
@@ -276,7 +270,8 @@ fn eqwalize(
     let pb = reporter.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
         let project_id = loaded.project_id;
-        let chunk_size = (files_count + MAX_EQWALIZER_TASKS - 1) / MAX_EQWALIZER_TASKS;
+        let max_tasks = loaded.project.eqwalizer_config.max_tasks;
+        let chunk_size = (files_count + max_tasks - 1) / max_tasks;
         file_ids
             .chunks(chunk_size)
             .par_bridge()
