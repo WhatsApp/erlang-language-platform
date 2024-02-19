@@ -23,6 +23,7 @@ build_info = my_hand_crafted_build_info.json
 
 [eqwalizer]
 enable_all = true
+max_tasks = 32
 
 [buck]
 enabled = false
@@ -60,6 +61,7 @@ This can be overriden per module via the following attributes:
 | Key         | Type    | Description                                                                                                |
 | ----------- | ------- | ---------------------------------------------------------------------------------------------------------- |
 | enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above |
+| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive)           |
 
 ### \[buck\]
 
