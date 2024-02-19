@@ -1,0 +1,25 @@
+error: missing_cb_implementation
+  ┌─ check/src/callbacks6_neg.erl:8:1
+  │
+8 │ -behavior(behave).
+  │ ^^^^^^^^^^^^^^^^^ Missing implementation for behave callback use_invalid/0
+
+See https://fb.me/eqwalizer_errors#missing_cb_implementation
+
+error: missing_cb_implementation
+  ┌─ check/src/callbacks6_neg.erl:8:1
+  │
+8 │ -behavior(behave).
+  │ ^^^^^^^^^^^^^^^^^ Missing implementation for behave callback use_invalid2/0
+
+See https://fb.me/eqwalizer_errors#missing_cb_implementation
+
+error: unbound_var
+   ┌─ check/src/callbacks6_neg.erl:18:3
+   │
+18 │   use_invalid2().
+   │   ^^^^^^^^^^^^^^ Unbound var: use_invalid2/0
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+3 ERRORS

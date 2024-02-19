@@ -1,0 +1,127 @@
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:12:5
+   │
+12 │     lists:F(fun(X) -> X end, [3]).
+   │     ^^^^^^^ 'lists':F.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:16:11
+   │
+16 │     Res = lists:F(
+   │           ^^^^^^^ 'lists':F.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:24:5
+   │
+24 │     L:map(fun(X) -> X end, [3]).
+   │     ^^^^^ L:'map'.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:28:11
+   │
+28 │     Res = L:map(
+   │           ^^^^^ L:'map'.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:36:11
+   │
+36 │     Res = L:F(
+   │           ^^^ L:F.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:44:5
+   │
+44 │     fun lists:F/N.
+   │     ^^^^^^^^^^^^^ 'lists':F/N.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:49:5
+   │
+49 │     fun M:F/N.
+   │     ^^^^^^^^^ M:F/N.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:54:11
+   │
+54 │     Res = fun M:F/N,
+   │           ^^^^^^^^^ M:F/N.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:60:11
+   │
+60 │     Res = fun M:F/N,
+   │           ^^^^^^^^^ M:F/N.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:66:11
+   │
+66 │     Res = fun M:F/N,
+   │           ^^^^^^^^^ M:F/N.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:76:5
+   │
+76 │     fun M:F/2.
+   │     ^^^^^^^^^ M:F/2.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:80:5
+   │
+80 │     fun M:F/2.
+   │     ^^^^^^^^^ M:F/2.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:85:1
+   │
+85 │ fun M:F/A.
+   │ ^^^^^^^^^ M:F/A.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+error: dyn_remote_fun
+   ┌─ check/src/dyn_remote_funs.erl:90:1
+   │
+90 │ fun M:F/A.
+   │ ^^^^^^^^^ M:F/A.
+Dynamic calls of unknown functions are not supported.
+
+See https://fb.me/eqwalizer_errors#dyn_remote_fun
+
+14 ERRORS

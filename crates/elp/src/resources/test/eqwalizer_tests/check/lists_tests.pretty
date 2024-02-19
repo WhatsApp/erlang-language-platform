@@ -1,0 +1,43 @@
+error: incompatible_types
+   ┌─ check/src/lists_tests.erl:12:28
+   │
+12 │ lists_union_neg(V1, V2) -> [V1, V2].
+   │                            ^^^^^^^^
+   │                            │
+   │                            [V1, V2].
+Expression has type:   [atom() | binary()]
+Context expected type: [atom()] | [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                            
+
+  [atom() | binary()] is not compatible with [atom()] | [binary()]
+  because
+  [atom() | binary()] is not compatible with [atom()]
+  because
+  atom() | binary() is not compatible with atom()
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/lists_tests.erl:16:28
+   │
+16 │ lists_union_2_neg(V, L) -> [V | L].
+   │                            ^^^^^^^
+   │                            │
+   │                            [V | L].
+Expression has type:   [atom() | binary()]
+Context expected type: [atom()] | [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                            
+
+  [atom() | binary()] is not compatible with [atom()] | [binary()]
+  because
+  [atom() | binary()] is not compatible with [atom()]
+  because
+  atom() | binary() is not compatible with atom()
+  because
+  binary() is not compatible with atom()
+
+2 ERRORS

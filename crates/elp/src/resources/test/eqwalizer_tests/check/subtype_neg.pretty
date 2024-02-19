@@ -1,0 +1,316 @@
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:17:11
+   │
+17 │ f01(X) -> X.
+   │           ^ X.
+Expression has type:   term()
+Context expected type: {A, A}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:20:11
+   │
+20 │ f02(X) -> X.
+   │           ^ X.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:24:11
+   │
+24 │ f03(F) -> F.
+   │           ^
+   │           │
+   │           F.
+Expression has type:   fun((atom()) -> term())
+Context expected type: fun((term()) -> atom())
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │           
+
+  fun((atom()) -> term()) is not compatible with fun((term()) -> atom())
+  because
+  term() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:27:11
+   │
+27 │ f04(X) -> X.
+   │           ^
+   │           │
+   │           X.
+Expression has type:   'a' | 'b' | 'c'
+Context expected type: 'a' | 'b'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │           
+
+  'a' | 'b' | 'c' is not compatible with 'a' | 'b'
+  because
+  'c' is not compatible with 'a' | 'b'
+  because
+  'c' is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:30:11
+   │
+30 │ f05(X) -> X.
+   │           ^ X.
+Expression has type:   'a' | 'b'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:34:11
+   │
+34 │ f06(X) -> X.
+   │           ^
+   │           │
+   │           X.
+Expression has type:   {'a' | 'b', 'a' | 'b'}
+Context expected type: {'a', 'b'} | {'b', 'a'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │           
+
+  {'a' | 'b', 'a' | 'b'} is not compatible with {'a', 'b'} | {'b', 'a'}
+  because
+  at tuple index 1:
+  {'a' | 'b', 'a' | 'b'} is not compatible with {'a', 'b'}
+  because
+  'a' | 'b' is not compatible with 'a'
+  because
+  'b' is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:38:11
+   │
+38 │ f07(X) -> X.
+   │           ^
+   │           │
+   │           X.
+Expression has type:   pair_ab()
+Context expected type: pair_diff_elems()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │           
+
+  pair_ab() is not compatible with pair_diff_elems()
+  because
+  {ab(), ab()} is not compatible with pair_diff_elems()
+  because
+  {ab(), ab()} is not compatible with {'a', 'b'} | {'b', 'a'}
+  because
+  at tuple index 1:
+  {ab(), ab()} is not compatible with {'a', 'b'}
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:41:11
+   │
+41 │ f08(X) -> X.
+   │           ^ X.
+Expression has type:   {none(), none()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:48:13
+   │
+48 │ map02(M) -> M.
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #S{a => atom()}
+Context expected type: #S{a := atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+These associations do not match:
+
+  #S{
+-    a := ...
++    a => ...
+  }
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:52:13
+   │
+52 │ map03(M) -> M.
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #S{a := atom(), b := atom()}
+Context expected type: #S{a => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+These associations do not match:
+
+  #S{
++    b := ...
+     ...
+  }
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:60:13
+   │
+60 │ map05(M) -> M.
+   │             ^ M.
+Expression has type:   dict  map #D{'a' | 'b' => 'a' | 'b' | 'c'}
+Context expected type: shape map #S{a := 'a' | 'b', b => 'a' | 'b'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:64:13
+   │
+64 │ map06(M) -> M.
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #D{term() => number()}
+Context expected type: #D{atom() => number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+  #D{term() => number()} is not compatible with #D{atom() => number()}
+  because
+  term() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:68:13
+   │
+68 │ map07(M) -> M.
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #D{atom() => term()}
+Context expected type: #D{atom() => number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+  #D{atom() => term()} is not compatible with #D{atom() => number()}
+  because
+  term() is not compatible with number()
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:72:13
+   │
+72 │ map08(M) -> M.
+   │             ^ M.
+Expression has type:   dict  map #D{atom() => term()}
+Context expected type: shape map #S{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:76:14
+   │
+76 │ tuple1(X) -> X.
+   │              ^ X.
+Expression has type:   tuple()
+Context expected type: {term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:79:15
+   │
+79 │ any_fun(F) -> F.
+   │               ^ F.
+Expression has type:   term()
+Context expected type: fun()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:83:5
+   │
+83 │     {{}, error}.
+   │     ^^^^^^^^^^^
+   │     │
+   │     {{}, 'error'}.
+Expression has type:   {{}, 'error'}
+Context expected type: {tuple(), 'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  at tuple index 2:
+  {{}, 'error'} is not compatible with {tuple(), 'ok'}
+  because
+  'error' is not compatible with 'ok'
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:87:5
+   │
+87 │     {[], error}.
+   │     ^^^^^^^^^^^
+   │     │
+   │     {[], 'error'}.
+Expression has type:   {[], 'error'}
+Context expected type: {[pid()], 'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  at tuple index 2:
+  {[], 'error'} is not compatible with {[pid()], 'ok'}
+  because
+  'error' is not compatible with 'ok'
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:91:5
+   │
+91 │     {[], error}.
+   │     ^^^^^^^^^^^
+   │     │
+   │     {[], 'error'}.
+Expression has type:   {[], 'error'}
+Context expected type: {iolist(), 'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  at tuple index 2:
+  {[], 'error'} is not compatible with {iolist(), 'ok'}
+  because
+  'error' is not compatible with 'ok'
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:94:13
+   │
+94 │ nil_1(L) -> L.
+   │             ^ L.
+Expression has type:   ['a']
+Context expected type: []
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/subtype_neg.erl:97:13
+   │
+97 │ nil_2(L) -> L.
+   │             ^
+   │             │
+   │             L.
+Expression has type:   ['a'] | [none()]
+Context expected type: []
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+  ['a'] | [none()] is not compatible with []
+  because
+  ['a'] is not compatible with []
+
+21 ERRORS

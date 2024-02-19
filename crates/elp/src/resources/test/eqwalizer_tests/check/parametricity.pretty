@@ -1,0 +1,51 @@
+error: incompatible_types
+    ┌─ check/src/parametricity.erl:178:19
+    │
+178 │ refine01(X, X) -> X.
+    │                   ^ X.
+Expression has type:   _B
+Context expected type: A
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/parametricity.erl:186:22
+    │
+186 │     [Elem || Elem <- X].
+    │                      ^ X.
+Expression has type:   B
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/parametricity.erl:218:3
+    │
+218 │   select(T, <<>>, 0).
+    │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
+Expression has type:   binary()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/parametricity.erl:224:3
+    │
+224 │   select(T, 0, 0).
+    │   ^^^^^^^^^^^^^^^ select(T, 0, 0).
+Expression has type:   number()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/parametricity.erl:229:31
+    │
+229 │ unwrap(undefined, Default) -> Default;
+    │                               ^^^^^^^ Default.
+Expression has type:   term()
+Context expected type: Value
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+5 ERRORS

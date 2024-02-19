@@ -1,0 +1,98 @@
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_records.erl:35:16
+   │
+35 │ id3_neg(Id) -> Id.
+   │                ^^
+   │                │
+   │                Id.
+Expression has type:   user()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                
+
+  user() is not compatible with number()
+  because
+  #rec1{} | number() is not compatible with number()
+  because
+  #rec1{} is not compatible with number()
+
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_records.erl:40:16
+   │
+40 │ id4_neg(Id) -> Id.
+   │                ^^
+   │                │
+   │                Id.
+Expression has type:   user()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                
+
+  user() is not compatible with number()
+  because
+  #rec1{} | number() is not compatible with number()
+  because
+  #rec1{} is not compatible with number()
+
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_records.erl:47:11
+   │
+47 │     Id -> Id
+   │           ^^
+   │           │
+   │           Id.
+Expression has type:   user()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │           
+
+  user() is not compatible with number()
+  because
+  #rec1{} | number() is not compatible with number()
+  because
+  #rec1{} is not compatible with number()
+
+error: incompatible_types
+    ┌─ eqwater/src/eqwater_records.erl:106:25
+    │
+106 │ normalize_neg1(Pair) -> Pair.
+    │                         ^^^^
+    │                         │
+    │                         Pair.
+Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
+Context expected type: {#rec1{}, #rec2{}}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
+  because
+  at tuple index 1:
+  {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
+  because
+  #rec2{} is not compatible with #rec1{}
+
+error: incompatible_types
+    ┌─ eqwater/src/eqwater_records.erl:115:25
+    │
+115 │ normalize_neg2(Pair) -> Pair.
+    │                         ^^^^
+    │                         │
+    │                         Pair.
+Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
+Context expected type: {#rec1{}, #rec2{}}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
+  because
+  at tuple index 1:
+  {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
+  because
+  #rec2{} is not compatible with #rec1{}
+
+5 ERRORS

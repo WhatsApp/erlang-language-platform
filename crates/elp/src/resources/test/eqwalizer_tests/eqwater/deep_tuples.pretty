@@ -1,0 +1,41 @@
+error: incompatible_types
+   ┌─ eqwater/src/deep_tuples.erl:14:3
+   │
+14 │   Tag1.
+   │   ^^^^ Tag1.
+Expression has type:   'ok'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ eqwater/src/deep_tuples.erl:20:3
+   │
+20 │   Tag2.
+   │   ^^^^ Tag2.
+Expression has type:   'ok'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ eqwater/src/deep_tuples.erl:26:3
+   │
+26 │   Tag1.
+   │   ^^^^ Tag1.
+Expression has type:   'ok'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ eqwater/src/deep_tuples.erl:32:3
+   │
+32 │   Tag2.
+   │   ^^^^ Tag2.
+Expression has type:   'ok'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+4 ERRORS

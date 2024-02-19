@@ -1,0 +1,294 @@
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:28:5
+   │
+28 │     [N || {_, N} <- L].
+   │     ^^^^^^^^^^^^^^^^^^
+   │     │
+   │     [ || ].
+Expression has type:   [number()]
+Context expected type: [atom()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  [number()] is not compatible with [atom()]
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:40:16
+   │
+40 │     [X || X <- L].
+   │                ^ L.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:48:5
+   │
+48 │     << Y || <<Y>> <= B >>.
+   │     ^^^^^^^^^^^^^^^^^^^^^ << || >>.
+Expression has type:   binary()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:56:18
+   │
+56 │     << Y || Y <- B >>.
+   │                  ^ B.
+Expression has type:   binary()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:60:22
+   │
+60 │     << Y || <<Y>> <= LB >>.
+   │                      ^^ LB.
+Expression has type:   [binary()]
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:68:5
+   │
+68 │     [ Y || <<Y>> <= LB ].
+   │     ^^^^^^^^^^^^^^^^^^^^
+   │     │
+   │     [ || ].
+Expression has type:   [number()]
+Context expected type: [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  [number()] is not compatible with [binary()]
+  because
+  number() is not compatible with binary()
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:72:5
+   │
+72 │     << Y || <<Y>> <= LB >>.
+   │     ^^^^^^^^^^^^^^^^^^^^^^ << || >>.
+Expression has type:   binary()
+Context expected type: [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:76:8
+   │
+76 │     << Y || <<Y>> <= LB >>.
+   │        ^ Y.
+Expression has type:   number()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/comprehensions.erl:90:22
+   │
+90 │     Res = [X || X <- L],
+   │                      ^ L.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:100:22
+    │
+100 │     Res = [X || X <- L, X],
+    │                      ^ L.
+Expression has type:   boolean()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:116:28
+    │
+116 │     Res = << Y || <<Y>> <= LB >>,
+    │                            ^^ LB.
+Expression has type:   [binary()]
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:121:24
+    │
+121 │     Res = << Y || Y <- B >>,
+    │                        ^ B.
+Expression has type:   binary()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:156:5
+    │  
+156 │ ╭     << Y ||
+157 │ │         <<Y>> <= X >>.
+    │ ╰─────────────────────^ << || >>.
+Expression has type:   binary()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:161:14
+    │
+161 │     Res = << Y ||
+    │              ^ Y.
+Expression has type:   number()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:167:8
+    │
+167 │     << Y ||
+    │        ^ Y.
+Expression has type:   number()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:172:14
+    │
+172 │     Res = << Y ||
+    │              ^ Y.
+Expression has type:   number()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:184:5
+    │
+184 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   [atom()]
+Context expected type: [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  [atom()] is not compatible with [binary()]
+  because
+  atom() is not compatible with binary()
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:226:5
+    │
+226 │     [X || X <- L, X].
+    │     ^^^^^^^^^^^^^^^^
+    │     │
+    │     [ || ].
+Expression has type:   ['true']
+Context expected type: ['false']
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  ['true'] is not compatible with ['false']
+  because
+  'true' is not compatible with 'false'
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:231:5
+    │
+231 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   ['true']
+Context expected type: ['false']
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  ['true'] is not compatible with ['false']
+  because
+  'true' is not compatible with 'false'
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:239:5
+    │
+239 │     [Y || <<Y>> <= B, is_integer(Y) ].
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    │     │
+    │     [ || ].
+Expression has type:   [number()]
+Context expected type: [atom()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  [number()] is not compatible with [atom()]
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:267:5
+    │
+267 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   [binary() | 'undefined']
+Context expected type: [binary()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  [binary() | 'undefined'] is not compatible with [binary()]
+  because
+  binary() | 'undefined' is not compatible with binary()
+  because
+  'undefined' is not compatible with binary()
+
+error: incompatible_types
+    ┌─ check/src/comprehensions.erl:329:5
+    │
+329 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   [#rec1{} | #rec2{} | binary()]
+Context expected type: [#rec1{} | #rec2{}]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  [#rec1{} | #rec2{} | binary()] is not compatible with [#rec1{} | #rec2{}]
+  because
+  #rec1{} | #rec2{} | binary() is not compatible with #rec1{} | #rec2{}
+  because
+  binary() is not compatible with #rec1{} | #rec2{}
+  because
+  binary() is not compatible with #rec1{}
+
+error: expected_fun_type
+    ┌─ check/src/comprehensions.erl:386:9
+    │
+386 │         F() || F <- Fs,
+    │         ^ F.
+Expected fun type with arity 0
+Got: fun(() -> atom()) | fun((number()) -> atom())
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+23 ERRORS

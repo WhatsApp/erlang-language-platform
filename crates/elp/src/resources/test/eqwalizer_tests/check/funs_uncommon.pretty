@@ -1,0 +1,209 @@
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:17:5
+   │
+17 │   F(1).
+   │     ^ 1.
+Expression has type:   number()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:24:13
+   │
+24 │     field = {fun(X) -> X end, an_atom}
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │             │
+   │             {fun, 'an_atom'}.
+Expression has type:   {fun((none()) -> term()), 'an_atom'}
+Context expected type: {fun(('a') -> 'a'), atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+  at tuple index 1:
+  {fun((none()) -> term()), 'an_atom'} is not compatible with {fun(('a') -> 'a'), atom()}
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:38:13
+   │
+38 │     field = {fun(X) -> X end, an_atom}
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^ {fun, 'an_atom'}.
+Expression has type:   {fun((none()) -> term()), 'an_atom'}
+Context expected type: fun(('a') -> 'a')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:43:3
+   │
+43 │   #{key => fun(X) -> X end}.
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   #{..}.
+Expression has type:   #S{key := fun((none()) -> term())}
+Context expected type: #S{key := fun(('a') -> 'a')}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  at shape key 'key':
+  #S{key := fun((none()) -> term())} is not compatible with #S{key := fun(('a') -> 'a')}
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:49:3
+   │
+49 │   M#{key => fun(X) -> X end}.
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   ..#{..}.
+Expression has type:   #S{key := fun((none()) -> term())}
+Context expected type: #S{key := fun(('a') -> 'a')}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  at shape key 'key':
+  #S{key := fun((none()) -> term())} is not compatible with #S{key := fun(('a') -> 'a')}
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:53:3
+   │
+53 │   {fun(X) -> X end}.
+   │   ^^^^^^^^^^^^^^^^^
+   │   │
+   │   {fun}.
+Expression has type:   {fun((none()) -> term())}
+Context expected type: {fun(('a') -> 'a')}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  at tuple index 1:
+  {fun((none()) -> term())} is not compatible with {fun(('a') -> 'a')}
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:58:3
+   │
+58 │   Res.
+   │   ^^^
+   │   │
+   │   Res.
+Expression has type:   {fun((none()) -> term())}
+Context expected type: {fun(('a') -> 'a')}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  at tuple index 1:
+  {fun((none()) -> term())} is not compatible with {fun(('a') -> 'a')}
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:63:5
+   │
+63 │   F(b).
+   │     ^ 'b'.
+Expression has type:   'b'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:67:3
+   │
+67 │   [fun(X) -> X end, fun(X) -> X end].
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   [fun, fun].
+Expression has type:   [fun((none()) -> term())]
+Context expected type: [fun(('a') -> 'a')]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  [fun((none()) -> term())] is not compatible with [fun(('a') -> 'a')]
+  because
+  fun((none()) -> term()) is not compatible with fun(('a') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:72:3
+   │
+72 │   Res.
+   │   ^^^
+   │   │
+   │   Res.
+Expression has type:   [fun((none(), none()) -> term())]
+Context expected type: [fun(('a', 'b') -> 'a')]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  [fun((none(), none()) -> term())] is not compatible with [fun(('a', 'b') -> 'a')]
+  because
+  fun((none(), none()) -> term()) is not compatible with fun(('a', 'b') -> 'a')
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types
+   ┌─ check/src/funs_uncommon.erl:82:3
+   │    
+82 │ ╭ ╭   [
+83 │ │ │     fun(X) -> X * Y end
+84 │ │ │     || Y <- [1, 2, 3]
+85 │ │ │   ].
+   │ ╰─│───^ [ || ].
+Expression has type:   [fun((none()) -> term())]
+Context expected type: [fun((number()) -> number())]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   ╰───' 
+
+  [fun((none()) -> term())] is not compatible with [fun((number()) -> number())]
+  because
+  fun((none()) -> term()) is not compatible with fun((number()) -> number())
+  because
+  term() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/funs_uncommon.erl:107:9
+    │
+107 │   _ = F(2),
+    │         ^ 2.
+Expression has type:   number()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/funs_uncommon.erl:113:9
+    │
+113 │   _ = F(an_atom),
+    │         ^^^^^^^ 'an_atom'.
+Expression has type:   'an_atom'
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+13 ERRORS

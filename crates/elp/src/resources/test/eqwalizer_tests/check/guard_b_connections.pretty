@@ -1,0 +1,96 @@
+error: incompatible_types
+   ┌─ check/src/guard_b_connections.erl:22:3
+   │
+22 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types
+   ┌─ check/src/guard_b_connections.erl:27:3
+   │
+27 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r2{} | #r1{}
+Context expected type: r1()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  #r2{} | #r1{} is not compatible with r1()
+  because
+  #r2{} | #r1{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types
+   ┌─ check/src/guard_b_connections.erl:32:3
+   │
+32 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types
+   ┌─ check/src/guard_b_connections.erl:38:3
+   │
+38 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types
+   ┌─ check/src/guard_b_connections.erl:44:3
+   │
+44 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+5 ERRORS

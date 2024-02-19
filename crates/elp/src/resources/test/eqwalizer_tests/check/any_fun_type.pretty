@@ -1,0 +1,173 @@
+error: incompatible_types
+   ┌─ check/src/any_fun_type.erl:41:21
+   │
+41 │ to_f_any_neg1(F) -> F.
+   │                     ^ F.
+Expression has type:   fun((atom()) -> pid())
+Context expected type: fun()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/any_fun_type.erl:46:21
+   │
+46 │ to_f_any_neg2(F) -> F.
+   │                     ^ F.
+Expression has type:   'f0' | fun((atom()) -> pid()) | 'f1'
+Context expected type: fun()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/any_fun_type.erl:49:23
+   │
+49 │ f_any_to_f0_neg(F) -> F.
+   │                       ^ F.
+Expression has type:   fun()
+Context expected type: 'f0'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/any_fun_type.erl:61:31
+   │
+61 │     when is_function(F, 1) -> F.
+   │                               ^
+   │                               │
+   │                               F.
+Expression has type:   fun((term()) -> term())
+Context expected type: f2()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                               
+
+  fun((term()) -> term()) is not compatible with f2()
+  because
+  fun((term()) -> term()) is not compatible with fun((term(), term()) -> term())
+
+error: incompatible_types
+   ┌─ check/src/any_fun_type.erl:92:24
+   │
+92 │ f5_to_f4_cov_neg(F) -> F.
+   │                        ^
+   │                        │
+   │                        F.
+Expression has type:   f5('a' | 'b')
+Context expected type: f4('a')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                        
+
+  f5('a' | 'b') is not compatible with f4('a')
+  because
+  fun((term()) -> 'a' | 'b') is not compatible with f4('a')
+  because
+  fun((term()) -> 'a' | 'b') is not compatible with fun((...) -> 'a')
+  because
+  'a' | 'b' is not compatible with 'a'
+
+error: expected_fun_type
+   ┌─ check/src/any_fun_type.erl:98:20
+   │
+98 │ apply_f4_neg(F) -> F(a).
+   │                    ^ F.
+Expected fun type with arity 1
+Got: f4(number())
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:104:19
+    │
+104 │ apply_f4_id(F) -> f4_id_T(F).
+    │                   ^^^^^^^^^^
+    │                   │
+    │                   f4_id_T(F).
+Expression has type:   f4('a')
+Context expected type: f4('a' | 'b')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+  f4('a') is not compatible with f4('a' | 'b')
+  because
+  fun((...) -> 'a') is not compatible with f4('a' | 'b')
+  because
+  fun((...) -> 'a') is not compatible with fun((...) -> 'a' | 'b')
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:107:21
+    │
+107 │ fun_to_f4_neg(F) -> F.
+    │                     ^
+    │                     │
+    │                     F.
+Expression has type:   fun()
+Context expected type: f4(term())
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  fun() is not compatible with f4(term())
+  because
+  fun() is not compatible with fun((...) -> term())
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:113:22
+    │
+113 │ fun3_to_f4_neg(F) -> F.
+    │                      ^
+    │                      │
+    │                      F.
+Expression has type:   fun((term()) -> 'a' | 'b')
+Context expected type: f4('a')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                      
+
+  fun((term()) -> 'a' | 'b') is not compatible with f4('a')
+  because
+  fun((term()) -> 'a' | 'b') is not compatible with fun((...) -> 'a')
+  because
+  'a' | 'b' is not compatible with 'a'
+  because
+  'b' is not compatible with 'a'
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:116:21
+    │
+116 │ f4_to_fun_neg(F) -> F.
+    │                     ^
+    │                     │
+    │                     F.
+Expression has type:   f4('a')
+Context expected type: fun((term()) -> 'a' | 'b')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  f4('a') is not compatible with fun((term()) -> 'a' | 'b')
+  because
+  fun((...) -> 'a') is not compatible with fun((term()) -> 'a' | 'b')
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:125:32
+    │
+125 │ map_f3_neg(F, Ts) -> lists:map(F, Ts).
+    │                                ^ F.
+Expression has type:   fun((...) -> atom())
+Context expected type: fun((term()) -> atom())
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/any_fun_type.erl:128:32
+    │
+128 │ map_f4_neg(F, Ts) -> lists:map(F, Ts).
+    │                                ^ F.
+Expression has type:   fun((...) -> A)
+Context expected type: fun((term()) -> A)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+12 ERRORS

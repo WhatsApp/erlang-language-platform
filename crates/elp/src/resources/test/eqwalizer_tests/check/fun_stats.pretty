@@ -1,0 +1,11 @@
+error: incompatible_types
+   ┌─ check/src/fun_stats.erl:36:3
+   │
+36 │   wn_ey_sy() + 3.
+   │   ^^^^^^^^^^ wn_ey_sy().
+Expression has type:   'ok'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+1 ERROR

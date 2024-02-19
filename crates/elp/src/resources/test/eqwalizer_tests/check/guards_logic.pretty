@@ -1,0 +1,68 @@
+error: incompatible_types
+   ┌─ check/src/guards_logic.erl:23:33
+   │
+23 │ test04(X, Y) when X orelse Y -> X.
+   │                                 ^ X.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_logic.erl:32:38
+   │
+32 │ test07_neg(X, Y) when X andalso Y -> Y.
+   │                                      ^ Y.
+Expression has type:   'true'
+Context expected type: 'false'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_logic.erl:35:40
+   │
+35 │ test08_neg(X) when not is_number(X) -> X.
+   │                                        ^ X.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_logic.erl:57:20
+   │
+57 │        is_pid(X)-> X.
+   │                    ^
+   │                    │
+   │                    X.
+Expression has type:   number() | atom() | pid()
+Context expected type: number() | atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                    
+
+  number() | atom() | pid() is not compatible with number() | atom()
+  because
+  pid() is not compatible with number() | atom()
+  because
+  pid() is not compatible with number()
+
+error: incompatible_types
+   ┌─ check/src/guards_logic.erl:73:5
+   │
+73 │     {X, Y}.
+   │     ^^^^^^
+   │     │
+   │     {X, Y}.
+Expression has type:   {term(), term()}
+Context expected type: {number(), number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  at tuple index 1:
+  {term(), term()} is not compatible with {number(), number()}
+  because
+  term() is not compatible with number()
+
+5 ERRORS

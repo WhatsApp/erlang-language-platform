@@ -1,0 +1,81 @@
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:14:15
+   │
+14 │   expect_none({Id}).
+   │               ^^^^ {Id}.
+Expression has type:   {dynamic()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:20:15
+   │
+20 │   expect_none(Res).
+   │               ^^^ Res.
+Expression has type:   #D{dynamic() => {dynamic()}}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:24:15
+   │
+24 │   expect_none({Id}).
+   │               ^^^^ {Id}.
+Expression has type:   {dynamic()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:28:15
+   │
+28 │   expect_none({Res}).
+   │               ^^^^^ {Res}.
+Expression has type:   {dynamic()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:32:15
+   │
+32 │   expect_none(Res).
+   │               ^^^ Res.
+Expression has type:   {dynamic(), [dynamic()]}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:36:15
+   │
+36 │   expect_none(Res).
+   │               ^^^ Res.
+Expression has type:   {dynamic()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:41:18
+   │
+41 │   atom_to_binary(Rec#rec.id).
+   │                  ^^^^^^^^^^ ...#rec.id.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/unspecced.erl:44:18
+   │
+44 │   atom_to_binary(Id).
+   │                  ^^ Id.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+8 ERRORS

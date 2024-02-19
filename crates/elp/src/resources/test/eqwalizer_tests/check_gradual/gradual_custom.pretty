@@ -1,0 +1,206 @@
+error: reveal_type
+   ┌─ check_gradual/src/gradual_custom.erl:14:27
+   │
+14 │     eqwalizer:reveal_type(element(42, Tup)).
+   │                           ^^^^^^^^^^^^^^^^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_custom.erl:18:27
+   │
+18 │     eqwalizer:reveal_type(element(2, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(atom())
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_custom.erl:22:27
+   │
+22 │     eqwalizer:reveal_type(element(1, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(number())
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_custom.erl:26:27
+   │
+26 │     eqwalizer:reveal_type(element(1, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(none())
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_custom.erl:30:27
+   │
+30 │     eqwalizer:reveal_type(element(N, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(number() | atom())
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:43:3
+   │
+43 │   application:get_env(app1).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1').
+Expression has type:   'undefined' | {'ok', dynamic()}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:56:3
+   │
+56 │   application:get_env(app1, key1).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1', 'key1').
+Expression has type:   'undefined' | {'ok', dynamic()}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:73:3
+   │
+73 │   lists:flatten(In).
+   │   ^^^^^^^^^^^^^^^^^ lists:flatten(In).
+Expression has type:   ['b' | 'c' | 'a']
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:85:3
+   │
+85 │   lists:flatten(In, Tail).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^ lists:flatten(In, Tail).
+Expression has type:   ['b' | 'a' | 'y' | 'z' | 'c' | 'x']
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:94:3
+   │
+94 │   file:consult(some_file).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
+Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
+Context expected type: 'nok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_custom.erl:99:3
+   │
+99 │   abs(dynamic()).
+   │   ^^^^^^^^^^^^^^ erlang:abs(dynamic()).
+Expression has type:   number()
+Context expected type: 'anything'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:108:7
+    │
+108 │   abs(N).
+    │       ^
+    │       │
+    │       N.
+Expression has type:   dynamic() | 'a'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │       
+
+  dynamic() | 'a' is not compatible with number()
+  because
+  'a' is not compatible with number()
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:120:3
+    │
+120 │   ets:lookup(tab, Any).
+    │   ^^^^^^^^^^^^^^^^^^^^ ets:lookup('tab', Any).
+Expression has type:   [dynamic()]
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:124:14
+    │
+124 │   ets:lookup("not atom", Any).
+    │              ^^^^^^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: ets:tab()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:143:16
+    │
+143 │   ets:tab2list("not atom").
+    │                ^^^^^^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: ets:tab()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:158:3
+    │  
+158 │ ╭   maps:without(
+159 │ │     [a],
+160 │ │     Dyn
+161 │ │   ).
+    │ ╰───^ maps:without(['a'], Dyn).
+Expression has type:   #D{dynamic() => dynamic()}
+Context expected type: 'wrong_ret'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:185:3
+    │  
+185 │ ╭   maps:with(
+186 │ │     [a],
+187 │ │     Dyn
+188 │ │   ).
+    │ ╰───^ maps:with(['a'], Dyn).
+Expression has type:   #D{dynamic() => dynamic()}
+Context expected type: 'wrong_ret'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: reveal_type
+    ┌─ check_gradual/src/gradual_custom.erl:203:25
+    │
+203 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+    ┌─ check_gradual/src/gradual_custom.erl:210:25
+    │
+210 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+    ┌─ check_gradual/src/gradual_custom.erl:217:25
+    │
+217 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+    ┌─ check_gradual/src/gradual_custom.erl:224:25
+    │
+224 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+21 ERRORS

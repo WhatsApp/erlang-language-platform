@@ -1,0 +1,51 @@
+error: incompatible_types
+   ┌─ check/src/strict_receive.erl:14:20
+   │
+14 │     {number, N} -> N;
+   │                    ^ N.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/strict_receive.erl:25:3
+   │
+25 │   Res.
+   │   ^^^ Res.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/strict_receive.erl:31:20
+   │
+31 │     {number, N} -> N;
+   │                    ^ N.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/strict_receive.erl:46:3
+   │
+46 │   Res.
+   │   ^^^ Res.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/strict_receive.erl:71:9
+   │
+71 │   after T -> ok
+   │         ^ T.
+Expression has type:   atom()
+Context expected type: timeout()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+5 ERRORS

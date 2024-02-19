@@ -1,0 +1,21 @@
+error: incompatible_types
+   ┌─ check/src/as_pat.erl:51:38
+   │
+51 │ unboxL_neg(BN = #box_n{}) -> unbox_a(BN).
+   │                                      ^^ BN.
+Expression has type:   #box_n{}
+Context expected type: #box_a{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/as_pat.erl:61:38
+   │
+61 │ unboxR_neg(#box_n{} = BN) -> unbox_b(BN).
+   │                                      ^^ BN.
+Expression has type:   #box_n{}
+Context expected type: #box_b{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+2 ERRORS

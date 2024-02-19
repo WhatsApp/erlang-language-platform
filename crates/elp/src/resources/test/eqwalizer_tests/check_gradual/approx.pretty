@@ -1,0 +1,92 @@
+error: incompatible_types
+   ┌─ check_gradual/src/approx.erl:36:5
+   │
+36 │     {X, X}.
+   │     ^^^^^^ {X, X}.
+Expression has type:   {dynamic(), dynamic()}
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: unknown_id
+   ┌─ check_gradual/src/approx.erl:39:1
+   │
+39 │ generics_with_unions:type_var_from_nowhere().
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unknown id: generics_with_unions:type_var_from_nowhere/0
+
+See https://fb.me/eqwalizer_errors#unknown_id
+
+error: reference_to_invalid_type
+   ┌─ check_gradual/src/approx.erl:41:1
+   │  
+41 │ ╭ -spec test_trans_invalid1_neg(
+42 │ │     trans_invalid()
+43 │ │ ) -> nok.
+   │ ╰────────^ test_trans_invalid1_neg/1 references type with invalid definition: trans_invalid/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check_gradual/src/approx.erl:47:1
+   │  
+47 │ ╭ -spec test_trans_invalid2_neg(
+48 │ │     trans_invalid()
+49 │ │ ) -> nok.
+   │ ╰────────^ test_trans_invalid2_neg/1 references type with invalid definition: trans_invalid/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check_gradual/src/approx.erl:53:1
+   │  
+53 │ ╭ -spec test_trans_invalid3_neg(
+54 │ │     trans_invalid()
+55 │ │ ) -> nok.
+   │ ╰────────^ test_trans_invalid3_neg/1 references type with invalid definition: trans_invalid/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: expected_fun_type
+   ┌─ check_gradual/src/approx.erl:62:30
+   │
+62 │ test_opaque_as_fun_neg(X) -> X(ok).
+   │                              ^ X.
+Expected fun type with arity 1
+Got: misc:o() | fun((term()) -> none())
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+error: incompatible_types
+   ┌─ check_gradual/src/approx.erl:69:3
+   │
+69 │   Dyn2.
+   │   ^^^^
+   │   │
+   │   Dyn2.
+Expression has type:   string() | dynamic()
+Context expected type: 'anything'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  string() | dynamic() is not compatible with 'anything'
+  because
+  string() is not compatible with 'anything'
+
+error: reveal_type
+   ┌─ check_gradual/src/approx.erl:79:25
+   │
+79 │   eqwalizer:reveal_type(Res),
+   │                         ^^^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/approx.erl:90:25
+   │
+90 │   eqwalizer:reveal_type(Res),
+   │                         ^^^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+9 ERRORS

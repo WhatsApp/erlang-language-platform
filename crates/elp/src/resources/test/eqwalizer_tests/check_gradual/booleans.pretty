@@ -1,0 +1,28 @@
+error: incompatible_types
+   ┌─ check_gradual/src/booleans.erl:47:3
+   │
+47 │   1 andalso b().
+   │   ^ 1.
+Expression has type:   number()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/booleans.erl:59:3
+   │
+59 │   dyn() andalso only_true().
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   _ andalso _.
+Expression has type:   'false' | 'true'
+Context expected type: 'true'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  'false' | 'true' is not compatible with 'true'
+  because
+  'false' is not compatible with 'true'
+
+2 ERRORS

@@ -1,0 +1,8 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "fbcode//whatsapp/elp/test_projects/eqwalizer_tests/..." ]
+source_root = "whatsapp/elp/test_projects/eqwalizer_tests"
+
+[eqwalizer]
+enable_all = true

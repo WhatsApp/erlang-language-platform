@@ -1,0 +1,88 @@
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:37:3
+   │
+37 │   Arg.
+   │   ^^^ Arg.
+Expression has type:   string()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:46:3
+   │
+46 │   Arg.
+   │   ^^^
+   │   │
+   │   Arg.
+Expression has type:   string() | binary()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  string() | binary() is not compatible with binary()
+  because
+  string() is not compatible with binary()
+
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:61:26
+   │
+61 │     andalso list_to_atom(A).
+   │                          ^ A.
+Expression has type:   binary()
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:68:26
+   │
+68 │     andalso list_to_atom(A).
+   │                          ^ A.
+Expression has type:   binary()
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:82:3
+   │    
+82 │ ╭ ╭   is_number(N)
+83 │ │ │     andalso is_atom(A)
+84 │ │ │     andalso {N, A}.
+   │ ╰─│──────────────────^ _ andalso _.
+Expression has type:   'false' | {number(), atom()}
+Context expected type: 'false' | {atom(), number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   ╰──────────────────' 
+
+  'false' | {number(), atom()} is not compatible with 'false' | {atom(), number()}
+  because
+  {number(), atom()} is not compatible with 'false' | {atom(), number()}
+  because
+  at tuple index 1:
+  {number(), atom()} is not compatible with {atom(), number()}
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/type_asserts.erl:90:3
+   │
+90 │   {X, A}.
+   │   ^^^^^^
+   │   │
+   │   {X, A}.
+Expression has type:   {'false' | number(), term()}
+Context expected type: {'false' | number(), number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  at tuple index 2:
+  {'false' | number(), term()} is not compatible with {'false' | number(), number()}
+  because
+  term() is not compatible with number()
+
+6 ERRORS

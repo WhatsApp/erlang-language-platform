@@ -1,0 +1,33 @@
+error: reveal_type
+   ┌─ check_gradual/src/gradual_untyped.erl:11:25
+   │
+11 │   eqwalizer:reveal_type(_L),
+   │                         ^^ [dynamic()]
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_untyped.erl:23:25
+   │
+23 │   eqwalizer:reveal_type(Field2),
+   │                         ^^^^^^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_untyped.erl:28:25
+   │
+28 │   eqwalizer:reveal_type(A),
+   │                         ^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_untyped.erl:33:25
+   │
+33 │   eqwalizer:reveal_type(B),
+   │                         ^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+4 ERRORS

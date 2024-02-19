@@ -1,0 +1,209 @@
+error: incompatible_types
+   ┌─ check/src/opaque.erl:23:3
+   │
+23 │   X.
+   │   ^
+   │   │
+   │   X.
+Expression has type:   sets:set({'ok', 'error'})
+Context expected type: sets:set({'ok', 'ok'})
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  sets:set({'ok', 'error'}) is not compatible with sets:set({'ok', 'ok'})
+  because
+  at tuple index 2:
+  {'ok', 'error'} is not compatible with {'ok', 'ok'}
+  because
+  'error' is not compatible with 'ok'
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:26:19
+   │
+26 │ test1_neg({X}) -> X.
+   │                   ^ X.
+Expression has type:   term()
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:29:27
+   │
+29 │ test2_neg(X=#{a := b}) -> X.
+   │                           ^ X.
+Expression has type:   #D{term() => term()}
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:32:17
+   │
+32 │ test3_neg(X) -> X.
+   │                 ^ X.
+Expression has type:   misc:o()
+Context expected type: tuple()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:57:11
+   │
+57 │           X2
+   │           ^^ X2.
+Expression has type:   misc:o()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:63:3
+   │
+63 │   Res.
+   │   ^^^ Res.
+Expression has type:   misc:o()
+Context expected type: tuple()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/opaque.erl:95:6
+   │
+95 │ ) -> X.
+   │      ^ X.
+Expression has type:   term()
+Context expected type: {'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/opaque.erl:107:18
+    │
+107 │ test14_neg(X) -> X =:= {ok}.
+    │                  ^^^^^^^^^^ _ =:= _.
+Expression has type:   boolean()
+Context expected type: 'true'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/opaque.erl:120:18
+    │
+120 │ test17_neg(X) -> X.
+    │                  ^
+    │                  │
+    │                  X.
+Expression has type:   misc:o() | 'a'
+Context expected type: {'ok'} | 'a'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                  
+
+  misc:o() | 'a' is not compatible with {'ok'} | 'a'
+  because
+  misc:o() is not compatible with {'ok'} | 'a'
+  because
+  misc:o() is not compatible with {'ok'}
+
+error: incompatible_types
+    ┌─ check/src/opaque.erl:125:18
+    │
+125 │ test18_neg(X) -> X.
+    │                  ^
+    │                  │
+    │                  X.
+Expression has type:   misc:o() | 'a'
+Context expected type: misc:o()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                  
+
+  misc:o() | 'a' is not compatible with misc:o()
+  because
+  'a' is not compatible with misc:o()
+
+error: incompatible_types
+    ┌─ check/src/opaque.erl:135:18
+    │
+135 │ test20_neg(X) -> X.
+    │                  ^
+    │                  │
+    │                  X.
+Expression has type:   misc:o() | 'a'
+Context expected type: misc:o()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                  
+
+  misc:o() | 'a' is not compatible with misc:o()
+  because
+  'a' is not compatible with misc:o()
+
+error: type_var_in_parameter_position
+    ┌─ check/src/opaque.erl:160:1
+    │  
+160 │ ╭ -opaque contravariant(T)
+161 │ │                 :: fun((T) -> ok).
+    │ ╰────────────────────────────────^ Opaque contravariant/1 expands to a type in which T appears in function parameter position
+	contravariant/1 expands to fun((T) -> 'ok')
+
+See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
+
+error: reference_to_invalid_type
+    ┌─ check/src/opaque.erl:163:1
+    │  
+163 │ ╭ -spec use_contra_neg(fun((ok) -> ok))
+164 │ │       -> contravariant(ok).
+    │ ╰──────────────────────^ use_contra_neg/1 references type with invalid definition: contravariant/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: incompatible_types
+    ┌─ check/src/opaque.erl:171:3
+    │
+171 │   X.
+    │   ^ X.
+Expression has type:   misc:o()
+Context expected type: {'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: expected_fun_type
+    ┌─ check/src/opaque.erl:269:8
+    │
+269 │   case F() of
+    │        ^ F.
+Expected fun type with arity 0
+Got: misc:int_result_o()
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+error: expected_fun_type
+    ┌─ check/src/opaque.erl:283:8
+    │
+283 │   case F() of
+    │        ^ F.
+Expected fun type with arity 0
+Got: misc:int_result_o()
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+error: unbound_type_var
+    ┌─ check/src/opaque.erl:288:1
+    │
+288 │ -type invalid() :: _T.
+    │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+error: reference_to_invalid_type
+    ┌─ check/src/opaque.erl:290:1
+    │
+290 │ -opaque o_trans_invalid() :: invalid().
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ o_trans_invalid/0 references type with invalid definition: invalid/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+18 ERRORS

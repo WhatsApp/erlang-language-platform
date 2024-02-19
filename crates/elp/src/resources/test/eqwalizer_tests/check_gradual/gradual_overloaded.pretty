@@ -1,0 +1,52 @@
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_overloaded.erl:38:20
+   │
+38 │     binary_to_atom(Y).
+   │                    ^ Y.
+Expression has type:   pid()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_overloaded.erl:61:5
+   │
+61 │     {Y}.
+   │     ^^^ {Y}.
+Expression has type:   {dynamic()}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: reveal_type
+   ┌─ check_gradual/src/gradual_overloaded.erl:90:27
+   │
+90 │     eqwalizer:reveal_type(Res),
+   │                           ^^^ dynamic()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_overloaded.erl:112:5
+    │  
+112 │ ╭     rec_each(
+113 │ │         fun(R) -> R#r{count = 0} end,
+114 │ │         Rec
+115 │ │     ).
+    │ ╰─────^ rec_each(fun, Rec).
+Expression has type:   #r{}
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_overloaded.erl:120:19
+    │
+120 │         fun(I) -> I + 1 end,
+    │                   ^ I.
+Expression has type:   #r{}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+5 ERRORS

@@ -1,0 +1,944 @@
+error: incompatible_types
+   ┌─ check/src/misc.erl:46:23
+   │
+46 │ test03_neg(-4 = X) -> X.
+   │                       ^ X.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:49:26
+   │
+49 │ test04_neg(6 / 3 = Y) -> Y.
+   │                          ^ Y.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:52:20
+   │
+52 │ test05_neg(X) -> + X.
+   │                    ^ X.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:55:36
+   │
+55 │ test06_neg(X) when is_number(X) -> + X.
+   │                                    ^^^ + _.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:63:5
+   │
+63 │     not X.
+   │     ^^^^^ not _.
+Expression has type:   boolean()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:73:25
+   │
+73 │     is_number(X) -> X + Y.
+   │                         ^ Y.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:77:21
+   │
+77 │ test11_neg(X, Y) -> X + Y.
+   │                     ^^^^^ _ + _.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:81:19
+   │
+81 │ test12_neg(X) -> -X.
+   │                   ^ X.
+Expression has type:   atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:85:21
+   │
+85 │ test13_neg(X, Y) -> X or Y.
+   │                     ^ X.
+Expression has type:   term()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/misc.erl:97:21
+   │
+97 │ test16_neg(X, Y) -> X or Y.
+   │                     ^^^^^^ _ or _.
+Expression has type:   boolean()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:101:26
+    │
+101 │ test17_neg(X, Y) -> X or Y.
+    │                          ^ Y.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:105:21
+    │
+105 │ test18_neg(X, Y) -> X orelse Y.
+    │                     ^^^^^^^^^^ _ orelse _.
+Expression has type:   atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:109:21
+    │
+109 │ test19_neg(X, Y) -> X andalso Y.
+    │                     ^^^^^^^^^^^ _ andalso _.
+Expression has type:   'false' | number()
+Context expected type: {number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:112:18
+    │
+112 │ test20_neg(X) -> [- X].
+    │                  ^^^^^
+    │                  │
+    │                  [- _].
+Expression has type:   [number()]
+Context expected type: [atom()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                  
+
+  [number()] is not compatible with [atom()]
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:116:21
+    │
+116 │ test21_neg(X, Y) -> [X / Y].
+    │                     ^^^^^^^
+    │                     │
+    │                     [_ / _].
+Expression has type:   [number()]
+Context expected type: [atom()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  [number()] is not compatible with [atom()]
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:120:18
+    │
+120 │ test22_neg(X) -> [not X].
+    │                  ^^^^^^^
+    │                  │
+    │                  [not _].
+Expression has type:   [boolean()]
+Context expected type: [number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                  
+
+  [boolean()] is not compatible with [number()]
+  because
+  boolean() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:124:21
+    │
+124 │ test23_neg(X, Y) -> [X or Y].
+    │                     ^^^^^^^^
+    │                     │
+    │                     [_ or _].
+Expression has type:   [boolean()]
+Context expected type: [number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  [boolean()] is not compatible with [number()]
+  because
+  boolean() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:128:21
+    │
+128 │ test24_neg(X, Y) -> [X orelse Y].
+    │                     ^^^^^^^^^^^^
+    │                     │
+    │                     [_ orelse _].
+Expression has type:   [atom()]
+Context expected type: [number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  [atom()] is not compatible with [number()]
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:143:29
+    │
+143 │ test28_neg(B) -> boolean_id(B).
+    │                             ^ B.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:146:17
+    │
+146 │ test29_neg() -> [true, false].
+    │                 ^^^^^^^^^^^^^ ['true', 'false'].
+Expression has type:   ['true' | 'false']
+Context expected type: []
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:149:17
+    │
+149 │ test30_neg() -> 1.
+    │                 ^ 1.
+Expression has type:   number()
+Context expected type: 'atom'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:152:17
+    │
+152 │ test31_neg() -> fun test30_neg/0.
+    │                 ^^^^^^^^^^^^^^^^ test30_neg/0.
+Expression has type:   fun(() -> 'atom')
+Context expected type: 'atom'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:155:17
+    │
+155 │ test32_neg() -> fun misc_lib:boolean_id/1.
+    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^ misc_lib:boolean_id/1.
+Expression has type:   fun((boolean()) -> boolean())
+Context expected type: 'atom'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:221:17
+    │
+221 │ test46_neg() -> false.
+    │                 ^^^^^ 'false'.
+Expression has type:   'false'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:224:17
+    │
+224 │ test47_neg() -> [].
+    │                 ^^ [].
+Expression has type:   []
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:227:17
+    │
+227 │ test48_neg() -> test47_neg().
+    │                 ^^^^^^^^^^^^ test47_neg().
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:230:17
+    │
+230 │ test49_neg() -> misc:test47_neg().
+    │                 ^^^^^^^^^^^^^^^^^ misc:test47_neg().
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: unbound_var
+    ┌─ check/src/misc.erl:253:5
+    │
+253 │     fun misc:test54_unspecced/0.
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: misc:test54_unspecced/0
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: unbound_var
+    ┌─ check/src/misc.erl:258:5
+    │
+258 │     fun test54_unspecced/0.
+    │     ^^^^^^^^^^^^^^^^^^^^^^ Unbound var: test54_unspecced/0
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: unbound_var
+    ┌─ check/src/misc.erl:288:9
+    │
+288 │     X = misc:test54_unspecced(),
+    │         ^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: misc:test54_unspecced/0
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: unbound_var
+    ┌─ check/src/misc.erl:293:9
+    │
+293 │     X = test54_unspecced(),
+    │         ^^^^^^^^^^^^^^^^^^ Unbound var: test54_unspecced/0
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:347:5
+    │
+347 │     catch test69_pos([atom]).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^ catch.
+Expression has type:   term()
+Context expected type: [atom() | number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:352:22
+    │
+352 │     catch test69_pos(atom).
+    │                      ^^^^
+    │                      │
+    │                      'atom'.
+Expression has type:   'atom'
+Context expected type: [atom()] | [number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                      
+
+  'atom' is not compatible with [atom()] | [number()]
+  because
+  'atom' is not compatible with [atom()]
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:357:22
+    │
+357 │     catch test69_pos(atom).
+    │                      ^^^^
+    │                      │
+    │                      'atom'.
+Expression has type:   'atom'
+Context expected type: [atom()] | [number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                      
+
+  'atom' is not compatible with [atom()] | [number()]
+  because
+  'atom' is not compatible with [atom()]
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:386:18
+    │
+386 │ test77_neg(A) -> catch(test76_pos(A)).
+    │                  ^^^^^^^^^^^^^^^^^^^^ catch.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:397:14
+    │
+397 │         X -> X
+    │              ^ X.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:403:14
+    │
+403 │         X -> X
+    │              ^ X.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:412:11
+    │
+412 │     after Timeout ->
+    │           ^^^^^^^ Timeout.
+Expression has type:   term()
+Context expected type: timeout()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:424:5
+    │
+424 │     {Msg}.
+    │     ^^^^^ {Msg}.
+Expression has type:   {'default' | 'atom'}
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:453:5
+    │
+453 │     {[H1|T1], [H2|T2]}.
+    │     ^^^^^^^^^^^^^^^^^^
+    │     │
+    │     {[H1 | T1], [H2 | T2]}.
+Expression has type:   {[number() | atom()], [atom() | number()]}
+Context expected type: {[atom()], [number()]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at tuple index 1:
+  {[number() | atom()], [atom() | number()]} is not compatible with {[atom()], [number()]}
+  because
+  [number() | atom()] is not compatible with [atom()]
+  because
+  number() | atom() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:461:5
+    │
+461 │     {[H1|T1], [H2|T2]}.
+    │     ^^^^^^^^^^^^^^^^^^
+    │     │
+    │     {[H1 | T1], [H2 | T2]}.
+Expression has type:   {[atom() | number()], [atom() | number()]}
+Context expected type: {[atom()] | [number()], [atom()] | [number()]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at tuple index 1:
+  {[atom() | number()], [atom() | number()]} is not compatible with {[atom()] | [number()], [atom()] | [number()]}
+  because
+  [atom() | number()] is not compatible with [atom()] | [number()]
+  because
+  [atom() | number()] is not compatible with [atom()]
+  because
+  atom() | number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:465:12
+    │
+465 │     X = [1 | 2],
+    │            ^^^^ 2.
+Expression has type:   number()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:472:21
+    │
+472 │ comp01_neg(X, Y) -> X < Y.
+    │                     ^^^^^ _ < _.
+Expression has type:   boolean()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:482:5
+    │
+482 │     Res.
+    │     ^^^ Res.
+Expression has type:   boolean()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:497:5
+    │
+497 │     Where ! What.
+    │     ^^^^^^^^^^^^ _ ! _.
+Expression has type:   term()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:507:20
+    │
+507 │     #str_box{str = Str}.
+    │                    ^^^ Str.
+Expression has type:   atom()
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:513:17
+    │
+513 │ string_neg() -> "str".
+    │                 ^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:538:5
+    │
+538 │     Atom.
+    │     ^^^^ Atom.
+Expression has type:   string()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:555:5
+    │
+555 │     Atoms ++ Numbers.
+    │     ^^^^^^^^^^^^^^^^
+    │     │
+    │     _ ++ _.
+Expression has type:   [atom() | binary()]
+Context expected type: [atom() | number()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  [atom() | binary()] is not compatible with [atom() | number()]
+  because
+  atom() | binary() is not compatible with atom() | number()
+  because
+  binary() is not compatible with atom() | number()
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:575:14
+    │
+575 │     Atoms -- Anys.
+    │              ^^^^ Anys.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:581:5
+    │
+581 │     Anys ++ Atoms.
+    │     ^^^^ Anys.
+Expression has type:   term()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:593:5
+    │
+593 │     El.
+    │     ^^ El.
+Expression has type:   term()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:599:23
+    │
+599 │ start_neg([] ++ X) -> X.
+    │                       ^
+    │                       │
+    │                       X.
+Expression has type:   [A]
+Context expected type: [[A]]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                       
+
+  [A] is not compatible with [[A]]
+  because
+  A is not compatible with [A]
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:611:21
+    │
+611 │ ss2_neg("" ++ S) -> S.
+    │                     ^ S.
+Expression has type:   [atom() | number()]
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:632:5
+    │
+632 │     X.
+    │     ^ X.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:636:5
+    │  
+636 │ ╭     catch case X of
+637 │ │             X when is_number(X) -> X
+638 │ │         end.
+    │ ╰───────────^ catch.
+Expression has type:   term()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:644:15
+    │
+644 │ badspec(_) -> ok.
+    │               ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: #D{dynamic() => dynamic()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:648:21
+    │
+648 │     catch lists:map({}, {}).
+    │                     ^^ {}.
+Expression has type:   {}
+Context expected type: fun((A) -> B)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:652:26
+    │
+652 │     X = (catch lists:map({}, {})),
+    │                          ^^ {}.
+Expression has type:   {}
+Context expected type: fun((A) -> B)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: unbound_var
+    ┌─ check/src/misc.erl:666:1
+    │
+666 │ fun generics_with_unions:test_03_neg/3.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: generics_with_unions:test_03_neg/3
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:671:17
+    │
+671 │     [X, 1, 2, 3 | Y].
+    │                 ^^^^ Y.
+Expression has type:   number()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:676:17
+    │
+676 │     [X, 1, 2, 3 | an_atom].
+    │                 ^^^^^^^^^^ 'an_atom'.
+Expression has type:   'an_atom'
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:681:23
+    │
+681 │     Res = [X, 1, 2, 3 | an_atom],
+    │                       ^^^^^^^^^^ 'an_atom'.
+Expression has type:   'an_atom'
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:730:5
+    │
+730 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   {none(), 'err'}
+Context expected type: {'ok', 'ok'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at tuple index 2:
+  {none(), 'err'} is not compatible with {'ok', 'ok'}
+  because
+  'err' is not compatible with 'ok'
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:741:5
+    │
+741 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   v2_op()
+Context expected type: v1_op()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  v2_op() is not compatible with v1_op()
+  because
+  'v2_op' | v1_op() is not compatible with v1_op()
+  because
+  'v2_op' | v1_op() is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
+  because
+  'v2_op' is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
+
+error: unbound_var
+    ┌─ check/src/misc.erl:780:16
+    │
+780 │     {Res, _} = callbacks1_pos:init({}),
+    │                ^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: callbacks1_pos:init/1
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: type_alias_is_non_productive
+    ┌─ check/src/misc.erl:783:1
+    │  
+783 │ ╭ -type x_cycle() ::
+784 │ │     recursive_aliases:x_cycle().
+    │ ╰───────────────────────────────^ recursive type x_cycle/0 is not productive
+
+See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
+
+error: unknown_id
+    ┌─ check/src/misc.erl:790:21
+    │
+790 │     opaque:opair(a, x:y())) ->
+    │                     ^^^^^ Unknown id: x:y/0
+
+See https://fb.me/eqwalizer_errors#unknown_id
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:797:13
+    │
+797 │ names(X) -> X.
+    │             ^
+    │             │
+    │             X.
+Expression has type:   misc:set()
+Context expected type: sets:set()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │             
+
+  misc:set() is not compatible with sets:set()
+  because
+  [] is not compatible with sets:set()
+  because
+  [] is not compatible with sets:set(term())
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:850:5
+    │
+850 │     {ok, lists, 1.0}.
+    │     ^^^^^^^^^^^^^^^^
+    │     │
+    │     {'ok', 'lists', float_lit}.
+Expression has type:   {'ok', 'lists', number()}
+Context expected type: {'ok', atom(), pid()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at tuple index 3:
+  {'ok', 'lists', number()} is not compatible with {'ok', atom(), pid()}
+  because
+  number() is not compatible with pid()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:860:5
+    │
+860 │     Mod.
+    │     ^^^ Mod.
+Expression has type:   atom()
+Context expected type: 'wrong_ret'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:875:5
+    │
+875 │     Arity.
+    │     ^^^^^ Arity.
+Expression has type:   number()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:887:5
+    │
+887 │     Node.
+    │     ^^^^ Node.
+Expression has type:   atom()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:929:16
+    │
+929 │ iovec_neg() -> {<<>>}.
+    │                ^^^^^^
+    │                │
+    │                {<<..>>}.
+Expression has type:   {binary()}
+Context expected type: erlang:iovec()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                
+
+  {binary()} is not compatible with erlang:iovec()
+  because
+  {binary()} is not compatible with [binary()]
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:949:15
+    │
+949 │ n_a_neg(N) -> N.
+    │               ^ N.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:965:5
+    │
+965 │     MyPriorities.
+    │     ^^^^^^^^^^^^
+    │     │
+    │     MyPriorities.
+Expression has type:   ['MM' | 'MS' | 'EE' | 'MA' | 'GE']
+Context expected type: [erlang:priority_level()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  ['MM' | 'MS' | 'EE' | 'MA' | 'GE'] is not compatible with [erlang:priority_level()]
+  because
+  'MM' | 'MS' | 'EE' | 'MA' | 'GE' is not compatible with erlang:priority_level()
+  because
+  'MM' | 'MS' | 'EE' | 'MA' | 'GE' is not compatible with 'low' | 'normal' | 'high' | 'max'
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:971:5
+    │
+971 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   erlang:timestamp()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  erlang:timestamp() is not compatible with atom()
+  because
+  {number(), number(), number()} is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/misc.erl:987:12
+    │
+987 │     Res = (Flag orelse Pid),
+    │            ^^^^ Flag.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: expected_fun_type
+     ┌─ check/src/misc.erl:1005:20
+     │
+1005 │             orelse Validator(),
+     │                    ^^^^^^^^^ Validator.
+Expected fun type with arity 0
+Got: 'undefined'
+
+See https://fb.me/eqwalizer_errors#expected_fun_type
+
+error: non_exported_id
+     ┌─ check/src/misc.erl:1008:23
+     │
+1008 │ -spec non_exported_id(any_fun_type:f1()) -> any_fun_type:f1().
+     │                       ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
+
+See https://fb.me/eqwalizer_errors#non_exported_id
+
+error: non_exported_id
+     ┌─ check/src/misc.erl:1011:30
+     │
+1011 │ -type non_exported_id_t() :: any_fun_type:f1().
+     │                              ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
+
+See https://fb.me/eqwalizer_errors#non_exported_id
+
+81 ERRORS

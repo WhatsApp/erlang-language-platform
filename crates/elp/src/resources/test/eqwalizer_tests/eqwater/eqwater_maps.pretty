@@ -1,0 +1,62 @@
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_maps.erl:26:53
+   │
+26 │ map_occ_04_neg(M = #{a := I}) when is_integer(I) -> M;
+   │                                                     ^
+   │                                                     │
+   │                                                     M.
+Expression has type:   #S{a := number(), b => number()}
+Context expected type: #S{a := number(), b := number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                                                     
+
+These associations do not match:
+
+  #S{
+-    b := ...
++    b => ...
+     ...
+  }
+
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_maps.erl:36:22
+   │
+36 │ map_occ_06_neg(V) -> V.
+   │                      ^
+   │                      │
+   │                      V.
+Expression has type:   #S{} | 'ok'
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                      
+
+  #S{} | 'ok' is not compatible with 'ok'
+  because
+  #S{} is not compatible with 'ok'
+
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_maps.erl:42:22
+   │
+42 │ map_occ_07_neg(M) -> M.
+   │                      ^
+   │                      │
+   │                      M.
+Expression has type:   none() | #S{c := number()}
+Context expected type: #S{b := number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                      
+
+  none() | #S{c := number()} is not compatible with #S{b := number()}
+  because
+  #S{c := number()} is not compatible with #S{b := number()}
+  These associations do not match:
+
+  #S{
+-    b := ...
++    c := ...
+  }
+
+3 ERRORS

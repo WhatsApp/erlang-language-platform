@@ -1,0 +1,18 @@
+error: incompatible_types
+   ┌─ check/src/auto_imports.erl:22:20
+   │
+22 │   erlang:error(ok, ok).
+   │                    ^^
+   │                    │
+   │                    'ok'.
+Expression has type:   'ok'
+Context expected type: [term()] | 'none'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                    
+
+  'ok' is not compatible with [term()] | 'none'
+  because
+  'ok' is not compatible with [term()]
+
+1 ERROR

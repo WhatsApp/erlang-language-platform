@@ -1,0 +1,121 @@
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:26:36
+   │
+26 │ atom_neg_1(X) when is_number(X) -> X.
+   │                                    ^ X.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:31:23
+   │
+31 │         is_list(X) -> X
+   │                       ^ X.
+Expression has type:   [term()]
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:37:31
+   │
+37 │         Y when is_tuple(Y) -> Y
+   │                               ^ Y.
+Expression has type:   tuple()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:56:37
+   │
+56 │ boolean_neg_1(X) when is_atom(X) -> X.
+   │                                     ^ X.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:61:23
+   │
+61 │         is_atom(X) -> X
+   │                       ^ X.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:67:30
+   │
+67 │         Y when is_atom(Y) -> Y
+   │                              ^ Y.
+Expression has type:   atom()
+Context expected type: boolean()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:74:36
+   │
+74 │ float_neg(X) when is_boolean(X) -> X.
+   │                                    ^ X.
+Expression has type:   'false' | 'true'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:80:38
+   │
+80 │ integer_neg(X) when is_boolean(X) -> X.
+   │                                      ^ X.
+Expression has type:   'false' | 'true'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:86:33
+   │
+86 │ pid_neg(X) when is_number(X) -> X.
+   │                                 ^ X.
+Expression has type:   number()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:92:37
+   │
+92 │ port_neg(X) when is_reference(X) -> X.
+   │                                     ^ X.
+Expression has type:   reference()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:95:42
+   │
+95 │ reference_pos(X) when is_reference(X) -> X.
+   │                                          ^ X.
+Expression has type:   reference()
+Context expected type: port()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/guards_simple.erl:98:37
+   │
+98 │ reference_neg(X) when is_port(X) -> X.
+   │                                     ^ X.
+Expression has type:   port()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+12 ERRORS

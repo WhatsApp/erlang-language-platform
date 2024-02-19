@@ -1,0 +1,41 @@
+error: incompatible_types
+   ┌─ check/src/static_maybe.erl:26:9
+   │
+26 │         A
+   │         ^ A.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/static_maybe.erl:40:14
+   │
+40 │         B -> B
+   │              ^ B.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/static_maybe.erl:50:14
+   │
+50 │         _ -> 3
+   │              ^ 3.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/static_maybe.erl:73:17
+   │
+73 │         Atom -> Atom
+   │                 ^^^^ Atom.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+4 ERRORS

@@ -1,0 +1,209 @@
+error: unbound_type_var
+  ┌─ check/src/type_aliases.erl:9:1
+  │
+9 │ -type w_unbound_var() :: {_A, _B}.
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ _A: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:10:1
+   │  
+10 │ ╭ -type trans_unbound_var()
+11 │ │     :: w_unbound_var().
+   │ ╰────────────────────^ trans_unbound_var/0 references type with invalid definition: w_unbound_var/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:13:1
+   │  
+13 │ ╭ -spec uses_ty_w_unbound_var(_A, _B) ->
+14 │ │     w_unbound_var().
+   │ ╰─────────────────^ uses_ty_w_unbound_var/2 references type with invalid definition: w_unbound_var/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:17:1
+   │  
+17 │ ╭ -spec uses_trans_unbound_var(_A, _B) ->
+18 │ │     trans_unbound_var().
+   │ ╰─────────────────────^ uses_trans_unbound_var/2 references type with invalid definition: trans_unbound_var/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: unbound_type_var
+   ┌─ check/src/type_aliases.erl:21:1
+   │  
+21 │ ╭ -type w_unbound_var2()
+22 │ │     :: _A.
+   │ ╰─────────^ _A: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:24:1
+   │  
+24 │ ╭ -spec uses_ty_w_unbound_var2() ->
+25 │ │     w_unbound_var2().
+   │ ╰──────────────────^ uses_ty_w_unbound_var2/0 references type with invalid definition: w_unbound_var2/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: repated_type_var_in_type_decl
+   ┌─ check/src/type_aliases.erl:28:1
+   │
+28 │ -type repeated(T, T) :: T.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^ T. Type vars in type declarations must be distinct
+
+See https://fb.me/eqwalizer_errors#repated_type_var_in_type_decl
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:30:1
+   │  
+30 │ ╭ -spec test_repeated1_neg(a, b) ->
+31 │ │     repeated(a, b).
+   │ ╰────────────^ test_repeated1_neg/2 references type with invalid definition: repeated/2
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:34:1
+   │  
+34 │ ╭ -spec test_repeated2_neg(a, b) ->
+35 │ │     repeated(a, b).
+   │ ╰────────────^ test_repeated2_neg/2 references type with invalid definition: repeated/2
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:39:1
+   │  
+39 │ ╭ -spec test_use_bad_type
+40 │ │ (undefined | w_unbound_var()) ->
+41 │ │     w_unbound_var() | undefined.
+   │ ╰───────────────────────────────^ test_use_bad_type/1 references type with invalid definition: w_unbound_var/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:48:1
+   │  
+48 │ ╭ -spec test_use_bad_type_gen(
+49 │ │     w_unbound_var(),
+50 │ │     undefined | w_unbound_var()) ->
+51 │ │         term().
+   │ ╰────────────^ test_use_bad_type_gen/2 references type with invalid definition: w_unbound_var/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: unbound_type_var
+   ┌─ check/src/type_aliases.erl:55:1
+   │  
+55 │ ╭ -type tup_w_unbound(T)
+56 │ │ :: {T, _A}.
+   │ ╰──────────^ _A: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:58:1
+   │  
+58 │ ╭ -spec unpack_tup_w_unbound(
+59 │ │     tup_w_unbound(T)
+60 │ │ ) -> T.
+   │ ╰──────^ unpack_tup_w_unbound/1 references type with invalid definition: tup_w_unbound/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:64:1
+   │  
+64 │ ╭ -spec test_use_unpack_tup_w_unbound(
+65 │ │     tup_w_unbound(a)) -> a.
+   │ ╰──────────────────────────^ test_use_unpack_tup_w_unbound/1 references type with invalid definition: tup_w_unbound/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:69:1
+   │  
+69 │ ╭ -spec test_use_tup_w_unbound_cov(
+70 │ │     tup_w_unbound(a)) ->
+71 │ │     tup_w_unbound(a | b) .
+   │ ╰─────────────────^ test_use_tup_w_unbound_cov/1 references type with invalid definition: tup_w_unbound/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:75:1
+   │  
+75 │ ╭ -spec test_use_tup_w_unbound_contra_neg(
+76 │ │     tup_w_unbound(a | b)) ->
+77 │ │     tup_w_unbound(a) .
+   │ ╰─────────────────^ test_use_tup_w_unbound_contra_neg/1 references type with invalid definition: tup_w_unbound/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:81:1
+   │  
+81 │ ╭ -spec test_use_tup_w_unbound_contra_neg2(
+82 │ │     tup_w_unbound(a | b)) ->
+83 │ │     tup_w_unbound(a) | w_unbound_var().
+   │ ╰────────────────────────────────────^ test_use_tup_w_unbound_contra_neg2/1 references types with invalid definitions: w_unbound_var/0, tup_w_unbound/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: type_alias_is_non_productive
+   ┌─ check/src/type_aliases.erl:87:1
+   │
+87 │ -type loop() :: loop().
+   │ ^^^^^^^^^^^^^^^^^^^^ recursive type loop/0 is not productive
+
+See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:89:1
+   │
+89 │ -record(rec1, {l :: loop() | undefined}).
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec1 references type with invalid definition: loop/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check/src/type_aliases.erl:90:1
+   │
+90 │ -record(rec2, {l :: undefined | loop()}).
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec2 references type with invalid definition: loop/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: unbound_record
+   ┌─ check/src/type_aliases.erl:99:9
+   │
+99 │ convert(#rec1{l = L1}, #rec2{l = L2}) ->
+   │         ^^^^^^^^^^^^^ Unbound rec: rec1
+
+See https://fb.me/eqwalizer_errors#unbound_record
+
+error: unknown_id
+    ┌─ check/src/type_aliases.erl:104:21
+    │
+104 │     opaque:opair(a, x:y()).
+    │                     ^^^^^ Unknown id: x:y/0
+
+See https://fb.me/eqwalizer_errors#unknown_id
+
+error: reference_to_invalid_type
+    ┌─ check/src/type_aliases.erl:106:1
+    │  
+106 │ ╭ -spec use_bad_inside_neg(
+107 │ │    bad_inside()
+108 │ │ ) -> bad_inside().
+    │ ╰───────────────^ use_bad_inside_neg/1 references type with invalid definition: bad_inside/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+23 ERRORS

@@ -1276,6 +1276,94 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_check(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "check",
+            buck,
+            EqwalizerConfig::default_test(),
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_check_gradual(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "check_gradual",
+            buck,
+            EqwalizerConfig {
+                gradual_typing: Some(true),
+                ..EqwalizerConfig::default_test()
+            },
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_debug(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "debug",
+            buck,
+            EqwalizerConfig::default_test(),
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_elm_core(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "elm_core",
+            buck,
+            EqwalizerConfig::default_test(),
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_eqwater(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "eqwater",
+            buck,
+            EqwalizerConfig::default_test(),
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_options(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "options",
+            buck,
+            EqwalizerConfig {
+                check_redundant_guards: Some(true),
+                ..EqwalizerConfig::default_test()
+            },
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalizer_tests_fault_tolerance(buck: bool) {
+        eqwalize_all_snapshots(
+            "eqwalizer_tests",
+            "fault_tolerance",
+            buck,
+            EqwalizerConfig {
+                gradual_typing: Some(true),
+                occurrence_typing: Some(true),
+                fault_tolerance: Some(true),
+                ..EqwalizerConfig::default_test()
+            },
+        );
+    }
+
     #[test]
     fn help() {
         let args = args::args().run_inner(Args::from(&["--help"])).unwrap_err();

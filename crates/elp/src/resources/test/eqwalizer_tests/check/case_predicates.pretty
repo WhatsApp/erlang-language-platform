@@ -1,0 +1,52 @@
+error: incompatible_types
+   ┌─ check/src/case_predicates.erl:13:24
+   │
+13 │     {true, true} -> aa(X, Y);
+   │                        ^ X.
+Expression has type:   term()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/case_predicates.erl:124:14
+    │
+124 │     false -> {p, X}
+    │              ^^^^^^
+    │              │
+    │              {'p', X}.
+Expression has type:   {'p', none() | pid() | reference()}
+Context expected type: {'a', atom()} | {'p', pid()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │              
+
+  {'p', none() | pid() | reference()} is not compatible with {'a', atom()} | {'p', pid()}
+  because
+  at tuple index 2:
+  {'p', none() | pid() | reference()} is not compatible with {'p', pid()}
+  because
+  none() | pid() | reference() is not compatible with pid()
+  because
+  reference() is not compatible with pid()
+
+error: incompatible_types
+    ┌─ check/src/case_predicates.erl:144:10
+    │
+144 │     _ -> X
+    │          ^
+    │          │
+    │          X.
+Expression has type:   'undefined' | none() | 'restarting'
+Context expected type: {'p', pid()} | 'undefined'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │          
+
+  'undefined' | none() | 'restarting' is not compatible with {'p', pid()} | 'undefined'
+  because
+  'restarting' is not compatible with {'p', pid()} | 'undefined'
+  because
+  'restarting' is not compatible with {'p', pid()}
+
+3 ERRORS

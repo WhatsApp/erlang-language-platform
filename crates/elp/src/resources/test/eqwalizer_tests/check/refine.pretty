@@ -1,0 +1,493 @@
+error: incompatible_types
+   ┌─ check/src/refine.erl:12:17
+   │
+12 │ param1(X, X) -> X.
+   │                 ^ X.
+Expression has type:   _B
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:16:17
+   │
+16 │ param2(X, X) -> X.
+   │                 ^
+   │                 │
+   │                 X.
+Expression has type:   {B, A}
+Context expected type: {none(), none()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                 
+
+  at tuple index 1:
+  {B, A} is not compatible with {none(), none()}
+  because
+  B is not compatible with none()
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:22:15
+   │
+22 │ maps(M, M) -> M.
+   │               ^ M.
+Expression has type:   #D{atom() => atom()}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:28:16
+   │
+28 │ funs1(F, F) -> F.
+   │                ^
+   │                │
+   │                F.
+Expression has type:   fun((B | A) -> A)
+Context expected type: fun((A | B) -> none())
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                
+
+  fun((B | A) -> A) is not compatible with fun((A | B) -> none())
+  because
+  A is not compatible with none()
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:34:16
+   │
+34 │ funs2(F, F) -> F.
+   │                ^
+   │                │
+   │                F.
+Expression has type:   fun((atom() | A) -> A)
+Context expected type: fun((A | atom()) -> none())
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                
+
+  fun((atom() | A) -> A) is not compatible with fun((A | atom()) -> none())
+  because
+  A is not compatible with none()
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:84:27
+   │
+84 │ list_trick_neg([X], _) -> X.
+   │                           ^ X.
+Expression has type:   term()
+Context expected type: U
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/refine.erl:92:28
+   │
+92 │ tuple_trick_neg({X}, _) -> X.
+   │                            ^ X.
+Expression has type:   term()
+Context expected type: U
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:101:8
+    │
+101 │     -> X.
+    │        ^ X.
+Expression has type:   _T
+Context expected type: U
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:112:24
+    │
+112 │     (#{key := Val}) -> Val.
+    │                        ^^^ Val.
+Expression has type:   term()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:117:26
+    │
+117 │     (<<X, Y/binary>>) -> {X, Y}.
+    │                          ^^^^^^
+    │                          │
+    │                          {X, Y}.
+Expression has type:   {number(), binary()}
+Context expected type: {none(), none()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+  at tuple index 1:
+  {number(), binary()} is not compatible with {none(), none()}
+  because
+  number() is not compatible with none()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:126:32
+    │
+126 │     (#my_rec{n = N, a = A}) -> {N, A}.
+    │                                ^^^^^^
+    │                                │
+    │                                {N, A}.
+Expression has type:   {number(), atom()}
+Context expected type: {none(), none()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                                
+
+  at tuple index 1:
+  {number(), atom()} is not compatible with {none(), none()}
+  because
+  number() is not compatible with none()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:139:28
+    │
+139 │ refine_alist1_neg(X, X) -> X.
+    │                            ^ X.
+Expression has type:   ['a' | 'b']
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:144:24
+    │
+144 │ refine_alist2(X, X) -> X.
+    │                        ^
+    │                        │
+    │                        X.
+Expression has type:   ['a' | 'b']
+Context expected type: ['a']
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                        
+
+  ['a' | 'b'] is not compatible with ['a']
+  because
+  'a' | 'b' is not compatible with 'a'
+  because
+  'b' is not compatible with 'a'
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:151:28
+    │
+151 │ refine_tlist1_neg(X, X) -> X.
+    │                            ^ X.
+Expression has type:   ['a' | 'b']
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:156:24
+    │
+156 │ refine_tlist2(X, X) -> X.
+    │                        ^
+    │                        │
+    │                        X.
+Expression has type:   ['a' | 'b']
+Context expected type: ['a']
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                        
+
+  ['a' | 'b'] is not compatible with ['a']
+  because
+  'a' | 'b' is not compatible with 'a'
+  because
+  'b' is not compatible with 'a'
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:166:5
+    │
+166 │     Res.
+    │     ^^^ Res.
+Expression has type:   {'cons', 'nil' | my_list()}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:177:24
+    │
+177 │ opaque1_neg({X, _}) -> X.
+    │                        ^ X.
+Expression has type:   term()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:183:24
+    │
+183 │ opaque2_neg([X, _]) -> X.
+    │                        ^ X.
+Expression has type:   term()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:191:7
+    │
+191 │ }) -> X.
+    │       ^ X.
+Expression has type:   term()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:198:23
+    │
+198 │ opaque_4_neg(X, X) -> X.
+    │                       ^ X.
+Expression has type:   {term(), term()}
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:202:31
+    │
+202 │ record_as_tuple1_neg(R, R) -> R.
+    │                               ^ R.
+Expression has type:   #my_rec{}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:206:31
+    │
+206 │ record_as_tuple2_neg(R, R) -> R.
+    │                               ^ R.
+Expression has type:   #my_rec{}
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:218:28
+    │
+218 │ record_as_tuple5_neg(R) -> R.
+    │                            ^ R.
+Expression has type:   tuple()
+Context expected type: #my_rec{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:222:28
+    │
+222 │ record_as_tuple6_neg(R) -> R.
+    │                            ^
+    │                            │
+    │                            R.
+Expression has type:   #my_rec{}
+Context expected type: {'not_my_rec', term(), term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                            
+
+  at tuple index 1:
+  {'my_rec', number(), atom()} is not compatible with {'not_my_rec', term(), term()}
+  because
+  'my_rec' is not compatible with 'not_my_rec'
+
+error: unknown_id
+    ┌─ check/src/refine.erl:226:10
+    │
+226 │     i :: unknown:unknown()
+    │          ^^^^^^^^^^^^^^^^^ Unknown id: unknown:unknown/0
+
+See https://fb.me/eqwalizer_errors#unknown_id
+
+error: reference_to_invalid_type
+    ┌─ check/src/refine.erl:228:1
+    │  
+228 │ ╭ -spec record_as_tuple7_neg
+229 │ │ (#bad_rec{}) -> {bad_rec, atom()}.
+    │ ╰─────────────────────────────────^ record_as_tuple7_neg/1 references type with invalid definition: #bad_rec{}
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:240:28
+    │
+240 │ tuple_as_record2_neg(R) -> R.
+    │                            ^
+    │                            │
+    │                            R.
+Expression has type:   {'my_rec', atom(), number()}
+Context expected type: #my_rec{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                            
+
+  at tuple index 2:
+  {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:253:5
+    │
+253 │     X * 2.
+    │     ^ X.
+Expression has type:   #my_rec{}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:259:5
+    │
+259 │     X * 2.
+    │     ^ X.
+Expression has type:   #my_rec{}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:262:14
+    │
+262 │ ftt(X, _) -> X.
+    │              ^ X.
+Expression has type:   fun((T) -> 'ok')
+Context expected type: T
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:265:20
+    │
+265 │ my_rec_to_ok(X) -> X.
+    │                    ^ X.
+Expression has type:   #my_rec{}
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:277:26
+    │
+277 │ use2_neg(F, X) -> ftt(F, X).
+    │                          ^
+    │                          │
+    │                          X.
+Expression has type:   {'my_rec', atom(), number()}
+Context expected type: #my_rec{}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+  at tuple index 2:
+  {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:289:26
+    │
+289 │ use4_neg(F, X) -> ftt(F, X).
+    │                          ^
+    │                          │
+    │                          X.
+Expression has type:   #my_rec{}
+Context expected type: {'my_rec', atom(), number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+  at tuple index 2:
+  {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), number()}
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:305:21
+    │
+305 │ use6_neg(X) -> ttt2(X, x).
+    │                     ^
+    │                     │
+    │                     X.
+Expression has type:   #my_rec{}
+Context expected type: {'my_rec', atom(), atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  at tuple index 2:
+  {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), atom()}
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:309:16
+    │
+309 │ use7_neg(X) -> ttt1(X, 1).
+    │                ^^^^^^^^^^
+    │                │
+    │                ttt1(X, 1).
+Expression has type:   atom() | number()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                
+
+  atom() | number() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:313:13
+    │
+313 │ deets(X) -> X.
+    │             ^
+    │             │
+    │             X.
+Expression has type:   #my_rec{} | 'a'
+Context expected type: {'my_rec', term(), term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │             
+
+  #my_rec{} | 'a' is not compatible with {'my_rec', term(), term()}
+  because
+  'a' is not compatible with {'my_rec', term(), term()}
+
+error: incompatible_types
+    ┌─ check/src/refine.erl:323:5
+    │
+323 │     B.
+    │     ^
+    │     │
+    │     B.
+Expression has type:   'undefined' | binary()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  'undefined' | binary() is not compatible with binary()
+  because
+  'undefined' is not compatible with binary()
+
+error: reveal_type
+    ┌─ check/src/refine.erl:405:27
+    │
+405 │     eqwalizer:reveal_type(Name),
+    │                           ^^^^ atom()
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+38 ERRORS

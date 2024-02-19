@@ -1,0 +1,17 @@
+error: unknown_id
+  ┌─ check/src/behave.erl:8:20
+  │
+8 │ -callback foo() -> behave1:test().
+  │                    ^^^^^^^^^^^^^^ Unknown id: behave1:test/0
+
+See https://fb.me/eqwalizer_errors#unknown_id
+
+error: unbound_type_var
+   ┌─ check/src/behave.erl:10:1
+   │
+10 │ -type invalid() :: _T.
+   │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+2 ERRORS

@@ -1,0 +1,678 @@
+error: incompatible_types
+   ┌─ check/src/t_maps.erl:36:5
+   │
+36 │     #{0 => 1, 1 => 2}.
+   │     ^^^^^^^^^^^^^^^^^
+   │     │
+   │     #{..}.
+Expression has type:   #D{number() => number()}
+Context expected type: #D{number() => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  #D{number() => number()} is not compatible with #D{number() => atom()}
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/t_maps.erl:41:5
+   │
+41 │     #{0 => zero, 1 => 2}.
+   │     ^^^^^^^^^^^^^^^^^^^^
+   │     │
+   │     #{..}.
+Expression has type:   #D{number() => 'zero' | number()}
+Context expected type: #D{number() => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  #D{number() => 'zero' | number()} is not compatible with #D{number() => atom()}
+  because
+  'zero' | number() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/t_maps.erl:56:5
+   │
+56 │     #{zero => 0, one => one}.
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^
+   │     │
+   │     #{..}.
+Expression has type:   #S{one := 'one', zero := number()}
+Context expected type: #S{one => number(), zero := number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │     
+
+  at shape key 'one':
+  #S{one := 'one', zero := number()} is not compatible with #S{one => number(), zero := number()}
+  because
+  'one' is not compatible with number()
+
+error: incompatible_types
+   ┌─ check/src/t_maps.erl:80:5
+   │
+80 │     M#{}.
+   │     ^ M.
+Expression has type:   term()
+Context expected type: #D{term() => term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:120:5
+    │
+120 │     S#{bar := true}.
+    │     ^ S.
+Expression has type:   term()
+Context expected type: #D{term() => term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:130:25
+    │
+130 │ meet_dict2_neg(D, D) -> D.
+    │                         ^
+    │                         │
+    │                         D.
+Expression has type:   #D{b() => term()}
+Context expected type: #D{n() => term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  #D{b() => term()} is not compatible with #D{n() => term()}
+  because
+  b() is not compatible with n()
+  because
+  boolean() is not compatible with n()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:140:26
+    │
+140 │ meet_shape2_neg(S, S) -> S.
+    │                          ^
+    │                          │
+    │                          S.
+Expression has type:   #S{a := b()}
+Context expected type: #S{a := n()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+  at shape key 'a':
+  #S{a := b()} is not compatible with #S{a := n()}
+  because
+  b() is not compatible with n()
+  because
+  boolean() is not compatible with n()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:145:26
+    │
+145 │ meet_shape3_neg(S, S) -> S.
+    │                          ^
+    │                          │
+    │                          S.
+Expression has type:   #S{a := b()}
+Context expected type: #S{a => n()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+  at shape key 'a':
+  #S{a := b()} is not compatible with #S{a => n()}
+  because
+  b() is not compatible with n()
+  because
+  boolean() is not compatible with n()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:155:26
+    │
+155 │ meet_shape5_neg(S, S) -> S.
+    │                          ^
+    │                          │
+    │                          S.
+Expression has type:   #S{a => b()}
+Context expected type: #S{a := b()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                          
+
+These associations do not match:
+
+  #S{
+-    a := ...
++    a => ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:202:5
+    │
+202 │     S#{K => V}.
+    │     ^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #D{atom() | n() => a()}
+Context expected type: #D{a() => a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #D{atom() | n() => a()} is not compatible with #D{a() => a()}
+  because
+  atom() | n() is not compatible with a()
+  because
+  atom() | n() is not compatible with atom()
+  because
+  n() is not compatible with atom()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:208:5
+    │
+208 │     S#{K => V}.
+    │     ^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #D{atom() | n() => a()}
+Context expected type: #D{n() => a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #D{atom() | n() => a()} is not compatible with #D{n() => a()}
+  because
+  atom() | n() is not compatible with n()
+  because
+  atom() | n() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:216:5
+    │
+216 │     S#{K => V}.
+    │     ^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #D{atom() | n() => a()}
+Context expected type: #D{n() => a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #D{atom() | n() => a()} is not compatible with #D{n() => a()}
+  because
+  atom() | n() is not compatible with n()
+  because
+  atom() | n() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:224:5
+    │
+224 │     S#{K => V}.
+    │     ^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #D{atom() | n() => a()}
+Context expected type: #D{n() => a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #D{atom() | n() => a()} is not compatible with #D{n() => a()}
+  because
+  atom() | n() is not compatible with n()
+  because
+  atom() | n() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:242:5
+    │
+242 │     FB#{foo := F1, bar := B1}.
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #S{bar := B1, foo := F1}
+Context expected type: foo_bar(B1, F1)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #S{bar := B1, foo := F1} is not compatible with foo_bar(B1, F1)
+  because
+  at shape key 'bar':
+  #S{bar := B1, foo := F1} is not compatible with #S{bar := F1, foo := B1}
+  because
+  B1 is not compatible with F1
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:254:5
+    │
+254 │     FB#{foo => F1, bar => B1}.
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #S{bar := B1, foo := F1}
+Context expected type: foo_bar_opt(B1, F1)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #S{bar := B1, foo := F1} is not compatible with foo_bar_opt(B1, F1)
+  because
+  at shape key 'bar':
+  #S{bar := B1, foo := F1} is not compatible with #S{bar => F1, foo => B1}
+  because
+  B1 is not compatible with F1
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:266:5
+    │
+266 │     Dict#{V2 => K2}.
+    │     ^^^^^^^^^^^^^^^
+    │     │
+    │     ..#{..}.
+Expression has type:   #D{K1 | V2 => V1 | K2}
+Context expected type: kv(K1 | K2, V1 | V2)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  #D{K1 | V2 => V1 | K2} is not compatible with kv(K1 | K2, V1 | V2)
+  because
+  #D{K1 | V2 => V1 | K2} is not compatible with #D{K1 | K2 => V1 | V2}
+  because
+  K1 | V2 is not compatible with K1 | K2
+  because
+  V2 is not compatible with K1 | K2
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:283:19
+    │
+283 │     needs_shape_a(X#{b => hello}).
+    │                   ^^^^^^^^^^^^^^
+    │                   │
+    │                   ..#{..}.
+Expression has type:   #S{a := number(), b := 'hello'}
+Context expected type: #S{a := term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+These associations do not match:
+
+  #S{
++    b := ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:307:22
+    │
+307 │         #{K := V} -> {K, V};
+    │                      ^^^^^^
+    │                      │
+    │                      {K, V}.
+Expression has type:   {a(), n()}
+Context expected type: {n(), a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                      
+
+  at tuple index 1:
+  {a(), n()} is not compatible with {n(), a()}
+  because
+  a() is not compatible with n()
+  because
+  atom() is not compatible with n()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:321:5
+    │
+321 │     {A, N}.
+    │     ^^^^^^
+    │     │
+    │     {A, N}.
+Expression has type:   {a(), n()}
+Context expected type: {n(), a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at tuple index 1:
+  {a(), n()} is not compatible with {n(), a()}
+  because
+  a() is not compatible with n()
+  because
+  atom() is not compatible with n()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:334:25
+    │
+334 │ to_map3_neg(#{} = M) -> M;
+    │                         ^
+    │                         │
+    │                         M.
+Expression has type:   #D{V => K}
+Context expected type: #D{K => V}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  #D{V => K} is not compatible with #D{K => V}
+  because
+  V is not compatible with K
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:351:25
+    │
+351 │ to_map5_neg(#{} = M) -> M.
+    │                         ^
+    │                         │
+    │                         M.
+Expression has type:   #D{a() => n()} | #D{n() => a()} | #S{id => 'id' | 'no_id'}
+Context expected type: #D{a() | n() => a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  #D{a() => n()} | #D{n() => a()} | #S{id => 'id' | 'no_id'} is not compatible with #D{a() | n() => a()}
+  because
+  #D{a() => n()} is not compatible with #D{a() | n() => a()}
+  because
+  n() is not compatible with a()
+  because
+  number() is not compatible with a()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:377:22
+    │
+377 │         #{K := V} -> {K, V};
+    │                      ^^^^^^
+    │                      │
+    │                      {K, V}.
+Expression has type:   {'a' | 'b', a()}
+Context expected type: {n(), a()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                      
+
+  at tuple index 1:
+  {'a' | 'b', a()} is not compatible with {n(), a()}
+  because
+  'a' | 'b' is not compatible with n()
+  because
+  'a' | 'b' is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:508:17
+    │
+508 │ sub_3_neg(M) -> M.
+    │                 ^
+    │                 │
+    │                 M.
+Expression has type:   #S{a := atom()}
+Context expected type: #S{a => atom(), n := number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                 
+
+These associations do not match:
+
+  #S{
+-    n := ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:536:5
+    │
+536 │     maps:update_with(a, F, a, Map).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ maps:update_with('a', F, 'a', Map).
+Expression has type:   dict  map #D{'a' => 'b' | 'c' | 'a'}
+Context expected type: shape map #S{a => 'b' | 'c'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:571:5
+    │
+571 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   rec_shape()
+Context expected type: rec_shape_v2()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  rec_shape() is not compatible with rec_shape_v2()
+  because
+  #S{item := rec_shape() | 'undefined'} is not compatible with rec_shape_v2()
+  because
+  #S{item := rec_shape() | 'undefined'} is not compatible with #S{item_v2 := rec_shape_v2() | 'undefined'}
+  These associations do not match:
+
+  #S{
++    item    := ...
+-    item_v2 := ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:629:5
+    │
+629 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   gen_shape('a' | 'b')
+Context expected type: 'a' | #S{item := 'a' | #S{item := 'a' | gen_shape('a')}}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  gen_shape('a' | 'b') is not compatible with 'a' | #S{item := 'a' | #S{item := 'a' | gen_shape('a')}}
+  because
+  #S{item := 'a' | 'b' | gen_shape('a' | 'b')} is not compatible with 'a' | #S{item := 'a' | #S{item := 'a' | gen_shape('a')}}
+  because
+  #S{item := 'a' | 'b' | gen_shape('a' | 'b')} is not compatible with 'a'
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:641:5
+    │
+641 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   gen_shape_v2('a')
+Context expected type: gen_shape('a')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  gen_shape_v2('a') is not compatible with gen_shape('a')
+  because
+  #S{item_v2 := 'a' | gen_shape_v2('a')} is not compatible with gen_shape('a')
+  because
+  #S{item_v2 := 'a' | gen_shape_v2('a')} is not compatible with #S{item := 'a' | gen_shape('a')}
+  These associations do not match:
+
+  #S{
+-    item    := ...
++    item_v2 := ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:648:5
+    │
+648 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{a => 'va', b => 'vb', c => 'vc', d => 'vd'}
+Context expected type: #S{a => 'va', b => 'vb', c => 'vc'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
++    d => ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:661:5
+    │
+661 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{a => 'va', b => 'vb', c => 'vc', d => 'vd', e => 've'}
+Context expected type: #S{a => 'ka', b => 'kb', c => 'kc'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
++    d => ...
++    e => ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:675:5
+    │
+675 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{}
+Context expected type: #S{a => 'va', b => 'vb', c := 'vc'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
+-    c := ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:682:5
+    │
+682 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{a => 'ka', b => 'kb', c => 'kc'}
+Context expected type: #S{a => 'ka', b := 'kb', c => 'kc'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
+-    b := ...
++    b => ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:689:5
+    │
+689 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{a => 'ka', b => 'kb', c => 'kc'}
+Context expected type: #S{a => 'ka', b := 'kb', c => 'kc'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
+-    b := ...
++    b => ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:710:5
+    │
+710 │     X.
+    │     ^
+    │     │
+    │     X.
+Expression has type:   #S{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
+Context expected type: #S{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+These associations do not match:
+
+  #S{
++    k_extra  => ...
+-    k_req1   := ...
++    k_req1   => ...
+-    k_req2   := ...
++    k_req2   => ...
+-    k_req3   := ...
+     ...
+  }
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:732:27
+    │
+732 │ dict_to_shape_neg_1(M) -> M.
+    │                           ^ M.
+Expression has type:   dict  map #D{'a' | 'b' => boolean()}
+Context expected type: shape map #S{a => 'true', b => boolean()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:737:27
+    │
+737 │ dict_to_shape_neg_2(M) -> M.
+    │                           ^ M.
+Expression has type:   dict  map #D{'a' | 'b' => boolean()}
+Context expected type: shape map #S{a => boolean(), b := term()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/t_maps.erl:742:27
+    │
+742 │ dict_to_shape_neg_3(M) -> M.
+    │                           ^ M.
+Expression has type:   dict  map #D{'a' | 'b' => boolean()}
+Context expected type: shape map #S{a => boolean()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+36 ERRORS

@@ -1,0 +1,10 @@
+error: fun_arity_mismatch
+   ┌─ check_gradual/src/dyn_calls.erl:49:3
+   │
+49 │   (fun() -> res end)(arg),
+   │   ^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 0 used as fun with 1 arguments
+
+See https://fb.me/eqwalizer_errors#fun_arity_mismatch
+
+1 ERROR

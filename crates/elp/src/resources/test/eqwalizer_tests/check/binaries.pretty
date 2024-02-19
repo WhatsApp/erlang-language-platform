@@ -1,0 +1,81 @@
+error: incompatible_types
+   ┌─ check/src/binaries.erl:24:17
+   │
+24 │ test04_neg() -> <<>>.
+   │                 ^^^^ <<..>>.
+Expression has type:   binary()
+Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:32:20
+   │
+32 │ test05_neg(A) -> <<A/signed>>.
+   │                    ^ A.
+Expression has type:   atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:35:23
+   │
+35 │ test06_neg(A, S) -> <<A:S>>.
+   │                       ^ A.
+Expression has type:   atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:38:18
+   │
+38 │ test07_neg(A) -> [A].
+   │                  ^^^ [A].
+Expression has type:   [atom()]
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:55:7
+   │
+55 │     <<"binary"/binary>>.
+   │       ^^^^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:74:9
+   │
+74 │     <<X:A>> = Bits,
+   │         ^ A.
+Expression has type:   atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:80:9
+   │
+80 │     <<X:(self())>> = Bits,
+   │         ^^^^^^^^ erlang:self().
+Expression has type:   pid()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/binaries.erl:89:7
+   │
+89 │     <<[]>>.
+   │       ^^ [].
+Expression has type:   []
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+8 ERRORS

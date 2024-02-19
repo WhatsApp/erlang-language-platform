@@ -1,0 +1,18 @@
+error: incompatible_types
+   ┌─ check/src/format.erl:13:3
+   │
+13 │   io_lib:format("~p", [X]).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   io_lib:format(string_lit, [X]).
+Expression has type:   io_lib:chars()
+Context expected type: string()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │   
+
+  io_lib:chars() is not compatible with string()
+  because
+  [number() | io_lib:chars()] is not compatible with string()
+
+1 ERROR

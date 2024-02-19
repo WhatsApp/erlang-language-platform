@@ -1,0 +1,49 @@
+error: reference_to_invalid_type
+   ┌─ check_gradual/src/gradual_misc.erl:11:1
+   │  
+11 │ ╭ -spec use_invalid_opaque_1(
+12 │ │     opaque:contravariant(a)
+13 │ │ ) -> opaque:contravariant(a | b).
+   │ ╰────────────────────────────────^ use_invalid_opaque_1/1 references type with invalid definition: opaque:contravariant/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: reference_to_invalid_type
+   ┌─ check_gradual/src/gradual_misc.erl:18:1
+   │  
+18 │ ╭ -spec use_invalid_opaque_2(
+19 │ │     opaque:contravariant(a | b)
+20 │ │ ) -> opaque:contravariant(a).
+   │ ╰────────────────────────────^ use_invalid_opaque_2/1 references type with invalid definition: opaque:contravariant/1
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_misc.erl:38:5
+   │
+38 │     <<X || X <- [], (X ++ X) >>.
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ << || >>.
+Expression has type:   binary()
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check_gradual/src/gradual_misc.erl:46:41
+   │
+46 │ refine_tuple_neg(T) when is_tuple(T) -> T;
+   │                                         ^
+   │                                         │
+   │                                         T.
+Expression has type:   none() | {'b', 'c'}
+Context expected type: 'a' | {none()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                                         
+
+  none() | {'b', 'c'} is not compatible with 'a' | {none()}
+  because
+  {'b', 'c'} is not compatible with 'a' | {none()}
+  expected union does not contain any tuple type of size 2
+
+4 ERRORS

@@ -1,0 +1,278 @@
+error: incompatible_types
+   ┌─ check/src/overloaded.erl:29:5
+   │
+29 │     B.
+   │     ^ B.
+Expression has type:   binary()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: not_enough_info_to_branch
+   ┌─ check/src/overloaded.erl:68:5
+   │
+68 │     swap_proxy_1(AB).
+   │     ^^^^^^^^^^^^^^^^ swap_proxy_1(AB).
+Not enough info to branch. Arg types: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+   ┌─ check/src/overloaded.erl:74:5
+   │
+74 │     swap_proxy_2(AB).
+   │     ^^^^^^^^^^^^^^^^ swap_proxy_2(AB).
+Not enough info to branch. Arg types: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+   ┌─ check/src/overloaded.erl:80:5
+   │
+80 │     overloaded:swap_proxy_3(AB).
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overloaded:swap_proxy_3(AB).
+Not enough info to branch. Arg types: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+   ┌─ check/src/overloaded.erl:86:5
+   │
+86 │     overloaded:swap_proxy_4(AB).
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overloaded:swap_proxy_4(AB).
+Not enough info to branch. Arg types: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: fun_in_overload_arg
+    ┌─ check/src/overloaded.erl:102:11
+    │
+102 │     Res = bar(fun(a) -> a end),
+    │           ^^^^^^^^^^^^^^^^^^^^ bar(fun).
+Lambdas are not allowed as args to overloaded functions
+
+See https://fb.me/eqwalizer_errors#fun_in_overload_arg
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:107:11
+    │
+107 │     Res = bar(F),
+    │           ^^^^^^ bar(F).
+Not enough info to branch. Arg types: fun(('a') -> 'b')
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:112:11
+    │
+112 │     Res = bar(F),
+    │           ^^^^^^ bar(F).
+Not enough info to branch. Arg types: fun(('a') -> 'c')
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:117:11
+    │
+117 │     Res = bar(F),
+    │           ^^^^^^ bar(F).
+Not enough info to branch. Arg types: fun(('a') -> 'z')
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: fun_in_overload_arg
+    ┌─ check/src/overloaded.erl:126:11
+    │
+126 │     Res = bar({fun(a) -> a end}),
+    │           ^^^^^^^^^^^^^^^^^^^^^^ bar({fun}).
+Lambdas are not allowed as args to overloaded functions
+
+See https://fb.me/eqwalizer_errors#fun_in_overload_arg
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:141:5
+    │
+141 │     Map.
+    │     ^^^ Map.
+Expression has type:   maps:iterator(Key, Value)
+Context expected type: #D{Key => Value}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:150:17
+    │
+150 │         true -> maps_filter(F, M);
+    │                 ^^^^^^^^^^^^^^^^^ maps_filter(F, M).
+Not enough info to branch. Arg types: fun((term(), term()) -> boolean()), #D{number() => number()}
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:166:5
+    │
+166 │     get_list(KeysDefaults, List, []).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ get_list(KeysDefaults, List, []).
+Not enough info to branch. Arg types: [prop(K, V)], props(K, V), []
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:189:5
+    │  
+189 │ ╭     get_list(T, List,
+190 │ │         [pget(Key, List, Default)|Acc]
+191 │ │     );
+    │ ╰─────^ get_list(T, List, [pget(Key, List, Default) | Acc]).
+Not enough info to branch. Arg types: [prop(K, V)], props(K, V), [V]
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:198:37
+    │
+198 │ overlap_neg_1(X) when is_atom(X) -> 1;
+    │                                     ^ 1.
+Expression has type:   number()
+Context expected type: {T}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:203:37
+    │
+203 │ overlap_neg_2(X) when is_atom(X) -> 1;
+    │                                     ^ 1.
+Expression has type:   number()
+Context expected type: {T}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:227:5
+    │
+227 │     get_list_atoms(ABs, ABs, [b]).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ get_list_atoms(ABs, ABs, ['b']).
+Not enough info to branch. Arg types: [{'a', 'b'}], [{'a', 'b'}], ['b']
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:231:5
+    │
+231 │     get_list_atoms([b], [{a, b}], [b]).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ get_list_atoms(['b'], [{'a', 'b'}], ['b']).
+Not enough info to branch. Arg types: ['b'], [{'a', 'b'}], ['b']
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:236:5
+    │
+236 │     get_list_any(ABs, ABs, [b]).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ get_list_any(ABs, ABs, ['b']).
+Not enough info to branch. Arg types: [{'a', 'b'}], [{'a', 'b'}], ['b']
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:242:5
+    │
+242 │     get_list_any([b], [{a, b}], [b]).
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ get_list_any(['b'], [{'a', 'b'}], ['b']).
+Not enough info to branch. Arg types: ['b'], [{'a', 'b'}], ['b']
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:246:23
+    │
+246 │ take_ok_or_any(ok) -> ok;
+    │                       ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: 'error'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:251:5
+    │
+251 │     take_ok_or_any(Any).
+    │     ^^^^^^^^^^^^^^^^^^^ take_ok_or_any(Any).
+Not enough info to branch. Arg types: term()
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:259:21
+    │
+259 │ use_over(X) -> over(X).
+    │                     ^
+    │                     │
+    │                     X.
+Expression has type:   number() | {}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                     
+
+  number() | {} is not compatible with number()
+  because
+  {} is not compatible with number()
+
+error: unbound_type_var
+    ┌─ check/src/overloaded.erl:261:1
+    │
+261 │ -type invalid() :: _T.
+    │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+
+See https://fb.me/eqwalizer_errors#unbound_type_var
+
+error: reference_to_invalid_type
+    ┌─ check/src/overloaded.erl:263:1
+    │  
+263 │ ╭ -spec use_invalid_neg(a) -> a;
+264 │ │                  (err) -> invalid().
+    │ ╰─────────────────────────────────^ use_invalid_neg/1 references type with invalid definition: invalid/0
+
+See https://fb.me/eqwalizer_errors#reference_to_invalid_type
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:269:9
+    │
+269 │     _ = swap(""),
+    │         ^^^^^^^^ swap(string_lit).
+Not enough info to branch. Arg types: []
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: not_enough_info_to_branch
+    ┌─ check/src/overloaded.erl:286:5
+    │
+286 │     fst_gen(X).
+    │     ^^^^^^^^^^ fst_gen(X).
+Not enough info to branch. Arg types: {atom()} | [atom()]
+
+See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:290:5
+    │
+290 │     swap(ok).
+    │     ^^^^^^^^ swap('ok').
+Expression has type:   binary()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:308:19
+    │
+308 │ reachable_3(_) -> b.
+    │                   ^ 'b'.
+Expression has type:   'b'
+Context expected type: 'a'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+29 ERRORS

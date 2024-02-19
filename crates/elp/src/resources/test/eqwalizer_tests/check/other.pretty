@@ -1,0 +1,34 @@
+error: unbound_var
+   ┌─ check/src/other.erl:35:5
+   │
+35 │     fun inter/1.
+   │     ^^^^^^^^^^^ Unbound var: inter/1
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: unbound_var
+   ┌─ check/src/other.erl:40:5
+   │
+40 │     fun other:inter/1.
+   │     ^^^^^^^^^^^^^^^^^ Unbound var: other:inter/1
+
+See https://fb.me/eqwalizer_errors#unbound_var
+
+error: incompatible_types
+   ┌─ check/src/other.erl:46:27
+   │
+46 │ any_as_metadata_neg(M) -> M.
+   │                           ^
+   │                           │
+   │                           M.
+Expression has type:   term()
+Context expected type: logger:metadata()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                           
+
+  term() is not compatible with logger:metadata()
+  because
+  term() is not compatible with #D{dynamic() => dynamic()}
+
+3 ERRORS
