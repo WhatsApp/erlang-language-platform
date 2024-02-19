@@ -25,6 +25,7 @@ use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_eqwalizer::ipc::IpcHandle;
+use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
@@ -221,6 +222,10 @@ impl RootDatabase {
 
     pub fn set_eqwalizer_mode(&mut self, mode: Mode) {
         self.eqwalizer.mode = mode
+    }
+
+    pub fn set_eqwalizer_config(&mut self, config: EqwalizerConfig) {
+        self.eqwalizer.config = config
     }
 
     pub fn resolved_includes(&self, file_id: FileId) -> Option<Includes> {

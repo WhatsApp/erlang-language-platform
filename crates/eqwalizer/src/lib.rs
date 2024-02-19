@@ -63,12 +63,42 @@ impl Mode {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct EqwalizerConfig {
+    pub gradual_typing: Option<bool>,
+    pub check_redundant_guards: Option<bool>,
+    pub fault_tolerance: Option<bool>,
+    pub occurrence_typing: Option<bool>,
+}
+impl EqwalizerConfig {
+    fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
+        self.gradual_typing
+            .map(|cfg| cmd.env("EQWALIZER_GRADUAL_TYPING", cfg.to_string()));
+        self.check_redundant_guards
+            .map(|cfg| cmd.env("EQWALIZER_CHECK_REDUNDANT_GUARDS", cfg.to_string()));
+        self.fault_tolerance
+            .map(|cfg| cmd.env("EQWALIZER_TOLERATE_ERRORS", cfg.to_string()));
+        self.occurrence_typing
+            .map(|cfg| cmd.env("EQWALIZER_EQWATER", cfg.to_string()));
+    }
+
+    pub fn default_test() -> EqwalizerConfig {
+        EqwalizerConfig {
+            gradual_typing: Some(false),
+            check_redundant_guards: Some(false),
+            fault_tolerance: Some(false),
+            occurrence_typing: Some(true),
+        }
+    }
+}
+
 // Bundle file with command to make sure it's not removed too early
 #[derive(Clone)]
 pub struct Eqwalizer {
     cmd: OsString,
     args: Vec<OsString>,
     pub mode: Mode,
+    pub config: EqwalizerConfig,
     // Used only for the Drop implementation
     _file: Option<Arc<TempPath>>,
 }
@@ -241,6 +271,7 @@ impl Default for Eqwalizer {
             cmd,
             args,
             mode: Mode::Server,
+            config: EqwalizerConfig::default(),
             _file: temp_file.map(Arc::new),
         }
     }
@@ -262,6 +293,7 @@ impl Eqwalizer {
         modules: Vec<&str>,
     ) -> EqwalizerDiagnostics {
         let mut cmd = self.cmd();
+        self.config.set_cmd_env(&mut cmd);
         cmd.arg("ipc");
         cmd.args(modules);
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
