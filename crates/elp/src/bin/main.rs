@@ -165,17 +165,29 @@ mod tests {
     use std::path::Path;
     use std::str;
 
+    use anyhow::Context;
     use bpaf::Args;
+    use elp::build;
+    use elp::build::load;
     use elp::cli::Fake;
+    use elp_eqwalizer::EqwalizerConfig;
+    use elp_eqwalizer::EqwalizerDiagnostics;
+    use elp_eqwalizer::Mode;
     use elp_ide::diagnostics::BASE_URL;
+    use elp_ide::elp_ide_db::elp_base_db::FileId;
+    use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_project_model::AppName;
+    use elp_project_model::DiscoverConfig;
     use expect_test::expect;
     use expect_test::expect_file;
     use expect_test::Expect;
     use expect_test::ExpectFile;
+    use rayon::prelude::*;
     use tempfile::Builder;
     use tempfile::TempDir;
     use test_case::test_case;
 
+    use super::reporting::Reporter;
     use super::*;
 
     macro_rules! args_vec {
@@ -254,6 +266,117 @@ mod tests {
                 _ => {
                     assert_normalised_file(exp_path, &stderr, path);
                     assert!(stdout.is_empty());
+                }
+            }
+        }
+    }
+
+    // We can't run eqwalize_snapshot on all individual snapshots as running a new eqWAlizer
+    // instance for each one is too costly.
+    // This function is a simplified/inlined version of eqwalizer_cli::eqwalize_app,
+    // with panics in case of failures, and checks eqWAlization results per module.
+    pub fn eqwalize_all_snapshots(project: &str, app: &str, buck: bool, config: EqwalizerConfig) {
+        if !buck || cfg!(feature = "buck") {
+            let mut cli = Fake::default();
+            let project_config = DiscoverConfig::new(!buck, "test");
+            let str_path = project_path(project);
+            let project_path: &Path = Path::new(&str_path);
+            let mut loaded = load::load_project_at(
+                &mut cli,
+                project_path,
+                project_config,
+                IncludeOtp::Yes,
+                Mode::Cli,
+            )
+            .with_context(|| format!("Failed to load project at {}", str_path))
+            .unwrap();
+            loaded
+                .analysis_host
+                .raw_database_mut()
+                .set_eqwalizer_config(config);
+            build::compile_deps(&loaded, &mut cli)
+                .with_context(|| format!("Failed to compile deps for project {}", project))
+                .unwrap();
+
+            let analysis = loaded.analysis();
+            let module_index = analysis
+                .module_index(loaded.project_id)
+                .with_context(|| format!("No module index for project {}", project))
+                .unwrap();
+            let file_ids: Vec<FileId> = module_index
+                .iter_own()
+                .filter_map(|(_name, _source, file_id)| {
+                    if analysis.file_app_name(file_id).ok()? == Some(AppName(app.into())) {
+                        Some(file_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let files_count = file_ids.len();
+            let project_id = loaded.project_id;
+            // Use 4 instances for tests
+            let chunk_size = (files_count + 3) / 4;
+            let output = file_ids
+                .clone()
+                .chunks(chunk_size)
+                .par_bridge()
+                .map_with(analysis.clone(), move |analysis, file_ids| {
+                    analysis
+                        .eqwalizer_diagnostics(project_id, file_ids.to_vec())
+                        .expect("cancelled")
+                })
+                .fold(EqwalizerDiagnostics::default, |acc, output| {
+                    acc.combine((*output).clone())
+                })
+                .reduce(EqwalizerDiagnostics::default, |acc, other| {
+                    acc.combine(other)
+                });
+
+            match output {
+                EqwalizerDiagnostics::Diagnostics {
+                    errors: diagnostics_by_module,
+                    ..
+                } => {
+                    for file_id in file_ids {
+                        let mut cli = Fake::default();
+                        let pretty_reporter =
+                            &mut reporting::PrettyReporter::new(&analysis, &loaded, &mut cli);
+                        let module = module_index.module_for_file(file_id).unwrap();
+                        if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
+                            pretty_reporter
+                                .write_eqwalizer_diagnostics(file_id, &diagnostics)
+                                .with_context(|| {
+                                    format!("Failed to write diagnostics for {}", module.as_str())
+                                })
+                                .unwrap();
+                        }
+                        pretty_reporter
+                            .write_error_count()
+                            .with_context(|| {
+                                format!("Failed to write diagnostics for {}", module.as_str())
+                            })
+                            .unwrap();
+
+                        let exp_path = expect_file!(format!(
+                            "../resources/test/{}/{}/{}.pretty",
+                            project,
+                            app,
+                            module.as_str()
+                        ));
+                        let (stdout, _) = cli.to_strings();
+                        assert_normalised_file(exp_path, &stdout, project_path.into());
+                    }
+                }
+                EqwalizerDiagnostics::NoAst { module } => {
+                    panic!(
+                        "Could not run tests because module {} was not found",
+                        module
+                    )
+                }
+                EqwalizerDiagnostics::Error(error) => {
+                    panic!("Could not run tests: {}", error)
                 }
             }
         }
