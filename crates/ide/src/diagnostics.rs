@@ -395,7 +395,7 @@ impl DiagnosticCode {
             DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
             DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
             DiagnosticCode::UnusedInclude => "W0020".to_string(), // Unused include (previously known as L1500 due to a bug)
-            DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated)
+            DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated, replaced by W0020)
             DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
