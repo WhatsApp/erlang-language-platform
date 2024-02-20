@@ -31,7 +31,6 @@ use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
-use hir::sema::InternDatabase;
 use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
@@ -437,7 +436,7 @@ impl<'a> GleanIndexer<'a> {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, range)) = Self::find_range(db, file_id, &ctx) {
+                    if let Some((body, range)) = Self::find_range(&sema, file_id, &ctx) {
                         let arity = args.len() as u32;
                         if let Some(fact) =
                             Self::resolve_call(&sema, target, arity, file_id, &body, range)
@@ -448,7 +447,7 @@ impl<'a> GleanIndexer<'a> {
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = Self::find_range(db, file_id, &ctx) {
+                    if let Some((body, range)) = Self::find_range(&sema, file_id, &ctx) {
                         let arity: Option<u32> = match body[*arity] {
                             Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
                             _ => None,
@@ -465,20 +464,19 @@ impl<'a> GleanIndexer<'a> {
                 }
                 hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
                     let arity = args.len() as u32;
-                    if let Some(fact) = Self::resolve_type(db, &sema, target, arity, file_id, &ctx)
-                    {
+                    if let Some(fact) = Self::resolve_type(&sema, target, arity, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::RecordIndex { name, field: _ }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
@@ -488,7 +486,7 @@ impl<'a> GleanIndexer<'a> {
                     expr: _,
                     field: _,
                 }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
@@ -498,25 +496,25 @@ impl<'a> GleanIndexer<'a> {
                     expr: _,
                     fields: _,
                 }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
                 }
                 hir::AnyExpr::Pat(Pat::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
                 }
                 hir::AnyExpr::Pat(Pat::RecordIndex { name, field: _ }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
                 }
                 hir::AnyExpr::TypeExpr(TypeExpr::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(db, *name, file_id, &ctx) {
+                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
                         acc.push(fact);
                     }
                     acc
@@ -530,7 +528,7 @@ impl<'a> GleanIndexer<'a> {
     }
 
     fn find_range(
-        db: &RootDatabase,
+        sema: &Semantic,
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<(Arc<Body>, TextRange)> {
@@ -538,7 +536,7 @@ impl<'a> GleanIndexer<'a> {
             FormIdx::ModuleAttribute(_) => None,
             FormIdx::FunctionClause(func_id) => {
                 let in_file = InFile::new(file_id, func_id);
-                let (body, source) = db.function_clause_body_with_source(in_file);
+                let (body, source) = sema.db.function_clause_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::PPDirective(_) => None,
@@ -549,33 +547,33 @@ impl<'a> GleanIndexer<'a> {
             FormIdx::Behaviour(_) => None,
             FormIdx::TypeAlias(typ) => {
                 let in_file = InFile::new(file_id, typ);
-                let (body, source) = db.type_body_with_source(in_file);
+                let (body, source) = sema.db.type_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::Spec(spec) => {
                 let in_file = InFile::new(file_id, spec);
-                let (body, source) = db.spec_body_with_source(in_file);
+                let (body, source) = sema.db.spec_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::Callback(call) => {
                 let in_file = InFile::new(file_id, call);
-                let (body, source) = db.callback_body_with_source(in_file);
+                let (body, source) = sema.db.callback_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::OptionalCallbacks(_) => None,
             FormIdx::Record(rec) => {
                 let in_file = InFile::new(file_id, rec);
-                let (body, source) = db.record_body_with_source(in_file);
+                let (body, source) = sema.db.record_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::Attribute(attr) => {
                 let in_file = InFile::new(file_id, attr);
-                let (body, source) = db.attribute_body_with_source(in_file);
+                let (body, source) = sema.db.attribute_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
             FormIdx::CompileOption(comp) => {
                 let in_file = InFile::new(file_id, comp);
-                let (body, source) = db.compile_body_with_source(in_file);
+                let (body, source) = sema.db.compile_body_with_source(in_file);
                 Some((body.body.clone(), source))
             }
 
@@ -602,31 +600,30 @@ impl<'a> GleanIndexer<'a> {
     }
 
     fn resolve_type(
-        db: &RootDatabase,
         sema: &Semantic,
         target: &CallTarget<TypeExprId>,
         arity: u32,
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
-        let (body, range) = Self::find_range(db, file_id, ctx)?;
+        let (body, range) = Self::find_range(sema, file_id, ctx)?;
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
-        let module = module_name(db, def.file.file_id)?;
+        let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 
     fn resolve_record(
-        db: &RootDatabase,
+        sema: &Semantic,
         name: hir::Atom,
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
-        let record_name = db.lookup_atom(name);
-        let def_map = db.def_map(file_id);
+        let record_name = sema.db.lookup_atom(name);
+        let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
-        let module = module_name(db, def.file.file_id)?;
-        let (_, range) = Self::find_range(db, file_id, ctx)?;
+        let module = module_name(sema.db.upcast(), def.file.file_id)?;
+        let (_, range) = Self::find_range(sema, file_id, ctx)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
     }
