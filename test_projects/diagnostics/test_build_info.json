@@ -8,10 +8,11 @@
       "include_dirs": [
         "include"
       ],
-      "macros": [
-        "TEST",
-        "COMMON_TEST"
-      ],
+      "macros": {
+        "TEST": "true",
+        "COMMON_TEST": "true",
+        "MEANING_OF_LIFE": "fortytwo"
+      },
       "name": "app_a",
       "src_dirs": [
         "src"

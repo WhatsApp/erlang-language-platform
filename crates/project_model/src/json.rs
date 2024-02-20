@@ -16,6 +16,8 @@ use anyhow::Context;
 use anyhow::Result;
 use eetf::Atom;
 use eetf::Term;
+use eetf::Tuple;
+use fxhash::FxHashMap;
 use indexmap::indexset;
 use indexmap::IndexSet;
 use paths::AbsPath;
@@ -52,7 +54,7 @@ pub struct JsonProjectAppData {
     #[serde(default)]
     pub include_dirs: Vec<String>,
     #[serde(default)]
-    pub macros: Vec<String>,
+    pub macros: FxHashMap<String, String>,
 }
 
 fn default_src_dirs() -> Vec<String> {
@@ -75,7 +77,13 @@ impl JsonProjectAppData {
         let macros = self
             .macros
             .iter()
-            .map(|macros| Term::from(Atom::from(macros.clone())))
+            .map(|(key, value)| {
+                let elements: Vec<Term> = vec![
+                    Term::from(Atom::from(key.clone())),
+                    Term::from(Atom::from(value.clone())),
+                ];
+                Term::from(Tuple::from(elements))
+            })
             .collect();
         let app_type = match is_dep {
             true => AppType::Dep,
@@ -122,10 +130,17 @@ impl JsonProjectAppData {
     }
 }
 
-fn convert_macro(mac: &eetf::Term) -> String {
+fn convert_macro(mac: &eetf::Term) -> (String, String) {
     match mac {
-        Term::Atom(atom) => atom.name.clone(),
-        _ => panic!("Macro should be an Atom"),
+        Term::Atom(atom) => (atom.name.clone(), "true".to_string()),
+        Term::Tuple(tuple) => match &tuple.elements[..] {
+            [Term::Atom(key), Term::Atom(value)] => (key.name.clone(), value.name.to_string()),
+            _ => panic!("Invalid macro in ${tuple}"),
+        },
+        term => panic!(
+            "Term not supported for macro definition: {}",
+            term.to_string()
+        ),
     }
 }
 

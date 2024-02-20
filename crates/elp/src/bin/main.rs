@@ -729,28 +729,28 @@ mod tests {
             assert!(PathBuf::from(tmp_file.clone()).exists());
             let content = fs::read_to_string(tmp_file).unwrap();
             expect![[r#"
-            {
-              "apps": [
                 {
-                  "name": "app_a",
-                  "dir": "app_a",
-                  "src_dirs": [
-                    "src"
+                  "apps": [
+                    {
+                      "name": "app_a",
+                      "dir": "app_a",
+                      "src_dirs": [
+                        "src"
+                      ],
+                      "extra_src_dirs": [
+                        "test"
+                      ],
+                      "include_dirs": [
+                        "include"
+                      ],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      }
+                    }
                   ],
-                  "extra_src_dirs": [
-                    "test"
-                  ],
-                  "include_dirs": [
-                    "include"
-                  ],
-                  "macros": [
-                    "TEST",
-                    "COMMON_TEST"
-                  ]
-                }
-              ],
-              "deps": []
-            }"#]]
+                  "deps": []
+                }"#]]
             .assert_eq(content.as_str());
         }
     }
@@ -800,10 +800,11 @@ mod tests {
                   "include_dirs": [
                     "include"
                   ],
-                  "macros": [
-                    "TEST",
-                    "COMMON_TEST"
-                  ]
+                  "macros": {
+                    "MEANING_OF_LIFE": "fortytwo",
+                    "TEST": "true",
+                    "COMMON_TEST": "true"
+                  }
                 }
               ],
               "deps": []

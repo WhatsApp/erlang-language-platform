@@ -1082,7 +1082,7 @@ mod tests {
                                     ebin: None,
                                     extra_src_dirs: [],
                                     include_dirs: [],
-                                    macros: [],
+                                    macros: {},
                                 },
                                 JsonProjectAppData {
                                     name: "app_b",
@@ -1097,7 +1097,7 @@ mod tests {
                                     include_dirs: [
                                         "include",
                                     ],
-                                    macros: [],
+                                    macros: {},
                                 },
                             ],
                             deps: [],
@@ -1126,21 +1126,21 @@ mod tests {
               "ebin": "../_build/test/lib/app_a/ebin",
               "extra_src_dirs": ["test"],
               "include_dirs": ["include"],
-              "macros": ["TEST"],
+              "macros": {"TEST": "true"},
               "src_dirs": ["src"]
             },
             {
               "name": "app_b",
               "dir": "app_b",
               "ebin": "../_build/test/lib/app_b/ebin",
-              "macros": ["TEST"],
+              "macros": {"TEST": "true"},
               "src_dirs": ["src"]
             },
             {
               "name": "eqwalizer",
               "dir": "eqwalizer",
               "ebin": "../_build/test/lib/eqwalizer/ebin",
-              "macros": ["TEST"],
+              "macros": {"TEST": "true"},
               "src_dirs": ["src"]
             }
           ],
@@ -1195,9 +1195,9 @@ mod tests {
                                 include_dirs: [
                                     "include",
                                 ],
-                                macros: [
-                                    "TEST",
-                                ],
+                                macros: {
+                                    "TEST": "true",
+                                },
                             },
                             JsonProjectAppData {
                                 name: "app_b",
@@ -1210,9 +1210,9 @@ mod tests {
                                 ),
                                 extra_src_dirs: [],
                                 include_dirs: [],
-                                macros: [
-                                    "TEST",
-                                ],
+                                macros: {
+                                    "TEST": "true",
+                                },
                             },
                             JsonProjectAppData {
                                 name: "eqwalizer",
@@ -1225,9 +1225,9 @@ mod tests {
                                 ),
                                 extra_src_dirs: [],
                                 include_dirs: [],
-                                macros: [
-                                    "TEST",
-                                ],
+                                macros: {
+                                    "TEST": "true",
+                                },
                             },
                         ],
                         deps: [],
@@ -1561,7 +1561,7 @@ mod tests {
                             ebin: None,
                             extra_src_dirs: [],
                             include_dirs: [],
-                            macros: [],
+                            macros: {},
                         },
                     ],
                     deps: [],
