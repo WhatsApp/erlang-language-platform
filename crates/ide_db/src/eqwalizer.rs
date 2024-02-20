@@ -136,7 +136,7 @@ fn type_at_position(
     project_id: ProjectId,
     position: FilePosition,
 ) -> Option<Arc<(Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(position.file_id, true) {
+    if !db.is_eqwalizer_enabled(position.file_id, false) {
         return None;
     }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
