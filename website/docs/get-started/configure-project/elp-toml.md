@@ -89,11 +89,3 @@ Configure ELP for [rebar3](https://rebar3.org/)-based projects.
 | Key     | Type   | Description                                                                                                                                    | Default |
 | ------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | profile | String | The `rebar3` profile to use for project discovery. Only used if the `build_info` property is specified in the [empty section](#empty-section). | test    |
-
-:::warning
-
-Up to and including the
-[2024-02-07](https://github.com/WhatsApp/erlang-language-platform/releases/tag/2024-02-07)
-release, it is not possible to set a custom profile for rebar3.
-
-:::
