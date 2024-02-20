@@ -207,15 +207,16 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                 // ananalysis_host, which will deadlock if there is
                 // still an active analysis().
                 let analysis = loaded.analysis();
-
                 let (file_id, name) = match &args.module {
-                    Some(module) => {
-                        if args.is_format_normal() {
-                            writeln!(cli, "module specified: {}", module)?;
+                    Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
+                        Some(file_id) => {
+                            if args.is_format_normal() {
+                                writeln!(cli, "module specified: {}", module)?;
+                            }
+                            (Some(file_id), analysis.module_name(file_id)?)
                         }
-                        let file_id = analysis.module_file_id(loaded.project_id, module)?;
-                        (file_id, analysis.module_name(file_id.unwrap())?)
-                    }
+                        None => panic!("Module not found: {module}"),
+                    },
                     None => match &args.file {
                         Some(file_name) => {
                             if args.is_format_normal() {
