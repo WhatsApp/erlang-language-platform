@@ -61,7 +61,7 @@ This can be overriden per module via the following attributes:
 | Key         | Type    | Description                                                                                                |
 | ----------- | ------- | ---------------------------------------------------------------------------------------------------------- |
 | enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above |
-| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive)           |
+| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI.          |
 
 ### \[buck\]
 
@@ -75,9 +75,7 @@ about Erlang support for Buck2.
 
 :::warning
 
-Up to and including the
-[2024-02-07](https://github.com/WhatsApp/erlang-language-platform/releases/tag/2024-02-07)
-release, the github version is not built with buck2 support enabled. This will
+The github version is not built with buck2 support enabled. This will
 change soon, once we tweak the tests.
 
 :::

@@ -6,9 +6,7 @@ sidebar_position: 2
 
 :::warning
 
-Up to and including the
-[2024-02-07](https://github.com/WhatsApp/erlang-language-platform/releases/tag/2024-02-07)
-release, the github version is not built with buck2 support enabled. This will
+The github version is not built with buck2 support enabled. This will
 change soon, once we tweak the tests.
 
 :::
