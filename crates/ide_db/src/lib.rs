@@ -21,9 +21,11 @@ use elp_base_db::FileId;
 use elp_base_db::FileLoader;
 use elp_base_db::FileLoaderDelegate;
 use elp_base_db::FilePosition;
+use elp_base_db::FileRange;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
+use elp_eqwalizer::ast::types::Type;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
@@ -389,6 +391,13 @@ impl TypedSemantic for RootDatabase {
                 Some(vec![])
             }
         }
+    }
+
+    fn eqwalizer_type_at_position(&self, position: FilePosition) -> Option<Arc<(Type, FileRange)>> {
+        let project_id = self
+            .app_data(self.file_source_root(position.file_id))?
+            .project_id;
+        self.type_at_position(project_id, position)
     }
 }
 
