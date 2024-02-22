@@ -326,6 +326,14 @@ impl<'db> Semantic<'db> {
         let form = syntax.ancestors().find_map(ast::Form::cast)?;
         let form_list = self.db.file_form_list(file_id);
         let form = form_list.find_form(&form)?;
+        self.get_body_and_map(file_id, form)
+    }
+
+    pub fn get_body_and_map(
+        &self,
+        file_id: FileId,
+        form: FormIdx,
+    ) -> Option<(Arc<Body>, Arc<BodySourceMap>)> {
         match form {
             FormIdx::FunctionClause(fun) => {
                 let (body, map) = self
@@ -361,13 +369,16 @@ impl<'db> Semantic<'db> {
                 let (body, map) = self.db.compile_body_with_source(InFile::new(file_id, attr));
                 Some((body.body.clone(), map))
             }
-            FormIdx::PPDirective(pp) => match form_list[pp] {
-                PPDirective::Define(define) => self
-                    .db
-                    .define_body_with_source(InFile::new(file_id, define))
-                    .map(|(body, map)| (body.body.clone(), map)),
-                _ => None,
-            },
+            FormIdx::PPDirective(pp) => {
+                let form_list = self.db.file_form_list(file_id);
+                match form_list[pp] {
+                    PPDirective::Define(define) => self
+                        .db
+                        .define_body_with_source(InFile::new(file_id, define))
+                        .map(|(body, map)| (body.body.clone(), map)),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
