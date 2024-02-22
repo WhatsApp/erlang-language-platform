@@ -20,6 +20,7 @@ elp_ide_db = { path = "./crates/ide_db" }
 elp_log = { path = "./crates/elp_log" }
 elp_project_model = { path = "./crates/project_model" }
 elp_syntax = { path = "./crates/syntax" }
+elp_types_db = { path = "./crates/types_db" }
 hir = { path = "./crates/hir" }
 
 # Forks
