@@ -30,10 +30,9 @@ use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_syntax::TextRange;
+pub use elp_types_db::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
-use serde::Deserialize;
 use serde::Serialize;
 use tempfile::Builder;
 use tempfile::TempPath;
@@ -124,29 +123,6 @@ impl Default for EqwalizerDiagnostics {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct EqwalizerDiagnostic {
-    #[serde(deserialize_with = "deserialize_text_range")]
-    pub range: TextRange,
-    pub message: String,
-    pub uri: String,
-    pub code: String,
-    #[serde(rename(deserialize = "expressionOrNull"))]
-    pub expression: Option<String>,
-    #[serde(rename(deserialize = "explanationOrNull"))]
-    pub explanation: Option<String>,
-}
-
-impl EqwalizerDiagnostic {
-    pub fn expr_string(&self) -> String {
-        match &self.expression {
-            Some(s) => format!("`{}`.\n", s),
-            None => "".to_string(),
-        }
-    }
-}
-
 impl EqwalizerDiagnostics {
     pub fn combine(mut self, other: Self) -> Self {
         match &mut self {
@@ -208,20 +184,6 @@ pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
         project_id: ProjectId,
         module: ModuleName,
     ) -> Option<Arc<EqwalizerStats>>;
-}
-
-fn deserialize_text_range<'de, D>(deserializer: D) -> Result<TextRange, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct RawTextRange {
-        start: u32,
-        end: u32,
-    }
-
-    let range = RawTextRange::deserialize(deserializer)?;
-    Ok(TextRange::new(range.start.into(), range.end.into()))
 }
 
 impl Default for Eqwalizer {

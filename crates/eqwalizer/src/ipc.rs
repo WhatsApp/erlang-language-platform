@@ -19,6 +19,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
+use elp_types_db::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;
@@ -28,7 +29,6 @@ use timeout_readwrite::TimeoutWriter;
 
 use crate::ast::types::Type;
 use crate::ast::Pos;
-use crate::EqwalizerDiagnostic;
 
 #[derive(Deserialize, Debug)]
 pub enum EqWAlizerASTFormat {
