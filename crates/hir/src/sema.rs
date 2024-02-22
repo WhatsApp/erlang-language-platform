@@ -296,7 +296,7 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn expand(&self, call: InFile<&ast::MacroCallExpr>) -> Option<(MacroName, String)> {
-        let (body, body_source) = self.find_body(call.file_id, call.value.syntax())?;
+        let (body, body_source) = self.find_body_and_map(call.file_id, call.value.syntax())?;
         let name = body_source.resolved_macro(call)?.name(self.db);
         let expr = ast::Expr::cast(call.value.syntax().clone())?;
         let any_expr_id = body_source.any_id(call.with_value(&expr))?;
@@ -318,7 +318,7 @@ impl<'db> Semantic<'db> {
         }
     }
 
-    pub fn find_body(
+    pub fn find_body_and_map(
         &self,
         file_id: FileId,
         syntax: &SyntaxNode,

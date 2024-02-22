@@ -1046,7 +1046,7 @@ mod tests {
     use crate::TypeExpr;
 
     fn to_atom(sema: &Semantic<'_>, ast: InFile<&ast::Atom>) -> Option<Atom> {
-        let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+        let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let expr = ast.map(|atom| ast::Expr::from(ast::ExprMax::from(atom.clone())));
         let any_expr_id = body_map.any_id(expr.as_ref())?;
         let atom = match body.get_any(any_expr_id) {

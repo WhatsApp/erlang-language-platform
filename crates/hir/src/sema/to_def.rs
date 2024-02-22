@@ -70,7 +70,7 @@ impl ToDef for ast::Atom {
     type Def = Module;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+        let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let file_id = ast.file_id;
         let expr = ast.map(|atom| ast::Expr::from(ast::ExprMax::from(atom.clone())));
         let any_expr_id = body_map.any_id(expr.as_ref())?;
@@ -132,7 +132,7 @@ impl ToDef for ast::Call {
     type Def = CallDef;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+        let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let file_id = ast.file_id;
         let expr = ast.map(|call| ast::Expr::from(call.clone()));
         let any_expr_id = body_map.any_id(expr.as_ref())?;
@@ -274,7 +274,8 @@ impl ToDef for ast::MacroCallExpr {
                     // arity from the args.  Extract the lowered
                     // value, which deals with this.
 
-                    let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+                    let (body, body_map) =
+                        sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
                     let expr = ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ast.value.clone()));
                     let expr_id = body_map.expr_id(InFile::new(ast.file_id, &expr))?;
                     match &body[expr_id] {
@@ -576,7 +577,7 @@ pub fn resolve_type_target(
 }
 
 fn resolve_capture(sema: &Semantic<'_>, fun: InFile<ast::Expr>) -> Option<FunctionDef> {
-    let (body, body_map) = sema.find_body(fun.file_id, fun.value.syntax())?;
+    let (body, body_map) = sema.find_body_and_map(fun.file_id, fun.value.syntax())?;
     let expr_id = body_map.expr_id(fun.as_ref())?;
     let (target, arity) = match &body[expr_id] {
         Expr::CaptureFun { target, arity } => (target, arity),
@@ -595,7 +596,7 @@ fn resolve_record(
     expr: &ast::Expr,
     idx: Option<usize>,
 ) -> Option<(Name, Option<Name>)> {
-    let (body, body_map) = sema.find_body(file_id, expr.syntax())?;
+    let (body, body_map) = sema.find_body_and_map(file_id, expr.syntax())?;
     let expr = InFile::new(file_id, expr);
     let any_expr_id = body_map.any_id(expr)?;
     let (name, field) = match body.get_any(any_expr_id) {
@@ -701,7 +702,7 @@ impl ToDef for ast::ExprArgs {
     /// Looking specifically to pull out a function definition from an
     /// `apply/2` or `apply/3` call.
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
-        let (body, body_map) = sema.find_body(ast.file_id, ast.value.syntax())?;
+        let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let call = ast::Expr::cast(ast.value.syntax().parent()?.clone())?;
         let expr = ast.with_value(call);
         let expr_id = body_map.expr_id(expr.as_ref())?;

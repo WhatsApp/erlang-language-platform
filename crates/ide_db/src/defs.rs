@@ -441,7 +441,7 @@ pub fn from_is_record(
     syntax: &SyntaxNode,
 ) -> Option<SymbolClass> {
     let call = ast::Call::cast(syntax.parent()?)?;
-    let (body, body_map) = sema.find_body(token.file_id, syntax)?;
+    let (body, body_map) = sema.find_body_and_map(token.file_id, syntax)?;
     let expr = ast::Expr::from(call.clone());
     let any_expr_id = body_map.any_id(token.with_value(expr).as_ref())?;
     match body.get_any(any_expr_id) {
