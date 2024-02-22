@@ -30,7 +30,7 @@ use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-pub use elp_types_db::EqwalizerDiagnostic;
+pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
 use serde::Serialize;

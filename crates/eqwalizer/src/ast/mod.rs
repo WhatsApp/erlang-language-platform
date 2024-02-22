@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
+pub use elp_types_db::eqwalizer::RemoteId;
 use fxhash::FxHashSet;
 use serde::Deserialize;
 use serde::Serialize;
@@ -65,19 +66,6 @@ impl From<RemoteId> for Id {
             name: remote_id.name,
             arity: remote_id.arity,
         }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RemoteId {
-    pub module: SmolStr,
-    pub name: SmolStr,
-    pub arity: u32,
-}
-
-impl fmt::Display for RemoteId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}/{}", self.module, self.name, self.arity)
     }
 }
 

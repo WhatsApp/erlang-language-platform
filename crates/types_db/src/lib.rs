@@ -18,15 +18,14 @@
 //! This also allows us to set up test fixtures to populate them
 //! without running heavyweight processes.
 
-mod eqwalizer;
+pub mod eqwalizer;
 
 use elp_base_db::FileId;
-pub use eqwalizer::EqwalizerDiagnostic;
 
 pub trait TypedSemantic {
     fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
         include_generated: bool,
-    ) -> Option<Vec<EqwalizerDiagnostic>>;
+    ) -> Option<Vec<eqwalizer::EqwalizerDiagnostic>>;
 }
