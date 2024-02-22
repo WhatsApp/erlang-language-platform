@@ -30,6 +30,7 @@ use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
+use elp_types_db::TypedSemantic;
 use erlang_service::Connection;
 use fxhash::FxHashMap;
 use helpers::pick_best_token;
@@ -350,6 +351,45 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
         },
     )?);
     Some(token)
+}
+
+// ---------------------------------------------------------------------
+
+impl TypedSemantic for RootDatabase {
+    fn eqwalizer_diagnostics(
+        &self,
+        file_id: FileId,
+        include_generated: bool,
+    ) -> Option<Vec<EqwalizerDiagnostic>> {
+        // Check, if the file is actually a module
+        let app_data = self.app_data(self.file_source_root(file_id))?;
+        let _ = self
+            .module_index(app_data.project_id)
+            .module_for_file(file_id)
+            .cloned();
+
+        let project_id = app_data.project_id;
+
+        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id, include_generated);
+        if !eqwalizer_enabled {
+            return Some(vec![]);
+        }
+
+        let diags = eqwalizer::eqwalizer_diagnostics_by_project(self, project_id, vec![file_id]);
+        match &*diags {
+            EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
+                errors
+                    .iter()
+                    .flat_map(|(_, diags)| diags.iter().map(|d| d.clone()))
+                    .collect(),
+            ),
+            EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
+            EqwalizerDiagnostics::Error(err) => {
+                log::error!("EqWAlizer failed for {:?}: {}", file_id, err);
+                Some(vec![])
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
