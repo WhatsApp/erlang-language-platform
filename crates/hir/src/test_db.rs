@@ -17,8 +17,11 @@ use elp_base_db::salsa;
 use elp_base_db::FileId;
 use elp_base_db::FileLoader;
 use elp_base_db::FileLoaderDelegate;
+use elp_base_db::FileRange;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
+use elp_types_db::eqwalizer;
+use elp_types_db::TypedSemantic;
 
 use crate::db::InternDatabase;
 
@@ -58,5 +61,22 @@ impl panic::RefUnwindSafe for TestDB {}
 impl FileLoader for TestDB {
     fn file_text(&self, file_id: FileId) -> Arc<str> {
         FileLoaderDelegate(self).file_text(file_id)
+    }
+}
+
+impl TypedSemantic for TestDB {
+    fn eqwalizer_diagnostics(
+        &self,
+        _file_id: FileId,
+        _include_generated: bool,
+    ) -> Option<Vec<eqwalizer::EqwalizerDiagnostic>> {
+        panic!("Eqwalizer data is not available in HIR tests")
+    }
+
+    fn eqwalizer_type_at_position(
+        &self,
+        _position: elp_base_db::FilePosition,
+    ) -> Option<Arc<(eqwalizer::Type, FileRange)>> {
+        panic!("Eqwalizer data is not available in HIR tests")
     }
 }

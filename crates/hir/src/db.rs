@@ -14,6 +14,7 @@ use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_syntax::ast;
+use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 
 use crate::body::scope::ExprScopes;
@@ -52,7 +53,11 @@ use crate::TypeBody;
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase:
-    InternDatabase + Upcast<dyn InternDatabase> + SourceDatabase + Upcast<dyn SourceDatabase>
+    InternDatabase
+    + Upcast<dyn InternDatabase>
+    + SourceDatabase
+    + Upcast<dyn SourceDatabase>
+    + TypedSemantic
 {
     #[salsa::invoke(FormList::file_form_list_query)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;
