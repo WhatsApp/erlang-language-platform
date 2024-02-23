@@ -7,8 +7,10 @@
  * of this source tree.
  */
 
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::sync::Arc;
+use std::time::Duration;
 use std::time::Instant;
 
 pub use env_logger::filter::Builder;
@@ -118,10 +120,10 @@ impl Log for Logger {
 #[macro_export]
 macro_rules! timeit {
     ($display:expr) => {
-        $crate::TimeIt::new(module_path!(), $display, false)
+        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::No)
     };
     ($($arg:tt)+) => {
-        $crate::TimeIt::new(module_path!(), format!($($arg)+), false)
+        $crate::TimeIt::new(module_path!(), format!($($arg)+), $crate::Telemetry::No)
     };
 }
 
@@ -130,27 +132,45 @@ macro_rules! timeit {
 #[macro_export]
 macro_rules! timeit_with_telemetry {
     ($display:expr) => {
-        $crate::TimeIt::new(module_path!(), $display, true)
+        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::All)
     };
     ($($arg:tt)+) => {
-        $crate::TimeIt::new(module_path!(), format!($($arg)+), true)
+        $crate::TimeIt::new(module_path!(), format!($($arg)+), $crate::Telemetry::All)
     };
+}
+
+/// Usage: `let _timer = timeit_slow!("metric_name", Duration::from_millis(300))`
+/// Same as timeit_with_telemetry!, but do work only if latency is more than configured value
+#[macro_export]
+macro_rules! timeit_slow {
+    ($display:expr, $duration:expr) => {
+        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::Slow($duration))
+    };
+}
+
+#[derive(Debug)]
+pub enum Telemetry {
+    No,
+    All,
+    Slow(Duration),
 }
 
 // inspired by rust-analyzer `timeit`
 // https://github.com/rust-lang/rust-analyzer/blob/65a1538/crates/stdx/src/lib.rs#L18
 /// Logs the elapsed time when `drop`d
 #[must_use = "logs the elapsed time when `drop`d"]
+#[derive(Debug)]
 pub struct TimeIt<T = String>
 where
     T: Display,
     T: Serialize,
     T: Clone,
+    T: Debug,
 {
     data: T,
     module_path: &'static str,
     instant: Option<Instant>,
-    telemetry: bool,
+    telemetry: Telemetry,
 }
 
 impl<T> TimeIt<T>
@@ -158,14 +178,35 @@ where
     T: Display,
     T: Serialize,
     T: Clone,
+    T: Debug,
 {
-    pub fn new(module_path: &'static str, data: T, telemetry: bool) -> Self {
+    pub fn new(module_path: &'static str, data: T, telemetry: Telemetry) -> Self {
         TimeIt {
             data,
             module_path,
             instant: Some(Instant::now()),
             telemetry,
         }
+    }
+
+    fn send_with_duration(&self, duration_ms: u32) {
+        match serde_json::to_value(self.data.clone()) {
+            Ok(value) => send_with_duration(String::from("telemetry"), value, duration_ms),
+            Err(err) => log::warn!(
+                "Error serializing telemetry data. data: {}, err: {}",
+                self.data,
+                err
+            ),
+        };
+    }
+
+    fn log(&self, duration_ms: u32) {
+        log::info!(
+            target: self.module_path,
+            "timeit '{}': {}ms",
+            self.data.clone(),
+            duration_ms
+        );
     }
 }
 
@@ -174,24 +215,22 @@ where
     T: Display,
     T: Serialize,
     T: Clone,
+    T: Debug,
 {
     fn drop(&mut self) {
         if let Some(instant) = self.instant.take() {
             let duration_ms = instant.elapsed().as_millis() as u32;
-            log::info!(
-                target: self.module_path,
-                "timeit '{}': {}ms",
-                self.data.clone(),
-                duration_ms
-            );
-            if self.telemetry {
-                match serde_json::to_value(self.data.clone()) {
-                    Ok(value) => send_with_duration(String::from("telemetry"), value, duration_ms),
-                    Err(err) => log::warn!(
-                        "Error serializing telemetry data. data: {}, err: {}",
-                        self.data,
-                        err
-                    ),
+            match self.telemetry {
+                Telemetry::No => self.log(duration_ms),
+                Telemetry::All => {
+                    self.log(duration_ms);
+                    self.send_with_duration(duration_ms);
+                }
+                Telemetry::Slow(threshold) => {
+                    if duration_ms > threshold.as_millis() as u32 {
+                        self.log(duration_ms);
+                        self.send_with_duration(duration_ms)
+                    }
                 }
             }
         }
