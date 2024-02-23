@@ -78,21 +78,24 @@ lazy_static! {
     Ord,
     PartialOrd,
     Deserialize,
+    Serialize,
     Default
 )]
 pub struct BuckConfig {
     #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
     /// Location of ELP_CONFIG_FILE this config was loaded from
-    config_path: Option<AbsPathBuf>,
+    pub(crate) config_path: Option<AbsPathBuf>,
     #[serde(skip_deserializing)]
-    buck_root: Option<AbsPathBuf>,
+    #[serde(skip_serializing)]
+    pub(crate) buck_root: Option<AbsPathBuf>,
     pub enabled: bool,
     pub deps_target: Option<String>,
     pub build_deps: bool,
     pub included_targets: Vec<String>,
     #[serde(default)]
     pub excluded_targets: Vec<String>,
-    source_root: Option<PathBuf>,
+    pub(crate) source_root: Option<PathBuf>,
 }
 
 impl BuckConfig {

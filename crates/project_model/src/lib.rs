@@ -37,6 +37,7 @@ use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::RelPath;
 use serde::Deserialize;
+use serde::Serialize;
 use tempfile::NamedTempFile;
 use tempfile::TempPath;
 use thiserror::Error;
@@ -346,21 +347,33 @@ pub struct StaticProject {
     Ord,
     PartialOrd,
     Deserialize,
+    Serialize,
     Default
 )]
 pub struct ElpConfig {
     #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
     config_path: Option<AbsPathBuf>,
-    pub buck: Option<BuckConfig>,
     /// Path to the `BUILD_INFO_FILE`.
     pub build_info: Option<PathBuf>,
+    pub buck: Option<BuckConfig>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
     #[serde(default)]
     pub rebar: ElpRebarConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
 pub struct EqwalizerConfig {
     #[serde(default = "eqwalizer_enable_all_default")]
     pub enable_all: bool,
@@ -385,7 +398,17 @@ impl Default for EqwalizerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
 pub struct ElpRebarConfig {
     #[serde(default = "rebar_profile_default")]
     pub profile: String,
@@ -997,8 +1020,8 @@ mod tests {
                 (
                     ElpConfig {
                         config_path: None,
-                        buck: None,
                         build_info: None,
+                        buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -1060,8 +1083,8 @@ mod tests {
                 (
                     ElpConfig {
                         config_path: None,
-                        buck: None,
                         build_info: None,
+                        buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -1168,8 +1191,8 @@ mod tests {
                 (
                     ElpConfig {
                         config_path: None,
-                        buck: None,
                         build_info: None,
+                        buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -1345,8 +1368,8 @@ mod tests {
                 (
                     ElpConfig {
                         config_path: None,
-                        buck: None,
                         build_info: None,
+                        buck: None,
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -1412,8 +1435,8 @@ mod tests {
                                     "TMPDIR/root/.elp.toml",
                                 ),
                             ),
-                            buck: None,
                             build_info: None,
+                            buck: None,
                             eqwalizer: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
@@ -1598,8 +1621,8 @@ mod tests {
                             "TMPDIR/.elp.toml",
                         ),
                     ),
-                    buck: None,
                     build_info: None,
+                    buck: None,
                     eqwalizer: EqwalizerConfig {
                         enable_all: true,
                         max_tasks: 4,
@@ -1613,6 +1636,121 @@ mod tests {
         } else {
             panic!()
         }
+    }
+
+    #[test]
+    fn serde_serialize_elp_toml() {
+        let result = toml::to_string::<ElpConfig>(&ElpConfig {
+            config_path: None,
+            build_info: Some(PathBuf::from("path/to/file")),
+            buck: Some(BuckConfig {
+                config_path: None,
+                buck_root: None,
+                enabled: true,
+                deps_target: Some("root//target/deps".to_string()),
+                build_deps: false,
+                included_targets: vec![
+                    "root//target/one".to_string(),
+                    "root//target/two".to_string(),
+                ],
+                excluded_targets: vec![
+                    "root//target/three".to_string(),
+                    "root//target/four".to_string(),
+                ],
+                source_root: Some(PathBuf::from("path/to/root")),
+            }),
+            eqwalizer: EqwalizerConfig {
+                enable_all: true,
+                max_tasks: 34,
+            },
+            rebar: ElpRebarConfig {
+                profile: "my_profile".to_string(),
+            },
+        })
+        .unwrap();
+        expect![[r#"
+            build_info = "path/to/file"
+
+            [buck]
+            enabled = true
+            deps_target = "root//target/deps"
+            build_deps = false
+            included_targets = ["root//target/one", "root//target/two"]
+            excluded_targets = ["root//target/three", "root//target/four"]
+            source_root = "path/to/root"
+
+            [eqwalizer]
+            enable_all = true
+            max_tasks = 34
+
+            [rebar]
+            profile = "my_profile"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_elp_toml() {
+        let lints: ElpConfig = toml::from_str(
+            r#"
+            build_info = "path/to/file"
+
+            [buck]
+            enabled = true
+            deps_target = "root//target/deps"
+            build_deps = false
+            included_targets = ["root//target/one", "root//target/two"]
+            excluded_targets = ["root//target/three", "root//target/four"]
+            source_root = "path/to/root"
+
+            [eqwalizer]
+            enable_all = true
+            max_tasks = 34
+
+            [rebar]
+            profile = "my_profile"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            ElpConfig {
+                config_path: None,
+                build_info: Some(
+                    "path/to/file",
+                ),
+                buck: Some(
+                    BuckConfig {
+                        config_path: None,
+                        buck_root: None,
+                        enabled: true,
+                        deps_target: Some(
+                            "root//target/deps",
+                        ),
+                        build_deps: false,
+                        included_targets: [
+                            "root//target/one",
+                            "root//target/two",
+                        ],
+                        excluded_targets: [
+                            "root//target/three",
+                            "root//target/four",
+                        ],
+                        source_root: Some(
+                            "path/to/root",
+                        ),
+                    },
+                ),
+                eqwalizer: EqwalizerConfig {
+                    enable_all: true,
+                    max_tasks: 34,
+                },
+                rebar: ElpRebarConfig {
+                    profile: "my_profile",
+                },
+            }
+        "#]]
+        .assert_debug_eq(&lints);
     }
 
     #[test]
