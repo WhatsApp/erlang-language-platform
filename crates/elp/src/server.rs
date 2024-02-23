@@ -12,6 +12,7 @@ use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use always_assert::always;
 use anyhow::bail;
@@ -50,6 +51,7 @@ use elp_ide::AnalysisHost;
 use elp_log::telemetry;
 use elp_log::telemetry::TelemetryMessage;
 use elp_log::timeit;
+use elp_log::timeit_slow;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_project_model::ElpConfig;
@@ -103,6 +105,7 @@ const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] =
     &[FileKind::Module, FileKind::Header, FileKind::Escript];
 const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
 const CT_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
+const SLOW_DURATION: Duration = Duration::from_millis(300);
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -334,6 +337,7 @@ impl Server {
                     return Ok(());
                 }
             }
+            let _timer = timeit_slow!("main_loop_health", SLOW_DURATION);
             self.handle_event(event)?;
         }
 
