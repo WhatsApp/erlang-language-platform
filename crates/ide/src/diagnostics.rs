@@ -78,6 +78,7 @@ mod effect_free_statement;
 mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
+mod meck;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
 mod missing_separator;
@@ -330,6 +331,7 @@ pub enum DiagnosticCode {
     Unexpected(String),
     ExpressionCanBeSimplified,
     CannotEvaluateCTCallbacks,
+    MeckMissingNoLinkInInitPerSuite,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -395,6 +397,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnusedInclude => "W0020".to_string(), // Unused include (previously known as L1500 due to a bug)
             DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated, replaced by W0020)
             DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
+            DiagnosticCode::MeckMissingNoLinkInInitPerSuite => "W0022".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -422,6 +425,9 @@ impl DiagnosticCode {
             DiagnosticCode::RedundantAssignment => "redundant_assignment".to_string(),
             DiagnosticCode::UnreachableTest => "unreachable_test".to_string(),
             DiagnosticCode::CannotEvaluateCTCallbacks => "cannot_evaluate_ct_callbacks".to_string(),
+            DiagnosticCode::MeckMissingNoLinkInInitPerSuite => {
+                "meck_missing_no_link_in_init_per_suite".to_string()
+            }
             DiagnosticCode::MissingCompileWarnMissingSpec => {
                 // Match the name in the original
                 "compile-warn-missing-spec".to_string()
@@ -1304,6 +1310,8 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let parse = db.parse(file_id);
     let line_index = db.file_line_index(file_id);
     let sema = Semantic::new(db);
+
+    meck::missing_no_link_in_init_per_suite(&mut res, &sema, file_id);
 
     match &*ct_info(db, file_id) {
         CommonTestInfo::Result { all, groups } => {

@@ -304,6 +304,37 @@ impl Expr {
             _ => None,
         }
     }
+
+    /// Check whether the provided atom is contained in the list.
+    /// If the list contains elements other than literals, return None.
+    pub fn literal_list_contains_atom(
+        &self,
+        def_fb: &InFunctionClauseBody<&FunctionDef>,
+        name: &str,
+    ) -> Option<bool> {
+        let body = def_fb.body();
+        match &self {
+            Expr::List { exprs, .. } => {
+                let mut literals_only = true;
+                let res = exprs.iter().any(|expr| match &body[*expr] {
+                    Expr::Literal(Literal::Atom(_atom)) => {
+                        if let Some(atom_name) = def_fb.as_atom_name(expr) {
+                            atom_name == name
+                        } else {
+                            false
+                        }
+                    }
+                    Expr::Literal(_literal) => false,
+                    _ => {
+                        literals_only = false;
+                        false
+                    }
+                });
+                if literals_only { Some(res) } else { None }
+            }
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

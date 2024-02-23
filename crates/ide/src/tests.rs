@@ -10,6 +10,7 @@
 // To run the tests via cargo
 // cargo test --package elp_ide --lib
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
@@ -38,14 +39,43 @@ pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .disable(DiagnosticCode::UndefinedFunction);
-    check_ct_fix_with_config(fixture_before, fixture_after, config);
+    let diagnostic_filter = &|_d: &Diagnostic| true;
+    let assist_filter = &|_d: &Assist| true;
+    check_filtered_ct_fix_with_config(
+        fixture_before,
+        fixture_after,
+        config,
+        diagnostic_filter,
+        assist_filter,
+    );
 }
 
 #[track_caller]
-pub(crate) fn check_ct_fix_with_config(
+pub(crate) fn check_filtered_ct_fix(
+    fixture_before: &str,
+    fixture_after: &str,
+    diagnostic_filter: &dyn Fn(&Diagnostic) -> bool,
+    assist_filter: &dyn Fn(&Assist) -> bool,
+) {
+    let config = DiagnosticsConfig::default()
+        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+        .disable(DiagnosticCode::UndefinedFunction);
+    check_filtered_ct_fix_with_config(
+        fixture_before,
+        fixture_after,
+        config,
+        diagnostic_filter,
+        assist_filter,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_filtered_ct_fix_with_config(
     fixture_before: &str,
     fixture_after: &str,
     config: DiagnosticsConfig,
+    diagnostic_filter: &dyn Fn(&Diagnostic) -> bool,
+    assist_filter: &dyn Fn(&Assist) -> bool,
 ) {
     let after = trim_indent(fixture_after);
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
@@ -57,11 +87,18 @@ pub(crate) fn check_ct_fix_with_config(
         fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
     let diagnostic = diagnostics
         .diagnostics_for(pos.file_id)
-        .iter()
+        .into_iter()
+        .filter(diagnostic_filter)
         .last()
         .expect("no diagnostics")
         .clone();
-    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[0];
+    let fixes = &diagnostic
+        .fixes
+        .expect("diagnostic misses fixes")
+        .into_iter()
+        .filter(assist_filter)
+        .collect::<Vec<_>>();
+    let fix = fixes.first().expect("filtered fixes are empty");
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
@@ -264,6 +301,41 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixtu
             fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
         let diagnostics = diagnostics.diagnostics_for(file_id);
 
+        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
+        expected.sort_by_key(|(r1, _)| r1.start());
+        let actual = convert_diagnostics_to_annotations(diagnostics);
+        assert_eq!(expected, actual);
+    }
+}
+
+#[track_caller]
+pub(crate) fn check_filtered_diagnostics(elp_fixture: &str, filter: &dyn Fn(&Diagnostic) -> bool) {
+    let config = DiagnosticsConfig::default();
+    check_filtered_diagnostics_with_config(config, elp_fixture, filter)
+}
+
+#[track_caller]
+pub(crate) fn check_filtered_diagnostics_with_config(
+    config: DiagnosticsConfig,
+    elp_fixture: &str,
+    filter: &dyn Fn(&Diagnostic) -> bool,
+) {
+    let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    if diagnostics_enabled.needs_erlang_service() {
+        let file_id = FileId(0);
+        let project_id = db.file_project_id(file_id).unwrap();
+        db.ensure_erlang_service(project_id).unwrap();
+    }
+    let host = AnalysisHost { db };
+    let analysis = host.analysis();
+    for file_id in files {
+        let diagnostics =
+            fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
+        let diagnostics = diagnostics
+            .diagnostics_for(file_id)
+            .into_iter()
+            .filter(filter)
+            .collect();
         let mut expected = extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
