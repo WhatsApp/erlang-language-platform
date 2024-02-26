@@ -102,6 +102,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                         module_range.end(),
                         true,
                         true,
+                        None,
                     );
                     Some(diag)
                 } else {
@@ -121,13 +122,30 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                                     last_option_range.end(),
                                     exprs.is_empty(),
                                     false,
+                                    None,
                                 );
                                 Some(diag)
                             } else {
                                 None
                             }
                         }
-                        None => None,
+                        None => {
+                            // Empty list
+                            if let Some(options_range) = def_fb.range_for_expr(options) {
+                                let diag = make_diagnostic(
+                                    sema,
+                                    def.file.file_id,
+                                    range,
+                                    options_range.end(),
+                                    true,
+                                    false,
+                                    Some(options_range),
+                                );
+                                Some(diag)
+                            } else {
+                                None
+                            }
+                        }
                     },
                     _ => None,
                 }
@@ -144,14 +162,22 @@ fn make_diagnostic(
     end_of_list: TextSize,
     is_empty: bool,
     new_arg: bool,
+    deletion_range: Option<TextRange>,
 ) -> Diagnostic {
     let message = "Missing no_link option.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
+    match deletion_range {
+        Some(deletion_range) => builder.delete(deletion_range),
+        None => (),
+    }
     let text = if is_empty {
         if new_arg {
             ", [no_link]".to_string()
         } else {
-            "no_link".to_string()
+            match deletion_range {
+                Some(_) => "[no_link]".to_string(),
+                None => "no_link".to_string(),
+            }
         }
     } else {
         format!(", no_link")
@@ -382,6 +408,40 @@ new(_Module, _Options) -> ok.
 all() -> [a].
 init_per_suite(Config) ->
   meck:new(my_module, [passthrough, link, no_link]).
+
+a(_Config) ->
+  ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fix_missing_no_link_option_new_2_empty_list() {
+        check_fix(
+            r#"
+//- common_test
+//- /my_app/test/missing_no_link_SUITE.erl
+-module(missing_no_link_SUITE).
+-export([all/0, init_per_suite/1]).
+-export([a/1]).
+all() -> [a].
+init_per_suite(Config) ->
+  m~eck:new(my_module, []).
+
+a(_Config) ->
+  ok.
+//- /my_app/src/meck.erl
+-module(meck).
+-export([new/2]).
+new(_Module, _Options) -> ok.
+            "#,
+            r#"
+-module(missing_no_link_SUITE).
+-export([all/0, init_per_suite/1]).
+-export([a/1]).
+all() -> [a].
+init_per_suite(Config) ->
+  meck:new(my_module, [no_link]).
 
 a(_Config) ->
   ok.
