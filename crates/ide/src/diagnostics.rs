@@ -71,6 +71,7 @@ use crate::RootDatabase;
 use crate::SourceDatabase;
 
 mod application_env;
+mod atoms_exhaustion;
 mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
@@ -332,6 +333,7 @@ pub enum DiagnosticCode {
     ExpressionCanBeSimplified,
     CannotEvaluateCTCallbacks,
     MeckMissingNoLinkInInitPerSuite,
+    AtomsExhaustion,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -398,6 +400,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnusedIncludeDeprecated => "L1500".to_string(), // Unused include (deprecated, replaced by W0020)
             DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => "W0022".to_string(),
+            DiagnosticCode::AtomsExhaustion => "W0023".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -428,6 +431,7 @@ impl DiagnosticCode {
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => {
                 "meck_missing_no_link_in_init_per_suite".to_string()
             }
+            DiagnosticCode::AtomsExhaustion => "atoms_exhaustion".to_string(),
             DiagnosticCode::MissingCompileWarnMissingSpec => {
                 // Match the name in the original
                 "compile-warn-missing-spec".to_string()
@@ -850,6 +854,7 @@ pub fn semantic_diagnostics(
     undefined_function::undefined_function(res, sema, file_id);
     head_mismatch::head_mismatch_semantic(res, sema, file_id);
     missing_separator::missing_separator_semantic(res, sema, file_id);
+    atoms_exhaustion::atoms_exhaustion(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(

@@ -56,11 +56,6 @@ impl DeprecationDetails {
         }
     }
 
-    pub fn with_severity(mut self, severity: Severity) -> Self {
-        self.severity = severity;
-        self
-    }
-
     pub fn with_uri(mut self, uri: Option<String>) -> Self {
         self.uri = uri;
         self
