@@ -113,6 +113,7 @@ pub(crate) fn check_function(
                     let match_result = matcher.get_match(
                         &target,
                         args.len() as u32,
+                        Some(&args),
                         sema,
                         &def_fb.body(clause_id),
                     );

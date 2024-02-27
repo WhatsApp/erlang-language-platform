@@ -335,7 +335,7 @@ fn match_fun_ref_in_list_in_call_arg<T>(
                     {
                         if let Expr::Literal(Literal::Integer(arity)) = &in_clause[*arity_expr_id] {
                             if matcher
-                                .get_match(target, *arity as u32, sema, &in_clause.body())
+                                .get_match(target, *arity as u32, None, sema, &in_clause.body())
                                 .is_some()
                             {
                                 result.push((*list_elem_id, target.clone(), *arity as u32));

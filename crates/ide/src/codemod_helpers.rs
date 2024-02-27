@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_ide_db::eqwalizer;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;
@@ -182,16 +183,18 @@ fn is_definition<D, R>(def: hir::DefinitionOrReference<D, R>) -> bool {
 pub struct FunctionMatcher<'a, T> {
     match_any: Option<(&'a FunctionMatch, &'a T)>,
     labels_full: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
+    labels_full_typed:
+        FxHashMap<Option<SmolStr>, (&'a Vec<eqwalizer::Type>, &'a FunctionMatch, &'a T)>,
     labels_mf: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_m: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
 }
 
 impl<'a, T> FunctionMatcher<'a, T> {
     pub fn new(mfas: &'a [(&'a FunctionMatch, T)]) -> FunctionMatcher<'a, T> {
-        let mut labels_full: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> =
-            FxHashMap::default();
-        let mut labels_mf: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
-        let mut labels_m: FxHashMap<Option<SmolStr>, (&FunctionMatch, &T)> = FxHashMap::default();
+        let mut labels_full = FxHashMap::default();
+        let mut labels_full_typed = FxHashMap::default();
+        let mut labels_mf = FxHashMap::default();
+        let mut labels_m = FxHashMap::default();
         let mut match_any = None;
 
         mfas.iter().for_each(|(c, t)| match c {
@@ -204,6 +207,12 @@ impl<'a, T> FunctionMatcher<'a, T> {
                 }
                 labels_full.insert(Some(mfa.label().into()), (*c, t));
             }
+            FunctionMatch::TypedMFA { mfa, types } => {
+                if mfa.module == "erlang" && in_erlang_module(&mfa.name, mfa.arity as usize) {
+                    labels_full_typed.insert(Some(mfa.short_label().into()), (types, *c, t));
+                }
+                labels_full_typed.insert(Some(mfa.label().into()), (types, *c, t));
+            }
             FunctionMatch::MF { module, name } => {
                 let label = format!("{}:{}", module, name);
                 labels_mf.insert(Some(label.into()), (*c, t));
@@ -215,6 +224,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
         FunctionMatcher {
             match_any,
             labels_full,
+            labels_full_typed,
             labels_mf,
             labels_m,
         }
@@ -224,13 +234,26 @@ impl<'a, T> FunctionMatcher<'a, T> {
         &self,
         target: &CallTarget<ExprId>,
         arity: u32,
+        args: Option<&[ExprId]>,
         sema: &Semantic,
         body: &Body,
     ) -> Option<(&'a FunctionMatch, &'a T)> {
         self.match_any
             .or_else(|| {
                 self.labels_full
-                    .get(&target.label(arity, sema, body))
+                    .get(&target.label(arity, &sema, body))
+                    .copied()
+            })
+            .or_else(|| {
+                let (types, match_val, t) = self
+                    .labels_full_typed
+                    .get(&target.label(arity, sema, body))?;
+                self.types_match(args?, types, sema, body)
+                    .then_some((match_val, t))
+            })
+            .or_else(|| {
+                self.labels_mf
+                    .get(&target.label_short(&sema, body))
                     .copied()
             })
             .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
@@ -243,6 +266,21 @@ impl<'a, T> FunctionMatcher<'a, T> {
                 }
             })
     }
+
+    fn types_match(
+        &self,
+        args: &[ExprId],
+        types: &[eqwalizer::Type],
+        sema: &Semantic,
+        body: &Body,
+    ) -> bool {
+        args.len() == types.len()
+            && args.iter().zip(types.iter()).all(|(expr_id, eq_type)| {
+                sema.expr_type(body, expr_id)
+                    .and_then(|t| Some(&t == eq_type))
+                    .unwrap_or(false)
+            })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -251,8 +289,17 @@ impl<'a, T> FunctionMatcher<'a, T> {
 pub enum FunctionMatch {
     Any,
     MFA(MFA),
-    MF { module: String, name: String },
-    M { module: String },
+    MF {
+        module: String,
+        name: String,
+    },
+    M {
+        module: String,
+    },
+    TypedMFA {
+        mfa: MFA,
+        types: Vec<eqwalizer::Type>,
+    },
 }
 
 impl FunctionMatch {
@@ -266,6 +313,15 @@ impl FunctionMatch {
             name: f.into(),
             arity,
         })
+    }
+
+    pub fn typed_mfa(m: &str, f: &str, types: Vec<eqwalizer::Type>) -> FunctionMatch {
+        let mfa = MFA {
+            module: m.into(),
+            name: f.into(),
+            arity: types.len() as u32,
+        };
+        FunctionMatch::TypedMFA { mfa, types }
     }
 
     pub fn mfas(m: &str, f: &str, arity: Vec<u32>) -> Vec<FunctionMatch> {
@@ -372,9 +428,13 @@ pub(crate) fn find_call_in_function<T>(
         .clone()
         .fold_function(Strategy::VisibleMacros, (), &mut |acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
-                if let Some((mfa, t)) =
-                    matcher.get_match(&target, args.len() as u32, sema, &def_fb.body(clause_id))
-                {
+                if let Some((mfa, t)) = matcher.get_match(
+                    &target,
+                    args.len() as u32,
+                    Some(&args),
+                    sema,
+                    &def_fb.body(clause_id),
+                ) {
                     let in_clause = &def_fb.in_clause(clause_id);
                     let context = CheckCallCtx {
                         mfa,

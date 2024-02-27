@@ -23,7 +23,7 @@ use elp_base_db::VfsPath;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ast::types::RecordType;
-use elp_eqwalizer::ast::types::Type;
+pub use elp_eqwalizer::ast::types::Type;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::ast::RemoteId;
