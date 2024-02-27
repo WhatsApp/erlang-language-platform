@@ -308,10 +308,13 @@ impl DocLoader for crate::RootDatabase {
         let project_id = app_data.project_id;
         if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
             let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
-            let raw_doc = erlang_service.request_doc(DocRequest {
-                src_path: path.to_path_buf().into(),
-                doc_origin,
-            });
+            let raw_doc = erlang_service.request_doc(
+                DocRequest {
+                    src_path: path.to_path_buf().into(),
+                    doc_origin,
+                },
+                || src_db.unwind_if_cancelled(),
+            );
             match raw_doc {
                 Ok(d) => FileDoc {
                     module_doc: Some(Doc {

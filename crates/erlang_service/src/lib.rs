@@ -19,6 +19,7 @@ use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use anyhow::Context;
@@ -260,12 +261,13 @@ enum ResponseSender {
 }
 
 impl ResponseSender {
-    fn send_exn(&self, e: anyhow::Error) {
-        match self {
-            ResponseSender::ParseResponseSender(r) => r.send(Result::Err(e)).unwrap(),
-            ResponseSender::DocResponseSender(r) => r.send(Result::Err(e)).unwrap(),
-            ResponseSender::CTInfoResponseSender(r) => r.send(Result::Err(e)).unwrap(),
-        }
+    fn send_exn(&self, e: anyhow::Error) -> Result<()> {
+        let result = match self {
+            ResponseSender::ParseResponseSender(r) => r.send(Result::Err(e))?,
+            ResponseSender::DocResponseSender(r) => r.send(Result::Err(e))?,
+            ResponseSender::CTInfoResponseSender(r) => r.send(Result::Err(e))?,
+        };
+        Ok(result)
     }
 }
 
@@ -370,22 +372,34 @@ impl Connection {
         }
     }
 
-    pub fn request_doc(&self, request: DocRequest) -> Result<DocResult, String> {
+    pub fn request_doc<F>(&self, request: DocRequest, unwind: F) -> Result<DocResult, String>
+    where
+        F: Fn(),
+    {
         let (sender, receiver) = bounded::<Result<DocResult>>(0);
         let request = Request::DocRequest(request, sender);
         self.sender.send(request.clone()).unwrap();
-        match receiver.recv().unwrap() {
-            Result::Ok(result) => Result::Ok(result),
-            Err(error) => {
-                log::error!(
-                    "Erlang service crashed for: {:?}, error: {:?}",
-                    request,
-                    error
-                );
-                Err(format!(
-                    "Erlang service crash when trying to load docs: {:?}",
-                    request
-                ))
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(result) => {
+                    return {
+                        match result {
+                            Result::Ok(result) => Result::Ok(result),
+                            Err(error) => {
+                                log::error!(
+                                    "Erlang service crashed for: {:?}, error: {:?}",
+                                    request,
+                                    error
+                                );
+                                Err(format!(
+                                    "Erlang service crash when trying to load docs: {:?}",
+                                    request
+                                ))
+                            }
+                        }
+                    };
+                }
+                Err(_) => unwind(),
             }
         }
     }
@@ -475,7 +489,12 @@ fn reader_run(
                 outstream.read_exact(&mut buf)?;
                 let resp = String::from_utf8(buf).unwrap();
                 let error = anyhow!("{}", resp);
-                sender.send_exn(error);
+                if let Err(err) = sender.send_exn(error) {
+                    log::info!(
+                        "Got exception erlang service response, but request was canceled: {}",
+                        err
+                    );
+                }
             }
             _ => {
                 log::error!("Unrecognised message: {}", line_buf);
@@ -626,7 +645,9 @@ fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
             Result::Ok(())
         }
         (ResponseSender::DocResponseSender(s), Reply::DocReply(r)) => {
-            s.send(r).unwrap();
+            if let Err(err) = s.send(r) {
+                log::info!("Got edoc response, but request was canceled: {}", err);
+            }
             Result::Ok(())
         }
         (ResponseSender::CTInfoResponseSender(s), Reply::CTInfoReply(r)) => {
@@ -1025,7 +1046,7 @@ mod tests {
             doc_origin: DocOrigin::Edoc,
             src_path: path,
         };
-        let response = CONN.request_doc(request).unwrap();
+        let response = CONN.request_doc(request, || ()).unwrap();
         let actual = format!(
             "MODULE_DOC\n{}\n\nFUNCTION_DOCS\n{:#?}\n\nEDOC_DIAGNOSTICS\n{:#?}\n\n\n",
             &response.module_doc, &response.function_docs, &response.diagnostics
