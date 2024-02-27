@@ -10,8 +10,10 @@
 //! Ability to traverse over the hir ast computing a result
 
 use std::ops::Index;
+use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_syntax::TextRange;
 
 use crate::body::BodyOrigin;
 use crate::body::UnexpandedIndex;
@@ -298,6 +300,23 @@ pub struct AnyCallBackCtx {
     pub item_id: AnyExprId,
     pub item: AnyExpr,
     pub body_origin: BodyOrigin,
+}
+
+impl AnyCallBackCtx {
+    pub fn find_range(&self, sema: &Semantic) -> Option<(Arc<Body>, TextRange)> {
+        let (body, source) = match self.body_origin {
+            BodyOrigin::Invalid(_) => None,
+            BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(file_id, form_id),
+            BodyOrigin::Define { file_id, define_id } => {
+                let (define_body, body_map) = sema
+                    .db
+                    .define_body_with_source(InFile::new(file_id, define_id))?;
+                Some((define_body.body.clone(), body_map))
+            }
+        }?;
+        let ast = source.any(self.item_id)?;
+        Some((body, ast.range()))
+    }
 }
 
 pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;

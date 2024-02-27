@@ -9,7 +9,6 @@
 
 use std::io::Write;
 use std::mem;
-use std::sync::Arc;
 
 use anyhow::Result;
 use elp::build::load;
@@ -32,11 +31,9 @@ use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
 use hir::Body;
-use hir::BodyOrigin;
 use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
-use hir::InFile;
 use hir::Literal;
 use hir::Name;
 use hir::Pat;
@@ -436,7 +433,7 @@ impl<'a> GleanIndexer<'a> {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, range)) = Self::find_range(&sema, &ctx) {
+                    if let Some((body, range)) = ctx.find_range(&sema) {
                         let arity = args.len() as u32;
                         if let Some(fact) =
                             Self::resolve_call(&sema, target, arity, file_id, &body, range)
@@ -447,7 +444,7 @@ impl<'a> GleanIndexer<'a> {
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = Self::find_range(&sema, &ctx) {
+                    if let Some((body, range)) = ctx.find_range(&sema) {
                         let arity: Option<u32> = match body[*arity] {
                             Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
                             _ => None,
@@ -527,21 +524,6 @@ impl<'a> GleanIndexer<'a> {
         XRefFact::new(file_id, xrefs)
     }
 
-    fn find_range(sema: &Semantic, ctx: &AnyCallBackCtx) -> Option<(Arc<Body>, TextRange)> {
-        let (body, source) = match ctx.body_origin {
-            BodyOrigin::Invalid(_) => None,
-            BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(file_id, form_id),
-            BodyOrigin::Define { file_id, define_id } => {
-                let (define_body, body_map) = sema
-                    .db
-                    .define_body_with_source(InFile::new(file_id, define_id))?;
-                Some((define_body.body.clone(), body_map))
-            }
-        }?;
-        let ast = source.any(ctx.item_id)?;
-        Some((body, ast.range()))
-    }
-
     fn resolve_call(
         sema: &Semantic<'_>,
         target: &CallTarget<ExprId>,
@@ -563,7 +545,7 @@ impl<'a> GleanIndexer<'a> {
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
-        let (body, range) = Self::find_range(sema, ctx)?;
+        let (body, range) = ctx.find_range(sema)?;
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
@@ -580,7 +562,7 @@ impl<'a> GleanIndexer<'a> {
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, range) = Self::find_range(sema, ctx)?;
+        let (_, range) = ctx.find_range(sema)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
     }
