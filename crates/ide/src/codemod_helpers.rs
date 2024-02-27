@@ -417,7 +417,11 @@ pub(crate) fn find_call_in_function<T>(
 mod tests {
 
     use elp_ide_db::elp_base_db::FileId;
+    use elp_ide_db::elp_base_db::SourceDatabase;
+    use elp_syntax::algo::find_node_at_offset;
+    use elp_syntax::ast;
     use hir::FunctionDef;
+    use hir::InFile;
     use hir::Semantic;
 
     use super::find_call_in_function;
@@ -426,6 +430,7 @@ mod tests {
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
+    use crate::fixture;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
 
@@ -681,5 +686,46 @@ mod tests {
             %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
         );
+    }
+
+    // -------------------------------------------------------------------
+
+    #[track_caller]
+    fn check_type(fixture: &str) {
+        let (db, position, _diagnostics_enabled, expected) = fixture::db_annotations(fixture);
+        let sema = Semantic::new(&db);
+        if expected.len() != 1 {
+            panic!("Expected exactly one annotation, got {:?}", &expected);
+        }
+
+        let file_syntax = db.parse(position.file_id).syntax_node();
+        let val: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let in_clause = sema.to_expr(InFile::new(position.file_id, &val)).unwrap();
+        if let Some(type_info) = sema.expr_type(&in_clause.body(), &in_clause.value) {
+            let type_str = format!("{}", type_info);
+            if type_str != expected[0].1 {
+                panic!("Expected '{}', got '{}'", expected[0].1, type_str);
+            }
+        } else {
+            panic!("could not get type info")
+        }
+    }
+
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn get_type_atom() {
+        check_type(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+                -module(bar).
+
+                -spec baz(atom()) -> atom().
+                baz(FF) -> F~F,
+            %%             ^^ atom()
+                  something_else.
+            "#,
+        )
     }
 }

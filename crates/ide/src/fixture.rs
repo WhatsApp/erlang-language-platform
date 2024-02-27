@@ -74,6 +74,21 @@ pub fn annotations(
     DiagnosticsEnabled,
     Vec<(FileRange, String)>,
 ) {
+    let (db, position, diagnostics_enabled, annotations) = db_annotations(fixture);
+    let analysis = AnalysisHost { db }.analysis();
+    (analysis, position, diagnostics_enabled, annotations)
+}
+
+/// Creates db from a multi-file fixture, returns first position marked with [`CURSOR_MARKER`]
+/// and annotations marked with sequence of %% ^^^
+pub fn db_annotations(
+    fixture: &str,
+) -> (
+    RootDatabase,
+    FilePosition,
+    DiagnosticsEnabled,
+    Vec<(FileRange, String)>,
+) {
     let (db, fixture) = RootDatabase::with_fixture(fixture);
     start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
     let (file_id, range_or_offset) = fixture
@@ -82,9 +97,8 @@ pub fn annotations(
     let offset = range_or_offset.expect_offset();
 
     let annotations = fixture.annotations(&db);
-    let analysis = AnalysisHost { db }.analysis();
     (
-        analysis,
+        db,
         FilePosition { file_id, offset },
         fixture.diagnostics_enabled,
         annotations,

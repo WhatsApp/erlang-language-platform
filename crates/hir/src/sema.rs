@@ -16,12 +16,14 @@ use std::vec::IntoIter;
 
 use elp_base_db::module_name;
 use elp_base_db::FileId;
+use elp_base_db::FilePosition;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use la_arena::Arena;
@@ -443,6 +445,25 @@ impl<'db> Semantic<'db> {
 
     pub fn vardef_source(&self, def: &VarDef) -> ast::Var {
         def.source(self.db.upcast())
+    }
+
+    // Try to keep this private, it should go away one day
+    fn range_for_expr(&self, body: &Body, expr_id: &ExprId) -> Option<TextRange> {
+        let body_map = body.get_body_map(self)?;
+        let ast = body_map.expr(*expr_id)?;
+        Some(ast.range())
+    }
+
+    /// We expose a high-level function, which internally does some
+    /// horrible things to get the expression range and then queries for that.
+    /// When we eventually improve this, we will not have to rewrite code using this API.
+    pub fn expr_type(&self, body: &Body, expr_id: &ExprId) -> Option<eqwalizer::Type> {
+        let range = self.range_for_expr(body, expr_id)?;
+        let type_info = self.db.eqwalizer_type_at_position(FilePosition {
+            file_id: body.origin.file_id(),
+            offset: range.start(),
+        })?;
+        Some(type_info.0.clone())
     }
 
     /// Return the free and bound variables in a given ast expression.
