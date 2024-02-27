@@ -51,7 +51,7 @@ use elp_ide::AnalysisHost;
 use elp_log::telemetry;
 use elp_log::telemetry::TelemetryMessage;
 use elp_log::timeit;
-use elp_log::timeit_slow;
+use elp_log::timeit_exceeds;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_project_model::ElpConfig;
@@ -337,7 +337,7 @@ impl Server {
                     return Ok(());
                 }
             }
-            let _timer = timeit_slow!("main_loop_health", SLOW_DURATION);
+            let _timer = timeit_exceeds!("main_loop_health", SLOW_DURATION);
             self.handle_event(event)?;
         }
 

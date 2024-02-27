@@ -132,27 +132,31 @@ macro_rules! timeit {
 #[macro_export]
 macro_rules! timeit_with_telemetry {
     ($display:expr) => {
-        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::All)
+        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::Always)
     };
     ($($arg:tt)+) => {
-        $crate::TimeIt::new(module_path!(), format!($($arg)+), $crate::Telemetry::All)
+        $crate::TimeIt::new(module_path!(), format!($($arg)+), $crate::Telemetry::Always)
     };
 }
 
 /// Usage: `let _timer = timeit_slow!("metric_name", Duration::from_millis(300))`
 /// Same as timeit_with_telemetry!, but do work only if latency is more than configured value
 #[macro_export]
-macro_rules! timeit_slow {
+macro_rules! timeit_exceeds {
     ($display:expr, $duration:expr) => {
-        $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::Slow($duration))
+        $crate::TimeIt::new(
+            module_path!(),
+            $display,
+            $crate::Telemetry::Exceeds($duration),
+        )
     };
 }
 
 #[derive(Debug)]
 pub enum Telemetry {
     No,
-    All,
-    Slow(Duration),
+    Always,
+    Exceeds(Duration),
 }
 
 // inspired by rust-analyzer `timeit`
@@ -222,11 +226,11 @@ where
             let duration_ms = instant.elapsed().as_millis() as u32;
             match self.telemetry {
                 Telemetry::No => self.log(duration_ms),
-                Telemetry::All => {
+                Telemetry::Always => {
                     self.log(duration_ms);
                     self.send_with_duration(duration_ms);
                 }
-                Telemetry::Slow(threshold) => {
+                Telemetry::Exceeds(threshold) => {
                     if duration_ms > threshold.as_millis() as u32 {
                         self.log(duration_ms);
                         self.send_with_duration(duration_ms)
