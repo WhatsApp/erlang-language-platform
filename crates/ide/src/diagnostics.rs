@@ -712,7 +712,8 @@ pub fn diagnostics(
     file_id: FileId,
 ) -> LabeledDiagnostics {
     lazy_static! {
-        static ref EXTENSIONS: Vec<FileKind> = vec![FileKind::Module, FileKind::Header];
+        static ref EXTENSIONS: Vec<FileKind> =
+            vec![FileKind::SrcModule, FileKind::TestModule, FileKind::Header];
     };
     let parse = db.parse(file_id);
 
@@ -722,10 +723,9 @@ pub fn diagnostics(
     let mut res = Vec::new();
 
     let (syntax_errors_by_function, form_ranges) = if report_diagnostics {
-        let is_erl_module = file_kind == FileKind::Module;
         let sema = Semantic::new(db);
 
-        if is_erl_module {
+        if file_kind.is_module() {
             no_module_definition_diagnostic(&mut res, &parse);
             if config.include_generated || !db.is_generated(file_id) {
                 unused_include::unused_includes(&sema, db, &mut res, file_id);
@@ -1294,7 +1294,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
 }
 
 pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
-    if !is_ct_test_suite(db, file_id) {
+    if db.file_kind(file_id) != FileKind::TestModule {
         return Arc::new(CommonTestInfo::Skipped);
     }
 
@@ -1335,23 +1335,6 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     res.into_iter()
         .filter(|d| !d.should_be_ignored(&line_index, &parse.syntax_node()))
         .collect()
-}
-
-pub fn is_ct_test_suite(db: &RootDatabase, file_id: FileId) -> bool {
-    // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_ct_test_suite: {:?}", file_id));
-    let root_id = db.file_source_root(file_id);
-    let root = db.source_root(root_id);
-    let path = root.path_for_file(&file_id).unwrap();
-    let file_kind = db.file_kind(file_id);
-    if file_kind == FileKind::Module {
-        match path.name_and_extension() {
-            Some((name, _)) => name.ends_with("_SUITE"),
-            _ => false,
-        }
-    } else {
-        false
-    }
 }
 
 /// Match the message part of the diagnostics produced by the
@@ -1739,7 +1722,7 @@ baz(1)->4.
         assert_eq!(
             diags
                 .into_iter()
-                .filter(|d| !is_implemented_in_elp(d, FileKind::Module))
+                .filter(|d| !is_implemented_in_elp(d, FileKind::SrcModule))
                 .collect::<Vec<_>>(),
             vec![diag3, diagk]
         );

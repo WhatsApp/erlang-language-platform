@@ -101,10 +101,14 @@ mod progress;
 pub mod setup;
 
 const LOGGER_NAME: &str = "lsp";
-const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] =
-    &[FileKind::Module, FileKind::Header, FileKind::Escript];
-const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
-const CT_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::Module];
+const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] = &[
+    FileKind::SrcModule,
+    FileKind::TestModule,
+    FileKind::Header,
+    FileKind::Escript,
+];
+const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::SrcModule, FileKind::TestModule];
+const CT_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::TestModule];
 const SLOW_DURATION: Duration = Duration::from_millis(300);
 
 enum Event {
@@ -1433,15 +1437,9 @@ pub fn is_supported_by_edoc(analysis: &Analysis, id: FileId) -> bool {
     }
 }
 
-pub fn is_supported_by_ct(analysis: &Analysis, file_id: FileId) -> bool {
-    if let Ok(kind) = analysis.file_kind(file_id) {
-        if CT_SUPPORTED_EXTENSIONS.contains(&kind) {
-            if let Ok(Some(module_name)) = analysis.module_name(file_id) {
-                return module_name.ends_with("_SUITE");
-            }
-        } else {
-            return false;
-        }
+pub fn is_supported_by_ct(analysis: &Analysis, id: FileId) -> bool {
+    match analysis.file_kind(id) {
+        Ok(kind) => CT_SUPPORTED_EXTENSIONS.contains(&kind),
+        Err(_) => false,
     }
-    false
 }

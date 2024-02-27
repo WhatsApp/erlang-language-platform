@@ -94,11 +94,21 @@ pub struct FileRange {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FileKind {
-    Module,
+    SrcModule,
+    TestModule,
     Header,
     Escript,
     Other,
     OutsideProjectModel,
+}
+
+impl FileKind {
+    pub fn is_module(self) -> bool {
+        match self {
+            Self::SrcModule | Self::TestModule => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait FileLoader {
@@ -284,14 +294,19 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
         // sources, do not process
         FileKind::OutsideProjectModel
     } else {
-        let ext = source_root
+        let name_and_ext = source_root
             .path_for_file(&file_id)
-            .and_then(|path| path.name_and_extension())
-            .and_then(|(_name, ext)| ext);
-        match ext {
-            Some("erl") => FileKind::Module,
-            Some("hrl") => FileKind::Header,
-            Some("escript") => FileKind::Escript,
+            .and_then(|path| path.name_and_extension());
+        match name_and_ext {
+            Some((name, Some("erl"))) => {
+                if name.ends_with("_SUITE") {
+                    FileKind::TestModule
+                } else {
+                    FileKind::SrcModule
+                }
+            }
+            Some((_, Some("hrl"))) => FileKind::Header,
+            Some((_, Some("escript"))) => FileKind::Escript,
             _ => FileKind::Other,
         }
     }

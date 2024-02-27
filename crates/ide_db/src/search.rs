@@ -157,7 +157,7 @@ impl SymbolDefinition {
         } else if self.is_local() {
             let file = self.file();
             match file.kind(sema.db.upcast()) {
-                FileKind::Module => SearchScope::files(
+                FileKind::SrcModule | FileKind::TestModule => SearchScope::files(
                     iter::once(file.file_id).chain(file.def_map(sema.db).get_included_files()),
                 ),
                 FileKind::Header => {

@@ -27,7 +27,7 @@ pub(crate) fn unused_record_field(
     file_id: FileId,
     file_kind: FileKind,
 ) -> Option<()> {
-    if FileKind::Module == file_kind {
+    if file_kind.is_module() {
         let def_map = sema.def_map(file_id);
         for (name, def) in def_map.get_records() {
             // Only run the check for records defined in the local module,
