@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_base_db::salsa;
+use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
@@ -72,7 +73,7 @@ impl AstLoader for crate::RootDatabase {
         };
 
         if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
-            erlang_service.request_parse(req)
+            erlang_service.request_parse(req, || self.unwind_if_cancelled())
         } else {
             log::error!("No parse server for project: {:?}", project_id);
             ParseResult::error(ParseError {

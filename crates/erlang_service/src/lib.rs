@@ -338,36 +338,46 @@ impl Connection {
         })
     }
 
-    pub fn request_parse(&self, request_in: ParseRequest) -> ParseResult {
+    pub fn request_parse<F>(&self, request_in: ParseRequest, unwind: F) -> ParseResult
+    where
+        F: Fn(),
+    {
         let (sender, receiver) = bounded::<Result<UndecodedParseResult>>(0);
         let path = request_in.path.clone();
         let request = Request::ParseRequest(request_in.clone(), sender);
         self.sender.send(request).unwrap();
-        match receiver.recv().unwrap() {
-            Result::Ok(result) => match result.decode() {
-                Result::Ok(result) => result,
-                Err(error) => {
-                    log::error!("Decoding parse result failed: {:?}", error);
-                    ParseResult::error(ParseError {
-                        path,
-                        location: None,
-                        msg: format!("Could not parse, error: {}", error),
-                        code: "L0001".to_string(),
-                    })
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(result) => {
+                    return match result {
+                        Ok(result) => match result.decode() {
+                            Result::Ok(result) => result,
+                            Err(error) => {
+                                log::error!("Decoding parse result failed: {:?}", error);
+                                ParseResult::error(ParseError {
+                                    path,
+                                    location: None,
+                                    msg: format!("Could not parse, error: {}", error),
+                                    code: "L0001".to_string(),
+                                })
+                            }
+                        },
+                        Err(error) => {
+                            log::error!(
+                                "Erlang service crashed for: {:?}, error: {:?}",
+                                request_in,
+                                error
+                            );
+                            ParseResult::error(ParseError {
+                                path,
+                                location: None,
+                                msg: format!("Could not parse, error: {}", error),
+                                code: "L0002".to_string(),
+                            })
+                        }
+                    };
                 }
-            },
-            Err(error) => {
-                log::error!(
-                    "Erlang service crashed for: {:?}, error: {:?}",
-                    request_in,
-                    error
-                );
-                ParseResult::error(ParseError {
-                    path,
-                    location: None,
-                    msg: format!("Could not parse, error: {}", error),
-                    code: "L0002".to_string(),
-                })
+                Err(_) => unwind(),
             }
         }
     }
@@ -641,7 +651,9 @@ fn reader_run(
 fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
     match (sender, reply) {
         (ResponseSender::ParseResponseSender(s), Reply::ParseReply(r)) => {
-            s.send(r).unwrap();
+            if let Err(err) = s.send(r) {
+                log::info!("Got parse response, but request was canceled: {}", err);
+            }
             Result::Ok(())
         }
         (ResponseSender::DocResponseSender(s), Reply::DocReply(r)) => {
@@ -996,7 +1008,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request);
+        let response = CONN.request_parse(request, || ());
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let actual = format!(
@@ -1019,7 +1031,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request);
+        let response = CONN.request_parse(request, || ());
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let errors = &response
