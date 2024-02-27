@@ -22,6 +22,7 @@ use elp_syntax::unescape;
 use elp_syntax::AstPtr;
 use fxhash::FxHashMap;
 
+use super::BodyOrigin;
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
 use super::TopLevelMacro;
@@ -85,7 +86,6 @@ pub(crate) struct MacroStackEntry {
 
 pub struct Ctx<'a> {
     db: &'a dyn DefDatabase,
-    original_file_id: FileId,
     macro_stack: Vec<MacroStackEntry>,
     macro_stack_id: usize,
     function_info: Option<(Atom, u32)>,
@@ -114,24 +114,27 @@ pub(crate) type MacroInformation = (
 );
 
 impl<'a> Ctx<'a> {
-    pub fn new(db: &'a dyn DefDatabase, file_id: FileId) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, origin: BodyOrigin) -> Self {
         Self {
             db,
-            original_file_id: file_id,
             macro_stack: vec![MacroStackEntry {
                 name: MacroName::new(Name::MISSING, None),
-                file_id,
+                file_id: origin.file_id(),
                 var_map: FxHashMap::default(),
                 parent_id: 0,
             }],
             macro_stack_id: 0,
             function_info: None,
             function_name: None,
-            body: Body::default(),
+            body: Body::new(origin),
             source_map: BodySourceMap::default(),
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
         }
+    }
+
+    pub fn file_id(&self) -> FileId {
+        self.body.origin.file_id()
     }
 
     pub fn set_function_info(&mut self, info: &NameArity) {
@@ -181,7 +184,7 @@ impl<'a> Ctx<'a> {
         if self.macro_stack.len() == 0 {
             // We can only check this at the actual end, not when
             // finishing a recursive case.
-            assert_eq!(entry.file_id, self.original_file_id);
+            assert_eq!(entry.file_id, self.file_id());
             assert_eq!(entry.parent_id, 0);
             assert!(entry.var_map.is_empty());
         }
@@ -189,6 +192,7 @@ impl<'a> Ctx<'a> {
         // Add one for the pop
         assert!(self.macro_stack.len() + 1 == self.starting_stack_size);
 
+        assert!(self.body.origin.is_valid());
         self.body.shrink_to_fit();
         (Arc::new(self.body), self.source_map)
     }
@@ -200,10 +204,17 @@ impl<'a> Ctx<'a> {
         function_asts: &[ast::FunDecl],
     ) -> (FunctionBody, Vec<Arc<BodySourceMap>>) {
         let mut source_maps = Vec::default();
+        let file_id = function_id.file_id;
         let clauses = function_asts
             .iter()
-            .filter_map(|f| f.clause())
-            .flat_map(|clause| self.lower_clause_or_macro_body(clause, None))
+            .zip(clause_ids.iter())
+            .filter_map(|(f, clause_id)| {
+                let clause = f.clause()?;
+                Some((clause, clause_id))
+            })
+            .flat_map(|(clause, clause_id)| {
+                self.lower_clause_or_macro_body(clause, &InFile::new(file_id, *clause_id), None)
+            })
             .map(|(body, source_map)| {
                 source_maps.push(Arc::new(source_map));
                 Arc::new(body)
@@ -383,17 +394,14 @@ impl<'a> Ctx<'a> {
     pub(crate) fn lower_clause_or_macro_body(
         &mut self,
         clause: ast::FunctionOrMacroClause,
+        clause_id: &InFile<FunctionClauseId>,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
                 let macrostack = self.get_macro_information();
                 Either::Left(once(FunctionClauseBody::lower_clause_body(
-                    self.db,
-                    self.original_file_id,
-                    &clause,
-                    macrostack,
-                    macro_def,
+                    self.db, &clause, clause_id, macrostack, macro_def,
                 )))
             }
             ast::FunctionOrMacroClause::MacroCallExpr(call) => {
@@ -408,7 +416,12 @@ impl<'a> Ctx<'a> {
                                 .flat_map(|clause| {
                                     let args: Vec<_> =
                                         call.args().iter().flat_map(|args| args.args()).collect();
-                                    this.lower_clause_or_macro_body(clause, Some((def_idx, args)))
+                                    // Is this clause_id appropriate here?
+                                    this.lower_clause_or_macro_body(
+                                        clause,
+                                        clause_id,
+                                        Some((def_idx, args)),
+                                    )
                                 })
                                 .collect(),
                             // no built-in macro makes sense in this place
@@ -2292,7 +2305,7 @@ impl<'a> Ctx<'a> {
             // This is a bit of a hack, but allows us not to depend on the file system
             // It somewhat replicates the behaviour of -deterministic option
             BuiltInMacro::FILE => {
-                let form_list = self.db.file_form_list(self.original_file_id);
+                let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
                     .map(|attr| Literal::String(format!("{}.erl", attr.name)))
@@ -2304,13 +2317,13 @@ impl<'a> Ctx<'a> {
             // Dummy value, we don't want to depend on the exact position
             BuiltInMacro::LINE => Some(Literal::Integer(0)),
             BuiltInMacro::MODULE => {
-                let form_list = self.db.file_form_list(self.original_file_id);
+                let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
                     .map(|attr| Literal::Atom(self.db.atom(attr.name.clone())))
             }
             BuiltInMacro::MODULE_STRING => {
-                let form_list = self.db.file_form_list(self.original_file_id);
+                let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
                     .map(|attr| Literal::String(attr.name.to_string()))
@@ -2351,7 +2364,7 @@ impl<'a> Ctx<'a> {
 
         let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
 
-        match self.db.resolve_macro(self.original_file_id, name.clone()) {
+        match self.db.resolve_macro(self.file_id(), name.clone()) {
             Some(res @ ResolvedMacro::BuiltIn(built_in)) => {
                 self.record_macro_resolution(call, res, name.clone());
                 match built_in {
@@ -2378,7 +2391,7 @@ impl<'a> Ctx<'a> {
             None => {
                 let name = name.with_arity(None);
                 let args = call.args()?;
-                let res = self.db.resolve_macro(self.original_file_id, name.clone())?;
+                let res = self.db.resolve_macro(self.file_id(), name.clone())?;
                 self.record_macro_resolution(call, res, name.clone());
                 match res {
                     ResolvedMacro::BuiltIn(built_in) => Some(cb(

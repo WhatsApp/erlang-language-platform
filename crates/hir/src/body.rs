@@ -74,12 +74,13 @@ pub mod scope;
 mod tests;
 mod tree_print;
 
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
     pub type_exprs: Arena<TypeExpr>,
     pub terms: Arena<Term>,
+    pub origin: BodyOrigin,
 }
 
 /// A wrapper around `Body` that indexes the macro expansion points
@@ -138,7 +139,58 @@ pub struct DefineBody {
     pub expr: ExprId,
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum BodyOrigin {
+    Invalid(FileId),
+    FormIdx {
+        file_id: FileId,
+        form_id: FormIdx,
+    },
+    Define {
+        file_id: FileId,
+        define_id: DefineId,
+    },
+}
+
+impl BodyOrigin {
+    pub fn new(file_id: FileId, form_id: FormIdx) -> BodyOrigin {
+        BodyOrigin::FormIdx { file_id, form_id }
+    }
+
+    pub fn file_id(&self) -> FileId {
+        match self {
+            BodyOrigin::Invalid(file_id) => *file_id,
+            BodyOrigin::FormIdx {
+                file_id,
+                form_id: _,
+            } => *file_id,
+            BodyOrigin::Define {
+                file_id,
+                define_id: _,
+            } => *file_id,
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        match self {
+            BodyOrigin::FormIdx { .. } => true,
+            BodyOrigin::Define { .. } => true,
+            BodyOrigin::Invalid(_) => false,
+        }
+    }
+}
+
 impl Body {
+    fn new(origin: BodyOrigin) -> Body {
+        Body {
+            exprs: Arena::default(),
+            pats: Arena::default(),
+            type_exprs: Arena::default(),
+            terms: Arena::default(),
+            origin,
+        }
+    }
+
     fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Body {
@@ -146,11 +198,28 @@ impl Body {
             pats,
             type_exprs,
             terms,
+            origin: _,
         } = self;
         exprs.shrink_to_fit();
         pats.shrink_to_fit();
         type_exprs.shrink_to_fit();
         terms.shrink_to_fit();
+    }
+
+    pub fn get_body_map(&self, sema: &Semantic) -> Option<Arc<BodySourceMap>> {
+        match self.origin {
+            BodyOrigin::Invalid(_) => None,
+            BodyOrigin::FormIdx { file_id, form_id } => {
+                let (_, body_map) = sema.get_body_and_map(file_id, form_id)?;
+                Some(body_map)
+            }
+            BodyOrigin::Define { file_id, define_id } => {
+                let (_, body_map) = sema
+                    .db
+                    .define_body_with_source(InFile::new(file_id, define_id))?;
+                Some(body_map)
+            }
+        }
     }
 
     pub fn print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
@@ -355,7 +424,7 @@ impl FunctionBody {
         if let Some(fun_def) = def_map.get_by_function_id(&function_id) {
             let fun_asts = fun_def.source(db.upcast());
 
-            let mut ctx = lower::Ctx::new(db, function_id.file_id);
+            let mut ctx = lower::Ctx::new(db, BodyOrigin::Invalid(function_id.file_id));
             let name = &fun_def.function_clauses[0].name;
             ctx.set_function_info(name);
             let (body, source_maps) =
@@ -401,12 +470,12 @@ impl FunctionClauseBody {
         db: &dyn DefDatabase,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
-        fn empty() -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        fn empty(origin: BodyOrigin) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
             (
                 Arc::new(FunctionClauseBody {
                     name: None,
                     from_macro: None,
-                    body: Arc::new(Body::default()),
+                    body: Arc::new(Body::new(origin)),
                     clause: Clause::default(),
                 }),
                 Arc::new(BodySourceMap::default()),
@@ -418,29 +487,37 @@ impl FunctionClauseBody {
         let function_ast = function
             .form_id
             .get(&function_clause_id.file_syntax(db.upcast()));
+        let body_origin = BodyOrigin::new(
+            function_clause_id.file_id,
+            FormIdx::FunctionClause(function_clause_id.value),
+        );
         if let Some(clause_ast) = function_ast.clause() {
-            let mut ctx = lower::Ctx::new(db, function_clause_id.file_id);
+            let mut ctx = lower::Ctx::new(db, body_origin);
             ctx.set_function_info(&function.name);
-            if let Some((body, source_map)) =
-                ctx.lower_clause_or_macro_body(clause_ast, None).next()
+            if let Some((body, source_map)) = ctx
+                .lower_clause_or_macro_body(clause_ast, &function_clause_id, None)
+                .next()
             {
                 (Arc::new(body), Arc::new(source_map))
             } else {
-                empty()
+                empty(body_origin)
             }
         } else {
-            empty()
+            empty(body_origin)
         }
     }
 
     pub(crate) fn lower_clause_body(
         db: &dyn DefDatabase,
-        file_id: FileId,
         clause_ast: &ast::FunctionClause,
+        clause_id: &InFile<FunctionClauseId>,
         macrostack: MacroInformation,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
     ) -> (FunctionClauseBody, BodySourceMap) {
-        let mut ctx = lower::Ctx::new(db, file_id);
+        let mut ctx = lower::Ctx::new(
+            db,
+            BodyOrigin::new(clause_id.file_id, FormIdx::FunctionClause(clause_id.value)),
+        );
         ctx.set_function_info_from_ast(clause_ast);
         ctx.set_macro_information(macrostack);
         let from_macro =
@@ -460,7 +537,13 @@ impl TypeBody {
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(type_alias_id.file_id);
-        let ctx = lower::Ctx::new(db, type_alias_id.file_id);
+        let ctx = lower::Ctx::new(
+            db,
+            BodyOrigin::new(
+                type_alias_id.file_id,
+                FormIdx::TypeAlias(type_alias_id.value),
+            ),
+        );
         let source = type_alias_id.file_syntax(db.upcast());
         let (body, source_map) = match form_list[type_alias_id.value] {
             TypeAlias::Regular { form_id, .. } => ctx.lower_type_alias(&form_id.get(&source)),
@@ -487,8 +570,14 @@ impl DefineBody {
         let source = define_id.file_syntax(db.upcast());
         let define = &form_list[define_id.value];
         let define_ast = define.form_id.get(&source);
-        let (body, source_map) =
-            lower::Ctx::new(db, define_id.file_id).lower_define(&define_ast)?;
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::Define {
+                file_id: define_id.file_id,
+                define_id: define_id.value,
+            },
+        )
+        .lower_define(&define_ast)?;
         Some((Arc::new(body), Arc::new(source_map)))
     }
 }
@@ -508,7 +597,11 @@ impl SpecBody {
             .form_id
             .get(&spec_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(db, spec_id.file_id).lower_spec(&spec_ast);
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::new(spec_id.file_id, FormIdx::Spec(spec_id.value)),
+        )
+        .lower_spec(&spec_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -521,8 +614,11 @@ impl SpecBody {
             .form_id
             .get(&callback_id.file_syntax(db.upcast()));
 
-        let (body, source_map) =
-            lower::Ctx::new(db, callback_id.file_id).lower_callback(&callback_ast);
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::new(callback_id.file_id, FormIdx::Callback(callback_id.value)),
+        )
+        .lower_callback(&callback_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -540,8 +636,11 @@ impl RecordBody {
         let record = &form_list[record_id.value];
         let record_ast = record.form_id.get(&record_id.file_syntax(db.upcast()));
 
-        let (body, source_map) =
-            lower::Ctx::new(db, record_id.file_id).lower_record(record, &record_ast);
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::new(record_id.file_id, FormIdx::Record(record_id.value)),
+        )
+        .lower_record(record, &record_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -571,8 +670,11 @@ impl AttributeBody {
             .form_id
             .get(&attribute_id.file_syntax(db.upcast()));
 
-        let (body, source_map) =
-            lower::Ctx::new(db, attribute_id.file_id).lower_attribute(&attribute_ast);
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::new(attribute_id.file_id, FormIdx::Attribute(attribute_id.value)),
+        )
+        .lower_attribute(&attribute_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -585,8 +687,14 @@ impl AttributeBody {
             .form_id
             .get(&attribute_id.file_syntax(db.upcast()));
 
-        let (body, source_map) =
-            lower::Ctx::new(db, attribute_id.file_id).lower_compile(&attribute_ast);
+        let (body, source_map) = lower::Ctx::new(
+            db,
+            BodyOrigin::new(
+                attribute_id.file_id,
+                FormIdx::CompileOption(attribute_id.value),
+            ),
+        )
+        .lower_compile(&attribute_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 

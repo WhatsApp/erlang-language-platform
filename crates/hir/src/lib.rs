@@ -31,6 +31,7 @@ mod test_db;
 pub use body::AnyAttribute;
 pub use body::AttributeBody;
 pub use body::Body;
+pub use body::BodyOrigin;
 pub use body::BodySourceMap;
 pub use body::DefineBody;
 pub use body::ExprSource;
