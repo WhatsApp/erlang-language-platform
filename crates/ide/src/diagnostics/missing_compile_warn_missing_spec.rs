@@ -23,7 +23,6 @@ use fxhash::FxHashSet;
 use hir::known;
 use hir::AnyExpr;
 use hir::FoldCtx;
-use hir::FormIdx;
 use hir::InFile;
 use hir::Literal;
 use hir::Name;
@@ -56,7 +55,6 @@ pub(crate) fn missing_compile_warn_missing_spec(
             let is_present = FoldCtx::fold_term(
                 Strategy::InvisibleMacros,
                 &co.body,
-                FormIdx::CompileOption(idx),
                 co.value,
                 false,
                 &mut |acc, ctx| match &ctx.item {

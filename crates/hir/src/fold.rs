@@ -13,6 +13,7 @@ use std::ops::Index;
 
 use elp_base_db::FileId;
 
+use crate::body::BodyOrigin;
 use crate::body::UnexpandedIndex;
 use crate::expr::AnyExpr;
 use crate::expr::MaybeExpr;
@@ -93,14 +94,7 @@ impl Fold for Spec {
     ) -> T {
         let body = sema.db.spec_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
-            FoldCtx::fold_type_spec_sig(
-                strategy,
-                &body.body,
-                FormIdx::Spec(id.value),
-                spec_sig,
-                acc,
-                callback,
-            )
+            FoldCtx::fold_type_spec_sig(strategy, &body.body, spec_sig, acc, callback)
         })
     }
 }
@@ -117,14 +111,7 @@ impl Fold for Callback {
     ) -> T {
         let body = sema.db.callback_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
-            FoldCtx::fold_type_spec_sig(
-                strategy,
-                &body.body,
-                FormIdx::Callback(id.value),
-                spec_sig,
-                acc,
-                callback,
-            )
+            FoldCtx::fold_type_spec_sig(strategy, &body.body, spec_sig, acc, callback)
         })
     }
 }
@@ -140,14 +127,7 @@ impl Fold for TypeAlias {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let body = sema.db.type_body(id);
-        FoldCtx::fold_type_expr(
-            strategy,
-            &body.body,
-            FormIdx::TypeAlias(id.value),
-            body.ty,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_type_expr(strategy, &body.body, body.ty, initial, callback)
     }
 }
 
@@ -163,14 +143,7 @@ impl Fold for Record {
     ) -> T {
         let body = sema.db.record_body(id);
         body.fields.iter().fold(initial, |acc, item| {
-            FoldCtx::fold_record_field_body(
-                strategy,
-                &body.body,
-                FormIdx::Record(id.value),
-                item,
-                acc,
-                callback,
-            )
+            FoldCtx::fold_record_field_body(strategy, &body.body, item, acc, callback)
         })
     }
 }
@@ -186,14 +159,7 @@ impl Fold for Attribute {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let body = sema.db.attribute_body(id);
-        FoldCtx::fold_term(
-            strategy,
-            &body.body,
-            FormIdx::Attribute(id.value),
-            body.value,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_term(strategy, &body.body, body.value, initial, callback)
     }
 }
 
@@ -208,14 +174,7 @@ impl Fold for CompileOption {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let body = sema.db.compile_body(id);
-        FoldCtx::fold_term(
-            strategy,
-            &body.body,
-            FormIdx::CompileOption(id.value),
-            body.value,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_term(strategy, &body.body, body.value, initial, callback)
     }
 }
 
@@ -230,11 +189,7 @@ impl Fold for Define {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         if let Some(body) = sema.db.define_body(id) {
-            if let Some(form_id) = sema.form_list(id.file_id).find_define_form(&id.value) {
-                FoldCtx::fold_expr(strategy, &body.body, form_id, body.expr, initial, callback)
-            } else {
-                initial
-            }
+            FoldCtx::fold_expr(strategy, &body.body, body.expr, initial, callback)
         } else {
             initial
         }
@@ -342,13 +297,13 @@ pub struct AnyCallBackCtx {
     pub in_macro: Option<HirIdx>,
     pub item_id: AnyExprId,
     pub item: AnyExpr,
-    pub form_id: FormIdx,
+    pub body_origin: BodyOrigin,
 }
 
 pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;
 
 pub struct FoldCtx<'a, T> {
-    form_id: FormIdx,
+    body_origin: BodyOrigin,
     body: &'a FoldBody<'a>,
     strategy: Strategy,
     macro_stack: Vec<HirIdx>,
@@ -376,11 +331,11 @@ impl<'a, T> FoldCtx<'a, T> {
     fn new(
         strategy: Strategy,
         body: &'a FoldBody<'a>,
-        form_id: FormIdx,
+        body_origin: BodyOrigin,
         callback: AnyCallBack<'a, T>,
     ) -> FoldCtx<'a, T> {
         FoldCtx {
-            form_id,
+            body_origin,
             body,
             strategy,
             macro_stack: Vec::default(),
@@ -391,36 +346,33 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_expr(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         expr_id: ExprId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_expr(expr_id, initial)
     }
 
     pub fn fold_exprs(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         expr_ids: &[ExprId],
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_exprs(expr_ids, initial)
     }
 
     pub fn fold_pat(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         pat_id: PatId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_pat(pat_id, initial)
     }
 
@@ -431,49 +383,45 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_term(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         term_id: TermId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_term(term_id, initial)
     }
 
     pub fn fold_type_expr(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         type_expr_id: TypeExprId,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_type_expr(type_expr_id, initial)
     }
 
     pub fn fold_type_exprs(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         type_expr_ids: &[TypeExprId],
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        FoldCtx::new(strategy, &fold_body(strategy, body), form_id, callback)
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_type_exprs(type_expr_ids, initial)
     }
 
     pub fn fold_type_spec_sig(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         spec_sig: &SpecSig,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let fold_body = &fold_body(strategy, body);
-        let mut ctx = FoldCtx::new(strategy, &fold_body, form_id, callback);
+        let mut ctx = FoldCtx::new(strategy, &fold_body, body.origin, callback);
         let r = ctx.do_fold_type_exprs(&spec_sig.args, initial);
         ctx.macro_stack = Vec::default();
         let r = ctx.do_fold_type_expr(spec_sig.result, r);
@@ -488,13 +436,12 @@ impl<'a, T> FoldCtx<'a, T> {
     pub fn fold_record_field_body(
         strategy: Strategy,
         body: &'a Body,
-        form_id: FormIdx,
         record_field_body: &RecordFieldBody,
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let fold_body = fold_body(strategy, body);
-        let mut ctx = FoldCtx::new(strategy, &fold_body, form_id, callback);
+        let mut ctx = FoldCtx::new(strategy, &fold_body, body.origin, callback);
         ctx.macro_stack = Vec::default();
         let r = if let Some(expr_id) = record_field_body.expr {
             ctx.do_fold_expr(expr_id, initial)
@@ -518,7 +465,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Expr(expr_id),
             item: AnyExpr::Expr(expr.clone()),
-            form_id: self.form_id,
+            body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
         let r = match expr {
@@ -590,7 +537,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
-                        form_id: self.form_id,
+                        body_origin: self.body_origin,
                         idx: AnyExprId::Expr(expr_id),
                     });
                     let e = self.do_fold_expr(*expansion, acc);
@@ -727,7 +674,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Pat(pat_id),
             item: AnyExpr::Pat(pat.clone()),
-            form_id: self.form_id,
+            body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
         let r = match &pat {
@@ -833,7 +780,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::Term(term_id),
             item: AnyExpr::Term(term.clone()),
-            form_id: self.form_id,
+            body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
         let r = match &term {
@@ -883,7 +830,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             item_id: AnyExprId::TypeExpr(type_expr_id),
             item: AnyExpr::TypeExpr(type_expr.clone()),
-            form_id: self.form_id,
+            body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
         let r = match &type_expr {
@@ -944,7 +891,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
-                        form_id: self.form_id,
+                        body_origin: self.body_origin,
                         idx: AnyExprId::TypeExpr(type_expr_id),
                     });
                     let e = self.do_fold_type_expr(*expansion, acc);
@@ -1109,7 +1056,6 @@ bar() ->
         let r: u32 = FoldCtx::fold_expr(
             Strategy::InvisibleMacros,
             &body.body,
-            FormIdx::FunctionClause(function_clause_id.value),
             body.clause.exprs[0],
             0,
             &mut |acc, ctx| match ctx.item {
@@ -1170,7 +1116,6 @@ bar() ->
         let r = FoldCtx::fold_term(
             Strategy::InvisibleMacros,
             &compiler_options.body,
-            FormIdx::CompileOption(idx),
             compiler_options.value,
             0,
             &mut |acc, ctx| match &ctx.item {
@@ -1228,7 +1173,6 @@ bar() ->
         let r = FoldCtx::fold_expr(
             strategy,
             &function_body.body,
-            FormIdx::FunctionClause(function_clause_idx),
             function_body.clause.exprs[0],
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {
@@ -1389,7 +1333,6 @@ bar() ->
             FoldCtx::fold_type_expr(
                 Strategy::InvisibleMacros,
                 &type_alias.body,
-                FormIdx::TypeAlias(idx),
                 type_alias.ty,
                 0,
                 &mut |acc, ctx| match &ctx.item {
@@ -1547,7 +1490,6 @@ bar() ->
         let r = FoldCtx::fold_type_expr(
             strategy,
             &type_alias_body.body,
-            FormIdx::TypeAlias(idx),
             type_alias_body.ty,
             (0, 0),
             &mut |(in_macro, not_in_macro), ctx| match ctx.item {

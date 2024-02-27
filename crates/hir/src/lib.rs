@@ -204,6 +204,6 @@ impl<T> InFile<Option<T>> {
 /// file. Use globally as `InFile<HirIdx>`.
 #[derive(Debug, Clone, Copy)]
 pub struct HirIdx {
-    pub form_id: FormIdx,
+    pub body_origin: BodyOrigin,
     pub idx: AnyExprId,
 }

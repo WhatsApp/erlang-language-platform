@@ -73,8 +73,7 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                             return None;
                         }
                     }
-                    let function_args =
-                        ctx.create_function_args(function_id, args, &call_expr.body());
+                    let function_args = ctx.create_function_args(args, &call_expr.body());
 
                     let fun_def = ctx
                         .sema

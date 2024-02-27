@@ -346,11 +346,7 @@ fn test_function_args() {
         expect![[r#"
             "X, XN"
         "#]]
-        .assert_debug_eq(&ctx.create_function_args(
-            FunctionDefId::new(call_expr.function_clause_id.value),
-            args,
-            &call_expr.body(),
-        ));
+        .assert_debug_eq(&ctx.create_function_args(args, &call_expr.body()));
     } else {
         panic!("Expecting Expr::Call");
     }

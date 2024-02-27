@@ -64,27 +64,22 @@ pub(crate) fn mutable_variable_bug(
             if def.file.file_id == file_id {
                 if let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id) {
                     let in_clause = def.in_clause(sema, def);
-                    in_clause.fold_clause(
-                        Strategy::InvisibleMacros,
-                        def.function_clause_id,
-                        (),
-                        &mut |acc, ctx| {
-                            if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
-                                if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
-                                    if bound_vars.contains(lhs) {
-                                        if let Some(range) = in_clause.range_for_any(ctx.item_id) {
-                                            diags.push(Diagnostic::new(
-                                                DiagnosticCode::MutableVarBug,
-                                                "Possible mutable variable bug",
-                                                range,
-                                            ));
-                                        }
+                    in_clause.fold_clause(Strategy::InvisibleMacros, (), &mut |acc, ctx| {
+                        if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
+                            if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
+                                if bound_vars.contains(lhs) {
+                                    if let Some(range) = in_clause.range_for_any(ctx.item_id) {
+                                        diags.push(Diagnostic::new(
+                                            DiagnosticCode::MutableVarBug,
+                                            "Possible mutable variable bug",
+                                            range,
+                                        ));
                                     }
                                 }
-                            };
-                            acc
-                        },
-                    );
+                            }
+                        };
+                        acc
+                    });
                 }
             }
         });

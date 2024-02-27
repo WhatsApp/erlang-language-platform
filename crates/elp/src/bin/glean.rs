@@ -32,10 +32,10 @@ use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
 use hir::Body;
+use hir::BodyOrigin;
 use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
-use hir::FormIdx;
 use hir::InFile;
 use hir::Literal;
 use hir::Name;
@@ -436,7 +436,7 @@ impl<'a> GleanIndexer<'a> {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, range)) = Self::find_range(&sema, file_id, &ctx) {
+                    if let Some((body, range)) = Self::find_range(&sema, &ctx) {
                         let arity = args.len() as u32;
                         if let Some(fact) =
                             Self::resolve_call(&sema, target, arity, file_id, &body, range)
@@ -447,7 +447,7 @@ impl<'a> GleanIndexer<'a> {
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = Self::find_range(&sema, file_id, &ctx) {
+                    if let Some((body, range)) = Self::find_range(&sema, &ctx) {
                         let arity: Option<u32> = match body[*arity] {
                             Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
                             _ => None,
@@ -527,60 +527,17 @@ impl<'a> GleanIndexer<'a> {
         XRefFact::new(file_id, xrefs)
     }
 
-    fn find_range(
-        sema: &Semantic,
-        file_id: FileId,
-        ctx: &AnyCallBackCtx,
-    ) -> Option<(Arc<Body>, TextRange)> {
-        let (body, source) = match ctx.form_id {
-            FormIdx::ModuleAttribute(_) => None,
-            FormIdx::FunctionClause(func_id) => {
-                let in_file = InFile::new(file_id, func_id);
-                let (body, source) = sema.db.function_clause_body_with_source(in_file);
-                Some((body.body.clone(), source))
+    fn find_range(sema: &Semantic, ctx: &AnyCallBackCtx) -> Option<(Arc<Body>, TextRange)> {
+        let (body, source) = match ctx.body_origin {
+            BodyOrigin::Invalid(_) => None,
+            BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(file_id, form_id),
+            BodyOrigin::Define { file_id, define_id } => {
+                let (define_body, body_map) = sema
+                    .db
+                    .define_body_with_source(InFile::new(file_id, define_id))?;
+                Some((define_body.body.clone(), body_map))
             }
-            FormIdx::PPDirective(_) => None,
-            FormIdx::PPCondition(_) => None,
-            FormIdx::Export(_) => None,
-            FormIdx::Import(_) => None,
-            FormIdx::TypeExport(_) => None,
-            FormIdx::Behaviour(_) => None,
-            FormIdx::TypeAlias(typ) => {
-                let in_file = InFile::new(file_id, typ);
-                let (body, source) = sema.db.type_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-            FormIdx::Spec(spec) => {
-                let in_file = InFile::new(file_id, spec);
-                let (body, source) = sema.db.spec_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-            FormIdx::Callback(call) => {
-                let in_file = InFile::new(file_id, call);
-                let (body, source) = sema.db.callback_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-            FormIdx::OptionalCallbacks(_) => None,
-            FormIdx::Record(rec) => {
-                let in_file = InFile::new(file_id, rec);
-                let (body, source) = sema.db.record_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-            FormIdx::Attribute(attr) => {
-                let in_file = InFile::new(file_id, attr);
-                let (body, source) = sema.db.attribute_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-            FormIdx::CompileOption(comp) => {
-                let in_file = InFile::new(file_id, comp);
-                let (body, source) = sema.db.compile_body_with_source(in_file);
-                Some((body.body.clone(), source))
-            }
-
-            FormIdx::DeprecatedAttribute(_) => None,
-            FormIdx::FeatureAttribute(_) => None,
         }?;
-
         let ast = source.any(ctx.item_id)?;
         Some((body, ast.range()))
     }
@@ -606,7 +563,7 @@ impl<'a> GleanIndexer<'a> {
         file_id: FileId,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
-        let (body, range) = Self::find_range(sema, file_id, ctx)?;
+        let (body, range) = Self::find_range(sema, ctx)?;
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
@@ -623,7 +580,7 @@ impl<'a> GleanIndexer<'a> {
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, range) = Self::find_range(sema, file_id, ctx)?;
+        let (_, range) = Self::find_range(sema, ctx)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
     }

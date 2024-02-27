@@ -505,13 +505,11 @@ impl<'db> Semantic<'db> {
         let function_clause = expr.function_clause_id;
         let clause_scopes = self.db.function_clause_scopes(function_clause);
         let expr_id_in = expr.value;
-        let form_id = FormIdx::FunctionClause(function_clause.value);
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
             Strategy::InvisibleMacros,
             &expr.body.body,
-            form_id,
             expr_id_in,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
@@ -544,7 +542,6 @@ impl<'db> Semantic<'db> {
         Some(FoldCtx::fold_expr(
             Strategy::InvisibleMacros,
             &expr.body.body,
-            form_id,
             expr_id_in,
             ScopeAnalysis::new(),
             &mut |defs, ctx| match ctx.item {
@@ -822,7 +819,6 @@ impl<'db> Semantic<'db> {
                 FoldCtx::fold_expr(
                     strategy,
                     &function_clause_body.body,
-                    FormIdx::FunctionClause(function_clause_id.value),
                     *expr_id,
                     acc_inner,
                     callback,
@@ -844,39 +840,33 @@ impl<'db> Semantic<'db> {
                 let function_id = InFile::new(file_id, *function_id);
                 let body = self.db.function_clause_body(function_id);
 
-                fold_function_clause_body(
-                    Strategy::InvisibleMacros,
-                    &body,
-                    function_id.value,
-                    (),
-                    &mut |acc, ctx| {
-                        if let Some(mut resolver) = self.clause_resolver(function_id) {
-                            let mut bound_vars =
-                                BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
-                            match ctx.item {
-                                AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
-                                    bound_vars.report_any_bound_vars(&lhs)
-                                }
-                                AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
-                                    bound_vars.cr_clauses(&clauses);
-                                }
-                                AnyExpr::Expr(Expr::Try {
-                                    exprs: _,
-                                    of_clauses,
-                                    catch_clauses,
-                                    after: _,
-                                }) => {
-                                    bound_vars.cr_clauses(&of_clauses);
-                                    catch_clauses.iter().for_each(|clause| {
-                                        bound_vars.report_any_bound_vars(&clause.reason);
-                                    })
-                                }
-                                _ => {}
+                fold_function_clause_body(Strategy::InvisibleMacros, &body, (), &mut |acc, ctx| {
+                    if let Some(mut resolver) = self.clause_resolver(function_id) {
+                        let mut bound_vars =
+                            BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
+                        match ctx.item {
+                            AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
+                                bound_vars.report_any_bound_vars(&lhs)
                             }
-                        };
-                        acc
-                    },
-                );
+                            AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
+                                bound_vars.cr_clauses(&clauses);
+                            }
+                            AnyExpr::Expr(Expr::Try {
+                                exprs: _,
+                                of_clauses,
+                                catch_clauses,
+                                after: _,
+                            }) => {
+                                bound_vars.cr_clauses(&of_clauses);
+                                catch_clauses.iter().for_each(|clause| {
+                                    bound_vars.report_any_bound_vars(&clause.reason);
+                                })
+                            }
+                            _ => {}
+                        }
+                    };
+                    acc
+                });
             }
         }
         res
@@ -893,7 +883,6 @@ impl<'db> Semantic<'db> {
         FoldCtx::fold_pat(
             Strategy::InvisibleMacros,
             &resolver.body.body,
-            FormIdx::FunctionClause(resolver.function_clause_id.value),
             *pat_id,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
@@ -948,9 +937,8 @@ fn fold_function_body<'a, T>(
     function_body
         .clauses
         .iter()
-        .zip(function_body.clause_ids.iter())
-        .fold(initial, |acc, ((clause_id, clause), function_id)| {
-            fold_function_clause_body(strategy, clause, *function_id, acc, &mut |acc, ctx| {
+        .fold(initial, |acc, (clause_id, clause)| {
+            fold_function_clause_body(strategy, clause, acc, &mut |acc, ctx| {
                 callback(acc, clause_id, ctx)
             })
         })
@@ -959,7 +947,6 @@ fn fold_function_body<'a, T>(
 fn fold_function_clause_body<'a, T>(
     strategy: Strategy,
     function_clause_body: &FunctionClauseBody,
-    function_clause_id: FunctionClauseId,
     initial: T,
     callback: AnyCallBack<'a, T>,
 ) -> T {
@@ -967,7 +954,6 @@ fn fold_function_clause_body<'a, T>(
         Some(from_macro) if strategy == Strategy::SurfaceOnly => FoldCtx::fold_exprs(
             strategy,
             &function_clause_body.body,
-            FormIdx::FunctionClause(function_clause_id),
             &from_macro.args,
             initial,
             callback,
@@ -982,7 +968,6 @@ fn fold_function_clause_body<'a, T>(
                         FoldCtx::fold_pat(
                             strategy,
                             &function_clause_body.body,
-                            FormIdx::FunctionClause(function_clause_id),
                             *pat_id,
                             acc_inner,
                             callback,
@@ -995,7 +980,6 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::FunctionClause(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -1011,7 +995,6 @@ fn fold_function_clause_body<'a, T>(
                     FoldCtx::fold_expr(
                         strategy,
                         &function_clause_body.body,
-                        FormIdx::FunctionClause(function_clause_id),
                         *expr_id,
                         acc_inner,
                         callback,
@@ -1347,14 +1330,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_expr(
-            strategy,
-            &self.body.body,
-            FormIdx::FunctionClause(self.function_clause_id.value),
-            expr_id,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_expr(strategy, &self.body.body, expr_id, initial, callback)
     }
 
     pub fn fold_pat<R>(
@@ -1364,24 +1340,16 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        FoldCtx::fold_pat(
-            strategy,
-            &self.body.body,
-            FormIdx::FunctionClause(self.function_clause_id.value),
-            pat_id,
-            initial,
-            callback,
-        )
+        FoldCtx::fold_pat(strategy, &self.body.body, pat_id, initial, callback)
     }
 
     pub fn fold_clause<R>(
         &self,
         strategy: Strategy,
-        function_clause_id: FunctionClauseId,
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        fold_function_clause_body(strategy, &self.body, function_clause_id, initial, callback)
+        fold_function_clause_body(strategy, &self.body, initial, callback)
     }
 
     pub fn range(&self) -> TextRange {
