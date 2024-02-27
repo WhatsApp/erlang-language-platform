@@ -20,8 +20,8 @@ run([Module, Filename, CompileOptions, ShouldRequestGroups]) ->
             false ->
                 []
         end,
-    code:delete(Module),
     code:purge(Module),
+    code:delete(Module),
     {ok, [{"CT_INFO_ALL", term_to_binary(All)}, {"CT_INFO_GROUPS", term_to_binary(Groups)}]}.
 
 eval(Expression) ->

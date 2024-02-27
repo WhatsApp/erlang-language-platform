@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_base_db::salsa;
+use elp_base_db::salsa::Database;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
@@ -128,7 +129,7 @@ impl CommonTestLoader for crate::RootDatabase {
                 compile_options,
                 should_request_groups,
             };
-            match erlang_service.ct_info(request) {
+            match erlang_service.ct_info(request, || self.unwind_if_cancelled()) {
                 Ok(result) => match result.all() {
                     Ok(all) => match result.groups() {
                         Ok(groups) => CommonTestInfo::Result { all, groups },

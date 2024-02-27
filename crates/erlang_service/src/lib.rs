@@ -419,19 +419,29 @@ impl Connection {
         self.sender.send(request).unwrap();
     }
 
-    pub fn ct_info(&self, request: CTInfoRequest) -> Result<CTInfoResult, String> {
+    pub fn ct_info<F>(&self, request: CTInfoRequest, unwind: F) -> Result<CTInfoResult, String>
+    where
+        F: Fn(),
+    {
         let module = request.module.clone();
         let (sender, receiver) = bounded::<Result<UndecodedCTInfoResult>>(0);
         let request = Request::CTInfoRequest(request, sender);
         self.sender.send(request).unwrap();
-        match receiver.recv().unwrap() {
-            Result::Ok(result) => match result.decode() {
-                Ok(result) => Ok(result),
-                Err(err) => Err(format!("Decoding error: {:?}", err)),
-            },
-            Err(error) => {
-                log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
-                Err(format!("Failed to fetch CT Info for {:?}", module.name))
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(result) => {
+                    return match result {
+                        Result::Ok(result) => match result.decode() {
+                            Ok(result) => Ok(result),
+                            Err(err) => Err(format!("Decoding error: {:?}", err)),
+                        },
+                        Err(error) => {
+                            log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
+                            Err(format!("Failed to fetch CT Info for {:?}", module.name))
+                        }
+                    };
+                }
+                Err(_) => unwind(),
             }
         }
     }
@@ -663,7 +673,13 @@ fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
             Result::Ok(())
         }
         (ResponseSender::CTInfoResponseSender(s), Reply::CTInfoReply(r)) => {
-            Result::Ok(s.send(r).unwrap())
+            if let Err(err) = s.send(r) {
+                log::info!(
+                    "Got common test response, but request was canceled: {}",
+                    err
+                );
+            }
+            Result::Ok(())
         }
         (sender, reply) => Result::Err(anyhow!(format!(
             "erlang_service response mismatch: Got a {:?} reply when expecting a {:?} reply",
@@ -1076,7 +1092,7 @@ mod tests {
             compile_options: vec![],
             should_request_groups: true,
         };
-        let actual = match CONN.ct_info(request) {
+        let actual = match CONN.ct_info(request, || ()) {
             Ok(response) => {
                 format!(
                     "CT_INFO_ALL\n{}\n\nCT_INFO_GROUPS\n{}",
