@@ -8,9 +8,9 @@
  */
 
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::Type;
 use serde::Serialize;
 
-use super::types::Type;
 use crate::ast;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]

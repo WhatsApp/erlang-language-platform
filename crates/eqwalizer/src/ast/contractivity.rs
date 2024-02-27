@@ -40,6 +40,9 @@
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::OpaqueType;
+use elp_types_db::eqwalizer::Prop;
+use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 
 use super::db::EqwalizerASTDatabase;
@@ -50,9 +53,6 @@ use super::invalid_diagnostics::Invalid;
 use super::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
 use super::stub::ModuleStub;
 use super::subst::Subst;
-use super::types::OpaqueType;
-use super::types::Prop;
-use super::types::Type;
 use super::ContractivityCheckError;
 use super::Id;
 use super::RemoteId;

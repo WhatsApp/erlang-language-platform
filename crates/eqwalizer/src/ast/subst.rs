@@ -7,23 +7,22 @@
  * of this source tree.
  */
 
+use elp_types_db::eqwalizer::AnyArityFunType;
+use elp_types_db::eqwalizer::BoundedDynamicType;
+use elp_types_db::eqwalizer::DictMap;
+use elp_types_db::eqwalizer::FunType;
+use elp_types_db::eqwalizer::ListType;
+use elp_types_db::eqwalizer::OpaqueType;
+use elp_types_db::eqwalizer::OptProp;
+use elp_types_db::eqwalizer::Prop;
+use elp_types_db::eqwalizer::RefinedRecordType;
+use elp_types_db::eqwalizer::RemoteType;
+use elp_types_db::eqwalizer::ReqProp;
+use elp_types_db::eqwalizer::ShapeMap;
+use elp_types_db::eqwalizer::TupleType;
+use elp_types_db::eqwalizer::Type;
+use elp_types_db::eqwalizer::UnionType;
 use fxhash::FxHashMap;
-
-use super::types::AnyArityFunType;
-use super::types::BoundedDynamicType;
-use super::types::DictMap;
-use super::types::FunType;
-use super::types::ListType;
-use super::types::OpaqueType;
-use super::types::OptProp;
-use super::types::Prop;
-use super::types::RefinedRecordType;
-use super::types::RemoteType;
-use super::types::ReqProp;
-use super::types::ShapeMap;
-use super::types::TupleType;
-use super::types::Type;
-use super::types::UnionType;
 
 pub struct Subst<'a> {
     pub sub: FxHashMap<u32, &'a Type>,

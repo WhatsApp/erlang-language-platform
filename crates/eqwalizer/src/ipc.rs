@@ -20,6 +20,7 @@ use std::time::Duration;
 use anyhow::Context;
 use anyhow::Result;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;
@@ -27,7 +28,6 @@ use stdx::JodChild;
 use timeout_readwrite::TimeoutReader;
 use timeout_readwrite::TimeoutWriter;
 
-use crate::ast::types::Type;
 use crate::ast::Pos;
 
 #[derive(Deserialize, Debug)]

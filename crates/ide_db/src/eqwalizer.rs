@@ -22,8 +22,6 @@ use elp_base_db::SourceRootId;
 use elp_base_db::VfsPath;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
-use elp_eqwalizer::ast::types::RecordType;
-pub use elp_eqwalizer::ast::types::Type;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::ast::RemoteId;
@@ -33,6 +31,7 @@ use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::EqwalizerStats;
 use elp_syntax::ast;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
@@ -98,7 +97,7 @@ pub trait EqwalizerDatabase:
         &self,
         project_id: ProjectId,
         position: FilePosition,
-    ) -> Option<Arc<(Type, FileRange)>>;
+    ) -> Option<Arc<(eqwalizer::Type, FileRange)>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
@@ -135,7 +134,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     position: FilePosition,
-) -> Option<Arc<(Type, FileRange)>> {
+) -> Option<Arc<(eqwalizer::Type, FileRange)>> {
     if !db.is_eqwalizer_enabled(position.file_id, false) {
         return None;
     }
@@ -314,7 +313,7 @@ fn id_name_and_location(
 fn record_name_and_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    record: &RecordType,
+    record: &eqwalizer::RecordType,
 ) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(record.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
@@ -326,26 +325,26 @@ fn record_name_and_location(
 fn collect_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    ty: &Type,
+    ty: &eqwalizer::Type,
     links: &mut FxHashSet<(SmolStr, FileRange)>,
 ) {
     match ty {
-        Type::RemoteType(rt) => {
+        eqwalizer::Type::RemoteType(rt) => {
             if let Some(link) = id_name_and_location(db, project_id, &rt.id) {
                 links.insert(link);
             };
         }
-        Type::OpaqueType(ot) => {
+        eqwalizer::Type::OpaqueType(ot) => {
             if let Some(link) = id_name_and_location(db, project_id, &ot.id) {
                 links.insert(link);
             };
         }
-        Type::RecordType(rt) => {
+        eqwalizer::Type::RecordType(rt) => {
             if let Some(link) = record_name_and_location(db, project_id, rt) {
                 links.insert(link);
             };
         }
-        Type::RefinedRecordType(rt) => {
+        eqwalizer::Type::RefinedRecordType(rt) => {
             if let Some(link) = record_name_and_location(db, project_id, &rt.rec_type) {
                 links.insert(link);
             };
@@ -363,7 +362,7 @@ fn collect_references(
 pub fn type_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    ty: &Type,
+    ty: &eqwalizer::Type,
 ) -> Vec<(SmolStr, FileRange)> {
     let mut links = FxHashSet::default();
     collect_references(db, project_id, ty, &mut links);

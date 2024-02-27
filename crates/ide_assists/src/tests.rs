@@ -32,7 +32,6 @@ use elp_syntax::SourceFile;
 use expect_test::expect;
 use expect_test::Expect;
 use hir::Expr;
-use hir::FunctionDefId;
 use hir::InFile;
 use hir::Semantic;
 use stdx::format_to;

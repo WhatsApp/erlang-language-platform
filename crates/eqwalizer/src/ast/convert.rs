@@ -10,6 +10,7 @@
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashSet;
 
 use super::auto_import;
@@ -154,7 +155,6 @@ use super::pat::PatTuple;
 use super::pat::PatUnOp;
 use super::pat::PatVar;
 use super::pat::PatWild;
-use super::types::Type;
 use super::ConversionError;
 use super::Id;
 use super::RemoteId;

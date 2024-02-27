@@ -7,13 +7,13 @@
  * of this source tree.
  */
 
-use elp_ide_db::eqwalizer;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
+use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use hir::db::InternDatabase;
 use hir::AnyExpr;

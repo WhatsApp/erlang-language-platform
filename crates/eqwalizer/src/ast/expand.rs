@@ -18,6 +18,7 @@
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
@@ -59,7 +60,6 @@ use super::invalid_diagnostics::TyVarWithMultipleConstraints;
 use super::invalid_diagnostics::UnboundTyVarInTyDecl;
 use super::invalid_diagnostics::UnknownId;
 use super::stub::ModuleStub;
-use super::types::Type;
 use super::Id;
 use super::LineAndColumn;
 use super::RemoteId;

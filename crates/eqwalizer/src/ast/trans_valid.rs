@@ -16,6 +16,7 @@
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
@@ -33,7 +34,6 @@ use super::form::TypeDecl;
 use super::invalid_diagnostics::Invalid;
 use super::invalid_diagnostics::TransitiveInvalid;
 use super::stub::ModuleStub;
-use super::types::Type;
 use super::Id;
 use super::RemoteId;
 use super::TransitiveCheckError;

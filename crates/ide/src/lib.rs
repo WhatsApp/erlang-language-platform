@@ -15,7 +15,6 @@ use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
-use elp_eqwalizer::ast::types::Type;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -59,6 +58,7 @@ use elp_syntax::ast;
 use elp_syntax::label::Label;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer;
 use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
@@ -249,14 +249,14 @@ impl Analysis {
         &self,
         project_id: ProjectId,
         position: FilePosition,
-    ) -> Cancellable<Option<Arc<(Type, FileRange)>>> {
+    ) -> Cancellable<Option<Arc<(eqwalizer::Type, FileRange)>>> {
         self.with_db(|db| db.type_at_position(project_id, position))
     }
 
     pub fn type_references(
         &self,
         project_id: ProjectId,
-        ty: &Type,
+        ty: &eqwalizer::Type,
     ) -> Cancellable<Vec<(SmolStr, FileRange)>> {
         self.with_db(|db| type_references(db, project_id, ty))
     }

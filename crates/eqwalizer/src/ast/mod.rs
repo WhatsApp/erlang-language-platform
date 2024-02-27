@@ -42,7 +42,6 @@ pub mod pat;
 pub mod stub;
 pub mod subst;
 pub mod trans_valid;
-pub mod types;
 pub mod variance_check;
 pub mod visitor;
 

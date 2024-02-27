@@ -9,8 +9,10 @@
 
 use ast::expr;
 use ast::ext_types;
-use ast::types;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::FunType;
+use elp_types_db::eqwalizer::Type;
+use elp_types_db::eqwalizer::VarType;
 use serde::Serialize;
 
 use super::invalid_diagnostics::Invalid;
@@ -141,21 +143,21 @@ pub struct EqwalizerUnlimitedRefinementAttr {
 pub struct FunSpec {
     pub location: ast::Pos,
     pub id: ast::Id,
-    pub ty: types::FunType,
+    pub ty: FunType,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct OverloadedFunSpec {
     pub location: ast::Pos,
     pub id: ast::Id,
-    pub tys: Vec<types::FunType>,
+    pub tys: Vec<FunType>,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Callback {
     pub location: ast::Pos,
     pub id: ast::Id,
-    pub tys: Vec<types::FunType>,
+    pub tys: Vec<FunType>,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
@@ -170,7 +172,7 @@ pub struct RecDecl {
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecField {
     pub name: SmolStr,
-    pub tp: Option<types::Type>,
+    pub tp: Option<Type>,
     pub default_value: Option<expr::Expr>,
     pub refinable: bool,
 }
@@ -186,8 +188,8 @@ pub struct OpaqueTypeDecl {
 pub struct TypeDecl {
     pub location: ast::Pos,
     pub id: ast::Id,
-    pub params: Vec<types::VarType>,
-    pub body: types::Type,
+    pub params: Vec<VarType>,
+    pub body: Type,
     pub file: Option<SmolStr>,
 }
 
