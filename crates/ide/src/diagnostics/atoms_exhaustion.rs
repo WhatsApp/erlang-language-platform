@@ -34,7 +34,7 @@ pub(crate) fn atoms_exhaustion(
     ];
 
     // @fb-only: let extra_mfas = diagnostics::meta_only::atoms_exhaustion_matches();
-    // @oss-only let extra_mfas = vec![];
+    let extra_mfas = vec![]; // @oss-only
     mfas.extend(extra_mfas);
 
     let mfas = mfas.iter().map(|matcher| (matcher, ())).collect::<Vec<_>>();
