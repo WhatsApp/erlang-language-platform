@@ -760,8 +760,14 @@ mod tests {
 
         let file_syntax = db.parse(position.file_id).syntax_node();
         let val: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
-        let in_clause = sema.to_expr(InFile::new(position.file_id, &val)).unwrap();
-        if let Some(type_info) = sema.expr_type(&in_clause.body(), &in_clause.value) {
+        let type_info = sema
+            .to_expr(InFile::new(position.file_id, &val))
+            .map(|in_clause| sema.expr_type(&in_clause.body(), &in_clause.value).unwrap())
+            .or_else(|| {
+                sema.to_pat(InFile::new(position.file_id, &val))
+                    .map(|in_clause| sema.pat_type(&in_clause.body(), &in_clause.value).unwrap())
+            });
+        if let Some(type_info) = type_info {
             let type_str = format!("{}", type_info);
             if type_str != expected[0].1 {
                 panic!("Expected '{}', got '{}'", expected[0].1, type_str);
@@ -785,6 +791,25 @@ mod tests {
                 baz(FF) -> F~F,
             %%             ^^ atom()
                   something_else.
+            "#,
+        )
+    }
+
+    #[test]
+    fn get_type_custom() {
+        check_type(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+                -module(bar).
+
+                -type foo() :: foo1 | foo2.
+
+                -spec get_foo() -> foo().
+                get_foo() -> foo1.
+
+                baz() -> F~F = get_foo().
+            %%           ^^ bar:foo()
             "#,
         )
     }
