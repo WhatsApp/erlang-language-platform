@@ -71,7 +71,6 @@ pub use elp_base_db::impl_intern_key;
 pub use elp_eqwalizer::Eqwalizer;
 pub use elp_eqwalizer::EqwalizerDiagnostic;
 pub use elp_eqwalizer::EqwalizerDiagnostics;
-pub use elp_eqwalizer::EqwalizerStats;
 pub use elp_erlang_service as erlang_service;
 pub use eqwalizer::EqwalizerDatabase;
 pub use erl_ast::ErlAstDatabase;
@@ -103,6 +102,7 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     eqwalizer::EqwalizerDatabaseStorage,
     common_test::CommonTestDatabaseStorage,
     elp_eqwalizer::ast::db::EqwalizerASTDatabaseStorage,
+    elp_eqwalizer::analyses::EqwalizerAnalysesDatabaseStorage,
     elp_eqwalizer::EqwalizerDiagnosticsDatabaseStorage,
     erl_ast::ErlAstDatabaseStorage,
     hir::db::InternDatabaseStorage,

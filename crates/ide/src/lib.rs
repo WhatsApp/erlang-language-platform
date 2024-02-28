@@ -45,7 +45,6 @@ use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::Eqwalizer;
 use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::EqwalizerDiagnostics;
-use elp_ide_db::EqwalizerStats;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::Includes;
 use elp_ide_db::LineIndex;
@@ -241,8 +240,8 @@ impl Analysis {
         &self,
         project_id: ProjectId,
         file_id: FileId,
-    ) -> Cancellable<Option<Arc<EqwalizerStats>>> {
-        self.with_db(|db| db.eqwalizer_stats(project_id, file_id))
+    ) -> Cancellable<Option<Vec<Diagnostic>>> {
+        self.with_db(|db| diagnostics::eqwalizer_stats(db, project_id, file_id))
     }
 
     pub fn type_at_position(

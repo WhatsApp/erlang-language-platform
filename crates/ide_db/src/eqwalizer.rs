@@ -20,15 +20,16 @@ use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRootId;
 use elp_base_db::VfsPath;
+use elp_eqwalizer::analyses::EqwalizerAnalysesDatabase;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
 use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::ast::RemoteId;
 use elp_eqwalizer::ipc::IpcHandle;
+use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
-use elp_eqwalizer::EqwalizerStats;
 use elp_syntax::ast;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
@@ -78,6 +79,7 @@ impl EqwalizerLoader for crate::RootDatabase {
 #[salsa::query_group(EqwalizerDatabaseStorage)]
 pub trait EqwalizerDatabase:
     EqwalizerDiagnosticsDatabase
+    + EqwalizerAnalysesDatabase
     + EqwalizerASTDatabase
     + SourceDatabase
     + EqwalizerLoader
@@ -92,7 +94,7 @@ pub trait EqwalizerDatabase:
         &self,
         project_id: ProjectId,
         file_id: FileId,
-    ) -> Option<Arc<EqwalizerStats>>;
+    ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
     fn type_at_position(
         &self,
         project_id: ProjectId,
@@ -124,10 +126,10 @@ fn eqwalizer_stats(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     file_id: FileId,
-) -> Option<Arc<EqwalizerStats>> {
+) -> Option<Arc<Vec<EqwalizerDiagnostic>>> {
     let module_index = db.module_index(project_id);
     let module_name: &str = module_index.module_for_file(file_id)?.as_str();
-    db.compute_eqwalizer_stats(project_id, ModuleName::new(module_name))
+    Some(db.compute_eqwalizer_stats(project_id, ModuleName::new(module_name)))
 }
 
 fn type_at_position(

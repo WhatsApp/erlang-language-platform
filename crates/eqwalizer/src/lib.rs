@@ -24,7 +24,6 @@ use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
-use ast::form::ExternalForm;
 use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
@@ -33,7 +32,6 @@ pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
-use serde::Serialize;
 use tempfile::Builder;
 use tempfile::TempPath;
 
@@ -44,6 +42,7 @@ use ipc::MsgToEqWAlizer;
 
 use crate::ipc::EqWAlizerASTFormat;
 
+pub mod analyses;
 pub mod ast;
 
 #[derive(Clone, Eq, PartialEq)]
@@ -157,13 +156,6 @@ impl EqwalizerDiagnostics {
     }
 }
 
-#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct EqwalizerStats {
-    ignores: u32,
-    fixmes: u32,
-    nowarn: u32,
-}
-
 pub trait DbApi {
     fn eqwalizing_start(&self, module: String);
     fn eqwalizing_done(&self, module: String);
@@ -178,12 +170,6 @@ pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
         project_id: ProjectId,
         module: String,
     ) -> (Arc<EqwalizerDiagnostics>, Instant);
-
-    fn compute_eqwalizer_stats(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Option<Arc<EqwalizerStats>>;
 }
 
 impl Default for Eqwalizer {
@@ -581,40 +567,6 @@ fn get_module_diagnostics(
             }
         }
     }
-}
-
-fn compute_eqwalizer_stats(
-    db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Option<Arc<EqwalizerStats>> {
-    let ast = db.converted_ast(project_id, module).ok()?;
-    let mut fixmes = 0;
-    let mut ignores = 0;
-    let mut nowarn = 0;
-    for form in ast.iter().cloned() {
-        match form {
-            ExternalForm::ElpMetadata(meta) => {
-                for fixme in meta.fixmes {
-                    if fixme.is_ignore {
-                        ignores += 1
-                    } else {
-                        fixmes += 1
-                    }
-                }
-            }
-            ExternalForm::EqwalizerNowarnFunction(_) => nowarn += 1,
-            _ => (),
-        }
-    }
-    if fixmes == 0 && ignores == 0 && nowarn == 0 {
-        return None;
-    }
-    Some(Arc::new(EqwalizerStats {
-        fixmes,
-        ignores,
-        nowarn,
-    }))
 }
 
 fn add_env(cmd: &mut Command, build_info_path: &Path, elp_ast_dir: Option<&Path>) {

@@ -23,10 +23,12 @@ use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::LineCol;
 use elp_ide_db::LineIndex;
@@ -1186,6 +1188,22 @@ pub fn eqwalizer_diagnostics(
     // Because of the way db.eqwalizer_diagnostics() is implemented,
     // we only get diagnostics if it is enabled.
     let eqwalizer_enabled = true;
+    Some(
+        eqwalizer_diagnostics
+            .iter()
+            .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
+            .collect(),
+    )
+}
+
+pub fn eqwalizer_stats(
+    db: &RootDatabase,
+    project_id: ProjectId,
+    file_id: FileId,
+) -> Option<Vec<Diagnostic>> {
+    let eqwalizer_diagnostics = db.eqwalizer_stats(project_id, file_id)?;
+    // Report as info
+    let eqwalizer_enabled = false;
     Some(
         eqwalizer_diagnostics
             .iter()

@@ -16,12 +16,15 @@ use elp::build;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp::convert;
 use elp_eqwalizer::Mode;
+use elp_ide::diagnostics::Diagnostic;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::EqwalizerDiagnostics;
-use elp_ide::elp_ide_db::EqwalizerStats;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_project_model::AppName;
@@ -231,7 +234,7 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
     let include_generated = args.include_generated;
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
-    let stats: FxHashMap<&str, EqwalizerStats> = module_index
+    let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = module_index
         .iter_own()
         .par_bridge()
         .progress_with(pb.clone())
@@ -240,7 +243,7 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
                 analysis
                     .eqwalizer_stats(project_id, file_id)
                     .expect("cancelled")
-                    .map(|stats| (name.as_str(), (*stats).clone()))
+                    .map(|stats| (file_id, (name.clone(), stats)))
             } else {
                 None
             }
@@ -248,7 +251,41 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
         .flatten()
         .collect();
     pb.finish();
-    let _ = cli.write(serde_json::to_string(&stats)?.as_bytes())?;
+    for (file_id, (_name, stats)) in stats
+        .into_iter()
+        .sorted_by(|(_, (name1, _)), (_, (name2, _))| Ord::cmp(name1, name2))
+    {
+        let vfs_path = loaded.vfs.file_path(file_id);
+        let analysis = loaded.analysis();
+        let root_path = &analysis
+            .project_data(file_id)
+            .unwrap_or_else(|_err| panic!("could not find project data"))
+            .unwrap_or_else(|| panic!("could not find project data"))
+            .root_dir;
+        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+        let line_index = analysis.line_index(file_id)?;
+        for stat in stats {
+            print_diagnostic_json(&stat, &line_index, relative_path, cli)?;
+        }
+    }
+    Ok(())
+}
+
+fn print_diagnostic_json(
+    diagnostic: &Diagnostic,
+    line_index: &LineIndex,
+    path: &Path,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    let converted_diagnostic = convert::ide_to_arc_diagnostic(line_index, path, diagnostic);
+    writeln!(
+        cli,
+        "{}",
+        serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
+            "print_diagnostics_json failed for '{:?}': {}",
+            converted_diagnostic, err
+        ))
+    )?;
     Ok(())
 }
 
