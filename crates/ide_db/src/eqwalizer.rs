@@ -12,7 +12,6 @@ use std::sync::Arc;
 use elp_base_db::salsa;
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
-use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
@@ -98,7 +97,7 @@ pub trait EqwalizerDatabase:
     fn type_at_position(
         &self,
         project_id: ProjectId,
-        position: FilePosition,
+        position: FileRange,
     ) -> Option<Arc<(eqwalizer::Type, FileRange)>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
@@ -135,23 +134,24 @@ fn eqwalizer_stats(
 fn type_at_position(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    position: FilePosition,
+    range: FileRange,
 ) -> Option<Arc<(eqwalizer::Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(position.file_id, false) {
+    if !db.is_eqwalizer_enabled(range.file_id, false) {
         return None;
     }
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![position.file_id]))
+        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![range.file_id]))
     {
-        let offset: u32 = position.offset.into();
+        let start: u32 = range.range.start().into();
+        let end: u32 = range.range.end().into();
         let module_index = db.module_index(project_id);
-        let module = module_index.module_for_file(position.file_id)?;
+        let module = module_index.module_for_file(range.file_id)?;
         let file_types = type_info.get(&module.to_string())?;
         let (text_range, ty) = file_types
             .iter()
             .filter_map(|(pos, ty)| match pos {
                 Pos::TextRange(r) => {
-                    if r.start_byte > offset || r.end_byte < offset {
+                    if r.start_byte > start || r.end_byte < end {
                         None
                     } else {
                         Some((r, ty))
@@ -160,11 +160,11 @@ fn type_at_position(
                 _ => None,
             })
             .min_by_key(|(range, _)| range.end_byte - range.start_byte)?;
-        let range = FileRange {
-            file_id: position.file_id,
+        let type_range = FileRange {
+            file_id: range.file_id,
             range: text_range.clone().into(),
         };
-        return Some(Arc::new((ty.clone(), range)));
+        return Some(Arc::new((ty.clone(), type_range)));
     }
     None
 }

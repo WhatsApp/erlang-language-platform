@@ -510,12 +510,16 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
+    let query_range = FileRange {
+        file_id: position.file_id,
+        range: TextRange::empty(position.offset),
+    };
 
     let mut docs: Vec<(Doc, Option<FileRange>)> = Vec::default();
 
     if snap.config.types_on_hover() {
         if let Some(project_id) = snap.analysis.project_id(position.file_id)? {
-            if let Some(type_info) = snap.analysis.type_at_position(project_id, position)? {
+            if let Some(type_info) = snap.analysis.type_at_position(project_id, query_range)? {
                 let (ty, range) = &*type_info;
                 let text = &snap.analysis.file_text(range.file_id)?[range.range];
                 let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));

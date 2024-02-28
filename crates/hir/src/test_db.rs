@@ -75,7 +75,7 @@ impl TypedSemantic for TestDB {
 
     fn eqwalizer_type_at_position(
         &self,
-        _position: elp_base_db::FilePosition,
+        _range: elp_base_db::FileRange,
     ) -> Option<Arc<(eqwalizer::Type, FileRange)>> {
         panic!("Eqwalizer data is not available in HIR tests")
     }

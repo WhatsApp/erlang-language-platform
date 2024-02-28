@@ -16,7 +16,7 @@ use std::vec::IntoIter;
 
 use elp_base_db::module_name;
 use elp_base_db::FileId;
-use elp_base_db::FilePosition;
+use elp_base_db::FileRange;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
 use elp_syntax::ast;
@@ -459,9 +459,9 @@ impl<'db> Semantic<'db> {
     /// When we eventually improve this, we will not have to rewrite code using this API.
     pub fn expr_type(&self, body: &Body, expr_id: &ExprId) -> Option<eqwalizer::Type> {
         let range = self.range_for_expr(body, expr_id)?;
-        let type_info = self.db.eqwalizer_type_at_position(FilePosition {
+        let type_info = self.db.eqwalizer_type_at_position(FileRange {
             file_id: body.origin.file_id(),
-            offset: range.start(),
+            range,
         })?;
         Some(type_info.0.clone())
     }

@@ -247,9 +247,9 @@ impl Analysis {
     pub fn type_at_position(
         &self,
         project_id: ProjectId,
-        position: FilePosition,
+        range: FileRange,
     ) -> Cancellable<Option<Arc<(eqwalizer::Type, FileRange)>>> {
-        self.with_db(|db| db.type_at_position(project_id, position))
+        self.with_db(|db| db.type_at_position(project_id, range))
     }
 
     pub fn type_references(

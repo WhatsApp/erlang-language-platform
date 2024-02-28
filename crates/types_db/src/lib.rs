@@ -23,7 +23,6 @@ pub mod eqwalizer;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 
 pub trait TypedSemantic {
@@ -35,6 +34,6 @@ pub trait TypedSemantic {
 
     fn eqwalizer_type_at_position(
         &self,
-        position: FilePosition,
+        range: FileRange,
     ) -> Option<Arc<(eqwalizer::Type, FileRange)>>;
 }
