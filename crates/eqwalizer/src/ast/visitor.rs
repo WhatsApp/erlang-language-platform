@@ -16,13 +16,18 @@ use super::expr::Expr;
 use super::expr::Qualifier;
 use super::expr::RecordField;
 use super::ext_types::ExtType;
+use super::form::ExternalForm;
 use super::guard::Guard;
 use super::guard::Test;
 use super::guard::TestRecordField;
 use super::pat::Pat;
 use super::pat::PatBinaryElem;
+use super::AST;
 
 pub trait Visitor<'a, T>: Sized {
+    fn visit_ast(&mut self, ast: &'a AST) -> Result<(), T> {
+        ast.iter().try_for_each(|form| self.visit_form(form))
+    }
     fn visit_expr(&mut self, expr: &'a Expr) -> Result<(), T> {
         walk_expr(self, expr)
     }
@@ -46,6 +51,9 @@ pub trait Visitor<'a, T>: Sized {
     }
     fn visit_ext_type(&mut self, ty: &'a ExtType) -> Result<(), T> {
         walk_ext_type(self, ty)
+    }
+    fn visit_form(&mut self, form: &'a ExternalForm) -> Result<(), T> {
+        walk_form(self, form)
     }
     fn visit_qualifier(&mut self, qualifier: &'a Qualifier) -> Result<(), T> {
         walk_qualifier(self, qualifier)
@@ -357,4 +365,69 @@ pub fn walk_type<'a, T, V: Visitor<'a, T>>(visitor: &mut V, ty: &'a Type) -> Res
 
 pub fn walk_ext_type<'a, T, V: Visitor<'a, T>>(visitor: &mut V, ty: &'a ExtType) -> Result<(), T> {
     ty.walk(&mut |ty| visitor.visit_ext_type(ty))
+}
+
+pub fn walk_form<'a, T, V: Visitor<'a, T>>(
+    visitor: &mut V,
+    form: &'a ExternalForm,
+) -> Result<(), T> {
+    match form {
+        ExternalForm::Module(_) => Ok(()),
+        ExternalForm::CompileExportAll(_) => Ok(()),
+        ExternalForm::Export(_) => Ok(()),
+        ExternalForm::Import(_) => Ok(()),
+        ExternalForm::ExportType(_) => Ok(()),
+        ExternalForm::FunDecl(decl) => decl
+            .clauses
+            .iter()
+            .try_for_each(|c| visitor.visit_clause(c)),
+        ExternalForm::File(_) => Ok(()),
+        ExternalForm::ElpMetadata(_) => Ok(()),
+        ExternalForm::Behaviour(_) => Ok(()),
+        ExternalForm::EqwalizerNowarnFunction(_) => Ok(()),
+        ExternalForm::EqwalizerUnlimitedRefinement(_) => Ok(()),
+        ExternalForm::TypingAttribute(_) => Ok(()),
+        ExternalForm::ExternalTypeDecl(decl) => visitor.visit_ext_type(&decl.body),
+        ExternalForm::ExternalOpaqueDecl(decl) => visitor.visit_ext_type(&decl.body),
+        ExternalForm::ExternalFunSpec(spec) => spec.types.iter().try_for_each(|ty| {
+            visitor
+                .visit_ext_type(&ty.ty.res_ty)
+                .and_then(|()| {
+                    ty.ty
+                        .arg_tys
+                        .iter()
+                        .try_for_each(|ty| visitor.visit_ext_type(ty))
+                })
+                .and_then(|()| {
+                    ty.constraints
+                        .iter()
+                        .try_for_each(|c| visitor.visit_ext_type(&c.ty))
+                })
+        }),
+        ExternalForm::ExternalCallback(cb) => cb.types.iter().try_for_each(|ty| {
+            visitor
+                .visit_ext_type(&ty.ty.res_ty)
+                .and_then(|()| {
+                    ty.ty
+                        .arg_tys
+                        .iter()
+                        .try_for_each(|ty| visitor.visit_ext_type(ty))
+                })
+                .and_then(|()| {
+                    ty.constraints
+                        .iter()
+                        .try_for_each(|c| visitor.visit_ext_type(&c.ty))
+                })
+        }),
+        ExternalForm::ExternalOptionalCallbacks(_) => Ok(()),
+        ExternalForm::ExternalRecDecl(decl) => decl.fields.iter().try_for_each(|f| {
+            f.tp.as_ref()
+                .map_or(Ok(()), |ty| visitor.visit_ext_type(ty))
+                .and_then(|()| {
+                    f.default_value
+                        .as_ref()
+                        .map_or(Ok(()), |val| visitor.visit_expr(val))
+                })
+        }),
+    }
 }
