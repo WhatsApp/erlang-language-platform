@@ -493,6 +493,7 @@ mod tests {
     use crate::fixture;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
+    use crate::AnalysisHost;
 
     fn check_functions(
         diags: &mut Vec<Diagnostic>,
@@ -753,12 +754,21 @@ mod tests {
     #[track_caller]
     fn check_type(fixture: &str) {
         let (db, position, _diagnostics_enabled, expected) = fixture::db_annotations(fixture);
-        let sema = Semantic::new(&db);
+        let host = AnalysisHost { db };
+        let sema = Semantic::new(&host.db);
         if expected.len() != 1 {
             panic!("Expected exactly one annotation, got {:?}", &expected);
         }
 
-        let file_syntax = db.parse(position.file_id).syntax_node();
+        let analysis = host.analysis();
+        let diagnostics = fixture::diagnostics_for(
+            &analysis,
+            position.file_id,
+            &DiagnosticsConfig::default(),
+            &_diagnostics_enabled,
+        );
+        assert!(diagnostics.is_empty());
+        let file_syntax = host.db.parse(position.file_id).syntax_node();
         let val: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
         let type_info = sema
             .to_expr(InFile::new(position.file_id, &val))
@@ -810,6 +820,23 @@ mod tests {
 
                 baz() -> F~F = get_foo().
             %%           ^^ bar:foo()
+            "#,
+        )
+    }
+
+    #[test]
+    fn get_type_string() {
+        check_type(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+                -module(bar).
+
+                -spec get_foo() -> string().
+                get_foo() -> "hello".
+
+                baz() -> F~F = get_foo().
+            %%           ^^ erlang:string()
             "#,
         )
     }

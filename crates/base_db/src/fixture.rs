@@ -18,8 +18,8 @@ use std::convert::TryInto;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::mem;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_project_model::json::JsonConfig;
@@ -49,6 +49,7 @@ use crate::input::IncludeOtp;
 use crate::FilePosition;
 use crate::FileRange;
 use crate::ProjectApps;
+use crate::ProjectId;
 use crate::SourceDatabaseExt;
 use crate::SourceRoot;
 
@@ -204,6 +205,21 @@ impl ChangeFixture {
 
             file_id.0 += 1;
         }
+        if let Some(_project_dir) = builder.project_dir() {
+            // We need to add the erlang module to the file contents too.
+            let erts_app: ProjectAppData = OTP_ERLANG_APP.clone();
+            app_map.combine(erts_app.clone());
+            change.change_file(file_id, Some(Arc::from(OTP_ERLANG_MODULE.1.clone())));
+            app_files.insert(
+                erts_app.name,
+                file_id,
+                VfsPath::new_real_path(OTP_ERLANG_MODULE.0.to_string_lossy().to_string()),
+            );
+            // We bump the file_id in case we decide to add another
+            // file later, but do not push the current one to files,
+            // as it is not part of the as-written test fixture.
+            file_id.0 += 1;
+        }
 
         let otp = otp.unwrap_or_else(|| Otp {
             // We only care about the otp lib_dir for the tests
@@ -267,21 +283,29 @@ impl ChangeFixture {
 
         let project_apps = if diagnostics_enabled.needs_erlang_service() {
             // The static manifest already includes OTP
-            ProjectApps::new(&projects, IncludeOtp::No)
+            let mut project_apps = ProjectApps::new(&projects, IncludeOtp::No);
+
+            let last_project = ProjectId(projects.len() as u32 - 1);
+            project_apps.all_apps.push((last_project, &OTP_ERLANG_APP));
+            project_apps
         } else {
             ProjectApps::new(&projects, IncludeOtp::Yes)
         };
         change.set_app_structure(project_apps.app_structure());
 
         let mut roots = Vec::new();
-        for (_app, file_set) in app_files.app_map.iter_mut() {
-            let root = SourceRoot::new(mem::take(file_set));
-            roots.push(root);
-        }
-        if diagnostics_enabled.needs_erlang_service() {
-            // Add a root for eqwalizer-support
-            let root = SourceRoot::new(FileSet::default());
-            roots.push(root);
+        // We must iterate here in project_apps order, it defines the
+        // mapping of apps to SourceRootIds
+        for (_project_id, app) in project_apps.all_apps {
+            if let Some(file_set) = app_files.app_map.get(&app.name) {
+                let root = SourceRoot::new(file_set.clone());
+                roots.push(root);
+            } else {
+                // We have eqwalizer support, add an empty SourceRoot
+                // to keep things lined up
+                let root = SourceRoot::new(FileSet::default());
+                roots.push(root);
+            }
         }
         change.set_roots(roots);
 
@@ -357,6 +381,36 @@ impl ChangeFixture {
             (entry_text.to_string(), None)
         }
     }
+}
+
+lazy_static! {
+    pub static ref OTP_ROOT: PathBuf =
+        Otp::find_otp().expect("tests should always be able to find OTP");
+    pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
+    pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
+    pub static ref OTP_ERLANG_APP: ProjectAppData = ProjectAppData::fixture_app_data(
+        AppName("erts".to_string()),
+        OTP_ERTS_DIR.clone(),
+        Vec::default(),
+        vec![OTP_ERTS_DIR.join("src")],
+        Vec::default(),
+    );
+}
+
+fn get_erts_dir() -> AbsPathBuf {
+    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
+    for app in apps {
+        if app.name == AppName("erts".to_string()) {
+            return app.dir;
+        }
+    }
+    panic!()
+}
+
+fn get_erlang_module() -> (PathBuf, String) {
+    let erlang_path = OTP_ERTS_DIR.join("src/erlang.erl");
+    let contents = std::fs::read_to_string(&erlang_path).unwrap();
+    (erlang_path.into(), contents)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -647,15 +701,17 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                         mut offset,
                         content,
                     } => {
-                        offset += annotation_offset;
-                        this_line_annotations.push((offset, res.len() - 1));
-                        let &(_, idx) = prev_line_annotations
-                            .iter()
-                            .find(|&&(off, _idx)| off == offset)
-                            .unwrap();
-                        res[idx].1.push('\n');
-                        res[idx].1.push_str(&content);
-                        // res[idx].1.push('\n');
+                        // Deal with "annotations" in files from otp
+                        if res.len() > 0 {
+                            offset += annotation_offset;
+                            this_line_annotations.push((offset, res.len() - 1));
+                            let &(_, idx) = prev_line_annotations
+                                .iter()
+                                .find(|&&(off, _idx)| off == offset)
+                                .unwrap();
+                            res[idx].1.push('\n');
+                            res[idx].1.push_str(&content);
+                        }
                     }
                 }
             }
@@ -669,7 +725,9 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
 
         line_start += TextSize::of(line);
 
-        prev_line_annotations = this_line_annotations;
+        if !this_line_annotations.is_empty() {
+            prev_line_annotations = this_line_annotations;
+        }
     }
 
     res
