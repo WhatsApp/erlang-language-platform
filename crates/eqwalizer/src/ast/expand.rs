@@ -189,7 +189,7 @@ impl Expander<'_> {
         params: &Vec<SmolStr>,
     ) -> Result<(), Invalid> {
         self.check_repeated_type_param(pos, params)?;
-        body.visit(&|ty| match ty {
+        body.traverse(&mut |ty| match ty {
             ExtType::VarExtType(ty_var) => self.check_unbound_type_var(pos, params, ty_var),
             _ => Ok(()),
         })?;

@@ -352,7 +352,7 @@ fn collect_references(
         }
         _ => (),
     }
-    ty.visit_children::<()>(&mut |ty| {
+    ty.walk::<()>(&mut |ty| {
         collect_references(db, project_id, ty, links);
         Ok(())
     })

@@ -76,26 +76,23 @@ impl ExtType {
         })
     }
 
-    pub fn visit<T>(&self, f: &dyn Fn(&ExtType) -> Result<(), T>) -> Result<(), T> {
-        f(self)?;
+    pub fn walk<'a, T>(&'a self, f: &mut dyn FnMut(&'a ExtType) -> Result<(), T>) -> Result<(), T> {
         match self {
-            ExtType::FunExtType(ty) => ty
-                .res_ty
-                .visit(f)
-                .and_then(|()| ty.arg_tys.iter().try_for_each(|ty| ty.visit(f))),
-            ExtType::AnyArityFunExtType(ty) => ty.res_ty.visit(f),
-            ExtType::TupleExtType(ty) => ty.arg_tys.iter().try_for_each(|ty| ty.visit(f)),
-            ExtType::UnionExtType(ty) => ty.tys.iter().try_for_each(|ty| ty.visit(f)),
+            ExtType::FunExtType(ty) => {
+                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(|ty| f(ty)))
+            }
+            ExtType::AnyArityFunExtType(ty) => f(&ty.res_ty),
+            ExtType::TupleExtType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
+            ExtType::UnionExtType(ty) => ty.tys.iter().try_for_each(|ty| f(ty)),
             ExtType::MapExtType(ty) => ty
                 .props
                 .iter()
-                .try_for_each(|prop| prop.key().visit(f).and_then(|()| prop.tp().visit(f))),
-            ExtType::ListExtType(ty) => ty.t.visit(f),
-            ExtType::RecordRefinedExtType(ty) => ty
-                .refined_fields
-                .iter()
-                .try_for_each(|field| field.ty.visit(f)),
-            ExtType::RemoteExtType(ty) => ty.args.iter().try_for_each(|ty| ty.visit(f)),
+                .try_for_each(|prop| f(prop.key()).and_then(|()| f(prop.tp()))),
+            ExtType::ListExtType(ty) => f(&ty.t),
+            ExtType::RecordRefinedExtType(ty) => {
+                ty.refined_fields.iter().try_for_each(|field| f(&field.ty))
+            }
+            ExtType::RemoteExtType(ty) => ty.args.iter().try_for_each(|ty| f(ty)),
             ExtType::AtomLitExtType(_)
             | ExtType::VarExtType(_)
             | ExtType::RecordExtType(_)
@@ -107,6 +104,11 @@ impl ExtType {
             | ExtType::BinOpType(_)
             | ExtType::AnyListExtType(_) => Ok(()),
         }
+    }
+
+    pub fn traverse<T>(&self, f: &mut dyn FnMut(&ExtType) -> Result<(), T>) -> Result<(), T> {
+        f(self)?;
+        self.walk(&mut |ty| ty.traverse(f))
     }
 }
 

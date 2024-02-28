@@ -263,7 +263,7 @@ impl Type {
         }
     }
 
-    pub fn visit_children<T>(&self, f: &mut dyn FnMut(&Type) -> Result<(), T>) -> Result<(), T> {
+    pub fn walk<'a, T>(&'a self, f: &mut dyn FnMut(&'a Type) -> Result<(), T>) -> Result<(), T> {
         match self {
             Type::FunType(ty) => {
                 f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(|ty| f(ty)))
@@ -298,7 +298,7 @@ impl Type {
 
     pub fn traverse<T>(&self, f: &mut dyn FnMut(&Type) -> Result<(), T>) -> Result<(), T> {
         f(self)?;
-        self.visit_children(&mut |ty| ty.traverse(f))
+        self.walk(&mut |ty| ty.traverse(f))
     }
 }
 

@@ -361,7 +361,7 @@ impl TransitiveChecker<'_> {
                     refs.insert(rref);
                 }
             }
-            ty => ty.visit_children(&mut |ty| self.collect_invalid_references(refs, module, ty))?,
+            ty => ty.walk(&mut |ty| self.collect_invalid_references(refs, module, ty))?,
         }
         Ok(())
     }
