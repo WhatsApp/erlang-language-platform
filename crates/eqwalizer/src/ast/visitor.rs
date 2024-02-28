@@ -7,12 +7,15 @@
  * of this source tree.
  */
 
+use elp_types_db::eqwalizer::Type;
+
 use super::expr::BinaryElem;
 use super::expr::Body;
 use super::expr::Clause;
 use super::expr::Expr;
 use super::expr::Qualifier;
 use super::expr::RecordField;
+use super::ext_types::ExtType;
 use super::guard::Guard;
 use super::guard::Test;
 use super::guard::TestRecordField;
@@ -37,6 +40,12 @@ pub trait Visitor<'a, T>: Sized {
     }
     fn visit_guard(&mut self, guard: &'a Guard) -> Result<(), T> {
         walk_guard(self, guard)
+    }
+    fn visit_type(&mut self, ty: &'a Type) -> Result<(), T> {
+        walk_type(self, ty)
+    }
+    fn visit_ext_type(&mut self, ty: &'a ExtType) -> Result<(), T> {
+        walk_ext_type(self, ty)
     }
     fn visit_qualifier(&mut self, qualifier: &'a Qualifier) -> Result<(), T> {
         walk_qualifier(self, qualifier)
@@ -340,4 +349,12 @@ pub fn walk_test<'a, T, V: Visitor<'a, T>>(visitor: &mut V, t: &'a Test) -> Resu
         }
         Test::TestBinaryLit(_) => Ok(()),
     }
+}
+
+pub fn walk_type<'a, T, V: Visitor<'a, T>>(visitor: &mut V, ty: &'a Type) -> Result<(), T> {
+    ty.walk(&mut |ty| visitor.visit_type(ty))
+}
+
+pub fn walk_ext_type<'a, T, V: Visitor<'a, T>>(visitor: &mut V, ty: &'a ExtType) -> Result<(), T> {
+    ty.walk(&mut |ty| visitor.visit_ext_type(ty))
 }
