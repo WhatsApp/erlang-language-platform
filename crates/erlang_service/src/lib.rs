@@ -36,6 +36,7 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use jod_thread::JoinHandle;
+use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use regex::Regex;
 use stdx::JodChild;
@@ -543,12 +544,13 @@ fn reader_run(
         let mut ct_info_all = Vec::new();
         let mut ct_info_groups = Vec::new();
 
-        let function_doc_regex =
-            Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
-
-        let doc_diagnostic_regex =
-            Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
-                .unwrap();
+        lazy_static! {
+            static ref FUNCTION_DOC_REGEX: Regex =
+                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
+            static ref DOC_DIAGNOSTIC_REGEX: Regex =
+                Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
+                    .unwrap();
+        }
 
         for _ in 0..num {
             line_buf.clear();
@@ -584,7 +586,7 @@ fn reader_run(
                             contents.into_iter().map(|byte| byte as char).collect()
                         }
                     };
-                    if let Some(caps) = function_doc_regex.captures(&text) {
+                    if let Some(caps) = FUNCTION_DOC_REGEX.captures(&text) {
                         let name = caps.name("name").unwrap().as_str().to_string();
                         let arity = caps.name("arity").unwrap().as_str().parse::<u32>()?;
                         let doc = caps.name("doc").unwrap().as_str().to_string();
@@ -605,7 +607,7 @@ fn reader_run(
                             contents.into_iter().map(|byte| byte as char).collect()
                         }
                     };
-                    if let Some(caps) = doc_diagnostic_regex.captures(&text) {
+                    if let Some(caps) = DOC_DIAGNOSTIC_REGEX.captures(&text) {
                         let code = caps.name("code").unwrap().as_str().to_string();
                         let severity = caps.name("severity").unwrap().as_str().to_string();
                         let line = caps.name("line").unwrap().as_str().parse::<u32>()?;
