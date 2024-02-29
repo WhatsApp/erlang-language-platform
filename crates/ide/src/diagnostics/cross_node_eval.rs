@@ -19,6 +19,7 @@ use lazy_static::lazy_static;
 use super::Diagnostic;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
+use crate::codemod_helpers::MakeDiagCtx;
 // @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -75,8 +76,14 @@ pub(crate) fn process_badmatches(
                 "".to_string(),
             ))
         },
-        move |_sema, def_fb, _target, _args, extra_info, _, range| {
-            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, extra_info, range)
+        &move |MakeDiagCtx {
+                   sema,
+                   def_fb,
+                   match_descr,
+                   range,
+                   ..
+               }| {
+            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, match_descr, range)
                 .with_severity(Severity::Error)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)

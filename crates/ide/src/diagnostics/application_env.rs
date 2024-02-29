@@ -24,6 +24,7 @@ use super::Diagnostic;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
+use crate::codemod_helpers::MakeDiagCtx;
 // @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -162,8 +163,15 @@ pub(crate) fn process_badmatches(
                 }
             }
         },
-        move |_sema, def_fb, _target, _call_id, diag_extra, _fix_extra, range| {
-            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, diag_extra, range)
+        &move |MakeDiagCtx {
+                   sema,
+                   def_fb,
+                   match_descr,
+                   range,
+                   ..
+               }|
+              -> Option<Diagnostic> {
+            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, match_descr, range)
                 .with_severity(Severity::Warning)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)

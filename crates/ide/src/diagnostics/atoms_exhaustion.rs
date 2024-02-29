@@ -14,6 +14,7 @@ use text_edit::TextRange;
 
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
+use crate::codemod_helpers::MakeDiagCtx;
 // @fb-only: use crate::diagnostics;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
@@ -71,7 +72,7 @@ pub(crate) fn check_function(
             }
             _ => Some(("".to_string(), "".to_string())),
         },
-        move |sema, _def_fb, _target, _args, _diag_extra, _fix_extra, range| {
+        &move |MakeDiagCtx { sema, range, .. }| {
             let diag = make_diagnostic(sema, def.file.file_id, range);
             Some(diag)
         },

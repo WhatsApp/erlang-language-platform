@@ -27,6 +27,7 @@ use super::DiagnosticCode;
 use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
+use crate::codemod_helpers::MakeDiagCtx;
 use crate::FunctionMatch;
 
 pub(crate) fn undefined_function(
@@ -76,8 +77,13 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                 hir::CallTarget::Local { .. } => None,
             }
         },
-        move |sema, mut _def_fb, _target, _call_id, diag_extra, _fix_extra, range| {
-            let diag = make_diagnostic(sema, def.file.file_id, range, diag_extra);
+        &move |MakeDiagCtx {
+                   sema,
+                   match_descr,
+                   range,
+                   ..
+               }| {
+            let diag = make_diagnostic(sema, def.file.file_id, range, match_descr);
             Some(diag)
         },
     );

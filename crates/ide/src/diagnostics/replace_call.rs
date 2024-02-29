@@ -38,6 +38,7 @@ use crate::codemod_helpers::CheckCall;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
+use crate::codemod_helpers::MakeDiagCtx;
 use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
@@ -80,24 +81,32 @@ pub fn replace_call_site_if_args_match(
                 def,
                 &[(fm, ())],
                 &args_match,
-                move |sema, in_clause, target, args, extra_info, fix_info, range| {
+                &move |MakeDiagCtx {
+                           sema,
+                           def_fb,
+                           target,
+                           args,
+                           match_descr,
+                           fix_descr,
+                           range,
+                       }| {
                     let mfa = MFA::from_call_target(
                         target,
                         args.len() as u32,
                         sema,
-                        &in_clause.body(),
+                        &def_fb.body(),
                         file_id,
                     )?;
                     let mfa_str = mfa.label();
 
-                    let diag = diagnostic_builder(&mfa, extra_info, range)?;
+                    let diag = diagnostic_builder(&mfa, match_descr, range)?;
 
                     if let Some(edit) =
-                        replace_call(replacement, sema, in_clause, file_id, args, target, &range)
+                        replace_call(replacement, sema, def_fb, file_id, args, target, &range)
                     {
                         Some(diag.with_fixes(Some(vec![fix(
                             "replace_call_site",
-                            &format!("Replace call to '{:?}' {}", &mfa_str, fix_info),
+                            &format!("Replace call to '{:?}' {}", &mfa_str, fix_descr),
                             SourceChange::from_text_edit(file_id, edit),
                             range,
                         )])))
