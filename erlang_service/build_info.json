@@ -1,0 +1,21 @@
+{
+  "apps": [
+    {
+      "name": "erlang_service",
+      "dir": "",
+      "src_dirs": [
+        "src"
+      ],
+      "extra_src_dirs": [
+        "test"
+      ],
+      "include_dirs": [
+        "include"
+      ],
+      "macros": {
+        "TEST": "true"
+      }
+    }
+  ],
+  "deps": []
+}
