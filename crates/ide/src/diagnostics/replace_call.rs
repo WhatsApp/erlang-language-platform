@@ -66,7 +66,7 @@ pub fn replace_call_site(
 
 pub fn replace_call_site_if_args_match(
     fm: &FunctionMatch,
-    args_match: CheckCall<()>,
+    args_match: CheckCall<(), (String, String)>,
     replacement: &Replacement,
     diagnostic_builder: DiagnosticBuilder,
     acc: &mut Vec<Diagnostic>,
@@ -86,10 +86,9 @@ pub fn replace_call_site_if_args_match(
                            def_fb,
                            target,
                            args,
-                           match_descr,
-                           fix_descr,
+                           extra,
                            range,
-                       }| {
+                       }: MakeDiagCtx<'_, (String, String)>| {
                     let mfa = MFA::from_call_target(
                         target,
                         args.len() as u32,
@@ -99,14 +98,14 @@ pub fn replace_call_site_if_args_match(
                     )?;
                     let mfa_str = mfa.label();
 
-                    let diag = diagnostic_builder(&mfa, match_descr, range)?;
+                    let diag = diagnostic_builder(&mfa, &extra.0, range)?;
 
                     if let Some(edit) =
                         replace_call(replacement, sema, def_fb, file_id, args, target, &range)
                     {
                         Some(diag.with_fixes(Some(vec![fix(
                             "replace_call_site",
-                            &format!("Replace call to '{:?}' {}", &mfa_str, fix_descr),
+                            &format!("Replace call to '{:?}' {}", &mfa_str, extra.1),
                             SourceChange::from_text_edit(file_id, edit),
                             range,
                         )])))

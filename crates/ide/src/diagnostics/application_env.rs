@@ -166,12 +166,12 @@ pub(crate) fn process_badmatches(
         &move |MakeDiagCtx {
                    sema,
                    def_fb,
-                   match_descr,
+                   extra,
                    range,
                    ..
-               }|
+               }: MakeDiagCtx<'_, String>|
               -> Option<Diagnostic> {
-            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, match_descr, range)
+            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra, range)
                 .with_severity(Severity::Warning)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)
@@ -184,7 +184,7 @@ fn check_tuple(
     val: &ExprId,
     sema: &Semantic,
     def: &FunctionDef,
-) -> Option<(String, String)> {
+) -> Option<String> {
     if let hir::Expr::Tuple { exprs } = &in_clause[*val] {
         let app = exprs.get(0)?;
         check_valid_application(sema, in_clause, app, def)
@@ -198,7 +198,7 @@ fn check_valid_application(
     def_fb: &hir::InFunctionClauseBody<&FunctionDef>,
     arg: &ExprId,
     def: &FunctionDef,
-) -> Option<(String, String)> {
+) -> Option<String> {
     let arg_name = def_fb.as_atom_name(arg)?;
     let form_list = sema.form_list(def.file.file_id);
     // We need the app from the calling function location.
@@ -209,9 +209,8 @@ fn check_valid_application(
     } else {
         let module_attribute = form_list.module_attribute()?;
         let module = module_attribute.name.clone();
-        Some((
-            format!("module `{module}` belongs to app `{app}`, but reads env for `{arg_name}`"),
-            "".to_string(),
+        Some(format!(
+            "module `{module}` belongs to app `{app}`, but reads env for `{arg_name}`"
         ))
     }
 }

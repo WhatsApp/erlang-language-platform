@@ -78,12 +78,9 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
             }
         },
         &move |MakeDiagCtx {
-                   sema,
-                   match_descr,
-                   range,
-                   ..
+                   sema, extra, range, ..
                }| {
-            let diag = make_diagnostic(sema, def.file.file_id, range, match_descr);
+            let diag = make_diagnostic(sema, def.file.file_id, range, &extra.0);
             Some(diag)
         },
     );

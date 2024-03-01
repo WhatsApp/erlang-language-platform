@@ -68,7 +68,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                         if in_anonymous_fun(def_fb, range.start()) {
                             return None;
                         }
-                        Some(("".to_string(), "".to_string()))
+                        Some(())
                     } else {
                         None
                     }
@@ -82,7 +82,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                         if let Some(false) =
                             &body[options].literal_list_contains_atom(&def_fb, "no_link")
                         {
-                            Some(("".to_string(), "".to_string()))
+                            Some(())
                         } else {
                             None
                         }

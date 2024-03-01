@@ -70,20 +70,15 @@ pub(crate) fn process_badmatches(
         sema,
         def,
         &mfas,
-        &move |_ctx| {
-            Some((
-                r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#.to_string(),
-                "".to_string(),
-            ))
-        },
+        &move |_ctx| Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
         &move |MakeDiagCtx {
                    sema,
                    def_fb,
-                   match_descr,
+                   extra,
                    range,
                    ..
-               }| {
-            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, match_descr, range)
+               }: MakeDiagCtx<'_, &str>| {
+            let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, *extra, range)
                 .with_severity(Severity::Error)
                 .with_ignore_fix(sema, def_fb.file_id());
             Some(diag)
