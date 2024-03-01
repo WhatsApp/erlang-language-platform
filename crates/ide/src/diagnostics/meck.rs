@@ -9,11 +9,11 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_syntax::algo;
-use elp_syntax::ast;
-use elp_syntax::AstNode;
 use hir::known;
+use hir::AnyExprId;
+use hir::Expr;
 use hir::FunctionDef;
+use hir::HirIdx;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
@@ -47,8 +47,14 @@ pub fn missing_no_link_in_init_per_suite(
         });
 }
 
-fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, offset: TextSize) -> bool {
-    algo::find_node_at_offset::<ast::AnonymousFun>(def_fb.ast_fun_decl().syntax(), offset).is_some()
+fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &Vec<HirIdx>) -> bool {
+    parents.iter().any(|hir_idx| match hir_idx.idx {
+        AnyExprId::Expr(idx) => match def_fb[idx] {
+            Expr::Closure { .. } => true,
+            _ => false,
+        },
+        _ => false,
+    })
 }
 
 pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
@@ -60,32 +66,20 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
         &move |CheckCallCtx {
                    args,
                    in_clause: def_fb,
+                   parents,
                    ..
                }: CheckCallCtx<'_, ()>| {
+            if in_anonymous_fun(def_fb, parents) {
+                return None;
+            }
             match args[..] {
-                [module] => {
-                    if let Some(range) = def_fb.range_for_expr(module) {
-                        if in_anonymous_fun(def_fb, range.start()) {
-                            return None;
-                        }
-                        Some(())
-                    } else {
-                        None
-                    }
-                }
+                [_module] => Some(()),
                 [_module, options] => {
-                    if let Some(range) = def_fb.range_for_expr(options) {
-                        if in_anonymous_fun(def_fb, range.start()) {
-                            return None;
-                        }
-                        let body = def_fb.body();
-                        if let Some(false) =
-                            &body[options].literal_list_contains_atom(&def_fb, "no_link")
-                        {
-                            Some(())
-                        } else {
-                            None
-                        }
+                    let body = def_fb.body();
+                    if let Some(false) =
+                        &body[options].literal_list_contains_atom(&def_fb, "no_link")
+                    {
+                        Some(())
                     } else {
                         None
                     }
