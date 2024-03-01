@@ -67,7 +67,7 @@ impl Runnable {
                 ..
             } => {
                 let group = group.name();
-                format!("{app_name}:{suite} - {group}.{case}$")
+                format!("\"{app_name}:{suite} - {group}.{case}$\"")
             }
             RunnableKind::Suite => "".to_string(),
         }
