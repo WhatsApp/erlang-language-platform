@@ -22,7 +22,6 @@ use elp::document::Document;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
@@ -228,9 +227,6 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     let raw_database = loaded.analysis_host.raw_database_mut();
 
     for file in &changed_files {
-        if raw_database.file_kind(file.file_id) == FileKind::Header {
-            raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
-        }
         if file.exists() {
             let bytes = loaded.vfs.file_contents(file.file_id).to_vec();
             let document = Document::from_bytes(bytes);

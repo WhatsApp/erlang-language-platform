@@ -108,26 +108,13 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     hir::db::InternDatabaseStorage,
     hir::db::DefDatabaseStorage
 )]
+#[derive(Default)]
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
     erlang_services: Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>,
     eqwalizer: Eqwalizer,
     eqwalizer_progress_reporter: EqwalizerProgressReporterBox,
     ipc_handles: Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHandle>>>>>>,
-}
-
-impl Default for RootDatabase {
-    fn default() -> Self {
-        let mut db = RootDatabase {
-            storage: salsa::Storage::default(),
-            erlang_services: Arc::default(),
-            eqwalizer: Eqwalizer::default(),
-            eqwalizer_progress_reporter: EqwalizerProgressReporterBox::default(),
-            ipc_handles: Arc::default(),
-        };
-        db.set_include_files_revision(0);
-        db
-    }
 }
 
 impl Upcast<dyn SourceDatabase> for RootDatabase {

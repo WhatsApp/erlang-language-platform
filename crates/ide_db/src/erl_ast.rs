@@ -118,10 +118,9 @@ fn module_ast(
     format: Format,
     compile_options: Vec<CompileOption>,
 ) -> Arc<ParseResult> {
-    // Dummy read of file revision and global revision ID to make DB
-    // track changes
+    // Dummy read of file revision make DB track changes.
+    // Note that include file tracking tackes place in db.load_ast().
     let _ = db.file_revision(file_id);
-    let _track_global_changes = db.include_files_revision();
 
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));

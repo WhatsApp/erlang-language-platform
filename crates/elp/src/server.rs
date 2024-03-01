@@ -773,12 +773,6 @@ impl Server {
         let raw_database = self.analysis_host.raw_database_mut();
 
         for file in &changed_files {
-            let file_path = vfs.file_path(file.file_id);
-            // Invalidate DB when making changes to header files
-            // Note: do not use FileKind here, it causes a panic, we are still setting the input for the db
-            if let Some((_, Some("hrl"))) = file_path.name_and_extension() {
-                raw_database.set_include_files_revision(raw_database.include_files_revision() + 1);
-            }
             if file.exists() {
                 let bytes = vfs.file_contents(file.file_id).to_vec();
                 let document = Document::from_bytes(bytes);

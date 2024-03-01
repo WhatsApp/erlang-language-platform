@@ -138,10 +138,6 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
-    /// A global ID used to invalidate the database when making untracked changes.
-    #[salsa::input]
-    fn include_files_revision(&self) -> u64;
-
     /// A revision number that is bumped when the file state changes.
     /// Crucially, we update it in server mode when the unsaved file
     /// contents are changed in VFS, but also when we receive a
