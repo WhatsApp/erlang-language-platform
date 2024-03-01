@@ -7,9 +7,12 @@
  * of this source tree.
  */
 
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use eetf::List;
+use eetf::Term;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
@@ -17,14 +20,17 @@ use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
+use elp_base_db::VfsPath;
 use elp_erlang_service::Format;
 use elp_erlang_service::ParseError;
 use elp_erlang_service::ParseResult;
+use elp_syntax::SmolStr;
 
 use crate::erlang_service::CompileOption;
 use crate::erlang_service::ParseRequest;
 use crate::fixmes;
 use crate::LineIndexDatabase;
+use crate::RootDatabase;
 
 pub trait AstLoader {
     fn load_ast(
@@ -73,7 +79,17 @@ impl AstLoader for crate::RootDatabase {
         };
 
         if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
-            erlang_service.request_parse(req, || self.unwind_if_cancelled())
+            let r = erlang_service.request_parse(req, || self.unwind_if_cancelled());
+            if let Some(included_files) = files_from_bytes(&r.files) {
+                for file in included_files {
+                    let file_path = VfsPath::new_real_path(file.into());
+                    if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
+                        // Dummy read of file revision to make DB track changes
+                        let _ = self.file_revision(file_id);
+                    }
+                }
+            }
+            r
         } else {
             log::error!("No parse server for project: {:?}", project_id);
             ParseResult::error(ParseError {
@@ -144,4 +160,45 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
         eetf::Tuple::from(vec![eetf::Atom::from("eqwalizer_fixmes").into(), fixmes]).into(),
     ])
     .into()
+}
+
+pub fn files_from_bytes(bytes: &Vec<u8>) -> Option<Vec<SmolStr>> {
+    let mut res = Vec::default();
+    let term = eetf::Term::decode(Cursor::new(bytes)).ok()?;
+    if let Term::Tuple(result) = term {
+        if let [Term::Atom(ok), files, _] = &result.elements[..] {
+            if ok.name == "ok" {
+                if let Term::List(List { elements }) = files {
+                    elements.iter().for_each(|element| match element {
+                        Term::List(name) => {
+                            let filename: SmolStr = name
+                                .elements
+                                .iter()
+                                .flat_map(|v| match v {
+                                    Term::FixInteger(i) => char::from_u32(i.value as u32),
+                                    _ => None,
+                                })
+                                .collect::<String>()
+                                .into();
+                            res.push(filename);
+                        }
+                        _ => {}
+                    });
+                }
+            }
+        }
+    };
+    if res.is_empty() { None } else { Some(res) }
+}
+
+fn find_path_in_project(
+    db: &RootDatabase,
+    project_id: ProjectId,
+    path: &VfsPath,
+) -> Option<FileId> {
+    let project = db.project_data(project_id);
+    project
+        .source_roots
+        .iter()
+        .find_map(|&source_root_id| db.source_root(source_root_id).file_for_path(path))
 }

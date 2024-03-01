@@ -853,4 +853,28 @@ mod tests {
             "#,
         )
     }
+
+    #[test]
+    fn include_file_tracking() {
+        check_type(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+                -module(bar).
+                -include("level1.hrl").
+
+                -spec get_foo() -> ?STRING().
+                get_foo() -> "hello".
+
+                baz() -> F~F = get_foo().
+            %%           ^^ erlang:string()
+
+            //- /play/src/level1.hrl app:play
+            -include("level2.hrl").
+
+            //- /play/src/level2.hrl app:play
+            -define(STRING(), string()).
+            "#,
+        )
+    }
 }

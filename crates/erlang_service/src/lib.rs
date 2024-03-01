@@ -276,6 +276,7 @@ impl ResponseSender {
 pub struct RawParseResult<Error> {
     pub ast: Arc<Vec<u8>>,
     pub stub: Arc<Vec<u8>>,
+    pub files: Arc<Vec<u8>>,
     pub errors: Vec<Error>,
     pub warnings: Vec<Error>,
 }
@@ -288,6 +289,7 @@ impl UndecodedParseResult {
         Ok(ParseResult {
             ast: self.ast,
             stub: self.stub,
+            files: self.files,
             errors,
             warnings,
         })
@@ -299,6 +301,7 @@ impl ParseResult {
         Self {
             ast: Arc::default(),
             stub: Arc::default(),
+            files: Arc::default(),
             errors: vec![error],
             warnings: Vec::default(),
         }
@@ -531,6 +534,7 @@ fn reader_run(
     ) -> Result<Reply> {
         let mut ast = Vec::new();
         let mut stub = Vec::new();
+        let mut files = Vec::new();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -567,6 +571,7 @@ fn reader_run(
             match parts[0] {
                 "AST" => ast = buf,
                 "STUB" => stub = buf,
+                "FILES" => files = buf,
                 "WARNINGS" => warnings = buf,
                 "ERRORS" => errors = buf,
                 "MODULE_DOC" => {
@@ -650,6 +655,7 @@ fn reader_run(
                 Ok(Reply::ParseReply(Ok(UndecodedParseResult {
                     ast: Arc::new(ast),
                     stub: Arc::new(stub),
+                    files: Arc::new(files),
                     warnings,
                     errors,
                 })))

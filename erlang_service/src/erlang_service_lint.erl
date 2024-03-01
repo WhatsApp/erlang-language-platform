@@ -45,25 +45,32 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                 end,
             case lint_file(Forms3, FileName, Options3) of
                 {ok, []} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}]};
+                    ResultFILES = PostProcess(FILES, FileName),
+                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}, {"FILES", ResultFILES}]};
                 {ok, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
+                    ResultFILES = PostProcess(FILES, FileName),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}, {"WARNINGS", FormattedWarnings}]};
+                    {ok, [{"AST", ResultAST},
+                          {"STUB", ResultStub},
+                          {"FILES", ResultFILES},
+                          {"WARNINGS", FormattedWarnings}]};
                 {error, Errors, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
+                    ResultFILES = PostProcess(FILES, FileName),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [
                         {"AST", ResultAST},
                         {"STUB", ResultStub},
+                        {"FILES", ResultFILES},
                         {"ERRORS", FormattedErrors},
                         {"WARNINGS", FormattedWarnings}
                     ]}
@@ -149,8 +156,10 @@ vararg_transform(Atomic) ->
     Atomic.
 
 -spec partition_stub([elp_parse:abstract_form()]) ->
-    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
-partition_stub(Forms) -> {[Attr || {attribute, _, _, _} = Attr <- Forms], Forms}.
+    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()], FILES :: [term()]}.
+partition_stub(Forms) -> {[Attr || {attribute, _, _, _} = Attr <- Forms],
+                          Forms,
+                          [Name || {attribute, _, file, {Name,_}} = _Attr <- Forms]}.
 
 format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =
