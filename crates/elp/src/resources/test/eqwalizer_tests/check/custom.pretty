@@ -233,59 +233,21 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'undefined' is not compatible with number()
 
 error: incompatible_types
-    ┌─ check/src/custom.erl:214:23
-    │
-214 │ map_get_2_16(V, M) -> maps:get(V, M).
-    │                       ^^^^^^^^^^^^^^
-    │                       │
-    │                       maps:get(V, M).
-Expression has type:   'a_v' | 'b_v' | 'c_v'
-Context expected type: 'a_v' | 'b_v'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │                       
-
-  'a_v' | 'b_v' | 'c_v' is not compatible with 'a_v' | 'b_v'
-  because
-  'c_v' is not compatible with 'a_v' | 'b_v'
-  because
-  'c_v' is not compatible with 'a_v'
-
-error: incompatible_types
     ┌─ check/src/custom.erl:220:27
     │
 220 │ map_get_2_17_neg(V, M) -> maps:get(V, M).
     │                           ^^^^^^^^^^^^^^
     │                           │
     │                           maps:get(V, M).
-Expression has type:   'a_v' | 'b_v' | 'c_v'
+Expression has type:   'a_v' | 'c_v'
 Context expected type: 'a_v' | 'b_v'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
-  'a_v' | 'b_v' | 'c_v' is not compatible with 'a_v' | 'b_v'
+  'a_v' | 'c_v' is not compatible with 'a_v' | 'b_v'
   because
   'c_v' is not compatible with 'a_v' | 'b_v'
-  because
-  'c_v' is not compatible with 'a_v'
-
-error: incompatible_types
-    ┌─ check/src/custom.erl:226:23
-    │
-226 │ map_get_3_18(V, M) -> maps:get(V, M, undefined).
-    │                       ^^^^^^^^^^^^^^^^^^^^^^^^^
-    │                       │
-    │                       maps:get(V, M, 'undefined').
-Expression has type:   'a_v' | 'b_v' | 'c_v' | 'undefined'
-Context expected type: 'a_v' | 'b_v' | 'undefined'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │                       
-
-  'a_v' | 'b_v' | 'c_v' | 'undefined' is not compatible with 'a_v' | 'b_v' | 'undefined'
-  because
-  'c_v' is not compatible with 'a_v' | 'b_v' | 'undefined'
   because
   'c_v' is not compatible with 'a_v'
 
@@ -296,13 +258,13 @@ error: incompatible_types
     │                           ^^^^^^^^^^^^^^^^^^^^^^^^^
     │                           │
     │                           maps:get(V, M, 'undefined').
-Expression has type:   'a_v' | 'b_v' | 'c_v' | 'undefined'
+Expression has type:   'a_v' | 'c_v' | 'undefined'
 Context expected type: 'a_v' | 'b_v' | 'undefined'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
-  'a_v' | 'b_v' | 'c_v' | 'undefined' is not compatible with 'a_v' | 'b_v' | 'undefined'
+  'a_v' | 'c_v' | 'undefined' is not compatible with 'a_v' | 'b_v' | 'undefined'
   because
   'c_v' is not compatible with 'a_v' | 'b_v' | 'undefined'
   because
@@ -2429,4 +2391,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'something' is not compatible with 'iodata' | 'list' | 'binary'
 
-167 ERRORS
+165 ERRORS
