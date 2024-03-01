@@ -50,6 +50,7 @@ fn fixme_diagnostic(range: &TextRange) -> EqwalizerDiagnostic {
         code: "eqwalizer_fixme".into(),
         expression: None,
         explanation: None,
+        diagnostic: None,
     }
 }
 
@@ -61,6 +62,7 @@ fn ignore_diagnostic(range: &TextRange) -> EqwalizerDiagnostic {
         code: "eqwalizer_ignore".into(),
         expression: None,
         explanation: None,
+        diagnostic: None,
     }
 }
 
@@ -73,6 +75,7 @@ fn nowarn_diagnostic(pos: &Pos) -> Option<EqwalizerDiagnostic> {
             code: "eqwalizer_nowarn".into(),
             expression: None,
             explanation: None,
+            diagnostic: None,
         })
     } else {
         None

@@ -40,6 +40,14 @@ pub struct EqwalizerDiagnostic {
     pub expression: Option<String>,
     #[serde(rename(deserialize = "explanationOrNull"))]
     pub explanation: Option<String>,
+    #[serde(default)]
+    pub diagnostic: Option<StructuredDiagnostic>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
+pub enum StructuredDiagnostic {
+    TypeError(tc_diagnostics::TypeError),
+    InvalidForm(invalid_diagnostics::Invalid),
 }
 
 impl EqwalizerDiagnostic {
