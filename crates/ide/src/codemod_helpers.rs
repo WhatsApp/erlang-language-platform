@@ -23,6 +23,7 @@ use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
+use hir::HirIdx;
 use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
@@ -395,6 +396,7 @@ impl MFA {
 
 pub struct CheckCallCtx<'a, T> {
     pub mfa: &'a FunctionMatch,
+    pub parents: &'a Vec<HirIdx>,
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
     pub args: &'a [ExprId],
@@ -440,6 +442,7 @@ pub(crate) fn find_call_in_function<T, U>(
                     let in_clause = &def_fb.in_clause(clause_id);
                     let context = CheckCallCtx {
                         mfa,
+                        parents: ctx.parents,
                         t,
                         target: &target,
                         args: &args,
