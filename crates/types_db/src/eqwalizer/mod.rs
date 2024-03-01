@@ -22,6 +22,7 @@ pub mod form;
 pub mod guard;
 pub mod invalid_diagnostics;
 pub mod pat;
+pub mod tc_diagnostics;
 pub mod types;
 pub mod visitor;
 
