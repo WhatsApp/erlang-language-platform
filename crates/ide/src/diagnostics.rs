@@ -743,7 +743,7 @@ pub fn diagnostics(
         config
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
-        semantic_diagnostics(&mut res, &sema, file_id, file_kind, config.experimental);
+        semantic_diagnostics(&mut res, &sema, file_id, file_kind, config);
         // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
 
@@ -835,28 +835,30 @@ pub fn semantic_diagnostics(
     sema: &Semantic,
     file_id: FileId,
     file_kind: FileKind,
-    experimental: bool,
+    config: &DiagnosticsConfig,
 ) {
-    // TODO: disable this check when T151727890 and T151605845 are resolved
-    if experimental {
-        unused_function_args::unused_function_args(res, sema, file_id);
-        redundant_assignment::redundant_assignment(res, sema, file_id);
-        trivial_match::trivial_match(res, sema, file_id);
+    if config.include_generated || !sema.db.is_generated(file_id) {
+        // TODO: disable this check when T151727890 and T151605845 are resolved
+        if config.experimental {
+            unused_function_args::unused_function_args(res, sema, file_id);
+            redundant_assignment::redundant_assignment(res, sema, file_id);
+            trivial_match::trivial_match(res, sema, file_id);
+        }
+        unused_macro::unused_macro(res, sema, file_id, file_kind);
+        unused_record_field::unused_record_field(res, sema, file_id, file_kind);
+        mutable_variable::mutable_variable_bug(res, sema, file_id);
+        effect_free_statement::effect_free_statement(res, sema, file_id);
+        expression_can_be_simplified::diagnostic(res, sema, file_id);
+        application_env::application_env(res, sema, file_id);
+        missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
+        cross_node_eval::cross_node_eval(res, sema, file_id);
+        dependent_header::dependent_header(res, sema, file_id, file_kind);
+        deprecated_function::deprecated_function(res, sema, file_id);
+        undefined_function::undefined_function(res, sema, file_id);
+        head_mismatch::head_mismatch_semantic(res, sema, file_id);
+        missing_separator::missing_separator_semantic(res, sema, file_id);
+        atoms_exhaustion::atoms_exhaustion(res, sema, file_id);
     }
-    unused_macro::unused_macro(res, sema, file_id, file_kind);
-    unused_record_field::unused_record_field(res, sema, file_id, file_kind);
-    mutable_variable::mutable_variable_bug(res, sema, file_id);
-    effect_free_statement::effect_free_statement(res, sema, file_id);
-    expression_can_be_simplified::diagnostic(res, sema, file_id);
-    application_env::application_env(res, sema, file_id);
-    missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
-    cross_node_eval::cross_node_eval(res, sema, file_id);
-    dependent_header::dependent_header(res, sema, file_id, file_kind);
-    deprecated_function::deprecated_function(res, sema, file_id);
-    undefined_function::undefined_function(res, sema, file_id);
-    head_mismatch::head_mismatch_semantic(res, sema, file_id);
-    missing_separator::missing_separator_semantic(res, sema, file_id);
-    atoms_exhaustion::atoms_exhaustion(res, sema, file_id);
 }
 
 pub fn syntax_diagnostics(
