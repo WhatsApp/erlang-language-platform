@@ -35,5 +35,5 @@ pub trait TypedSemantic {
     fn eqwalizer_type_at_position(
         &self,
         range: FileRange,
-    ) -> Option<Arc<(eqwalizer::Type, FileRange)>>;
+    ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
 }

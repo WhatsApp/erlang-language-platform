@@ -98,7 +98,7 @@ pub trait EqwalizerDatabase:
         &self,
         project_id: ProjectId,
         position: FileRange,
-    ) -> Option<Arc<(eqwalizer::Type, FileRange)>>;
+    ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
@@ -135,7 +135,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
     range: FileRange,
-) -> Option<Arc<(eqwalizer::Type, FileRange)>> {
+) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
     if !db.is_eqwalizer_enabled(range.file_id, false) {
         return None;
     }
@@ -315,7 +315,7 @@ fn id_name_and_location(
 fn record_name_and_location(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    record: &eqwalizer::RecordType,
+    record: &eqwalizer::types::RecordType,
 ) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(record.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
@@ -327,26 +327,26 @@ fn record_name_and_location(
 fn collect_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    ty: &eqwalizer::Type,
+    ty: &eqwalizer::types::Type,
     links: &mut FxHashSet<(SmolStr, FileRange)>,
 ) {
     match ty {
-        eqwalizer::Type::RemoteType(rt) => {
+        eqwalizer::types::Type::RemoteType(rt) => {
             if let Some(link) = id_name_and_location(db, project_id, &rt.id) {
                 links.insert(link);
             };
         }
-        eqwalizer::Type::OpaqueType(ot) => {
+        eqwalizer::types::Type::OpaqueType(ot) => {
             if let Some(link) = id_name_and_location(db, project_id, &ot.id) {
                 links.insert(link);
             };
         }
-        eqwalizer::Type::RecordType(rt) => {
+        eqwalizer::types::Type::RecordType(rt) => {
             if let Some(link) = record_name_and_location(db, project_id, rt) {
                 links.insert(link);
             };
         }
-        eqwalizer::Type::RefinedRecordType(rt) => {
+        eqwalizer::types::Type::RefinedRecordType(rt) => {
             if let Some(link) = record_name_and_location(db, project_id, &rt.rec_type) {
                 links.insert(link);
             };
@@ -364,7 +364,7 @@ fn collect_references(
 pub fn type_references(
     db: &dyn EqwalizerDatabase,
     project_id: ProjectId,
-    ty: &eqwalizer::Type,
+    ty: &eqwalizer::types::Type,
 ) -> Vec<(SmolStr, FileRange)> {
     let mut links = FxHashSet::default();
     collect_references(db, project_id, ty, &mut links);

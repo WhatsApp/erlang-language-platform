@@ -16,106 +16,25 @@ use std::path::PathBuf;
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+pub use elp_types_db::eqwalizer::Id;
+pub use elp_types_db::eqwalizer::Pos;
 pub use elp_types_db::eqwalizer::RemoteId;
+use elp_types_db::eqwalizer::AST;
 use fxhash::FxHashSet;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_with::SerializeDisplay;
-
-use self::form::ExternalForm;
-use self::invalid_diagnostics::Invalid;
 
 pub mod auto_import;
-pub mod binary_specifier;
 pub mod compiler_macro;
 pub mod contractivity;
 pub mod convert;
 pub mod convert_types;
 pub mod db;
 pub mod expand;
-pub mod expr;
-pub mod ext_types;
-pub mod form;
-pub mod guard;
-pub mod invalid_diagnostics;
-pub mod pat;
 pub mod stub;
 pub mod subst;
 pub mod trans_valid;
 pub mod variance_check;
-pub mod visitor;
-
-pub type AST = Vec<form::ExternalForm>;
-
-#[derive(SerializeDisplay, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Id {
-    pub name: SmolStr,
-    pub arity: u32,
-}
-
-impl fmt::Display for Id {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.name, self.arity)
-    }
-}
-
-impl From<RemoteId> for Id {
-    fn from(remote_id: RemoteId) -> Self {
-        Id {
-            name: remote_id.name,
-            arity: remote_id.arity,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum Pos {
-    TextRange(TextRange),
-    LineAndColumn(LineAndColumn),
-}
-impl From<LineAndColumn> for Pos {
-    fn from(x: LineAndColumn) -> Self {
-        Pos::LineAndColumn(x)
-    }
-}
-impl From<TextRange> for Pos {
-    fn from(x: TextRange) -> Self {
-        Pos::TextRange(x)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct TextRange {
-    pub start_byte: u32,
-    pub end_byte: u32,
-}
-impl TextRange {
-    pub fn fake() -> Self {
-        TextRange {
-            start_byte: 0,
-            end_byte: 100,
-        }
-    }
-}
-impl From<TextRange> for elp_syntax::TextRange {
-    fn from(val: TextRange) -> Self {
-        elp_syntax::TextRange::new(val.start_byte.into(), val.end_byte.into())
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct LineAndColumn {
-    pub line: u32,
-    pub column: u32,
-}
-impl LineAndColumn {
-    pub fn fake() -> Self {
-        LineAndColumn {
-            line: 1,
-            column: 100,
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {

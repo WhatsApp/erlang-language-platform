@@ -7,21 +7,21 @@
  * of this source tree.
  */
 
-use elp_types_db::eqwalizer::AnyArityFunType;
-use elp_types_db::eqwalizer::BoundedDynamicType;
-use elp_types_db::eqwalizer::DictMap;
-use elp_types_db::eqwalizer::FunType;
-use elp_types_db::eqwalizer::ListType;
-use elp_types_db::eqwalizer::OpaqueType;
-use elp_types_db::eqwalizer::OptProp;
-use elp_types_db::eqwalizer::Prop;
-use elp_types_db::eqwalizer::RefinedRecordType;
-use elp_types_db::eqwalizer::RemoteType;
-use elp_types_db::eqwalizer::ReqProp;
-use elp_types_db::eqwalizer::ShapeMap;
-use elp_types_db::eqwalizer::TupleType;
-use elp_types_db::eqwalizer::Type;
-use elp_types_db::eqwalizer::UnionType;
+use elp_types_db::eqwalizer::types::AnyArityFunType;
+use elp_types_db::eqwalizer::types::BoundedDynamicType;
+use elp_types_db::eqwalizer::types::DictMap;
+use elp_types_db::eqwalizer::types::FunType;
+use elp_types_db::eqwalizer::types::ListType;
+use elp_types_db::eqwalizer::types::OpaqueType;
+use elp_types_db::eqwalizer::types::OptProp;
+use elp_types_db::eqwalizer::types::Prop;
+use elp_types_db::eqwalizer::types::RefinedRecordType;
+use elp_types_db::eqwalizer::types::RemoteType;
+use elp_types_db::eqwalizer::types::ReqProp;
+use elp_types_db::eqwalizer::types::ShapeMap;
+use elp_types_db::eqwalizer::types::TupleType;
+use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::eqwalizer::types::UnionType;
 use fxhash::FxHashMap;
 
 pub struct Subst<'a> {

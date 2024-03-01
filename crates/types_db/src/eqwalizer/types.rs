@@ -7,69 +7,14 @@
  * of this source tree.
  */
 
-//! Types specific to Eqwalizer.
-
 use std::fmt;
 
 use elp_syntax::SmolStr;
-use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct EqwalizerDiagnostic {
-    #[serde(deserialize_with = "deserialize_text_range")]
-    pub range: TextRange,
-    pub message: String,
-    pub uri: String,
-    pub code: String,
-    #[serde(rename(deserialize = "expressionOrNull"))]
-    pub expression: Option<String>,
-    #[serde(rename(deserialize = "explanationOrNull"))]
-    pub explanation: Option<String>,
-}
-
-impl EqwalizerDiagnostic {
-    pub fn expr_string(&self) -> String {
-        match &self.expression {
-            Some(s) => format!("`{}`.\n", s),
-            None => "".to_string(),
-        }
-    }
-}
-
-fn deserialize_text_range<'de, D>(deserializer: D) -> Result<TextRange, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct RawTextRange {
-        start: u32,
-        end: u32,
-    }
-
-    let range = RawTextRange::deserialize(deserializer)?;
-    Ok(TextRange::new(range.start.into(), range.end.into()))
-}
-
-// ---------------------------------------------------------------------
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RemoteId {
-    pub module: SmolStr,
-    pub name: SmolStr,
-    pub arity: u32,
-}
-
-impl fmt::Display for RemoteId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}/{}", self.module, self.name, self.arity)
-    }
-}
-
-// ---------------------------------------------------------------------
+use crate::eqwalizer::RemoteId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {

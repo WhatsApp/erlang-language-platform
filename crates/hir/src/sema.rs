@@ -457,7 +457,7 @@ impl<'db> Semantic<'db> {
     /// We expose a high-level function, which internally does some
     /// horrible things to get the expression range and then queries for that.
     /// When we eventually improve this, we will not have to rewrite code using this API.
-    pub fn expr_type(&self, body: &Body, expr_id: &ExprId) -> Option<eqwalizer::Type> {
+    pub fn expr_type(&self, body: &Body, expr_id: &ExprId) -> Option<eqwalizer::types::Type> {
         let range = self.range_for_anyexpr(body, &AnyExprId::Expr(*expr_id))?;
         let type_info = self.db.eqwalizer_type_at_position(FileRange {
             file_id: body.origin.file_id(),
@@ -468,7 +468,7 @@ impl<'db> Semantic<'db> {
     /// We expose a high-level function, which internally does some
     /// horrible things to get the expression range and then queries for that.
     /// When we eventually improve this, we will not have to rewrite code using this API.
-    pub fn pat_type(&self, body: &Body, pat_id: &PatId) -> Option<eqwalizer::Type> {
+    pub fn pat_type(&self, body: &Body, pat_id: &PatId) -> Option<eqwalizer::types::Type> {
         let range = self.range_for_anyexpr(body, &AnyExprId::Pat(*pat_id))?;
         let type_info = self.db.eqwalizer_type_at_position(FileRange {
             file_id: body.origin.file_id(),

@@ -31,7 +31,7 @@ use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
-use elp_types_db::eqwalizer::Type;
+use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::TypedSemantic;
 use erlang_service::Connection;
 use fxhash::FxHashMap;

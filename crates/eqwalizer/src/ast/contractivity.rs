@@ -40,17 +40,17 @@
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
-use elp_types_db::eqwalizer::OpaqueType;
-use elp_types_db::eqwalizer::Prop;
-use elp_types_db::eqwalizer::Type;
+use elp_types_db::eqwalizer::form::InvalidForm;
+use elp_types_db::eqwalizer::form::InvalidTypeDecl;
+use elp_types_db::eqwalizer::form::TypeDecl;
+use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
+use elp_types_db::eqwalizer::types::OpaqueType;
+use elp_types_db::eqwalizer::types::Prop;
+use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 
 use super::db::EqwalizerASTDatabase;
-use super::form::InvalidForm;
-use super::form::InvalidTypeDecl;
-use super::form::TypeDecl;
-use super::invalid_diagnostics::Invalid;
-use super::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
 use super::stub::ModuleStub;
 use super::subst::Subst;
 use super::ContractivityCheckError;

@@ -9,13 +9,13 @@
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
+use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::visitor::Visitor;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::TextRange;
 
 use super::EqwalizerAnalysesDatabase;
-use crate::ast::form::ExternalForm;
-use crate::ast::visitor::Visitor;
 use crate::ast::Pos;
-use crate::ast::TextRange;
 
 struct EscapeHatchesVisitor<'a> {
     diagnostics: &'a mut Vec<EqwalizerDiagnostic>,

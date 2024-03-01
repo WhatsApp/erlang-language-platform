@@ -8,12 +8,13 @@
  */
 
 use elp_syntax::SmolStr;
-use elp_types_db::eqwalizer::Type;
+use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ast;
+use crate::eqwalizer;
+use crate::eqwalizer::types::Type;
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Invalid {
     UnknownId(UnknownId),
     NonExportedId(NonExportedId),
@@ -28,70 +29,72 @@ pub enum Invalid {
     BadMapKey(BadMapKey),
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnknownId {
-    pub location: ast::Pos,
-    pub id: ast::RemoteId,
+    pub location: eqwalizer::Pos,
+    pub id: eqwalizer::RemoteId,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonExportedId {
-    pub location: ast::Pos,
-    pub id: ast::RemoteId,
+    pub location: eqwalizer::Pos,
+    pub id: eqwalizer::RemoteId,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecursiveConstraint {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TyVarWithMultipleConstraints {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TypeVarInRecordField {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnboundTyVarInTyDecl {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RepeatedTyVarInTyDecl {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonProductiveRecursiveTypeAlias {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TransitiveInvalid {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
+    #[serde(default)]
     pub references: Vec<SmolStr>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AliasWithNonCovariantParam {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
     pub type_var: SmolStr,
+    #[serde(default)]
     pub exps: Vec<Type>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BadMapKey {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
 }

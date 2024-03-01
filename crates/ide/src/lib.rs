@@ -248,14 +248,14 @@ impl Analysis {
         &self,
         project_id: ProjectId,
         range: FileRange,
-    ) -> Cancellable<Option<Arc<(eqwalizer::Type, FileRange)>>> {
+    ) -> Cancellable<Option<Arc<(eqwalizer::types::Type, FileRange)>>> {
         self.with_db(|db| db.type_at_position(project_id, range))
     }
 
     pub fn type_references(
         &self,
         project_id: ProjectId,
-        ty: &eqwalizer::Type,
+        ty: &eqwalizer::types::Type,
     ) -> Cancellable<Vec<(SmolStr, FileRange)>> {
         self.with_db(|db| type_references(db, project_id, ty))
     }

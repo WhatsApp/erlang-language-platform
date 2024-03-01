@@ -8,11 +8,12 @@
  */
 
 use elp_syntax::SmolStr;
+use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ast;
+use crate::eqwalizer;
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExtType {
     AtomLitExtType(AtomLitExtType),
     FunExtType(FunExtType),
@@ -34,42 +35,42 @@ pub enum ExtType {
     AnyMapExtType(AnyMapExtType),
 }
 impl ExtType {
-    pub fn int_ext_type(location: ast::Pos) -> ExtType {
+    pub fn int_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "integer".into(),
         })
     }
 
-    pub fn any_ext_type(location: ast::Pos) -> ExtType {
+    pub fn any_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "any".into(),
         })
     }
 
-    pub fn char_ext_type(location: ast::Pos) -> ExtType {
+    pub fn char_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "char".into(),
         })
     }
 
-    pub fn tuple_ext_type(location: ast::Pos) -> ExtType {
+    pub fn tuple_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "tuple".into(),
         })
     }
 
-    pub fn binary_ext_type(location: ast::Pos) -> ExtType {
+    pub fn binary_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "binary".into(),
         })
     }
 
-    pub fn dynamic_ext_type(location: ast::Pos) -> ExtType {
+    pub fn dynamic_ext_type(location: eqwalizer::Pos) -> ExtType {
         ExtType::BuiltinExtType(BuiltinExtType {
             location,
             name: "dynamic".into(),
@@ -112,136 +113,144 @@ impl ExtType {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLitExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub atom: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FunExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
+    #[serde(default)]
     pub arg_tys: Vec<ExtType>,
     pub res_ty: Box<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AnyArityFunExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub res_ty: Box<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TupleExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
+    #[serde(default)]
     pub arg_tys: Vec<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ListExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub t: Box<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AnyListExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnionExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
+    #[serde(default)]
     pub tys: Vec<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalExtType {
-    pub location: ast::Pos,
-    pub id: ast::Id,
+    pub location: eqwalizer::Pos,
+    pub id: eqwalizer::Id,
+    #[serde(default)]
     pub args: Vec<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteExtType {
-    pub location: ast::Pos,
-    pub id: ast::RemoteId,
+    pub location: eqwalizer::Pos,
+    pub id: eqwalizer::RemoteId,
+    #[serde(default)]
     pub args: Vec<ExtType>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BuiltinExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IntLitExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnOpType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub op: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BinOpType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub op: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VarExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordRefinedExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub name: SmolStr,
+    #[serde(default)]
     pub refined_fields: Vec<RefinedField>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MapExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
+    #[serde(default)]
     pub props: Vec<ExtProp>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AnyMapExtType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ConstrainedFunType {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub ty: FunExtType,
+    #[serde(default)]
     pub constraints: Vec<Constraint>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Constraint {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub t_var: SmolStr,
     pub ty: ExtType,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedField {
     pub label: SmolStr,
     pub ty: ExtType,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExtProp {
     ReqExtProp(ReqExtProp),
     ReqBadExtProp(ReqBadExtProp),
@@ -284,30 +293,30 @@ impl ExtProp {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReqExtProp {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub key: ExtType,
     pub tp: ExtType,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReqBadExtProp {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub key: ExtType,
     pub tp: ExtType,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OptExtProp {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub key: ExtType,
     pub tp: ExtType,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OptBadExtProp {
-    pub location: ast::Pos,
+    pub location: eqwalizer::Pos,
     pub key: ExtType,
     pub tp: ExtType,
 }

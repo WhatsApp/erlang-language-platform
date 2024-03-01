@@ -19,8 +19,8 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
+use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
-use elp_types_db::eqwalizer::Type;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;

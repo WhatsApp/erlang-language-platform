@@ -8,17 +8,17 @@
  */
 
 use elp_syntax::SmolStr;
+use elp_types_db::eqwalizer::form::Callback;
+use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::InvalidForm;
+use elp_types_db::eqwalizer::form::OpaqueTypeDecl;
+use elp_types_db::eqwalizer::form::OverloadedFunSpec;
+use elp_types_db::eqwalizer::form::RecDecl;
+use elp_types_db::eqwalizer::form::TypeDecl;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use serde::Serialize;
 
-use super::form::Callback;
-use super::form::FunSpec;
-use super::form::InvalidForm;
-use super::form::OpaqueTypeDecl;
-use super::form::OverloadedFunSpec;
-use super::form::RecDecl;
-use super::form::TypeDecl;
 use super::Id;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Default)]

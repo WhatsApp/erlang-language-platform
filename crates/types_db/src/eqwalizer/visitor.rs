@@ -7,8 +7,6 @@
  * of this source tree.
  */
 
-use elp_types_db::eqwalizer::Type;
-
 use super::expr::BinaryElem;
 use super::expr::Body;
 use super::expr::Clause;
@@ -22,6 +20,7 @@ use super::guard::Test;
 use super::guard::TestRecordField;
 use super::pat::Pat;
 use super::pat::PatBinaryElem;
+use super::types::Type;
 use super::AST;
 
 pub trait Visitor<'a, T>: Sized {

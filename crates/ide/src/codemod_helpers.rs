@@ -184,7 +184,7 @@ pub struct FunctionMatcher<'a, T> {
     match_any: Option<(&'a FunctionMatch, &'a T)>,
     labels_full: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_full_typed:
-        FxHashMap<Option<SmolStr>, (&'a Vec<eqwalizer::Type>, &'a FunctionMatch, &'a T)>,
+        FxHashMap<Option<SmolStr>, (&'a Vec<eqwalizer::types::Type>, &'a FunctionMatch, &'a T)>,
     labels_mf: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
     labels_m: FxHashMap<Option<SmolStr>, (&'a FunctionMatch, &'a T)>,
 }
@@ -270,7 +270,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
     fn types_match(
         &self,
         args: &[ExprId],
-        types: &[eqwalizer::Type],
+        types: &[eqwalizer::types::Type],
         sema: &Semantic,
         body: &Body,
     ) -> bool {
@@ -298,7 +298,7 @@ pub enum FunctionMatch {
     },
     TypedMFA {
         mfa: MFA,
-        types: Vec<eqwalizer::Type>,
+        types: Vec<eqwalizer::types::Type>,
     },
 }
 
@@ -315,7 +315,7 @@ impl FunctionMatch {
         })
     }
 
-    pub fn typed_mfa(m: &str, f: &str, types: Vec<eqwalizer::Type>) -> FunctionMatch {
+    pub fn typed_mfa(m: &str, f: &str, types: Vec<eqwalizer::types::Type>) -> FunctionMatch {
         let mfa = MFA {
             module: m.into(),
             name: f.into(),
