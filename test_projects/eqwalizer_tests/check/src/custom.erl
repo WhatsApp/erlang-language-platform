@@ -207,6 +207,30 @@ map_get_3_15(M) ->
         maps:get(n, M, undefined)
     }.
 
+-spec map_get_2_16(
+    a | b,
+    #{a => a_v, b => b_v, c => c_v}
+) -> a_v | b_v.
+map_get_2_16(V, M) -> maps:get(V, M).
+
+-spec map_get_2_17_neg(
+    a | c,
+    #{a => a_v, b => b_v, c => c_v}
+) -> a_v | b_v.
+map_get_2_17_neg(V, M) -> maps:get(V, M).
+
+-spec map_get_3_18(
+    a | b,
+    #{a => a_v, b => b_v, c => c_v}
+) -> a_v | b_v | undefined.
+map_get_3_18(V, M) -> maps:get(V, M, undefined).
+
+-spec map_get_3_19_neg(
+    a | c,
+    #{a => a_v, b => b_v, c => c_v}
+) -> a_v | b_v | undefined.
+map_get_3_19_neg(V, M) -> maps:get(V, M, undefined).
+
 -spec keydelete() ->
     [{key, value}].
 keydelete() ->
