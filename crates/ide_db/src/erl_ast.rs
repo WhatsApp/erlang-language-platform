@@ -7,12 +7,9 @@
  * of this source tree.
  */
 
-use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use eetf::List;
-use eetf::Term;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
@@ -24,7 +21,6 @@ use elp_base_db::VfsPath;
 use elp_erlang_service::Format;
 use elp_erlang_service::ParseError;
 use elp_erlang_service::ParseResult;
-use elp_syntax::SmolStr;
 
 use crate::erlang_service::CompileOption;
 use crate::erlang_service::ParseRequest;
@@ -80,13 +76,12 @@ impl AstLoader for crate::RootDatabase {
 
         if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
             let r = erlang_service.request_parse(req, || self.unwind_if_cancelled());
-            if let Some(included_files) = files_from_bytes(&r.files) {
-                for file in included_files {
-                    let file_path = VfsPath::new_real_path(file.into());
-                    if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
-                        // Dummy read of file revision to make DB track changes
-                        let _ = self.file_revision(file_id);
-                    }
+            let included_files = files_from_bytes(&r.files);
+            for file in included_files {
+                let file_path = VfsPath::new_real_path(file.into());
+                if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
+                    // Dummy read of file revision to make DB track changes
+                    let _ = self.file_revision(file_id);
                 }
             }
             r
@@ -161,33 +156,9 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
     .into()
 }
 
-pub fn files_from_bytes(bytes: &Vec<u8>) -> Option<Vec<SmolStr>> {
-    let mut res = Vec::default();
-    let term = eetf::Term::decode(Cursor::new(bytes)).ok()?;
-    if let Term::Tuple(result) = term {
-        if let [Term::Atom(ok), files, _] = &result.elements[..] {
-            if ok.name == "ok" {
-                if let Term::List(List { elements }) = files {
-                    elements.iter().for_each(|element| match element {
-                        Term::List(name) => {
-                            let filename: SmolStr = name
-                                .elements
-                                .iter()
-                                .flat_map(|v| match v {
-                                    Term::FixInteger(i) => char::from_u32(i.value as u32),
-                                    _ => None,
-                                })
-                                .collect::<String>()
-                                .into();
-                            res.push(filename);
-                        }
-                        _ => {}
-                    });
-                }
-            }
-        }
-    };
-    if res.is_empty() { None } else { Some(res) }
+pub fn files_from_bytes(bytes: &Vec<u8>) -> Vec<String> {
+    let str = String::from_utf8_lossy(&bytes);
+    str.split("\n").map(|s| s.to_string()).collect::<Vec<_>>()
 }
 
 fn find_path_in_project(

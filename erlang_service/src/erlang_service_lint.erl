@@ -48,13 +48,13 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = PostProcess(FILES, FileName),
+                    ResultFILES = unicode:characters_to_binary(FILES),
                     {ok, [{"AST", ResultAST}, {"STUB", ResultStub}, {"FILES", ResultFILES}]};
                 {ok, Warnings} ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = PostProcess(FILES, FileName),
+                    ResultFILES = unicode:characters_to_binary(FILES),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [{"AST", ResultAST},
                           {"STUB", ResultStub},
@@ -64,7 +64,7 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = PostProcess(FILES, FileName),
+                    ResultFILES = unicode:characters_to_binary(FILES),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [
@@ -156,10 +156,12 @@ vararg_transform(Atomic) ->
     Atomic.
 
 -spec partition_stub([elp_parse:abstract_form()]) ->
-    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()], FILES :: [term()]}.
+    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()], FILES :: string()}.
 partition_stub(Forms) -> {[Attr || {attribute, _, _, _} = Attr <- Forms],
                           Forms,
-                          [Name || {attribute, _, file, {Name,_}} = _Attr <- Forms]}.
+                          % eqwalizer:ignore - We know that the Name is a string, from matching the abstract form
+                          string:join([Name || {attribute, _, file, {Name,_}} = _Attr <- Forms],"\n")}.
+
 
 format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =
