@@ -257,7 +257,7 @@ impl ProjectManifest {
         let _timer = timeit!("discover all projects");
         // First check for a json config file as the path.
         if let Some("json") = path.extension().and_then(|e| e.to_str()) {
-            let json = json::JsonConfig::try_parse(&path)?;
+            let json = json::JsonConfig::try_parse(path)?;
             return Ok((ElpConfig::default(), ProjectManifest::Json(json)));
         }
 
@@ -564,7 +564,7 @@ impl Project {
     }
 
     pub fn add_apps(&mut self, apps: Vec<ProjectAppData>) {
-        self.project_apps.extend(apps.into_iter());
+        self.project_apps.extend(apps);
     }
 
     pub fn all_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
@@ -860,7 +860,7 @@ impl Project {
                 let build_info_term = make_build_info(terms, deps_terms, &otp_root, &config_path);
                 let build_info = save_build_info(build_info_term)?;
                 let project = StaticProject { config_path };
-                apps.extend(deps.into_iter());
+                apps.extend(deps);
                 (
                     ProjectBuildData::Static(project),
                     apps,
@@ -894,7 +894,7 @@ impl Project {
         };
 
         let (otp, otp_project_apps) = Otp::discover(otp_root);
-        project_apps.extend(otp_project_apps.into_iter());
+        project_apps.extend(otp_project_apps);
         Ok(Project {
             build_info_file: build_info,
             otp,

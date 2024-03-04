@@ -378,7 +378,7 @@ fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullNa
     if !output.status.success() {
         let reason = match output.status.code() {
             Some(code) => format!("Exited with status code: {code}"),
-            None => format!("Process terminated by signal"),
+            None => "Process terminated by signal".to_string(),
         };
         let details = match String::from_utf8(output.stderr) {
             Ok(err) => err,

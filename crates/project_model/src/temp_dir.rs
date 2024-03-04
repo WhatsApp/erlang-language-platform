@@ -64,6 +64,12 @@ impl TempDir {
     }
 }
 
+impl Default for TempDir {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for TempDir {
     fn drop(&mut self) {
         if self.keep {

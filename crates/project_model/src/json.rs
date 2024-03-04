@@ -137,10 +137,7 @@ fn convert_macro(mac: &eetf::Term) -> (String, String) {
             [Term::Atom(key), Term::Atom(value)] => (key.name.clone(), value.name.to_string()),
             _ => panic!("Invalid macro in ${tuple}"),
         },
-        term => panic!(
-            "Term not supported for macro definition: {}",
-            term.to_string()
-        ),
+        term => panic!("Term not supported for macro definition: {}", term),
     }
 }
 
@@ -149,7 +146,7 @@ fn abs_path_buf_to_relative_string(abs_path: &AbsPathBuf, base: &AbsPathBuf) -> 
         relative.as_ref().as_os_str().to_string_lossy().to_string()
     } else {
         let str = abs_path.as_os_str().to_string_lossy().to_string();
-        if let Some(stripped) = str.strip_prefix("/") {
+        if let Some(stripped) = str.strip_prefix('/') {
             stripped.to_string()
         } else {
             str

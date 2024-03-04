@@ -141,7 +141,7 @@ impl RebarProject {
         let mut apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
         let deps_with_includes = RebarProject::add_app_includes(deps.clone(), &deps, &otp_root);
 
-        apps_with_includes.extend(deps_with_includes.into_iter());
+        apps_with_includes.extend(deps_with_includes);
         return Ok((
             RebarProject::new(root, rebar_config),
             otp_root.into(),
@@ -182,7 +182,7 @@ impl RebarProject {
         deps: &[ProjectAppData],
         otp_root: &AbsPathBuf,
     ) -> Vec<ProjectAppData> {
-        let global_includes = RebarProject::global_includes(&apps, &deps);
+        let global_includes = RebarProject::global_includes(&apps, deps);
         for app in &mut apps {
             let mut include_paths = global_includes.clone();
             include_paths.extend(app.include_dirs());
