@@ -70,16 +70,28 @@ pub(crate) fn check_function(
         def,
         mfas,
         &move |CheckCallCtx {
-                   args, in_clause, ..
-               }: CheckCallCtx<'_, ()>| match args[..] {
-            [_, options] => {
-                let body = in_clause.body();
-                match &body[options].literal_list_contains_atom(&in_clause, "safe") {
-                    Some(true) => None,
+                   args,
+                   in_clause,
+                   parents,
+                   ..
+               }: CheckCallCtx<'_, ()>| {
+            let is_safe;
+            // @fb-only: is_safe = diagnostics::meta_only::atoms_exhaustion_is_safe(sema, in_clause, parents);
+            is_safe = false; // @oss-only
+            if !is_safe {
+                match args[..] {
+                    [_, options] => {
+                        let body = in_clause.body();
+                        match &body[options].literal_list_contains_atom(&in_clause, "safe") {
+                            Some(true) => None,
+                            _ => Some(("".to_string(), "".to_string())),
+                        }
+                    }
                     _ => Some(("".to_string(), "".to_string())),
                 }
+            } else {
+                None
             }
-            _ => Some(("".to_string(), "".to_string())),
         },
         &move |MakeDiagCtx { sema, range, .. }| {
             let diag = make_diagnostic(sema, def.file.file_id, range);
