@@ -182,7 +182,7 @@ impl<'tree, 'text> Converter<'tree, 'text> {
             ret
         } else if node.is_missing() {
             let text = node.kind();
-            self.error_missing(format!("{}", text), range);
+            self.error_missing(text.to_string(), range);
             false
         } else if node.child_count() == 0 {
             if node.is_named() {

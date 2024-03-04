@@ -35,7 +35,7 @@ pub fn unescape_string(s_in: &str) -> Option<Cow<str>> {
     let mut queue: VecDeque<_> = String::from(s_in).chars().collect();
     let mut s = String::new();
 
-    if let Some(&c) = queue.get(0) {
+    if let Some(&c) = queue.front() {
         if c != '\'' && c != '\"' && c != '$' {
             return Some(Cow::Borrowed(s_in));
         } else {

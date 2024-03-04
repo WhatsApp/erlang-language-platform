@@ -25,3 +25,9 @@ impl Parser {
         self.0.parse(text, None)
     }
 }
+
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
