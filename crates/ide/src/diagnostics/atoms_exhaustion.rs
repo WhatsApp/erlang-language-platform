@@ -48,7 +48,12 @@ pub(crate) fn atoms_exhaustion(
         .get_functions()
         .for_each(|(_arity, def)| {
             if def.file.file_id == file_id {
-                check_function(diagnostics, sema, def, &mfas);
+                let is_relevant;
+                // @fb-only: is_relevant = diagnostics::meta_only::is_relevant_file(sema.db.upcast(), file_id);
+                is_relevant = true; // @oss-only
+                if is_relevant {
+                    check_function(diagnostics, sema, def, &mfas);
+                }
             }
         });
 }
