@@ -210,14 +210,12 @@ impl Type {
 
     pub fn walk<'a, T>(&'a self, f: &mut dyn FnMut(&'a Type) -> Result<(), T>) -> Result<(), T> {
         match self {
-            Type::FunType(ty) => {
-                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(|ty| f(ty)))
-            }
+            Type::FunType(ty) => f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(f)),
             Type::AnyArityFunType(ty) => f(&ty.res_ty),
-            Type::TupleType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
-            Type::UnionType(ty) => ty.tys.iter().try_for_each(|ty| f(ty)),
-            Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
-            Type::OpaqueType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
+            Type::TupleType(ty) => ty.arg_tys.iter().try_for_each(f),
+            Type::UnionType(ty) => ty.tys.iter().try_for_each(f),
+            Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(f),
+            Type::OpaqueType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::ShapeMap(ty) => ty.props.iter().try_for_each(|prop| f(prop.tp())),
             Type::DictMap(ty) => f(&ty.v_type).and_then(|()| f(&ty.k_type)),
             Type::ListType(ty) => f(&ty.t),

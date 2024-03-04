@@ -80,11 +80,11 @@ impl ExtType {
     pub fn walk<'a, T>(&'a self, f: &mut dyn FnMut(&'a ExtType) -> Result<(), T>) -> Result<(), T> {
         match self {
             ExtType::FunExtType(ty) => {
-                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(|ty| f(ty)))
+                f(&ty.res_ty).and_then(|()| ty.arg_tys.iter().try_for_each(f))
             }
             ExtType::AnyArityFunExtType(ty) => f(&ty.res_ty),
-            ExtType::TupleExtType(ty) => ty.arg_tys.iter().try_for_each(|ty| f(ty)),
-            ExtType::UnionExtType(ty) => ty.tys.iter().try_for_each(|ty| f(ty)),
+            ExtType::TupleExtType(ty) => ty.arg_tys.iter().try_for_each(f),
+            ExtType::UnionExtType(ty) => ty.tys.iter().try_for_each(f),
             ExtType::MapExtType(ty) => ty
                 .props
                 .iter()
@@ -93,7 +93,7 @@ impl ExtType {
             ExtType::RecordRefinedExtType(ty) => {
                 ty.refined_fields.iter().try_for_each(|field| f(&field.ty))
             }
-            ExtType::RemoteExtType(ty) => ty.args.iter().try_for_each(|ty| f(ty)),
+            ExtType::RemoteExtType(ty) => ty.args.iter().try_for_each(f),
             ExtType::AtomLitExtType(_)
             | ExtType::VarExtType(_)
             | ExtType::RecordExtType(_)
