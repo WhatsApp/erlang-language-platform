@@ -155,15 +155,15 @@ impl fmt::Display for TypeConversionError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractivityCheckError {
     UnexpectedType,
-    UnexpectedID(RemoteId),
+    ErrorExpandingID(RemoteId, Box<Error>),
     NonEmptyForall,
 }
 
 impl fmt::Display for ContractivityCheckError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message: String = match self {
-            ContractivityCheckError::UnexpectedID(rid) => {
-                format!("unknown ID {}", rid)
+            ContractivityCheckError::ErrorExpandingID(rid, err) => {
+                format!("error when expanding ID {}\n{}", rid, err)
             }
             err => format!("{:?}", err),
         };
@@ -173,14 +173,14 @@ impl fmt::Display for ContractivityCheckError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VarianceCheckError {
-    UnexpectedID(RemoteId),
+    ErrorExpandingID(RemoteId, Box<Error>),
 }
 
 impl fmt::Display for VarianceCheckError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message: String = match self {
-            VarianceCheckError::UnexpectedID(rid) => {
-                format!("unknown ID {}", rid)
+            VarianceCheckError::ErrorExpandingID(rid, err) => {
+                format!("error when expanding ID {}\n{}", rid, err)
             }
         };
         write!(f, "eqWAlizer variance check failed with {}", message)

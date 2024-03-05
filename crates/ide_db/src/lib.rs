@@ -352,10 +352,10 @@ impl TypedSemantic for RootDatabase {
     ) -> Option<Vec<EqwalizerDiagnostic>> {
         // Check, if the file is actually a module
         let app_data = self.app_data(self.file_source_root(file_id))?;
-        let _ = self
+        let module = self
             .module_index(app_data.project_id)
             .module_for_file(file_id)
-            .cloned();
+            .cloned()?;
 
         let project_id = app_data.project_id;
 
@@ -374,7 +374,7 @@ impl TypedSemantic for RootDatabase {
             ),
             EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
             EqwalizerDiagnostics::Error(err) => {
-                log::error!("EqWAlizer failed for {:?}: {}", file_id, err);
+                log::error!("EqWAlizer failed for {}: {}", module.as_str(), err);
                 Some(vec![])
             }
         }
