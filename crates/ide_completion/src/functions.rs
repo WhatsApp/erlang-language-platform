@@ -156,7 +156,7 @@ pub(crate) fn add_completions(
                             let contents = helpers::function_contents(
                                 sema.db.upcast(),
                                 def,
-                                &function_name,
+                                function_name,
                                 helpers::should_include_args(next_token),
                             )?;
                             Some(Completion {
@@ -165,7 +165,7 @@ pub(crate) fn add_completions(
                                 contents,
                                 position: Some(FilePosition {
                                     file_id: def.file.file_id,
-                                    offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
+                                    offset: fun_decl_ast.first()?.syntax().text_range().start(),
                                 }),
                                 sort_text: None,
                                 deprecated,

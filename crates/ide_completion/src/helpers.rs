@@ -101,7 +101,7 @@ pub(crate) fn name_arity_to_call_completion(
         let fun_decl_ast = def.source(sema.db.upcast());
         Some(FilePosition {
             file_id: def.file.file_id,
-            offset: fun_decl_ast.get(0)?.syntax().text_range().start(),
+            offset: fun_decl_ast.first()?.syntax().text_range().start(),
         })
     });
     let deprecated = def_map.is_deprecated(na);
@@ -157,6 +157,6 @@ pub(crate) fn function_contents(
             "{function_name}({function_arg_names})"
         )))
     } else {
-        Some(Contents::Snippet(format!("{function_name}")))
+        Some(Contents::Snippet(function_name.to_string()))
     }
 }
