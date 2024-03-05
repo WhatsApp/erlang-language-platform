@@ -428,7 +428,7 @@ impl elp_eqwalizer::DbApi for crate::RootDatabase {
                     .insert(module.as_str().into(), handle);
             }
             None => {
-                self.ipc_handles.write().remove(module.as_str().into());
+                self.ipc_handles.write().remove(module.as_str());
             }
         }
     }

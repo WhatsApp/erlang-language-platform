@@ -78,7 +78,7 @@ impl AstLoader for crate::RootDatabase {
             let r = erlang_service.request_parse(req, || self.unwind_if_cancelled());
             let included_files = files_from_bytes(&r.files);
             for file in included_files {
-                let file_path = VfsPath::new_real_path(file.into());
+                let file_path = VfsPath::new_real_path(file);
                 if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
                     // Dummy read of file revision to make DB track changes
                     let _ = self.file_revision(file_id);
@@ -156,9 +156,9 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
     .into()
 }
 
-pub fn files_from_bytes(bytes: &Vec<u8>) -> Vec<String> {
-    let str = String::from_utf8_lossy(&bytes);
-    str.split("\n").map(|s| s.to_string()).collect::<Vec<_>>()
+pub fn files_from_bytes(bytes: &[u8]) -> Vec<String> {
+    let str = String::from_utf8_lossy(bytes);
+    str.split('\n').map(|s| s.to_string()).collect::<Vec<_>>()
 }
 
 fn find_path_in_project(

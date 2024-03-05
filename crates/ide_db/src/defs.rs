@@ -448,14 +448,10 @@ pub fn from_is_record(
         AnyExprRef::Expr(Expr::Call { target, args }) => {
             match target {
                 CallTarget::Local { name } => {
-                    if named_is_record(sema, &body, None, name).is_none() {
-                        return None;
-                    }
+                    named_is_record(sema, &body, None, name)?;
                 }
                 CallTarget::Remote { module, name } => {
-                    if named_is_record(sema, &body, Some(module), name).is_none() {
-                        return None;
-                    }
+                    named_is_record(sema, &body, Some(module), name)?;
                 }
             };
             // We know we are calling erlang:is_record
@@ -470,7 +466,7 @@ pub fn from_is_record(
                         2 => reference_direct(Some(record.clone())),
                         3 => match &body[args[2]] {
                             Expr::Literal(Literal::Integer(size)) => {
-                                let num_fields = record.record.fields.clone().into_iter().count();
+                                let num_fields = record.record.fields.clone().count();
                                 if num_fields == (*size) as usize {
                                     reference_direct(Some(record.clone()))
                                 } else {

@@ -197,9 +197,7 @@ impl SymbolDefinition {
 }
 
 fn recursive_include_files(file: File, sema: &Semantic, includers: &mut FxHashSet<FileId>) {
-    if includers.contains(&file.file_id) {
-        return;
-    } else {
+    if !includers.contains(&file.file_id) {
         let def_map = file.def_map(sema.db);
         includers.insert(file.file_id);
         includers.extend(def_map.get_included_files());

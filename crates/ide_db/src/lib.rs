@@ -369,7 +369,7 @@ impl TypedSemantic for RootDatabase {
             EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
                 errors
                     .iter()
-                    .flat_map(|(_, diags)| diags.iter().map(|d| d.clone()))
+                    .flat_map(|(_, diags)| diags.iter().cloned())
                     .collect(),
             ),
             EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
