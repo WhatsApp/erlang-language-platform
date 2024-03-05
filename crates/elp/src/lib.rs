@@ -9,6 +9,7 @@
 
 use std::fmt;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -95,7 +96,7 @@ pub fn version() -> String {
 pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
     lazy_static! {
         static ref SET: FxHashSet<SmolStr> =
-            vec!["ttb",
+            ["ttb",
                 // Not all files in the dependencies compile with ELP,
                 // also using unusual macros. Rather than skip
                 // checking deps, we list the known bad ones.
@@ -134,10 +135,7 @@ pub struct LintConfig {
 
 pub const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
-pub fn read_lint_config_file(
-    project: &PathBuf,
-    config_file: &Option<String>,
-) -> Result<LintConfig> {
+pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Result<LintConfig> {
     if let Some(file_name) = config_file {
         let file_path: PathBuf = file_name.into();
         match fs::read_to_string(file_path.clone()) {
@@ -150,7 +148,7 @@ pub fn read_lint_config_file(
             }
         }
     } else {
-        let mut potential_path = Some(project.as_path());
+        let mut potential_path = Some(project);
         while let Some(path) = potential_path {
             let file_path = path.join(LINT_CONFIG_FILE);
 

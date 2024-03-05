@@ -29,7 +29,6 @@ use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use lsp_types;
 use lsp_types::SemanticTokens;
 use lsp_types::Url;
 use parking_lot::Mutex;
@@ -161,11 +160,9 @@ impl Snapshot {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
-        Some(
-            self.analysis
-                .diagnostics(&self.config.diagnostics(self.ad_hoc_lints.clone()), file_id)
-                .ok()?,
-        )
+        self.analysis
+            .diagnostics(&self.config.diagnostics(self.ad_hoc_lints.clone()), file_id)
+            .ok()
     }
 
     pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<diagnostics::Diagnostic>> {
@@ -201,7 +198,7 @@ impl Snapshot {
             file_url: file_url.clone()
         });
 
-        Some(self.analysis.ct_diagnostics(file_id).ok()?)
+        self.analysis.ct_diagnostics(file_id).ok()
     }
 
     pub fn erlang_service_diagnostics(
@@ -221,7 +218,7 @@ impl Snapshot {
 
         Some(
             diags
-                .into_iter()
+                .iter()
                 .map(|(file_id, ds)| (*file_id, ds.clone()))
                 .collect(),
         )

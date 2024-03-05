@@ -653,69 +653,66 @@ pub(crate) fn code_lens(
             let run_title = &run.run_title();
             let run_interactive_title = &run.run_interactive_title();
             let debug_title = &run.debug_title();
-            match project_build_data {
-                ProjectBuildData::Buck(project) => {
-                    let file_id = run.nav.file_id;
-                    if let Some(file_path) = snap.file_id_to_path(file_id) {
-                        if let Some(target) = project.target(&file_path) {
-                            let r = buck2_test_runnable(
-                                snap,
-                                run.clone(),
-                                target.clone(),
-                                lens_config.run_coverage,
-                            );
-                            if lens_config.run_interactive {
-                                let interactive_r = buck2_run_runnable(snap, run.clone(), target);
-                                match run.kind {
-                                    RunnableKind::Suite => {
-                                        let run_command = command::open_interactive(
-                                            &interactive_r,
-                                            run_interactive_title,
-                                        );
-                                        acc.push(lsp_types::CodeLens {
-                                            range: annotation_range,
-                                            command: Some(run_command),
-                                            data: None,
-                                        });
-                                    }
-                                    RunnableKind::Test { .. } => {
-                                        let run_command = command::run_interactive(
-                                            &interactive_r,
-                                            run_interactive_title,
-                                        );
-                                        acc.push(lsp_types::CodeLens {
-                                            range: annotation_range,
-                                            command: Some(run_command),
-                                            data: None,
-                                        });
-                                    }
+            if let ProjectBuildData::Buck(project) = project_build_data {
+                let file_id = run.nav.file_id;
+                if let Some(file_path) = snap.file_id_to_path(file_id) {
+                    if let Some(target) = project.target(&file_path) {
+                        let r = buck2_test_runnable(
+                            snap,
+                            run.clone(),
+                            target.clone(),
+                            lens_config.run_coverage,
+                        );
+                        if lens_config.run_interactive {
+                            let interactive_r = buck2_run_runnable(snap, run.clone(), target);
+                            match run.kind {
+                                RunnableKind::Suite => {
+                                    let run_command = command::open_interactive(
+                                        &interactive_r,
+                                        run_interactive_title,
+                                    );
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(run_command),
+                                        data: None,
+                                    });
+                                }
+                                RunnableKind::Test { .. } => {
+                                    let run_command = command::run_interactive(
+                                        &interactive_r,
+                                        run_interactive_title,
+                                    );
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(run_command),
+                                        data: None,
+                                    });
                                 }
                             }
-                            if lens_config.run {
-                                let run_command = command::run_single(&r, run_title);
-                                acc.push(lsp_types::CodeLens {
-                                    range: annotation_range,
-                                    command: Some(run_command),
-                                    data: None,
-                                });
-                            }
-                            if lens_config.debug {
-                                let debug_command = command::debug_single(&r, debug_title);
-                                acc.push(lsp_types::CodeLens {
-                                    range: annotation_range,
-                                    command: Some(debug_command),
-                                    data: None,
-                                });
-                            }
+                        }
+                        if lens_config.run {
+                            let run_command = command::run_single(&r, run_title);
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(run_command),
+                                data: None,
+                            });
+                        }
+                        if lens_config.debug {
+                            let debug_command = command::debug_single(&r, debug_title);
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(debug_command),
+                                data: None,
+                            });
                         }
                     }
                 }
-                _ => (),
             }
         }
         AnnotationKind::Link(link) => {
             if lens_config.links {
-                let annotation_range = range(&line_index, annotation.range);
+                let annotation_range = range(line_index, annotation.range);
                 let url = link.url;
                 let text = link.text;
                 let command = command::open_uri(&url, &text);
