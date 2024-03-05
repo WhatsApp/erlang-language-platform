@@ -408,7 +408,7 @@ fn add_to_suite_0(
     value: &str,
     builder: &mut SourceChangeBuilder,
 ) -> Option<()> {
-    let fun = fun_def.function_clauses.get(0)?;
+    let fun = fun_def.function_clauses.first()?;
     let fun_ast = fun.form_id.get(source);
     let clause = match fun_ast.clause()? {
         ast::FunctionOrMacroClause::FunctionClause(clause) => clause,
@@ -448,19 +448,16 @@ fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut So
     let option = format!("{{{key}, {value}}}");
     let mut done = false;
     list.exprs().for_each(|e| {
-        match e {
-            ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) => {
-                if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next() {
-                    if a.text() == Some(key.to_string()) {
-                        if e.syntax().text().to_string() != option {
-                            // We found an existing key, with different value, replace the tuple with the new one
-                            builder.replace(e.syntax().text_range(), option.to_string());
-                        };
-                        done = true;
-                    }
+        if let ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) = e {
+            if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next() {
+                if a.text() == Some(key.to_string()) {
+                    if e.syntax().text().to_string() != option {
+                        // We found an existing key, with different value, replace the tuple with the new one
+                        builder.replace(e.syntax().text_range(), option.to_string());
+                    };
+                    done = true;
                 }
             }
-            _ => {}
         };
     });
     if !done {

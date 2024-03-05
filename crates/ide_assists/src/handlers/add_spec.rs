@@ -40,10 +40,10 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     let source = function_def.source(ctx.db().upcast());
-    let name = source.get(0)?.name()?;
+    let name = source.first()?.name()?;
     let name_text = name.text()?;
 
-    let insert = source.get(0)?.syntax().text_range().start();
+    let insert = source.first()?.syntax().text_range().start();
     let target = name.syntax().text_range();
 
     acc.add(

@@ -748,7 +748,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                 )
             })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {
-                acc.extend(new.into_iter());
+                acc.extend(new);
                 acc
             });
         let simple_param_vars = function_body
@@ -764,7 +764,7 @@ fn is_safe(ctx: &AssistContext, fun: &FunctionDef, references: &[ast::Call]) -> 
                 ))
             })
             .fold(FxHashSet::default(), move |mut acc, new: FxHashSet<Var>| {
-                acc.extend(new.into_iter());
+                acc.extend(new);
                 acc
             });
         let fun_vars: FxHashSet<Var> = fun_vars.difference(&simple_param_vars).copied().collect();
