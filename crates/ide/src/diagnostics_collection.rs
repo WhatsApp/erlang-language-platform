@@ -325,7 +325,8 @@ mod tests {
                 "P1711",
                 TextRange::new(8.into(), 10.into()),
             )],
-            labeled,
+            labeled_syntax_errors: FxHashMap::default(),
+            labeled_undefined_errors: labeled,
         };
 
         let config =
@@ -376,12 +377,14 @@ mod tests {
         let diags_one = LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
-            labeled: labeled_one,
+            labeled_syntax_errors: FxHashMap::default(),
+            labeled_undefined_errors: labeled_one,
         };
         let diags_two = LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
-            labeled: labeled_two,
+            labeled_syntax_errors: labeled_two,
+            labeled_undefined_errors: FxHashMap::default(),
         };
 
         let file_id = FileId(0);

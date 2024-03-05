@@ -622,9 +622,12 @@ pub type TextRangeSet = RangeSet<[RangeInclusive<u32>; 1]>;
 
 #[derive(Debug, Clone)]
 pub struct LabeledDiagnostics {
-    pub syntax_error_form_ranges: TextRangeSet,
     pub normal: Vec<Diagnostic>,
-    pub labeled: Labeled,
+    pub syntax_error_form_ranges: TextRangeSet,
+    /// Syntax error diagnostics labeled by the name/arity of the function enclosing them
+    pub labeled_syntax_errors: Labeled,
+    /// "Undefined XXX" diagnostics labeled by the name/arity of XXX.
+    pub labeled_undefined_errors: Labeled,
 }
 
 impl Default for LabeledDiagnostics {
@@ -632,38 +635,37 @@ impl Default for LabeledDiagnostics {
         Self {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: Default::default(),
-            labeled: Default::default(),
+            labeled_syntax_errors: Default::default(),
+            labeled_undefined_errors: Default::default(),
         }
     }
 }
 
 impl LabeledDiagnostics {
-    pub fn default() -> LabeledDiagnostics {
-        LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
-            normal: vec![],
-            labeled: FxHashMap::default(),
-        }
-    }
-
     pub fn new(diagnostics: Vec<Diagnostic>) -> LabeledDiagnostics {
         LabeledDiagnostics {
             syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: diagnostics,
-            labeled: FxHashMap::default(),
+            labeled_syntax_errors: FxHashMap::default(),
+            labeled_undefined_errors: FxHashMap::default(),
         }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Diagnostic> + '_ {
-        self.normal.iter().chain(self.labeled.values().flatten())
+        self.normal
+            .iter()
+            .chain(self.labeled_syntax_errors.values().flatten())
+            .chain(self.labeled_undefined_errors.values().flatten())
     }
 
     pub fn is_empty(&self) -> bool {
-        self.normal.is_empty() && self.labeled.is_empty()
+        self.normal.is_empty()
+            && self.labeled_syntax_errors.is_empty()
+            && self.labeled_undefined_errors.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.normal.len() + self.labeled.len()
+        self.normal.len() + self.labeled_syntax_errors.len() + self.labeled_undefined_errors.len()
     }
 
     pub fn extend<I: IntoIterator<Item = Diagnostic>>(&mut self, iter: I) {
@@ -724,7 +726,7 @@ pub fn native_diagnostics(
 
     let mut res = Vec::new();
 
-    let (syntax_errors_by_function, syntax_error_form_ranges) = if report_diagnostics {
+    let (labeled_syntax_errors, syntax_error_form_ranges) = if report_diagnostics {
         let sema = Semantic::new(db);
 
         if file_kind.is_module() {
@@ -767,7 +769,7 @@ pub fn native_diagnostics(
     };
     let line_index = db.file_line_index(file_id);
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
-    //       In which case we must check syntax_errors_by_function
+    //       In which case we must check labeled_syntax_errors
     res.retain(|d| {
         !config.disabled.contains(&d.code)
             && (config.experimental && d.has_category(Category::Experimental)
@@ -778,7 +780,8 @@ pub fn native_diagnostics(
     LabeledDiagnostics {
         syntax_error_form_ranges,
         normal: res,
-        labeled: syntax_errors_by_function,
+        labeled_syntax_errors,
+        labeled_undefined_errors: FxHashMap::default(),
     }
 }
 
@@ -1162,16 +1165,20 @@ fn label_erlang_service_diagnostics(
     diagnostics
         .into_iter()
         .map(|(file_id, ds)| {
-            let mut labeled: Labeled = FxHashMap::default();
+            let mut labeled_undefined_errors: Labeled = FxHashMap::default();
             ds.into_iter().for_each(|d| {
-                labeled.entry(erlang_service_label(&d)).or_default().push(d);
+                labeled_undefined_errors
+                    .entry(erlang_service_label(&d))
+                    .or_default()
+                    .push(d);
             });
             (
                 file_id,
                 LabeledDiagnostics {
                     syntax_error_form_ranges: RangeSet::from_elements(vec![]),
                     normal: Vec::default(),
-                    labeled,
+                    labeled_syntax_errors: FxHashMap::default(),
+                    labeled_undefined_errors,
                 },
             )
         })
@@ -1496,10 +1503,10 @@ pub fn attach_related_diagnostics(
     // end.
     let mut to_remove: FxHashSet<&Option<Label>> = FxHashSet::default();
     let updated = native
-        .labeled
+        .labeled_syntax_errors
         .iter()
         .flat_map(|(label, diags)| {
-            if let Some(related) = erlang_service.labeled.get(label) {
+            if let Some(related) = erlang_service.labeled_undefined_errors.get(label) {
                 to_remove.insert(label);
                 let related_info = related.iter().map(|d| d.as_related()).collect_vec();
                 diags
@@ -1513,7 +1520,7 @@ pub fn attach_related_diagnostics(
         .collect_vec();
 
     let es = erlang_service
-        .labeled
+        .labeled_undefined_errors
         .iter()
         .filter(|(k, _)| !to_remove.contains(k))
         .flat_map(|(_, v)| v)
@@ -1966,7 +1973,7 @@ baz(1)->4.
 
     #[test]
     fn group_related_diagnostics_1() {
-        let labeled = FxHashMap::from_iter([(
+        let labeled_undefined_errors = FxHashMap::from_iter([(
             Some(Label::new_raw("foo/0")),
             vec![
                 Diagnostic {
@@ -2017,7 +2024,8 @@ baz(1)->4.
                 code_doc_uri: None,
                 form_range: None,
             }],
-            labeled,
+            labeled_syntax_errors: FxHashMap::default(),
+            labeled_undefined_errors,
         };
 
         let config =
