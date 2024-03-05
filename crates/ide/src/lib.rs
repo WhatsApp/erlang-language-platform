@@ -205,13 +205,13 @@ impl Analysis {
         self.with_db(|db| db.file_line_index(file_id))
     }
 
-    /// Computes the set of diagnostics for the given file.
-    pub fn diagnostics(
+    /// Computes the set of ELP-native diagnostics for the given file.
+    pub fn native_diagnostics(
         &self,
         config: &DiagnosticsConfig,
         file_id: FileId,
     ) -> Cancellable<LabeledDiagnostics> {
-        self.with_db(|db| diagnostics::diagnostics(db, config, file_id))
+        self.with_db(|db| diagnostics::native_diagnostics(db, config, file_id))
     }
 
     /// Computes the set of eqwalizer diagnostics for the given files,
@@ -413,7 +413,7 @@ impl Analysis {
 
         self.with_db(|db| {
             let diagnostic_assists = if include_fixes {
-                diagnostics::diagnostics(db, diagnostics_config, frange.file_id)
+                diagnostics::native_diagnostics(db, diagnostics_config, frange.file_id)
                     .iter()
                     .filter_map(|it| it.fixes.clone())
                     .flatten()

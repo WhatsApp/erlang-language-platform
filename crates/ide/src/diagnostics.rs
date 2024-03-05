@@ -708,7 +708,7 @@ pub fn eqwalizer_to_diagnostic(d: &EqwalizerDiagnostic, eqwalizer_enabled: bool)
 }
 
 /// Main entry point to calculate ELP-native diagnostics for a file
-pub fn diagnostics(
+pub fn native_diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
     file_id: FileId,
@@ -724,7 +724,7 @@ pub fn diagnostics(
 
     let mut res = Vec::new();
 
-    let (syntax_errors_by_function, form_ranges) = if report_diagnostics {
+    let (syntax_errors_by_function, syntax_error_form_ranges) = if report_diagnostics {
         let sema = Semantic::new(db);
 
         if file_kind.is_module() {
@@ -776,7 +776,7 @@ pub fn diagnostics(
     });
 
     LabeledDiagnostics {
-        syntax_error_form_ranges: form_ranges,
+        syntax_error_form_ranges,
         normal: res,
         labeled: syntax_errors_by_function,
     }

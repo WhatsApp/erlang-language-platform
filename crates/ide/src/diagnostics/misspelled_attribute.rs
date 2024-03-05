@@ -185,7 +185,9 @@ mod tests {
         config
             .disabled
             .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-        let diags = analysis.diagnostics(&config, position.file_id).unwrap();
+        let diags = analysis
+            .native_diagnostics(&config, position.file_id)
+            .unwrap();
         assert!(
             diags.is_empty(),
             "didn't expect diagnostic errors in files: {:?}",
@@ -207,7 +209,9 @@ mod tests {
         config
             .disabled
             .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
-        let diags = analysis.diagnostics(&config, position.file_id).unwrap();
+        let diags = analysis
+            .native_diagnostics(&config, position.file_id)
+            .unwrap();
         assert!(
             diags.is_empty(),
             "didn't expect diagnostic errors in files: {:?}",

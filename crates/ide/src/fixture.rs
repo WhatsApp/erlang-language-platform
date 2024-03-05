@@ -135,7 +135,10 @@ pub fn diagnostics_for(
         tmp_dir: _,
     } = diagnostics_enabled;
     if *use_native {
-        diagnostics.set_native(file_id, analysis.diagnostics(config, file_id).unwrap());
+        diagnostics.set_native(
+            file_id,
+            analysis.native_diagnostics(config, file_id).unwrap(),
+        );
     }
     if *use_erlang_service {
         let erlang_service_diagnostics = analysis

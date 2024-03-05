@@ -151,7 +151,7 @@ pub(crate) fn check_nth_fix(
     let after = trim_indent(fixture_after);
 
     let (db, file_position, _) = RootDatabase::with_position(fixture_before);
-    let diagnostic = diagnostics::diagnostics(&db, &config, file_position.file_id)
+    let diagnostic = diagnostics::native_diagnostics(&db, &config, file_position.file_id)
         .iter()
         .last()
         .expect("no diagnostics")
@@ -200,7 +200,7 @@ pub(crate) fn check_specific_fix_with_config(
     let after = trim_indent(fixture_after);
 
     let (db, file_position, _) = RootDatabase::with_position(fixture_before);
-    let diagnostics = diagnostics::diagnostics(&db, &config, file_position.file_id);
+    let diagnostics = diagnostics::native_diagnostics(&db, &config, file_position.file_id);
     let diagnostic: &Diagnostic = if let Some(label) = assist_label {
         if let Some(diagnostic) = diagnostics.iter().find(|d| d.message == label) {
             diagnostic
@@ -353,7 +353,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
-        let diagnostics = diagnostics::diagnostics(&analysis.db, &config, file_id);
+        let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
 
         let mut expected = extract_annotations(&analysis.db.file_text(file_id));
@@ -377,7 +377,7 @@ pub fn check_no_parse_errors_with_config(
     file_id: FileId,
     config: &DiagnosticsConfig,
 ) {
-    let diags = analysis.diagnostics(&config, file_id).unwrap();
+    let diags = analysis.native_diagnostics(&config, file_id).unwrap();
     assert!(
         diags.is_empty(),
         "didn't expect parse errors in files: {:?}",
