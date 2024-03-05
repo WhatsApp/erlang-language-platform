@@ -109,7 +109,8 @@ fn eval_error_diagnostic(
             let range = name.syntax().text_range();
             let d = Diagnostic::new(
                 DiagnosticCode::CannotEvaluateCTCallbacks,
-                format!("Could not evaluate function. No code lenses for tests will be available."),
+                "Could not evaluate function. No code lenses for tests will be available."
+                    .to_string(),
                 range,
             )
             .with_severity(Severity::Warning);
@@ -145,7 +146,7 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
             && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity)
             && !excludes.contains(name_arity)
         {
-            if let Some(name) = def.source(sema.db.upcast()).get(0).and_then(|f| f.name()) {
+            if let Some(name) = def.source(sema.db.upcast()).first().and_then(|f| f.name()) {
                 if name_arity.arity() == 1 {
                     res.insert(name_arity.clone(), name.syntax().text_range());
                 }
@@ -158,7 +159,7 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
 lazy_static! {
     static ref KNOWN_FUNCTIONS_ARITY_1: FxHashSet<NameArity> = {
         let mut res = FxHashSet::default();
-        for name in vec![known::end_per_suite, known::init_per_suite, known::group] {
+        for name in [known::end_per_suite, known::init_per_suite, known::group] {
             res.insert(NameArity::new(name.clone(), 1));
         }
         res

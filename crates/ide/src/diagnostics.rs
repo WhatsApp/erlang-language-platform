@@ -460,7 +460,7 @@ impl DiagnosticCode {
     pub fn maybe_from_string(s: &String) -> Option<DiagnosticCode> {
         DIAGNOSTIC_CODE_LOOKUPS
             .get(s).cloned()
-            // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(|c| DiagnosticCode::MetaOnly(c)))
+            // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(DiagnosticCode::MetaOnly))
             .or_else( ||
                 // Look for ErlangService and AdHoc
                 if let Some(code) = Self::is_adhoc(s) {
@@ -1144,10 +1144,7 @@ pub fn erlang_service_diagnostics(
                     .and_modify(|existing| existing.push(diag.clone()))
                     .or_insert(vec![diag.clone()]);
             });
-            diags_map
-                .into_iter()
-                .map(|(file_id, ds)| (file_id, ds))
-                .collect()
+            diags_map.into_iter().collect()
         };
         label_erlang_service_diagnostics(diags)
     } else {
@@ -1306,10 +1303,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
                 .and_modify(|existing| existing.push(diag.clone()))
                 .or_insert(vec![diag.clone()]);
         });
-        diags_map
-            .into_iter()
-            .map(|(file_id, ds)| (file_id, ds))
-            .collect()
+        diags_map.into_iter().collect()
     }
 }
 

@@ -432,7 +432,7 @@ impl Analysis {
             );
 
             let mut res = diagnostic_assists;
-            res.extend(assists.into_iter());
+            res.extend(assists);
 
             res
         })

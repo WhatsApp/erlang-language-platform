@@ -63,7 +63,7 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn diagnostics_for<'a>(&'a self, file_id: FileId) -> Vec<Diagnostic> {
+    pub fn diagnostics_for(&self, file_id: FileId) -> Vec<Diagnostic> {
         let empty_diags = LabeledDiagnostics::default();
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);

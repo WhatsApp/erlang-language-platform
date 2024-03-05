@@ -242,7 +242,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
         self.match_any
             .or_else(|| {
                 self.labels_full
-                    .get(&target.label(arity, &sema, body))
+                    .get(&target.label(arity, sema, body))
                     .copied()
             })
             .or_else(|| {
@@ -252,11 +252,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
                 self.types_match(args?, types, sema, body)
                     .then_some((match_val, t))
             })
-            .or_else(|| {
-                self.labels_mf
-                    .get(&target.label_short(&sema, body))
-                    .copied()
-            })
+            .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
             .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
             .or_else(|| match target {
                 CallTarget::Local { name: _ } => None,
@@ -278,7 +274,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
         args.len() == types.len()
             && args.iter().zip(types.iter()).all(|(expr_id, eq_type)| {
                 sema.expr_type(body, expr_id)
-                    .and_then(|t| Some(&t == eq_type))
+                    .map(|t| &t == eq_type)
                     .unwrap_or(false)
             })
     }

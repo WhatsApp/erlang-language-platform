@@ -244,7 +244,7 @@ fn get_function_doc(
         file_id,
         offset: def
             .source(sema.db.upcast())
-            .get(0)?
+            .first()?
             .syntax()
             .text_range()
             .start(),
