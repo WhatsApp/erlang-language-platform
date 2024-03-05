@@ -1126,6 +1126,8 @@ impl Server {
 
     fn cancel(&mut self, request_id: RequestId) {
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
+            // Temporary for T180205228 / #17
+            let _pctx = stdx::panic_context::enter(format!("\nserver::cancel"));
             self.send(response.into());
         }
     }
@@ -1135,6 +1137,8 @@ impl Server {
             .req_queue
             .outgoing
             .register(R::METHOD.to_string(), params, handler);
+        // Temporary for T180205228 / #17
+        let _pctx = stdx::panic_context::enter("\nserver::send_request".to_string());
         self.send(request.into());
     }
 
@@ -1147,10 +1151,17 @@ impl Server {
 
     fn send_notification<N: notification::Notification>(&mut self, params: N::Params) {
         let not = Notification::new(N::METHOD.to_string(), params);
+        // Temporary for T180205228 / #17
+        let _pctx = stdx::panic_context::enter("\nserver::send:notification".to_string());
         self.send(not.into());
     }
 
     fn send(&self, message: lsp_server::Message) {
+        // Temporary for T180205228 / #17
+        let _pctx = stdx::panic_context::enter(format!(
+            "\nserver::send:msg={}",
+            lsp_msg_for_context(&message)
+        ));
         self.connection.sender.send(message).unwrap()
     }
 
@@ -1366,6 +1377,14 @@ impl Server {
                 err
             ),
         }
+    }
+}
+
+fn lsp_msg_for_context(message: &lsp_server::Message) -> String {
+    match message {
+        lsp_server::Message::Request(m) => m.method.clone(),
+        lsp_server::Message::Response(m) => format!("{}", m.id),
+        lsp_server::Message::Notification(m) => m.method.clone(),
     }
 }
 
