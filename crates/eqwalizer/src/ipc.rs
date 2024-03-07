@@ -115,8 +115,8 @@ impl IpcHandle {
 
     pub fn receive(&mut self) -> Result<MsgFromEqWAlizer> {
         let buf = self.receive_line().context("receiving message")?;
-        let deserialized =
-            serde_json::from_str(&buf).expect("failed to parse stdout from eqwalizer");
+        let deserialized = serde_json::from_str(&buf)
+            .with_context(|| format!("parsing for eqwalizer: {buf:?}"))?;
         Ok(deserialized)
     }
 
