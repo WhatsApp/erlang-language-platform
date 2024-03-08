@@ -47,20 +47,35 @@ impl From<Fixme> for eetf::Term {
     }
 }
 
-pub fn fixmes_eetf(line_index: &LineIndex, file_text: &str) -> eetf::Term {
-    let eqwalizer_pats = vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)];
-    let eqwalizer_fixmes = collect_fixmes(line_index, file_text, eqwalizer_pats);
-    let eqwalizer_fixmes: Vec<eetf::Term> =
-        eqwalizer_fixmes.into_iter().map(|f| f.into()).collect();
-    // Erlang proplist: [{eqwalizer_fixmes, [Fixme1, Fixme2....]}]
-    eetf::List::from(vec![
-        eetf::Tuple::from(vec![
-            eetf::Atom::from("eqwalizer_fixmes").into(),
-            eetf::List::from(eqwalizer_fixmes).into(),
-        ])
-        .into(),
+fn fixmes_tuple(
+    line_index: &LineIndex,
+    file_text: &str,
+    pats: Vec<(&str, bool)>,
+    label: &str,
+) -> eetf::Term {
+    let fixmes = collect_fixmes(line_index, file_text, pats);
+    let fixmes: Vec<eetf::Term> = fixmes.into_iter().map(|f| f.into()).collect();
+    eetf::Tuple::from(vec![
+        eetf::Atom::from(label).into(),
+        eetf::List::from(fixmes).into(),
     ])
     .into()
+}
+
+pub fn fixmes_eetf(line_index: &LineIndex, file_text: &str) -> eetf::Term {
+    let eqwalizer_fixmes = fixmes_tuple(
+        line_index,
+        file_text,
+        vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)],
+        "eqwalizer_fixmes",
+    );
+    let elp_fixmes = fixmes_tuple(
+        line_index,
+        file_text,
+        vec![("% elp:fixme", false), ("% elp:ignore", true)],
+        "elp_fixmes",
+    );
+    eetf::List::from(vec![eqwalizer_fixmes, elp_fixmes]).into()
 }
 
 fn collect_fixmes(line_index: &LineIndex, file_text: &str, pats: Vec<(&str, bool)>) -> Vec<Fixme> {
