@@ -91,7 +91,7 @@ mod unused_include;
 mod unused_macro;
 mod unused_record_field;
 
-pub use elp_ide_db::diagnostic_code::DiagnosticCode;
+pub use elp_ide_db::DiagnosticCode;
 pub use from_config::Lint;
 pub use from_config::LintsFromConfig;
 pub use from_config::ReplaceCall;

@@ -16,7 +16,7 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashSet;
 
-use crate::diagnostic_code::DiagnosticCode;
+use crate::DiagnosticCode;
 use crate::LineIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

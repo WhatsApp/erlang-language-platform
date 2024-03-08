@@ -68,6 +68,7 @@ pub use defs::ReferenceClass;
 pub use defs::ReferenceType;
 pub use defs::SymbolClass;
 pub use defs::SymbolDefinition;
+pub use diagnostic_code::DiagnosticCode;
 pub use elp_base_db;
 pub use elp_base_db::impl_intern_key;
 pub use elp_eqwalizer::Eqwalizer;
