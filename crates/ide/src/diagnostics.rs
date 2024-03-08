@@ -27,6 +27,7 @@ use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
+use elp_ide_db::metadata::Metadata;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::ErlAstDatabase;
@@ -201,11 +202,11 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn should_be_ignored(&self, line_index: &LineIndex, source: &SyntaxNode) -> bool {
-        match prev_line_comment_text(line_index, source, self.range.start()) {
-            Some(comment) => comment_contains_ignore_code(&comment, &self.code),
-            None => false,
-        }
+    pub(crate) fn should_be_ignored(&self, metadata: &Metadata) -> bool {
+        metadata.elp_fixmes.iter().any(|fixme| {
+            fixme.suppression_range.contains(self.range.start())
+                && comment_contains_ignore_code(&fixme.comment, &self.code)
+        })
     }
 
     pub(crate) fn with_ignore_fix(mut self, sema: &Semantic, file_id: FileId) -> Diagnostic {
@@ -767,14 +768,14 @@ pub fn native_diagnostics(
     } else {
         (FxHashMap::default(), RangeSet::from_elements(vec![]))
     };
-    let line_index = db.file_line_index(file_id);
+    let metadata = db.elp_metadata(file_id);
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
     //       In which case we must check labeled_syntax_errors
     res.retain(|d| {
         !config.disabled.contains(&d.code)
             && (config.experimental && d.has_category(Category::Experimental)
                 || !d.has_category(Category::Experimental))
-            && !d.should_be_ignored(&line_index, &parse.syntax_node())
+            && !d.should_be_ignored(&metadata)
     });
 
     LabeledDiagnostics {
@@ -986,42 +987,12 @@ fn record_decl_check_missing_comma(record: ast::RecordDecl) -> Vec<Diagnostic> {
 }
 
 fn comment_contains_ignore_code(comment: &str, code: &DiagnosticCode) -> bool {
-    let pattern = "% elp:ignore";
-    match comment.find(pattern) {
-        Some(start) => {
-            let comment = comment[start..].to_string();
-            comment
-                .split_whitespace()
-                .any(|code_str| match DiagnosticCode::from_str(code_str) {
-                    Ok(code_comment) => *code == code_comment,
-                    Err(_) => false,
-                })
-        }
-        _ => false,
-    }
-}
-
-fn prev_line(line_index: &LineIndex, current_line: u32) -> Option<TextSize> {
-    match current_line {
-        0 => None,
-        _ => line_index.line_at(current_line as usize - 1),
-    }
-}
-
-fn prev_line_comment_text(
-    line_index: &LineIndex,
-    source: &SyntaxNode,
-    offset: TextSize,
-) -> Option<String> {
-    let current_line = line_index.line_col(offset).line;
-    let prev_line = prev_line(line_index, current_line)?;
-    let token = source.token_at_offset(prev_line).left_biased()?;
-    let prev_line_range = TextRange::new(prev_line, offset);
-    let node_or_token = token
-        .siblings_with_tokens(elp_syntax::Direction::Next)
-        .filter(|node| prev_line_range.contains_range(node.text_range()))
-        .find(|node| node.kind() == SyntaxKind::COMMENT)?;
-    Some(node_or_token.to_string())
+    comment
+        .split_whitespace()
+        .any(|code_str| match DiagnosticCode::from_str(code_str) {
+            Ok(code_comment) => *code == code_comment,
+            Err(_) => false,
+        })
 }
 
 fn non_whitespace_next_token(node: &SyntaxNode) -> Option<NodeOrToken> {
@@ -1333,8 +1304,6 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
 /// Diagnostics requiring the erlang_service
 pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let mut res: Vec<Diagnostic> = Vec::new();
-    let parse = db.parse(file_id);
-    let line_index = db.file_line_index(file_id);
     let sema = Semantic::new(db);
 
     meck::missing_no_link_in_init_per_suite(&mut res, &sema, file_id);
@@ -1352,9 +1321,9 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
         }
         _ => (),
     };
-
+    let metadata = db.elp_metadata(file_id);
     res.into_iter()
-        .filter(|d| !d.should_be_ignored(&line_index, &parse.syntax_node()))
+        .filter(|d| !d.should_be_ignored(&metadata))
         .collect()
 }
 

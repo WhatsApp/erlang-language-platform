@@ -9,6 +9,9 @@
 
 use std::convert::TryInto;
 
+use elp_syntax::Parse;
+use elp_syntax::SourceFile;
+use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 
@@ -16,15 +19,16 @@ use crate::LineIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
-    eqwalizer_fixmes: Vec<Fixme>,
-    elp_fixmes: Vec<Fixme>,
+    pub eqwalizer_fixmes: Vec<Fixme>,
+    pub elp_fixmes: Vec<Fixme>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Fixme {
-    comment_range: TextRange,
-    suppression_range: TextRange,
-    is_ignore: bool,
+pub struct Fixme {
+    pub comment: String,
+    pub comment_range: TextRange,
+    pub suppression_range: TextRange,
+    pub is_ignore: bool,
 }
 
 impl From<Metadata> for eetf::Term {
@@ -74,49 +78,68 @@ impl From<Fixme> for eetf::Term {
     }
 }
 
-pub fn metadata(line_index: &LineIndex, file_text: &str) -> Metadata {
+pub fn metadata(line_index: &LineIndex, file_text: &str, source: &Parse<SourceFile>) -> Metadata {
     Metadata {
         eqwalizer_fixmes: collect_fixmes(
             line_index,
             file_text,
+            source,
             vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)],
         ),
         elp_fixmes: collect_fixmes(
             line_index,
             file_text,
+            source,
             vec![("% elp:fixme", false), ("% elp:ignore", true)],
         ),
     }
 }
 
-fn collect_fixmes(line_index: &LineIndex, file_text: &str, pats: Vec<(&str, bool)>) -> Vec<Fixme> {
+fn collect_fixmes(
+    line_index: &LineIndex,
+    file_text: &str,
+    source: &Parse<SourceFile>,
+    pats: Vec<(&str, bool)>,
+) -> Vec<Fixme> {
     let mut fixmes = Vec::new();
     for (pat, is_ignore) in pats {
         let len = pat.len();
         for (i, _) in file_text.match_indices(pat) {
-            let start = TextSize::from(i as u32);
-            let end = TextSize::from((i + len) as u32);
-            let line_num = line_index.line_col(start).line;
-            if let Some(suppression_start) = line_index.line_at(line_num as usize + 1) {
-                let suppression_end = {
-                    let next_next_line_start: u32 = line_index
-                        .line_at(line_num as usize + 2)
-                        .unwrap_or_else(
-                            // end of last line
-                            || TextSize::from(file_text.chars().count() as u32),
-                        )
-                        .into();
-                    TextSize::from(next_next_line_start - 1)
-                };
-                let comment_range = TextRange::new(start, end);
-                let suppression_range = TextRange::new(suppression_start, suppression_end);
-                fixmes.push(Fixme {
-                    comment_range,
-                    suppression_range,
-                    is_ignore,
-                });
+            let pattern_start = TextSize::from(i as u32);
+            let pattern_end = TextSize::from((i + len) as u32);
+            let line_num = line_index.line_col(pattern_start).line;
+            if let Some(token) = source
+                .syntax_node()
+                .token_at_offset(pattern_end)
+                .left_biased()
+            {
+                if token.kind() == SyntaxKind::COMMENT {
+                    let suppression_range = get_suppression_range(line_index, line_num, file_text);
+                    let comment = token.to_string();
+                    let comment_range = TextRange::new(pattern_start, pattern_end);
+
+                    fixmes.push(Fixme {
+                        comment,
+                        comment_range,
+                        suppression_range,
+                        is_ignore,
+                    });
+                }
             }
         }
     }
     fixmes
+}
+
+fn line_start(line_index: &LineIndex, line_num: u32, text: &str) -> TextSize {
+    line_index.line_at(line_num as usize).unwrap_or_else(
+        // end of last line
+        || TextSize::from(text.chars().count() as u32),
+    )
+}
+
+fn get_suppression_range(line_index: &LineIndex, line_num: u32, text: &str) -> TextRange {
+    let start = line_start(line_index, line_num + 1, text);
+    let end = line_start(line_index, line_num + 2, text);
+    TextRange::new(start, end)
 }

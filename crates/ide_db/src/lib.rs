@@ -52,8 +52,8 @@ mod defs;
 pub mod docs;
 pub mod eqwalizer;
 mod erl_ast;
-pub mod fixmes;
 mod line_index;
+pub mod metadata;
 mod search;
 
 // ---------------------------------------------------------------------

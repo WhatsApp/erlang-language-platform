@@ -24,8 +24,8 @@ use elp_erlang_service::ParseResult;
 
 use crate::erlang_service::CompileOption;
 use crate::erlang_service::ParseRequest;
-use crate::fixmes;
-use crate::fixmes::Metadata;
+use crate::metadata;
+use crate::metadata::Metadata;
 use crate::LineIndexDatabase;
 use crate::RootDatabase;
 
@@ -150,7 +150,8 @@ fn module_ast(
 fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
     let line_index = db.file_line_index(file_id);
     let file_text = db.file_text(file_id);
-    fixmes::metadata(&line_index, &file_text)
+    let source = db.parse(file_id);
+    metadata::metadata(&line_index, &file_text, &source)
 }
 
 pub fn files_from_bytes(bytes: &[u8]) -> Vec<String> {
