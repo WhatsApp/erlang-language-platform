@@ -10,7 +10,6 @@
 use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::RangeInclusive;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use elp_eqwalizer::EqwalizerDiagnostic;
@@ -196,8 +195,7 @@ impl Diagnostic {
 
     pub(crate) fn should_be_ignored(&self, metadata: &Metadata) -> bool {
         metadata.elp_fixmes.iter().any(|fixme| {
-            fixme.suppression_range.contains(self.range.start())
-                && comment_contains_ignore_code(&fixme.comment, &self.code)
+            fixme.codes.contains(&self.code) && fixme.suppression_range.contains(self.range.start())
         })
     }
 
@@ -722,15 +720,6 @@ fn record_decl_check_missing_comma(record: ast::RecordDecl) -> Vec<Diagnostic> {
     }
 
     vec![]
-}
-
-fn comment_contains_ignore_code(comment: &str, code: &DiagnosticCode) -> bool {
-    comment
-        .split_whitespace()
-        .any(|code_str| match DiagnosticCode::from_str(code_str) {
-            Ok(code_comment) => *code == code_comment,
-            Err(_) => false,
-        })
 }
 
 fn non_whitespace_next_token(node: &SyntaxNode) -> Option<NodeOrToken> {

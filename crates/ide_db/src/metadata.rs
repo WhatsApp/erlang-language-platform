@@ -14,7 +14,9 @@ use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use fxhash::FxHashSet;
 
+use crate::diagnostic_code::DiagnosticCode;
 use crate::LineIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +27,7 @@ pub struct Metadata {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fixme {
+    pub codes: FxHashSet<DiagnosticCode>,
     pub comment: String,
     pub comment_range: TextRange,
     pub suppression_range: TextRange,
@@ -117,11 +120,16 @@ fn collect_fixmes(
                     let suppression_range = get_suppression_range(line_index, line_num, file_text);
                     let comment = token.to_string();
                     let comment_range = TextRange::new(pattern_start, pattern_end);
+                    let codes = comment
+                        .split_whitespace()
+                        .filter_map(|word| DiagnosticCode::maybe_from_string(&word.to_string()))
+                        .collect();
 
                     fixmes.push(Fixme {
                         comment,
                         comment_range,
                         suppression_range,
+                        codes,
                         is_ignore,
                     });
                 }
