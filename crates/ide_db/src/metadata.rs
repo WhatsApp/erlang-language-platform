@@ -8,6 +8,7 @@
  */
 
 use std::convert::TryInto;
+use std::fmt;
 
 use elp_syntax::Parse;
 use elp_syntax::SourceFile;
@@ -21,33 +22,77 @@ use crate::LineIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
-    pub eqwalizer_fixmes: Vec<Fixme>,
-    pub elp_fixmes: Vec<Fixme>,
+    pub annotations: Vec<Annotation>,
+}
+
+impl Metadata {
+    pub fn by_source(&self, source: Source) -> impl Iterator<Item = &Annotation> + '_ {
+        self.annotations
+            .iter()
+            .filter(move |ann| ann.source == source)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Pattern {
+    source: Source,
+    kind: Kind,
+}
+
+impl fmt::Display for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "% {}:{}", self.source, self.kind)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Source {
+    Eqwalizer,
+    Elp,
+}
+
+impl fmt::Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Source::Eqwalizer => write!(f, "eqwalizer"),
+            Source::Elp => write!(f, "elp"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Ignore,
+    Fixme,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Kind::Ignore => write!(f, "ignore"),
+            Kind::Fixme => write!(f, "fixme"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Fixme {
-    pub codes: FxHashSet<DiagnosticCode>,
+pub struct Annotation {
+    pub source: Source,
+    pub kind: Kind,
     pub comment: String,
     pub comment_range: TextRange,
     pub suppression_range: TextRange,
-    pub is_ignore: bool,
+    pub codes: FxHashSet<DiagnosticCode>,
 }
 
 impl From<Metadata> for eetf::Term {
     fn from(val: Metadata) -> Self {
-        let eqwalizer_fixmes: Vec<eetf::Term> =
-            val.eqwalizer_fixmes.into_iter().map(|f| f.into()).collect();
-        let elp_fixmes: Vec<eetf::Term> = val.elp_fixmes.into_iter().map(|f| f.into()).collect();
+        let eqwalizer_annotations: Vec<eetf::Term> =
+            val.by_source(Source::Eqwalizer).map(|f| f.into()).collect();
         eetf::List::from(vec![
             eetf::Tuple::from(vec![
                 eetf::Atom::from("eqwalizer_fixmes").into(),
-                eetf::List::from(eqwalizer_fixmes).into(),
-            ])
-            .into(),
-            eetf::Tuple::from(vec![
-                eetf::Atom::from("elp_fixmes").into(),
-                eetf::List::from(elp_fixmes).into(),
+                eetf::List::from(eqwalizer_annotations).into(),
             ])
             .into(),
         ])
@@ -57,8 +102,8 @@ impl From<Metadata> for eetf::Term {
 
 // serialize as:
 // {FixmeCommentStart, FixmeCommentEnd, SuppressionRangeStart, SuppressionRangeEnd, IsIgnore}
-impl From<Fixme> for eetf::Term {
-    fn from(val: Fixme) -> Self {
+impl<'a> From<&'a Annotation> for eetf::Term {
+    fn from(val: &Annotation) -> Self {
         let to_term = |n: TextSize| -> eetf::Term {
             let n: u32 = n.into();
             // eetf::FixInteger holds an i32, which means
@@ -67,13 +112,14 @@ impl From<Fixme> for eetf::Term {
             let n: i32 = n.try_into().unwrap();
             eetf::FixInteger::from(n).into()
         };
+        let is_ignore = val.kind == Kind::Ignore;
         eetf::Tuple::from(vec![
             to_term(val.comment_range.start()),
             to_term(val.comment_range.end()),
             to_term(val.suppression_range.start()),
             to_term(val.suppression_range.end()),
             eetf::Atom {
-                name: val.is_ignore.to_string(),
+                name: is_ignore.to_string(),
             }
             .into(),
         ])
@@ -81,33 +127,34 @@ impl From<Fixme> for eetf::Term {
     }
 }
 
-pub fn metadata(line_index: &LineIndex, file_text: &str, source: &Parse<SourceFile>) -> Metadata {
-    Metadata {
-        eqwalizer_fixmes: collect_fixmes(
-            line_index,
-            file_text,
-            source,
-            vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)],
-        ),
-        elp_fixmes: collect_fixmes(
-            line_index,
-            file_text,
-            source,
-            vec![("% elp:fixme", false), ("% elp:ignore", true)],
-        ),
-    }
-}
-
-fn collect_fixmes(
+pub fn collect_metadata(
     line_index: &LineIndex,
     file_text: &str,
     source: &Parse<SourceFile>,
-    pats: Vec<(&str, bool)>,
-) -> Vec<Fixme> {
-    let mut fixmes = Vec::new();
-    for (pat, is_ignore) in pats {
-        let len = pat.len();
-        for (i, _) in file_text.match_indices(pat) {
+) -> Metadata {
+    let patterns = vec![
+        Pattern {
+            source: Source::Eqwalizer,
+            kind: Kind::Ignore,
+        },
+        Pattern {
+            source: Source::Eqwalizer,
+            kind: Kind::Fixme,
+        },
+        Pattern {
+            source: Source::Elp,
+            kind: Kind::Ignore,
+        },
+        Pattern {
+            source: Source::Elp,
+            kind: Kind::Fixme,
+        },
+    ];
+    let mut annotations = Vec::new();
+    for pattern in patterns {
+        let pattern_string = pattern.to_string();
+        let len = pattern_string.len();
+        for (i, _) in file_text.match_indices(&pattern_string) {
             let pattern_start = TextSize::from(i as u32);
             let pattern_end = TextSize::from((i + len) as u32);
             let line_num = line_index.line_col(pattern_start).line;
@@ -125,18 +172,19 @@ fn collect_fixmes(
                         .filter_map(|word| DiagnosticCode::maybe_from_string(word))
                         .collect();
 
-                    fixmes.push(Fixme {
+                    annotations.push(Annotation {
                         comment,
                         comment_range,
                         suppression_range,
                         codes,
-                        is_ignore,
+                        source: pattern.source,
+                        kind: pattern.kind,
                     });
                 }
             }
         }
     }
-    fixmes
+    Metadata { annotations }
 }
 
 fn line_start(line_index: &LineIndex, line_num: u32, text: &str) -> TextSize {

@@ -27,6 +27,7 @@ use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Metadata;
+use elp_ide_db::metadata::Source;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::ErlAstDatabase;
@@ -194,8 +195,9 @@ impl Diagnostic {
     }
 
     pub(crate) fn should_be_ignored(&self, metadata: &Metadata) -> bool {
-        metadata.elp_fixmes.iter().any(|fixme| {
-            fixme.codes.contains(&self.code) && fixme.suppression_range.contains(self.range.start())
+        metadata.by_source(Source::Elp).any(|annotation| {
+            annotation.codes.contains(&self.code)
+                && annotation.suppression_range.contains(self.range.start())
         })
     }
 

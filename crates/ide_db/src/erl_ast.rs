@@ -151,7 +151,7 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
     let line_index = db.file_line_index(file_id);
     let file_text = db.file_text(file_id);
     let source = db.parse(file_id);
-    metadata::metadata(&line_index, &file_text, &source)
+    metadata::collect_metadata(&line_index, &file_text, &source)
 }
 
 pub fn files_from_bytes(bytes: &[u8]) -> Vec<String> {
