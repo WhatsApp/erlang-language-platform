@@ -122,7 +122,7 @@ fn collect_fixmes(
                     let comment_range = TextRange::new(pattern_start, pattern_end);
                     let codes = comment
                         .split_whitespace()
-                        .filter_map(|word| DiagnosticCode::maybe_from_string(&word.to_string()))
+                        .filter_map(|word| DiagnosticCode::maybe_from_string(word))
                         .collect();
 
                     fixmes.push(Fixme {

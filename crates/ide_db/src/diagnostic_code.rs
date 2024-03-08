@@ -176,7 +176,7 @@ impl DiagnosticCode {
         format!("{} ({})", self.as_code(), self.as_label())
     }
 
-    pub fn maybe_from_string(s: &String) -> Option<DiagnosticCode> {
+    pub fn maybe_from_string(s: &str) -> Option<DiagnosticCode> {
         DIAGNOSTIC_CODE_LOOKUPS
             .get(s).cloned()
             // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(DiagnosticCode::MetaOnly))
@@ -255,7 +255,7 @@ lazy_static! {
 impl FromStr for DiagnosticCode {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(code) = DiagnosticCode::maybe_from_string(&s.to_string()) {
+        if let Some(code) = DiagnosticCode::maybe_from_string(s) {
             Ok(code)
         } else {
             Err(format!("Unknown DiagnosticCode: '{s}'"))
@@ -290,7 +290,7 @@ mod tests {
         let strings = vec!["W0008", "unreachable_test"];
         let codes = strings
             .iter()
-            .map(|s| DiagnosticCode::maybe_from_string(&s.to_string()))
+            .map(|s| DiagnosticCode::maybe_from_string(s))
             .collect::<Vec<_>>();
         expect![[r#"
             [
@@ -313,7 +313,7 @@ mod tests {
         ];
         let codes = strings
             .iter()
-            .map(|s| DiagnosticCode::maybe_from_string(&s.to_string()))
+            .map(|s| DiagnosticCode::maybe_from_string(s))
             .collect::<Vec<_>>();
         expect![[r#"
             [
@@ -337,7 +337,7 @@ mod tests {
         let strings = vec!["C1000", "L1213"];
         let codes = strings
             .iter()
-            .map(|s| DiagnosticCode::maybe_from_string(&s.to_string()))
+            .map(|s| DiagnosticCode::maybe_from_string(s))
             .collect::<Vec<_>>();
         expect![[r#"
             [
