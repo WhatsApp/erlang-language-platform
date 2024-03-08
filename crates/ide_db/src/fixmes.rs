@@ -15,10 +15,37 @@ use elp_syntax::TextSize;
 use crate::LineIndex;
 
 #[derive(Debug)]
+pub struct Metadata {
+    eqwalizer_fixmes: Vec<Fixme>,
+    elp_fixmes: Vec<Fixme>,
+}
+
+#[derive(Debug)]
 struct Fixme {
     comment_range: TextRange,
     suppression_range: TextRange,
     is_ignore: bool,
+}
+
+impl From<Metadata> for eetf::Term {
+    fn from(val: Metadata) -> Self {
+        let eqwalizer_fixmes: Vec<eetf::Term> =
+            val.eqwalizer_fixmes.into_iter().map(|f| f.into()).collect();
+        let elp_fixmes: Vec<eetf::Term> = val.elp_fixmes.into_iter().map(|f| f.into()).collect();
+        eetf::List::from(vec![
+            eetf::Tuple::from(vec![
+                eetf::Atom::from("eqwalizer_fixmes").into(),
+                eetf::List::from(eqwalizer_fixmes).into(),
+            ])
+            .into(),
+            eetf::Tuple::from(vec![
+                eetf::Atom::from("elp_fixmes").into(),
+                eetf::List::from(elp_fixmes).into(),
+            ])
+            .into(),
+        ])
+        .into()
+    }
 }
 
 // serialize as:
@@ -47,35 +74,19 @@ impl From<Fixme> for eetf::Term {
     }
 }
 
-fn fixmes_tuple(
-    line_index: &LineIndex,
-    file_text: &str,
-    pats: Vec<(&str, bool)>,
-    label: &str,
-) -> eetf::Term {
-    let fixmes = collect_fixmes(line_index, file_text, pats);
-    let fixmes: Vec<eetf::Term> = fixmes.into_iter().map(|f| f.into()).collect();
-    eetf::Tuple::from(vec![
-        eetf::Atom::from(label).into(),
-        eetf::List::from(fixmes).into(),
-    ])
-    .into()
-}
-
-pub fn fixmes_eetf(line_index: &LineIndex, file_text: &str) -> eetf::Term {
-    let eqwalizer_fixmes = fixmes_tuple(
-        line_index,
-        file_text,
-        vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)],
-        "eqwalizer_fixmes",
-    );
-    let elp_fixmes = fixmes_tuple(
-        line_index,
-        file_text,
-        vec![("% elp:fixme", false), ("% elp:ignore", true)],
-        "elp_fixmes",
-    );
-    eetf::List::from(vec![eqwalizer_fixmes, elp_fixmes]).into()
+pub fn metadata(line_index: &LineIndex, file_text: &str) -> Metadata {
+    Metadata {
+        eqwalizer_fixmes: collect_fixmes(
+            line_index,
+            file_text,
+            vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)],
+        ),
+        elp_fixmes: collect_fixmes(
+            line_index,
+            file_text,
+            vec![("% elp:fixme", false), ("% elp:ignore", true)],
+        ),
+    }
 }
 
 fn collect_fixmes(line_index: &LineIndex, file_text: &str, pats: Vec<(&str, bool)>) -> Vec<Fixme> {
