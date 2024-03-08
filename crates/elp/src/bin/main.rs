@@ -173,7 +173,7 @@ mod tests {
     use elp_eqwalizer::EqwalizerConfig;
     use elp_eqwalizer::EqwalizerDiagnostics;
     use elp_eqwalizer::Mode;
-    use elp_ide::diagnostics::BASE_URL;
+    use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
     use elp_project_model::AppName;
