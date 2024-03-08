@@ -106,6 +106,7 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
         format: Format,
         compile_options: Vec<CompileOption>,
     ) -> Arc<ParseResult>;
+    fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
 
 fn module_ast(
@@ -123,6 +124,7 @@ fn module_ast(
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
+    let metadata = db.elp_metadata(file_id);
     let app_data = if let Some(app_data) = db.app_data(root_id) {
         app_data
     } else {
@@ -133,7 +135,6 @@ fn module_ast(
             code: "L0003".to_string(),
         }));
     };
-    let metadata = elp_metadata(db, file_id);
     Arc::new(db.load_ast(
         app_data.project_id,
         path,

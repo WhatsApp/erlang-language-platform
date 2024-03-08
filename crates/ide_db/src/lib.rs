@@ -52,7 +52,7 @@ mod defs;
 pub mod docs;
 pub mod eqwalizer;
 mod erl_ast;
-mod fixmes;
+pub mod fixmes;
 mod line_index;
 mod search;
 

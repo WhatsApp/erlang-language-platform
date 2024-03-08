@@ -14,13 +14,13 @@ use elp_syntax::TextSize;
 
 use crate::LineIndex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
     eqwalizer_fixmes: Vec<Fixme>,
     elp_fixmes: Vec<Fixme>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Fixme {
     comment_range: TextRange,
     suppression_range: TextRange,
