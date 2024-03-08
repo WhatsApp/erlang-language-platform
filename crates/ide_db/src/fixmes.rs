@@ -50,7 +50,15 @@ impl From<Fixme> for eetf::Term {
 pub fn fixmes_eetf(line_index: &LineIndex, file_text: &str) -> eetf::Term {
     let fixmes = collect_fixmes(line_index, file_text);
     let fixmes: Vec<eetf::Term> = fixmes.into_iter().map(|f| f.into()).collect();
-    eetf::List::from(fixmes).into()
+    // Erlang proplist: [{eqwalizer_fixmes, [Fixme1, Fixme2....]}]
+    eetf::List::from(vec![
+        eetf::Tuple::from(vec![
+            eetf::Atom::from("eqwalizer_fixmes").into(),
+            eetf::List::from(fixmes).into(),
+        ])
+        .into(),
+    ])
+    .into()
 }
 
 fn collect_fixmes(line_index: &LineIndex, file_text: &str) -> Vec<Fixme> {

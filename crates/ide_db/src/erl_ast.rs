@@ -148,12 +148,7 @@ fn module_ast(
 fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> eetf::Term {
     let line_index = db.file_line_index(file_id);
     let file_text = db.file_text(file_id);
-    let fixmes = fixmes::fixmes_eetf(&line_index, &file_text);
-    // Erlang proplist: [{eqwalizer_fixmes, [Fixme1, Fixme2....]}]
-    eetf::List::from(vec![
-        eetf::Tuple::from(vec![eetf::Atom::from("eqwalizer_fixmes").into(), fixmes]).into(),
-    ])
-    .into()
+    fixmes::fixmes_eetf(&line_index, &file_text)
 }
 
 pub fn files_from_bytes(bytes: &[u8]) -> Vec<String> {
