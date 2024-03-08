@@ -247,12 +247,6 @@ impl Diagnostic {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Ignore {
-    pub codes: Vec<DiagnosticCode>,
-    pub suppression_range: TextRange,
-}
-
 #[derive(Debug, Clone)]
 pub struct RelatedInformation {
     pub range: TextRange,
