@@ -48,22 +48,23 @@ impl From<Fixme> for eetf::Term {
 }
 
 pub fn fixmes_eetf(line_index: &LineIndex, file_text: &str) -> eetf::Term {
-    let fixmes = collect_fixmes(line_index, file_text);
-    let fixmes: Vec<eetf::Term> = fixmes.into_iter().map(|f| f.into()).collect();
+    let eqwalizer_pats = vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)];
+    let eqwalizer_fixmes = collect_fixmes(line_index, file_text, eqwalizer_pats);
+    let eqwalizer_fixmes: Vec<eetf::Term> =
+        eqwalizer_fixmes.into_iter().map(|f| f.into()).collect();
     // Erlang proplist: [{eqwalizer_fixmes, [Fixme1, Fixme2....]}]
     eetf::List::from(vec![
         eetf::Tuple::from(vec![
             eetf::Atom::from("eqwalizer_fixmes").into(),
-            eetf::List::from(fixmes).into(),
+            eetf::List::from(eqwalizer_fixmes).into(),
         ])
         .into(),
     ])
     .into()
 }
 
-fn collect_fixmes(line_index: &LineIndex, file_text: &str) -> Vec<Fixme> {
+fn collect_fixmes(line_index: &LineIndex, file_text: &str, pats: Vec<(&str, bool)>) -> Vec<Fixme> {
     let mut fixmes = Vec::new();
-    let pats = vec![("% eqwalizer:fixme", false), ("% eqwalizer:ignore", true)];
     for (pat, is_ignore) in pats {
         let len = pat.len();
         for (i, _) in file_text.match_indices(pat) {
