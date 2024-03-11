@@ -46,7 +46,7 @@
 %%==============================================================================
 -type state() :: #{io := pid(), requests := [request_entry()]}.
 -type request_entry() :: {pid(), id(), reference() | infinity}.
--type request() :: {request, request_type(), id(), data()}.
+-type request() :: {request, request_type(), id(), data(), [any()]}.
 -type result() :: {result, id(), [segment()]}.
 -type exception() :: {exception, id(), any()}.
 -type id() :: binary().
