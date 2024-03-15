@@ -40,7 +40,7 @@ mod shell;
 
 // Use jemalloc as the global allocator
 #[cfg(not(target_env = "msvc"))]
-use jemallocator::Jemalloc;
+use tikv_jemallocator::Jemalloc;
 
 use crate::args::Args;
 

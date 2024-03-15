@@ -48,10 +48,10 @@ imara-diff = "0.1.5"
 indexmap = "1.9.3"
 indicatif = { version = "0.17.3", features = ["rayon"] }
 itertools = "0.10.5"
-jemallocator = { version = "0.5.0", package = "tikv-jemallocator" }
+tikv-jemallocator = { git = "https://github.com/yuce/tikv-jemallocator.git", branch = "use-latest-jemallocator" }
 jod-thread = "0.1.2"
 krates = "0.12.6"
-la-arena = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+la-arena = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
 lazy_static = "1.4.0"
 log = "0.4.17"
 lsp-server = "0.7.0"
@@ -62,12 +62,10 @@ num-derive = "0.3.3"
 num-traits = "0.2.15"
 once_cell = "1.17.1"
 parking_lot = "0.12.1"
-paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+paths = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
 pico-args = "0.5.0"
 proc-macro2 = "1.0.60"
-profile = { features = [
-    "jemalloc",
-], git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+profile = { features = ["jemalloc"],  git = "https://github.com/yuce/rust-analyzer", branch="2022-09-05-openbsd" }
 quote = "1.0.26"
 range-set = "0.0.10"
 rayon = "1.7.0"
@@ -83,13 +81,13 @@ serde_path_to_error = "0.1.11"
 serde_with = "1.6.0"
 smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }
 smol_str = "0.1.24"
-stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+stdx = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
 strsim = { version = "0.10.0" }
 strum = "0.25.0"
 strum_macros = "0.25.0"
 tempfile = "3.8.0"
 test-case = "2.2.2"
-text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+text-edit = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
 text-size = "1.1.0"
 thiserror = "1.0"
 threadpool = "1.8.1"
@@ -99,7 +97,7 @@ tree-sitter = "0.20.10"
 # @fb-only: tree-sitter-erlang = { path = "./tree-sitter-erlang" }
 url = "2.4.1"
 tree-sitter-erlang = "0.4.0" # @oss-only
-vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
-vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2022-09-05" }
+vfs = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
+vfs-notify = { git = "https://github.com/yuce/rust-analyzer", branch = "2022-09-05-openbsd" }
 walkdir = "2.3.3"
 xshell = "0.2.3"
