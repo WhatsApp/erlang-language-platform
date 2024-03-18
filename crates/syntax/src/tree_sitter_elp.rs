@@ -16,7 +16,7 @@ impl Parser {
     pub fn new() -> Self {
         let mut parser = tree_sitter::Parser::new();
         parser
-            .set_language(language())
+            .set_language(&language())
             .expect("incompatible tree-sitter");
         Parser(parser)
     }
