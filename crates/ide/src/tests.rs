@@ -413,8 +413,9 @@ pub fn check_call_hierarchy(prepare_fixture: &str, incoming_fixture: &str, outgo
 }
 
 fn check_call_hierarchy_prepare(fixture: &str) {
-    let (analysis, pos, _diagnostics_enabled, mut annotations) =
-        fixture::annotations(trim_indent(fixture).as_str());
+    let trimmed_fixture = trim_indent(fixture);
+    let (analysis, pos, _diagnostics_enabled, _guard, mut annotations) =
+        fixture::annotations(trimmed_fixture.as_str());
     let mut navs = analysis.call_hierarchy_prepare(pos).unwrap().unwrap().info;
     assert_eq!(navs.len(), 1);
     assert_eq!(annotations.len(), 1);
@@ -428,8 +429,9 @@ fn check_call_hierarchy_prepare(fixture: &str) {
 }
 
 fn check_call_hierarchy_incoming_calls(fixture: &str) {
-    let (analysis, pos, _diagnostics_enabled, mut expected) =
-        fixture::annotations(trim_indent(fixture).as_str());
+    let trimmed_fixture = trim_indent(fixture);
+    let (analysis, pos, _diagnostics_enabled, _guard, mut expected) =
+        fixture::annotations(trimmed_fixture.as_str());
     let incoming_calls = analysis.incoming_calls(pos).unwrap().unwrap();
     let mut actual = Vec::new();
     for call in incoming_calls {
@@ -458,8 +460,9 @@ fn check_call_hierarchy_incoming_calls(fixture: &str) {
 }
 
 fn check_call_hierarchy_outgoing_calls(fixture: &str) {
-    let (analysis, pos, _diagnostics_enabled, mut expected) =
-        fixture::annotations(trim_indent(fixture).as_str());
+    let trimmed_fixture = trim_indent(fixture);
+    let (analysis, pos, _diagnostics_enabled, _guard, mut expected) =
+        fixture::annotations(trimmed_fixture.as_str());
     let outgoing_calls = analysis.outgoing_calls(pos).unwrap().unwrap();
     let mut actual = Vec::new();
     for call in outgoing_calls {

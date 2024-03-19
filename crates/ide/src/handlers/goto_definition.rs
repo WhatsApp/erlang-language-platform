@@ -48,7 +48,8 @@ mod tests {
 
     #[track_caller]
     fn check_worker(fixture: &str, check_parse_error: bool) {
-        let (analysis, position, _diagnostics_enabled, expected) = fixture::annotations(fixture);
+        let (analysis, position, _diagnostics_enabled, _guard, expected) =
+            fixture::annotations(fixture);
         if check_parse_error {
             check_no_parse_errors(&analysis, position.file_id);
         }

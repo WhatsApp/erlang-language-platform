@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_can_ignore_valid_spelling() {
-        let (analysis, position, _, _) = fixture::annotations(
+        let (analysis, position, _, _, _) = fixture::annotations(
             r#"
     -module(main).
     -di~alyzer({nowarn_function, f/0}).
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_does_not_consider_the_names_of_records() {
-        let (analysis, position, _, _) = fixture::annotations(
+        let (analysis, position, _, _, _) = fixture::annotations(
             r#"
     -module(main).
     -re~cord(dyalizer, {field = "foo"}).

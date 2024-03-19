@@ -76,6 +76,11 @@ pub struct Connection {
     _for_drop: Arc<SharedState>,
 }
 
+/// Until such time as we have a fully re-entrant erlang service,
+/// we must guard access to it during tests to prevent race
+/// conditions leading to flaky tests. T182801661
+pub static ERLANG_SERVICE_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum CompileOption {
     Includes(Vec<PathBuf>),

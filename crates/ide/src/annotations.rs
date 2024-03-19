@@ -81,8 +81,9 @@ mod tests {
 
     #[track_caller]
     fn check(fixture: &str) {
-        let (analysis, pos, _diagnostics_enabled, mut annotations) =
-            fixture::annotations(trim_indent(fixture).as_str());
+        let trimmed_fixture = trim_indent(fixture);
+        let (analysis, pos, _diagnostics_enabled, _guard, mut annotations) =
+            fixture::annotations(trimmed_fixture.as_str());
         let mut actual = Vec::new();
         for annotation in analysis.annotations(pos.file_id).unwrap() {
             match annotation.kind {

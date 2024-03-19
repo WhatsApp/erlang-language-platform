@@ -475,9 +475,6 @@ pub(crate) fn find_call_in_function<T, U>(
 
 #[cfg(test)]
 mod tests {
-
-    use std::sync::Mutex;
-
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::SourceDatabase;
     use elp_syntax::algo::find_node_at_offset;
@@ -485,7 +482,6 @@ mod tests {
     use hir::FunctionDef;
     use hir::InFile;
     use hir::Semantic;
-    use lazy_static::lazy_static;
 
     use super::find_call_in_function;
     use super::FunctionMatch;
@@ -763,16 +759,8 @@ mod tests {
 
     #[track_caller]
     fn check_type(fixture: &str) {
-        // We are seeing flaky tests in CI related to this test
-        // function. T181455753.
-        // It is potentially a race condition, where the erlang
-        // service is not fully re-entrant. Protect against this with a lock, for now
-        lazy_static! {
-            static ref CHECK_TYPE_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
-        }
-        let _guard = CHECK_TYPE_GLOBAL_LOCK.lock();
-
-        let (db, position, _diagnostics_enabled, expected) = fixture::db_annotations(fixture);
+        let (db, position, _diagnostics_enabled, _guard, expected) =
+            fixture::db_annotations(fixture);
         let host = AnalysisHost { db };
         let sema = Semantic::new(&host.db);
         if expected.len() != 1 {

@@ -9,6 +9,7 @@
 
 //! Utilities for creating `Analysis` instances for tests.
 
+use elp_erlang_service::ERLANG_SERVICE_GLOBAL_LOCK;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::fixture::CURSOR_MARKER;
 use elp_ide_db::elp_base_db::FileId;
@@ -17,6 +18,7 @@ use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
+use parking_lot::MutexGuard;
 
 use crate::diagnostics::DiagnosticsConfig;
 use crate::diagnostics_collection::DiagnosticCollection;
@@ -43,7 +45,7 @@ pub(crate) fn start_erlang_service_if_needed(
     db: &RootDatabase,
     file_id: FileId,
     diagnostics_enabled: &DiagnosticsEnabled,
-) {
+) -> bool {
     if diagnostics_enabled.needs_erlang_service() {
         // This is test driver code, so unwrap() is ok, it is a cheap
         // way to let the dev know there is a problem.
@@ -53,6 +55,9 @@ pub(crate) fn start_erlang_service_if_needed(
             .unwrap()
             .project_id;
         db.ensure_erlang_service(project_id).unwrap();
+        true
+    } else {
+        false
     }
 }
 
@@ -72,11 +77,12 @@ pub fn annotations(
     Analysis,
     FilePosition,
     DiagnosticsEnabled,
+    Option<MutexGuard<()>>,
     Vec<(FileRange, String)>,
 ) {
-    let (db, position, diagnostics_enabled, annotations) = db_annotations(fixture);
+    let (db, position, diagnostics_enabled, guard, annotations) = db_annotations(fixture);
     let analysis = AnalysisHost { db }.analysis();
-    (analysis, position, diagnostics_enabled, annotations)
+    (analysis, position, diagnostics_enabled, guard, annotations)
 }
 
 /// Creates db from a multi-file fixture, returns first position marked with [`CURSOR_MARKER`]
@@ -87,10 +93,17 @@ pub fn db_annotations(
     RootDatabase,
     FilePosition,
     DiagnosticsEnabled,
+    Option<MutexGuard<()>>,
     Vec<(FileRange, String)>,
 ) {
     let (db, fixture) = RootDatabase::with_fixture(fixture);
-    start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled);
+    let guard =
+        if start_erlang_service_if_needed(&db, fixture.file_id(), &fixture.diagnostics_enabled) {
+            Some(ERLANG_SERVICE_GLOBAL_LOCK.lock())
+        } else {
+            None
+        };
+
     let (file_id, range_or_offset) = fixture
         .file_position
         .expect(&format!("expected a marker ({})", CURSOR_MARKER));
@@ -101,6 +114,7 @@ pub fn db_annotations(
         db,
         FilePosition { file_id, offset },
         fixture.diagnostics_enabled,
+        guard,
         annotations,
     )
 }
