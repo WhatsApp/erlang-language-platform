@@ -328,17 +328,16 @@ fn doc_link(link: &DocLink) -> Option<lsp_ext::CommandLinkGroup> {
 }
 
 pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
-    // This is wrong, but we don't have a better alternative I suppose?
-    // https://github.com/microsoft/language-server-protocol/issues/1341
-
-    // Update when // https://github.com/rust-lang/rust-analyzer/pull/13280
-    // lands and a new crate is published. T132682932
-    invalid_params_error(err.to_string())
+    request_failed_error(err.to_string())
 }
 
-pub(crate) fn invalid_params_error(message: String) -> LspError {
+/// A request failed but it was syntactically correct, e.g the
+/// method name was known and the parameters were valid. The error
+/// message should contain human readable information about why
+/// the request failed.
+pub(crate) fn request_failed_error(message: String) -> LspError {
     LspError {
-        code: lsp_server::ErrorCode::InvalidParams as i32,
+        code: lsp_server::ErrorCode::RequestFailed as i32,
         message,
     }
 }
