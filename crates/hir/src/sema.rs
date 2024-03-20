@@ -400,6 +400,15 @@ impl<'db> Semantic<'db> {
         self.function_def_id(&InFile::new(file_id, function_clause_id))
     }
 
+    pub fn find_enclosing_function_body(
+        &self,
+        file_id: FileId,
+        syntax: &SyntaxNode,
+    ) -> Option<Arc<FunctionBody>> {
+        let function_id = self.find_enclosing_function(file_id, syntax)?;
+        Some(self.db.function_body(InFile::new(file_id, function_id)))
+    }
+
     pub fn find_enclosing_function_clause_id(
         &self,
         file_id: FileId,

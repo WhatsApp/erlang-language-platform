@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::sync::Arc;
+
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::find_best_token;
@@ -18,12 +20,15 @@ use elp_types_db::eqwalizer::types::AtomLitType;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::StructuredDiagnostic;
+use hir::FunctionBody;
 use hir::InFile;
 use hir::Literal;
 use hir::Semantic;
 use hir::SpecBody;
+use hir::SpecId;
 use hir::TypeExpr;
 use text_edit::TextEdit;
+use text_edit::TextSize;
 
 use crate::diagnostics::Diagnostic;
 use crate::fix;
@@ -83,17 +88,7 @@ fn add_spec_fix_atoms(
     got: &Type,
     diagnostic: &mut Diagnostic,
 ) -> Option<()> {
-    let token = find_best_token(
-        sema,
-        FilePosition {
-            file_id,
-            offset: diagnostic.range.start(),
-        },
-    )?;
-    let function_id = sema.find_enclosing_function(file_id, &token.value.parent()?)?;
-    let function = sema.db.function_body(InFile::new(file_id, function_id));
-    let spec_body: &SpecBody = function.spec_body()?;
-    let spec_id = InFile::new(file_id, spec_body.spec_id()?);
+    let (spec_id, spec_body, _function_body) = get_spec(sema, file_id, diagnostic.range.start())?;
     // We are looking for a single spec signature with a single atom return type.
     match &spec_body.sigs[..] {
         [sig] => {
@@ -117,6 +112,18 @@ fn add_spec_fix_atoms(
         _ => {}
     }
     None
+}
+
+fn get_spec(
+    sema: &Semantic,
+    file_id: FileId,
+    offset: TextSize,
+) -> Option<(InFile<SpecId>, Arc<SpecBody>, Arc<FunctionBody>)> {
+    let token = find_best_token(sema, FilePosition { file_id, offset })?;
+    let function = sema.find_enclosing_function_body(file_id, &token.value.parent()?)?;
+    let spec_body: Arc<SpecBody> = function.spec_body()?;
+    let spec_id = InFile::new(file_id, spec_body.spec_id()?);
+    Some((spec_id, spec_body, function))
 }
 
 #[cfg(test)]

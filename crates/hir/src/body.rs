@@ -452,9 +452,9 @@ impl FunctionBody {
         Some(FormIdx::FunctionClause(*function_id))
     }
 
-    pub fn spec_body(&self) -> Option<&SpecBody> {
+    pub fn spec_body(&self) -> Option<Arc<SpecBody>> {
         match &self.spec {
-            Some(spec) => Some(&spec),
+            Some(spec) => Some(spec.clone()),
             None => None,
         }
     }
