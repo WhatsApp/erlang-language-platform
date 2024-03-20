@@ -26,6 +26,7 @@ use hir::Literal;
 use hir::Semantic;
 use hir::SpecBody;
 use hir::SpecId;
+use hir::SpecSig;
 use hir::TypeExpr;
 use text_edit::TextEdit;
 use text_edit::TextSize;
@@ -56,43 +57,48 @@ pub fn expected_type(
                     SourceChange::from_text_edit(file_id, edit),
                     d.range,
                 ));
-                add_spec_fix_atoms(sema, file_id, got, diagnostic);
+                add_spec_fix(sema, file_id, got, diagnostic);
             }
 
             // 2-Tuple with leading atom vs just the second part
-            (Type::TupleType(TupleType { arg_tys }), other2) => match &arg_tys[..] {
-                [atom @ Type::AtomLitType(AtomLitType { .. }), other] => {
-                    if other == other2 {
-                        let file_text = sema.db.file_text(file_id);
-                        let current = &file_text[d.range.start().into()..d.range.end().into()];
-                        let replacement = format!("{{{atom}, {current}}}");
-                        let edit = TextEdit::replace(d.range, replacement.clone());
-                        diagnostic.add_fix(fix(
-                            "fix_expected_type",
-                            format!("Change returned value to '{replacement}'").as_str(),
-                            SourceChange::from_text_edit(file_id, edit),
-                            d.range,
-                        ));
+            (Type::TupleType(TupleType { arg_tys }), other2) => {
+                match &arg_tys[..] {
+                    [atom @ Type::AtomLitType(AtomLitType { .. }), other] => {
+                        if other == other2 {
+                            // Add wrapping tuple to return
+                            let file_text = sema.db.file_text(file_id);
+                            let current = &file_text[d.range.start().into()..d.range.end().into()];
+                            let replacement = format!("{{{atom}, {current}}}");
+                            let edit = TextEdit::replace(d.range, replacement.clone());
+                            diagnostic.add_fix(fix(
+                                "fix_expected_type",
+                                format!("Change returned value to '{replacement}'").as_str(),
+                                SourceChange::from_text_edit(file_id, edit),
+                                d.range,
+                            ));
+
+                            // Remove tuple from spec
+                            add_spec_fix(sema, file_id, got, diagnostic);
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
-            },
+            }
             _ => {}
         }
     }
 }
 
-fn add_spec_fix_atoms(
+fn add_spec_fix(
     sema: &Semantic,
     file_id: FileId,
     got: &Type,
     diagnostic: &mut Diagnostic,
 ) -> Option<()> {
     let (spec_id, spec_body, _function_body) = get_spec(sema, file_id, diagnostic.range.start())?;
-    // We are looking for a single spec signature with a single atom return type.
     match &spec_body.sigs[..] {
         [sig] => {
-            match spec_body.body[sig.result] {
+            match &spec_body.body[sig.result] {
                 TypeExpr::Literal(Literal::Atom(_)) => {
                     // We have a single atom. Make an edit to replace it.
                     let (_, body_map) = sema.db.spec_body_with_source(spec_id);
@@ -106,12 +112,41 @@ fn add_spec_fix_atoms(
                         diagnostic.range,
                     ));
                 }
+                TypeExpr::Tuple { args } => match args[..] {
+                    [_atom, _rest] => {
+                        let fix_label = format!("Change spec tuple to '{got}'");
+                        make_spec_fix(sema, file_id, spec_id, sig, fix_label, got, diagnostic)?;
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }
         _ => {}
     }
     None
+}
+
+fn make_spec_fix(
+    sema: &Semantic,
+    file_id: FileId,
+    spec_id: InFile<SpecId>,
+    sig: &SpecSig,
+    fix_label: String,
+    got: &Type,
+    diagnostic: &mut Diagnostic,
+) -> Option<()> {
+    let (_, body_map) = sema.db.spec_body_with_source(spec_id);
+    let source = body_map.type_expr(sig.result)?;
+    let range = source.range();
+    let edit = TextEdit::replace(range, format!("{got}").to_string());
+    diagnostic.add_fix(fix(
+        "fix_expected_type",
+        &fix_label.as_str(),
+        SourceChange::from_text_edit(file_id, edit),
+        diagnostic.range,
+    ));
+    Some(())
 }
 
 fn get_spec(
@@ -208,6 +243,28 @@ mod tests {
 
             -spec baz() -> {ok, number()}.
             baz() -> {ok, 53}.
+         "#,
+        )
+    }
+
+    #[test]
+    fn mismatched_tuple_fix_spec() {
+        check_specific_fix(
+            "Change spec tuple to 'number()'",
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+            -module(bar).
+
+            -spec baz() -> {ok, number()}.
+            baz() -> 5~3.
+                  %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+            "#,
+            r#"
+            -module(bar).
+
+            -spec baz() -> number().
+            baz() -> 53.
          "#,
         )
     }
