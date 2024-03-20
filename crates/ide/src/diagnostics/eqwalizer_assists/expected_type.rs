@@ -53,7 +53,7 @@ pub fn expected_type(
                 let edit = TextEdit::replace(d.range, format!("{expected}").to_string());
                 diagnostic.add_fix(fix(
                     "fix_expected_type",
-                    format!("Change returned atom to '{expected}'").as_str(),
+                    format!("Update returned value to '{expected}'").as_str(),
                     SourceChange::from_text_edit(file_id, edit),
                     d.range,
                 ));
@@ -72,7 +72,7 @@ pub fn expected_type(
                             let edit = TextEdit::replace(d.range, replacement.clone());
                             diagnostic.add_fix(fix(
                                 "fix_expected_type",
-                                format!("Change returned value to '{replacement}'").as_str(),
+                                format!("Update returned value to '{replacement}'").as_str(),
                                 SourceChange::from_text_edit(file_id, edit),
                                 d.range,
                             ));
@@ -107,14 +107,14 @@ fn add_spec_fix(
                     let edit = TextEdit::replace(range, format!("{got}").to_string());
                     diagnostic.add_fix(fix(
                         "fix_expected_type",
-                        format!("Change spec atom to '{got}'").as_str(),
+                        format!("Update function spec to return '{got}'").as_str(),
                         SourceChange::from_text_edit(file_id, edit),
                         diagnostic.range,
                     ));
                 }
                 TypeExpr::Tuple { args } => match args[..] {
                     [_atom, _rest] => {
-                        let fix_label = format!("Change spec tuple to '{got}'");
+                        let fix_label = format!("Update function spec to return '{got}'");
                         make_spec_fix(sema, file_id, spec_id, sig, fix_label, got, diagnostic)?;
                     }
                     _ => {}
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn mismatched_atom_fix_return() {
         check_specific_fix(
-            "Change returned atom to 'spec_atom'",
+            "Update returned value to 'spec_atom'",
             r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn mismatched_atom_fix_spec() {
         check_specific_fix(
-            "Change spec atom to 'something_else'",
+            "Update function spec to return 'something_else'",
             r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn mismatched_tuple_fix_return() {
         check_specific_fix(
-            "Change returned value to '{ok, 53}'",
+            "Update returned value to '{ok, 53}'",
             r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn mismatched_tuple_fix_spec() {
         check_specific_fix(
-            "Change spec tuple to 'number()'",
+            "Update function spec to return 'number()'",
             r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
