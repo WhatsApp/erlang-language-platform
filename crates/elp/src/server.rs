@@ -198,7 +198,7 @@ pub struct Server {
     task_pool: TaskHandle,
     project_pool: TaskHandle,
     cache_pool: TaskHandle,
-    diagnostics: DiagnosticCollection,
+    diagnostics: Arc<DiagnosticCollection>,
     req_queue: ReqQueue,
     progress: ProgressManager,
     open_document_versions: SharedMap<VfsPath, i32>,
@@ -244,7 +244,7 @@ impl Server {
             task_pool,
             project_pool,
             cache_pool,
-            diagnostics: DiagnosticCollection::default(),
+            diagnostics: Arc::new(DiagnosticCollection::default()),
             req_queue: ReqQueue::default(),
             open_document_versions: SharedMap::default(),
             newly_opened_documents: Vec::default(),
@@ -278,6 +278,7 @@ impl Server {
             Arc::clone(&self.config),
             Arc::clone(&self.ad_hoc_lints),
             self.analysis_host.analysis(),
+            Arc::clone(&self.diagnostics),
             Arc::clone(&self.vfs),
             Arc::clone(&self.open_document_versions),
             Arc::clone(&self.line_ending_map),
@@ -473,7 +474,7 @@ impl Server {
             }
         }
 
-        if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
+        if let Some(diagnostic_changes) = Arc::make_mut(&mut self.diagnostics).take_changes() {
             log::info!("changed diagnostics: {:?}", diagnostic_changes);
 
             let snapshot = self.snapshot();
@@ -782,7 +783,7 @@ impl Server {
                     .insert(file.file_id, line_ending);
                 raw_database.set_file_text(file.file_id, Arc::from(text));
                 // causes us to remove stale squiggles from the UI
-                self.diagnostics.set_eqwalizer(file.file_id, vec![]);
+                Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
             } else {
                 // TODO (T105975906): Clean up stale .etf files
 
@@ -839,7 +840,7 @@ impl Server {
 
     fn native_diagnostics_completed(&mut self, diags: Vec<(FileId, LabeledDiagnostics)>) {
         for (file_id, diagnostics) in diags {
-            self.diagnostics.set_native(file_id, diagnostics);
+            Arc::make_mut(&mut self.diagnostics).set_native(file_id, diagnostics);
         }
     }
 
@@ -923,19 +924,19 @@ impl Server {
         diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>,
     ) {
         for (file_id, diagnostics) in diags {
-            self.diagnostics.set_eqwalizer(file_id, diagnostics);
+            Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, diagnostics);
         }
     }
 
     fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
-            self.diagnostics.set_edoc(file_id, diagnostics);
+            Arc::make_mut(&mut self.diagnostics).set_edoc(file_id, diagnostics);
         }
     }
 
     fn ct_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>) {
         for (file_id, diagnostics) in diags {
-            self.diagnostics.set_ct(file_id, diagnostics);
+            Arc::make_mut(&mut self.diagnostics).set_ct(file_id, diagnostics);
         }
     }
 
@@ -970,7 +971,7 @@ impl Server {
 
     fn erlang_service_diagnostics_completed(&mut self, diags: Vec<(FileId, LabeledDiagnostics)>) {
         for (file_id, diagnostics) in diags {
-            self.diagnostics.set_erlang_service(file_id, diagnostics);
+            Arc::make_mut(&mut self.diagnostics).set_erlang_service(file_id, diagnostics);
         }
     }
 

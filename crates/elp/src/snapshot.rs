@@ -18,6 +18,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
@@ -90,6 +91,7 @@ pub struct Snapshot {
     // Note: Analysis is a salsa::Snapshot.  According to the docs,
     // any attempt to `set` an input will block.
     pub(crate) analysis: Analysis,
+    pub(crate) diagnostics: Arc<DiagnosticCollection>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<Vfs>>,
     open_document_versions: SharedMap<VfsPath, i32>,
@@ -103,6 +105,7 @@ impl Snapshot {
         config: Arc<Config>,
         ad_hoc_lints: Arc<LintsFromConfig>,
         analysis: Analysis,
+        diagnostics: Arc<DiagnosticCollection>,
         vfs: Arc<RwLock<Vfs>>,
         open_document_versions: Arc<RwLock<FxHashMap<VfsPath, i32>>>,
         line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
@@ -113,6 +116,7 @@ impl Snapshot {
             config,
             ad_hoc_lints,
             analysis,
+            diagnostics,
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs,
             open_document_versions,

@@ -15,6 +15,7 @@ use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
+use diagnostics_collection::DiagnosticCollection;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -402,6 +403,10 @@ impl Analysis {
         resolve: AssistResolveStrategy,
         frange: FileRange,
         context_diagnostics: &[AssistContextDiagnostic],
+        // Note: These diagnostics are from a prior snapshot.
+        // We use them as a way to access the ones updated on save.
+        // Eventually we should be able to access them directly
+        diagnostics_collection: &DiagnosticCollection,
         user_input: Option<AssistUserInput>,
     ) -> Cancellable<Vec<Assist>> {
         let include_fixes = match &assist_config.allowed {
@@ -422,6 +427,18 @@ impl Analysis {
             } else {
                 Vec::new()
             };
+            let eqwalizer_assists = if include_fixes {
+                diagnostics_collection
+                    .eqwalizer
+                    .get(&frange.file_id)
+                    .iter()
+                    .map(|x| x.iter().filter_map(|it| it.fixes.clone()).flatten())
+                    .flatten()
+                    .filter(|it| it.target.intersect(frange.range).is_some())
+                    .collect()
+            } else {
+                Vec::new()
+            };
             let assists = elp_ide_assists::assists(
                 db,
                 assist_config,
@@ -433,6 +450,7 @@ impl Analysis {
 
             let mut res = diagnostic_assists;
             res.extend(assists);
+            res.extend(eqwalizer_assists);
 
             res
         })

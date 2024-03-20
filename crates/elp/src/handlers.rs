@@ -105,6 +105,7 @@ pub(crate) fn handle_code_action(
         resolve,
         frange,
         &assist_context_diagnostics,
+        &snap.diagnostics,
         None,
     )?;
     for (index, assist) in assists.into_iter().enumerate() {
@@ -169,6 +170,7 @@ pub(crate) fn handle_code_action_resolve(
         AssistResolveStrategy::Single(assist_resolve),
         frange,
         &assist_context_diagnostics,
+        &snap.diagnostics,
         params.user_input,
     )?;
 
