@@ -19,6 +19,7 @@ use elp_types_db::eqwalizer::StructuredDiagnostic;
 use hir::InFile;
 use hir::Literal;
 use hir::Semantic;
+use hir::SpecBody;
 use hir::TypeExpr;
 use text_edit::TextEdit;
 
@@ -69,10 +70,9 @@ fn add_spec_fix(
         },
     )?;
     let function_id = sema.find_enclosing_function(file_id, &token.value.parent()?)?;
-    let def_map = sema.def_map(file_id);
-    let function_def = def_map.get_by_function_id(&InFile::new(file_id, function_id))?;
-    let spec_id = InFile::new(file_id, function_def.spec.clone()?.spec_id);
-    let spec_body = sema.db.spec_body(spec_id);
+    let function = sema.db.function_body(InFile::new(file_id, function_id));
+    let spec_body: &SpecBody = function.spec_body()?;
+    let spec_id = InFile::new(file_id, spec_body.spec_id()?);
     // We are looking for a single spec signature with a single atom return type.
     match &spec_body.sigs[..] {
         [sig] => {
