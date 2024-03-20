@@ -1706,7 +1706,7 @@ baz(1)->4.
     #[test]
     fn check_specific_fix_works() {
         check_specific_fix(
-            "match is redundant",
+            "Remove match",
             r#"
              -module(main).
 
