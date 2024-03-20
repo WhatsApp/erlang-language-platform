@@ -226,6 +226,7 @@ impl<'a> Ctx<'a> {
                 function_id,
                 clause_ids,
                 clauses,
+                spec: None, // Will be filled in later
             },
             source_maps,
         )

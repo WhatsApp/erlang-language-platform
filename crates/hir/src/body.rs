@@ -92,6 +92,7 @@ pub struct FunctionBody {
     pub function_id: InFile<FunctionDefId>,
     pub clause_ids: Vec<FunctionClauseId>,
     pub clauses: Arena<Arc<FunctionClauseBody>>,
+    pub spec: Option<Arc<SpecBody>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -425,8 +426,12 @@ impl FunctionBody {
             let mut ctx = lower::Ctx::new(db, BodyOrigin::Invalid(function_id.file_id));
             let name = &fun_def.function_clauses[0].name;
             ctx.set_function_info(name);
-            let (body, source_maps) =
+            let (mut body, source_maps) =
                 ctx.lower_function(function_id, fun_def.function_clause_ids.clone(), &fun_asts);
+            if let Some(spec) = &fun_def.spec {
+                let spec = db.spec_body(InFile::new(spec.file.file_id, spec.spec_id));
+                body.spec = Some(spec);
+            }
             (Arc::new(body), source_maps)
         } else {
             (
@@ -434,6 +439,7 @@ impl FunctionBody {
                     function_id,
                     clause_ids: vec![],
                     clauses: Arena::default(),
+                    spec: None,
                 }),
                 vec![],
             )
@@ -444,6 +450,13 @@ impl FunctionBody {
         let n: u32 = clause_id.into_raw().into();
         let function_id = self.clause_ids.get(n as usize)?;
         Some(FormIdx::FunctionClause(*function_id))
+    }
+
+    pub fn spec_body(&self) -> Option<&SpecBody> {
+        match &self.spec {
+            Some(spec) => Some(&spec),
+            None => None,
+        }
     }
 
     pub fn print(&self, db: &dyn InternDatabase, form: &FunctionClause) -> String {
@@ -618,6 +631,18 @@ impl SpecBody {
         )
         .lower_callback(&callback_ast);
         (Arc::new(body), Arc::new(source_map))
+    }
+
+    pub fn spec_id(&self) -> Option<SpecId> {
+        if let BodyOrigin::FormIdx {
+            file_id: _,
+            form_id: FormIdx::Spec(spec_id),
+        } = self.body.origin
+        {
+            Some(spec_id)
+        } else {
+            None
+        }
     }
 
     pub fn print(&self, db: &dyn InternDatabase, form: SpecOrCallback) -> String {
