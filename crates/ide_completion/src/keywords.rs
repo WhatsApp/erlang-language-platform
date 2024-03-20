@@ -44,7 +44,12 @@ lazy_static! {
         "rem",
         "try",
         "when",
-        "xor"
+        "xor",
+        // Add some common atoms too
+        "ok",
+        "undefined",
+        "true",
+        "false"
     ].iter().map(|label| Completion{ label: label.to_string(), kind: crate::Kind::Keyword, contents: Contents::SameAsLabel, position: None, sort_text: None, deprecated: false}).collect();
 }
 
