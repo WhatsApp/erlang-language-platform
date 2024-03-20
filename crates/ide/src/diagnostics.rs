@@ -176,6 +176,14 @@ impl Diagnostic {
         self
     }
 
+    pub(crate) fn add_fix(&mut self, fix: Assist) {
+        if let Some(fixes) = &mut self.fixes {
+            fixes.push(fix);
+        } else {
+            self.fixes = Some(vec![fix]);
+        }
+    }
+
     pub(crate) fn with_form_range(mut self, form_range: Option<TextRange>) -> Diagnostic {
         self.form_range = form_range;
         self
@@ -1748,7 +1756,7 @@ baz(1)->4.
 
                 -spec baz() -> ok.
                 baz() -> something_else.
-                %%       ^^^^^^^^^^^^^^  error: eqwalizer: incompatible_types
+                %%       ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
         );
     }

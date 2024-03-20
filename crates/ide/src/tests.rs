@@ -150,9 +150,13 @@ pub(crate) fn check_nth_fix(
 ) {
     let after = trim_indent(fixture_after);
 
-    let (db, file_position, _) = RootDatabase::with_position(fixture_before);
-    let diagnostic = diagnostics::native_diagnostics(&db, &config, file_position.file_id)
-        .iter()
+    let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
+
+    let diagnostics =
+        fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
+    let diagnostic = diagnostics
+        .diagnostics_for(pos.file_id)
+        .into_iter()
         .last()
         .expect("no diagnostics")
         .clone();
@@ -160,7 +164,7 @@ pub(crate) fn check_nth_fix(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = db.file_text(file_id).to_string();
+        let mut actual = analysis.db.file_text(file_id).to_string();
 
         for edit in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
@@ -168,10 +172,10 @@ pub(crate) fn check_nth_fix(
         actual
     };
     assert!(
-        fix.target.contains_inclusive(file_position.offset),
+        fix.target.contains_inclusive(pos.offset),
         "diagnostic fix range {:?} does not touch cursor position {:?}",
         fix.target,
-        file_position.offset
+        pos.offset
     );
     assert_eq_text!(&after, &actual);
 }
