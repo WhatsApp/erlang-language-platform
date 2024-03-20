@@ -916,6 +916,10 @@ impl BodySourceMap {
             .copied()
     }
 
+    pub fn type_expr(&self, type_expr_id: TypeExprId) -> Option<ExprSource> {
+        self.type_expr_map_back.get(type_expr_id).copied()
+    }
+
     pub fn term_id(&self, expr: InFile<&ast::Expr>) -> Option<TermId> {
         self.term_map.get(&InFileAstPtr::from_infile(expr)).copied()
     }
