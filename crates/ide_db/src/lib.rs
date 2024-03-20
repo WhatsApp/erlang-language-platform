@@ -40,6 +40,7 @@ use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use hir::InFile;
 use hir::Semantic;
+use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use salsa::Database;
@@ -176,16 +177,22 @@ impl RootDatabase {
     }
 
     pub fn ensure_erlang_service(&self, project_id: ProjectId) -> Result<()> {
-        let connection = Connection::start()?;
+        lazy_static! {
+            static ref CONN: Connection = Connection::start().unwrap();
+        }
 
         let project_data = self.project_data(project_id);
-        let path = project_data
+        let path: Vec<PathBuf> = project_data
             .deps_ebins
             .iter()
             .map(|path| path.clone().into())
             .collect();
-        connection.add_code_path(path);
+        if path.len() > 0 {
+            // For a test fixture this should never happen
+            CONN.add_code_path(path);
+        }
 
+        let connection: Connection = CONN.to_owned();
         self.erlang_services.write().insert(project_id, connection);
         Ok(())
     }
