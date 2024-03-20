@@ -82,7 +82,7 @@ pub(crate) fn check_function(
                 match args[..] {
                     [_, options] => {
                         let body = in_clause.body();
-                        match &body[options].literal_list_contains_atom(&in_clause, "safe") {
+                        match &body[options].literal_list_contains_atom(in_clause, "safe") {
                             Some(true) => None,
                             _ => Some(("".to_string(), "".to_string())),
                         }

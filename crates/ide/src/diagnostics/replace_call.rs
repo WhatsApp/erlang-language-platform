@@ -249,9 +249,7 @@ fn replace_call(
                     {
                         edit_builder.replace(range_args, replacement);
                     }
-                } else {
                 }
-            } else {
             }
             Some(edit_builder.finish())
         }

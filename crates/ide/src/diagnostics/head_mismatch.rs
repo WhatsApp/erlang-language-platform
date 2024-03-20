@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::cmp::Ordering;
 use std::hash::Hash;
 
 use elp_ide_db::elp_base_db::FileId;
@@ -186,17 +187,21 @@ where
             match highest {
                 None => highest = Some((attr.clone(), locations.clone())),
                 Some((ref _cur_attr, ref cur_highest)) => {
-                    if locations.len() == cur_highest.len() {
-                        // Keep the one closet to the beginning
-                        let mut locs = locations.clone();
-                        let mut cur = cur_highest.clone();
-                        locs.sort_by_key(|a| a.start());
-                        cur.sort_by_key(|a| a.start());
-                        if locs[0].start() < cur[0].start() {
+                    match locations.len().cmp(&cur_highest.len()) {
+                        Ordering::Equal => {
+                            // Keep the one closet to the beginning
+                            let mut locs = locations.clone();
+                            let mut cur = cur_highest.clone();
+                            locs.sort_by_key(|a| a.start());
+                            cur.sort_by_key(|a| a.start());
+                            if locs[0].start() < cur[0].start() {
+                                highest = Some((attr.clone(), locations.clone()));
+                            }
+                        }
+                        Ordering::Greater => {
                             highest = Some((attr.clone(), locations.clone()));
                         }
-                    } else if locations.len() > cur_highest.len() {
-                        highest = Some((attr.clone(), locations.clone()));
+                        Ordering::Less => {}
                     }
                 }
             }

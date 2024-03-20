@@ -186,7 +186,7 @@ fn check_tuple(
     def: &FunctionDef,
 ) -> Option<String> {
     if let hir::Expr::Tuple { exprs } = &in_clause[*val] {
-        let app = exprs.get(0)?;
+        let app = exprs.first()?;
         check_valid_application(sema, in_clause, app, def)
     } else {
         None

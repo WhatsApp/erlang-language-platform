@@ -37,17 +37,15 @@ pub fn missing_no_link_in_init_per_suite(
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                if def.name == NameArity::new(known::init_per_suite, 1)
-                    || def.name == NameArity::new(known::init_per_group, 2)
-                {
-                    check_function(res, sema, def)
-                }
+            if def.file.file_id == file_id && def.name == NameArity::new(known::init_per_suite, 1)
+                || def.name == NameArity::new(known::init_per_group, 2)
+            {
+                check_function(res, sema, def)
             }
         });
 }
 
-fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &Vec<HirIdx>) -> bool {
+fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &[HirIdx]) -> bool {
     parents.iter().any(|hir_idx| match hir_idx.idx {
         AnyExprId::Expr(idx) => match def_fb[idx] {
             Expr::Closure { .. } => true,
@@ -77,7 +75,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                 [_module, options] => {
                     let body = def_fb.body();
                     if let Some(false) =
-                        &body[options].literal_list_contains_atom(&def_fb, "no_link")
+                        &body[options].literal_list_contains_atom(def_fb, "no_link")
                     {
                         Some(())
                     } else {

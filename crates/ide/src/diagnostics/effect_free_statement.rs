@@ -49,8 +49,8 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
             def_fb.fold_function(
                 Strategy::InvisibleMacros,
                 (),
-                &mut |_acc, clause_id, ctx| match ctx.item_id {
-                    AnyExprId::Expr(expr_id) => {
+                &mut |_acc, clause_id, ctx| {
+                    if let AnyExprId::Expr(expr_id) = ctx.item_id {
                         let body_map = def_fb.get_body_map(clause_id);
                         let in_clause = def_fb.in_clause(clause_id);
                         if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
@@ -65,7 +65,6 @@ pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic
                             }
                         }
                     }
-                    _ => {}
                 },
             );
         }
