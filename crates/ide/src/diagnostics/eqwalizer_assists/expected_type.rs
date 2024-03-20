@@ -14,6 +14,8 @@ use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::tc_diagnostics::ExpectedSubtype;
 use elp_types_db::eqwalizer::tc_diagnostics::TypeError;
+use elp_types_db::eqwalizer::types::AtomLitType;
+use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::StructuredDiagnostic;
 use hir::InFile;
@@ -39,8 +41,8 @@ pub fn expected_type(
         got,
     }))) = &d.diagnostic
     {
-        // Start with a trivial case, mismatched atoms, change the range we have.
         match (expected, got) {
+            // mismatched atoms
             (Type::AtomLitType(_), Type::AtomLitType(_)) => {
                 let edit = TextEdit::replace(d.range, format!("{expected}").to_string());
                 diagnostic.add_fix(fix(
@@ -49,14 +51,33 @@ pub fn expected_type(
                     SourceChange::from_text_edit(file_id, edit),
                     d.range,
                 ));
-                add_spec_fix(sema, file_id, got, diagnostic);
+                add_spec_fix_atoms(sema, file_id, got, diagnostic);
             }
+
+            // 2-Tuple with leading atom vs just the second part
+            (Type::TupleType(TupleType { arg_tys }), other2) => match &arg_tys[..] {
+                [atom @ Type::AtomLitType(AtomLitType { .. }), other] => {
+                    if other == other2 {
+                        let file_text = sema.db.file_text(file_id);
+                        let current = &file_text[d.range.start().into()..d.range.end().into()];
+                        let replacement = format!("{{{atom}, {current}}}");
+                        let edit = TextEdit::replace(d.range, replacement.clone());
+                        diagnostic.add_fix(fix(
+                            "fix_expected_type",
+                            format!("Change returned value to '{replacement}'").as_str(),
+                            SourceChange::from_text_edit(file_id, edit),
+                            d.range,
+                        ));
+                    }
+                }
+                _ => {}
+            },
             _ => {}
         }
     }
 }
 
-fn add_spec_fix(
+fn add_spec_fix_atoms(
     sema: &Semantic,
     file_id: FileId,
     got: &Type,
@@ -158,6 +179,28 @@ mod tests {
 
             -spec baz() -> something_else.
             baz() -> something_else.
+         "#,
+        )
+    }
+
+    #[test]
+    fn mismatched_tuple_fix_return() {
+        check_specific_fix(
+            "Change returned value to '{ok, 53}'",
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+            -module(bar).
+
+            -spec baz() -> {ok, number()}.
+            baz() -> 5~3.
+                  %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+            "#,
+            r#"
+            -module(bar).
+
+            -spec baz() -> {ok, number()}.
+            baz() -> {ok, 53}.
          "#,
         )
     }
