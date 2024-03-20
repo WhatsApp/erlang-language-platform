@@ -13,6 +13,7 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::extract_annotations;
+use elp_ide_db::elp_base_db::fixture::remove_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
@@ -171,6 +172,7 @@ pub(crate) fn check_nth_fix(
         }
         actual
     };
+    let actual = remove_annotations(None, &actual);
     assert!(
         fix.target.contains_inclusive(pos.offset),
         "diagnostic fix range {:?} does not touch cursor position {:?}",

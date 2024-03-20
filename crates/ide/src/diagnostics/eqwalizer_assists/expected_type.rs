@@ -79,14 +79,13 @@ mod tests {
 
             -spec baz() -> spec_atom.
             baz() -> somet~hing_else.
-                 %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
             r#"
             -module(bar).
 
             -spec baz() -> spec_atom.
             baz() -> spec_atom.
-                 %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
          "#,
         )
     }

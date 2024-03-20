@@ -434,7 +434,6 @@ mod tests {
             foo(Name, FuncSpec) ->
                 % elp:ignore W0014 (cross_node_eval)
                 sys:install(Name, FuncSpec).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )

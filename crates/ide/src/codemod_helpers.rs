@@ -710,7 +710,6 @@ mod tests {
             bar() ->
                 % elp:ignore ad-hoc: test (ad-hoc: test)
                 foo:bar().
-            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
         );
     }
@@ -730,7 +729,6 @@ mod tests {
             foo(Node, M,F,A) ->
                % elp:ignore ad-hoc: test (ad-hoc: test)
                rpc:call(Node, M, F, A).
-            %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
         );
     }
@@ -750,7 +748,6 @@ mod tests {
             foo(Node, M,F,A) ->
                % elp:ignore ad-hoc: test (ad-hoc: test)
                baz(rpc:call(Node, M, F, A)).
-            %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
         );
     }
