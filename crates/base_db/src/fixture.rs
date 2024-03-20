@@ -761,7 +761,7 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*%%[\s<]+(\^)* 💡.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*%%[\s<]+(\^)* +💡.*$").unwrap();
     }
     RE.is_match(line)
 }
