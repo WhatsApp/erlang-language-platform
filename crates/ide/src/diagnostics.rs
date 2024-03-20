@@ -73,6 +73,7 @@ mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
 mod effect_free_statement;
+mod eqwalizer_assists;
 mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
@@ -98,6 +99,8 @@ pub use from_config::LintsFromConfig;
 pub use from_config::ReplaceCall;
 pub use from_config::ReplaceCallAction;
 pub use replace_call::Replacement;
+
+use self::eqwalizer_assists::add_eqwalizer_assists;
 
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostic {
@@ -411,7 +414,12 @@ fn to_range(range: &TextRange) -> RangeInclusive<u32> {
     RangeInclusive::new(range.start().into(), range.end().into())
 }
 
-pub fn eqwalizer_to_diagnostic(d: &EqwalizerDiagnostic, eqwalizer_enabled: bool) -> Diagnostic {
+pub fn eqwalizer_to_diagnostic(
+    sema: &Semantic,
+    file_id: FileId,
+    d: &EqwalizerDiagnostic,
+    eqwalizer_enabled: bool,
+) -> Diagnostic {
     let range = d.range;
     let severity = if eqwalizer_enabled {
         Severity::Error
@@ -429,7 +437,7 @@ pub fn eqwalizer_to_diagnostic(d: &EqwalizerDiagnostic, eqwalizer_enabled: bool)
         explanation,
         d.uri
     );
-    Diagnostic {
+    let mut diagnostic = Diagnostic {
         range,
         severity,
         code: DiagnosticCode::Eqwalizer(d.code.clone()),
@@ -439,7 +447,9 @@ pub fn eqwalizer_to_diagnostic(d: &EqwalizerDiagnostic, eqwalizer_enabled: bool)
         related_info: None,
         code_doc_uri: Some(d.uri.clone()),
         form_range: None,
-    }
+    };
+    add_eqwalizer_assists(sema, file_id, d, &mut diagnostic);
+    diagnostic
 }
 
 /// Main entry point to calculate ELP-native diagnostics for a file
@@ -880,7 +890,7 @@ fn label_erlang_service_diagnostics(
 }
 
 pub fn eqwalizer_diagnostics(
-    db: &dyn TypedSemantic,
+    db: &RootDatabase,
     file_id: FileId,
     include_generated: bool,
 ) -> Option<Vec<Diagnostic>> {
@@ -888,10 +898,11 @@ pub fn eqwalizer_diagnostics(
     // Because of the way db.eqwalizer_diagnostics() is implemented,
     // we only get diagnostics if it is enabled.
     let eqwalizer_enabled = true;
+    let sema = Semantic::new(db);
     Some(
         eqwalizer_diagnostics
             .iter()
-            .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
+            .map(|d| eqwalizer_to_diagnostic(&sema, file_id, d, eqwalizer_enabled))
             .collect(),
     )
 }
@@ -904,10 +915,11 @@ pub fn eqwalizer_stats(
     let eqwalizer_diagnostics = db.eqwalizer_stats(project_id, file_id)?;
     // Report as info
     let eqwalizer_enabled = false;
+    let sema = Semantic::new(db);
     Some(
         eqwalizer_diagnostics
             .iter()
-            .map(|d| eqwalizer_to_diagnostic(d, eqwalizer_enabled))
+            .map(|d| eqwalizer_to_diagnostic(&sema, file_id, d, eqwalizer_enabled))
             .collect(),
     )
 }
