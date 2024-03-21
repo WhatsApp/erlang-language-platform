@@ -109,16 +109,20 @@ mod test {
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:or, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:orelse, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:receive, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:rem, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:true, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:try, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:undefined, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:when, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:xor, kind:Keyword, contents:SameAsLabel, position:None}"#]],
         );
@@ -200,17 +204,21 @@ mod test {
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:main, kind:Module, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:or, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:orelse, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:receive, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:rem, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:true, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:try, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:undefined, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:when, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:xor, kind:Keyword, contents:SameAsLabel, position:None}"#]],
         );
@@ -239,17 +247,21 @@ mod test {
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:main, kind:Module, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:or, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:orelse, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:receive, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:rem, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:true, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:try, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:undefined, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:when, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:xor, kind:Keyword, contents:SameAsLabel, position:None}"#]],
         );
