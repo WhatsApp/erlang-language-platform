@@ -180,6 +180,11 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             }
 
             if let Some(diagnostic_filter) = diagnostic_filter {
+                // We have replaced L1500 with W0020. Generate an error if we get L1500.
+                if diagnostic_filter == "L1500" {
+                    bail!("Code L1500 has been superseded by W0020");
+                }
+
                 let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
                 // Make sure we do not mask the one we explicitly asked for
                 disabled_diagnostics.remove(&diagnostic_filter);

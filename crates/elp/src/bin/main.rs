@@ -1227,6 +1227,21 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_errors_on_deprecated_l1500(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        simple_snapshot_expect_stderror(
+            args_vec!["lint", "--module", "app_a", "--diagnostic-filter", "L1500",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_elp_l1500_deprecated.stdout"),
+            buck,
+            None,
+        )
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_edoc(buck: bool) {
         simple_snapshot(
             args_vec![
