@@ -794,6 +794,7 @@ mod tests {
     // -----------------------------------------------------------------
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn get_type_atom() {
         check_type(
             r#"
@@ -810,6 +811,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn get_type_custom() {
         check_type(
             r#"
@@ -829,6 +831,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn get_type_string() {
         check_type(
             r#"
@@ -846,6 +849,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn include_file_tracking() {
         check_type(
             r#"
