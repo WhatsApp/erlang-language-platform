@@ -799,8 +799,8 @@ mod tests {
         check_type(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar1.erl app:play
+                -module(bar1).
 
                 -spec baz(atom()) -> atom().
                 baz(FF) -> F~F,
@@ -816,8 +816,8 @@ mod tests {
         check_type(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar2.erl app:play
+                -module(bar2).
 
                 -type foo() :: foo1 | foo2.
 
@@ -825,7 +825,7 @@ mod tests {
                 get_foo() -> foo1.
 
                 baz() -> F~F = get_foo().
-            %%           ^^ bar:foo()
+            %%           ^^ bar2:foo()
             "#,
         )
     }
@@ -836,8 +836,8 @@ mod tests {
         check_type(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar3.erl app:play
+                -module(bar3).
 
                 -spec get_foo() -> string().
                 get_foo() -> "hello".
@@ -854,8 +854,8 @@ mod tests {
         check_type(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar4.erl app:play
+                -module(bar4).
                 -include("level1.hrl").
 
                 -spec get_foo() -> ?STRING().

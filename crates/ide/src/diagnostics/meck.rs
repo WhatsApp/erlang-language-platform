@@ -230,8 +230,8 @@ mod tests {
         check_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
-   -module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link1_SUITE.erl
+   -module(missing_no_link1_SUITE).
    -export([all/0, init_per_suite/1]).
    -export([a/1]).
    all() -> [a].
@@ -254,8 +254,8 @@ mod tests {
         check_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
-   -module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link2_SUITE.erl
+   -module(missing_no_link2_SUITE).
    -export([all/0, init_per_group/2]).
    -export([a/1]).
    all() -> [a].
@@ -279,8 +279,8 @@ mod tests {
         check_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
-   -module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link3_SUITE.erl
+   -module(missing_no_link3_SUITE).
    -export([all/0, init_per_suite/1]).
    -export([a/1]).
    all() -> [a].
@@ -303,8 +303,8 @@ mod tests {
         check_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
-   -module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link4_SUITE.erl
+   -module(missing_no_link4_SUITE).
    -export([all/0, init_per_suite/1]).
    -export([a/1]).
    all() -> [a].
@@ -327,8 +327,8 @@ mod tests {
         check_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
-   -module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link5_SUITE.erl
+   -module(missing_no_link5_SUITE).
    -export([all/0, init_per_suite/1]).
    -export([a/1]).
    all() -> [a].
@@ -351,8 +351,8 @@ mod tests {
         check_fix(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
--module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link6_SUITE.erl
+-module(missing_no_link6_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].
@@ -367,7 +367,7 @@ a(_Config) ->
 new(_Module, _Options) -> ok.
             "#,
             r#"
--module(missing_no_link_SUITE).
+-module(missing_no_link6_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].
@@ -385,8 +385,8 @@ a(_Config) ->
         check_fix(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
--module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link7_SUITE.erl
+-module(missing_no_link7_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].
@@ -401,7 +401,7 @@ a(_Config) ->
 new(_Module, _Options) -> ok.
             "#,
             r#"
--module(missing_no_link_SUITE).
+-module(missing_no_link7_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].
@@ -419,8 +419,8 @@ a(_Config) ->
         check_fix(
             r#"
 //- common_test
-//- /my_app/test/missing_no_link_SUITE.erl
--module(missing_no_link_SUITE).
+//- /my_app/test/missing_no_link8_SUITE.erl
+-module(missing_no_link8_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].
@@ -435,7 +435,7 @@ a(_Config) ->
 new(_Module, _Options) -> ok.
             "#,
             r#"
--module(missing_no_link_SUITE).
+-module(missing_no_link8_SUITE).
 -export([all/0, init_per_suite/1]).
 -export([a/1]).
 all() -> [a].

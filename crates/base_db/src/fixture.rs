@@ -26,6 +26,7 @@ use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
+use elp_project_model::test_fixture::check_unique_test_module;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
@@ -54,28 +55,33 @@ use crate::SourceDatabaseExt;
 use crate::SourceRoot;
 
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
+    #[track_caller]
     fn with_single_file(fixture: &str) -> (Self, FileId) {
         let (db, fixture) = Self::with_fixture(fixture);
         assert_eq!(fixture.files.len(), 1);
         (db, fixture.files[0])
     }
 
+    #[track_caller]
     fn with_many_files(fixture: &str) -> (Self, Vec<FileId>, DiagnosticsEnabled) {
         let (db, fixture) = Self::with_fixture(fixture);
         assert!(fixture.file_position.is_none());
         (db, fixture.files, fixture.diagnostics_enabled)
     }
 
+    #[track_caller]
     fn with_position(fixture: &str) -> (Self, FilePosition, DiagnosticsEnabled) {
         let (db, fixture) = Self::with_fixture(fixture);
         (db, fixture.position(), fixture.diagnostics_enabled)
     }
 
+    #[track_caller]
     fn with_range(fixture: &str) -> (Self, FileRange) {
         let (db, fixture) = Self::with_fixture(fixture);
         (db, fixture.range())
     }
 
+    #[track_caller]
     fn with_range_or_offset(fixture: &str) -> (Self, FileId, RangeOrOffset) {
         let (db, fixture) = Self::with_fixture(fixture);
         let (file_id, range_or_offset) = fixture
@@ -84,6 +90,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, file_id, range_or_offset)
     }
 
+    #[track_caller]
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
@@ -148,6 +155,7 @@ impl Builder {
 }
 
 impl ChangeFixture {
+    #[track_caller]
     fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
         let fixture_with_meta = FixtureWithProjectMeta::parse(test_fixture);
         let FixtureWithProjectMeta {
@@ -248,6 +256,7 @@ impl ChangeFixture {
             let tmp_dir_path = project_dir;
             for (path, text) in files {
                 let path = tmp_dir_path.join(&path[1..]);
+                check_unique_test_module(&path);
                 let parent = path.parent().unwrap();
                 fs::create_dir_all(parent).unwrap();
                 let mut tmp_file = File::create(path).unwrap();

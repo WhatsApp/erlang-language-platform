@@ -212,9 +212,9 @@ mod tests {
         check_runnables(
             r#"
  //- erlang_service
- //- /my_app/src/main.erl
+ //- /my_app/src/runnables.erl
     ~
-    -module(main).
+    -module(runnables).
     -export([all/]).
     main() ->
       ok.

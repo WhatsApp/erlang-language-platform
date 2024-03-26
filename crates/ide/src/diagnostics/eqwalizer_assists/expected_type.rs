@@ -172,8 +172,8 @@ mod tests {
         check_diagnostics(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar2e.erl app:play
+                -module(bar2e).
 
                 -spec baz() -> spec_atom.
                 baz() -> something_else.
@@ -189,15 +189,15 @@ mod tests {
             "Update returned value to 'spec_atom'",
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-            -module(bar).
+            //- /play/src/bar3e.erl app:play
+            -module(bar3e).
 
             -spec baz() -> spec_atom.
             baz() -> somet~hing_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
             r#"
-            -module(bar).
+            -module(bar3e).
 
             -spec baz() -> spec_atom.
             baz() -> spec_atom.
@@ -212,15 +212,15 @@ mod tests {
             "Update function spec to return 'something_else'",
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-            -module(bar).
+            //- /play/src/bar4e.erl app:play
+            -module(bar4e).
 
             -spec baz() -> spec_atom.
             baz() -> somethin~g_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
             r#"
-            -module(bar).
+            -module(bar4e).
 
             -spec baz() -> something_else.
             baz() -> something_else.
@@ -235,15 +235,15 @@ mod tests {
             "Update returned value to '{ok, 53}'",
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-            -module(bar).
+            //- /play/src/bar5e.erl app:play
+            -module(bar5e).
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
                   %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
             r#"
-            -module(bar).
+            -module(bar5e).
 
             -spec baz() -> {ok, number()}.
             baz() -> {ok, 53}.
@@ -258,15 +258,15 @@ mod tests {
             "Update function spec to return 'number()'",
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-            -module(bar).
+            //- /play/src/bar6e.erl app:play
+            -module(bar6e).
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
                   %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
             r#"
-            -module(bar).
+            -module(bar6e).
 
             -spec baz() -> number().
             baz() -> 53.

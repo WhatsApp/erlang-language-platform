@@ -316,8 +316,8 @@ mod tests {
             r#"
 //- /include/foo.hrl include_path:/include
   -type orddict(Key, Val) :: [{Key, Val}].
-//- /src/bar.erl
-  -module(bar).
+//- /src/bar1u.erl
+  -module(bar1u).
   -include("foo.hrl").
   -spec foo() -> orddict(integer(), integer()).
   foo() -> orddict(1, 2).

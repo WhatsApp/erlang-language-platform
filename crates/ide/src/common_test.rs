@@ -334,8 +334,8 @@ mod tests {
         check_ct_diagnostics(
             r#"
 //- common_test
-//- /my_app/test/unreachable_SUITE.erl
-   -module(unreachable_SUITE).~
+//- /my_app/test/unreachable1_SUITE.erl
+   -module(unreachable1_SUITE).~
    -export([all/0]).
    -export([a/1, b/1]).
    all() -> [a].
@@ -441,8 +441,8 @@ mod tests {
         check_ct_diagnostics(
             r#"
  //- common_test
- //- /my_app/test/unreachable_fix_SUITE.erl
-    -module(unreachable_fix_SUITE).~
+ //- /my_app/test/unreachable_fix1_SUITE.erl
+    -module(unreachable_fix1_SUITE).~
     -export([all/0]).
     -export([a/1, b/1, c/1]).
     all() -> [a].

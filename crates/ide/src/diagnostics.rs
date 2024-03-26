@@ -1602,10 +1602,10 @@ baz(1)->4.
         check_diagnostics(
             r#"
              //- edoc
-             //- /main/src/main.erl app:main
+             //- /main/src/main_edoc.erl app:main
              % @unknown
              %%<^^^^^^^^  warning: tag @unknown not recognized.
-             -module(main).
+             -module(main_edoc).
 
              "#,
         );
@@ -1751,8 +1751,8 @@ baz(1)->4.
         check_diagnostics(
             r#"
             //- eqwalizer
-            //- /play/src/bar.erl app:play
-                -module(bar).
+            //- /play/src/bar1e.erl app:play
+                -module(bar1e).
 
                 -spec baz() -> ok.
                 baz() -> something_else.
