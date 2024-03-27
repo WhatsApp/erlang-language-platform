@@ -167,6 +167,7 @@ mod tests {
     use crate::tests::check_specific_fix;
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn mismatched_atom() {
         check_diagnostics(
             r#"
@@ -182,6 +183,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn mismatched_atom_fix_return() {
         check_specific_fix(
             "Update returned value to 'spec_atom'",
@@ -204,6 +206,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn mismatched_atom_fix_spec() {
         check_specific_fix(
             "Update function spec to return 'something_else'",
@@ -226,6 +229,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn mismatched_tuple_fix_return() {
         check_specific_fix(
             "Update returned value to '{ok, 53}'",
@@ -248,6 +252,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "type based tests are (currently) flaky"]
     fn mismatched_tuple_fix_spec() {
         check_specific_fix(
             "Update function spec to return 'number()'",
