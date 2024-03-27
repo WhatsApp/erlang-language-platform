@@ -638,6 +638,11 @@ impl Server {
                     };
                     let mut vfs = this.vfs.write();
                     let file_id = vfs.file_id(&path).unwrap();
+                    // Temporary for T183487471
+                    let _pctx = stdx::panic_context::enter(format!(
+                        "\nserver::DidChangeTextDocument:{:?}:{}\n",
+                        &file_id, &path
+                    ));
                     let mut document = Document::from_bytes(vfs.file_contents(file_id).to_vec());
                     document.apply_changes(params.content_changes);
 
@@ -775,6 +780,11 @@ impl Server {
 
         for file in &changed_files {
             if file.exists() {
+                // Temporary for T183487471
+                let _pctx = stdx::panic_context::enter(format!(
+                    "\nserver::process_changes_to_vfs_store:{:?}:{:?}",
+                    &file.file_id, &file.change_kind
+                ));
                 let bytes = vfs.file_contents(file.file_id).to_vec();
                 let document = Document::from_bytes(bytes);
                 let (text, line_ending) = LineEndings::normalize(document.content);
