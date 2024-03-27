@@ -295,7 +295,6 @@ pub enum On {
 
 #[derive(Debug)]
 pub struct AnyCallBackCtx<'a> {
-    pub on: On,
     pub in_macro: Option<HirIdx>,
     pub parents: &'a Vec<HirIdx>,
     pub item_id: AnyExprId,
@@ -501,7 +500,6 @@ impl<'a, T> FoldCtx<'a, T> {
         });
         let expr = &self.body[expr_id];
         let ctx = AnyCallBackCtx {
-            on: On::Entry,
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::Expr(expr_id),
@@ -716,7 +714,6 @@ impl<'a, T> FoldCtx<'a, T> {
         });
         let pat = &self.body[pat_id];
         let ctx = AnyCallBackCtx {
-            on: On::Entry,
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::Pat(pat_id),
@@ -828,7 +825,6 @@ impl<'a, T> FoldCtx<'a, T> {
         });
         let term = &self.body[term_id];
         let ctx = AnyCallBackCtx {
-            on: On::Entry,
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::Term(term_id),
@@ -884,7 +880,6 @@ impl<'a, T> FoldCtx<'a, T> {
         });
         let type_expr = &self.body[type_expr_id];
         let ctx = AnyCallBackCtx {
-            on: On::Entry,
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::TypeExpr(type_expr_id),
