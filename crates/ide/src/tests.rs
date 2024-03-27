@@ -379,7 +379,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     let analysis = host.analysis();
     for file_id in files {
         let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, file_id);
-        let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags);
+        let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
 
         let mut expected = extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());

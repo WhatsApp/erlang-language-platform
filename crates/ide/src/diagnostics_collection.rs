@@ -68,7 +68,7 @@ impl DiagnosticCollection {
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
         let mut combined: Vec<Diagnostic> =
-            attach_related_diagnostics(native.clone(), erlang_service);
+            attach_related_diagnostics(native.clone(), erlang_service.clone());
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
@@ -188,7 +188,6 @@ mod tests {
     use elp_syntax::label::Label;
     use fxhash::FxHashMap;
     use fxhash::FxHashSet;
-    use range_set::RangeSet;
     use text_edit::TextRange;
 
     use super::are_diagnostics_equal;
@@ -270,7 +269,7 @@ mod tests {
         for file_id in files {
             let diagnostics = diagnostics::native_diagnostics(&db, &config, file_id);
 
-            let combined = attach_related_diagnostics(diagnostics, extra_diags);
+            let combined = attach_related_diagnostics(diagnostics, extra_diags.clone());
             let expected = extract_annotations(&db.file_text(file_id));
             let mut actual = combined
                 .into_iter()
@@ -298,8 +297,8 @@ mod tests {
 
     #[test]
     fn group_related_diagnostics() {
-        let labeled = FxHashMap::from_iter([(
-            Some(Label::new_raw("foo/0")),
+        let labeled_undefined_errors = FxHashMap::from_iter([(
+            Some(diagnostics::DiagnosticLabel::MFA(Label::new_raw("foo/0"))),
             vec![
                 make_diag(
                     "function foo/0 undefined",
@@ -318,15 +317,18 @@ mod tests {
                 ),
             ],
         )]);
-        let extra_diags = LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
-            normal: vec![make_diag(
+        let labeled_syntax_errors = FxHashMap::from_iter([(
+            Some(diagnostics::DiagnosticLabel::MFA(Label::new_raw("foo/0"))),
+            vec![make_diag(
                 "syntax error before: '->'",
                 "P1711",
-                TextRange::new(8.into(), 10.into()),
+                TextRange::new(106.into(), 110.into()),
             )],
-            labeled_syntax_errors: FxHashMap::default(),
-            labeled_undefined_errors: labeled,
+        )]);
+        let extra_diags = LabeledDiagnostics {
+            normal: vec![],
+            labeled_syntax_errors,
+            labeled_undefined_errors,
         };
 
         let config =
@@ -375,13 +377,11 @@ mod tests {
             ],
         )]);
         let diags_one = LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
             labeled_syntax_errors: FxHashMap::default(),
             labeled_undefined_errors: labeled_one,
         };
         let diags_two = LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: vec![],
             labeled_syntax_errors: labeled_two,
             labeled_undefined_errors: FxHashMap::default(),

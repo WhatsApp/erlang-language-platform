@@ -22,7 +22,6 @@ lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 profile.workspace = true
-range-set.workspace = true
 regex.workspace = true
 serde.workspace = true
 smallvec.workspace = true

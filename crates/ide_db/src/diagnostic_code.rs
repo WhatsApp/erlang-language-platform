@@ -233,6 +233,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::SyntaxError => true,
             DiagnosticCode::Missing(_) => true,
+            DiagnosticCode::ErlangService(s) => s == "P1711",
             _ => false,
         }
     }

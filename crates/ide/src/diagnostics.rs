@@ -9,7 +9,6 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
-use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use elp_eqwalizer::EqwalizerDiagnostic;
@@ -59,7 +58,6 @@ use hir::InFile;
 use hir::Semantic;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use range_set::RangeSet;
 use regex::Regex;
 use text_edit::TextEdit;
 
@@ -112,10 +110,6 @@ pub struct Diagnostic {
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
     pub code_doc_uri: Option<String>,
-    // Used to combine syntax errors with erlang_service ones. If we
-    // have a syntax error in the range, we filter out erlang_service
-    // ones in the same range. We set it to the range of the enclosing form.
-    pub form_range: Option<TextRange>,
 }
 
 pub fn group_label_ignore() -> GroupLabel {
@@ -134,7 +128,6 @@ impl Diagnostic {
             fixes: None,
             related_info: None,
             code_doc_uri: code.as_uri(),
-            form_range: None,
         }
     }
 
@@ -182,11 +175,6 @@ impl Diagnostic {
         } else {
             self.fixes = Some(vec![fix]);
         }
-    }
-
-    pub(crate) fn with_form_range(mut self, form_range: Option<TextRange>) -> Diagnostic {
-        self.form_range = form_range;
-        self
     }
 
     pub(crate) fn experimental(self) -> Diagnostic {
@@ -360,14 +348,20 @@ impl<'a> DiagnosticsConfig<'a> {
     }
 }
 
-pub type Labeled = FxHashMap<Option<Label>, Vec<Diagnostic>>;
+pub type Labeled = FxHashMap<Option<DiagnosticLabel>, Vec<Diagnostic>>;
 
-pub type TextRangeSet = RangeSet<[RangeInclusive<u32>; 1]>;
+/// Label for a given diagnostic, giving an MFA as a string if the
+/// diagnostic is in a FunDecl, or the range of the enclosing form
+/// otherwise.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum DiagnosticLabel {
+    MFA(Label),
+    Range(TextRange),
+}
 
 #[derive(Debug, Clone)]
 pub struct LabeledDiagnostics {
     pub normal: Vec<Diagnostic>,
-    pub syntax_error_form_ranges: TextRangeSet,
     /// Syntax error diagnostics labeled by the name/arity of the function enclosing them
     pub labeled_syntax_errors: Labeled,
     /// "Undefined XXX" diagnostics labeled by the name/arity of XXX.
@@ -377,7 +371,6 @@ pub struct LabeledDiagnostics {
 impl Default for LabeledDiagnostics {
     fn default() -> Self {
         Self {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: Default::default(),
             labeled_syntax_errors: Default::default(),
             labeled_undefined_errors: Default::default(),
@@ -388,7 +381,6 @@ impl Default for LabeledDiagnostics {
 impl LabeledDiagnostics {
     pub fn new(diagnostics: Vec<Diagnostic>) -> LabeledDiagnostics {
         LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
             normal: diagnostics,
             labeled_syntax_errors: FxHashMap::default(),
             labeled_undefined_errors: FxHashMap::default(),
@@ -415,11 +407,6 @@ impl LabeledDiagnostics {
     pub fn extend<I: IntoIterator<Item = Diagnostic>>(&mut self, iter: I) {
         self.normal.extend(iter.into_iter())
     }
-}
-
-/// Convert a `TextRange` into a form suitable for a `TextRangeSet`
-fn to_range(range: &TextRange) -> RangeInclusive<u32> {
-    RangeInclusive::new(range.start().into(), range.end().into())
 }
 
 pub fn eqwalizer_to_diagnostic(
@@ -454,7 +441,6 @@ pub fn eqwalizer_to_diagnostic(
         fixes: None,
         related_info: None,
         code_doc_uri: Some(d.uri.clone()),
-        form_range: None,
     };
     add_eqwalizer_assists(sema, file_id, d, &mut diagnostic);
     diagnostic
@@ -477,7 +463,7 @@ pub fn native_diagnostics(
 
     let mut res = Vec::new();
 
-    let (labeled_syntax_errors, syntax_error_form_ranges) = if report_diagnostics {
+    let labeled_syntax_errors = if report_diagnostics {
         let sema = Semantic::new(db);
 
         if file_kind.is_module() {
@@ -511,12 +497,11 @@ pub fn native_diagnostics(
                 ),
             };
             Diagnostic::error(code, widen_range(err.range()), message)
-                .with_form_range(get_form_range(&parse.syntax_node(), err.range()))
         });
         let source_file = db.parse(file_id).tree();
-        group_syntax_errors(&source_file, parse_diagnostics)
+        label_syntax_errors(&source_file, parse_diagnostics)
     } else {
-        (FxHashMap::default(), RangeSet::from_elements(vec![]))
+        FxHashMap::default()
     };
     let metadata = db.elp_metadata(file_id);
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
@@ -529,49 +514,44 @@ pub fn native_diagnostics(
     });
 
     LabeledDiagnostics {
-        syntax_error_form_ranges,
         normal: res,
         labeled_syntax_errors,
         labeled_undefined_errors: FxHashMap::default(),
     }
 }
 
-/// Get the range of the form enclosing the passed-in range, if there
-/// is one.
-fn get_form_range(syntax: &SyntaxNode, range: TextRange) -> Option<TextRange> {
-    algo::find_node_at_offset::<ast::Form>(syntax, range.start()).map(|n| n.syntax().text_range())
-}
-
-fn group_syntax_errors(
+fn label_syntax_errors(
     source_file: &SourceFile,
     diagnostics: impl Iterator<Item = Diagnostic>,
-) -> (Labeled, TextRangeSet) {
+) -> Labeled {
     let mut map: Labeled = FxHashMap::default();
-    let mut ranges = RangeSet::from_elements(vec![]);
     diagnostics.for_each(|d| {
-        if let Some(range) = d.form_range {
-            ranges.insert_range(to_range(&range));
-        }
-        map.entry(function_label(&d, source_file))
+        map.entry(diagnostic_label(&d, source_file))
             .or_default()
             .push(d);
     });
-    (map, ranges)
+    map
 }
 
-fn function_label(d: &Diagnostic, source_file: &SourceFile) -> Option<Label> {
+/// Label a syntax error diagnostic with either its enclosing
+/// `FunDecl` as an MFA string, the range of an enclosing form, if
+/// any.
+fn diagnostic_label(d: &Diagnostic, source_file: &SourceFile) -> Option<DiagnosticLabel> {
     if d.code.is_syntax_error() {
-        if let Some(syntax) = source_file
+        let syntax = source_file
             .syntax()
             .token_at_offset(d.range.start())
             .right_biased()
-            .and_then(|t| t.parent())
-        {
-            let fun_decl = syntax.ancestors().find_map(ast::FunDecl::cast)?;
+            .and_then(|t| t.parent())?;
+
+        if let Some(fun_decl) = syntax.ancestors().find_map(ast::FunDecl::cast) {
             let fun_label = fun_decl.label()?;
-            return Some(fun_label);
-        };
-    }
+            return Some(DiagnosticLabel::MFA(fun_label));
+        } else {
+            let form = syntax.ancestors().find_map(ast::Form::cast)?;
+            return Some(DiagnosticLabel::Range(form.syntax().text_range()));
+        }
+    };
     None
 }
 
@@ -840,7 +820,7 @@ pub fn erlang_service_diagnostics(
             )
             .collect();
 
-        // Remove diagnostics already reported by ELP
+        // Remove diagnostics kinds already reported by ELP
         let file_kind = db.file_kind(file_id);
         let diags: Vec<(FileId, Diagnostic)> = diags
             .into_iter()
@@ -861,35 +841,50 @@ pub fn erlang_service_diagnostics(
             });
             diags_map.into_iter().collect()
         };
-        label_erlang_service_diagnostics(diags)
+        label_erlang_service_diagnostics(db, diags)
     } else {
         vec![]
     }
 }
 
-/// We label erlang service diagnostics with any references to
-/// undefined function or undefined spec.  This is so we can tie them
-/// up to ELP native parse errors occurring in a function that has the
-/// same label.
+/// We split erlang service diagnostics into syntax errors and others.
+///
+/// The syntax errors we label with either the MFA string of an
+/// enclosing `ast::Fundecl`, or the range of an enclosing form, if
+/// any.
+///
+/// Any of the others with references to undefined function or
+/// undefined spec get labeled with the corresponding MFA string.
+/// This is so we can tie them up to ELP native parse errors occurring
+/// in a function that has the same label.
 fn label_erlang_service_diagnostics(
+    db: &RootDatabase,
     diagnostics: Vec<(FileId, Vec<Diagnostic>)>,
 ) -> Vec<(FileId, LabeledDiagnostics)> {
     diagnostics
         .into_iter()
         .map(|(file_id, ds)| {
+            let source_file = db.parse(file_id).tree();
             let mut labeled_undefined_errors: Labeled = FxHashMap::default();
+            let mut labeled_syntax_errors: Labeled = FxHashMap::default();
             ds.into_iter().for_each(|d| {
-                labeled_undefined_errors
-                    .entry(erlang_service_label(&d))
-                    .or_default()
-                    .push(d);
+                if d.code.is_syntax_error() {
+                    labeled_syntax_errors
+                        .entry(diagnostic_label(&d, &source_file))
+                        .or_default()
+                        .push(d);
+                } else {
+                    labeled_undefined_errors
+                        .entry(erlang_service_label(&d))
+                        .or_default()
+                        .push(d);
+                }
             });
             (
                 file_id,
                 LabeledDiagnostics {
-                    syntax_error_form_ranges: RangeSet::from_elements(vec![]),
                     normal: Vec::default(),
-                    labeled_syntax_errors: FxHashMap::default(),
+                    labeled_syntax_errors,
                     labeled_undefined_errors,
                 },
             )
@@ -1195,80 +1190,101 @@ pub fn included_file_file_id(
     Some(include)
 }
 
+/// Given syntax errors from ELP native and erlang service, combine
+/// them by discarding any erlang service syntax errors for a form if
+/// ELP has reported any too.  This is done by merging labels, with
+/// ELP native taking priority.
+fn combine_syntax_errors(native: &Labeled, erlang_service: &Labeled) -> Labeled {
+    let mut res = native.clone();
+    erlang_service.iter().for_each(|(label, diags)| {
+        if label.is_some() {
+            res.entry(label.clone()).or_insert(diags.clone());
+        } else {
+            // If there is no enclosing form, keep both sets
+            res.entry(label.clone())
+                .or_default()
+                .extend(diags.iter().cloned());
+        }
+    });
+    res
+}
+
 /// Combine the ELP and erlang_service diagnostics.  In particular,
 /// flatten any cascading diagnostics if possible.
 pub fn attach_related_diagnostics(
     native: LabeledDiagnostics,
-    erlang_service: &LabeledDiagnostics,
+    erlang_service: LabeledDiagnostics,
 ) -> Vec<Diagnostic> {
-    // `native` is labelled with the MFA of functions having syntax
-    // errors in them. `erlang_service` is labelled with the MFA of
-    // undefined functions.  For each labeled one in `native`, add the
-    // corresponding ones from `erlang_service`, remember the label,
-    // and when done delete all `erlang_service` diagnostics with that
-    // label.
+    // Requirements
+    // - Both ELP and Erlang Service report syntax errors. Ensure only
+    //   one of these sources is used per form, giving ELP priority.
+    // - Erlang Service reports "undefined XXX" errors wherever
+    //   a function with a syntax error is used.  In this case, make
+    //   the "undefined" error a related diagnostic to they syntax
+    //   error, rather than a stand alone one.
 
     // There is a many-to-many relationship between syntax errors and
     // related info, because there can be more than one syntax error
-    // in a given function.  So we have to keep the original lookup
-    // intact, then remove ones that are used at least once at the
-    // end.
-    let mut to_remove: FxHashSet<&Option<Label>> = FxHashSet::default();
-    let updated = native
-        .labeled_syntax_errors
+    // in a given function, and the function may be used in multiple
+    // places so generate many "undefined XXX" diagnostics.  So we
+    // keep track of "undefined XXX" diagnostics that have been used
+    // as related info, then remove them at the end.
+
+    // Step one.
+    // Harmonise the ELP native and erlang service syntax errors.
+    let combined_labeled_syntax_errors = combine_syntax_errors(
+        &native.labeled_syntax_errors,
+        &erlang_service.labeled_syntax_errors,
+    );
+
+    // Step two.
+    // - Attach related info to any syntax errors in a given MFA that
+    //   cause an "undefined MFA" diagnostic.
+    // - Mark the MFA as being dealt with, and so added to the `to_remove` list.
+    let mut undefineds_to_remove: FxHashSet<&Option<DiagnosticLabel>> = FxHashSet::default();
+    let syntax_errors_with_related = combined_labeled_syntax_errors
         .iter()
-        .flat_map(|(label, diags)| {
-            if let Some(related) = erlang_service.labeled_undefined_errors.get(label) {
-                to_remove.insert(label);
+        .flat_map(|(mfa_label, syntax_error_diags)| {
+            if let Some(related) = erlang_service.labeled_undefined_errors.get(mfa_label) {
+                undefineds_to_remove.insert(mfa_label);
                 let related_info = related.iter().map(|d| d.as_related()).collect_vec();
-                diags
+                syntax_error_diags
                     .iter()
                     .map(|d| d.clone().with_related(Some(related_info.clone())))
                     .collect_vec()
             } else {
-                diags.to_vec()
+                syntax_error_diags.to_vec()
             }
         })
         .collect_vec();
 
-    let es = erlang_service
+    // Step 3.
+    // Filter the "undefined XXX" syntax errors to remove the ones
+    // that will be reported as related information in a syntax error
+    // diagnostic.
+    let erlang_service_undefined_not_related = erlang_service
         .labeled_undefined_errors
         .iter()
-        .filter(|(k, _)| !to_remove.contains(k))
-        .flat_map(|(_, v)| v)
-        .filter(|d| !already_reported(&native.syntax_error_form_ranges, &d.range));
+        .filter(|(k, _)| !undefineds_to_remove.contains(k))
+        .flat_map(|(_, v)| v);
 
     native
         .normal
         .into_iter()
-        .chain(updated)
-        .chain(es.cloned())
+        .chain(erlang_service.normal)
+        .chain(syntax_errors_with_related)
+        .chain(erlang_service_undefined_not_related.cloned())
         // TODO:AZ: consider returning an iterator
         .collect_vec()
 }
 
-/// Both ELP and the erlang_service produce syntax errors. However,
-/// the ELP grammar is deliberately more permissive, to allow
-/// analysing even slightly broken code.  This means it does not
-/// report all errors.
-/// But when ELP does report errors, they are generally more informative.
-/// We solve this problem by
-/// * recording the `TextRange` of the form containing each ELP syntax
-///   error.
-/// * Combining all of these into a `RangeSet`
-/// * Recording the originating `TextRange` of every `diagnostics::Diagnostic`
-/// * Filter out any `erlang_service` ones that are in one of the ELP form ranges.
-pub fn already_reported(syntax_error_form_ranges: &TextRangeSet, range: &TextRange) -> bool {
-    syntax_error_form_ranges.contains((*range).start().into())
-}
-
-fn erlang_service_label(diagnostic: &Diagnostic) -> Option<Label> {
+fn erlang_service_label(diagnostic: &Diagnostic) -> Option<DiagnosticLabel> {
     match &diagnostic.code {
         DiagnosticCode::ErlangService(s) => match s.as_str() {
-            "L1227" => function_undefined_from_message(&diagnostic.message).map(Label::new_raw),
-            "L1308" => {
-                spec_for_undefined_function_from_message(&diagnostic.message).map(Label::new_raw)
-            }
+            "L1227" => function_undefined_from_message(&diagnostic.message)
+                .map(|s| DiagnosticLabel::MFA(Label::new_raw(s))),
+            "L1308" => spec_for_undefined_function_from_message(&diagnostic.message)
+                .map(|s| DiagnosticLabel::MFA(Label::new_raw(s))),
             _ => None,
         },
         _ => None,
@@ -1295,6 +1311,8 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use super::*;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
@@ -1529,6 +1547,32 @@ baz(1)->4.
     }
 
     #[test]
+    fn label_syntax_error_not_function() {
+        let fixture_str = r#"
+  -module(main).
+  -record(person, {(name + XXX)}).
+%%                 ^^^^^^^ error: Syntax Error
+%%                         ^^^ warning: Unused record field (person.[missing name])
+%%                            ^ error: Syntax Error
+"#;
+        check_diagnostics(fixture_str);
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::SyntaxError,
+            TextRange::new(36.into(), 43.into()),
+            "Syntax Error".to_owned(),
+        );
+        let source_file = SourceFile::parse_text(&fixture_str);
+        expect![[r#"
+            Some(
+                Range(
+                    20..52,
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&diagnostic_label(&diagnostic, &source_file.tree()));
+    }
+
+    #[test]
     fn elp_ignore_1() {
         check_diagnostics(
             r#"
@@ -1614,7 +1658,7 @@ baz(1)->4.
     #[test]
     fn group_related_diagnostics_1() {
         let labeled_undefined_errors = FxHashMap::from_iter([(
-            Some(Label::new_raw("foo/0")),
+            Some(DiagnosticLabel::MFA(Label::new_raw("foo/0"))),
             vec![
                 Diagnostic {
                     message: "function foo/0 undefined".to_string(),
@@ -1625,7 +1669,6 @@ baz(1)->4.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
-                    form_range: None,
                 },
                 Diagnostic {
                     message: "function foo/0 undefined".to_string(),
@@ -1636,7 +1679,6 @@ baz(1)->4.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
-                    form_range: None,
                 },
                 Diagnostic {
                     message: "spec for undefined function foo/0".to_string(),
@@ -1647,13 +1689,12 @@ baz(1)->4.
                     related_info: None,
                     code: "L1308".into(),
                     code_doc_uri: None,
-                    form_range: None,
                 },
             ],
         )]);
-        let extra_diags = LabeledDiagnostics {
-            syntax_error_form_ranges: RangeSet::from_elements(vec![]),
-            normal: vec![Diagnostic {
+        let labeled_syntax_errors = FxHashMap::from_iter([(
+            Some(DiagnosticLabel::MFA(Label::new_raw("foo/0"))),
+            vec![Diagnostic {
                 message: "syntax error before: '->'".to_string(),
                 range: TextRange::new(106.into(), 108.into()),
                 severity: Severity::Error,
@@ -1662,9 +1703,11 @@ baz(1)->4.
                 related_info: None,
                 code: "P1711".into(),
                 code_doc_uri: None,
-                form_range: None,
             }],
-            labeled_syntax_errors: FxHashMap::default(),
+        )]);
+        let extra_diags = LabeledDiagnostics {
+            normal: vec![],
+            labeled_syntax_errors,
             labeled_undefined_errors,
         };
 
