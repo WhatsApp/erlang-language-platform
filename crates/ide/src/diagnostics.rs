@@ -547,11 +547,20 @@ fn diagnostic_label(d: &Diagnostic, source_file: &SourceFile) -> Option<Diagnost
         if let Some(fun_decl) = syntax.ancestors().find_map(ast::FunDecl::cast) {
             let fun_label = fun_decl.label()?;
             return Some(DiagnosticLabel::MFA(fun_label));
-        } else {
-            let form = syntax.ancestors().find_map(ast::Form::cast)?;
+        } else if let Some(form) = syntax.ancestors().find_map(ast::Form::cast) {
             return Some(DiagnosticLabel::Range(form.syntax().text_range()));
+        } else if syntax.ancestors().any(|s| s.kind() == SyntaxKind::ERROR) {
+            // we are in an error block after a fun decl, find the preceding form
+            let preceding_form = source_file
+                .forms()
+                .filter(|f| f.syntax().text_range().end() < syntax.text_range().start())
+                .last()?;
+            // Check it is a FunDecl
+            let fun_decl = ast::FunDecl::cast(preceding_form.syntax().clone())?;
+            let fun_label = fun_decl.label()?;
+            return Some(DiagnosticLabel::MFA(fun_label));
         }
-    };
+    }
     None
 }
 
@@ -1742,6 +1751,21 @@ baz(1)->4.
              -spec blah(Pred :: fun ((T) -> erlang:boolean), List :: [T]) -> erlang:boolean().
              blah(0, _Y) -> 1;
              blah(X, _Y) -> X + 1.
+            "#,
+        );
+    }
+
+    #[test]
+    fn group_related_diagnostics_export_unknown() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/a_mod.erl app:app_a
+             -module(a_mod).
+             -export([foo/0]).
+
+             foo() -> syntax error oops.
+             %%              ^^^^^ error: syntax error before: error
             "#,
         );
     }
