@@ -49,23 +49,17 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     ResultFILES = unicode:characters_to_binary(FILES),
-                    {ok, [
-                        {<<"AST">>, ResultAST},
-                        {<<"STU">>, ResultStub},
-                        {<<"FIL">>, ResultFILES}
-                    ]};
+                    {ok, [{"AST", ResultAST}, {"STUB", ResultStub}, {"FILES", ResultFILES}]};
                 {ok, Warnings} ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     ResultFILES = unicode:characters_to_binary(FILES),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [
-                        {<<"AST">>, ResultAST},
-                        {<<"STU">>, ResultStub},
-                        {<<"FIL">>, ResultFILES},
-                        {<<"WAR">>, FormattedWarnings}
-                    ]};
+                    {ok, [{"AST", ResultAST},
+                          {"STUB", ResultStub},
+                          {"FILES", ResultFILES},
+                          {"WARNINGS", FormattedWarnings}]};
                 {error, Errors, Warnings} ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
@@ -74,11 +68,11 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [
-                        {<<"AST">>, ResultAST},
-                        {<<"STU">>, ResultStub},
-                        {<<"FIL">>, ResultFILES},
-                        {<<"ERR">>, FormattedErrors},
-                        {<<"WAR">>, FormattedWarnings}
+                        {"AST", ResultAST},
+                        {"STUB", ResultStub},
+                        {"FILES", ResultFILES},
+                        {"ERRORS", FormattedErrors},
+                        {"WARNINGS", FormattedWarnings}
                     ]}
             end;
         {error, Reason} ->

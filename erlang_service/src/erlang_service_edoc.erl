@@ -24,7 +24,7 @@
 run([FileName, DocOrigin]) ->
     {ok, serialize_docs(get_docs_for_src_file(FileName, DocOrigin))}.
 
--spec serialize_docs(docs()) -> [{binary(), binary()}].
+-spec serialize_docs(docs()) -> [{string(), binary()}].
 serialize_docs(#{
     module_doc := ModuleDoc,
     function_docs := FunctionDocs,
@@ -33,15 +33,15 @@ serialize_docs(#{
     is_binary(ModuleDoc), is_list(FunctionDocs)
 ->
     lists:append([
-        [{<<"MDC">>, ModuleDoc}],
+        [{"MODULE_DOC", ModuleDoc}],
         [serialize_function_doc(F) || F = {{_N, _A}, _D} <- FunctionDocs],
-        [{<<"EDC">>, serialize_edoc_diagnostic(D)} || D <- lists:keysort(1, Diagnostics)]
+        [{"EDOC_DIAGNOSTIC", serialize_edoc_diagnostic(D)} || D <- lists:keysort(1, Diagnostics)]
     ]).
 
 serialize_function_doc({{Name, Arity}, Doc}) when
     is_atom(Name), is_integer(Arity), is_binary(Doc)
 ->
-    {<<"FDC">>,
+    {"FUNCTION_DOC",
         unicode:characters_to_binary(
             io_lib:format("~ts ~B ~ts", [Name, Arity, Doc])
         )}.
