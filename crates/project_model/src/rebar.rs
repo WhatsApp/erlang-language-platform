@@ -74,7 +74,7 @@ impl RebarConfig {
         if let Some(parent) = self.config_file.parent() {
             cmd.current_dir(parent);
         }
-        CommandProxy(guard, cmd)
+        CommandProxy::new(guard, cmd)
     }
 
     pub fn config_path(&self) -> &AbsPath {

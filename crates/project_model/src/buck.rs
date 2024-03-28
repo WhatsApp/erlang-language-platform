@@ -106,7 +106,7 @@ impl BuckConfig {
         cmd.arg("--isolation-dir");
         cmd.arg("lsp");
         cmd.current_dir(self.buck_root());
-        CommandProxy(guard, cmd)
+        CommandProxy::new(guard, cmd)
     }
 
     pub fn buck_root(&self) -> &AbsPathBuf {

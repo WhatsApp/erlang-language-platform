@@ -61,19 +61,31 @@ pub mod test_fixture;
 pub const ELP_CONFIG_FILE: &str = ".elp.toml";
 pub const BUILD_INFO_FILE: &str = "build_info.json";
 
-pub struct CommandProxy<'a>(MutexGuard<'a, ()>, Command);
+pub struct CommandProxy<'a> {
+    _guard: MutexGuard<'a, ()>,
+    command: Command,
+}
+
+impl<'a> CommandProxy<'a> {
+    pub fn new(guard: MutexGuard<'a, ()>, command: Command) -> Self {
+        CommandProxy {
+            _guard: guard,
+            command,
+        }
+    }
+}
 
 impl<'a> Deref for CommandProxy<'a> {
     type Target = Command;
 
     fn deref(&self) -> &Self::Target {
-        &self.1
+        &self.command
     }
 }
 
 impl<'a> DerefMut for CommandProxy<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.1
+        &mut self.command
     }
 }
 
