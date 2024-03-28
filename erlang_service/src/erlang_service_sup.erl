@@ -47,10 +47,11 @@ init(noargs) ->
         intensity => 5,
         period => 60
     },
+    {ok, Socket} = application:get_env(erlang_service, socket),
     ChildSpecs = [
         #{
             id => erlang_service_server,
-            start => {erlang_service_server, start_link, []}
+            start => {erlang_service_server, start_link, [Socket]}
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.

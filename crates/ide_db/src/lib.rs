@@ -200,12 +200,14 @@ impl RootDatabase {
     pub fn update_erlang_service_paths(&self) {
         for (&project_id, connection) in self.erlang_services.read().iter() {
             let project_data = self.project_data(project_id);
-            let paths = project_data
+            let paths: Vec<_> = project_data
                 .deps_ebins
                 .iter()
                 .map(|path| path.clone().into())
                 .collect();
-            connection.add_code_path(paths);
+            if !paths.is_empty() {
+                connection.add_code_path(paths);
+            }
         }
     }
 
