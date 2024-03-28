@@ -960,7 +960,7 @@ pub fn make_build_info(
     let otp_lib_dir = path_to_binary(otp_root);
     let source_root = path_to_binary(source_root);
     Term::Map(
-        vec![
+        [
             (Atom("apps".into()), apps),
             (Atom("deps".into()), deps),
             (Atom("otp_lib_dir".into()), otp_lib_dir),

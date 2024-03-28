@@ -488,7 +488,7 @@ pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> 
     );
 
     Term::Map(
-        vec![
+        [
             (Atom("dir".into()), dir),
             (Atom("ebin".into()), ebin),
             (Atom("extra_src_dirs".into()), extra_src_dirs),

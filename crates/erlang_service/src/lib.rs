@@ -758,16 +758,31 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
         return Ok(vec![]);
     }
 
+    // the upstream pattern::Str does not match Term::ByteList which is what we get
+    #[derive(Debug, Clone)]
+    pub struct Str;
+    impl<'a> pattern::Pattern<'a> for Str {
+        type Output = String;
+        fn try_match(&self, input: &'a eetf::Term) -> pattern::Result<'a, Self::Output> {
+            match input {
+                eetf::Term::ByteList(bytes) => std::str::from_utf8(&bytes.bytes)
+                    .map(ToString::to_string)
+                    .map_err(|_| self.unmatched(input)),
+                _ => Err(self.unmatched(input)),
+            }
+        }
+    }
+
     eetf::Term::decode(buf)?
         .as_match(pattern::VarList((
-            pattern::Str(pattern::Unicode),
+            Str,
             pattern::Or((
                 (pattern::U32, pattern::U32), // Normal location
                 pattern::FixList(((pattern::U32, pattern::U32), (pattern::U32, pattern::U32))), // Location in include file
                 "none",
             )),
-            pattern::Str(pattern::Unicode), // message
-            pattern::Str(pattern::Unicode), // code
+            Str, // message
+            Str, // code
         )))
         .map_err(|err| anyhow!("Failed to decode errors: {:?}", err))
         .map(|res| {
@@ -861,14 +876,11 @@ impl CTInfoRequest {
 }
 
 #[cfg(unix)]
-fn path_into_list(path: PathBuf) -> eetf::List {
+fn path_into_list(path: PathBuf) -> eetf::ByteList {
     use std::os::unix::prelude::OsStringExt;
-    path.into_os_string()
-        .into_vec()
-        .into_iter()
-        .map(|byte| eetf::FixInteger::from(byte).into())
-        .collect::<Vec<eetf::Term>>()
-        .into()
+    eetf::ByteList {
+        bytes: path.into_os_string().into_vec(),
+    }
 }
 
 #[cfg(test)]

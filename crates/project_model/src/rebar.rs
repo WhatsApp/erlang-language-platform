@@ -125,18 +125,18 @@ impl RebarProject {
         rebar_config: RebarConfig,
     ) -> Result<(RebarProject, PathBuf, Vec<ProjectAppData>)> {
         let data = fs::read(path)?;
-        let build_info = eetf::Term::decode(&*data)?;
-        let otp_root = to_abs_path(map_get(&build_info, "otp_lib_dir")?)?;
+        let mut build_info = eetf::Term::decode(&*data)?;
+        let otp_root = into_abs_path(map_pop(&mut build_info, "otp_lib_dir")?)?;
 
-        let apps: Vec<_> = to_vec(map_get(&build_info, "apps")?)?
-            .iter()
-            .map(|term| to_app_data(term, AppType::App))
+        let apps: Vec<_> = into_vec(map_pop(&mut build_info, "apps")?)?
+            .into_iter()
+            .map(|term| into_app_data(term, AppType::App))
             .collect::<Result<_>>()?;
-        let deps: Vec<_> = to_vec(map_get(&build_info, "deps")?)?
-            .iter()
-            .map(|term| to_app_data(term, AppType::Dep))
+        let deps: Vec<_> = into_vec(map_pop(&mut build_info, "deps")?)?
+            .into_iter()
+            .map(|term| into_app_data(term, AppType::Dep))
             .collect::<Result<_>>()?;
-        let root = to_abs_path(map_get(&build_info, "source_root")?)?;
+        let root = into_abs_path(map_pop(&mut build_info, "source_root")?)?;
 
         let mut apps_with_includes = RebarProject::add_app_includes(apps, &deps, &otp_root);
         let deps_with_includes = RebarProject::add_app_includes(deps.clone(), &deps, &otp_root);
@@ -148,28 +148,29 @@ impl RebarProject {
             apps_with_includes,
         ));
 
-        fn to_app_data(term: &eetf::Term, is_dep: AppType) -> Result<ProjectAppData> {
-            let dir = to_abs_path(map_get(term, "dir")?)?;
-            let src_dirs: Vec<String> = to_vec(map_get(term, "src_dirs")?)?
-                .iter()
-                .map(|term| Ok(to_string(term)?.to_owned()))
+        fn into_app_data(mut term: eetf::Term, is_dep: AppType) -> Result<ProjectAppData> {
+            let dir = into_abs_path(map_pop(&mut term, "dir")?)?;
+            let abs_src_dirs: Vec<AbsPathBuf> = into_vec(map_pop(&mut term, "src_dirs")?)?
+                .into_iter()
+                .map(|term| Ok(dir.join(into_string(term)?)))
                 .collect::<Result<_>>()?;
-            let abs_src_dirs: Vec<AbsPathBuf> = src_dirs.iter().map(|src| dir.join(src)).collect();
-            let include_dirs: Vec<AbsPathBuf> = to_vec(map_get(term, "include_dirs")?)?
-                .iter()
-                .map(to_abs_path)
+            let include_dirs: Vec<AbsPathBuf> = into_vec(map_pop(&mut term, "include_dirs")?)?
+                .into_iter()
+                .map(into_abs_path)
                 .collect::<Result<_>>()?;
             Ok(ProjectAppData {
-                name: AppName(to_string(map_get(term, "name")?)?.to_string()),
+                name: AppName(into_string(map_pop(&mut term, "name")?)?),
                 dir,
-                ebin: map_get(term, "ebin").ok().and_then(|e| to_abs_path(e).ok()),
-                extra_src_dirs: to_vec(map_get(term, "extra_src_dirs")?)?
-                    .iter()
-                    .map(|term| Ok(to_string(term)?.to_owned()))
+                ebin: map_pop(&mut term, "ebin")
+                    .ok()
+                    .and_then(|e| into_abs_path(e).ok()),
+                extra_src_dirs: into_vec(map_pop(&mut term, "extra_src_dirs")?)?
+                    .into_iter()
+                    .map(into_string)
                     .collect::<Result<_>>()?,
                 include_dirs,
-                macros: to_vec(map_get(term, "macros")?)?.to_owned(),
-                parse_transforms: to_vec(map_get(term, "parse_transforms")?)?.to_owned(),
+                macros: into_vec(map_pop(&mut term, "macros")?)?,
+                parse_transforms: into_vec(map_pop(&mut term, "parse_transforms")?)?,
                 app_type: is_dep,
                 include_path: vec![],
                 abs_src_dirs,
@@ -225,36 +226,35 @@ impl Default for RebarConfig {
     }
 }
 
-fn map_get<'a>(term: &'a eetf::Term, key: &str) -> Result<&'a eetf::Term> {
+fn map_pop(term: &mut eetf::Term, key: &str) -> Result<eetf::Term> {
     let expected = eetf::Atom::from(key).into();
     match term {
-        eetf::Term::Map(eetf::Map { entries }) => entries
-            .iter()
-            .find_map(|(key, value)| if key == &expected { Some(value) } else { None })
-            .ok_or_else(|| anyhow!("missing key {:?}", key)),
+        eetf::Term::Map(eetf::Map { map }) => map
+            .remove(&expected)
+            .ok_or_else(|| anyhow!("missing key {:?} in {:?}", key, map)),
         _ => bail!("expected a map, got: {:?}", term),
     }
 }
 
-fn to_bin(term: &eetf::Term) -> Result<&[u8]> {
+fn into_bin(term: eetf::Term) -> Result<Vec<u8>> {
     match term {
         eetf::Term::Binary(eetf::Binary { bytes }) => Ok(bytes),
         _ => bail!("expected a binary, got: {:?}", term),
     }
 }
 
-fn to_string(term: &eetf::Term) -> Result<&str> {
-    Ok(std::str::from_utf8(to_bin(term)?)?)
+fn into_string(term: eetf::Term) -> Result<String> {
+    Ok(String::from_utf8(into_bin(term)?)?)
 }
 
-fn to_abs_path(term: &eetf::Term) -> Result<AbsPathBuf> {
-    match PathBuf::from(to_string(term)?).try_into() {
+fn into_abs_path(term: eetf::Term) -> Result<AbsPathBuf> {
+    match PathBuf::from(into_string(term)?).try_into() {
         Ok(abs_path) => Ok(abs_path),
         Err(path_buf) => bail!("expected absolute path, got: {:?}", path_buf),
     }
 }
 
-fn to_vec(term: &eetf::Term) -> Result<&[eetf::Term]> {
+fn into_vec(term: eetf::Term) -> Result<Vec<eetf::Term>> {
     match term {
         eetf::Term::List(eetf::List { elements }) => Ok(elements),
         _ => bail!("expected a list, got: {:?}", term),

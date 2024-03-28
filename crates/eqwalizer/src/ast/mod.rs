@@ -80,6 +80,7 @@ impl std::error::Error for Error {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConversionError {
     InvalidForm,
+    InvalidFile,
     InvalidDecode,
     InvalidLocation,
     InvalidID,

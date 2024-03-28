@@ -323,17 +323,12 @@ impl Converter {
                 }
             }
             ("file", Term::Tuple(file)) => {
-                if let [Term::List(name), line] = &file.elements[..] {
+                if let [Term::ByteList(name), line] = &file.elements[..] {
                     if let Some(line) = self.convert_line(line) {
-                        let filename: SmolStr = name
-                            .elements
-                            .iter()
-                            .flat_map(|v| match v {
-                                Term::FixInteger(i) => char::from_u32(i.value as u32),
-                                _ => None,
-                            })
-                            .collect::<String>()
-                            .into();
+                        let filename = SmolStr::new(
+                            std::str::from_utf8(&name.bytes)
+                                .map_err(|_| ConversionError::InvalidFile)?,
+                        );
                         self.current_file = Some(filename.clone());
                         return Ok(Some(ExternalForm::File(FileAttr {
                             file: filename,
