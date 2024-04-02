@@ -190,6 +190,7 @@ impl Snapshot {
         &self,
         project_id: ProjectId,
         exclude: &FxHashSet<FileId>,
+        max_tasks: usize,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let module_index = self.analysis.module_index(project_id).ok()?;
 
@@ -222,7 +223,7 @@ impl Snapshot {
             timeit_with_telemetry!(TelemetryData::EqwalizerProjectDiagnostics { project_name });
 
         self.analysis
-            .eqwalizer_diagnostics_by_project(project_id, file_ids, 4)
+            .eqwalizer_diagnostics_by_project(project_id, file_ids, max_tasks)
             .ok()?
     }
 

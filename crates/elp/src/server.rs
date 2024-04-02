@@ -922,6 +922,7 @@ impl Server {
         let spinner = self
             .progress
             .begin_spinner("EqWAlizing All (project-wide)".to_string());
+        let max_tasks = self.config.eqwalizer().max_tasks;
 
         self.eqwalizer_pool.handle.spawn(move || {
             let diagnostics = snapshot
@@ -932,7 +933,11 @@ impl Server {
                     let project_id = ProjectId(id as u32);
                     Some((
                         project_id,
-                        snapshot.eqwalizer_project_diagnostics(project_id, &opened_documents)?,
+                        snapshot.eqwalizer_project_diagnostics(
+                            project_id,
+                            &opened_documents,
+                            max_tasks,
+                        )?,
                     ))
                 })
                 .collect();
@@ -1530,6 +1535,7 @@ impl Server {
         }
         let snapshot = self.snapshot();
         let chunk_size = 100;
+        let max_tasks = self.config.eqwalizer().max_tasks;
         self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
             let total = files.len();
             let mut done = 0;
@@ -1542,7 +1548,7 @@ impl Server {
                 };
                 if snapshot
                     .analysis
-                    .eqwalizer_diagnostics_by_project(project_id, file_ids.clone(), 4)
+                    .eqwalizer_diagnostics_by_project(project_id, file_ids.clone(), max_tasks)
                     .is_err()
                 {
                     //got canceled
