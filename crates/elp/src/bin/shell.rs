@@ -206,7 +206,7 @@ COMMANDS:
     help                       Print this help
     exit                       Exit the interactive session
     quit                       Exit the interactive session
-    eqwalize <modules>          Eqwalize specified module
+    eqwalize <modules>          Eqwalize specified modules
     eqwalize-all               Eqwalize all modules in the current project
         --include-generated    Include generated modules
     eqwalize-app <app>         Eqwalize all modules in specified application
