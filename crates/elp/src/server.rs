@@ -57,6 +57,7 @@ use elp_log::TimeIt;
 use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
+use fxhash::FxHashSet;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Notification;
@@ -125,6 +126,10 @@ pub enum Task {
     FetchProject(Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
+    EqwalizerProjectDiagnostics(
+        Spinner,
+        Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
+    ),
     EdocDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
@@ -213,6 +218,7 @@ pub struct Server {
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
     eqwalizer_diagnostics_requested: bool,
+    eqwalizer_project_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
     ct_diagnostics_requested: bool,
     cache_scheduled: bool,
@@ -258,6 +264,7 @@ impl Server {
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             eqwalizer_diagnostics_requested: false,
+            eqwalizer_project_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
             ct_diagnostics_requested: false,
             cache_scheduled: false,
@@ -416,6 +423,10 @@ impl Server {
                         spinner.end();
                         self.eqwalizer_diagnostics_completed(diags)
                     }
+                    Task::EqwalizerProjectDiagnostics(spinner, diags) => {
+                        spinner.end();
+                        self.eqwalizer_project_diagnostics_completed(diags)
+                    }
                     Task::EdocDiagnostics(spinner, diags) => {
                         spinner.end();
                         self.edoc_diagnostics_completed(diags)
@@ -433,6 +444,9 @@ impl Server {
                             .update_erlang_service_paths();
                         spinner.end();
                         self.eqwalizer_diagnostics_requested = true;
+                        if self.config.eqwalizer().all {
+                            self.eqwalizer_project_diagnostics_requested = true;
+                        }
                     }
                     Task::Progress(progress) => self.report_progress(progress),
                     Task::UpdateCache(spinner, files) => self.update_cache(spinner, files),
@@ -463,6 +477,10 @@ impl Server {
             if mem::take(&mut self.eqwalizer_diagnostics_requested) {
                 self.update_eqwalizer_diagnostics();
                 self.update_erlang_service_diagnostics();
+            }
+
+            if mem::take(&mut self.eqwalizer_project_diagnostics_requested) {
+                self.update_eqwalizer_project_diagnostics();
             }
 
             if mem::take(&mut self.edoc_diagnostics_requested) {
@@ -876,6 +894,37 @@ impl Server {
         });
     }
 
+    fn update_eqwalizer_project_diagnostics(&mut self) {
+        if self.status != Status::Running {
+            return;
+        }
+
+        log::info!("Recomputing EqWAlizer (project-wide) diagnostics");
+
+        let opened_documents: FxHashSet<FileId> = self.opened_documents().into_iter().collect();
+        let snapshot = self.snapshot();
+        let spinner = self
+            .progress
+            .begin_spinner("EqWAlizing All (project-wide)".to_string());
+
+        self.task_pool.handle.spawn(move || {
+            let diagnostics = snapshot
+                .projects
+                .iter()
+                .enumerate()
+                .filter_map(|(id, _project)| {
+                    let project_id = ProjectId(id as u32);
+                    Some((
+                        project_id,
+                        snapshot.eqwalizer_project_diagnostics(project_id, &opened_documents)?,
+                    ))
+                })
+                .collect();
+
+            Task::EqwalizerProjectDiagnostics(spinner, diagnostics)
+        });
+    }
+
     fn update_edoc_diagnostics(&mut self) {
         if self.status != Status::Running {
             return;
@@ -935,6 +984,20 @@ impl Server {
     ) {
         for (file_id, diagnostics) in diags {
             Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, diagnostics);
+        }
+    }
+
+    fn eqwalizer_project_diagnostics_completed(
+        &mut self,
+        diags: Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
+    ) {
+        for (_project_id, diagnostics) in diags {
+            let mut keep = FxHashSet::default();
+            for (file_id, diagnostics) in diagnostics {
+                keep.insert(file_id);
+                Arc::make_mut(&mut self.diagnostics).set_eqwalizer_project(file_id, diagnostics);
+            }
+            Arc::make_mut(&mut self.diagnostics).reset_eqwalizer_project(&keep);
         }
     }
 
@@ -1425,6 +1488,9 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
     }
     this.reload_project(to_reload);
     this.eqwalizer_diagnostics_requested = true;
+    if this.config.eqwalizer().all {
+        this.eqwalizer_project_diagnostics_requested = true;
+    }
     this.edoc_diagnostics_requested = true;
     this.ct_diagnostics_requested = true;
 }

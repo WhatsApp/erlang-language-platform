@@ -29,6 +29,7 @@ use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use lsp_types::SemanticTokens;
 use lsp_types::Url;
@@ -47,6 +48,7 @@ use crate::server::file_id_to_url;
 pub enum TelemetryData {
     NativeDiagnostics { file_url: Url },
     EqwalizerDiagnostics { file_url: Url },
+    EqwalizerProjectDiagnostics { project_name: String },
     ParseServerDiagnostics { file_url: Url },
     EdocDiagnostics { file_url: Url },
     MetaDiagnostics { file_url: Url },
@@ -62,6 +64,13 @@ impl fmt::Display for TelemetryData {
             }
             TelemetryData::EqwalizerDiagnostics { file_url } => {
                 write!(f, "Eqwalizer Diagnostics file_url: {}", file_url)
+            }
+            TelemetryData::EqwalizerProjectDiagnostics { project_name } => {
+                write!(
+                    f,
+                    "Eqwalizer Project Diagnostics project_name: {}",
+                    project_name
+                )
             }
             TelemetryData::ParseServerDiagnostics { file_url } => {
                 write!(f, "Parse Server Diagnostics file_url: {}", file_url)
@@ -174,6 +183,36 @@ impl Snapshot {
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
         self.analysis
             .eqwalizer_diagnostics_for_file(file_id, false)
+            .ok()?
+    }
+
+    pub fn eqwalizer_project_diagnostics(
+        &self,
+        project_id: ProjectId,
+        exclude: &FxHashSet<FileId>,
+    ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
+        let module_index = self.analysis.module_index(project_id).ok()?;
+
+        let file_ids = module_index
+            .iter_own()
+            .filter_map(|(_, _, file_id)| {
+                if !exclude.contains(&file_id) && self.analysis.should_eqwalize(file_id, false) {
+                    Some(file_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let project_name = match self.get_project(project_id) {
+            Some(project) => project.name(),
+            None => "undefined".to_string(),
+        };
+        let _timer =
+            timeit_with_telemetry!(TelemetryData::EqwalizerProjectDiagnostics { project_name });
+
+        self.analysis
+            .eqwalizer_diagnostics_by_project(project_id, file_ids)
             .ok()?
     }
 

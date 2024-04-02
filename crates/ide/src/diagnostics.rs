@@ -919,6 +919,33 @@ pub fn eqwalizer_diagnostics(
     )
 }
 
+pub fn eqwalizer_diagnostics_by_project(
+    db: &RootDatabase,
+    project_id: ProjectId,
+    file_ids: Vec<FileId>,
+) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
+    let diagnostics = db.eqwalizer_diagnostics_by_project(project_id, file_ids);
+    let sema = Semantic::new(db);
+    let module_index = db.module_index(project_id);
+
+    let mut res = FxHashMap::default();
+    match &*diagnostics {
+        elp_eqwalizer::EqwalizerDiagnostics::Diagnostics { errors, .. } => errors
+            .iter()
+            .map(|(module, ds)| {
+                for d in ds {
+                    if let Some(file_id) = module_index.file_for_module(module.as_str()) {
+                        let value = res.entry(file_id).or_insert(Vec::new());
+                        value.push(eqwalizer_to_diagnostic(&sema, file_id, d, true))
+                    }
+                }
+            })
+            .collect(),
+        _ => (),
+    }
+    Some(res.into_iter().collect())
+}
+
 pub fn eqwalizer_stats(
     db: &RootDatabase,
     project_id: ProjectId,

@@ -22,6 +22,7 @@ pub struct DiagnosticCollection {
     pub(crate) native: FxHashMap<FileId, LabeledDiagnostics>,
     pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
+    pub(crate) eqwalizer_project: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) ct: FxHashMap<FileId, Vec<Diagnostic>>,
     changes: FxHashSet<FileId>,
@@ -38,6 +39,13 @@ impl DiagnosticCollection {
     pub fn set_eqwalizer(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
         if !are_all_diagnostics_equal(&self.eqwalizer, file_id, &diagnostics) {
             set_diagnostics(&mut self.eqwalizer, file_id, diagnostics);
+            self.changes.insert(file_id);
+        }
+    }
+
+    pub fn set_eqwalizer_project(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+        if !are_all_diagnostics_equal(&self.eqwalizer_project, file_id, &diagnostics) {
+            set_diagnostics(&mut self.eqwalizer_project, file_id, diagnostics);
             self.changes.insert(file_id);
         }
     }
@@ -70,9 +78,16 @@ impl DiagnosticCollection {
         let mut combined: Vec<Diagnostic> =
             attach_related_diagnostics(native.clone(), erlang_service.clone());
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
+        let eqwalizer_project = self
+            .eqwalizer_project
+            .get(&file_id)
+            .into_iter()
+            .flatten()
+            .cloned();
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer);
+        combined.extend(eqwalizer_project);
         combined.extend(edoc);
         combined.extend(ct);
         combined
@@ -91,6 +106,7 @@ impl DiagnosticCollection {
             native,
             erlang_service,
             eqwalizer,
+            eqwalizer_project,
             edoc,
             ct,
             changes,
@@ -98,9 +114,23 @@ impl DiagnosticCollection {
         native.is_empty()
             && erlang_service.is_empty()
             && eqwalizer.is_empty()
+            && eqwalizer_project.is_empty()
             && edoc.is_empty()
             && ct.is_empty()
             && changes.is_empty()
+    }
+
+    pub fn reset_eqwalizer_project(&mut self, keep: &FxHashSet<FileId>) {
+        let mut clear = FxHashSet::default();
+        for (file_id, _diagnostics) in self.eqwalizer_project.iter() {
+            if !keep.contains(file_id) {
+                clear.insert(file_id.to_owned());
+            }
+        }
+        for file_id in clear {
+            self.eqwalizer_project
+                .insert(file_id.to_owned(), Vec::new());
+        }
     }
 }
 
