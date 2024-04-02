@@ -48,7 +48,7 @@ error: incompatible_types
 1305 │     filtermap(F, L).
      │     ^^^^^^^^^^^^^^^
      │     │
-     │     filtermap(eqwalizer:dynamic_cast(F), L).
+     │     filtermap(F, L).
 Expression has type:   [term()]
 Context expected type: [T | X]
 

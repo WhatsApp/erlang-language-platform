@@ -153,6 +153,56 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+   ┌─ fault_tolerance/src/fault_tolerance.erl:65:3
+   │
+65 │   6;
+   │   ^ 6.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ fault_tolerance/src/fault_tolerance.erl:67:3
+   │
+67 │   7;
+   │   ^ 7.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ fault_tolerance/src/fault_tolerance.erl:69:3
+   │
+69 │   8;
+   │   ^ 8.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ fault_tolerance/src/fault_tolerance.erl:71:3
+   │
+71 │   9;
+   │   ^ 9.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ fault_tolerance/src/fault_tolerance.erl:73:3
+   │
+73 │   10.
+   │   ^^ 10.
+Expression has type:   number()
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
    ┌─ fault_tolerance/src/fault_tolerance.erl:78:3
    │  
 78 │ ╭   erlang:atom_to_binary(
@@ -160,7 +210,7 @@ error: incompatible_types
 80 │ │       N
 81 │ │     )
 82 │ │   ).
-   │ ╰───^ erlang:atom_to_binary(eqwalizer:dynamic_cast(b_to_n(eqwalizer:dynamic_cast(N)))).
+   │ ╰───^ erlang:atom_to_binary(b_to_n(N)).
 Expression has type:   binary()
 Context expected type: number()
 
@@ -172,7 +222,7 @@ error: incompatible_types
 79 │ ╭     b_to_n(
 80 │ │       N
 81 │ │     )
-   │ ╰─────^ b_to_n(eqwalizer:dynamic_cast(N)).
+   │ ╰─────^ b_to_n(N).
 Expression has type:   number()
 Context expected type: atom()
 
@@ -232,7 +282,7 @@ error: incompatible_types
    │
 96 │     X +
    │     ^ X.
-Expression has type:   [dynamic()]
+Expression has type:   [number()]
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -252,6 +302,26 @@ error: incompatible_types
     │
 108 │     M1,
     │     ^^ M1.
+Expression has type:   #D{dynamic() => dynamic()}
+Context expected type: [T]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:108:5
+    │
+108 │     M1,
+    │     ^^ M1.
+Expression has type:   #D{dynamic() => dynamic()}
+Context expected type: [dynamic()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:109:5
+    │
+109 │     M2
+    │     ^^ M2.
 Expression has type:   #D{dynamic() => dynamic()}
 Context expected type: [T]
 
@@ -846,6 +916,16 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:288:9
+    │
+288 │     _ = <<>>
+    │         ^^^^ <<..>>.
+Expression has type:   binary()
+Context expected type: pid()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
     ┌─ fault_tolerance/src/fault_tolerance.erl:290:3
     │
 290 │   Res.
@@ -862,7 +942,7 @@ error: incompatible_types
 298 │ │         [N]
 299 │ │           ++ a
 300 │ │       );
-    │ ╰───────^ erlang:atom_to_binary(eqwalizer:dynamic_cast(_ ++ _)).
+    │ ╰───────^ erlang:atom_to_binary(_ ++ _).
 Expression has type:   binary()
 Context expected type: number()
 
@@ -890,12 +970,36 @@ Context expected type: [term()]
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:302:7
+    │  
+302 │ ╭       atom_to_binary(
+303 │ │         <<N>>
+304 │ │           ++ b
+305 │ │       )
+    │ ╰───────^ erlang:atom_to_binary(_ ++ _).
+Expression has type:   binary()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
     ┌─ fault_tolerance/src/fault_tolerance.erl:303:9
     │
 303 │         <<N>>
     │         ^^^^^ <<..>>.
 Expression has type:   binary()
 Context expected type: [term()]
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:303:9
+    │  
+303 │ ╭         <<N>>
+304 │ │           ++ b
+    │ ╰──────────────^ _ ++ _.
+Expression has type:   [dynamic()]
+Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -915,7 +1019,7 @@ error: incompatible_types
 313 │ ╭       atom_to_binary(
 314 │ │         [N]
 315 │ │       );
-    │ ╰───────^ erlang:atom_to_binary(eqwalizer:dynamic_cast([N])).
+    │ ╰───────^ erlang:atom_to_binary([N]).
 Expression has type:   binary()
 Context expected type: number()
 
@@ -937,7 +1041,7 @@ error: incompatible_types
 317 │ ╭       atom_to_binary(
 318 │ │         <<N>>
 319 │ │       )
-    │ ╰───────^ erlang:atom_to_binary(eqwalizer:dynamic_cast(<<..>>)).
+    │ ╰───────^ erlang:atom_to_binary(<<..>>).
 Expression has type:   binary()
 Context expected type: number()
 
@@ -1019,4 +1123,4 @@ Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-97 ERRORS
+107 ERRORS
