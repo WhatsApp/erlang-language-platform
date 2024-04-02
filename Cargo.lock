@@ -525,6 +525,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.1",
  "profile",
+ "rayon",
  "regex",
  "serde",
  "smallvec",

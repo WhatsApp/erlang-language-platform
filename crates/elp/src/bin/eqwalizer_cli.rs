@@ -101,7 +101,10 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (_name, _source, file_id)| {
-            if analysis.should_eqwalize(file_id, include_generated) {
+            if analysis
+                .should_eqwalize(file_id, include_generated)
+                .unwrap()
+            {
                 Some(file_id)
             } else {
                 None
@@ -148,7 +151,9 @@ pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cl
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
             if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
-                && analysis.should_eqwalize(file_id, include_generated)
+                && analysis
+                    .should_eqwalize(file_id, include_generated)
+                    .unwrap()
             {
                 Some(file_id)
             } else {
@@ -194,7 +199,10 @@ pub fn eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
                 let vfs_path = VfsPath::from(src.clone());
                 if let Some(file_id) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
-                    if analysis.should_eqwalize(file_id, include_generated) {
+                    if analysis
+                        .should_eqwalize(file_id, include_generated)
+                        .unwrap()
+                    {
                         file_ids.push(file_id);
                     }
                 }
@@ -240,7 +248,10 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis.should_eqwalize(file_id, include_generated) {
+            if analysis
+                .should_eqwalize(file_id, include_generated)
+                .expect("cancelled")
+            {
                 analysis
                     .eqwalizer_stats(project_id, file_id)
                     .expect("cancelled")

@@ -193,26 +193,36 @@ impl Snapshot {
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let module_index = self.analysis.module_index(project_id).ok()?;
 
-        let file_ids = module_index
+        let file_ids: Vec<FileId> = module_index
             .iter_own()
             .filter_map(|(_, _, file_id)| {
-                if !exclude.contains(&file_id) && self.analysis.should_eqwalize(file_id, false) {
-                    Some(file_id)
+                if !exclude.contains(&file_id) {
+                    if let Ok(true) = self.analysis.should_eqwalize(file_id, false) {
+                        Some(file_id)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             })
             .collect();
 
+        log::info!(
+            "Calculating eqwalizer diagnostics for {} files",
+            file_ids.len()
+        );
+
         let project_name = match self.get_project(project_id) {
             Some(project) => project.name(),
             None => "undefined".to_string(),
         };
+
         let _timer =
             timeit_with_telemetry!(TelemetryData::EqwalizerProjectDiagnostics { project_name });
 
         self.analysis
-            .eqwalizer_diagnostics_by_project(project_id, file_ids)
+            .eqwalizer_diagnostics_by_project(project_id, file_ids, 4)
             .ok()?
     }
 

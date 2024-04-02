@@ -71,6 +71,7 @@ use hir::FormList;
 use hir::Module;
 use hir::Semantic;
 use navigation_target::ToNav;
+use rayon::prelude::*;
 
 mod annotations;
 mod call_hierarchy;
@@ -215,12 +216,9 @@ impl Analysis {
         self.with_db(|db| diagnostics::native_diagnostics(db, config, file_id))
     }
 
-    pub fn should_eqwalize(&self, file_id: FileId, include_generated: bool) -> bool {
+    pub fn should_eqwalize(&self, file_id: FileId, include_generated: bool) -> Cancellable<bool> {
         let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::App));
-        is_in_app
-            && self
-                .is_eqwalizer_enabled(file_id, include_generated)
-                .unwrap()
+        Ok(is_in_app && self.is_eqwalizer_enabled(file_id, include_generated)?)
     }
 
     /// Computes the set of eqwalizer diagnostics for the given files,
@@ -239,8 +237,27 @@ impl Analysis {
         &self,
         project_id: ProjectId,
         file_ids: Vec<FileId>,
+        max_tasks: usize,
     ) -> Cancellable<Option<Vec<(FileId, Vec<Diagnostic>)>>> {
-        self.with_db(|db| diagnostics::eqwalizer_diagnostics_by_project(db, project_id, file_ids))
+        self.with_db(|db| {
+            let files_count = file_ids.len();
+            let chunk_size = (files_count + max_tasks - 1) / max_tasks;
+            let diagnostics = file_ids
+                .chunks(chunk_size)
+                .par_bridge()
+                .map_with(self.clone(), move |analysis, file_ids| {
+                    analysis
+                        .eqwalizer_diagnostics(project_id, file_ids.to_vec())
+                        .unwrap_or(Arc::new(EqwalizerDiagnostics::default()))
+                })
+                .fold(EqwalizerDiagnostics::default, |acc, output| {
+                    acc.combine((*output).clone())
+                })
+                .reduce(EqwalizerDiagnostics::default, |acc, other| {
+                    acc.combine(other)
+                });
+            diagnostics::to_standard_diagnostics(db, project_id, diagnostics)
+        })
     }
 
     /// Computes the set of eqwalizer diagnostics for the given files,

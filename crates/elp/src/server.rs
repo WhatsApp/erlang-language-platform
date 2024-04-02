@@ -45,6 +45,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::erlang_service;
 use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
@@ -137,6 +138,8 @@ pub enum Task {
     Progress(ProgressTask),
     ScheduleCache,
     UpdateCache(ProgressBar, Vec<FileId>),
+    ScheduleEqwalizeAll(ProjectId),
+    UpdateEqwalizeAll(ProgressBar, ProjectId, String, Vec<FileId>),
 }
 
 impl fmt::Debug for Event {
@@ -203,6 +206,7 @@ pub struct Server {
     task_pool: TaskHandle,
     project_pool: TaskHandle,
     cache_pool: TaskHandle,
+    eqwalizer_pool: TaskHandle,
     diagnostics: Arc<DiagnosticCollection>,
     req_queue: ReqQueue,
     progress: ProgressManager,
@@ -222,6 +226,7 @@ pub struct Server {
     edoc_diagnostics_requested: bool,
     ct_diagnostics_requested: bool,
     cache_scheduled: bool,
+    eqwalize_all_scheduled: FxHashSet<ProjectId>,
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
@@ -239,6 +244,7 @@ impl Server {
         task_pool: TaskHandle,
         project_pool: TaskHandle,
         cache_pool: TaskHandle,
+        eqwalizer_pool: TaskHandle,
         logger: Logger,
         config: Config,
         ai_completion: AiCompletion,
@@ -250,6 +256,7 @@ impl Server {
             task_pool,
             project_pool,
             cache_pool,
+            eqwalizer_pool,
             diagnostics: Arc::new(DiagnosticCollection::default()),
             req_queue: ReqQueue::default(),
             open_document_versions: SharedMap::default(),
@@ -268,6 +275,7 @@ impl Server {
             edoc_diagnostics_requested: false,
             ct_diagnostics_requested: false,
             cache_scheduled: false,
+            eqwalize_all_scheduled: FxHashSet::default(),
             logger,
             ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
@@ -386,6 +394,10 @@ impl Server {
                 Some(Event::Task(msg.unwrap()))
             }
 
+            recv (self.eqwalizer_pool.receiver) -> msg => {
+                Some(Event::Task(msg.unwrap()))
+            }
+
         }
     }
 
@@ -444,13 +456,14 @@ impl Server {
                             .update_erlang_service_paths();
                         spinner.end();
                         self.eqwalizer_diagnostics_requested = true;
-                        if self.config.eqwalizer().all {
-                            self.eqwalizer_project_diagnostics_requested = true;
-                        }
                     }
                     Task::Progress(progress) => self.report_progress(progress),
                     Task::UpdateCache(spinner, files) => self.update_cache(spinner, files),
                     Task::ScheduleCache => self.schedule_cache(),
+                    Task::UpdateEqwalizeAll(spinner, project_id, project_name, files) => {
+                        self.update_eqwalize_all(spinner, project_id, project_name, files)
+                    }
+                    Task::ScheduleEqwalizeAll(project_id) => self.schedule_eqwalize_all(project_id),
                     Task::ShowMessage(params) => self.show_message(params),
                 }
 
@@ -602,6 +615,9 @@ impl Server {
             })?
             .on::<notification::DidOpenTextDocument>(|this, params| {
                 this.eqwalizer_diagnostics_requested = true;
+                if this.config.eqwalizer().all {
+                    this.eqwalizer_project_diagnostics_requested = true;
+                }
                 this.edoc_diagnostics_requested = true;
                 this.ct_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
@@ -907,7 +923,7 @@ impl Server {
             .progress
             .begin_spinner("EqWAlizing All (project-wide)".to_string());
 
-        self.task_pool.handle.spawn(move || {
+        self.eqwalizer_pool.handle.spawn(move || {
             let diagnostics = snapshot
                 .projects
                 .iter()
@@ -992,12 +1008,7 @@ impl Server {
         diags: Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
     ) {
         for (_project_id, diagnostics) in diags {
-            let mut keep = FxHashSet::default();
-            for (file_id, diagnostics) in diagnostics {
-                keep.insert(file_id);
-                Arc::make_mut(&mut self.diagnostics).set_eqwalizer_project(file_id, diagnostics);
-            }
-            Arc::make_mut(&mut self.diagnostics).reset_eqwalizer_project(&keep);
+            Arc::make_mut(&mut self.diagnostics).set_eqwalizer_project(diagnostics);
         }
     }
 
@@ -1405,9 +1416,16 @@ impl Server {
         if files.is_empty() {
             bar.end();
             self.cache_scheduled = true;
+            if self.config.eqwalizer().all {
+                for (i, _) in self.snapshot().projects.iter().enumerate() {
+                    let project_id = ProjectId(i as u32);
+                    self.schedule_eqwalize_all(project_id);
+                }
+            }
             return;
         }
         let snapshot = self.snapshot();
+        let eqwalize_all = self.config.eqwalizer().all;
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             let total = files.len();
             let mut done = 0;
@@ -1418,11 +1436,133 @@ impl Server {
                     files.push(file_id);
                     break;
                 } else {
+                    if eqwalize_all {
+                        match snapshot.analysis.should_eqwalize(file_id, false) {
+                            Ok(should_eqwalize) => {
+                                if should_eqwalize {
+                                    if snapshot
+                                        .analysis
+                                        .module_ast(
+                                            file_id,
+                                            erlang_service::Format::OffsetEtf,
+                                            vec![],
+                                        )
+                                        .is_err()
+                                    {
+                                        //got canceled
+                                        files.push(file_id);
+                                        break;
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                //got canceled
+                                files.push(file_id);
+                                break;
+                            }
+                        }
+                    }
                     done += 1;
                     bar.report(done, total);
                 }
             }
             sender.send(Task::UpdateCache(bar, files)).unwrap();
+        });
+    }
+
+    fn schedule_eqwalize_all(&mut self, project_id: ProjectId) {
+        if self.eqwalize_all_scheduled.contains(&project_id) {
+            return;
+        }
+        let snapshot = self.snapshot();
+        let project_name = match snapshot.get_project(project_id) {
+            Some(project) => project.name(),
+            None => "undefined".to_string(),
+        };
+        let message = format!("Eqwalize All ({})", project_name);
+        let bar = self.progress.begin_bar(message, None);
+
+        self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
+            let mut files = vec![];
+            let module_index = match snapshot.analysis.module_index(project_id) {
+                Ok(module_index) => module_index,
+                //rescheduling canceled
+                Err(_) => {
+                    sender.send(Task::ScheduleEqwalizeAll(project_id)).unwrap();
+                    return;
+                }
+            };
+
+            for (_, _, file_id) in module_index.iter_own() {
+                match snapshot.analysis.should_eqwalize(file_id, false) {
+                    Ok(true) => {
+                        files.push(file_id);
+                    }
+                    Ok(false) => {}
+                    Err(_) => {
+                        sender.send(Task::ScheduleEqwalizeAll(project_id)).unwrap();
+                        return;
+                    }
+                }
+            }
+            sender
+                .send(Task::UpdateEqwalizeAll(
+                    bar,
+                    project_id,
+                    project_name,
+                    files,
+                ))
+                .unwrap();
+        });
+    }
+
+    fn update_eqwalize_all(
+        &mut self,
+        bar: ProgressBar,
+        project_id: ProjectId,
+        project_name: String,
+        mut files: Vec<FileId>,
+    ) {
+        if files.is_empty() {
+            bar.end();
+            self.eqwalize_all_scheduled.insert(project_id);
+            return;
+        }
+        let snapshot = self.snapshot();
+        let chunk_size = 100;
+        self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
+            let total = files.len();
+            let mut done = 0;
+            while !files.is_empty() {
+                let len = files.len();
+                let file_ids = if chunk_size < len {
+                    files.split_off(len - chunk_size)
+                } else {
+                    files.drain(..).collect()
+                };
+                if snapshot
+                    .analysis
+                    .eqwalizer_diagnostics_by_project(project_id, file_ids.clone(), 4)
+                    .is_err()
+                {
+                    //got canceled
+                    for file_id in file_ids {
+                        files.push(file_id);
+                    }
+                    break;
+                } else {
+                    done += file_ids.len();
+                    bar.report(done, total);
+                }
+            }
+            sender
+                .send(Task::UpdateEqwalizeAll(
+                    bar,
+                    project_id,
+                    project_name,
+                    files,
+                ))
+                .unwrap();
         });
     }
 

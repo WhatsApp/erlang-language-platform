@@ -117,6 +117,7 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
     let vfs_loader = set_up_vfs_loader();
     let task_pool = set_up_task_pool();
     let cache_pool = set_up_single_thread_pool();
+    let eqwalizer_pool = set_up_eqwalizer_pool();
     let project_pool = set_up_single_thread_pool();
     let ai_completion = set_up_ai_completion(&config);
 
@@ -128,6 +129,7 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
         task_pool,
         project_pool,
         cache_pool,
+        eqwalizer_pool,
         logger,
         config,
         ai_completion,
@@ -143,6 +145,12 @@ fn set_up_vfs_loader() -> VfsHandle {
 }
 
 fn set_up_task_pool() -> TaskHandle {
+    let (sender, receiver) = crossbeam_channel::unbounded();
+    let handle = TaskPool::new(sender);
+    Handle { handle, receiver }
+}
+
+fn set_up_eqwalizer_pool() -> TaskHandle {
     let (sender, receiver) = crossbeam_channel::unbounded();
     let handle = TaskPool::new(sender);
     Handle { handle, receiver }

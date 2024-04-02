@@ -29,6 +29,7 @@ use elp_ide_db::metadata::Metadata;
 use elp_ide_db::metadata::Source;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::EqwalizerDatabase;
+use elp_ide_db::EqwalizerDiagnostics;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::LineCol;
 use elp_ide_db::LineIndex;
@@ -919,17 +920,16 @@ pub fn eqwalizer_diagnostics(
     )
 }
 
-pub fn eqwalizer_diagnostics_by_project(
+pub fn to_standard_diagnostics(
     db: &RootDatabase,
     project_id: ProjectId,
-    file_ids: Vec<FileId>,
+    diagnostics: EqwalizerDiagnostics,
 ) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
-    let diagnostics = db.eqwalizer_diagnostics_by_project(project_id, file_ids);
     let sema = Semantic::new(db);
     let module_index = db.module_index(project_id);
 
     let mut res = FxHashMap::default();
-    match &*diagnostics {
+    match diagnostics {
         elp_eqwalizer::EqwalizerDiagnostics::Diagnostics { errors, .. } => errors
             .iter()
             .map(|(module, ds)| {

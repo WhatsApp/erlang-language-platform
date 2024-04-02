@@ -22,6 +22,7 @@ lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 profile.workspace = true
+rayon.workspace = true
 regex.workspace = true
 serde.workspace = true
 smallvec.workspace = true

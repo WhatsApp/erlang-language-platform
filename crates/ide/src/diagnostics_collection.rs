@@ -11,6 +11,7 @@ use std::mem;
 
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use itertools::Itertools;
 
 use crate::diagnostics::attach_related_diagnostics;
 use crate::Diagnostic;
@@ -43,10 +44,22 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_eqwalizer_project(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
-        if !are_all_diagnostics_equal(&self.eqwalizer_project, file_id, &diagnostics) {
-            set_diagnostics(&mut self.eqwalizer_project, file_id, diagnostics);
-            self.changes.insert(file_id);
+    pub fn set_eqwalizer_project(&mut self, diagnostics: Vec<(FileId, Vec<Diagnostic>)>) {
+        let mut visited = FxHashSet::default();
+        for (file_id, diagnostics) in diagnostics {
+            if !are_all_diagnostics_equal(&self.eqwalizer_project, file_id, &diagnostics) {
+                set_diagnostics(&mut self.eqwalizer_project, file_id, diagnostics);
+                self.changes.insert(file_id);
+            };
+            visited.insert(file_id);
+        }
+        let previous: Vec<FileId> = self.eqwalizer_project.keys().cloned().collect();
+        self.eqwalizer_project
+            .retain(|file_id, _| visited.contains(file_id));
+        for file_id in previous {
+            if !visited.contains(&file_id) {
+                self.changes.insert(file_id);
+            }
         }
     }
 
@@ -84,10 +97,14 @@ impl DiagnosticCollection {
             .into_iter()
             .flatten()
             .cloned();
+        // The eqwalizer and eqwalizer_project could have duplicated entries by nature. Dedup.
+        let eqwalizer_combined = eqwalizer
+            .into_iter()
+            .chain(eqwalizer_project)
+            .dedup_by(|a, b| are_diagnostics_equal(a, b));
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
-        combined.extend(eqwalizer);
-        combined.extend(eqwalizer_project);
+        combined.extend(eqwalizer_combined);
         combined.extend(edoc);
         combined.extend(ct);
         combined
@@ -118,19 +135,6 @@ impl DiagnosticCollection {
             && edoc.is_empty()
             && ct.is_empty()
             && changes.is_empty()
-    }
-
-    pub fn reset_eqwalizer_project(&mut self, keep: &FxHashSet<FileId>) {
-        let mut clear = FxHashSet::default();
-        for (file_id, _diagnostics) in self.eqwalizer_project.iter() {
-            if !keep.contains(file_id) {
-                clear.insert(file_id.to_owned());
-            }
-        }
-        for file_id in clear {
-            self.eqwalizer_project
-                .insert(file_id.to_owned(), Vec::new());
-        }
     }
 }
 
