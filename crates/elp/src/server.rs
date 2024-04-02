@@ -1534,7 +1534,7 @@ impl Server {
             return;
         }
         let snapshot = self.snapshot();
-        let chunk_size = 100;
+        let chunk_size = self.config.eqwalizer().chunk_size;
         let max_tasks = self.config.eqwalizer().max_tasks;
         self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
             let total = files.len();
