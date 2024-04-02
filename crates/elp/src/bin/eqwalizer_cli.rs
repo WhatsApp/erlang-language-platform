@@ -61,24 +61,26 @@ pub fn eqwalize_module(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
 
 pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cli) -> Result<()> {
     let analysis = &loaded.analysis();
-    let suggest_name = Path::new(&args.module)
-        .file_stem()
-        .and_then(|name| name.to_str());
-    let context_str = match suggest_name {
-        Some(name) if name != args.module => format!(
-            "Module {} not found. Did you mean elp eqwalize {}?",
-            &args.module, name
-        ),
-        _ => format!("Module {} not found", &args.module),
-    };
-    let file_id = analysis
-        .module_file_id(loaded.project_id, &args.module)?
-        .with_context(|| context_str)?;
+    let mut file_ids = vec![];
+    for module in &args.modules {
+        let suggest_name = Path::new(module).file_stem().and_then(|name| name.to_str());
+        let context_str = match suggest_name {
+            Some(name) if name != module => format!(
+                "Module {} not found. Did you mean elp eqwalize {}?",
+                module, name
+            ),
+            _ => format!("Module {} not found", module),
+        };
+        let file_id = analysis
+            .module_file_id(loaded.project_id, module)?
+            .with_context(|| context_str)?;
+        file_ids.push(file_id);
+    }
     let reporter = &mut reporting::PrettyReporter::new(analysis, loaded, cli);
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
-        file_ids: vec![file_id],
+        file_ids,
         reporter,
     })
 }

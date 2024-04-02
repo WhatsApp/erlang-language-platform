@@ -89,9 +89,12 @@ pub struct Eqwalize {
     pub profile: String,
     /// Run with rebar
     pub rebar: bool,
-    /// Eqwalize specified module
-    #[bpaf(positional::< String > ("MODULE"), complete(module_completer))]
-    pub module: String,
+    /// Eqwalize specified modules
+    #[bpaf(
+        positional("MODULES"),
+        guard(at_least_1, "there should be at least one module")
+    )]
+    pub modules: Vec<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -488,6 +491,10 @@ fn format_guard(format: &Option<String>) -> bool {
         Some(f) if f == "json" => true,
         _ => false,
     }
+}
+
+fn at_least_1(data: &Vec<String>) -> bool {
+    data.len() >= 1
 }
 
 #[allow(clippy::ptr_arg)]

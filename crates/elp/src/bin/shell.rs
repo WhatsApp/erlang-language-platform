@@ -136,15 +136,12 @@ impl ShellCommand {
                             option.into(),
                         ));
                     }
-                    if let [_, arg, ..] = args[..] {
-                        return Err(ShellError::UnexpectedArg("eqwalize".into(), arg.into()));
-                    }
-                    if let [module] = args[..] {
+                    if args.len() >= 1 {
                         return Ok(Some(ShellCommand::ShellEqwalize(Eqwalize {
                             project,
                             profile,
                             rebar,
-                            module: module.into(),
+                            modules: args.iter().map(|s| s.to_string()).collect(),
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize".into()));
@@ -209,7 +206,7 @@ COMMANDS:
     help                       Print this help
     exit                       Exit the interactive session
     quit                       Exit the interactive session
-    eqwalize <module>          Eqwalize specified module
+    eqwalize <modules>          Eqwalize specified module
     eqwalize-all               Eqwalize all modules in the current project
         --include-generated    Include generated modules
     eqwalize-app <app>         Eqwalize all modules in specified application
