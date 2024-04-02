@@ -740,3 +740,19 @@ dict_to_shape_neg_2(M) -> M.
     #{a | b => boolean()}
 ) -> #{a => boolean()}.
 dict_to_shape_neg_3(M) -> M.
+
+-spec app_generic
+    (fun((boolean()) -> A), boolean()) -> A.
+app_generic(F, B) ->
+    F(B).
+
+-spec app_generic_no_merge
+    (boolean())
+    -> #{a => a, b => b} | #{c => c, d => d}.
+app_generic_no_merge(B) ->
+    app_generic(
+        fun
+            (true) -> #{a => a, b => b};
+            (false) -> #{c => c, d => d}end,
+        B
+    ).

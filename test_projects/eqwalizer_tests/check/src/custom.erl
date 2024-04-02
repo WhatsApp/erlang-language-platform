@@ -2308,3 +2308,69 @@ re_replace_5_neg(Subj) ->
 re_replace_6_neg(Subj) ->
     Res = re:replace(Subj, "+", "-", [{return, something}]),
     Res.
+
+-spec maps_fold_4_clauses_1(map()) -> #{a => a, b => b, c => c, d => d}.
+maps_fold_4_clauses_1(M) ->
+    maps:fold(
+        fun
+            (a, _, Acc) -> Acc#{a => a};
+            (b, _, Acc) -> Acc#{b => b};
+            (c, _, Acc) -> Acc#{c => c};
+            (d, _, Acc) -> Acc#{d => d}
+        end,
+        #{},
+        M
+    ).
+
+-spec maps_fold_4_clauses_2(map()) -> #{a := a | a2, b => b, c => c, d => d}.
+maps_fold_4_clauses_2(M) ->
+    maps:fold(
+        fun
+            (a, _, Acc) -> Acc#{a => a};
+            (b, _, Acc) -> Acc#{b => b};
+            (c, _, Acc) -> Acc#{c => c};
+            (d, _, Acc) -> Acc#{d => d}
+        end,
+        #{a => a2},
+        M
+    ).
+
+-spec list_fold_4_clauses_1(list()) -> #{a => a, b => b, c => c, d => d}.
+list_fold_4_clauses_1(L) ->
+    lists:foldl(
+        fun
+            (a, Acc) -> Acc#{a => a};
+            (b, Acc) -> Acc#{b => b};
+            (c, Acc) -> Acc#{c => c};
+            (d, Acc) -> Acc#{d => d}
+        end,
+        #{},
+        L
+    ).
+
+-spec list_fold_4_clauses_2(list()) -> #{a := a | a2, b => b, c => c, d => d}.
+list_fold_4_clauses_2(L) ->
+    lists:foldl(
+        fun
+            (a, Acc) -> Acc#{a => a};
+            (b, Acc) -> Acc#{a => a, b => b};
+            (c, Acc) -> Acc#{a => a, c => c};
+            (d, Acc) -> Acc#{a => a, d => d}
+        end,
+        #{a => a2},
+        L
+    ).
+
+-spec maps_fold_no_merge
+    (M1 :: #{a := atom()}, M2 :: #{b := number()}, boolean())
+    -> #{a := atom()} | #{b := number()}.
+maps_fold_no_merge(M1, M2, B) ->
+    Res = maps:fold(
+        fun
+            (k1, _, _) -> M1;
+            (k2, _, _) -> M2
+        end,
+        M1,
+        #{}
+    ),
+    Res.
