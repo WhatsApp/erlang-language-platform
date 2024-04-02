@@ -215,6 +215,14 @@ impl Analysis {
         self.with_db(|db| diagnostics::native_diagnostics(db, config, file_id))
     }
 
+    pub fn should_eqwalize(&self, file_id: FileId, include_generated: bool) -> bool {
+        let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::App));
+        is_in_app
+            && self
+                .is_eqwalizer_enabled(file_id, include_generated)
+                .unwrap()
+    }
+
     /// Computes the set of eqwalizer diagnostics for the given files,
     /// including checking for disabled. Returns standard diagnostics.
     pub fn eqwalizer_diagnostics_for_file(

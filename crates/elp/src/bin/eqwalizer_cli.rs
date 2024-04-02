@@ -28,7 +28,6 @@ use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_project_model::AppName;
-use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectBuildData;
 use fxhash::FxHashMap;
@@ -102,7 +101,7 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (_name, _source, file_id)| {
-            if should_eqwalize(analysis, file_id, include_generated) {
+            if analysis.should_eqwalize(file_id, include_generated) {
                 Some(file_id)
             } else {
                 None
@@ -149,7 +148,7 @@ pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cl
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
             if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
-                && should_eqwalize(analysis, file_id, include_generated)
+                && analysis.should_eqwalize(file_id, include_generated)
             {
                 Some(file_id)
             } else {
@@ -195,7 +194,7 @@ pub fn eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
                 let vfs_path = VfsPath::from(src.clone());
                 if let Some(file_id) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
-                    if should_eqwalize(analysis, file_id, include_generated) {
+                    if analysis.should_eqwalize(file_id, include_generated) {
                         file_ids.push(file_id);
                     }
                 }
@@ -241,7 +240,7 @@ pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if should_eqwalize(analysis, file_id, include_generated) {
+            if analysis.should_eqwalize(file_id, include_generated) {
                 analysis
                     .eqwalizer_stats(project_id, file_id)
                     .expect("cancelled")
@@ -389,12 +388,4 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
             let _ = analysis.module_ast(file_id, erlang_service::Format::OffsetEtf, vec![]);
         });
     pb.finish();
-}
-
-fn should_eqwalize(analysis: &Analysis, file_id: FileId, include_generated: bool) -> bool {
-    let is_in_app = analysis.file_app_type(file_id).ok() == Some(Some(AppType::App));
-    is_in_app
-        && analysis
-            .is_eqwalizer_enabled(file_id, include_generated)
-            .unwrap()
 }
