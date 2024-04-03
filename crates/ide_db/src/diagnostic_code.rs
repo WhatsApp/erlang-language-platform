@@ -54,6 +54,7 @@ pub enum DiagnosticCode {
     CannotEvaluateCTCallbacks,
     MeckMissingNoLinkInInitPerSuite,
     AtomsExhaustion,
+    SlowFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -120,6 +121,7 @@ impl DiagnosticCode {
             DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => "W0022".to_string(),
             DiagnosticCode::AtomsExhaustion => "W0023".to_string(),
+            DiagnosticCode::SlowFunction => "W0024".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -150,6 +152,7 @@ impl DiagnosticCode {
                 "meck_missing_no_link_in_init_per_suite".to_string()
             }
             DiagnosticCode::AtomsExhaustion => "atoms_exhaustion".to_string(),
+            DiagnosticCode::SlowFunction => "slow_function".to_string(),
             DiagnosticCode::MissingCompileWarnMissingSpec => {
                 // Match the name in the original
                 "compile-warn-missing-spec".to_string()

@@ -76,7 +76,6 @@ mod eqwalizer_assists;
 mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
-#[allow(dead_code)] // Temporary until next diff
 mod helpers;
 mod meck;
 // @fb-only: mod meta_only;
@@ -87,6 +86,7 @@ mod module_mismatch;
 mod mutable_variable;
 mod redundant_assignment;
 mod replace_call;
+mod slow_functions;
 mod trivial_match;
 mod undefined_function;
 mod unused_function_args;
@@ -598,6 +598,7 @@ pub fn semantic_diagnostics(
         application_env::application_env(res, sema, file_id);
         missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
         cross_node_eval::cross_node_eval(res, sema, file_id);
+        slow_functions::slow_functions(res, sema, file_id);
         dependent_header::dependent_header(res, sema, file_id, file_kind);
         deprecated_function::deprecated_function(res, sema, file_id);
         undefined_function::undefined_function(res, sema, file_id);
