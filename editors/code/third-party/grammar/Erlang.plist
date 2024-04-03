@@ -2617,36 +2617,18 @@
 							<key>name</key>
 							<string>punctuation.separator.placeholder-parts.erlang</string>
 						</dict>
-						<key>12</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.separator.placeholder-parts.erlang</string>
-						</dict>
-						<key>3</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.separator.placeholder-parts.erlang</string>
-						</dict>
-						<key>4</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.separator.placeholder-parts.erlang</string>
-						</dict>
 						<key>6</key>
 						<dict>
 							<key>name</key>
 							<string>punctuation.separator.placeholder-parts.erlang</string>
 						</dict>
-						<key>8</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.separator.placeholder-parts.erlang</string>
-						</dict>
 					</dict>
+					<key>comment</key>
+					<string>io:fwrite format control sequence</string>
 					<key>match</key>
-					<string>(~)((\-)?\d++|(\*))?((\.)(\d++|(\*)))?((\.)((\*)|.))?[~cfegswpWPBX#bx\+ni]</string>
+					<string>(~)((\-)?\d++|(\*))?((\.)(\d++|(\*))?((\.)((\*)|.))?)?[tlkK]*[~cfegswpWPBX#bx\+ni]</string>
 					<key>name</key>
-					<string>constant.other.placeholder.erlang</string>
+					<string>constant.character.format.placeholder.other.erlang</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -2656,16 +2638,13 @@
 							<key>name</key>
 							<string>punctuation.definition.placeholder.erlang</string>
 						</dict>
-						<key>2</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.separator.placeholder-parts.erlang</string>
-						</dict>
 					</dict>
+					<key>comment</key>
+					<string>io:fread format control sequence</string>
 					<key>match</key>
-					<string>(~)(\*)?(\d++)?[~du\-#fsacl]</string>
+					<string>(~)(\*)?(\d++)?(t)?[~du\-#fsacl]</string>
 					<key>name</key>
-					<string>constant.other.placeholder.erlang</string>
+					<string>constant.character.format.placeholder.other.erlang</string>
 				</dict>
 				<dict>
 					<key>match</key>
