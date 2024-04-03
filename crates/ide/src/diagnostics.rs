@@ -76,6 +76,8 @@ mod eqwalizer_assists;
 mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
+#[allow(dead_code)] // Temporary until next diff
+mod helpers;
 mod meck;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
