@@ -226,6 +226,7 @@ pub struct Server {
     ct_diagnostics_requested: bool,
     cache_scheduled: bool,
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
+    eqwalize_all_completed: bool,
     logger: Logger,
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
@@ -275,6 +276,7 @@ impl Server {
             ct_diagnostics_requested: false,
             cache_scheduled: false,
             eqwalize_all_scheduled: FxHashSet::default(),
+            eqwalize_all_completed: false,
             logger,
             ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
@@ -910,7 +912,7 @@ impl Server {
     }
 
     fn update_eqwalizer_project_diagnostics(&mut self) {
-        if self.status != Status::Running {
+        if self.status != Status::Running || !self.eqwalize_all_completed {
             return;
         }
 
@@ -1507,6 +1509,9 @@ impl Server {
         if files.is_empty() {
             bar.end();
             self.eqwalize_all_scheduled.insert(project_id);
+            if self.projects.len() == self.eqwalize_all_scheduled.len() {
+                self.eqwalize_all_completed = true;
+            }
             return;
         }
         let snapshot = self.snapshot();
