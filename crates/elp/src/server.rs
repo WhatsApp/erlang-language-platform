@@ -45,7 +45,6 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::erlang_service;
 use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
@@ -1436,39 +1435,16 @@ impl Server {
             let mut done = 0;
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
-                if snapshot.analysis.def_map(file_id).is_err() {
-                    //got canceled
-                    files.push(file_id);
-                    break;
-                } else {
-                    if eqwalize_all {
-                        match snapshot.analysis.should_eqwalize(file_id, false) {
-                            Ok(should_eqwalize) => {
-                                if should_eqwalize {
-                                    if snapshot
-                                        .analysis
-                                        .module_ast(
-                                            file_id,
-                                            erlang_service::Format::OffsetEtf,
-                                            vec![],
-                                        )
-                                        .is_err()
-                                    {
-                                        //got canceled
-                                        files.push(file_id);
-                                        break;
-                                    }
-                                }
-                            }
-                            Err(_) => {
-                                //got canceled
-                                files.push(file_id);
-                                break;
-                            }
-                        }
+                match snapshot.update_cache_for_file(file_id, false, eqwalize_all) {
+                    Ok(_) => {
+                        done += 1;
+                        bar.report(done, total);
                     }
-                    done += 1;
-                    bar.report(done, total);
+                    Err(_) => {
+                        // Got canceled
+                        files.push(file_id);
+                        break;
+                    }
                 }
             }
             sender.send(Task::UpdateCache(bar, files)).unwrap();

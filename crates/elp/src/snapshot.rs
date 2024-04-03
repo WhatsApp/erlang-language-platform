@@ -25,6 +25,7 @@ use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
@@ -167,6 +168,24 @@ impl Snapshot {
         let offset = u32::from(position.offset) as usize;
         let prefix = &code[..offset];
         Ok(ai_completion.complete(prefix.to_string()))
+    }
+
+    pub fn update_cache_for_file(
+        &self,
+        file_id: FileId,
+        include_generated: bool,
+        optimize_for_eqwalizer: bool,
+    ) -> Result<()> {
+        let _ = self.analysis.def_map(file_id)?;
+        if optimize_for_eqwalizer {
+            let should_eqwalize = self.analysis.should_eqwalize(file_id, include_generated)?;
+            if should_eqwalize {
+                let _ =
+                    self.analysis
+                        .module_ast(file_id, erlang_service::Format::OffsetEtf, vec![])?;
+            }
+        }
+        Ok(())
     }
 
     pub fn native_diagnostics(&self, file_id: FileId) -> Option<LabeledDiagnostics> {
