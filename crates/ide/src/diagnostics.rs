@@ -294,6 +294,8 @@ pub enum Category {
     SimplificationRule,
 }
 
+// ---------------------------------------------------------------------
+
 pub trait AdhocSemanticDiagnostics:
     Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) + std::panic::RefUnwindSafe + Sync
 {
@@ -302,6 +304,31 @@ impl<F> AdhocSemanticDiagnostics for F where
     F: Fn(&mut Vec<Diagnostic>, &Semantic, FileId, FileKind) + std::panic::RefUnwindSafe + Sync
 {
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiagnosticConditions {
+    pub experimental: bool,
+    pub include_generated: bool,
+    pub include_tests: bool,
+}
+
+impl DiagnosticConditions {
+    fn enabled(&self, config: &DiagnosticsConfig, is_generated: bool, is_test: bool) -> bool {
+        let generated_ok = (self.include_generated && config.include_generated) || !is_generated;
+        let test_ok = self.include_tests || !is_test;
+        let experimental_ok = config.experimental || !self.experimental;
+
+        generated_ok && test_ok && experimental_ok
+    }
+}
+
+#[derive(Clone)]
+pub struct DiagnosticDescriptor<'a> {
+    conditions: DiagnosticConditions,
+    checker: &'a dyn AdhocSemanticDiagnostics,
+}
+
+// ---------------------------------------------------------------------
 
 #[derive(Default, Clone)]
 pub struct DiagnosticsConfig<'a> {
@@ -350,6 +377,8 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 }
+
+// ---------------------------------------------------------------------
 
 pub type Labeled = FxHashMap<Option<DiagnosticLabel>, Vec<Diagnostic>>;
 
@@ -488,6 +517,14 @@ pub fn native_diagnostics(
         semantic_diagnostics(&mut res, &sema, file_id, file_kind, config);
         // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
+        diagnostics_from_descriptors(
+            &mut res,
+            &sema,
+            file_id,
+            file_kind,
+            config,
+            &diagnostics_descriptors(),
+        );
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
@@ -521,6 +558,30 @@ pub fn native_diagnostics(
         labeled_syntax_errors,
         labeled_undefined_errors: FxHashMap::default(),
     }
+}
+
+pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
+    vec![&cross_node_eval::DESCRIPTOR]
+}
+
+pub fn diagnostics_from_descriptors(
+    res: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    file_id: FileId,
+    file_kind: FileKind,
+    config: &DiagnosticsConfig,
+    descriptors: &[&DiagnosticDescriptor],
+) {
+    let is_generated = sema.db.is_generated(file_id);
+    let is_test = sema
+        .db
+        .is_test_suite_or_test_helper(file_id)
+        .unwrap_or(false);
+    descriptors.into_iter().for_each(|descriptor| {
+        if descriptor.conditions.enabled(config, is_generated, is_test) {
+            (descriptor.checker)(res, sema, file_id, file_kind);
+        }
+    });
 }
 
 fn label_syntax_errors(
@@ -597,7 +658,6 @@ pub fn semantic_diagnostics(
         expression_can_be_simplified::diagnostic(res, sema, file_id);
         application_env::application_env(res, sema, file_id);
         missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
-        cross_node_eval::cross_node_eval(res, sema, file_id);
         slow_functions::slow_functions(res, sema, file_id);
         dependent_header::dependent_header(res, sema, file_id, file_kind);
         deprecated_function::deprecated_function(res, sema, file_id);

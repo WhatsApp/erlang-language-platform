@@ -17,6 +17,8 @@ use hir::Semantic;
 use lazy_static::lazy_static;
 
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MakeDiagCtx;
@@ -24,17 +26,24 @@ use crate::codemod_helpers::MakeDiagCtx;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
-pub(crate) fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) || Some(true) == sema.db.is_test_suite_or_test_helper(file_id)
-    {
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: false,
+        include_tests: false,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        cross_node_eval(diags, sema, file_id);
+    },
+};
+
+fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_, def)| check_function(diags, sema, def));
 }
 
-pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     lazy_static! {
         static ref BAD_MATCHES: Vec<FunctionMatch> = vec![
             vec![FunctionMatch::m("rpc")],
@@ -58,7 +67,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
     process_badmatches(diags, sema, def, &BAD_MATCHES);
 }
 
-pub(crate) fn process_badmatches(
+fn process_badmatches(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
