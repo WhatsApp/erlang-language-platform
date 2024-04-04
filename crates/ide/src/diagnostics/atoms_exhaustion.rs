@@ -12,6 +12,8 @@ use hir::FunctionDef;
 use hir::Semantic;
 use text_edit::TextRange;
 
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MakeDiagCtx;
@@ -21,11 +23,18 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 use crate::FunctionMatch;
 
-pub(crate) fn atoms_exhaustion(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: false,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        atoms_exhaustion(diags, sema, file_id);
+    },
+};
+
+fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     if Some(true) == sema.db.is_test_suite_or_test_helper(file_id) {
         return;
     }
@@ -58,7 +67,7 @@ pub(crate) fn atoms_exhaustion(
         });
 }
 
-pub(crate) fn check_function(
+fn check_function(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
