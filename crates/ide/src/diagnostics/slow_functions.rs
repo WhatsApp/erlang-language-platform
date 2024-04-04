@@ -62,7 +62,7 @@ See https://www.erlang.org/doc/man/sets.html
                 code: DiagnosticCode::SlowFunction,
                 message: format!("The dict module is very slow in Erlang.\nIt is recommend to use maps instead of the dict module.\n\n{}\n",
                                  // @fb-only: "See https://fb.workplace.com/groups/1178411125511220/permalink/3495040030514973"
-                                 // @oss-only ""
+                                 "" // @oss-only
                                  )
                 .to_string(),
                 severity: Severity::Warning,
