@@ -218,12 +218,7 @@ pub(crate) enum Fact {
     #[serde(rename = "erlang.Declaration")]
     Declaration { facts: Vec<Key<FileDeclaration>> },
     #[serde(rename = "erlang.XRefsByFile")]
-    XRefV2 { facts: Vec<XRefKey> },
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct XRefKey {
-    key: XRefFile,
+    XRefV2 { facts: Vec<Key<XRefFile>> },
 }
 
 #[derive(Serialize, Debug)]
@@ -415,10 +410,10 @@ impl IndexedFacts {
     fn to_v2_facts(mut self) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
-        let file_decl = mem::take(&mut self.file_declarations);
-        let file_decl = file_decl.into_iter().map_into().collect();
-        let xref = mem::take(&mut self.xref_v2);
-        let xref = xref.into_iter().map(|x| XRefKey { key: x }).collect();
+        let declaration_fact = mem::take(&mut self.file_declarations);
+        let declaration_fact = declaration_fact.into_iter().map_into().collect();
+        let xref_fact = mem::take(&mut self.xref_v2);
+        let xref_fact = xref_fact.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -426,8 +421,10 @@ impl IndexedFacts {
             Fact::FileLine {
                 facts: file_lines_fact,
             },
-            Fact::Declaration { facts: file_decl },
-            Fact::XRefV2 { facts: xref },
+            Fact::Declaration {
+                facts: declaration_fact,
+            },
+            Fact::XRefV2 { facts: xref_fact },
         ]
     }
 }
