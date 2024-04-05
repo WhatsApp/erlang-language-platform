@@ -261,8 +261,11 @@ pub(crate) struct MacroTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     arity: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     expansion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     ods_url: Option<String>,
 }
 
@@ -324,6 +327,7 @@ pub(crate) struct FuncDecl {
     name: String,
     arity: u32,
     span: Location,
+    #[serde(skip_serializing_if = "Option::is_none")]
     doc: Option<String>,
     exported: bool,
     deprecated: bool,
@@ -332,6 +336,7 @@ pub(crate) struct FuncDecl {
 #[derive(Serialize, Debug)]
 pub(crate) struct MacroDecl {
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     arity: Option<u32>,
     span: Location,
 }
