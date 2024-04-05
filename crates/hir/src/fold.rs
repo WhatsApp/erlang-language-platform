@@ -36,6 +36,7 @@ use crate::Define;
 use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
+use crate::ExprSource;
 use crate::FormIdx;
 use crate::FunType;
 use crate::FunctionDefId;
@@ -303,7 +304,7 @@ pub struct AnyCallBackCtx<'a> {
 }
 
 impl<'a> AnyCallBackCtx<'a> {
-    pub fn find_range(&self, sema: &Semantic) -> Option<(Arc<Body>, TextRange)> {
+    pub fn body_with_expr_source(&self, sema: &Semantic) -> Option<(Arc<Body>, ExprSource)> {
         let (body, source) = match self.body_origin {
             BodyOrigin::Invalid(_) => None,
             BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(file_id, form_id),
@@ -315,6 +316,11 @@ impl<'a> AnyCallBackCtx<'a> {
             }
         }?;
         let ast = source.any(self.item_id)?;
+        Some((body, ast))
+    }
+
+    pub fn find_range(&self, sema: &Semantic) -> Option<(Arc<Body>, TextRange)> {
+        let (body, ast) = self.body_with_expr_source(sema)?;
         Some((body, ast.range()))
     }
 
