@@ -1215,6 +1215,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
     use elp_ide::AnalysisHost;
+    use elp_project_model::test_fixture::DiagnosticsEnabled;
     use expect_test::expect_file;
 
     use super::*;
@@ -1327,9 +1328,9 @@ mod tests {
     #[test]
     fn declaration_v2_test() {
         let spec = r#"
-        //- /glean/app_glean/src/glean_module5.erl
+        //- /app_glean/src/glean_module5.erl app:app_glean
             -module(glean_module5).
-            -export([foo/0, doc_foo/1]).
+            -export([foo/0, doc_foo/1, depr_foo/1]).
             -export_type([person/1]).
             -deprecated({depr_foo, 1, "use foo/0 instead"}).
 
@@ -1338,15 +1339,15 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ macro/MAX/2
 
-            -type person(Name :: string()) :: {name, string()}.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
-            -record(user, {name = "" :: string(), notes :: person()}).
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
+            -type person(Name) :: {name, list(Name)}.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
+            -record(user, {name = "" :: string(), notes :: person(pos_integer())}).
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
 
             foo() -> 1.
         %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported/no_docs
             depr_foo(B) -> B.
-        %%  ^^^^^^^^^^^^^^^^^ func/depr_foo/1/deprecated/not_exported/no_docs
+        %%  ^^^^^^^^^^^^^^^^^ func/depr_foo/1/deprecated/exported/no_docs
             -spec doc_foo(integer()) -> [integer()].
             doc_foo(Bar) -> [Bar].
         %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
@@ -1822,11 +1823,17 @@ mod tests {
         IndexedFacts,
         HashMap<GleanFileId, HashSet<(TextRange, String)>>,
         HashMap<GleanFileId, String>,
+        DiagnosticsEnabled,
     ) {
-        let (db, files, _) = RootDatabase::with_many_files(spec);
+        let (db, files, diag) = RootDatabase::with_many_files(spec);
+        let project_id = ProjectId(0);
+        if diag.use_erlang_service {
+            db.ensure_erlang_service(project_id)
+                .expect("erlang service started");
+        }
         let host = AnalysisHost::new(db);
         let glean = GleanIndexer {
-            project_id: ProjectId(0),
+            project_id,
             analysis: host.analysis(),
             module: None,
         };
@@ -1845,11 +1852,11 @@ mod tests {
             let annotations_set: HashSet<_> = extract_annotations(&text).into_iter().collect();
             expected_by_file.insert(file_id.into(), annotations_set);
         }
-        (facts, expected_by_file, file_names)
+        (facts, expected_by_file, file_names, diag)
     }
 
     fn xref_check(spec: &str) {
-        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_facts {
             let file_id = xref_fact.key.file_id;
             let mut annotations = expected_by_file
@@ -1873,7 +1880,7 @@ mod tests {
     }
 
     fn xref_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, file_names) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, file_names, _d) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_v2 {
             let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
@@ -1900,7 +1907,7 @@ mod tests {
     }
 
     fn decl_check(spec: &str) {
-        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
         let file_id = &facts.declaration_facts[0].key.file_id;
         let mut annotations = expected_by_file
             .remove(file_id)
@@ -1922,7 +1929,7 @@ mod tests {
     }
 
     fn decl_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
         for file_decl in facts.file_declarations {
             let mut annotations = expected_by_file
                 .remove(&file_decl.file_id)
