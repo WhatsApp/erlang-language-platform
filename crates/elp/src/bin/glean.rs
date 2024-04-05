@@ -869,7 +869,8 @@ impl GleanIndexer {
                 };
                 Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)
             }
-            hir::AnyExpr::Pat(Pat::Record { name, fields: _ })
+            hir::AnyExpr::Pat(Pat::Record { name, .. })
+            | hir::AnyExpr::Pat(Pat::RecordIndex { name, .. })
             | hir::AnyExpr::Expr(Expr::Record { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordIndex { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordUpdate { name, .. })
@@ -1616,7 +1617,20 @@ mod tests {
         foo(#rec.field) -> ok.
         %%  ^^^^ glean_module14/rec/99
         "#;
+
         xref_check(&spec);
+    }
+
+    #[test]
+    fn xref_pat_recordindex() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module14.erl
+        -record(rec, {field}).
+        foo(#rec.field) -> ok.
+        %%  ^^^^ glean_module14.erl/rec/rec
+        "#;
+
+        xref_v2_check(&spec);
     }
 
     #[test]
