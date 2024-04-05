@@ -36,6 +36,7 @@ use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::ast;
 use elp_syntax::ast::DeprecatedFa;
+use elp_syntax::ast::ExprMax;
 use elp_syntax::ast::Fa;
 use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
@@ -285,6 +286,7 @@ pub(crate) struct MacroTarget {
     file_id: GleanFileId,
     name: String,
     arity: Option<u32>,
+    expansion: Option<String>,
     ods_url: Option<String>,
 }
 
@@ -1097,10 +1099,12 @@ impl GleanIndexer {
         let form_list = sema.form_list(macro_def.file_id);
         let define = &form_list[macro_def.value];
         let name = define.name.name();
+        let expansion = Self::expand_macro(sema, &expr_source, source_file);
         let mut target = MacroTarget {
             file_id: macro_def.file_id.into(),
             name: name.to_string(),
             arity: define.name.arity(),
+            expansion,
             ods_url: None,
         };
         // @fb-only: target.ods_url =
@@ -1109,6 +1113,21 @@ impl GleanIndexer {
             source: range.into(),
             target: XRefTarget::Macro(target),
         })
+    }
+
+    fn expand_macro(
+        sema: &Semantic,
+        expr_source: &ExprSource,
+        source_file: &InFile<ast::SourceFile>,
+    ) -> Option<String> {
+        let node = expr_source.to_node(source_file)?;
+        if let ast::Expr::ExprMax(ExprMax::MacroCallExpr(macro_call)) = node {
+            let (_, expansion) = sema.expand(InFile::new(source_file.file_id, &macro_call))?;
+            let expansion = expansion.trim();
+            let expansion = format!("```erlang\n{}\n```", expansion);
+            return Some(expansion);
+        }
+        None
     }
 
     fn resolve_type(
@@ -1777,9 +1796,9 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
-        %%             ^^^ macro.hrl/macro/TAU/no_arity/no_ods
+        %%             ^^^ macro.hrl/macro/TAU/no_arity/no_ods/6.28
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/2/no_ods
+        %%             ^^^ macro.erl/macro/MAX/2/no_ods/if (N > 200) -> N; 'true' -> 200 end
 
         "#;
         xref_v2_check(&spec);
@@ -1792,7 +1811,7 @@ mod tests {
             -module(macro).
             -define(COUNT_INFRA(X), X).
             baz(atom) -> ?COUNT_INFRA(atom),
-        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/1/has_ods
+        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/1/has_ods/'atom'
 
         "#;
         // @fb-only: xref_v2_check(&spec);
@@ -1806,7 +1825,7 @@ mod tests {
             -define(TAU, 6.28).
 
             baz(?TAU) -> 1.
-        %%       ^^^ macro.erl/macro/TAU/no_arity/no_ods
+        %%       ^^^ macro.erl/macro/TAU/no_arity/no_ods/6.28
 
         "#;
         xref_v2_check(&spec);
@@ -1820,7 +1839,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/no_arity/no_ods
+        %%                    ^^^^ macro.erl/macro/TYPE/no_arity/no_ods/'integer'()
             baz(ok) -> 1.
 
         "#;
@@ -1834,7 +1853,7 @@ mod tests {
             -module(macro).
            -define(FOO(X), X).
            -wild(?FOO(atom)).
-        %%        ^^^ macro.erl/macro/FOO/1/no_ods
+        %%        ^^^ macro.erl/macro/FOO/1/no_ods/'atom'
 
         "#;
         xref_v2_check(&spec);
@@ -2070,7 +2089,20 @@ mod tests {
                         Some(_) => "has_ods",
                         None => "no_ods",
                     };
-                    f.write_str(format!("macro/{}/{}/{}", xref.name, arity, ods_link).as_str())
+                    let exp = match &xref.expansion {
+                        Some(exp) => exp
+                            .strip_prefix("```erlang\n")
+                            .unwrap()
+                            .strip_suffix("\n```")
+                            .unwrap()
+                            .replace("\n", " ")
+                            .split_whitespace()
+                            .join(" "),
+                        None => "no_exp".to_string(),
+                    };
+                    f.write_str(
+                        format!("macro/{}/{}/{}/{}", xref.name, arity, ods_link, exp).as_str(),
+                    )
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
                 XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
