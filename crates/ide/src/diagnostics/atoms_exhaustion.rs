@@ -35,10 +35,6 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if Some(true) == sema.db.is_test_suite_or_test_helper(file_id) {
-        return;
-    }
-
     let mut mfas = vec![
         FunctionMatch::mfa("erlang", "binary_to_atom", 1),
         FunctionMatch::mfa("erlang", "binary_to_atom", 2),
