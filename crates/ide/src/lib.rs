@@ -63,6 +63,7 @@ use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
 use handlers::goto_definition;
+use handlers::goto_type_definition;
 use handlers::references;
 use hir::db::DefDatabase;
 use hir::DefMap;
@@ -533,6 +534,28 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.with_db(|db| goto_definition::goto_definition(db, position))
+    }
+
+    pub fn goto_type_definition(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        let query_range = FileRange {
+            file_id: position.file_id,
+            range: TextRange::empty(position.offset),
+        };
+        self.with_db(|db| {
+            let project_id = self.project_id(position.file_id).ok()??;
+            let type_info = self.type_at_position(project_id, query_range).ok()??;
+            let (ty, _range) = &*type_info;
+            let refs = self
+                .type_references(project_id, ty)
+                .ok()?
+                .into_iter()
+                .map(|(_name, range)| range)
+                .collect();
+            goto_type_definition::goto_type_definition(db, position, refs)
+        })
     }
 
     /// Returns the docs for the symbol at the given position

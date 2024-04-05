@@ -318,6 +318,30 @@ pub(crate) fn handle_goto_definition(
     Ok(Some(res))
 }
 
+pub(crate) fn handle_goto_type_definition(
+    snap: Snapshot,
+    params: lsp_types::GotoDefinitionParams,
+) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+    if !snap.config.types_on_hover() {
+        return Ok(None);
+    }
+    let _p = profile::span("handle_goto_type_definition");
+    let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
+    position.offset = snap
+        .analysis
+        .clamp_offset(position.file_id, position.offset)?;
+    let nav_info = match snap.analysis.goto_type_definition(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let src = FileRange {
+        file_id: position.file_id,
+        range: nav_info.range,
+    };
+    let res = to_proto::goto_definition_response(&snap, Some(src), nav_info.info)?;
+    Ok(Some(res))
+}
+
 pub(crate) fn handle_references(
     snap: Snapshot,
     params: lsp_types::ReferenceParams,

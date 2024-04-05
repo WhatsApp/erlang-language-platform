@@ -30,6 +30,7 @@ use lsp_types::SignatureHelpOptions;
 use lsp_types::TextDocumentSyncCapability;
 use lsp_types::TextDocumentSyncKind;
 use lsp_types::TextDocumentSyncOptions;
+use lsp_types::TypeDefinitionProviderCapability;
 use lsp_types::WorkDoneProgressOptions;
 
 use crate::semantic_tokens;
@@ -66,7 +67,7 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
             },
         }),
         definition_provider: Some(OneOf::Left(true)),
-        type_definition_provider: None,
+        type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         implementation_provider: None,
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),

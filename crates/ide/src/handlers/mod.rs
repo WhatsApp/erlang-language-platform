@@ -9,4 +9,5 @@
 
 pub mod get_docs;
 pub mod goto_definition;
+pub mod goto_type_definition;
 pub mod references;
