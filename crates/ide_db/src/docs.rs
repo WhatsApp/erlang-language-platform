@@ -173,6 +173,9 @@ pub struct FileDoc {
 pub trait DocDatabase: DefDatabase + SourceDatabase + DocLoader + Upcast<dyn DefDatabase> {
     #[salsa::invoke(get_file_docs)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
+
+    #[salsa::invoke(get_file_specs)]
+    fn file_specs(&self, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>>;
 }
 
 /// Primary API to get documentation information from HIR
@@ -239,6 +242,11 @@ fn get_file_docs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
         function_docs: merge_descriptions_and_specs(descriptions.function_docs, specs),
         diagnostics: descriptions.diagnostics,
     })
+}
+
+fn get_file_specs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>> {
+    let specs = get_file_function_specs(db.upcast(), file_id);
+    Arc::new(specs)
 }
 
 fn merge_descriptions_and_specs(

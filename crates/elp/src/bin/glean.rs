@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use elp::build::load;
 use elp::cli::Cli;
+use elp_ide::elp_ide_db::docs::DocDatabase;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -559,15 +560,20 @@ impl GleanIndexer {
     fn declarations_v2(db: &RootDatabase, file_id: FileId) -> FileDeclaration {
         let mut declarations = vec![];
         let def_map = db.local_def_map(file_id);
+        // file docs are too slow. Going with specs for now
+        // let file_doc = db.file_doc(file_id);
+        let specs = db.file_specs(file_id);
         for (fun, def) in def_map.get_functions() {
             let range = def.range(db);
             if let Some(range) = range {
+                let spec = specs.get(fun);
+                let doc = spec.map(|doc| doc.markdown_text().to_string());
                 let loc = range.into();
                 declarations.push(Declaration::FunctionDeclaration(FuncDecl::new(
                     fun.name(),
                     fun.arity(),
                     loc,
-                    None,
+                    doc,
                     def.exported,
                     def.deprecated,
                 )));
@@ -878,12 +884,15 @@ mod tests {
         let spec = r#"
         //- /glean/app_glean/src/glean_module5.erl
             -module(glean_module5).
-            -export([foo/0]).
+            -export([foo/0, doc_foo/1]).
             -deprecated({depr_foo, 1, "use foo/0 instead"}).
             foo() -> 1.
         %%  ^^^^^^^^^^^ foo/0/not_deprecated/exported/no_docs
             depr_foo(B) -> B.
         %%  ^^^^^^^^^^^^^^^^^ depr_foo/1/deprecated/not_exported/no_docs
+            -spec doc_foo(integer()) -> [integer()].
+            doc_foo(Bar) -> [Bar].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ main/1/not_deprecated/not_exported/no_docs
         "#;
@@ -1150,8 +1159,13 @@ mod tests {
                         false => "not_exported",
                     };
                     let docs = match &decl.doc {
-                        Some(doc) => doc.as_str(),
-                        None => "no_docs",
+                        Some(doc) => doc
+                            .strip_prefix("```erlang\n")
+                            .unwrap()
+                            .strip_suffix("\n```")
+                            .unwrap()
+                            .to_string(),
+                        None => "no_docs".to_string(),
                     };
                     f.write_str(
                         format!(
