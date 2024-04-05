@@ -13,7 +13,10 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use elp::build::load;
+use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp_eqwalizer::ast::Pos;
+use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::docs::DocDatabase;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -23,6 +26,7 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::EqwalizerDatabase;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::RootDatabase;
 // @fb-only: use elp_ide::meta_only::ods_links::build_ods_url;
@@ -342,6 +346,8 @@ pub(crate) enum Declaration {
     TypeDeclaration(TypeDecl),
     #[serde(rename = "record")]
     RecordDeclaration(RecordDecl),
+    #[serde(rename = "var")]
+    VarDeclaration(VarDecl),
 }
 
 #[derive(Serialize, Debug)]
@@ -425,6 +431,12 @@ impl RecordDecl {
     }
 }
 
+#[derive(Serialize, Debug)]
+pub(crate) struct VarDecl {
+    type_desc: String,
+    span: Location,
+}
+
 #[derive(Debug, Default)]
 struct IndexedFacts {
     file_facts: Vec<FileFact>,
@@ -500,7 +512,7 @@ pub struct GleanIndexer {
 }
 
 pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
-    let indexer = GleanIndexer::new(args, cli)?;
+    let (indexer, _loaded) = GleanIndexer::new(args, cli)?;
     let facts = indexer.index()?;
     let facts = if args.v2 {
         facts.to_v2_facts()
@@ -525,14 +537,14 @@ fn write_results(facts: Vec<Fact>, cli: &mut dyn Cli, to: &Option<PathBuf>) -> R
 }
 
 impl GleanIndexer {
-    pub fn new(args: &Glean, cli: &mut dyn Cli) -> Result<Self> {
+    pub fn new(args: &Glean, cli: &mut dyn Cli) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
         let loaded = load::load_project_at(
             cli,
             &args.project,
             config,
             IncludeOtp::Yes,
-            elp_eqwalizer::Mode::Cli,
+            elp_eqwalizer::Mode::Server,
         )?;
         let analysis = loaded.analysis();
         let indexer = Self {
@@ -540,7 +552,7 @@ impl GleanIndexer {
             analysis,
             module: args.module.clone(),
         };
-        Ok(indexer)
+        Ok((indexer, loaded))
     }
 
     fn index(&self) -> Result<IndexedFacts> {
@@ -619,7 +631,7 @@ impl GleanIndexer {
             None => return None,
         };
         let line_fact = Self::line_fact(db, file_id);
-        let file_decl = Self::declarations_v2(db, file_id);
+        let file_decl = Self::declarations_v2(db, project_id, file_id);
         let xref_v2 = Self::xrefs_v2(db, file_id);
 
         let module_index = db.module_index(project_id);
@@ -700,7 +712,11 @@ impl GleanIndexer {
         result
     }
 
-    fn declarations_v2(db: &RootDatabase, file_id: FileId) -> FileDeclaration {
+    fn declarations_v2(
+        db: &RootDatabase,
+        project_id: ProjectId,
+        file_id: FileId,
+    ) -> FileDeclaration {
         let mut declarations = vec![];
         let def_map = db.local_def_map(file_id);
         // file docs are too slow. Going with specs for now
@@ -749,6 +765,9 @@ impl GleanIndexer {
             let loc = range.into();
             declarations.push(Declaration::RecordDeclaration(RecordDecl::new(rec, loc)));
         }
+
+        let types = Self::types(db, project_id, file_id);
+        declarations.extend(types);
 
         FileDeclaration::new(file_id.into(), declarations)
     }
@@ -912,6 +931,35 @@ impl GleanIndexer {
         };
         acc.push(target?);
         None
+    }
+
+    fn types(db: &RootDatabase, project_id: ProjectId, file_id: FileId) -> Vec<Declaration> {
+        let mut result = vec![];
+        if !db.is_eqwalizer_enabled(file_id, false) {
+            return result;
+        }
+        let module_diagnostics = db.eqwalizer_diagnostics_by_project(project_id, vec![file_id]);
+        let text = db.file_text(file_id);
+        if let EqwalizerDiagnostics::Diagnostics { type_info, .. } = module_diagnostics.as_ref() {
+            let types = type_info
+                .values()
+                .flatten()
+                .filter(|(_, ty)| !ty.is_dynamic())
+                .collect_vec();
+            for (pos, ty) in types {
+                if let Pos::TextRange(range) = pos {
+                    let range: TextRange = range.clone().into();
+                    let text = &text[range];
+                    let text = format!("```erlang\n{} :: {}\n```", text, ty);
+                    let decl = VarDecl {
+                        type_desc: text,
+                        span: range.into(),
+                    };
+                    result.push(Declaration::VarDeclaration(decl));
+                }
+            }
+        }
+        result
     }
 
     fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> XRefFile {
@@ -1353,6 +1401,25 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported/no_docs
+        "#;
+        decl_v2_check(&spec);
+    }
+
+    #[test]
+    fn declaration_v2_types_test() {
+        let spec = r#"
+        //- eqwalizer
+        //- erlang_service
+        //- /app_glean/src/glean_module5.erl app:app_glean
+            -module(glean_module5).
+            foo(B) -> 1.
+        %%  ^^^^^^^^^^^^ func/foo/1/not_deprecated/not_exported/no_docs
+            -spec doc_foo(integer() | atom()) -> [integer()].
+            doc_foo(Bar) -> A = foo(Bar), [Bar, A].
+        %%          ^^^ var/Bar :: number() | atom()
+        %%                          ^^^ var/Bar :: number() | atom()
+        %%                                 ^^^ var/Bar :: number() | atom()
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
         decl_v2_check(&spec);
     }
@@ -1959,6 +2026,7 @@ mod tests {
                 Declaration::MacroDeclaration(decl) => &decl.span,
                 Declaration::TypeDeclaration(decl) => &decl.span,
                 Declaration::RecordDeclaration(decl) => &decl.span,
+                Declaration::VarDeclaration(decl) => &decl.span,
             }
         }
     }
@@ -2008,6 +2076,16 @@ mod tests {
                 }
                 Declaration::RecordDeclaration(decl) => {
                     f.write_str(format!("rec/{}", decl.name).as_str())
+                }
+                Declaration::VarDeclaration(decl) => {
+                    let ttype = decl
+                        .type_desc
+                        .strip_prefix("```erlang\n")
+                        .unwrap()
+                        .strip_suffix("\n```")
+                        .unwrap()
+                        .to_string();
+                    f.write_str(format!("var/{}", ttype).as_str())
                 }
             }
         }

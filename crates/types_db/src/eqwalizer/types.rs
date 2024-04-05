@@ -243,6 +243,10 @@ impl Type {
         f(self)?;
         self.walk(&mut |ty| ty.traverse(f))
     }
+
+    pub fn is_dynamic(&self) -> bool {
+        self == &Type::DynamicType
+    }
 }
 
 impl fmt::Display for Type {
