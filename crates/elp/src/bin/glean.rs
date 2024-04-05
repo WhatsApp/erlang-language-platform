@@ -621,7 +621,6 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
     use elp_ide::AnalysisHost;
-    use elp_project_model::test_fixture::FixtureWithProjectMeta;
     use expect_test::expect_file;
 
     use super::*;
@@ -716,30 +715,17 @@ mod tests {
 
     #[test]
     fn declaration_test() {
-        let module = "glean_module5";
         let spec = r#"
         //- /glean/app_glean/src/glean_module5.erl
-        -module(glean_module5).
-        -type tree() :: {'node', tree(), tree(), any(), any()}.
-        -record(user, {name = "" :: string(),
-                       notes :: tree(),
-                       age :: non_neg_integer(),
-                       friends=[] :: [user()],
-                       bio :: string() | binary()}).
-        main(A) ->
-            A."#;
-        let result = run_spec(spec, module);
-        let decl_fact = &result.declaration_facts;
-        assert_eq!(decl_fact.len(), 3);
-        let main = mfa(module, "main", 1);
-        let typ = mfa(module, "tree", 0);
-        let rec = mfa(module, "user", 99);
-        assert_eq!(decl_fact[0].key.fqn, main);
-        assert_eq!(decl_fact[0].key.span, Location::new(275, 17));
-        assert_eq!(decl_fact[1].key.fqn, typ);
-        assert_eq!(decl_fact[1].key.span, Location::new(24, 55));
-        assert_eq!(decl_fact[2].key.fqn, rec);
-        assert_eq!(decl_fact[2].key.span, Location::new(80, 194));
+            -module(glean_module5).
+            -type tree() :: {'node', tree(), tree(), any(), any()}.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module5/tree/0
+            -record(user, {name = "" :: string(), notes :: tree()}).
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module5/user/99
+            main(A) -> A.
+        %%  ^^^^^^^^^^^^^ glean_module5/main/1
+        "#;
+        decl_check(&spec);
     }
 
     #[test]
@@ -896,19 +882,6 @@ mod tests {
         xref_check(&spec);
     }
 
-    fn run_spec(spec: &str, module: &str) -> IndexedFacts {
-        let mut cli = Fake::default();
-        let dir = FixtureWithProjectMeta::gen_project(spec);
-
-        let args = Glean {
-            project: dir.path().join("glean").join("app_glean"),
-            module: Some(module.into()),
-            to: None,
-        };
-        let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        indexer.index().expect("should be ok")
-    }
-
     fn mfa(module: &str, name: &str, arity: u32) -> MFA {
         MFA {
             module: module.into(),
@@ -954,6 +927,23 @@ mod tests {
                 if !annotations.contains(&tuple) {
                     panic!("Expected to find {:?} in {:?}", tuple, &annotations);
                 }
+            }
+        }
+        assert!(expected_by_file.is_empty(), "Expected no more annotations");
+    }
+
+    fn decl_check(spec: &str) {
+        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
+        let file_id = &facts.declaration_facts[0].key.file_id;
+        let annotations = expected_by_file
+            .remove(file_id)
+            .expect("Annotations shold be present");
+        for decl in facts.declaration_facts {
+            let range: TextRange = decl.key.span.clone().into();
+            let label = decl.key.fqn.to_string();
+            let tuple = (range, label);
+            if !annotations.contains(&tuple) {
+                panic!("Expected to find {:?} in {:?}", tuple, &annotations);
             }
         }
         assert!(expected_by_file.is_empty(), "Expected no more annotations");
