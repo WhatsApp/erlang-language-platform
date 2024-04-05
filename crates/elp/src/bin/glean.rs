@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use std::fmt;
 use std::io::Write;
 use std::mem;
 use std::path::PathBuf;
@@ -193,12 +192,6 @@ impl MFA {
     }
 }
 
-impl fmt::Display for MFA {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(format!("{}/{}/{}", self.module, self.name, self.arity).as_str())
-    }
-}
-
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 struct Location {
     start: u32,
@@ -228,6 +221,72 @@ pub(crate) enum Fact {
     FunctionDeclaration { facts: Vec<FunctionDeclarationFact> },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<XRefFact> },
+    //v2 facts
+    #[serde(rename = "erlang.Declaration")]
+    Declaration { facts: Vec<DeclarationKey> },
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct DeclarationKey {
+    key: FileDeclaration,
+}
+
+impl DeclarationKey {
+    pub(crate) fn new(key: FileDeclaration) -> Self {
+        Self { key }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct FileDeclaration {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    declarations: Vec<Declaration>,
+}
+
+impl FileDeclaration {
+    fn new(file_id: GleanFileId, declarations: Vec<Declaration>) -> Self {
+        Self {
+            file_id,
+            declarations,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) enum Declaration {
+    #[serde(rename = "func")]
+    FunctionDeclaration(FuncDecl),
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct FuncDecl {
+    name: String,
+    arity: u32,
+    span: Location,
+    doc: Option<String>,
+    exported: bool,
+    deprecated: bool,
+}
+
+impl FuncDecl {
+    fn new(
+        name: &Name,
+        arity: u32,
+        span: Location,
+        doc: Option<String>,
+        exported: bool,
+        deprecated: bool,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            arity,
+            span,
+            doc,
+            exported,
+            deprecated,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -236,6 +295,8 @@ struct IndexedFacts {
     file_line_facts: Vec<FileLinesFact>,
     declaration_facts: Vec<FunctionDeclarationFact>,
     xref_facts: Vec<XRefFact>,
+    //v2 facts
+    file_declarations: Vec<FileDeclaration>,
 }
 
 impl IndexedFacts {
@@ -243,10 +304,12 @@ impl IndexedFacts {
         &mut self,
         file_fact: FileFact,
         line_fact: FileLinesFact,
+        decl: FileDeclaration,
         facts: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     ) {
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
+        self.file_declarations.push(decl);
         if let Some((decl, xref)) = facts {
             self.declaration_facts.extend(decl);
             self.xref_facts.push(xref)
@@ -270,8 +333,21 @@ impl IndexedFacts {
         ]
     }
 
-    fn to_v2_facts(self) -> Vec<Fact> {
-        vec![]
+    fn to_v2_facts(mut self) -> Vec<Fact> {
+        let file_decl = mem::take(&mut self.file_declarations);
+        let decl = file_decl
+            .into_iter()
+            .map(|decl| DeclarationKey::new(decl))
+            .collect();
+        vec![
+            Fact::File {
+                facts: mem::take(&mut self.file_facts),
+            },
+            Fact::FileLine {
+                facts: mem::take(&mut self.file_line_facts),
+            },
+            Fact::Declaration { facts: decl },
+        ]
     }
 }
 
@@ -337,7 +413,7 @@ impl GleanIndexer {
                 let path = source_root.path_for_file(&file_id).unwrap();
                 let mut ctx = IndexedFacts::default();
                 match Self::index_file(&db, file_id, &path, self.project_id) {
-                    Some((file, line, facts)) => ctx.add(file, line, facts),
+                    Some((file, line, decl, facts)) => ctx.add(file, line, decl, facts),
                     None => panic!("Can't find module {}", module),
                 }
                 ctx
@@ -356,8 +432,8 @@ impl GleanIndexer {
                     .into_iter()
                     .fold(
                         IndexedFacts::default(),
-                        |mut acc, (file_fact, line_fact, facts)| {
-                            acc.add(file_fact, line_fact, facts);
+                        |mut acc, (file_fact, line_fact, decl, facts)| {
+                            acc.add(file_fact, line_fact, decl, facts);
                             acc
                         },
                     )
@@ -392,6 +468,7 @@ impl GleanIndexer {
     ) -> Option<(
         FileFact,
         FileLinesFact,
+        FileDeclaration,
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     )> {
         let file_fact = match Self::file_fact(db, file_id, path, project_id) {
@@ -399,14 +476,15 @@ impl GleanIndexer {
             None => return None,
         };
         let line_fact = Self::line_fact(db, file_id);
+        let file_decl = Self::declarations_v2(db, file_id);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
             let decl = Self::declarations(db, file_id, module);
             let xref = Self::xrefs(db, file_id);
-            return Some((file_fact, line_fact, Some((decl, xref))));
+            return Some((file_fact, line_fact, file_decl, Some((decl, xref))));
         }
-        Some((file_fact, line_fact, None))
+        Some((file_fact, line_fact, file_decl, None))
     }
 
     fn file_fact(
@@ -476,6 +554,26 @@ impl GleanIndexer {
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
+    }
+
+    fn declarations_v2(db: &RootDatabase, file_id: FileId) -> FileDeclaration {
+        let mut declarations = vec![];
+        let def_map = db.local_def_map(file_id);
+        for (fun, def) in def_map.get_functions() {
+            let range = def.range(db);
+            if let Some(range) = range {
+                let loc = range.into();
+                declarations.push(Declaration::FunctionDeclaration(FuncDecl::new(
+                    fun.name(),
+                    fun.arity(),
+                    loc,
+                    None,
+                    def.exported,
+                    def.deprecated,
+                )));
+            }
+        }
+        FileDeclaration::new(file_id.into(), declarations)
     }
 
     fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
@@ -660,6 +758,7 @@ mod tests {
 
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use std::fmt;
 
     use elp::cli::Fake;
     use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
@@ -703,6 +802,7 @@ mod tests {
             file_line_facts,
             declaration_facts,
             xref_facts,
+            file_declarations: vec![],
         };
 
         write_results(facts.to_v1_facts(), &mut cli, &None).expect("success");
@@ -771,6 +871,23 @@ mod tests {
         %%  ^^^^^^^^^^^^^ glean_module5/main/1
         "#;
         decl_check(&spec);
+    }
+
+    #[test]
+    fn declaration_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module5.erl
+            -module(glean_module5).
+            -export([foo/0]).
+            -deprecated({depr_foo, 1, "use foo/0 instead"}).
+            foo() -> 1.
+        %%  ^^^^^^^^^^^ foo/0/not_deprecated/exported/no_docs
+            depr_foo(B) -> B.
+        %%  ^^^^^^^^^^^^^^^^^ depr_foo/1/deprecated/not_exported/no_docs
+            main(A) -> A.
+        %%  ^^^^^^^^^^^^^ main/1/not_deprecated/not_exported/no_docs
+        "#;
+        decl_v2_check(&spec);
     }
 
     #[test]
@@ -992,5 +1109,65 @@ mod tests {
             }
         }
         assert!(expected_by_file.is_empty(), "Expected no more annotations");
+    }
+
+    fn decl_v2_check(spec: &str) {
+        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
+        for file_decl in facts.file_declarations {
+            let annotations = expected_by_file
+                .remove(&file_decl.file_id)
+                .expect("Annotations shold be present");
+            for decl in file_decl.declarations {
+                let range: TextRange = decl.span().clone().into();
+                let label = decl.to_string();
+                let tuple = (range, label);
+                if !annotations.contains(&tuple) {
+                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
+                }
+            }
+        }
+        assert!(expected_by_file.is_empty(), "Expected no more annotations");
+    }
+
+    impl Declaration {
+        fn span(&self) -> &Location {
+            match self {
+                Declaration::FunctionDeclaration(decl) => &decl.span,
+            }
+        }
+    }
+
+    impl fmt::Display for Declaration {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Declaration::FunctionDeclaration(decl) => {
+                    let deprecated = match decl.deprecated {
+                        true => "deprecated",
+                        false => "not_deprecated",
+                    };
+                    let exported = match decl.exported {
+                        true => "exported",
+                        false => "not_exported",
+                    };
+                    let docs = match &decl.doc {
+                        Some(doc) => doc.as_str(),
+                        None => "no_docs",
+                    };
+                    f.write_str(
+                        format!(
+                            "{}/{}/{}/{}/{}",
+                            decl.name, decl.arity, deprecated, exported, docs
+                        )
+                        .as_str(),
+                    )
+                }
+            }
+        }
+    }
+
+    impl fmt::Display for MFA {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(format!("{}/{}/{}", self.module, self.name, self.arity).as_str())
+        }
     }
 }
