@@ -146,25 +146,18 @@ impl FunctionDeclarationFact {
 
 #[derive(Serialize, Debug)]
 pub(crate) struct XRefFact {
-    key: XRefFactKey,
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    xrefs: Vec<XRefFactVal>,
 }
 
 impl XRefFact {
     fn new(file_id: FileId, xrefs: Vec<XRefFactVal>) -> Self {
         Self {
-            key: XRefFactKey {
-                file_id: file_id.into(),
-                xrefs,
-            },
+            file_id: file_id.into(),
+            xrefs,
         }
     }
-}
-
-#[derive(Serialize, Debug)]
-struct XRefFactKey {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    xrefs: Vec<XRefFactVal>,
 }
 
 #[derive(Serialize, Debug)]
@@ -220,7 +213,7 @@ pub(crate) enum Fact {
         facts: Vec<Key<FunctionDeclarationFact>>,
     },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
-    XRef { facts: Vec<XRefFact> },
+    XRef { facts: Vec<Key<XRefFact>> },
     //v2 facts
     #[serde(rename = "erlang.Declaration")]
     Declaration { facts: Vec<DeclarationKey> },
@@ -408,6 +401,8 @@ impl IndexedFacts {
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.declaration_facts);
         let declaration_fact = declaration_fact.into_iter().map_into().collect();
+        let xref_fact = mem::take(&mut self.xref_facts);
+        let xref_fact = xref_fact.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -418,9 +413,7 @@ impl IndexedFacts {
             Fact::FunctionDeclaration {
                 facts: declaration_fact,
             },
-            Fact::XRef {
-                facts: mem::take(&mut self.xref_facts),
-            },
+            Fact::XRef { facts: xref_fact },
         ]
     }
 
@@ -1940,11 +1933,11 @@ mod tests {
     fn xref_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_facts {
-            let file_id = xref_fact.key.file_id;
+            let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
                 .remove(&file_id)
                 .expect("Annotations shold be present");
-            for xref in xref_fact.key.xrefs {
+            for xref in xref_fact.xrefs {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
                 let tuple = (range, label);
