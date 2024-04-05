@@ -1183,6 +1183,24 @@ mod tests {
     }
 
     #[test]
+    fn xref_captured_fun_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module71.erl
+        foo(Bar) -> Bar + 1.
+
+        //- /glean/app_glean/src/glean_module7.erl
+        main() ->
+            Foo = fun glean_module71:foo/1,
+        %%        ^^^^^^^^^^^^^^^^^^^^^^^^ glean_module71.erl/func/foo/1
+            Baz = fun baz/2.
+        %%        ^^^^^^^^^ glean_module7.erl/func/baz/2
+        baz(A, B) ->
+            A + B."#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
     fn xref_types_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
