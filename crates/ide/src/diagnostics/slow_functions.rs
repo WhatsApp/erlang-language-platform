@@ -18,16 +18,25 @@ use lazy_static::lazy_static;
 use super::helpers::check_used_functions;
 use super::helpers::DiagnosticTemplate;
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::helpers::FunctionCallDiagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
-pub(crate) fn slow_functions(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) || Some(true) == sema.db.is_test_suite_or_test_helper(file_id)
-    {
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: false,
+        include_tests: false,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        slow_functions(diags, sema, file_id);
+    },
+};
+
+fn slow_functions(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     check_used_functions(sema, file_id, &USED_FUNCTIONS, diags);
 }
 
