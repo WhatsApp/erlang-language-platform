@@ -72,7 +72,7 @@ use serde::Serialize;
 
 use crate::args::Glean;
 
-#[derive(Serialize, Debug, Eq, Hash, PartialEq)]
+#[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
 
 impl GleanFileId {
@@ -177,14 +177,17 @@ struct MFA {
     module: String,
     name: String,
     arity: u32,
+    #[serde(skip_serializing)]
+    file_id: GleanFileId,
 }
 
 impl MFA {
-    fn new(module: &ModuleName, name: &Name, arity: u32) -> Self {
+    fn new(module: &ModuleName, name: &Name, arity: u32, file_id: FileId) -> Self {
         Self {
             module: module.to_string(),
             name: name.to_string(),
             arity,
+            file_id: file_id.into(),
         }
     }
 }
@@ -591,7 +594,7 @@ impl GleanIndexer {
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
             let decl = Self::declarations_v1(db, file_id, module);
-            let xref = Self::xrefs(db, file_id);
+            let xref = Self::xrefs(db, file_id, file_ids);
             return Some((file_fact, line_fact, file_decl, xref_v2, Some((decl, xref))));
         }
         Some((file_fact, line_fact, file_decl, xref_v2, None))
@@ -647,20 +650,20 @@ impl GleanIndexer {
             let range = def.range(db);
             if let Some(range) = range {
                 let loc = range.into();
-                let mfa = MFA::new(module, fun.name(), fun.arity());
+                let mfa = MFA::new(module, fun.name(), fun.arity(), def.file.file_id);
                 result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
             }
         }
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
             let loc = range.into();
-            let mfa = MFA::new(module, ty.name(), ty.arity());
+            let mfa = MFA::new(module, ty.name(), ty.arity(), def.file.file_id);
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
             let loc = range.into();
-            let mfa = MFA::new(module, rec, 99);
+            let mfa = MFA::new(module, rec, 99, def.file.file_id);
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
@@ -745,10 +748,10 @@ impl GleanIndexer {
         }
     }
 
-    fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
+    fn xrefs(db: &RootDatabase, file_id: FileId, file_ids: &FxHashSet<GleanFileId>) -> XRefFact {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
-        let xrefs = fold::fold_file(
+        let mut xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
             file_id,
@@ -846,6 +849,8 @@ impl GleanIndexer {
             },
             &mut |acc, _on, _form_id| acc,
         );
+
+        xrefs.retain(|x| file_ids.contains(&x.target.file_id));
 
         XRefFact::new(file_id, xrefs)
     }
@@ -1096,7 +1101,7 @@ impl GleanIndexer {
     ) -> Option<XRefFactVal> {
         let def = resolve_call_target(sema, target, arity, file_id, body)?;
         let module = &def.module?;
-        let mfa = MFA::new(module, def.name.name(), arity);
+        let mfa = MFA::new(module, def.name.name(), arity, def.file.file_id);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 
@@ -1173,7 +1178,12 @@ impl GleanIndexer {
         let (body, range) = ctx.find_range(sema)?;
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
+        let mfa = MFA::new(
+            &module,
+            def.type_alias.name().name(),
+            arity,
+            def.file.file_id,
+        );
         Some(XRefFactVal::new(range.into(), mfa))
     }
 
@@ -1212,7 +1222,7 @@ impl GleanIndexer {
         let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
-        let mfa = MFA::new(&module, &def.record.name, 99);
+        let mfa = MFA::new(&module, &def.record.name, 99, def.file.file_id);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 
@@ -1299,6 +1309,7 @@ mod tests {
             "smax_product_catalog",
             "product_visibility_update_request_iq",
             0,
+            file_id.into(),
         );
 
         let file_facts = vec![
@@ -1898,11 +1909,12 @@ mod tests {
         xref_v2_check(&spec);
     }
 
-    fn mfa(module: &str, name: &str, arity: u32) -> MFA {
+    fn mfa(module: &str, name: &str, arity: u32, file_id: GleanFileId) -> MFA {
         MFA {
             module: module.into(),
             name: name.into(),
             arity,
+            file_id,
         }
     }
 
