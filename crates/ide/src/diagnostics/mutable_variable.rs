@@ -35,10 +35,23 @@ use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
 
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::diagnostics::DiagnosticCode;
 use crate::Diagnostic;
 
-pub(crate) fn mutable_variable_bug(
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        mutable_variable_bug(diags, sema, file_id);
+    },
+};
+
+fn mutable_variable_bug(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
