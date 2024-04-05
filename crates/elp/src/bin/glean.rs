@@ -887,6 +887,18 @@ impl GleanIndexer {
                     }
                     acc
                 }
+                hir::AnyExpr::TypeExpr(TypeExpr::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
+                            acc.push(xref);
+                        }
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -1402,6 +1414,21 @@ mod tests {
 
             baz(?TAU) -> 1.
         %%       ^^^ macro.erl/macro/TAU/no_arity
+
+        "#;
+        xref_v2_check(&spec);
+    }
+
+    #[test]
+    fn xref_macro_in_type_v2_test() {
+        let spec = r#"
+        //- /src/macro.erl
+            -module(macro).
+            -define(TYPE, integer()).
+
+            -spec baz(ok) -> ?TYPE.
+        %%                    ^^^^ macro.erl/macro/TYPE/no_arity
+            baz(ok) -> 1.
 
         "#;
         xref_v2_check(&spec);
