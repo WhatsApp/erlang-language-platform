@@ -23,6 +23,8 @@ use hir::Semantic;
 use text_edit::TextEdit;
 
 use super::DiagnosticCode;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::diagnostics::RelatedInformation;
 use crate::fix;
 use crate::Diagnostic;
@@ -32,11 +34,19 @@ use crate::Diagnostic;
 // Diagnostic for mismatches between the clauses of a function declaration.
 
 // TODO use lowered versions, they have the separator in them. T170135788
-pub(crate) fn head_mismatch_semantic(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+
+pub(crate) static DESCRIPTOR_SEMANTIC: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        head_mismatch_semantic(diags, sema, file_id);
+    },
+};
+
+fn head_mismatch_semantic(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     let def_map = sema.def_map(file_id);
     let head_info = def_map
         .get_function_clauses_ordered()
