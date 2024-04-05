@@ -106,24 +106,6 @@ impl FileFact {
 
 #[derive(Serialize, Debug)]
 pub(crate) struct FileLinesFact {
-    key: FileLinesFactKey,
-}
-
-impl FileLinesFact {
-    fn new(file_id: FileId, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
-        FileLinesFact {
-            key: FileLinesFactKey {
-                file_id: file_id.into(),
-                lengths,
-                ends_with_new_line,
-                unicode_or_tabs: true,
-            },
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-struct FileLinesFactKey {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     lengths: Vec<u32>,
@@ -131,6 +113,17 @@ struct FileLinesFactKey {
     ends_with_new_line: bool,
     #[serde(rename = "hasUnicodeOrTabs")]
     unicode_or_tabs: bool,
+}
+
+impl FileLinesFact {
+    fn new(file_id: FileId, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
+        Self {
+            file_id: file_id.into(),
+            lengths,
+            ends_with_new_line,
+            unicode_or_tabs: true,
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -228,7 +221,7 @@ pub(crate) enum Fact {
     #[serde(rename = "src.File")]
     File { facts: Vec<FileFact> },
     #[serde(rename = "src.FileLines")]
-    FileLine { facts: Vec<FileLinesFact> },
+    FileLine { facts: Vec<Key<FileLinesFact>> },
     #[serde(rename = "erlang.FunctionDeclaration")]
     FunctionDeclaration { facts: Vec<FunctionDeclarationFact> },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
@@ -416,12 +409,14 @@ impl IndexedFacts {
     }
 
     fn to_v1_facts(mut self) -> Vec<Fact> {
+        let file_lines_fact = mem::take(&mut self.file_line_facts);
+        let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
             },
             Fact::FileLine {
-                facts: mem::take(&mut self.file_line_facts),
+                facts: file_lines_fact,
             },
             Fact::FunctionDeclaration {
                 facts: mem::take(&mut self.declaration_facts),
@@ -440,12 +435,14 @@ impl IndexedFacts {
             .collect();
         let xref = mem::take(&mut self.xref_v2);
         let xref = xref.into_iter().map(|x| XRefKey { key: x }).collect();
+        let file_lines_fact = mem::take(&mut self.file_line_facts);
+        let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
             },
             Fact::FileLine {
-                facts: mem::take(&mut self.file_line_facts),
+                facts: file_lines_fact,
             },
             Fact::Declaration { facts: decl },
             Fact::XRefV2 { facts: xref },
@@ -1360,7 +1357,7 @@ mod tests {
         "#;
         let result = facts_with_annotataions(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
-        let line_fact = &result.file_line_facts[0].key;
+        let line_fact = &result.file_line_facts[0];
         assert!(line_fact.ends_with_new_line);
         assert_eq!(line_fact.lengths, vec![24, 10, 9, 1]);
     }
@@ -1374,7 +1371,7 @@ mod tests {
             bar."#;
         let result = facts_with_annotataions(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
-        let line_fact = &result.file_line_facts[0].key;
+        let line_fact = &result.file_line_facts[0];
         assert_eq!(line_fact.ends_with_new_line, false);
         assert_eq!(line_fact.lengths, vec![24, 10, 8]);
     }
