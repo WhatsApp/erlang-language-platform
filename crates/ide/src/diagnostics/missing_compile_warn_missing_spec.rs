@@ -34,14 +34,27 @@ use regex::Regex;
 use text_edit::TextRange;
 
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::fix;
 
-pub(crate) fn missing_compile_warn_missing_spec(
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        missing_compile_warn_missing_spec(diags, sema, file_id);
+    },
+};
+
+fn missing_compile_warn_missing_spec(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
 ) {
-    if sema.db.is_generated(file_id) || Some(false) == is_in_src_dir(sema.db.upcast(), file_id) {
+    if Some(false) == is_in_src_dir(sema.db.upcast(), file_id) {
         return;
     }
     let form_list = sema.form_list(file_id);

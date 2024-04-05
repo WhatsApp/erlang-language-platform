@@ -570,6 +570,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &deprecated_function::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &slow_functions::DESCRIPTOR,
+        &missing_compile_warn_missing_spec::DESCRIPTOR,
     ]
 }
 
@@ -666,7 +667,6 @@ pub fn semantic_diagnostics(
         effect_free_statement::effect_free_statement(res, sema, file_id);
         expression_can_be_simplified::diagnostic(res, sema, file_id);
         application_env::application_env(res, sema, file_id);
-        missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
     }
 }
 
