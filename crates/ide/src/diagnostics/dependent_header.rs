@@ -25,8 +25,21 @@ use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 
-pub(crate) fn dependent_header(
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, file_kind| {
+        dependent_header(diags, sema, file_id, file_kind);
+    },
+};
+
+fn dependent_header(
     diagnostics: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,

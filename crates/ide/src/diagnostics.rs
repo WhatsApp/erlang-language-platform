@@ -568,6 +568,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
+        &dependent_header::DESCRIPTOR,
     ]
 }
 
@@ -666,7 +667,6 @@ pub fn semantic_diagnostics(
         application_env::application_env(res, sema, file_id);
         missing_compile_warn_missing_spec::missing_compile_warn_missing_spec(res, sema, file_id);
         slow_functions::slow_functions(res, sema, file_id);
-        dependent_header::dependent_header(res, sema, file_id, file_kind);
     }
 }
 
