@@ -30,6 +30,7 @@ use elp_ide::TextRange;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::ast;
+use elp_syntax::ast::DeprecatedFa;
 use elp_syntax::ast::Fa;
 use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
@@ -38,8 +39,10 @@ use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
+use hir::AsName;
 use hir::Body;
 use hir::CallTarget;
+use hir::DefMap;
 use hir::DefineId;
 use hir::Expr;
 use hir::ExprId;
@@ -54,6 +57,7 @@ use hir::Strategy;
 use hir::Term;
 use hir::TypeExpr;
 use hir::TypeExprId;
+use itertools::Itertools;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use serde::Serialize;
@@ -831,6 +835,7 @@ impl GleanIndexer {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
+        let def_map = sema.def_map(file_id);
         let xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
@@ -941,6 +946,30 @@ impl GleanIndexer {
                     }
                     acc
                 }
+                (hir::On::Entry, hir::FormIdx::DeprecatedAttribute(idx)) => {
+                    let deprecated = &form_list[idx];
+                    let form_id = deprecated.form_id();
+                    let ast = form_id.get_ast(db, file_id);
+                    if let Some(attr) = ast.attr() {
+                        match attr {
+                            ast::DeprecatedDetails::DeprecatedFa(fun) => {
+                                if let Some(xref) = Self::deprecated_xref(&def_map, &fun) {
+                                    acc.push(xref);
+                                }
+                            }
+                            ast::DeprecatedDetails::DeprecatedFas(funs) => {
+                                for fun in funs.fa() {
+                                    if let Some(xref) = Self::deprecated_xref(&def_map, &fun) {
+                                        acc.push(xref);
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+
+                    acc
+                }
                 _ => acc,
             },
         );
@@ -949,6 +978,37 @@ impl GleanIndexer {
             file_id: file_id.into(),
             xrefs,
         }
+    }
+
+    fn deprecated_xref(def_map: &DefMap, fun: &DeprecatedFa) -> Option<XRef> {
+        let name = fun.fun()?.as_name();
+        let arity = fun.arity()?;
+        let (na, def) = match arity {
+            ast::DeprecatedFunArity::DeprecatedWildcard(_) => {
+                let (na, def) = def_map
+                    .get_functions()
+                    .filter(|(na, _)| na.name() == &name)
+                    .sorted_by_key(|(na, _)| na.arity())
+                    .next()?;
+                (na.clone(), def)
+            }
+            ast::DeprecatedFunArity::Integer(arity) => {
+                let na = NameArity::new(name, arity.into());
+                let def = def_map.get_function(&na)?;
+                (na, def)
+            }
+        };
+        let range = fun.fun()?.syntax().text_range().into();
+        let target = FunctionTarget {
+            file_id: def.file.file_id.into(),
+            name: na.name().to_string(),
+            arity: na.arity(),
+        };
+        let xref = XRef {
+            source: range,
+            target: XRefTarget::Function(target),
+        };
+        Some(xref)
     }
 
     fn fa_name_arity(fa: &Fa) -> Option<NameArity> {
@@ -1289,6 +1349,23 @@ mod tests {
         -export([foo/1]).
         %%       ^^^^^ glean_module61.erl/func/foo/1
         foo(Bar) -> Bar + 1.
+        "#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
+    fn xref_deprecated_v2_test() {
+        let spec = r#"
+        //- /src/glean_module61.erl
+        -module(glean_module61).
+        -deprecated([{foo, 1}]).
+        %%            ^^^ glean_module61.erl/func/foo/1
+        -deprecated([{bar, '_'}]).
+        %%            ^^^ glean_module61.erl/func/bar/0
+        foo(Bar) -> Bar + 1.
+        bar() -> 1.
+        bar(A) -> A.
         "#;
 
         xref_v2_check(&spec);

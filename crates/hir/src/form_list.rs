@@ -557,6 +557,16 @@ pub enum DeprecatedAttribute {
     },
 }
 
+impl DeprecatedAttribute {
+    pub fn form_id(&self) -> &FormId<ast::DeprecatedAttribute> {
+        match self {
+            DeprecatedAttribute::Module { form_id, .. } => form_id,
+            DeprecatedAttribute::Fa { form_id, .. } => form_id,
+            DeprecatedAttribute::Fas { form_id, .. } => form_id,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DeprecatedFa {
     pub name: Name,

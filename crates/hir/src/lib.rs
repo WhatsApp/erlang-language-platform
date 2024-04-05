@@ -18,7 +18,7 @@ mod diagnostics;
 pub mod edoc;
 mod expr;
 pub mod fold;
-mod form_list;
+pub mod form_list;
 mod include;
 mod intern;
 mod macro_exp;
