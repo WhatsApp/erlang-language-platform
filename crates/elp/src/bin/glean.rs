@@ -38,6 +38,7 @@ use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
 use hir::Body;
 use hir::CallTarget;
+use hir::DefineId;
 use hir::Expr;
 use hir::ExprId;
 use hir::ExprSource;
@@ -250,6 +251,7 @@ pub(crate) struct XRef {
 #[derive(Serialize, Debug)]
 pub(crate) enum XRefTarget {
     Function(FunctionTarget),
+    Macro(MacroTarget),
 }
 
 #[derive(Serialize, Debug)]
@@ -258,6 +260,14 @@ pub(crate) struct FunctionTarget {
     file_id: GleanFileId,
     name: String,
     arity: u32,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct MacroTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
+    arity: Option<u32>,
 }
 
 #[derive(Serialize, Debug)]
@@ -853,6 +863,18 @@ impl GleanIndexer {
                     }
                     acc
                 }
+                hir::AnyExpr::Expr(Expr::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
+                            acc.push(xref);
+                        }
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -898,6 +920,26 @@ impl GleanIndexer {
         })
     }
 
+    fn resolve_macro_v2(
+        sema: &Semantic<'_>,
+        macro_def: &InFile<DefineId>,
+        source_file: &InFile<ast::SourceFile>,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<XRef> {
+        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
+        let form_list = sema.form_list(macro_def.file_id);
+        let define = &form_list[macro_def.value];
+        Some(XRef {
+            source: range.into(),
+            target: XRefTarget::Macro(MacroTarget {
+                file_id: macro_def.file_id.into(),
+                name: define.name.name().to_string(),
+                arity: define.name.arity(),
+            }),
+        })
+    }
+
     fn resolve_type(
         sema: &Semantic,
         target: &CallTarget<TypeExprId>,
@@ -937,6 +979,9 @@ impl GleanIndexer {
     ) -> Option<TextRange> {
         let node = expr_source.to_node(&source_file)?;
         let range = match node {
+            elp_syntax::ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(expr)) => {
+                expr.name()?.syntax().text_range()
+            }
             elp_syntax::ast::Expr::Call(expr) => expr.expr()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordExpr(expr) => expr.name()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordFieldExpr(expr) => expr.name()?.syntax().text_range(),
@@ -1316,6 +1361,26 @@ mod tests {
         xref_check(&spec);
     }
 
+    #[test]
+    fn xref_macro_v2_test() {
+        let spec = r#"
+        //- /include/macro.hrl include_path:/include
+        -define(TAU, 6.28).
+
+        //- /src/macro.erl
+            -module(macro).
+            -include("macro.hrl").
+            -define(MAX(X, Y), if X > Y -> X; true -> Y end).
+
+            baz(1) -> ?TAU;
+        %%             ^^^ macro.hrl/macro/TAU/no_arity
+            baz(N) -> ?MAX(N, 200).
+        %%             ^^^ macro.erl/macro/MAX/2
+
+        "#;
+        xref_v2_check(&spec);
+    }
+
     fn mfa(module: &str, name: &str, arity: u32) -> MFA {
         MFA {
             module: module.into(),
@@ -1520,6 +1585,13 @@ mod tests {
                 XRefTarget::Function(xref) => {
                     f.write_str(format!("func/{}/{}", xref.name, xref.arity).as_str())
                 }
+                XRefTarget::Macro(xref) => {
+                    let arity = match &xref.arity {
+                        Some(arity) => arity.to_string(),
+                        None => "no_arity".to_string(),
+                    };
+                    f.write_str(format!("macro/{}/{}", xref.name, arity).as_str())
+                }
             }
         }
     }
@@ -1528,6 +1600,7 @@ mod tests {
         fn file_id(&self) -> &GleanFileId {
             match self {
                 XRefTarget::Function(xref) => &xref.file_id,
+                XRefTarget::Macro(xref) => &xref.file_id,
             }
         }
     }
