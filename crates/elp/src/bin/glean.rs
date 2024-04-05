@@ -262,6 +262,7 @@ pub(crate) enum XRefTarget {
     Function(FunctionTarget),
     Macro(MacroTarget),
     Header(HeaderTarget),
+    Record(RecordTarget),
 }
 
 #[derive(Serialize, Debug)]
@@ -284,6 +285,13 @@ pub(crate) struct MacroTarget {
 pub(crate) struct HeaderTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct RecordTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -861,6 +869,9 @@ impl GleanIndexer {
                 };
                 Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)
             }
+            hir::AnyExpr::Expr(Expr::Record { name, .. }) => {
+                Self::resolve_record_v2(&sema, *name, file_id, ctx)
+            }
             hir::AnyExpr::Expr(Expr::MacroCall { macro_def, .. })
             | hir::AnyExpr::Pat(Pat::MacroCall { macro_def, .. })
             | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall { macro_def, .. })
@@ -1085,6 +1096,27 @@ impl GleanIndexer {
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn resolve_record_v2(
+        sema: &Semantic,
+        name: hir::Atom,
+        file_id: FileId,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<XRef> {
+        let record_name = sema.db.lookup_atom(name);
+        let def_map = sema.db.def_map(file_id);
+        let def = def_map.get_record(&record_name)?;
+        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let source_file = sema.parse(file_id);
+        let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
+        Some(XRef {
+            source: range.into(),
+            target: XRefTarget::Record(RecordTarget {
+                file_id: def.file.file_id.into(),
+                name: def.record.name.to_string(),
+            }),
+        })
     }
 
     fn find_range(
@@ -1448,6 +1480,21 @@ mod tests {
     }
 
     #[test]
+    fn xref_record_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module9.erl
+        -record(query, {
+            size :: non_neg_integer()
+        }).
+        baz(A) ->
+            #query{ size = A }.
+        %%  ^^^^^^ glean_module9.erl/rec/query
+        "#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
     fn xref_record_index_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module10.erl
@@ -1802,6 +1849,7 @@ mod tests {
                     f.write_str(format!("macro/{}/{}", xref.name, arity).as_str())
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
+                XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
             }
         }
     }
@@ -1812,6 +1860,7 @@ mod tests {
                 XRefTarget::Function(xref) => &xref.file_id,
                 XRefTarget::Macro(xref) => &xref.file_id,
                 XRefTarget::Header(xref) => &xref.file_id,
+                XRefTarget::Record(xref) => &xref.file_id,
             }
         }
     }
