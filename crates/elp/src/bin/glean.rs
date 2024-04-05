@@ -48,6 +48,7 @@ use hir::Name;
 use hir::Pat;
 use hir::Semantic;
 use hir::Strategy;
+use hir::Term;
 use hir::TypeExpr;
 use hir::TypeExprId;
 use rayon::iter::IntoParallelIterator;
@@ -899,6 +900,18 @@ impl GleanIndexer {
                     }
                     acc
                 }
+                hir::AnyExpr::Term(Term::MacroCall {
+                    expansion: _,
+                    args: _,
+                    macro_def,
+                }) => {
+                    if let Some(def) = macro_def {
+                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
+                            acc.push(xref);
+                        }
+                    }
+                    acc
+                }
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -1429,6 +1442,19 @@ mod tests {
             -spec baz(ok) -> ?TYPE.
         %%                    ^^^^ macro.erl/macro/TYPE/no_arity
             baz(ok) -> 1.
+
+        "#;
+        xref_v2_check(&spec);
+    }
+
+    #[test]
+    fn xref_macro_in_term_v2_test() {
+        let spec = r#"
+        //- /src/macro.erl
+            -module(macro).
+           -define(FOO(X), X).
+           -wild(?FOO(atom)).
+        %%        ^^^ macro.erl/macro/FOO/1
 
         "#;
         xref_v2_check(&spec);
