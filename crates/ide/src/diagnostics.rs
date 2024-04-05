@@ -562,22 +562,23 @@ pub fn native_diagnostics(
 
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
-        &mutable_variable::DESCRIPTOR,
         &unused_function_args::DESCRIPTOR,
+        &trivial_match::DESCRIPTOR,
+        &unused_macro::DESCRIPTOR,
+        &unused_record_field::DESCRIPTOR,
+        &mutable_variable::DESCRIPTOR,
+        &effect_free_statement::DESCRIPTOR,
+        &expression_can_be_simplified::DESCRIPTOR,
+        &application_env::DESCRIPTOR,
+        &missing_compile_warn_missing_spec::DESCRIPTOR,
+        &slow_functions::DESCRIPTOR,
+        &dependent_header::DESCRIPTOR,
+        &deprecated_function::DESCRIPTOR,
+        &undefined_function::DESCRIPTOR,
+        &head_mismatch::DESCRIPTOR_SEMANTIC,
+        &missing_separator::DESCRIPTOR,
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
-        &undefined_function::DESCRIPTOR,
-        &missing_separator::DESCRIPTOR,
-        &deprecated_function::DESCRIPTOR,
-        &dependent_header::DESCRIPTOR,
-        &slow_functions::DESCRIPTOR,
-        &missing_compile_warn_missing_spec::DESCRIPTOR,
-        &application_env::DESCRIPTOR,
-        &head_mismatch::DESCRIPTOR_SEMANTIC,
-        &expression_can_be_simplified::DESCRIPTOR,
-        &effect_free_statement::DESCRIPTOR,
-        &unused_record_field::DESCRIPTOR,
-        &unused_macro::DESCRIPTOR,
     ]
 }
 
@@ -665,7 +666,6 @@ pub fn semantic_diagnostics(
         // TODO: disable this check when T151727890 and T151605845 are resolved
         if config.experimental {
             redundant_assignment::redundant_assignment(res, sema, file_id);
-            trivial_match::trivial_match(res, sema, file_id);
         }
     }
 }

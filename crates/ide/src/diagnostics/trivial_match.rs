@@ -37,6 +37,8 @@ use text_edit::TextEdit;
 
 use super::Category;
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::is_only_place_where_var_is_defined;
 use crate::codemod_helpers::var_has_no_references;
@@ -44,11 +46,19 @@ use crate::codemod_helpers::var_name_starts_with_underscore;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
-pub(crate) fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) {
-        // No point asking for changes to generated files
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        // TODO: disable this check when T151727890 and T151605845 are resolved
+        experimental: true,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        trivial_match(diags, sema, file_id);
+    },
+};
+
+fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_function_clauses()
         .for_each(|(_, def)| {
