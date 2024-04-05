@@ -258,6 +258,8 @@ impl FileDeclaration {
 pub(crate) enum Declaration {
     #[serde(rename = "func")]
     FunctionDeclaration(FuncDecl),
+    #[serde(rename = "macro")]
+    MacroDeclaration(MacroDecl),
 }
 
 #[derive(Serialize, Debug)]
@@ -286,6 +288,23 @@ impl FuncDecl {
             doc,
             exported,
             deprecated,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct MacroDecl {
+    name: String,
+    arity: Option<u32>,
+    span: Location,
+}
+
+impl MacroDecl {
+    fn new(name: &Name, arity: Option<u32>, span: Location) -> Self {
+        Self {
+            name: name.to_string(),
+            arity,
+            span,
         }
     }
 }
@@ -579,6 +598,17 @@ impl GleanIndexer {
                 )));
             }
         }
+
+        for (macros, def) in def_map.get_macros() {
+            let range = def.source(db).syntax().text_range();
+            let loc = range.into();
+            declarations.push(Declaration::MacroDeclaration(MacroDecl::new(
+                macros.name(),
+                macros.arity(),
+                loc,
+            )));
+        }
+
         FileDeclaration::new(file_id.into(), declarations)
     }
 
@@ -886,15 +916,36 @@ mod tests {
             -module(glean_module5).
             -export([foo/0, doc_foo/1]).
             -deprecated({depr_foo, 1, "use foo/0 instead"}).
+
+            -define(PI, 3.14).
+        %%  ^^^^^^^^^^^^^^^^^^ macro/PI/no_arity
+            -define(MAX(X, Y), if X > Y -> X; true -> Y end).
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ macro/MAX/2
+
             foo() -> 1.
-        %%  ^^^^^^^^^^^ foo/0/not_deprecated/exported/no_docs
+        %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported/no_docs
             depr_foo(B) -> B.
-        %%  ^^^^^^^^^^^^^^^^^ depr_foo/1/deprecated/not_exported/no_docs
+        %%  ^^^^^^^^^^^^^^^^^ func/depr_foo/1/deprecated/not_exported/no_docs
             -spec doc_foo(integer()) -> [integer()].
             doc_foo(Bar) -> [Bar].
-        %%  ^^^^^^^^^^^^^^^^^^^^^^ doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
             main(A) -> A.
-        %%  ^^^^^^^^^^^^^ main/1/not_deprecated/not_exported/no_docs
+        %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported/no_docs
+        "#;
+        decl_v2_check(&spec);
+    }
+
+    #[test]
+    fn declaration_in_header_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/include/glean_module5.hrl include_path:/include
+            -define(TAU, 6.28).
+        %%  ^^^^^^^^^^^^^^^^^^^ macro/TAU/no_arity
+            -spec doc_bar(integer()) -> [integer()].
+            doc_bar(Bar) -> [Bar].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_bar/1/not_deprecated/not_exported/-spec doc_bar(integer()) -> [integer()].
+        //- /glean/app_glean/src/glean_module5.erl
+            -module(glean_module5).
         "#;
         decl_v2_check(&spec);
     }
@@ -1135,13 +1186,18 @@ mod tests {
                 }
             }
         }
-        assert!(expected_by_file.is_empty(), "Expected no more annotations");
+        assert_eq!(
+            expected_by_file,
+            HashMap::new(),
+            "Expected no more annotations"
+        );
     }
 
     impl Declaration {
         fn span(&self) -> &Location {
             match self {
                 Declaration::FunctionDeclaration(decl) => &decl.span,
+                Declaration::MacroDeclaration(decl) => &decl.span,
             }
         }
     }
@@ -1169,11 +1225,18 @@ mod tests {
                     };
                     f.write_str(
                         format!(
-                            "{}/{}/{}/{}/{}",
+                            "func/{}/{}/{}/{}/{}",
                             decl.name, decl.arity, deprecated, exported, docs
                         )
                         .as_str(),
                     )
+                }
+                Declaration::MacroDeclaration(decl) => {
+                    let arity = match &decl.arity {
+                        Some(arity) => arity.to_string(),
+                        None => "no_arity".to_string(),
+                    };
+                    f.write_str(format!("macro/{}/{}", decl.name, arity).as_str())
                 }
             }
         }
