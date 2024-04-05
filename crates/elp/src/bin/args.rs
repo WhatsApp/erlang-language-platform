@@ -288,6 +288,8 @@ pub struct Glean {
     pub to: Option<PathBuf>,
     /// Produce glean db with macros, types, xrefs. Incompatible with previous
     pub v2: bool,
+    /// Pretty print
+    pub pretty: bool,
 }
 
 #[derive(Clone, Debug)]

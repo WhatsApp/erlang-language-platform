@@ -456,11 +456,20 @@ pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
     } else {
         facts.to_v1_facts()
     };
-    write_results(facts, cli, &args.to)
+    write_results(facts, cli, &args.to, args.pretty)
 }
 
-fn write_results(facts: Vec<Fact>, cli: &mut dyn Cli, to: &Option<PathBuf>) -> Result<()> {
-    let content = serde_json::to_string(&facts)?;
+fn write_results(
+    facts: Vec<Fact>,
+    cli: &mut dyn Cli,
+    to: &Option<PathBuf>,
+    pretty: bool,
+) -> Result<()> {
+    let content = if pretty {
+        serde_json::to_string_pretty(&facts)?
+    } else {
+        serde_json::to_string(&facts)?
+    };
     match to {
         Some(to) => std::fs::OpenOptions::new()
             .write(true)
@@ -1288,7 +1297,7 @@ mod tests {
             xref_v2: vec![],
         };
 
-        write_results(facts.to_v1_facts(), &mut cli, &None).expect("success");
+        write_results(facts.to_v1_facts(), &mut cli, &None, false).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
