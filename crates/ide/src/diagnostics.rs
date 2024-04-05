@@ -564,6 +564,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
+        &undefined_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
     ]
@@ -666,7 +667,6 @@ pub fn semantic_diagnostics(
         slow_functions::slow_functions(res, sema, file_id);
         dependent_header::dependent_header(res, sema, file_id, file_kind);
         deprecated_function::deprecated_function(res, sema, file_id);
-        undefined_function::undefined_function(res, sema, file_id);
     }
 }
 

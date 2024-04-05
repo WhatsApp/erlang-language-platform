@@ -24,17 +24,26 @@ use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MakeDiagCtx;
 use crate::FunctionMatch;
 
-pub(crate) fn undefined_function(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        undefined_function(diags, sema, file_id);
+    },
+};
+
+fn undefined_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_arity, def)| {
@@ -44,7 +53,7 @@ pub(crate) fn undefined_function(
         });
 }
 
-pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let matcher = FunctionMatch::any();
     find_call_in_function(
         diags,
