@@ -39,6 +39,7 @@ use elp_syntax::ast::DeprecatedFa;
 use elp_syntax::ast::Fa;
 use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
+use fxhash::FxHashSet;
 use hir::db::DefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
@@ -565,8 +566,8 @@ impl GleanIndexer {
             None => return None,
         };
         let line_fact = Self::line_fact(db, file_id);
-        let file_decl = Self::declarations_v2(db, project_id, file_id);
-        let xref_v2 = Self::xrefs_v2(db, file_id);
+        let (xref_v2, vars) = Self::xrefs_v2(db, file_id);
+        let file_decl = Self::declarations_v2(db, project_id, file_id, vars);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
@@ -650,6 +651,7 @@ impl GleanIndexer {
         db: &RootDatabase,
         project_id: ProjectId,
         file_id: FileId,
+        vars: FxHashSet<TextRange>,
     ) -> FileDeclaration {
         let mut declarations = vec![];
         let def_map = db.local_def_map(file_id);
@@ -703,7 +705,7 @@ impl GleanIndexer {
             }));
         }
 
-        let types = Self::types(db, project_id, file_id);
+        let types = Self::types(db, project_id, file_id, vars);
         declarations.extend(types);
 
         FileDeclaration {
@@ -822,9 +824,17 @@ impl GleanIndexer {
         source_file: &InFile<ast::SourceFile>,
         file_id: FileId,
         acc: &mut Vec<XRef>,
+        vars: &mut FxHashSet<TextRange>,
         ctx: &AnyCallBackCtx,
     ) -> Option<()> {
         let target = match &ctx.item {
+            hir::AnyExpr::Pat(Pat::Var(_))
+            | hir::AnyExpr::TypeExpr(TypeExpr::Var(_))
+            | hir::AnyExpr::Expr(Expr::Var(_)) => {
+                let (_, range) = ctx.find_range(&sema)?;
+                vars.insert(range);
+                None
+            }
             hir::AnyExpr::Expr(Expr::Call { target, args }) => {
                 let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
                 let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
@@ -873,7 +883,12 @@ impl GleanIndexer {
         None
     }
 
-    fn types(db: &RootDatabase, project_id: ProjectId, file_id: FileId) -> Vec<Declaration> {
+    fn types(
+        db: &RootDatabase,
+        project_id: ProjectId,
+        file_id: FileId,
+        vars: FxHashSet<TextRange>,
+    ) -> Vec<Declaration> {
         let mut result = vec![];
         if !db.is_eqwalizer_enabled(file_id, false) {
             return result;
@@ -889,31 +904,34 @@ impl GleanIndexer {
             for (pos, ty) in types {
                 if let Pos::TextRange(range) = pos {
                     let range: TextRange = range.clone().into();
-                    let text = &text[range];
-                    let text = format!("```erlang\n{} :: {}\n```", text, ty);
-                    let decl = VarDecl {
-                        type_desc: text,
-                        span: range.into(),
-                    };
-                    result.push(Declaration::VarDeclaration(decl));
+                    if vars.contains(&range) {
+                        let text = &text[range];
+                        let text = format!("```erlang\n{} :: {}\n```", text, ty);
+                        let decl = VarDecl {
+                            type_desc: text,
+                            span: range.into(),
+                        };
+                        result.push(Declaration::VarDeclaration(decl));
+                    }
                 }
             }
         }
         result
     }
 
-    fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> XRefFile {
+    fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> (XRefFile, FxHashSet<TextRange>) {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
         let def_map = sema.def_map(file_id);
+        let mut vars = FxHashSet::default();
         let xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
             file_id,
             vec![],
             &mut |mut acc, ctx| {
-                Self::xref_v2_callback(&sema, &source_file, file_id, &mut acc, &ctx);
+                Self::xref_v2_callback(&sema, &source_file, file_id, &mut acc, &mut vars, &ctx);
                 acc
             },
             &mut |mut acc, on, form_id| match (on, form_id) {
@@ -986,10 +1004,13 @@ impl GleanIndexer {
             },
         );
 
-        XRefFile {
-            file_id: file_id.into(),
-            xrefs,
-        }
+        (
+            XRefFile {
+                file_id: file_id.into(),
+                xrefs,
+            },
+            vars,
+        )
     }
 
     fn deprecated_xref(def_map: &DefMap, fun: &DeprecatedFa) -> Option<XRef> {
