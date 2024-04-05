@@ -576,7 +576,9 @@ impl GleanIndexer {
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, range) = ctx.find_range(sema)?;
+        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let source_file = sema.parse(file_id);
+        let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
     }
@@ -590,6 +592,7 @@ impl GleanIndexer {
         let node = expr_source.to_node(&source_file)?;
         let range = match node {
             elp_syntax::ast::Expr::Call(expr) => expr.expr()?.syntax().text_range(),
+            elp_syntax::ast::Expr::RecordExpr(expr) => expr.name()?.syntax().text_range(),
             _ => ctx.find_range(sema)?.1,
         };
         Some(range)
@@ -801,7 +804,7 @@ mod tests {
         }).
         baz(A) ->
             #query{ size = A }.
-        %%  ^^^^^^^^^^^^^^^^^^ glean_module9/query/99
+        %%  ^^^^^^ glean_module9/query/99
         "#;
 
         xref_check(&spec);
@@ -856,7 +859,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats) ->
             #stats{count = Count, time = Time} = Stats.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module13/stats/99
+        %%  ^^^^^^ glean_module13/stats/99
         "#;
 
         xref_check(&spec);
@@ -879,10 +882,10 @@ mod tests {
         //- /glean/app_glean/src/glean_module15.erl
         -record(stats, {count, time}).
         -spec baz() -> #stats{}.
-        %%             ^^^^^^^^ glean_module15/stats/99
+        %%             ^^^^^^ glean_module15/stats/99
         baz() ->
             #stats{count = 1, time = 2}.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module15/stats/99
+        %%  ^^^^^^ glean_module15/stats/99
         "#;
         xref_check(&spec);
     }
