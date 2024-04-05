@@ -49,6 +49,8 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::TypeExpr;
 use hir::TypeExprId;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use serde::Serialize;
 
 use crate::args::Glean;
@@ -228,6 +230,7 @@ pub(crate) enum Fact {
     XRef { facts: Vec<XRefFact> },
 }
 
+#[derive(Debug, Default)]
 struct IndexedFacts {
     file_facts: Vec<FileFact>,
     file_line_facts: Vec<FileLinesFact>,
@@ -236,15 +239,6 @@ struct IndexedFacts {
 }
 
 impl IndexedFacts {
-    fn new() -> Self {
-        Self {
-            file_facts: vec![],
-            file_line_facts: vec![],
-            declaration_facts: vec![],
-            xref_facts: vec![],
-        }
-    }
-
     fn add(
         &mut self,
         file_fact: FileFact,
@@ -325,7 +319,6 @@ impl GleanIndexer {
 
     fn index(&self) -> Result<IndexedFacts> {
         let ctx = self.analysis.with_db(|db| {
-            let mut ctx = IndexedFacts::new();
             if let Some(module) = &self.module {
                 let index = db.module_index(self.project_id);
                 let file_id = index
@@ -334,19 +327,33 @@ impl GleanIndexer {
                 let source_root_id = db.file_source_root(file_id);
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
-                match self.index_file(&db, file_id, &path) {
+                let mut ctx = IndexedFacts::default();
+                match Self::index_file(&db, file_id, &path, self.project_id) {
                     Some((file, line, facts)) => ctx.add(file, line, facts),
                     None => panic!("Can't find module {}", module),
                 }
+                ctx
             } else {
-                for (file_id, path) in Self::project_files(db, self.project_id) {
-                    match self.index_file(&db, file_id, &path) {
-                        Some((file, line, facts)) => ctx.add(file, line, facts),
-                        None => log::warn!("Can't find module {}", path),
-                    }
-                }
+                let project_id = self.project_id;
+                let files = Self::project_files(db, project_id);
+
+                files
+                    .into_par_iter()
+                    .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
+                        analysis.with_db(|db| Self::index_file(db, file_id, &path, project_id))
+                    })
+                    .flatten()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .fold(
+                        IndexedFacts::default(),
+                        |mut acc, (file_fact, line_fact, facts)| {
+                            acc.add(file_fact, line_fact, facts);
+                            acc
+                        },
+                    )
             }
-            ctx
         })?;
         Ok(ctx)
     }
@@ -370,22 +377,22 @@ impl GleanIndexer {
     }
 
     fn index_file(
-        &self,
         db: &RootDatabase,
         file_id: FileId,
         path: &VfsPath,
+        project_id: ProjectId,
     ) -> Option<(
         FileFact,
         FileLinesFact,
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     )> {
-        let file_fact = match self.file_fact(db, file_id, path) {
+        let file_fact = match Self::file_fact(db, file_id, path, project_id) {
             Some(file_fact) => file_fact,
             None => return None,
         };
-        let line_fact = self.line_fact(db, file_id);
+        let line_fact = Self::line_fact(db, file_id);
 
-        let module_index = db.module_index(self.project_id);
+        let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
             let decl = Self::declarations(db, file_id, module);
             let xref = Self::xrefs(db, file_id);
@@ -394,8 +401,13 @@ impl GleanIndexer {
         Some((file_fact, line_fact, None))
     }
 
-    fn file_fact(&self, db: &RootDatabase, file_id: FileId, path: &VfsPath) -> Option<FileFact> {
-        let project_data = db.project_data(self.project_id);
+    fn file_fact(
+        db: &RootDatabase,
+        file_id: FileId,
+        path: &VfsPath,
+        project_id: ProjectId,
+    ) -> Option<FileFact> {
+        let project_data = db.project_data(project_id);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
@@ -403,7 +415,7 @@ impl GleanIndexer {
         Some(FileFact::new(file_id, file_path))
     }
 
-    fn line_fact(&self, db: &RootDatabase, file_id: FileId) -> FileLinesFact {
+    fn line_fact(db: &RootDatabase, file_id: FileId) -> FileLinesFact {
         let line_index = db.file_line_index(file_id);
         let mut line = 1;
         let mut prev_offset = 0;
