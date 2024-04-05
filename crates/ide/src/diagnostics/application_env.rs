@@ -21,6 +21,8 @@ use hir::Semantic;
 use lazy_static::lazy_static;
 
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
@@ -29,7 +31,18 @@ use crate::codemod_helpers::MakeDiagCtx;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
-pub(crate) fn application_env(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        application_env(diags, sema, file_id);
+    },
+};
+
+fn application_env(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_, def)| check_function(diags, sema, def));
@@ -83,7 +96,7 @@ pub(crate) enum BadEnvCallAction {
     },
 }
 
-pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     lazy_static! {
         static ref BAD_MATCHES: Vec<BadEnvCall> = vec![BadEnvCall::new(
             "application",
@@ -100,7 +113,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
     process_badmatches(diags, sema, def, &BAD_MATCHES);
 }
 
-pub(crate) fn process_badmatches(
+fn process_badmatches(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,

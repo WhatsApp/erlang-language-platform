@@ -565,12 +565,13 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
         &undefined_function::DESCRIPTOR,
-        &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &slow_functions::DESCRIPTOR,
         &missing_compile_warn_missing_spec::DESCRIPTOR,
+        &application_env::DESCRIPTOR,
+        &head_mismatch::DESCRIPTOR_SEMANTIC,
     ]
 }
 
@@ -666,7 +667,6 @@ pub fn semantic_diagnostics(
         mutable_variable::mutable_variable_bug(res, sema, file_id);
         effect_free_statement::effect_free_statement(res, sema, file_id);
         expression_can_be_simplified::diagnostic(res, sema, file_id);
-        application_env::application_env(res, sema, file_id);
     }
 }
 
