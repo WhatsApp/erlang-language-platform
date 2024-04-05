@@ -261,15 +261,15 @@ pub(crate) struct XRef {
 #[derive(Serialize, Debug)]
 pub(crate) enum XRefTarget {
     #[serde(rename = "func")]
-    Function(FunctionTarget),
+    Function(Key<FunctionTarget>),
     #[serde(rename = "macro")]
-    Macro(MacroTarget),
+    Macro(Key<MacroTarget>),
     #[serde(rename = "header")]
-    Header(HeaderTarget),
+    Header(Key<HeaderTarget>),
     #[serde(rename = "record")]
-    Record(RecordTarget),
+    Record(Key<RecordTarget>),
     #[serde(rename = "ttype")]
-    Type(TypeTarget),
+    Type(Key<TypeTarget>),
 }
 
 #[derive(Serialize, Debug)]
@@ -324,17 +324,28 @@ pub(crate) struct FileDeclaration {
 }
 
 #[derive(Serialize, Debug)]
+pub(crate) struct Key<T> {
+    key: T,
+}
+
+impl<T> From<T> for Key<T> {
+    fn from(item: T) -> Self {
+        Key { key: item }
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub(crate) enum Declaration {
     #[serde(rename = "func")]
-    FunctionDeclaration(FuncDecl),
+    FunctionDeclaration(Key<FuncDecl>),
     #[serde(rename = "macro")]
-    MacroDeclaration(MacroDecl),
+    MacroDeclaration(Key<MacroDecl>),
     #[serde(rename = "ttype")]
-    TypeDeclaration(TypeDecl),
+    TypeDeclaration(Key<TypeDecl>),
     #[serde(rename = "record")]
-    RecordDeclaration(RecordDecl),
+    RecordDeclaration(Key<RecordDecl>),
     #[serde(rename = "var")]
-    VarDeclaration(VarDecl),
+    VarDeclaration(Key<VarDecl>),
 }
 
 #[derive(Serialize, Debug)]
@@ -675,45 +686,57 @@ impl GleanIndexer {
                 let spec = specs.get(fun);
                 let doc = spec.map(|doc| doc.markdown_text().to_string());
                 let span = range.into();
-                declarations.push(Declaration::FunctionDeclaration(FuncDecl {
-                    name: fun.name().to_string(),
-                    arity: fun.arity(),
-                    span,
-                    doc,
-                    exported: def.exported,
-                    deprecated: def.deprecated,
-                }));
+                declarations.push(Declaration::FunctionDeclaration(
+                    FuncDecl {
+                        name: fun.name().to_string(),
+                        arity: fun.arity(),
+                        span,
+                        doc,
+                        exported: def.exported,
+                        deprecated: def.deprecated,
+                    }
+                    .into(),
+                ));
             }
         }
 
         for (macros, def) in def_map.get_macros() {
             let range = def.source(db).syntax().text_range();
             let span = range.into();
-            declarations.push(Declaration::MacroDeclaration(MacroDecl {
-                name: macros.name().to_string(),
-                arity: macros.arity(),
-                span,
-            }));
+            declarations.push(Declaration::MacroDeclaration(
+                MacroDecl {
+                    name: macros.name().to_string(),
+                    arity: macros.arity(),
+                    span,
+                }
+                .into(),
+            ));
         }
 
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
             let span = range.into();
-            declarations.push(Declaration::TypeDeclaration(TypeDecl {
-                name: ty.name().to_string(),
-                arity: ty.arity(),
-                span,
-                exported: def.exported,
-            }));
+            declarations.push(Declaration::TypeDeclaration(
+                TypeDecl {
+                    name: ty.name().to_string(),
+                    arity: ty.arity(),
+                    span,
+                    exported: def.exported,
+                }
+                .into(),
+            ));
         }
 
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
             let span = range.into();
-            declarations.push(Declaration::RecordDeclaration(RecordDecl {
-                name: rec.to_string(),
-                span,
-            }));
+            declarations.push(Declaration::RecordDeclaration(
+                RecordDecl {
+                    name: rec.to_string(),
+                    span,
+                }
+                .into(),
+            ));
         }
 
         let types = Self::types(db, project_id, file_id, vars);
@@ -922,7 +945,7 @@ impl GleanIndexer {
                             type_desc: text,
                             span: range.into(),
                         };
-                        result.push(Declaration::VarDeclaration(decl));
+                        result.push(Declaration::VarDeclaration(decl.into()));
                     }
                 }
             }
@@ -958,7 +981,7 @@ impl GleanIndexer {
                             };
                             let xref = XRef {
                                 source: range,
-                                target: XRefTarget::Header(target),
+                                target: XRefTarget::Header(target.into()),
                             };
                             acc.push(xref);
                         }
@@ -979,7 +1002,7 @@ impl GleanIndexer {
                                 };
                                 let xref = XRef {
                                     source: range,
-                                    target: XRefTarget::Function(target),
+                                    target: XRefTarget::Function(target.into()),
                                 };
                                 acc.push(xref);
                             }
@@ -1050,7 +1073,7 @@ impl GleanIndexer {
         };
         let xref = XRef {
             source: range,
-            target: XRefTarget::Function(target),
+            target: XRefTarget::Function(target.into()),
         };
         Some(xref)
     }
@@ -1092,7 +1115,7 @@ impl GleanIndexer {
         };
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Function(target),
+            target: XRefTarget::Function(target.into()),
         })
     }
 
@@ -1120,7 +1143,7 @@ impl GleanIndexer {
             // @fb-only: build_ods_url(&name, args, source_file, &source_map).and_then(|url| url.url());
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Macro(target),
+            target: XRefTarget::Macro(target.into()),
         })
     }
 
@@ -1164,11 +1187,14 @@ impl GleanIndexer {
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Type(TypeTarget {
-                file_id: def.file.file_id.into(),
-                name: def.type_alias.name().name().to_string(),
-                arity,
-            }),
+            target: XRefTarget::Type(
+                TypeTarget {
+                    file_id: def.file.file_id.into(),
+                    name: def.type_alias.name().name().to_string(),
+                    arity,
+                }
+                .into(),
+            ),
         })
     }
 
@@ -1203,10 +1229,13 @@ impl GleanIndexer {
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Record(RecordTarget {
-                file_id: def.file.file_id.into(),
-                name: def.record.name.to_string(),
-            }),
+            target: XRefTarget::Record(
+                RecordTarget {
+                    file_id: def.file.file_id.into(),
+                    name: def.record.name.to_string(),
+                }
+                .into(),
+            ),
         })
     }
 
@@ -2014,11 +2043,11 @@ mod tests {
     impl Declaration {
         fn span(&self) -> &Location {
             match self {
-                Declaration::FunctionDeclaration(decl) => &decl.span,
-                Declaration::MacroDeclaration(decl) => &decl.span,
-                Declaration::TypeDeclaration(decl) => &decl.span,
-                Declaration::RecordDeclaration(decl) => &decl.span,
-                Declaration::VarDeclaration(decl) => &decl.span,
+                Declaration::FunctionDeclaration(decl) => &decl.key.span,
+                Declaration::MacroDeclaration(decl) => &decl.key.span,
+                Declaration::TypeDeclaration(decl) => &decl.key.span,
+                Declaration::RecordDeclaration(decl) => &decl.key.span,
+                Declaration::VarDeclaration(decl) => &decl.key.span,
             }
         }
     }
@@ -2027,15 +2056,15 @@ mod tests {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
                 Declaration::FunctionDeclaration(decl) => {
-                    let deprecated = match decl.deprecated {
+                    let deprecated = match decl.key.deprecated {
                         true => "deprecated",
                         false => "not_deprecated",
                     };
-                    let exported = match decl.exported {
+                    let exported = match decl.key.exported {
                         true => "exported",
                         false => "not_exported",
                     };
-                    let docs = match &decl.doc {
+                    let docs = match &decl.key.doc {
                         Some(doc) => doc
                             .strip_prefix("```erlang\n")
                             .unwrap()
@@ -2047,30 +2076,33 @@ mod tests {
                     f.write_str(
                         format!(
                             "func/{}/{}/{}/{}/{}",
-                            decl.name, decl.arity, deprecated, exported, docs
+                            decl.key.name, decl.key.arity, deprecated, exported, docs
                         )
                         .as_str(),
                     )
                 }
                 Declaration::MacroDeclaration(decl) => {
-                    let arity = match &decl.arity {
+                    let arity = match &decl.key.arity {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    f.write_str(format!("macro/{}/{}", decl.name, arity).as_str())
+                    f.write_str(format!("macro/{}/{}", decl.key.name, arity).as_str())
                 }
                 Declaration::TypeDeclaration(decl) => {
-                    let exported = match decl.exported {
+                    let exported = match decl.key.exported {
                         true => "exported",
                         false => "not_exported",
                     };
-                    f.write_str(format!("type/{}/{}/{}", decl.name, decl.arity, exported).as_str())
+                    f.write_str(
+                        format!("type/{}/{}/{}", decl.key.name, decl.key.arity, exported).as_str(),
+                    )
                 }
                 Declaration::RecordDeclaration(decl) => {
-                    f.write_str(format!("rec/{}", decl.name).as_str())
+                    f.write_str(format!("rec/{}", decl.key.name).as_str())
                 }
                 Declaration::VarDeclaration(decl) => {
                     let ttype = decl
+                        .key
                         .type_desc
                         .strip_prefix("```erlang\n")
                         .unwrap()
@@ -2087,18 +2119,18 @@ mod tests {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
                 XRefTarget::Function(xref) => {
-                    f.write_str(format!("func/{}/{}", xref.name, xref.arity).as_str())
+                    f.write_str(format!("func/{}/{}", xref.key.name, xref.key.arity).as_str())
                 }
                 XRefTarget::Macro(xref) => {
-                    let arity = match &xref.arity {
+                    let arity = match &xref.key.arity {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    let ods_link = match &xref.ods_url {
+                    let ods_link = match &xref.key.ods_url {
                         Some(_) => "has_ods",
                         None => "no_ods",
                     };
-                    let exp = match &xref.expansion {
+                    let exp = match &xref.key.expansion {
                         Some(exp) => exp
                             .strip_prefix("```erlang\n")
                             .unwrap()
@@ -2110,13 +2142,13 @@ mod tests {
                         None => "no_exp".to_string(),
                     };
                     f.write_str(
-                        format!("macro/{}/{}/{}/{}", xref.name, arity, ods_link, exp).as_str(),
+                        format!("macro/{}/{}/{}/{}", xref.key.name, arity, ods_link, exp).as_str(),
                     )
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
-                XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
+                XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.key.name).as_str()),
                 XRefTarget::Type(xref) => {
-                    f.write_str(format!("type/{}/{}", xref.name, xref.arity).as_str())
+                    f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
                 }
             }
         }
@@ -2125,11 +2157,11 @@ mod tests {
     impl XRefTarget {
         fn file_id(&self) -> &GleanFileId {
             match self {
-                XRefTarget::Function(xref) => &xref.file_id,
-                XRefTarget::Macro(xref) => &xref.file_id,
-                XRefTarget::Header(xref) => &xref.file_id,
-                XRefTarget::Record(xref) => &xref.file_id,
-                XRefTarget::Type(xref) => &xref.file_id,
+                XRefTarget::Function(xref) => &xref.key.file_id,
+                XRefTarget::Macro(xref) => &xref.key.file_id,
+                XRefTarget::Header(xref) => &xref.key.file_id,
+                XRefTarget::Record(xref) => &xref.key.file_id,
+                XRefTarget::Type(xref) => &xref.key.file_id,
             }
         }
     }
