@@ -25,6 +25,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::RootDatabase;
+// @fb-only: use elp_ide::meta_only::ods_links::build_ods_url;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
 use elp_project_model::AppType;
@@ -280,6 +281,7 @@ pub(crate) struct MacroTarget {
     file_id: GleanFileId,
     name: String,
     arity: Option<u32>,
+    ods_url: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -761,7 +763,7 @@ impl GleanIndexer {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, expr_source)) = ctx.body_with_expr_source(&sema) {
+                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema) {
                         if let Some(range) =
                             Self::find_range(&sema, &ctx, &source_file, &expr_source)
                         {
@@ -865,7 +867,7 @@ impl GleanIndexer {
     ) -> Option<()> {
         let target = match &ctx.item {
             hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                let (body, expr_source) = ctx.body_with_expr_source(&sema)?;
+                let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
                 let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
                 let arity = args.len() as u32;
                 Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
@@ -887,12 +889,20 @@ impl GleanIndexer {
             | hir::AnyExpr::Expr(Expr::RecordField { name, .. }) => {
                 Self::resolve_record_v2(&sema, *name, file_id, ctx)
             }
-            hir::AnyExpr::Expr(Expr::MacroCall { macro_def, .. })
-            | hir::AnyExpr::Pat(Pat::MacroCall { macro_def, .. })
-            | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall { macro_def, .. })
-            | hir::AnyExpr::Term(Term::MacroCall { macro_def, .. }) => {
+            hir::AnyExpr::Expr(Expr::MacroCall {
+                macro_def, args, ..
+            })
+            | hir::AnyExpr::Pat(Pat::MacroCall {
+                macro_def, args, ..
+            })
+            | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall {
+                macro_def, args, ..
+            })
+            | hir::AnyExpr::Term(Term::MacroCall {
+                macro_def, args, ..
+            }) => {
                 let def = macro_def.as_ref()?;
-                Self::resolve_macro_v2(&sema, def, &source_file, &ctx)
+                Self::resolve_macro_v2(&sema, def, args, &source_file, &ctx)
             }
             hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
                 let arity = args.len() as u32;
@@ -1069,20 +1079,26 @@ impl GleanIndexer {
     fn resolve_macro_v2(
         sema: &Semantic<'_>,
         macro_def: &InFile<DefineId>,
+        args: &[ExprId],
         source_file: &InFile<ast::SourceFile>,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRef> {
-        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let (_, source_map, expr_source) = ctx.body_with_expr_source(&sema)?;
         let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
         let form_list = sema.form_list(macro_def.file_id);
         let define = &form_list[macro_def.value];
+        let name = define.name.name();
+        let mut target = MacroTarget {
+            file_id: macro_def.file_id.into(),
+            name: name.to_string(),
+            arity: define.name.arity(),
+            ods_url: None,
+        };
+        // @fb-only: target.ods_url =
+            // @fb-only: build_ods_url(&name, args, source_file, &source_map).and_then(|url| url.url());
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Macro(MacroTarget {
-                file_id: macro_def.file_id.into(),
-                name: define.name.name().to_string(),
-                arity: define.name.arity(),
-            }),
+            target: XRefTarget::Macro(target),
         })
     }
 
@@ -1129,7 +1145,7 @@ impl GleanIndexer {
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
@@ -1145,7 +1161,7 @@ impl GleanIndexer {
         let record_name = sema.db.lookup_atom(name);
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
-        let (_, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         Some(XRef {
@@ -1729,12 +1745,25 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
-        %%             ^^^ macro.hrl/macro/TAU/no_arity
+        %%             ^^^ macro.hrl/macro/TAU/no_arity/no_ods
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/2
+        %%             ^^^ macro.erl/macro/MAX/2/no_ods
 
         "#;
         xref_v2_check(&spec);
+    }
+
+    #[test]
+    fn xref_macro_ods_v2_test() {
+        let spec = r#"
+        //- /src/macro.erl
+            -module(macro).
+            -define(COUNT_INFRA(X), X).
+            baz(atom) -> ?COUNT_INFRA(atom),
+        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/1/has_ods
+
+        "#;
+        // @fb-only: xref_v2_check(&spec);
     }
 
     #[test]
@@ -1745,7 +1774,7 @@ mod tests {
             -define(TAU, 6.28).
 
             baz(?TAU) -> 1.
-        %%       ^^^ macro.erl/macro/TAU/no_arity
+        %%       ^^^ macro.erl/macro/TAU/no_arity/no_ods
 
         "#;
         xref_v2_check(&spec);
@@ -1759,7 +1788,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/no_arity
+        %%                    ^^^^ macro.erl/macro/TYPE/no_arity/no_ods
             baz(ok) -> 1.
 
         "#;
@@ -1773,7 +1802,7 @@ mod tests {
             -module(macro).
            -define(FOO(X), X).
            -wild(?FOO(atom)).
-        %%        ^^^ macro.erl/macro/FOO/1
+        %%        ^^^ macro.erl/macro/FOO/1/no_ods
 
         "#;
         xref_v2_check(&spec);
@@ -1988,7 +2017,11 @@ mod tests {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    f.write_str(format!("macro/{}/{}", xref.name, arity).as_str())
+                    let ods_link = match &xref.ods_url {
+                        Some(_) => "has_ods",
+                        None => "no_ods",
+                    };
+                    f.write_str(format!("macro/{}/{}/{}", xref.name, arity, ods_link).as_str())
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
                 XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
