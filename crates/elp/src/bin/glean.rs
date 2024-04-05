@@ -675,10 +675,13 @@ mod tests {
         //- /glean/app_glean/src/glean_module2.erl
         -module(glean_module2).
         "#;
-        let result = run_spec(spec, "glean_module2");
+        let result = facts_with_annotataions(spec).0;
         assert_eq!(result.file_facts.len(), 1);
         let file_fact = &result.file_facts[0];
-        assert_eq!(file_fact.file_path.as_str(), "src/glean_module2.erl");
+        assert_eq!(
+            file_fact.file_path.as_str(),
+            "glean/app_glean/src/glean_module2.erl"
+        );
     }
 
     #[test]
@@ -690,7 +693,7 @@ mod tests {
             bar.
 
         "#;
-        let result = run_spec(spec, "glean_module3");
+        let result = facts_with_annotataions(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
         let line_fact = &result.file_line_facts[0].key;
         assert!(line_fact.ends_with_new_line);
@@ -704,7 +707,7 @@ mod tests {
         -module(glean_module4).
         main() ->
             bar."#;
-        let result = run_spec(spec, "glean_module4");
+        let result = facts_with_annotataions(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
         let line_fact = &result.file_line_facts[0].key;
         assert_eq!(line_fact.ends_with_new_line, false);
@@ -914,7 +917,12 @@ mod tests {
         }
     }
 
-    fn xref_check(spec: &str) {
+    fn facts_with_annotataions(
+        spec: &str,
+    ) -> (
+        IndexedFacts,
+        HashMap<GleanFileId, HashSet<(TextRange, String)>>,
+    ) {
         let (db, files, _) = RootDatabase::with_many_files(spec);
         let host = AnalysisHost::new(db);
         let glean = GleanIndexer {
@@ -929,6 +937,11 @@ mod tests {
             let annotations_set: HashSet<_> = extract_annotations(&text).into_iter().collect();
             expected_by_file.insert(file_id.into(), annotations_set);
         }
+        (facts, expected_by_file)
+    }
+
+    fn xref_check(spec: &str) {
+        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_facts {
             let file_id = xref_fact.key.file_id;
             let annotations = expected_by_file
