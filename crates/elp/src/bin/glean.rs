@@ -215,9 +215,9 @@ pub(crate) enum Fact {
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<Key<XRefFact>> },
     //v2 facts
-    #[serde(rename = "erlang.Declaration")]
+    #[serde(rename = "erlang.DeclarationsInFile.2")]
     Declaration { facts: Vec<Key<FileDeclaration>> },
-    #[serde(rename = "erlang.XRefsByFile")]
+    #[serde(rename = "erlang.XRefsInFile.2")]
     XRefV2 { facts: Vec<Key<XRefFile>> },
 }
 
@@ -315,7 +315,7 @@ pub(crate) enum Declaration {
     TypeDeclaration(Key<TypeDecl>),
     #[serde(rename = "record")]
     RecordDeclaration(Key<RecordDecl>),
-    #[serde(rename = "var")]
+    #[serde(rename = "varr")]
     VarDeclaration(Key<VarDecl>),
 }
 
