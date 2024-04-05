@@ -30,6 +30,8 @@ use elp_ide::TextRange;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::ast;
+use elp_syntax::ast::Fa;
+use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
 use hir::db::DefDatabase;
 use hir::fold;
@@ -45,6 +47,7 @@ use hir::ExprSource;
 use hir::InFile;
 use hir::Literal;
 use hir::Name;
+use hir::NameArity;
 use hir::Pat;
 use hir::Semantic;
 use hir::Strategy;
@@ -827,6 +830,7 @@ impl GleanIndexer {
     fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> XRefFile {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
+        let form_list = sema.form_list(file_id);
         let xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
@@ -914,13 +918,44 @@ impl GleanIndexer {
                 }
                 _ => acc,
             },
-            &mut |acc, _on, _form_id| acc,
+            &mut |mut acc, on, form_id| match (on, form_id) {
+                (hir::On::Entry, hir::FormIdx::Export(idx)) => {
+                    let export = &form_list[idx];
+                    let ast = export.form_id.get_ast(db, file_id);
+                    for fun in ast.funs().into_iter() {
+                        if let Some(na) = Self::fa_name_arity(&fun) {
+                            if let Some(def) = sema.def_map(file_id).get_function(&na) {
+                                let range = fun.syntax().text_range().into();
+                                let target = FunctionTarget {
+                                    file_id: def.file.file_id.into(),
+                                    name: na.name().to_string(),
+                                    arity: na.arity(),
+                                };
+                                let xref = XRef {
+                                    source: range,
+                                    target: XRefTarget::Function(target),
+                                };
+                                acc.push(xref);
+                            }
+                        }
+                    }
+                    acc
+                }
+                _ => acc,
+            },
         );
 
         XRefFile {
             file_id: file_id.into(),
             xrefs,
         }
+    }
+
+    fn fa_name_arity(fa: &Fa) -> Option<NameArity> {
+        let name = fa.fun()?.text()?;
+        let name = Name::from_erlang_service(&name);
+        let arity = fa.arity()?.value()?.arity_value()?;
+        Some(NameArity::new(name, arity as u32))
     }
 
     fn resolve_call(
@@ -1242,6 +1277,19 @@ mod tests {
             F.
         baz(A, B) ->
             A + B."#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
+    fn xref_export_v2_test() {
+        let spec = r#"
+        //- /src/glean_module61.erl
+        -module(glean_module61).
+        -export([foo/1]).
+        %%       ^^^^^ glean_module61.erl/func/foo/1
+        foo(Bar) -> Bar + 1.
+        "#;
 
         xref_v2_check(&spec);
     }
