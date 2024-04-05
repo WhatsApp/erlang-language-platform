@@ -31,15 +31,25 @@ use text_edit::TextRange;
 
 use super::Category;
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
-pub(crate) fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) {
-        // No point asking for changes to generated files
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        // TODO: disable this check when T151727890 and T151605845 are resolved
+        experimental: true,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        unused_function_args(diags, sema, file_id);
+    },
+};
+
+fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_function_clauses()
         .for_each(|(_, def)| {

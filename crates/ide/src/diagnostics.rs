@@ -562,6 +562,8 @@ pub fn native_diagnostics(
 
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
+        &mutable_variable::DESCRIPTOR,
+        &unused_function_args::DESCRIPTOR,
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
         &undefined_function::DESCRIPTOR,
@@ -574,7 +576,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &expression_can_be_simplified::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
-        &mutable_variable::DESCRIPTOR,
         &unused_record_field::DESCRIPTOR,
         &unused_macro::DESCRIPTOR,
     ]
@@ -657,13 +658,12 @@ pub fn semantic_diagnostics(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
-    file_kind: FileKind,
+    _file_kind: FileKind,
     config: &DiagnosticsConfig,
 ) {
     if config.include_generated || !sema.db.is_generated(file_id) {
         // TODO: disable this check when T151727890 and T151605845 are resolved
         if config.experimental {
-            unused_function_args::unused_function_args(res, sema, file_id);
             redundant_assignment::redundant_assignment(res, sema, file_id);
             trivial_match::trivial_match(res, sema, file_id);
         }
