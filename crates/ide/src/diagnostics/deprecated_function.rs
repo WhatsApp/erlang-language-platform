@@ -33,11 +33,24 @@ use text_edit::TextSize;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
 // @fb-only: use crate::diagnostics;
 use crate::fix;
+
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        deprecated_function(diags, sema, file_id);
+    },
+};
 
 #[derive(Debug, Clone)]
 pub struct DeprecationDetails {
@@ -67,11 +80,7 @@ impl DeprecationDetails {
     }
 }
 
-pub(crate) fn deprecated_function(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+fn deprecated_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     lazy_static! {
         static ref DEPRECATED_FUNCTIONS: Vec<(FunctionMatch, DeprecationDetails)> = {
             let matches: Vec<Vec<(FunctionMatch, DeprecationDetails)>>  = vec![
@@ -94,7 +103,7 @@ pub(crate) fn deprecated_function(
     });
 }
 
-pub(crate) fn check_function(
+fn check_function(
     diagnostics: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
