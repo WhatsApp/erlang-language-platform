@@ -235,7 +235,7 @@ impl Diagnostic {
         self
     }
 
-    #[allow(dead_code)] // Used in next diff
+    #[allow(dead_code)] // @oss-only
     pub(crate) fn with_fixme_fix(mut self, sema: &Semantic, file_id: FileId) -> Diagnostic {
         let mut builder = TextEdit::builder();
         let parsed = sema.parse(file_id);
