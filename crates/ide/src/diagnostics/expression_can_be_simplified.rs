@@ -19,6 +19,8 @@ use hir::FunctionDef;
 use hir::InFunctionBody;
 use hir::Strategy;
 
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::ast::ArithOp;
 use crate::ast::BinaryOp;
 use crate::ast::ListOp;
@@ -30,12 +32,18 @@ use crate::Diagnostic;
 use crate::FileId;
 use crate::Semantic;
 
-pub(crate) fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) {
-        // No point asking for changes to generated files
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        diagnostic(diags, sema, file_id);
+    },
+};
 
+fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id)
         .get_functions()
         .for_each(|(_, fun_def)| {
