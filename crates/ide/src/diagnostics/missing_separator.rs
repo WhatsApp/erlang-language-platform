@@ -13,6 +13,8 @@ use elp_syntax::ast::ClauseSeparator;
 use hir::Semantic;
 
 use super::make_unexpected_diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::diagnostics::make_missing_diagnostic;
 use crate::Diagnostic;
 
@@ -21,11 +23,19 @@ use crate::Diagnostic;
 // Diagnostic for separators missing in function clauses.
 
 // TODO: combine with head_mismatch?
-pub(crate) fn missing_separator_semantic(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        missing_separator_semantic(diags, sema, file_id);
+    },
+};
+
+fn missing_separator_semantic(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     let def_map = sema.def_map(file_id);
 
     def_map.get_functions().for_each(|(_, fun_def)| {

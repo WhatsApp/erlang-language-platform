@@ -561,7 +561,11 @@ pub fn native_diagnostics(
 }
 
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
-    vec![&cross_node_eval::DESCRIPTOR, &atoms_exhaustion::DESCRIPTOR]
+    vec![
+        &cross_node_eval::DESCRIPTOR,
+        &atoms_exhaustion::DESCRIPTOR,
+        &missing_separator::DESCRIPTOR,
+    ]
 }
 
 pub fn diagnostics_from_descriptors(
@@ -663,7 +667,6 @@ pub fn semantic_diagnostics(
         deprecated_function::deprecated_function(res, sema, file_id);
         undefined_function::undefined_function(res, sema, file_id);
         head_mismatch::head_mismatch_semantic(res, sema, file_id);
-        missing_separator::missing_separator_semantic(res, sema, file_id);
     }
 }
 
