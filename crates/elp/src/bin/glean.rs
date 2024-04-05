@@ -13,18 +13,20 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use elp::build::load;
-use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
+use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::AstNode;
 use hir::db::DefDatabase;
@@ -230,7 +232,6 @@ impl IndexedFacts {
 
 pub struct GleanIndexer {
     project_id: ProjectId,
-    loaded: LoadResult,
     analysis: Analysis,
     module: Option<String>,
 }
@@ -286,7 +287,6 @@ impl GleanIndexer {
         let analysis = loaded.analysis();
         let indexer = Self {
             project_id: loaded.project_id,
-            loaded,
             analysis,
             module: args.module.clone(),
         };
@@ -294,73 +294,76 @@ impl GleanIndexer {
     }
 
     fn index(&self) -> Result<IndexedFacts> {
-        let mut ctx = IndexedFacts::new();
-
-        if let Some(module) = &self.module {
-            let index = self.analysis.module_index(self.project_id)?;
-            let file_id = index
-                .file_for_module(&ModuleName::new(module))
-                .expect("No module found");
-            let path = self.loaded.vfs.file_path(file_id);
-            self.index_file(file_id, &path, &mut ctx)?;
-        } else {
-            for (file_id, path) in self.loaded.vfs.iter() {
-                if let Err(err) = self.index_file(file_id, path, &mut ctx) {
-                    log::warn!("Error indexing file {:?}: {}", path, err);
+        let ctx = self.analysis.with_db(|db| {
+            let mut ctx = IndexedFacts::new();
+            if let Some(module) = &self.module {
+                let index = db.module_index(self.project_id);
+                let file_id = index
+                    .file_for_module(&ModuleName::new(module))
+                    .expect("No module found");
+                let source_root_id = db.file_source_root(file_id);
+                let source_root = db.source_root(source_root_id);
+                let path = source_root.path_for_file(&file_id).unwrap();
+                self.index_file(&db, file_id, &path, &mut ctx).unwrap();
+            } else {
+                let project_data = db.project_data(self.project_id);
+                for &source_root_id in &project_data.source_roots {
+                    if let Some(app_data) = db.app_data(source_root_id) {
+                        if app_data.app_type == AppType::App {
+                            let source_root = db.source_root(source_root_id);
+                            for file_id in source_root.iter() {
+                                if let Some(path) = source_root.path_for_file(&file_id) {
+                                    if let Err(err) = self.index_file(&db, file_id, path, &mut ctx)
+                                    {
+                                        log::warn!("Error indexing file {:?}: {}", path, err);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
+            ctx
+        })?;
         Ok(ctx)
     }
 
-    fn index_file(&self, file_id: FileId, path: &VfsPath, facts: &mut IndexedFacts) -> Result<()> {
-        let proj = match self.analysis.project_id(file_id)? {
-            Some(proj) => proj,
-            None => return Ok(()),
-        };
-
-        if self.project_id != proj {
-            return Ok(());
-        }
-
-        let line_index = self.analysis.line_index(file_id)?;
-
-        let file_fact = match self.file_fact(file_id, path) {
+    fn index_file(
+        &self,
+        db: &RootDatabase,
+        file_id: FileId,
+        path: &VfsPath,
+        facts: &mut IndexedFacts,
+    ) -> Result<()> {
+        let file_fact = match self.file_fact(db, file_id, path) {
             Some(file_fact) => file_fact,
             None => return Ok(()),
         };
-        let line_fact = self.line_fact(file_id, &line_index);
+        let line_fact = self.line_fact(db, file_id);
         facts.file_facts.push(file_fact);
         facts.file_line_facts.push(line_fact);
 
-        let module_index = self.analysis.module_index(proj)?;
+        let module_index = db.module_index(self.project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
-            match self.declaration_fact(file_id, module) {
-                Ok(decl) => facts.declaration_facts.extend(decl),
-                Err(err) => {
-                    log::warn!("Error while indexing declarations for {:?}: {}", &path, err)
-                }
-            };
-            match self.xrefs_fact(file_id) {
-                Ok(xref) => facts.xref_facts.push(xref),
-                Err(err) => {
-                    log::warn!("Error while indexing xref for {:?}: {}", &path, err)
-                }
-            }
+            let decl = Self::declarations(db, file_id, module);
+            facts.declaration_facts.extend(decl);
+            let xref = Self::xrefs(db, file_id);
+            facts.xref_facts.push(xref);
         }
         Ok(())
     }
 
-    fn file_fact(&self, file_id: FileId, path: &VfsPath) -> Option<FileFact> {
-        let root = self.loaded.project.root();
-        let root = root.as_path();
+    fn file_fact(&self, db: &RootDatabase, file_id: FileId, path: &VfsPath) -> Option<FileFact> {
+        let project_data = db.project_data(self.project_id);
+        let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
         let file_path = file_path.as_ref().to_str()?.into();
         Some(FileFact::new(file_id, file_path))
     }
 
-    fn line_fact(&self, file_id: FileId, line_index: &LineIndex) -> FileLinesFact {
+    fn line_fact(&self, db: &RootDatabase, file_id: FileId) -> FileLinesFact {
+        let line_index = db.file_line_index(file_id);
         let mut line = 1;
         let mut prev_offset = 0;
         let mut lengths = vec![];
@@ -371,7 +374,7 @@ impl GleanIndexer {
             line += 1;
             prev_offset = curr_offset;
         }
-        let content = String::from_utf8_lossy(self.loaded.vfs.file_contents(file_id));
+        let content = db.file_text(file_id);
         if !content.ends_with('\n') {
             ends_with_new_line = false;
             let len = if content.len() as u32 >= prev_offset {
@@ -382,17 +385,6 @@ impl GleanIndexer {
             lengths.push(len);
         }
         FileLinesFact::new(file_id, lengths, ends_with_new_line)
-    }
-
-    fn declaration_fact(
-        &self,
-        file_id: FileId,
-        module: &ModuleName,
-    ) -> Result<Vec<FunctionDeclarationFact>> {
-        let result = self
-            .analysis
-            .with_db(|db| Self::declarations(db, file_id, module))?;
-        Ok(result)
     }
 
     fn declarations(
@@ -423,11 +415,6 @@ impl GleanIndexer {
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
-    }
-
-    fn xrefs_fact(&self, file_id: FileId) -> Result<XRefFact> {
-        let result = self.analysis.with_db(|db| Self::xrefs(db, file_id))?;
-        Ok(result)
     }
 
     fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
