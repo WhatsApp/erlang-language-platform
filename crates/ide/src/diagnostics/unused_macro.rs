@@ -23,11 +23,24 @@ use elp_syntax::TextSize;
 use hir::Semantic;
 use text_edit::TextEdit;
 
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 use crate::Diagnostic;
 
-pub(crate) fn unused_macro(
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, file_kind| {
+        unused_macro(diags, sema, file_id, file_kind);
+    },
+};
+
+fn unused_macro(
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
