@@ -248,6 +248,18 @@ pub(crate) enum XRefTarget {
     Type(Key<TypeTarget>),
 }
 
+impl XRefTarget {
+    fn file_id(&self) -> &GleanFileId {
+        match self {
+            XRefTarget::Function(xref) => &xref.key.file_id,
+            XRefTarget::Macro(xref) => &xref.key.file_id,
+            XRefTarget::Header(xref) => &xref.key.file_id,
+            XRefTarget::Record(xref) => &xref.key.file_id,
+            XRefTarget::Type(xref) => &xref.key.file_id,
+        }
+    }
+}
+
 #[derive(Serialize, Debug)]
 pub(crate) struct FunctionTarget {
     #[serde(rename = "file")]
@@ -495,6 +507,10 @@ impl GleanIndexer {
 
     fn index(&self) -> Result<IndexedFacts> {
         let ctx = self.analysis.with_db(|db| {
+            let project_id = self.project_id;
+            let files = Self::project_files(db, project_id);
+            let file_ids: FxHashSet<GleanFileId> =
+                files.iter().map(|(file_id, _)| (*file_id).into()).collect();
             if let Some(module) = &self.module {
                 let index = db.module_index(self.project_id);
                 let file_id = index
@@ -504,19 +520,18 @@ impl GleanIndexer {
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
                 let mut ctx = IndexedFacts::default();
-                match Self::index_file(&db, file_id, &path, self.project_id) {
+                match Self::index_file(&db, file_id, &path, project_id, &file_ids) {
                     Some((file, line, decl, xref, facts)) => ctx.add(file, line, decl, xref, facts),
                     None => panic!("Can't find module {}", module),
                 }
                 ctx
             } else {
-                let project_id = self.project_id;
-                let files = Self::project_files(db, project_id);
-
                 files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
-                        analysis.with_db(|db| Self::index_file(db, file_id, &path, project_id))
+                        analysis.with_db(|db| {
+                            Self::index_file(db, file_id, &path, project_id, &file_ids)
+                        })
                     })
                     .flatten()
                     .flatten()
@@ -557,6 +572,7 @@ impl GleanIndexer {
         file_id: FileId,
         path: &VfsPath,
         project_id: ProjectId,
+        file_ids: &FxHashSet<GleanFileId>,
     ) -> Option<(
         FileFact,
         FileLinesFact,
@@ -569,7 +585,7 @@ impl GleanIndexer {
             None => return None,
         };
         let line_fact = Self::line_fact(db, file_id);
-        let (xref_v2, vars) = Self::xrefs_v2(db, file_id);
+        let (xref_v2, vars) = Self::xrefs_v2(db, file_id, file_ids);
         let file_decl = Self::declarations_v2(db, project_id, file_id, vars);
 
         let module_index = db.module_index(project_id);
@@ -934,13 +950,17 @@ impl GleanIndexer {
         result
     }
 
-    fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> (XRefFile, FxHashSet<TextRange>) {
+    fn xrefs_v2(
+        db: &RootDatabase,
+        file_id: FileId,
+        file_ids: &FxHashSet<GleanFileId>,
+    ) -> (XRefFile, FxHashSet<TextRange>) {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
         let def_map = sema.def_map(file_id);
         let mut vars = FxHashSet::default();
-        let xrefs = fold::fold_file(
+        let mut xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
             file_id,
@@ -1018,7 +1038,7 @@ impl GleanIndexer {
                 _ => acc,
             },
         );
-
+        xrefs.retain(|x| file_ids.contains(&x.target.file_id()));
         (
             XRefFile {
                 file_id: file_id.into(),
@@ -2131,18 +2151,6 @@ mod tests {
                 XRefTarget::Type(xref) => {
                     f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
                 }
-            }
-        }
-    }
-
-    impl XRefTarget {
-        fn file_id(&self) -> &GleanFileId {
-            match self {
-                XRefTarget::Function(xref) => &xref.key.file_id,
-                XRefTarget::Macro(xref) => &xref.key.file_id,
-                XRefTarget::Header(xref) => &xref.key.file_id,
-                XRefTarget::Record(xref) => &xref.key.file_id,
-                XRefTarget::Type(xref) => &xref.key.file_id,
             }
         }
     }
