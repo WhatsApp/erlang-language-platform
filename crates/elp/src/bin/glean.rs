@@ -29,6 +29,7 @@ use elp_ide::Analysis;
 use elp_ide::TextRange;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
+use elp_syntax::ast;
 use elp_syntax::AstNode;
 use hir::db::DefDatabase;
 use hir::fold;
@@ -39,6 +40,8 @@ use hir::Body;
 use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
+use hir::ExprSource;
+use hir::InFile;
 use hir::Literal;
 use hir::Name;
 use hir::Pat;
@@ -432,6 +435,7 @@ impl GleanIndexer {
 
     fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
         let sema = Semantic::new(db);
+        let source_file = sema.parse(file_id);
         let xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
@@ -439,12 +443,16 @@ impl GleanIndexer {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, range)) = ctx.find_range(&sema) {
-                        let arity = args.len() as u32;
-                        if let Some(fact) =
-                            Self::resolve_call(&sema, target, arity, file_id, &body, range)
+                    if let Some((body, expr_source)) = ctx.body_with_expr_source(&sema) {
+                        if let Some(range) =
+                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
                         {
-                            acc.push(fact);
+                            let arity = args.len() as u32;
+                            if let Some(fact) =
+                                Self::resolve_call(&sema, target, arity, file_id, &body, range)
+                            {
+                                acc.push(fact);
+                            }
                         }
                     }
                     acc
@@ -571,6 +579,20 @@ impl GleanIndexer {
         let (_, range) = ctx.find_range(sema)?;
         let mfa = MFA::new(&module, &def.record.name, 99);
         Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn find_range(
+        sema: &Semantic,
+        ctx: &AnyCallBackCtx,
+        source_file: &InFile<ast::SourceFile>,
+        expr_source: &ExprSource,
+    ) -> Option<TextRange> {
+        let node = expr_source.to_node(&source_file)?;
+        let range = match node {
+            elp_syntax::ast::Expr::Call(expr) => expr.expr()?.syntax().text_range(),
+            _ => ctx.find_range(sema)?.1,
+        };
+        Some(range)
     }
 }
 
@@ -721,9 +743,9 @@ mod tests {
         //- /glean/app_glean/src/glean_module6.erl
         main() ->
             B = baz(1, 2),
-        %%      ^^^^^^^^^ glean_module6/baz/2
+        %%      ^^^ glean_module6/baz/2
             F = glean_module61:foo(B),
-        %%      ^^^^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
+        %%      ^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
             F.
         baz(A, B) ->
             A + B."#;
