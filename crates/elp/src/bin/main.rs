@@ -103,7 +103,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             writeln!(cli, "{}", help)?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
-        args::Command::Glean(args) => glean::GleanIndexer::new(&args, cli)?.index()?,
+        args::Command::Glean(args) => glean::index(&args, cli)?,
     }
 
     log::logger().flush();

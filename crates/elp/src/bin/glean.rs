@@ -9,6 +9,7 @@
 
 use std::io::Write;
 use std::mem;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use elp::build::load;
@@ -18,6 +19,7 @@ use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
+use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::RootDatabase;
@@ -226,15 +228,53 @@ impl IndexedFacts {
     }
 }
 
-pub struct GleanIndexer<'a> {
+pub struct GleanIndexer {
+    project_id: ProjectId,
     loaded: LoadResult,
     analysis: Analysis,
-    cli: &'a mut dyn Cli,
-    args: &'a Glean,
+    module: Option<String>,
 }
 
-impl<'a> GleanIndexer<'a> {
-    pub fn new(args: &'a Glean, cli: &'a mut dyn Cli) -> Result<Self> {
+pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
+    let indexer = GleanIndexer::new(args, cli)?;
+    let facts = indexer.index()?;
+    write_results(facts, cli, &args.to)
+}
+
+fn write_results(
+    mut indexed_facts: IndexedFacts,
+    cli: &mut dyn Cli,
+    to: &Option<PathBuf>,
+) -> Result<()> {
+    let facts = vec![
+        Fact::File {
+            facts: mem::take(&mut indexed_facts.file_facts),
+        },
+        Fact::FileLine {
+            facts: mem::take(&mut indexed_facts.file_line_facts),
+        },
+        Fact::FunctionDeclaration {
+            facts: mem::take(&mut indexed_facts.declaration_facts),
+        },
+        Fact::XRef {
+            facts: mem::take(&mut indexed_facts.xref_facts),
+        },
+    ];
+    let content = serde_json::to_string(&facts)?;
+    match to {
+        Some(to) => std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(to)?
+            .write_all(content.as_bytes()),
+        None => cli.write_all(content.as_bytes()),
+    }?;
+    Ok(())
+}
+
+impl GleanIndexer {
+    pub fn new(args: &Glean, cli: &mut dyn Cli) -> Result<Self> {
         let config = DiscoverConfig::buck();
         let loaded = load::load_project_at(
             cli,
@@ -245,18 +285,32 @@ impl<'a> GleanIndexer<'a> {
         )?;
         let analysis = loaded.analysis();
         let indexer = Self {
+            project_id: loaded.project_id,
             loaded,
             analysis,
-            cli,
-            args,
+            module: args.module.clone(),
         };
         Ok(indexer)
     }
 
-    pub fn index(mut self) -> Result<()> {
-        let facts = self.index_facts()?;
-        self.write_results(facts)?;
-        Ok(())
+    fn index(&self) -> Result<IndexedFacts> {
+        let mut ctx = IndexedFacts::new();
+
+        if let Some(module) = &self.module {
+            let index = self.analysis.module_index(self.project_id)?;
+            let file_id = index
+                .file_for_module(&ModuleName::new(module))
+                .expect("No module found");
+            let path = self.loaded.vfs.file_path(file_id);
+            self.index_file(file_id, &path, &mut ctx)?;
+        } else {
+            for (file_id, path) in self.loaded.vfs.iter() {
+                if let Err(err) = self.index_file(file_id, path, &mut ctx) {
+                    log::warn!("Error indexing file {:?}: {}", path, err);
+                }
+            }
+        }
+        Ok(ctx)
     }
 
     fn index_file(&self, file_id: FileId, path: &VfsPath, facts: &mut IndexedFacts) -> Result<()> {
@@ -265,7 +319,7 @@ impl<'a> GleanIndexer<'a> {
             None => return Ok(()),
         };
 
-        if self.loaded.project_id != proj {
+        if self.project_id != proj {
             return Ok(());
         }
 
@@ -294,54 +348,6 @@ impl<'a> GleanIndexer<'a> {
                 }
             }
         }
-        Ok(())
-    }
-
-    fn index_facts(&self) -> Result<IndexedFacts> {
-        let mut ctx = IndexedFacts::new();
-
-        if let Some(module) = &self.args.module {
-            let index = self.analysis.module_index(self.loaded.project_id)?;
-            let file_id = index
-                .file_for_module(&ModuleName::new(module))
-                .expect("No module found");
-            let path = self.loaded.vfs.file_path(file_id);
-            self.index_file(file_id, &path, &mut ctx)?;
-        } else {
-            for (file_id, path) in self.loaded.vfs.iter() {
-                if let Err(err) = self.index_file(file_id, path, &mut ctx) {
-                    log::warn!("Error indexing file {:?}: {}", path, err);
-                }
-            }
-        }
-        Ok(ctx)
-    }
-
-    fn write_results(&mut self, mut indexed_facts: IndexedFacts) -> Result<()> {
-        let facts = vec![
-            Fact::File {
-                facts: mem::take(&mut indexed_facts.file_facts),
-            },
-            Fact::FileLine {
-                facts: mem::take(&mut indexed_facts.file_line_facts),
-            },
-            Fact::FunctionDeclaration {
-                facts: mem::take(&mut indexed_facts.declaration_facts),
-            },
-            Fact::XRef {
-                facts: mem::take(&mut indexed_facts.xref_facts),
-            },
-        ];
-        let content = serde_json::to_string(&facts)?;
-        match &self.args.to {
-            Some(to) => std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(to)?
-                .write_all(content.as_bytes()),
-            None => self.cli.write_all(content.as_bytes()),
-        }?;
         Ok(())
     }
 
@@ -579,8 +585,6 @@ impl From<TextRange> for Location {
 #[cfg(test)]
 mod tests {
 
-    use std::path::PathBuf;
-
     use elp::cli::Fake;
     use elp_project_model::test_fixture::FixtureWithProjectMeta;
     use expect_test::expect_file;
@@ -590,11 +594,6 @@ mod tests {
     #[test]
     fn serialization_test() {
         let mut cli = Fake::default();
-        let args = Glean {
-            project: PathBuf::from("."),
-            module: None,
-            to: None,
-        };
         let file_id = FileId(10071);
         let location = Location::new(0, 10);
         let mfa = mfa(
@@ -627,9 +626,7 @@ mod tests {
             xref_facts,
         };
 
-        let mut indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-
-        indexer.write_results(facts).unwrap();
+        write_results(facts, &mut cli, &None).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
@@ -922,7 +919,7 @@ mod tests {
             to: None,
         };
         let indexer = GleanIndexer::new(&args, &mut cli).expect("success");
-        indexer.index_facts().expect("should be ok")
+        indexer.index().expect("should be ok")
     }
 
     fn mfa(module: &str, name: &str, arity: u32) -> MFA {
