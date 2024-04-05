@@ -186,6 +186,10 @@ impl AnalysisHost {
     pub fn apply_change(&mut self, change: Change) {
         self.db.apply_change(change)
     }
+
+    pub fn new(db: RootDatabase) -> AnalysisHost {
+        AnalysisHost { db }
+    }
 }
 
 /// Analysis is a snapshot of a world state at a moment in time. It is the main

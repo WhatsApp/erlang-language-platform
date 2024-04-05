@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::fmt;
 use std::io::Write;
 use std::mem;
 use std::path::PathBuf;
@@ -49,7 +50,7 @@ use serde::Serialize;
 
 use crate::args::Glean;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, Hash, PartialEq)]
 struct GleanFileId(u32);
 
 impl GleanFileId {
@@ -187,6 +188,12 @@ impl MFA {
     }
 }
 
+impl fmt::Display for MFA {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(format!("{}/{}/{}", self.module, self.name, self.arity).as_str())
+    }
+}
+
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 struct Location {
     start: u32,
@@ -196,6 +203,12 @@ struct Location {
 impl Location {
     fn new(start: u32, length: u32) -> Self {
         Self { start, length }
+    }
+}
+
+impl Into<TextRange> for Location {
+    fn into(self) -> TextRange {
+        TextRange::at(self.start.into(), self.length.into())
     }
 }
 
@@ -572,7 +585,14 @@ impl From<TextRange> for Location {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+    use std::collections::HashSet;
+
     use elp::cli::Fake;
+    use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
+    use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
+    use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
+    use elp_ide::AnalysisHost;
     use elp_project_model::test_fixture::FixtureWithProjectMeta;
     use expect_test::expect_file;
 
@@ -693,7 +713,6 @@ mod tests {
 
     #[test]
     fn xref_call_test() {
-        let module = "glean_module6";
         let spec = r#"
         //- /glean/app_glean/src/glean_module61.erl
         -module(glean_module61).
@@ -702,24 +721,18 @@ mod tests {
         //- /glean/app_glean/src/glean_module6.erl
         main() ->
             B = baz(1, 2),
+        %%      ^^^^^^^^^ glean_module6/baz/2
             F = glean_module61:foo(B),
+        %%      ^^^^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
             F.
         baz(A, B) ->
             A + B."#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let foo = mfa("glean_module61", "foo", 1);
-        let baz = mfa(module, "baz", 2);
-        assert_eq!(xref_fact.xrefs[0].target, baz);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(18, 9));
-        assert_eq!(xref_fact.xrefs[1].target, foo);
-        assert_eq!(xref_fact.xrefs[1].source, Location::new(37, 21));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_captured_fun_test() {
-        let module = "glean_module7";
         let spec = r#"
         //- /glean/app_glean/src/glean_module71.erl
         foo(Bar) -> Bar + 1.
@@ -727,23 +740,17 @@ mod tests {
         //- /glean/app_glean/src/glean_module7.erl
         main() ->
             Foo = fun glean_module71:foo/1,
+        %%        ^^^^^^^^^^^^^^^^^^^^^^^^ glean_module71/foo/1
             Baz = fun baz/2.
+        %%        ^^^^^^^^^ glean_module7/baz/2
         baz(A, B) ->
             A + B."#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let foo = mfa("glean_module71", "foo", 1);
-        let baz = mfa(module, "baz", 2);
-        assert_eq!(xref_fact.xrefs[0].target, foo);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(20, 24));
-        assert_eq!(xref_fact.xrefs[1].target, baz);
-        assert_eq!(xref_fact.xrefs[1].source, Location::new(56, 9));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_types_test() {
-        let module = "glean_module8";
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
         -type small() :: #{non_neg_integer() | infinity}.
@@ -752,148 +759,110 @@ mod tests {
         -type huuuge() :: #{non_neg_integer() | infinity}.
         -spec baz(
             A :: huuuge(),
+        %%       ^^^^^^^^ glean_module8/huuuge/0
             B :: glean_module81:small()
+        %%       ^^^^^^^^^^^^^^^^^^^^^^ glean_module81/small/0
         ) -> huuuge().
+        %%   ^^^^^^^^ glean_module8/huuuge/0
         baz(A, B) ->
             A + B."#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let small = mfa("glean_module81", "small", 0);
-        let huuuge = mfa(module, "huuuge", 0);
-        assert_eq!(xref_fact.xrefs[0].target, huuuge);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(71, 8));
-        assert_eq!(xref_fact.xrefs[1].target, small);
-        assert_eq!(xref_fact.xrefs[1].source, Location::new(90, 22));
-        assert_eq!(xref_fact.xrefs[2].target, huuuge);
-        assert_eq!(xref_fact.xrefs[2].source, Location::new(118, 8));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_record_test() {
-        let module = "glean_module9";
         let spec = r#"
         //- /glean/app_glean/src/glean_module9.erl
         -record(query, {
             size :: non_neg_integer()
         }).
         baz(A) ->
-            #query{
-                size = A
-            }.
+            #query{ size = A }.
+        %%  ^^^^^^^^^^^^^^^^^^ glean_module9/query/99
         "#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let query = mfa(module, "query", 99);
-        assert_eq!(xref_fact.xrefs[0].target, query);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(65, 30));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_record_index_test() {
-        let module = "glean_module10";
         let spec = r#"
         //- /glean/app_glean/src/glean_module10.erl
         -record(stats, {count, time}).
         baz(Time) ->
-            [{#stats.count, 1}, {#stats.time, Time}].
+            [{#stats.count, 1},
+        %%    ^^^^^^^^^^^^ glean_module10/stats/99
+            {#stats.time, Time}].
+        %%   ^^^^^^^^^^^ glean_module10/stats/99
+
         "#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "stats", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(50, 12));
-        assert_eq!(xref_fact.xrefs[1].target, stats);
-        assert_eq!(xref_fact.xrefs[1].source, Location::new(69, 11));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_record_field_test() {
-        let module = "glean_module11";
         let spec = r#"
         //- /glean/app_glean/src/glean_module11.erl
         -record(stats, {count, time}).
         baz(Stats) ->
             Stats#stats.count.
+        %%  ^^^^^^^^^^^^^^^^^ glean_module11/stats/99
         "#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "stats", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(49, 17));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_record_update_test() {
-        let module = "glean_module12";
         let spec = r#"
         //- /glean/app_glean/src/glean_module12.erl
         -record(stats, {count, time}).
         baz(Stats, NewCnt) ->
             Stats#stats{count = NewCnt}.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module12/stats/99
         "#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "stats", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(57, 27));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_pat_record_test() {
-        let module = "glean_module13";
         let spec = r#"
         //- /glean/app_glean/src/glean_module13.erl
         -record(stats, {count, time}).
         baz(Stats) ->
             #stats{count = Count, time = Time} = Stats.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module13/stats/99
         "#;
 
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "stats", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(49, 34));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_pat_record_index() {
-        let module = "glean_module14";
         let spec = r#"
         //- /glean/app_glean/src/glean_module14.erl
         -record(rec, {field}).
         foo(#rec.field) -> ok.
+        %%  ^^^^^^^^^^ glean_module14/rec/99
         "#;
-
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "rec", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(27, 10));
+        xref_check(&spec);
     }
 
     #[test]
     fn xref_record_in_type_test() {
-        let module = "glean_module15";
         let spec = r#"
         //- /glean/app_glean/src/glean_module15.erl
         -record(stats, {count, time}).
         -spec baz() -> #stats{}.
+        %%             ^^^^^^^^ glean_module15/stats/99
         baz() ->
             #stats{count = 1, time = 2}.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module15/stats/99
         "#;
-
-        let result = run_spec(spec, module);
-        let xref_fact = &result.xref_facts[0].key;
-        let stats = mfa(module, "stats", 99);
-        assert_eq!(xref_fact.xrefs[0].target, stats);
-        assert_eq!(xref_fact.xrefs[0].source, Location::new(46, 8));
-        assert_eq!(xref_fact.xrefs[1].target, stats);
-        assert_eq!(xref_fact.xrefs[1].source, Location::new(69, 27));
+        xref_check(&spec);
     }
 
     fn run_spec(spec: &str, module: &str) -> IndexedFacts {
@@ -915,5 +884,37 @@ mod tests {
             name: name.into(),
             arity,
         }
+    }
+
+    fn xref_check(spec: &str) {
+        let (db, files, _) = RootDatabase::with_many_files(spec);
+        let host = AnalysisHost::new(db);
+        let glean = GleanIndexer {
+            project_id: ProjectId(0),
+            analysis: host.analysis(),
+            module: None,
+        };
+        let facts = glean.index().expect("success");
+        let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
+        for file_id in files {
+            let text = host.raw_database().file_text(file_id);
+            let annotations_set: HashSet<_> = extract_annotations(&text).into_iter().collect();
+            expected_by_file.insert(file_id.into(), annotations_set);
+        }
+        for xref_fact in facts.xref_facts {
+            let file_id = xref_fact.key.file_id;
+            let annotations = expected_by_file
+                .remove(&file_id)
+                .expect("Annotations shold be present");
+            for xref in xref_fact.key.xrefs {
+                let range: TextRange = xref.source.clone().into();
+                let label = xref.target.to_string();
+                let tuple = (range, label);
+                if !annotations.contains(&tuple) {
+                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
+                }
+            }
+        }
+        assert!(expected_by_file.is_empty(), "Expected no more annotations");
     }
 }
