@@ -260,6 +260,8 @@ pub(crate) enum Declaration {
     FunctionDeclaration(FuncDecl),
     #[serde(rename = "macro")]
     MacroDeclaration(MacroDecl),
+    #[serde(rename = "ttype")]
+    TypeDeclaration(TypeDecl),
 }
 
 #[derive(Serialize, Debug)]
@@ -305,6 +307,25 @@ impl MacroDecl {
             name: name.to_string(),
             arity,
             span,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct TypeDecl {
+    name: String,
+    arity: u32,
+    span: Location,
+    exported: bool,
+}
+
+impl TypeDecl {
+    fn new(name: &Name, arity: u32, span: Location, exported: bool) -> Self {
+        Self {
+            name: name.to_string(),
+            arity,
+            span,
+            exported,
         }
     }
 }
@@ -500,7 +521,7 @@ impl GleanIndexer {
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
-            let decl = Self::declarations(db, file_id, module);
+            let decl = Self::declarations_v1(db, file_id, module);
             let xref = Self::xrefs(db, file_id);
             return Some((file_fact, line_fact, file_decl, Some((decl, xref))));
         }
@@ -546,7 +567,7 @@ impl GleanIndexer {
         FileLinesFact::new(file_id, lengths, ends_with_new_line)
     }
 
-    fn declarations(
+    fn declarations_v1(
         db: &RootDatabase,
         file_id: FileId,
         module: &ModuleName,
@@ -606,6 +627,17 @@ impl GleanIndexer {
                 macros.name(),
                 macros.arity(),
                 loc,
+            )));
+        }
+
+        for (ty, def) in def_map.get_types() {
+            let range = def.source(db).syntax().text_range();
+            let loc = range.into();
+            declarations.push(Declaration::TypeDeclaration(TypeDecl::new(
+                ty.name(),
+                ty.arity(),
+                loc,
+                def.exported,
             )));
         }
 
@@ -915,12 +947,16 @@ mod tests {
         //- /glean/app_glean/src/glean_module5.erl
             -module(glean_module5).
             -export([foo/0, doc_foo/1]).
+            -export_type([person/1]).
             -deprecated({depr_foo, 1, "use foo/0 instead"}).
 
             -define(PI, 3.14).
         %%  ^^^^^^^^^^^^^^^^^^ macro/PI/no_arity
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ macro/MAX/2
+
+            -type person(Name :: string()) :: {name, string()}.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
 
             foo() -> 1.
         %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported/no_docs
@@ -1198,6 +1234,7 @@ mod tests {
             match self {
                 Declaration::FunctionDeclaration(decl) => &decl.span,
                 Declaration::MacroDeclaration(decl) => &decl.span,
+                Declaration::TypeDeclaration(decl) => &decl.span,
             }
         }
     }
@@ -1237,6 +1274,13 @@ mod tests {
                         None => "no_arity".to_string(),
                     };
                     f.write_str(format!("macro/{}/{}", decl.name, arity).as_str())
+                }
+                Declaration::TypeDeclaration(decl) => {
+                    let exported = match decl.exported {
+                        true => "exported",
+                        false => "not_exported",
+                    };
+                    f.write_str(format!("type/{}/{}/{}", decl.name, decl.arity, exported).as_str())
                 }
             }
         }
