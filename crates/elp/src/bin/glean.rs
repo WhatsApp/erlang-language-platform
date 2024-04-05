@@ -51,6 +51,7 @@ use hir::InFile;
 use hir::Literal;
 use hir::Name;
 use hir::NameArity;
+use hir::PPDirective;
 use hir::Pat;
 use hir::Semantic;
 use hir::Strategy;
@@ -260,6 +261,7 @@ pub(crate) struct XRef {
 pub(crate) enum XRefTarget {
     Function(FunctionTarget),
     Macro(MacroTarget),
+    Header(HeaderTarget),
 }
 
 #[derive(Serialize, Debug)]
@@ -276,6 +278,12 @@ pub(crate) struct MacroTarget {
     file_id: GleanFileId,
     name: String,
     arity: Option<u32>,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct HeaderTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
 }
 
 #[derive(Serialize, Debug)]
@@ -881,6 +889,25 @@ impl GleanIndexer {
                 acc
             },
             &mut |mut acc, on, form_id| match (on, form_id) {
+                (hir::On::Entry, hir::FormIdx::PPDirective(idx)) => {
+                    let directive = &form_list[idx];
+                    if let PPDirective::Include(idx) = directive {
+                        let include = &form_list[idx.clone()];
+                        let ast = include.form_id().get_ast(db, file_id);
+                        let range = ast.syntax().text_range().into();
+                        if let Some(file) = db.resolve_include(InFile::new(file_id, idx.clone())) {
+                            let target = HeaderTarget {
+                                file_id: file.into(),
+                            };
+                            let xref = XRef {
+                                source: range,
+                                target: XRefTarget::Header(target),
+                            };
+                            acc.push(xref);
+                        }
+                    }
+                    acc
+                }
                 (hir::On::Entry, hir::FormIdx::Export(idx)) => {
                     let export = &form_list[idx];
                     let ast = export.form_id.get_ast(db, file_id);
@@ -1329,6 +1356,26 @@ mod tests {
     }
 
     #[test]
+    fn xref_header_v2_test() {
+        let spec = r#"
+        //- /kernel/include/logger.hrl include_path:/include app:kernel
+            % empty
+
+        //- /include/macro.hrl include_path:/include
+            % empty
+
+        //- /src/glean_module61.erl
+            -module(glean_module61).
+            -include_lib("kernel/include/logger.hrl").
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ logger.hrl/header
+            -include("macro.hrl").
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ macro.hrl/header
+        "#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
     fn xref_captured_fun_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module71.erl
@@ -1489,6 +1536,7 @@ mod tests {
         //- /src/macro.erl
             -module(macro).
             -include("macro.hrl").
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ macro.hrl/header
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
@@ -1753,6 +1801,7 @@ mod tests {
                     };
                     f.write_str(format!("macro/{}/{}", xref.name, arity).as_str())
                 }
+                XRefTarget::Header(_) => f.write_str("header"),
             }
         }
     }
@@ -1762,6 +1811,7 @@ mod tests {
             match self {
                 XRefTarget::Function(xref) => &xref.file_id,
                 XRefTarget::Macro(xref) => &xref.file_id,
+                XRefTarget::Header(xref) => &xref.file_id,
             }
         }
     }
