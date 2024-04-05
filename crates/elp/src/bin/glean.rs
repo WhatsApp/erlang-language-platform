@@ -263,6 +263,7 @@ pub(crate) enum XRefTarget {
     Macro(MacroTarget),
     Header(HeaderTarget),
     Record(RecordTarget),
+    Ttype(TypeTarget),
 }
 
 #[derive(Serialize, Debug)]
@@ -292,6 +293,14 @@ pub(crate) struct RecordTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     name: String,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct TypeTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
+    arity: u32,
 }
 
 #[derive(Serialize, Debug)]
@@ -885,6 +894,10 @@ impl GleanIndexer {
                 let def = macro_def.as_ref()?;
                 Self::resolve_macro_v2(&sema, def, &source_file, &ctx)
             }
+            hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
+                let arity = args.len() as u32;
+                Self::resolve_type_v2(&sema, target, arity, file_id, &ctx)
+            }
             _ => None,
         };
         acc.push(target?);
@@ -1085,6 +1098,25 @@ impl GleanIndexer {
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(&module, def.type_alias.name().name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn resolve_type_v2(
+        sema: &Semantic,
+        target: &CallTarget<TypeExprId>,
+        arity: u32,
+        file_id: FileId,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<XRef> {
+        let (body, range) = ctx.find_range(sema)?;
+        let def = resolve_type_target(sema, target, arity, file_id, &body)?;
+        Some(XRef {
+            source: range.into(),
+            target: XRefTarget::Ttype(TypeTarget {
+                file_id: def.file.file_id.into(),
+                name: def.type_alias.name().name().to_string(),
+                arity,
+            }),
+        })
     }
 
     fn resolve_record(
@@ -1468,6 +1500,27 @@ mod tests {
             A + B."#;
 
         xref_check(&spec);
+    }
+
+    #[test]
+    fn xref_types_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module81.erl
+        -type small() :: #{non_neg_integer() | infinity}.
+
+        //- /glean/app_glean/src/glean_module8.erl
+        -type huuuge() :: #{non_neg_integer() | infinity}.
+        -spec baz(
+            A :: huuuge(),
+        %%       ^^^^^^^^ glean_module8.erl/type/huuuge/0
+            B :: glean_module81:small()
+        %%       ^^^^^^^^^^^^^^^^^^^^^^ glean_module81.erl/type/small/0
+        ) -> huuuge().
+        %%   ^^^^^^^^ glean_module8.erl/type/huuuge/0
+        baz(A, B) ->
+            A + B."#;
+
+        xref_v2_check(&spec);
     }
 
     #[test]
@@ -1939,6 +1992,9 @@ mod tests {
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
                 XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
+                XRefTarget::Ttype(xref) => {
+                    f.write_str(format!("type/{}/{}", xref.name, xref.arity).as_str())
+                }
             }
         }
     }
@@ -1950,6 +2006,7 @@ mod tests {
                 XRefTarget::Macro(xref) => &xref.file_id,
                 XRefTarget::Header(xref) => &xref.file_id,
                 XRefTarget::Record(xref) => &xref.file_id,
+                XRefTarget::Ttype(xref) => &xref.file_id,
             }
         }
     }
