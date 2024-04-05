@@ -29,6 +29,8 @@ use hir::Semantic;
 use hir::Strategy;
 
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::check_is_only_place_where_var_is_defined_ast;
 use crate::codemod_helpers::check_var_has_references;
@@ -36,7 +38,19 @@ use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
-pub(crate) fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        // TODO: disable this check when T151727890 and T151605845 are resolved
+        experimental: true,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        redundant_assignment(diags, sema, file_id);
+    },
+};
+
+fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     if sema.db.is_generated(file_id) {
         // No point asking for changes to generated files
         return;

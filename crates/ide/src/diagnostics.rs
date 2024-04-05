@@ -514,7 +514,6 @@ pub fn native_diagnostics(
         config
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
-        semantic_diagnostics(&mut res, &sema, file_id, file_kind, config);
         // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
         diagnostics_from_descriptors(
@@ -564,6 +563,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
         &unused_function_args::DESCRIPTOR,
         &trivial_match::DESCRIPTOR,
+        &redundant_assignment::DESCRIPTOR,
         &unused_macro::DESCRIPTOR,
         &unused_record_field::DESCRIPTOR,
         &mutable_variable::DESCRIPTOR,
@@ -652,21 +652,6 @@ fn widen_range(range: TextRange) -> TextRange {
         TextRange::new(range.start(), range.end() + TextSize::from(1))
     } else {
         range
-    }
-}
-
-pub fn semantic_diagnostics(
-    res: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    _file_kind: FileKind,
-    config: &DiagnosticsConfig,
-) {
-    if config.include_generated || !sema.db.is_generated(file_id) {
-        // TODO: disable this check when T151727890 and T151605845 are resolved
-        if config.experimental {
-            redundant_assignment::redundant_assignment(res, sema, file_id);
-        }
     }
 }
 
