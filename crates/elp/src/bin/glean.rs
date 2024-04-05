@@ -594,6 +594,7 @@ impl GleanIndexer {
             elp_syntax::ast::Expr::Call(expr) => expr.expr()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordExpr(expr) => expr.name()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordFieldExpr(expr) => expr.name()?.syntax().text_range(),
+            elp_syntax::ast::Expr::RecordIndexExpr(expr) => expr.name()?.syntax().text_range(),
             _ => ctx.find_range(sema)?.1,
         };
         Some(range)
@@ -818,9 +819,9 @@ mod tests {
         -record(stats, {count, time}).
         baz(Time) ->
             [{#stats.count, 1},
-        %%    ^^^^^^^^^^^^ glean_module10/stats/99
+        %%    ^^^^^^ glean_module10/stats/99
             {#stats.time, Time}].
-        %%   ^^^^^^^^^^^ glean_module10/stats/99
+        %%   ^^^^^^ glean_module10/stats/99
 
         "#;
 
@@ -872,7 +873,7 @@ mod tests {
         //- /glean/app_glean/src/glean_module14.erl
         -record(rec, {field}).
         foo(#rec.field) -> ok.
-        %%  ^^^^^^^^^^ glean_module14/rec/99
+        %%  ^^^^ glean_module14/rec/99
         "#;
         xref_check(&spec);
     }
