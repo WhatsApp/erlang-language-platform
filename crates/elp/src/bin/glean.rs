@@ -252,6 +252,27 @@ impl IndexedFacts {
             self.xref_facts.push(xref)
         }
     }
+
+    fn to_v1_facts(mut self) -> Vec<Fact> {
+        vec![
+            Fact::File {
+                facts: mem::take(&mut self.file_facts),
+            },
+            Fact::FileLine {
+                facts: mem::take(&mut self.file_line_facts),
+            },
+            Fact::FunctionDeclaration {
+                facts: mem::take(&mut self.declaration_facts),
+            },
+            Fact::XRef {
+                facts: mem::take(&mut self.xref_facts),
+            },
+        ]
+    }
+
+    fn to_v2_facts(self) -> Vec<Fact> {
+        vec![]
+    }
 }
 
 pub struct GleanIndexer {
@@ -263,28 +284,15 @@ pub struct GleanIndexer {
 pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
     let indexer = GleanIndexer::new(args, cli)?;
     let facts = indexer.index()?;
+    let facts = if args.v2 {
+        facts.to_v2_facts()
+    } else {
+        facts.to_v1_facts()
+    };
     write_results(facts, cli, &args.to)
 }
 
-fn write_results(
-    mut indexed_facts: IndexedFacts,
-    cli: &mut dyn Cli,
-    to: &Option<PathBuf>,
-) -> Result<()> {
-    let facts = vec![
-        Fact::File {
-            facts: mem::take(&mut indexed_facts.file_facts),
-        },
-        Fact::FileLine {
-            facts: mem::take(&mut indexed_facts.file_line_facts),
-        },
-        Fact::FunctionDeclaration {
-            facts: mem::take(&mut indexed_facts.declaration_facts),
-        },
-        Fact::XRef {
-            facts: mem::take(&mut indexed_facts.xref_facts),
-        },
-    ];
+fn write_results(facts: Vec<Fact>, cli: &mut dyn Cli, to: &Option<PathBuf>) -> Result<()> {
     let content = serde_json::to_string(&facts)?;
     match to {
         Some(to) => std::fs::OpenOptions::new()
@@ -663,7 +671,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn serialization_test() {
+    fn serialization_test_v1() {
         let mut cli = Fake::default();
         let file_id = FileId(10071);
         let location = Location::new(0, 10);
@@ -697,7 +705,7 @@ mod tests {
             xref_facts,
         };
 
-        write_results(facts, &mut cli, &None).expect("success");
+        write_results(facts.to_v1_facts(), &mut cli, &None).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];

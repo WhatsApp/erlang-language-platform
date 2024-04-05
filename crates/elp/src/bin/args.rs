@@ -286,6 +286,8 @@ pub struct Glean {
     /// Path to a directory where to dump result
     #[bpaf(argument("TO"))]
     pub to: Option<PathBuf>,
+    /// Produce glean db with macros, types, xrefs. Incompatible with previous
+    pub v2: bool,
 }
 
 #[derive(Clone, Debug)]
