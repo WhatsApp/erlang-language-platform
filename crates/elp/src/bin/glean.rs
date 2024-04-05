@@ -128,27 +128,20 @@ impl FileLinesFact {
 
 #[derive(Serialize, Debug)]
 pub(crate) struct FunctionDeclarationFact {
-    key: FunctionDeclarationKey,
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    fqn: MFA,
+    span: Location,
 }
 
 impl FunctionDeclarationFact {
     fn new(file_id: FileId, fqn: MFA, span: Location) -> Self {
         Self {
-            key: FunctionDeclarationKey {
-                file_id: file_id.into(),
-                fqn,
-                span,
-            },
+            file_id: file_id.into(),
+            fqn,
+            span,
         }
     }
-}
-
-#[derive(Serialize, Debug)]
-struct FunctionDeclarationKey {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    fqn: MFA,
-    span: Location,
 }
 
 #[derive(Serialize, Debug)]
@@ -223,7 +216,9 @@ pub(crate) enum Fact {
     #[serde(rename = "src.FileLines")]
     FileLine { facts: Vec<Key<FileLinesFact>> },
     #[serde(rename = "erlang.FunctionDeclaration")]
-    FunctionDeclaration { facts: Vec<FunctionDeclarationFact> },
+    FunctionDeclaration {
+        facts: Vec<Key<FunctionDeclarationFact>>,
+    },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<XRefFact> },
     //v2 facts
@@ -411,6 +406,8 @@ impl IndexedFacts {
     fn to_v1_facts(mut self) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
+        let declaration_fact = mem::take(&mut self.declaration_facts);
+        let declaration_fact = declaration_fact.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -419,7 +416,7 @@ impl IndexedFacts {
                 facts: file_lines_fact,
             },
             Fact::FunctionDeclaration {
-                facts: mem::take(&mut self.declaration_facts),
+                facts: declaration_fact,
             },
             Fact::XRef {
                 facts: mem::take(&mut self.xref_facts),
@@ -1993,13 +1990,13 @@ mod tests {
 
     fn decl_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
-        let file_id = &facts.declaration_facts[0].key.file_id;
+        let file_id = &facts.declaration_facts[0].file_id;
         let mut annotations = expected_by_file
             .remove(file_id)
             .expect("Annotations shold be present");
         for decl in facts.declaration_facts {
-            let range: TextRange = decl.key.span.clone().into();
-            let label = decl.key.fqn.to_string();
+            let range: TextRange = decl.span.clone().into();
+            let label = decl.fqn.to_string();
             let tuple = (range, label);
             if !annotations.remove(&tuple) {
                 panic!("Expected to find {:?} in {:?}", tuple, &annotations);
