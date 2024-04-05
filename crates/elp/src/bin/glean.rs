@@ -214,15 +214,9 @@ struct Location {
     length: u32,
 }
 
-impl Location {
-    fn new(start: u32, length: u32) -> Self {
-        Self { start, length }
-    }
-}
-
-impl Into<TextRange> for Location {
-    fn into(self) -> TextRange {
-        TextRange::at(self.start.into(), self.length.into())
+impl From<Location> for TextRange {
+    fn from(val: Location) -> Self {
+        TextRange::at(val.start.into(), val.length.into())
     }
 }
 
@@ -264,11 +258,16 @@ pub(crate) struct XRef {
 
 #[derive(Serialize, Debug)]
 pub(crate) enum XRefTarget {
+    #[serde(rename = "func")]
     Function(FunctionTarget),
+    #[serde(rename = "macro")]
     Macro(MacroTarget),
+    #[serde(rename = "header")]
     Header(HeaderTarget),
+    #[serde(rename = "record")]
     Record(RecordTarget),
-    Ttype(TypeTarget),
+    #[serde(rename = "ttype")]
+    Type(TypeTarget),
 }
 
 #[derive(Serialize, Debug)]
@@ -314,26 +313,11 @@ pub(crate) struct DeclarationKey {
     key: FileDeclaration,
 }
 
-impl DeclarationKey {
-    pub(crate) fn new(key: FileDeclaration) -> Self {
-        Self { key }
-    }
-}
-
 #[derive(Serialize, Debug)]
 pub(crate) struct FileDeclaration {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     declarations: Vec<Declaration>,
-}
-
-impl FileDeclaration {
-    fn new(file_id: GleanFileId, declarations: Vec<Declaration>) -> Self {
-        Self {
-            file_id,
-            declarations,
-        }
-    }
 }
 
 #[derive(Serialize, Debug)]
@@ -360,41 +344,11 @@ pub(crate) struct FuncDecl {
     deprecated: bool,
 }
 
-impl FuncDecl {
-    fn new(
-        name: &Name,
-        arity: u32,
-        span: Location,
-        doc: Option<String>,
-        exported: bool,
-        deprecated: bool,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            arity,
-            span,
-            doc,
-            exported,
-            deprecated,
-        }
-    }
-}
-
 #[derive(Serialize, Debug)]
 pub(crate) struct MacroDecl {
     name: String,
     arity: Option<u32>,
     span: Location,
-}
-
-impl MacroDecl {
-    fn new(name: &Name, arity: Option<u32>, span: Location) -> Self {
-        Self {
-            name: name.to_string(),
-            arity,
-            span,
-        }
-    }
 }
 
 #[derive(Serialize, Debug)]
@@ -405,30 +359,10 @@ pub(crate) struct TypeDecl {
     exported: bool,
 }
 
-impl TypeDecl {
-    fn new(name: &Name, arity: u32, span: Location, exported: bool) -> Self {
-        Self {
-            name: name.to_string(),
-            arity,
-            span,
-            exported,
-        }
-    }
-}
-
 #[derive(Serialize, Debug)]
 pub(crate) struct RecordDecl {
     name: String,
     span: Location,
-}
-
-impl RecordDecl {
-    fn new(name: &Name, span: Location) -> Self {
-        Self {
-            name: name.to_string(),
-            span,
-        }
-    }
 }
 
 #[derive(Serialize, Debug)]
@@ -488,7 +422,7 @@ impl IndexedFacts {
         let file_decl = mem::take(&mut self.file_declarations);
         let decl = file_decl
             .into_iter()
-            .map(|decl| DeclarationKey::new(decl))
+            .map(|key| DeclarationKey { key })
             .collect();
         let xref = mem::take(&mut self.xref_v2);
         let xref = xref.into_iter().map(|x| XRefKey { key: x }).collect();
@@ -727,49 +661,55 @@ impl GleanIndexer {
             if let Some(range) = range {
                 let spec = specs.get(fun);
                 let doc = spec.map(|doc| doc.markdown_text().to_string());
-                let loc = range.into();
-                declarations.push(Declaration::FunctionDeclaration(FuncDecl::new(
-                    fun.name(),
-                    fun.arity(),
-                    loc,
+                let span = range.into();
+                declarations.push(Declaration::FunctionDeclaration(FuncDecl {
+                    name: fun.name().to_string(),
+                    arity: fun.arity(),
+                    span,
                     doc,
-                    def.exported,
-                    def.deprecated,
-                )));
+                    exported: def.exported,
+                    deprecated: def.deprecated,
+                }));
             }
         }
 
         for (macros, def) in def_map.get_macros() {
             let range = def.source(db).syntax().text_range();
-            let loc = range.into();
-            declarations.push(Declaration::MacroDeclaration(MacroDecl::new(
-                macros.name(),
-                macros.arity(),
-                loc,
-            )));
+            let span = range.into();
+            declarations.push(Declaration::MacroDeclaration(MacroDecl {
+                name: macros.name().to_string(),
+                arity: macros.arity(),
+                span,
+            }));
         }
 
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
-            let loc = range.into();
-            declarations.push(Declaration::TypeDeclaration(TypeDecl::new(
-                ty.name(),
-                ty.arity(),
-                loc,
-                def.exported,
-            )));
+            let span = range.into();
+            declarations.push(Declaration::TypeDeclaration(TypeDecl {
+                name: ty.name().to_string(),
+                arity: ty.arity(),
+                span,
+                exported: def.exported,
+            }));
         }
 
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
-            let loc = range.into();
-            declarations.push(Declaration::RecordDeclaration(RecordDecl::new(rec, loc)));
+            let span = range.into();
+            declarations.push(Declaration::RecordDeclaration(RecordDecl {
+                name: rec.to_string(),
+                span,
+            }));
         }
 
         let types = Self::types(db, project_id, file_id);
         declarations.extend(types);
 
-        FileDeclaration::new(file_id.into(), declarations)
+        FileDeclaration {
+            file_id: file_id.into(),
+            declarations,
+        }
     }
 
     fn xrefs(db: &RootDatabase, file_id: FileId) -> XRefFact {
@@ -1175,7 +1115,7 @@ impl GleanIndexer {
         let def = resolve_type_target(sema, target, arity, file_id, &body)?;
         Some(XRef {
             source: range.into(),
-            target: XRefTarget::Ttype(TypeTarget {
+            target: XRefTarget::Type(TypeTarget {
                 file_id: def.file.file_id.into(),
                 name: def.type_alias.name().name().to_string(),
                 arity,
@@ -1247,7 +1187,7 @@ impl From<TextRange> for Location {
     fn from(range: TextRange) -> Self {
         let start: u32 = range.start().into();
         let length: u32 = range.len().into();
-        Location::new(start, length)
+        Location { start, length }
     }
 }
 
@@ -1272,7 +1212,10 @@ mod tests {
     fn serialization_test_v1() {
         let mut cli = Fake::default();
         let file_id = FileId(10071);
-        let location = Location::new(0, 10);
+        let location = Location {
+            start: 0,
+            length: 10,
+        };
         let mfa = mfa(
             "smax_product_catalog",
             "product_visibility_update_request_iq",
@@ -2110,7 +2053,7 @@ mod tests {
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
                 XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.name).as_str()),
-                XRefTarget::Ttype(xref) => {
+                XRefTarget::Type(xref) => {
                     f.write_str(format!("type/{}/{}", xref.name, xref.arity).as_str())
                 }
             }
@@ -2124,7 +2067,7 @@ mod tests {
                 XRefTarget::Macro(xref) => &xref.file_id,
                 XRefTarget::Header(xref) => &xref.file_id,
                 XRefTarget::Record(xref) => &xref.file_id,
-                XRefTarget::Ttype(xref) => &xref.file_id,
+                XRefTarget::Type(xref) => &xref.file_id,
             }
         }
     }
