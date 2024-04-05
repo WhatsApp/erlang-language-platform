@@ -31,16 +31,25 @@ use text_edit::TextEdit;
 
 use super::Category;
 use super::Diagnostic;
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::statement_range;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
-pub(crate) fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.is_generated(file_id) {
-        // No point asking for changes to generated files
-        return;
-    }
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: false,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, _ext| {
+        effect_free_statement(diags, sema, file_id);
+    },
+};
+
+fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     sema.def_map(file_id).get_functions().for_each(|(_, def)| {
         if def.file.file_id == file_id {
             let source_file = sema.parse(file_id);

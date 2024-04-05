@@ -573,6 +573,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &application_env::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &expression_can_be_simplified::DESCRIPTOR,
+        &effect_free_statement::DESCRIPTOR,
     ]
 }
 
@@ -666,7 +667,6 @@ pub fn semantic_diagnostics(
         unused_macro::unused_macro(res, sema, file_id, file_kind);
         unused_record_field::unused_record_field(res, sema, file_id, file_kind);
         mutable_variable::mutable_variable_bug(res, sema, file_id);
-        effect_free_statement::effect_free_statement(res, sema, file_id);
     }
 }
 
