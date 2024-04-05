@@ -869,7 +869,8 @@ impl GleanIndexer {
                 };
                 Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)
             }
-            hir::AnyExpr::Expr(Expr::Record { name, .. }) => {
+            hir::AnyExpr::Expr(Expr::Record { name, .. })
+            | hir::AnyExpr::Expr(Expr::RecordIndex { name, .. }) => {
                 Self::resolve_record_v2(&sema, *name, file_id, ctx)
             }
             hir::AnyExpr::Expr(Expr::MacroCall { macro_def, .. })
@@ -1508,6 +1509,22 @@ mod tests {
         "#;
 
         xref_check(&spec);
+    }
+
+    #[test]
+    fn xref_record_index_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module10.erl
+        -record(stats, {count, time}).
+        baz(Time) ->
+            [{#stats.count, 1},
+        %%    ^^^^^^ glean_module10.erl/rec/stats
+            {#stats.time, Time}].
+        %%   ^^^^^^ glean_module10.erl/rec/stats
+
+        "#;
+
+        xref_v2_check(&spec);
     }
 
     #[test]
