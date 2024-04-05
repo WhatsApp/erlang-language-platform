@@ -514,7 +514,7 @@ pub fn native_diagnostics(
         config
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
-        // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id);
+        // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, file_kind, config);
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
         diagnostics_from_descriptors(
             &mut res,
