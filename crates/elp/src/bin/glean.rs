@@ -831,6 +831,41 @@ impl GleanIndexer {
         XRefFact::new(file_id, xrefs)
     }
 
+    fn xref_v2_callback(
+        sema: &Semantic,
+        source_file: &InFile<ast::SourceFile>,
+        file_id: FileId,
+        acc: &mut Vec<XRef>,
+        ctx: &AnyCallBackCtx,
+    ) -> Option<()> {
+        let target = match &ctx.item {
+            hir::AnyExpr::Expr(Expr::Call { target, args }) => {
+                let (body, expr_source) = ctx.body_with_expr_source(&sema)?;
+                let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
+                let arity = args.len() as u32;
+                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
+            }
+            hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
+                let (body, range) = ctx.find_range(&sema)?;
+                let arity: Option<u32> = match body[*arity] {
+                    Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
+                    _ => None,
+                };
+                Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)
+            }
+            hir::AnyExpr::Expr(Expr::MacroCall { macro_def, .. })
+            | hir::AnyExpr::Pat(Pat::MacroCall { macro_def, .. })
+            | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall { macro_def, .. })
+            | hir::AnyExpr::Term(Term::MacroCall { macro_def, .. }) => {
+                let def = macro_def.as_ref()?;
+                Self::resolve_macro_v2(&sema, def, &source_file, &ctx)
+            }
+            _ => None,
+        };
+        acc.push(target?);
+        None
+    }
+
     fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> XRefFile {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
@@ -841,87 +876,9 @@ impl GleanIndexer {
             Strategy::SurfaceOnly,
             file_id,
             vec![],
-            &mut |mut acc, ctx| match &ctx.item {
-                hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, expr_source)) = ctx.body_with_expr_source(&sema) {
-                        if let Some(range) =
-                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
-                        {
-                            let arity = args.len() as u32;
-                            if let Some(target) =
-                                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
-                            {
-                                acc.push(target);
-                            }
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = ctx.find_range(&sema) {
-                        let arity: Option<u32> = match body[*arity] {
-                            Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
-                            _ => None,
-                        };
-                        if let Some(arity) = arity {
-                            if let Some(target) =
-                                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
-                            {
-                                acc.push(target);
-                            }
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::MacroCall {
-                    expansion: _,
-                    args: _,
-                    macro_def,
-                }) => {
-                    if let Some(def) = macro_def {
-                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
-                            acc.push(xref);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Pat(Pat::MacroCall {
-                    expansion: _,
-                    args: _,
-                    macro_def,
-                }) => {
-                    if let Some(def) = macro_def {
-                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
-                            acc.push(xref);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::TypeExpr(TypeExpr::MacroCall {
-                    expansion: _,
-                    args: _,
-                    macro_def,
-                }) => {
-                    if let Some(def) = macro_def {
-                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
-                            acc.push(xref);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Term(Term::MacroCall {
-                    expansion: _,
-                    args: _,
-                    macro_def,
-                }) => {
-                    if let Some(def) = macro_def {
-                        if let Some(xref) = Self::resolve_macro_v2(&sema, def, &source_file, &ctx) {
-                            acc.push(xref);
-                        }
-                    }
-                    acc
-                }
-                _ => acc,
+            &mut |mut acc, ctx| {
+                Self::xref_v2_callback(&sema, &source_file, file_id, &mut acc, &ctx);
+                acc
             },
             &mut |mut acc, on, form_id| match (on, form_id) {
                 (hir::On::Entry, hir::FormIdx::Export(idx)) => {
