@@ -18,10 +18,23 @@ use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use hir::Semantic;
 
+use super::DiagnosticConditions;
+use super::DiagnosticDescriptor;
 use crate::diagnostics::DiagnosticCode;
 use crate::Diagnostic;
 
-pub(crate) fn unused_record_field(
+pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
+    conditions: DiagnosticConditions {
+        experimental: false,
+        include_generated: true,
+        include_tests: true,
+    },
+    checker: &|diags, sema, file_id, file_kind| {
+        unused_record_field(diags, sema, file_id, file_kind);
+    },
+};
+
+fn unused_record_field(
     acc: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
