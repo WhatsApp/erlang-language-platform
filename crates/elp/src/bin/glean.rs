@@ -244,6 +244,20 @@ impl IndexedFacts {
             xref_facts: vec![],
         }
     }
+
+    fn add(
+        &mut self,
+        file_fact: FileFact,
+        line_fact: FileLinesFact,
+        facts: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+    ) {
+        self.file_facts.push(file_fact);
+        self.file_line_facts.push(line_fact);
+        if let Some((decl, xref)) = facts {
+            self.declaration_facts.extend(decl);
+            self.xref_facts.push(xref)
+        }
+    }
 }
 
 pub struct GleanIndexer {
@@ -320,22 +334,15 @@ impl GleanIndexer {
                 let source_root_id = db.file_source_root(file_id);
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
-                self.index_file(&db, file_id, &path, &mut ctx).unwrap();
+                match self.index_file(&db, file_id, &path) {
+                    Some((file, line, facts)) => ctx.add(file, line, facts),
+                    None => panic!("Can't find module {}", module),
+                }
             } else {
-                let project_data = db.project_data(self.project_id);
-                for &source_root_id in &project_data.source_roots {
-                    if let Some(app_data) = db.app_data(source_root_id) {
-                        if app_data.app_type == AppType::App {
-                            let source_root = db.source_root(source_root_id);
-                            for file_id in source_root.iter() {
-                                if let Some(path) = source_root.path_for_file(&file_id) {
-                                    if let Err(err) = self.index_file(&db, file_id, path, &mut ctx)
-                                    {
-                                        log::warn!("Error indexing file {:?}: {}", path, err);
-                                    }
-                                }
-                            }
-                        }
+                for (file_id, path) in Self::project_files(db, self.project_id) {
+                    match self.index_file(&db, file_id, &path) {
+                        Some((file, line, facts)) => ctx.add(file, line, facts),
+                        None => log::warn!("Can't find module {}", path),
                     }
                 }
             }
@@ -344,29 +351,47 @@ impl GleanIndexer {
         Ok(ctx)
     }
 
+    fn project_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
+        let project_data = db.project_data(project_id);
+        let mut files = vec![];
+        for &source_root_id in &project_data.source_roots {
+            if let Some(app_data) = db.app_data(source_root_id) {
+                if app_data.app_type == AppType::App {
+                    let source_root = db.source_root(source_root_id);
+                    for file_id in source_root.iter() {
+                        if let Some(path) = source_root.path_for_file(&file_id) {
+                            files.push((file_id, path.clone()));
+                        }
+                    }
+                }
+            }
+        }
+        files
+    }
+
     fn index_file(
         &self,
         db: &RootDatabase,
         file_id: FileId,
         path: &VfsPath,
-        facts: &mut IndexedFacts,
-    ) -> Result<()> {
+    ) -> Option<(
+        FileFact,
+        FileLinesFact,
+        Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+    )> {
         let file_fact = match self.file_fact(db, file_id, path) {
             Some(file_fact) => file_fact,
-            None => return Ok(()),
+            None => return None,
         };
         let line_fact = self.line_fact(db, file_id);
-        facts.file_facts.push(file_fact);
-        facts.file_line_facts.push(line_fact);
 
         let module_index = db.module_index(self.project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
             let decl = Self::declarations(db, file_id, module);
-            facts.declaration_facts.extend(decl);
             let xref = Self::xrefs(db, file_id);
-            facts.xref_facts.push(xref);
+            return Some((file_fact, line_fact, Some((decl, xref))));
         }
-        Ok(())
+        Some((file_fact, line_fact, None))
     }
 
     fn file_fact(&self, db: &RootDatabase, file_id: FileId, path: &VfsPath) -> Option<FileFact> {
