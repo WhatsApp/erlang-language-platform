@@ -223,6 +223,12 @@ impl Body {
         }
     }
 
+    pub fn range_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<TextRange> {
+        let body_map = self.get_body_map(sema)?;
+        let ast = body_map.any(id)?;
+        Some(ast.range())
+    }
+
     pub fn print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
         match expr {
             AnyExprId::Expr(expr_id) => pretty::print_expr(db, self, expr_id),
