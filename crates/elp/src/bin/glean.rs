@@ -262,6 +262,8 @@ pub(crate) enum Declaration {
     MacroDeclaration(MacroDecl),
     #[serde(rename = "ttype")]
     TypeDeclaration(TypeDecl),
+    #[serde(rename = "record")]
+    RecordDeclaration(RecordDecl),
 }
 
 #[derive(Serialize, Debug)]
@@ -326,6 +328,21 @@ impl TypeDecl {
             arity,
             span,
             exported,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct RecordDecl {
+    name: String,
+    span: Location,
+}
+
+impl RecordDecl {
+    fn new(name: &Name, span: Location) -> Self {
+        Self {
+            name: name.to_string(),
+            span,
         }
     }
 }
@@ -639,6 +656,12 @@ impl GleanIndexer {
                 loc,
                 def.exported,
             )));
+        }
+
+        for (rec, def) in def_map.get_records() {
+            let range = def.source(db).syntax().text_range();
+            let loc = range.into();
+            declarations.push(Declaration::RecordDeclaration(RecordDecl::new(rec, loc)));
         }
 
         FileDeclaration::new(file_id.into(), declarations)
@@ -957,6 +980,8 @@ mod tests {
 
             -type person(Name :: string()) :: {name, string()}.
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
+            -record(user, {name = "" :: string(), notes :: person()}).
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
 
             foo() -> 1.
         %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported/no_docs
@@ -1175,53 +1200,65 @@ mod tests {
         let (facts, mut expected_by_file) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_facts {
             let file_id = xref_fact.key.file_id;
-            let annotations = expected_by_file
+            let mut annotations = expected_by_file
                 .remove(&file_id)
                 .expect("Annotations shold be present");
             for xref in xref_fact.key.xrefs {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
                 let tuple = (range, label);
-                if !annotations.contains(&tuple) {
+                if !annotations.remove(&tuple) {
                     panic!("Expected to find {:?} in {:?}", tuple, &annotations);
                 }
             }
+            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
         }
-        assert!(expected_by_file.is_empty(), "Expected no more annotations");
+        assert_eq!(
+            expected_by_file,
+            HashMap::new(),
+            "Expected no more annotations"
+        );
     }
 
     fn decl_check(spec: &str) {
         let (facts, mut expected_by_file) = facts_with_annotataions(spec);
         let file_id = &facts.declaration_facts[0].key.file_id;
-        let annotations = expected_by_file
+        let mut annotations = expected_by_file
             .remove(file_id)
             .expect("Annotations shold be present");
         for decl in facts.declaration_facts {
             let range: TextRange = decl.key.span.clone().into();
             let label = decl.key.fqn.to_string();
             let tuple = (range, label);
-            if !annotations.contains(&tuple) {
+            if !annotations.remove(&tuple) {
                 panic!("Expected to find {:?} in {:?}", tuple, &annotations);
             }
         }
-        assert!(expected_by_file.is_empty(), "Expected no more annotations");
+        assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+        assert_eq!(
+            expected_by_file,
+            HashMap::new(),
+            "Expected no more annotations"
+        );
     }
 
     fn decl_v2_check(spec: &str) {
         let (facts, mut expected_by_file) = facts_with_annotataions(spec);
         for file_decl in facts.file_declarations {
-            let annotations = expected_by_file
+            let mut annotations = expected_by_file
                 .remove(&file_decl.file_id)
                 .expect("Annotations shold be present");
             for decl in file_decl.declarations {
                 let range: TextRange = decl.span().clone().into();
                 let label = decl.to_string();
                 let tuple = (range, label);
-                if !annotations.contains(&tuple) {
+                if !annotations.remove(&tuple) {
                     panic!("Expected to find {:?} in {:?}", tuple, &annotations);
                 }
             }
+            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
         }
+
         assert_eq!(
             expected_by_file,
             HashMap::new(),
@@ -1235,6 +1272,7 @@ mod tests {
                 Declaration::FunctionDeclaration(decl) => &decl.span,
                 Declaration::MacroDeclaration(decl) => &decl.span,
                 Declaration::TypeDeclaration(decl) => &decl.span,
+                Declaration::RecordDeclaration(decl) => &decl.span,
             }
         }
     }
@@ -1281,6 +1319,9 @@ mod tests {
                         false => "not_exported",
                     };
                     f.write_str(format!("type/{}/{}/{}", decl.name, decl.arity, exported).as_str())
+                }
+                Declaration::RecordDeclaration(decl) => {
+                    f.write_str(format!("rec/{}", decl.name).as_str())
                 }
             }
         }
