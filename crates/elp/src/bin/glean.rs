@@ -225,6 +225,39 @@ pub(crate) enum Fact {
     //v2 facts
     #[serde(rename = "erlang.Declaration")]
     Declaration { facts: Vec<DeclarationKey> },
+    #[serde(rename = "erlang.XRefsByFile")]
+    XRefV2 { facts: Vec<XRefKey> },
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct XRefKey {
+    key: XRefFile,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct XRefFile {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    xrefs: Vec<XRef>,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct XRef {
+    source: Location,
+    target: XRefTarget,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) enum XRefTarget {
+    Function(FunctionTarget),
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct FunctionTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
+    arity: u32,
 }
 
 #[derive(Serialize, Debug)]
@@ -355,6 +388,7 @@ struct IndexedFacts {
     xref_facts: Vec<XRefFact>,
     //v2 facts
     file_declarations: Vec<FileDeclaration>,
+    xref_v2: Vec<XRefFile>,
 }
 
 impl IndexedFacts {
@@ -363,11 +397,13 @@ impl IndexedFacts {
         file_fact: FileFact,
         line_fact: FileLinesFact,
         decl: FileDeclaration,
+        xref: XRefFile,
         facts: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     ) {
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
         self.file_declarations.push(decl);
+        self.xref_v2.push(xref);
         if let Some((decl, xref)) = facts {
             self.declaration_facts.extend(decl);
             self.xref_facts.push(xref)
@@ -397,6 +433,8 @@ impl IndexedFacts {
             .into_iter()
             .map(|decl| DeclarationKey::new(decl))
             .collect();
+        let xref = mem::take(&mut self.xref_v2);
+        let xref = xref.into_iter().map(|x| XRefKey { key: x }).collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -405,6 +443,7 @@ impl IndexedFacts {
                 facts: mem::take(&mut self.file_line_facts),
             },
             Fact::Declaration { facts: decl },
+            Fact::XRefV2 { facts: xref },
         ]
     }
 }
@@ -471,7 +510,7 @@ impl GleanIndexer {
                 let path = source_root.path_for_file(&file_id).unwrap();
                 let mut ctx = IndexedFacts::default();
                 match Self::index_file(&db, file_id, &path, self.project_id) {
-                    Some((file, line, decl, facts)) => ctx.add(file, line, decl, facts),
+                    Some((file, line, decl, xref, facts)) => ctx.add(file, line, decl, xref, facts),
                     None => panic!("Can't find module {}", module),
                 }
                 ctx
@@ -490,8 +529,8 @@ impl GleanIndexer {
                     .into_iter()
                     .fold(
                         IndexedFacts::default(),
-                        |mut acc, (file_fact, line_fact, decl, facts)| {
-                            acc.add(file_fact, line_fact, decl, facts);
+                        |mut acc, (file_fact, line_fact, decl, xref, facts)| {
+                            acc.add(file_fact, line_fact, decl, xref, facts);
                             acc
                         },
                     )
@@ -527,6 +566,7 @@ impl GleanIndexer {
         FileFact,
         FileLinesFact,
         FileDeclaration,
+        XRefFile,
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     )> {
         let file_fact = match Self::file_fact(db, file_id, path, project_id) {
@@ -535,14 +575,15 @@ impl GleanIndexer {
         };
         let line_fact = Self::line_fact(db, file_id);
         let file_decl = Self::declarations_v2(db, file_id);
+        let xref_v2 = Self::xrefs_v2(db, file_id);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
             let decl = Self::declarations_v1(db, file_id, module);
             let xref = Self::xrefs(db, file_id);
-            return Some((file_fact, line_fact, file_decl, Some((decl, xref))));
+            return Some((file_fact, line_fact, file_decl, xref_v2, Some((decl, xref))));
         }
-        Some((file_fact, line_fact, file_decl, None))
+        Some((file_fact, line_fact, file_decl, xref_v2, None))
     }
 
     fn file_fact(
@@ -772,6 +813,57 @@ impl GleanIndexer {
         XRefFact::new(file_id, xrefs)
     }
 
+    fn xrefs_v2(db: &RootDatabase, file_id: FileId) -> XRefFile {
+        let sema = Semantic::new(db);
+        let source_file = sema.parse(file_id);
+        let xrefs = fold::fold_file(
+            &sema,
+            Strategy::SurfaceOnly,
+            file_id,
+            vec![],
+            &mut |mut acc, ctx| match &ctx.item {
+                hir::AnyExpr::Expr(Expr::Call { target, args }) => {
+                    if let Some((body, expr_source)) = ctx.body_with_expr_source(&sema) {
+                        if let Some(range) =
+                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
+                        {
+                            let arity = args.len() as u32;
+                            if let Some(target) =
+                                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
+                            {
+                                acc.push(target);
+                            }
+                        }
+                    }
+                    acc
+                }
+                hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
+                    if let Some((body, range)) = ctx.find_range(&sema) {
+                        let arity: Option<u32> = match body[*arity] {
+                            Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
+                            _ => None,
+                        };
+                        if let Some(arity) = arity {
+                            if let Some(target) =
+                                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
+                            {
+                                acc.push(target);
+                            }
+                        }
+                    }
+                    acc
+                }
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id| acc,
+        );
+
+        XRefFile {
+            file_id: file_id.into(),
+            xrefs,
+        }
+    }
+
     fn resolve_call(
         sema: &Semantic<'_>,
         target: &CallTarget<ExprId>,
@@ -784,6 +876,26 @@ impl GleanIndexer {
         let module = &def.module?;
         let mfa = MFA::new(module, def.name.name(), arity);
         Some(XRefFactVal::new(range.into(), mfa))
+    }
+
+    fn resolve_call_v2(
+        sema: &Semantic<'_>,
+        target: &CallTarget<ExprId>,
+        arity: u32,
+        file_id: FileId,
+        body: &Body,
+        range: TextRange,
+    ) -> Option<XRef> {
+        let def = resolve_call_target(sema, target, arity, file_id, body)?;
+        let target = FunctionTarget {
+            file_id: def.file.file_id.into(),
+            name: def.name.name().to_string(),
+            arity,
+        };
+        Some(XRef {
+            source: range.into(),
+            target: XRefTarget::Function(target),
+        })
     }
 
     fn resolve_type(
@@ -894,6 +1006,7 @@ mod tests {
             declaration_facts,
             xref_facts,
             file_declarations: vec![],
+            xref_v2: vec![],
         };
 
         write_results(facts.to_v1_facts(), &mut cli, &None).expect("success");
@@ -1029,6 +1142,26 @@ mod tests {
             A + B."#;
 
         xref_check(&spec);
+    }
+
+    #[test]
+    fn xref_call_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module61.erl
+        -module(glean_module61).
+        foo(Bar) -> Bar + 1.
+
+        //- /glean/app_glean/src/glean_module6.erl
+        main() ->
+            B = baz(1, 2),
+        %%      ^^^ glean_module6.erl/func/baz/2
+            F = glean_module61:foo(B),
+        %%      ^^^^^^^^^^^^^^^^^^ glean_module61.erl/func/foo/1
+            F.
+        baz(A, B) ->
+            A + B."#;
+
+        xref_v2_check(&spec);
     }
 
     #[test]
@@ -1178,6 +1311,7 @@ mod tests {
     ) -> (
         IndexedFacts,
         HashMap<GleanFileId, HashSet<(TextRange, String)>>,
+        HashMap<GleanFileId, String>,
     ) {
         let (db, files, _) = RootDatabase::with_many_files(spec);
         let host = AnalysisHost::new(db);
@@ -1188,16 +1322,24 @@ mod tests {
         };
         let facts = glean.index().expect("success");
         let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
+        let mut file_names = HashMap::new();
+        let db = host.raw_database();
         for file_id in files {
-            let text = host.raw_database().file_text(file_id);
+            let source_root_id = db.file_source_root(file_id);
+            let source_root = db.source_root(source_root_id);
+            let path = source_root.path_for_file(&file_id).unwrap();
+            let (name, ext) = path.name_and_extension().unwrap();
+            let name = format!("{}.{}", name, ext.unwrap());
+            file_names.insert(file_id.into(), name);
+            let text = db.file_text(file_id);
             let annotations_set: HashSet<_> = extract_annotations(&text).into_iter().collect();
             expected_by_file.insert(file_id.into(), annotations_set);
         }
-        (facts, expected_by_file)
+        (facts, expected_by_file, file_names)
     }
 
     fn xref_check(spec: &str) {
-        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_facts {
             let file_id = xref_fact.key.file_id;
             let mut annotations = expected_by_file
@@ -1220,8 +1362,35 @@ mod tests {
         );
     }
 
+    fn xref_v2_check(spec: &str) {
+        let (facts, mut expected_by_file, file_names) = facts_with_annotataions(spec);
+        for xref_fact in facts.xref_v2 {
+            let file_id = xref_fact.file_id;
+            let mut annotations = expected_by_file
+                .remove(&file_id)
+                .expect("Annotations shold be present");
+            for xref in xref_fact.xrefs {
+                let range: TextRange = xref.source.clone().into();
+                let file_name = file_names
+                    .get(xref.target.file_id())
+                    .expect("must be present");
+                let label = format!("{}/{}", file_name, xref.target.to_string());
+                let tuple = (range, label);
+                if !annotations.remove(&tuple) {
+                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
+                }
+            }
+            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+        }
+        assert_eq!(
+            expected_by_file,
+            HashMap::new(),
+            "Expected no more annotations"
+        );
+    }
+
     fn decl_check(spec: &str) {
-        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
         let file_id = &facts.declaration_facts[0].key.file_id;
         let mut annotations = expected_by_file
             .remove(file_id)
@@ -1243,7 +1412,7 @@ mod tests {
     }
 
     fn decl_v2_check(spec: &str) {
-        let (facts, mut expected_by_file) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _) = facts_with_annotataions(spec);
         for file_decl in facts.file_declarations {
             let mut annotations = expected_by_file
                 .remove(&file_decl.file_id)
@@ -1323,6 +1492,24 @@ mod tests {
                 Declaration::RecordDeclaration(decl) => {
                     f.write_str(format!("rec/{}", decl.name).as_str())
                 }
+            }
+        }
+    }
+
+    impl fmt::Display for XRefTarget {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                XRefTarget::Function(xref) => {
+                    f.write_str(format!("func/{}/{}", xref.name, xref.arity).as_str())
+                }
+            }
+        }
+    }
+
+    impl XRefTarget {
+        fn file_id(&self) -> &GleanFileId {
+            match self {
+                XRefTarget::Function(xref) => &xref.file_id,
             }
         }
     }
