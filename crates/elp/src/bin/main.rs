@@ -647,6 +647,20 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_broken_parse_trans(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp",],
+            "diagnostics",
+            expect_file!(
+                "../resources/test/diagnostics/parse_all_diagnostics_broken_parse_trans.stdout"
+            ),
+            buck,
+            Some("app_a/src/broken_parse_trans.erl"),
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_escript1(buck: bool) {
         simple_snapshot(
             args_vec!["parse-elp",],

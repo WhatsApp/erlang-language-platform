@@ -123,12 +123,16 @@ transform(cth_readable_transform, Forms, _Options) ->
 %% we fix it up to something we can consume.
 %% Setting it to {0, 0} crashes erl_lint, so we set to {0, 1}
 transform(ms_transform, Forms, _Options) ->
-    [First | Rest] = ms_transform:parse_transform(Forms, []),
-    case First of
-        {attribute, 0, compile, Value} ->
-            [{attribute, {0, 1}, compile, Value} | Rest];
-        _ ->
-            [First | Rest]
+    case ms_transform:parse_transform(Forms, []) of
+        [First | Rest] ->
+            case First of
+                {attribute, 0, compile, Value} ->
+                    [{attribute, {0, 1}, compile, Value} | Rest];
+                _ ->
+                    [First | Rest]
+            end;
+        _ -> % In case of errors or warnings, we keep the existing forms
+            Forms
     end;
 transform(qlc, Forms, _Options) ->
     Forms;
