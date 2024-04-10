@@ -40,6 +40,7 @@ use elp_syntax::ast::ExprMax;
 use elp_syntax::ast::Fa;
 use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::db::DefDatabase;
 use hir::fold;
@@ -71,6 +72,9 @@ use rayon::iter::ParallelIterator;
 use serde::Serialize;
 
 use crate::args::Glean;
+
+const REC_ARITY: u32 = 99;
+const HEADER_ARITY: u32 = 100;
 
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
@@ -217,11 +221,6 @@ pub(crate) enum Fact {
     },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<Key<XRefFact>> },
-    //v2 facts
-    #[serde(rename = "erlang.DeclarationsInFile.2")]
-    Declaration { facts: Vec<Key<FileDeclaration>> },
-    #[serde(rename = "erlang.XRefsInFile.2")]
-    XRefV2 { facts: Vec<Key<XRefFile>> },
 }
 
 #[derive(Serialize, Debug)]
@@ -288,6 +287,7 @@ pub(crate) struct MacroTarget {
 pub(crate) struct HeaderTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
+    name: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -309,6 +309,8 @@ pub(crate) struct TypeTarget {
 pub(crate) struct FileDeclaration {
     #[serde(rename = "file")]
     file_id: GleanFileId,
+    #[serde(skip)]
+    module: String, //needed for to v1 conversion
     declarations: Vec<Declaration>,
 }
 
@@ -439,9 +441,140 @@ impl IndexedFacts {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.file_declarations);
-        let declaration_fact = declaration_fact.into_iter().map_into().collect();
+        let mut declarations = vec![];
+        let mut modules = FxHashMap::default();
+        for decl in declaration_fact {
+            modules.insert(decl.file_id.clone(), decl.module.clone());
+            for d in decl.declarations {
+                let file_id = decl.file_id.clone();
+                let module = decl.module.clone();
+                match d {
+                    Declaration::FunctionDeclaration(d) => {
+                        let fqn = MFA {
+                            module,
+                            name: d.key.name,
+                            arity: d.key.arity,
+                            file_id: file_id.clone(),
+                        };
+                        let fact = FunctionDeclarationFact {
+                            file_id,
+                            fqn,
+                            span: d.key.span,
+                        };
+                        declarations.push(fact);
+                    }
+                    Declaration::MacroDeclaration(d) => {
+                        let fqn = MFA {
+                            module,
+                            name: d.key.name,
+                            arity: d.key.arity.unwrap_or(0),
+                            file_id: file_id.clone(),
+                        };
+                        let fact = FunctionDeclarationFact {
+                            file_id,
+                            fqn,
+                            span: d.key.span,
+                        };
+                        declarations.push(fact);
+                    }
+                    Declaration::TypeDeclaration(d) => {
+                        let fqn = MFA {
+                            module,
+                            name: d.key.name,
+                            arity: d.key.arity,
+                            file_id: file_id.clone(),
+                        };
+                        let fact = FunctionDeclarationFact {
+                            file_id,
+                            fqn,
+                            span: d.key.span,
+                        };
+                        declarations.push(fact);
+                    }
+                    Declaration::RecordDeclaration(d) => {
+                        let fqn = MFA {
+                            module,
+                            name: d.key.name,
+                            arity: REC_ARITY,
+                            file_id: file_id.clone(),
+                        };
+                        let fact = FunctionDeclarationFact {
+                            file_id,
+                            fqn,
+                            span: d.key.span,
+                        };
+                        declarations.push(fact);
+                    }
+                    Declaration::HeaderDeclaration(d) => {
+                        let fqn = MFA {
+                            module,
+                            name: d.key.name,
+                            arity: HEADER_ARITY,
+                            file_id: file_id.clone(),
+                        };
+                        let fact = FunctionDeclarationFact {
+                            file_id,
+                            fqn,
+                            span: d.key.span,
+                        };
+                        declarations.push(fact);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        let declaration_fact = declarations.into_iter().map_into().collect();
         let xref_fact = mem::take(&mut self.xref_v2);
-        let xref_fact = xref_fact.into_iter().map_into().collect();
+        let mut xrefs = vec![];
+        for fact in xref_fact {
+            let file_id = fact.file_id;
+            let mut facts = vec![];
+            for xref in fact.xrefs {
+                let source = xref.source;
+                let file_id = xref.target.file_id();
+                if let Some(module) = modules.get(file_id) {
+                    let target = match xref.target {
+                        XRefTarget::Function(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: x.key.arity,
+                            file_id: x.key.file_id,
+                        },
+                        XRefTarget::Macro(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: x.key.arity.unwrap_or(0),
+                            file_id: x.key.file_id,
+                        },
+                        XRefTarget::Header(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: HEADER_ARITY,
+                            file_id: x.key.file_id,
+                        },
+                        XRefTarget::Record(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: REC_ARITY,
+                            file_id: x.key.file_id,
+                        },
+                        XRefTarget::Type(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: x.key.arity,
+                            file_id: x.key.file_id,
+                        },
+                    };
+                    let val = XRefFactVal { source, target };
+                    facts.push(val);
+                }
+            }
+            xrefs.push(XRefFact {
+                file_id,
+                xrefs: facts,
+            });
+        }
+        let xref_fact = xrefs.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -449,10 +582,10 @@ impl IndexedFacts {
             Fact::FileLine {
                 facts: file_lines_fact,
             },
-            Fact::Declaration {
+            Fact::FunctionDeclaration {
                 facts: declaration_fact,
             },
-            Fact::XRefV2 { facts: xref_fact },
+            Fact::XRef { facts: xref_fact },
         ]
     }
 }
@@ -578,6 +711,13 @@ impl GleanIndexer {
         files
     }
 
+    fn path_for_file(db: &RootDatabase, file_id: FileId) -> Option<VfsPath> {
+        let source_root_id = db.file_source_root(file_id);
+        let source_root = db.source_root(source_root_id);
+        let path = source_root.path_for_file(&file_id)?;
+        Some(path.clone())
+    }
+
     fn index_file(
         db: &RootDatabase,
         file_id: FileId,
@@ -591,13 +731,10 @@ impl GleanIndexer {
         XRefFile,
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
     )> {
-        let file_fact = match Self::file_fact(db, file_id, path, project_id) {
-            Some(file_fact) => file_fact,
-            None => return None,
-        };
+        let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
         let (xref_v2, vars) = Self::xrefs_v2(db, file_id, file_ids);
-        let file_decl = Self::declarations_v2(db, project_id, file_id, path, vars);
+        let file_decl = Self::declarations_v2(db, project_id, file_id, path, vars)?;
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
@@ -671,7 +808,7 @@ impl GleanIndexer {
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
             let loc = range.into();
-            let mfa = MFA::new(module, rec, 99, def.file.file_id);
+            let mfa = MFA::new(module, rec, REC_ARITY, def.file.file_id);
             result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
         }
         result
@@ -683,7 +820,7 @@ impl GleanIndexer {
         file_id: FileId,
         path: &VfsPath,
         vars: FxHashSet<TextRange>,
-    ) -> FileDeclaration {
+    ) -> Option<FileDeclaration> {
         let mut declarations = vec![];
         let def_map = db.local_def_map(file_id);
         // file docs are too slow. Going with specs for now
@@ -764,10 +901,17 @@ impl GleanIndexer {
         let types = Self::types(db, project_id, file_id, vars);
         declarations.extend(types);
 
-        FileDeclaration {
+        let module = match path.name_and_extension() {
+            Some((name, Some("erl"))) => Some(name.to_string()),
+            Some((name, Some("hrl"))) => Some(format!("{}.hrl", name)),
+            _ => None,
+        }?;
+
+        Some(FileDeclaration {
             file_id: file_id.into(),
+            module,
             declarations,
-        }
+        })
     }
 
     fn xrefs(db: &RootDatabase, file_id: FileId, file_ids: &FxHashSet<GleanFileId>) -> XRefFact {
@@ -1004,14 +1148,19 @@ impl GleanIndexer {
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
                         if let Some(file) = db.resolve_include(InFile::new(file_id, idx.clone())) {
-                            let target = HeaderTarget {
-                                file_id: file.into(),
-                            };
-                            let xref = XRef {
-                                source: range,
-                                target: XRefTarget::Header(target.into()),
-                            };
-                            acc.push(xref);
+                            if let Some(path) = Self::path_for_file(db, file) {
+                                if let Some((name, Some("hrl"))) = path.name_and_extension() {
+                                    let target = HeaderTarget {
+                                        file_id: file.into(),
+                                        name: format!("{}.hrl", name),
+                                    };
+                                    let xref = XRef {
+                                        source: range,
+                                        target: XRefTarget::Header(target.into()),
+                                    };
+                                    acc.push(xref);
+                                }
+                            }
                         }
                     }
                     acc
@@ -1244,7 +1393,7 @@ impl GleanIndexer {
         let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
-        let mfa = MFA::new(&module, &def.record.name, 99, def.file.file_id);
+        let mfa = MFA::new(&module, &def.record.name, REC_ARITY, def.file.file_id);
         Some(XRefFactVal::new(range.into(), mfa))
     }
 
@@ -1327,12 +1476,9 @@ mod tests {
             start: 0,
             length: 10,
         };
-        let mfa = mfa(
-            "smax_product_catalog",
-            "product_visibility_update_request_iq",
-            0,
-            file_id.into(),
-        );
+        let module = "smax_product_catalog";
+        let name = "product_visibility_update_request_iq";
+        let arity = 0;
 
         let file_facts = vec![
             FileFact::new(
@@ -1341,26 +1487,46 @@ mod tests {
             )
         ];
         let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
-        let declaration_facts = vec![FunctionDeclarationFact::new(
-            file_id,
-            mfa.clone(),
-            location.clone(),
-        )];
+        let decl = FileDeclaration {
+            file_id: file_id.into(),
+            module: module.to_string(),
+            declarations: vec![Declaration::FunctionDeclaration(
+                FuncDecl {
+                    name: name.to_string(),
+                    arity,
+                    span: location.clone(),
+                    doc: None,
+                    exported: false,
+                    deprecated: false,
+                }
+                .into(),
+            )],
+        };
+        let xref = XRefFile {
+            file_id: file_id.into(),
+            xrefs: vec![XRef {
+                source: location,
+                target: XRefTarget::Function(
+                    FunctionTarget {
+                        file_id: file_id.into(),
+                        name: name.to_string(),
+                        arity,
+                    }
+                    .into(),
+                ),
+            }],
+        };
 
-        let xref_facts = vec![XRefFact::new(
-            file_id,
-            vec![XRefFactVal::new(location, mfa)],
-        )];
         let facts = IndexedFacts {
             file_facts,
             file_line_facts,
-            declaration_facts,
-            xref_facts,
-            file_declarations: vec![],
-            xref_v2: vec![],
+            declaration_facts: vec![],
+            xref_facts: vec![],
+            file_declarations: vec![decl],
+            xref_v2: vec![xref],
         };
 
-        write_results(facts.to_v1_facts(), &mut cli, &None, false).expect("success");
+        write_results(facts.to_v2_facts(), &mut cli, &None, false).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
@@ -1933,15 +2099,6 @@ mod tests {
         xref_v2_check(&spec);
     }
 
-    fn mfa(module: &str, name: &str, arity: u32, file_id: GleanFileId) -> MFA {
-        MFA {
-            module: module.into(),
-            name: name.into(),
-            arity,
-            file_id,
-        }
-    }
-
     fn facts_with_annotataions(
         spec: &str,
     ) -> (
@@ -1982,12 +2139,20 @@ mod tests {
 
     fn xref_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
-        for xref_fact in facts.xref_facts {
-            let file_id = xref_fact.file_id;
+        let facts = facts.to_v2_facts();
+        let xref_facts = facts
+            .iter()
+            .find_map(|x| match x {
+                Fact::XRef { facts } => Some(facts),
+                _ => None,
+            })
+            .unwrap();
+        for xref_fact in xref_facts {
+            let file_id = &xref_fact.key.file_id;
             let mut annotations = expected_by_file
-                .remove(&file_id)
+                .remove(file_id)
                 .expect("Annotations shold be present");
-            for xref in xref_fact.xrefs {
+            for xref in &xref_fact.key.xrefs {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
                 let tuple = (range, label);
@@ -2033,13 +2198,21 @@ mod tests {
 
     fn decl_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
-        let file_id = &facts.declaration_facts[0].file_id;
+        let facts = facts.to_v2_facts();
+        let func_decl = facts
+            .iter()
+            .find_map(|x| match x {
+                Fact::FunctionDeclaration { facts } => Some(facts),
+                _ => None,
+            })
+            .unwrap();
+        let file_id = &func_decl[0].key.file_id;
         let mut annotations = expected_by_file
             .remove(file_id)
             .expect("Annotations shold be present");
-        for decl in facts.declaration_facts {
-            let range: TextRange = decl.span.clone().into();
-            let label = decl.fqn.to_string();
+        for decl in func_decl {
+            let range: TextRange = decl.key.span.clone().into();
+            let label = decl.key.fqn.to_string();
             let tuple = (range, label);
             if !annotations.remove(&tuple) {
                 panic!("Expected to find {:?} in {:?}", tuple, &annotations);
