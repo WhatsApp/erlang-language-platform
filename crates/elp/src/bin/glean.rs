@@ -335,6 +335,8 @@ pub(crate) enum Declaration {
     RecordDeclaration(Key<RecordDecl>),
     #[serde(rename = "varr")]
     VarDeclaration(Key<VarDecl>),
+    #[serde(rename = "header")]
+    HeaderDeclaration(Key<HeaderDecl>),
 }
 
 #[derive(Serialize, Debug)]
@@ -372,7 +374,13 @@ pub(crate) struct RecordDecl {
 
 #[derive(Serialize, Debug)]
 pub(crate) struct VarDecl {
-    type_desc: String,
+    doc: String,
+    span: Location,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct HeaderDecl {
+    name: String,
     span: Location,
 }
 
@@ -589,7 +597,7 @@ impl GleanIndexer {
         };
         let line_fact = Self::line_fact(db, file_id);
         let (xref_v2, vars) = Self::xrefs_v2(db, file_id, file_ids);
-        let file_decl = Self::declarations_v2(db, project_id, file_id, vars);
+        let file_decl = Self::declarations_v2(db, project_id, file_id, path, vars);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
@@ -673,6 +681,7 @@ impl GleanIndexer {
         db: &RootDatabase,
         project_id: ProjectId,
         file_id: FileId,
+        path: &VfsPath,
         vars: FxHashSet<TextRange>,
     ) -> FileDeclaration {
         let mut declarations = vec![];
@@ -734,6 +743,19 @@ impl GleanIndexer {
                 RecordDecl {
                     name: rec.to_string(),
                     span,
+                }
+                .into(),
+            ));
+        }
+
+        if let Some((name, Some("hrl"))) = path.name_and_extension() {
+            declarations.push(Declaration::HeaderDeclaration(
+                HeaderDecl {
+                    name: format!("{}.hrl", name),
+                    span: Location {
+                        start: 0,
+                        length: 1,
+                    },
                 }
                 .into(),
             ));
@@ -944,7 +966,7 @@ impl GleanIndexer {
                         let text = &text[range];
                         let text = format!("```erlang\n{} :: {}\n```", text, ty);
                         let decl = VarDecl {
-                            type_desc: text,
+                            doc: text,
                             span: range.into(),
                         };
                         result.push(Declaration::VarDeclaration(decl.into()));
@@ -1461,6 +1483,8 @@ mod tests {
     fn declaration_in_header_v2_test() {
         let spec = r#"
         //- /glean/app_glean/include/glean_module5.hrl include_path:/include
+        % header
+        %%^ header/glean_module5.hrl
             -define(TAU, 6.28).
         %%  ^^^^^^^^^^^^^^^^^^^ macro/TAU/no_arity
             -spec doc_bar(integer()) -> [integer()].
@@ -2054,13 +2078,17 @@ mod tests {
     }
 
     impl Declaration {
-        fn span(&self) -> &Location {
+        fn span(&self) -> Location {
             match self {
-                Declaration::FunctionDeclaration(decl) => &decl.key.span,
-                Declaration::MacroDeclaration(decl) => &decl.key.span,
-                Declaration::TypeDeclaration(decl) => &decl.key.span,
-                Declaration::RecordDeclaration(decl) => &decl.key.span,
-                Declaration::VarDeclaration(decl) => &decl.key.span,
+                Declaration::FunctionDeclaration(decl) => decl.key.span.clone(),
+                Declaration::MacroDeclaration(decl) => decl.key.span.clone(),
+                Declaration::TypeDeclaration(decl) => decl.key.span.clone(),
+                Declaration::RecordDeclaration(decl) => decl.key.span.clone(),
+                Declaration::VarDeclaration(decl) => decl.key.span.clone(),
+                Declaration::HeaderDeclaration(decl) => Location {
+                    start: decl.key.span.start + 2,
+                    length: decl.key.span.length,
+                },
             }
         }
     }
@@ -2116,13 +2144,16 @@ mod tests {
                 Declaration::VarDeclaration(decl) => {
                     let ttype = decl
                         .key
-                        .type_desc
+                        .doc
                         .strip_prefix("```erlang\n")
                         .unwrap()
                         .strip_suffix("\n```")
                         .unwrap()
                         .to_string();
                     f.write_str(format!("var/{}", ttype).as_str())
+                }
+                Declaration::HeaderDeclaration(decl) => {
+                    f.write_str(format!("header/{}", decl.key.name).as_str())
                 }
             }
         }
