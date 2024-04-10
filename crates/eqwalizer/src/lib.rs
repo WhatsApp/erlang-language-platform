@@ -31,6 +31,7 @@ use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::types::Type;
 pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
+use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use tempfile::Builder;
 use tempfile::TempPath;
@@ -174,6 +175,23 @@ pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
 
 impl Default for Eqwalizer {
     fn default() -> Self {
+        EQWALIZER.to_owned()
+    }
+}
+
+lazy_static! {
+    // We make a static version of the eqwalizer executable environment to
+    // - Prevent race conditions in tests from the temporary file creation
+    //   process (T182801661)
+    // - Speed up tests, since we create a RootDatabase once per test
+    //   needing the erlang service
+    static ref EQWALIZER: Eqwalizer = Eqwalizer::ensure_exe();
+}
+
+impl Eqwalizer {
+    // Identify the required Eqwalizer executable, and ensure it is
+    // available on the file system
+    fn ensure_exe() -> Self {
         let env = env::var("ELP_EQWALIZER_PATH");
         let (path, ext, temp_file) = if let Ok(path) = env {
             let path = PathBuf::from(path);
@@ -223,9 +241,7 @@ impl Default for Eqwalizer {
             _file: temp_file.map(Arc::new),
         }
     }
-}
 
-impl Eqwalizer {
     // Return a smart pointer to bundle lifetime with the temp file's lifetime
     pub fn cmd(&self) -> CommandProxy<'_> {
         let mut cmd = Command::new(&self.cmd);
