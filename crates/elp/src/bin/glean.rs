@@ -196,7 +196,7 @@ impl MFA {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Debug, Clone, Hash, PartialEq, Eq)]
 struct Location {
     start: u32,
     length: u32,
@@ -250,6 +250,8 @@ pub(crate) enum XRefTarget {
     Record(Key<RecordTarget>),
     #[serde(rename = "ttype")]
     Type(Key<TypeTarget>),
+    #[serde(rename = "varr")]
+    Var(Key<VarTarget>),
 }
 
 impl XRefTarget {
@@ -260,6 +262,7 @@ impl XRefTarget {
             XRefTarget::Header(xref) => &xref.key.file_id,
             XRefTarget::Record(xref) => &xref.key.file_id,
             XRefTarget::Type(xref) => &xref.key.file_id,
+            XRefTarget::Var(xref) => &xref.key.file_id,
         }
     }
 }
@@ -305,6 +308,13 @@ pub(crate) struct TypeTarget {
     file_id: GleanFileId,
     name: String,
     arity: u32,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct VarTarget {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -387,6 +397,7 @@ pub(crate) struct RecordDecl {
 
 #[derive(Serialize, Debug, Clone)]
 pub(crate) struct VarDecl {
+    name: String,
     doc: String,
     span: Location,
 }
@@ -526,7 +537,20 @@ impl IndexedFacts {
                     span: d.key.span,
                 }
             }
-            _ => return None,
+            Declaration::VarDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: d.key.span.start,
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            Declaration::DocDeclaration(_) => return None,
         };
         Some(fact)
     }
@@ -606,6 +630,12 @@ impl IndexedFacts {
                             module: module.clone(),
                             name: x.key.name,
                             arity: x.key.arity,
+                            file_id: x.key.file_id,
+                        },
+                        XRefTarget::Var(x) => MFA {
+                            module: module.clone(),
+                            name: x.key.name,
+                            arity: source.start,
                             file_id: x.key.file_id,
                         },
                     };
@@ -778,8 +808,9 @@ impl GleanIndexer {
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
-        let (xref_v2, vars) = Self::xrefs_v2(db, file_id, file_ids);
-        let file_decl = Self::declarations_v2(db, project_id, file_id, path, vars)?;
+        let xref_v2 = Self::xrefs_v2(db, file_id, file_ids);
+        let mut file_decl = Self::declarations_v2(db, file_id, path)?;
+        Self::add_xref_based_declarations(db, project_id, file_id, &xref_v2, &mut file_decl);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
@@ -788,6 +819,39 @@ impl GleanIndexer {
             return Some((file_fact, line_fact, file_decl, xref_v2, Some((decl, xref))));
         }
         Some((file_fact, line_fact, file_decl, xref_v2, None))
+    }
+
+    fn add_xref_based_declarations(
+        db: &RootDatabase,
+        project_id: ProjectId,
+        file_id: FileId,
+        xrefs: &XRefFile,
+        file_decl: &mut FileDeclaration,
+    ) {
+        let vars: FxHashMap<&Location, &String> = xrefs
+            .xrefs
+            .iter()
+            .filter_map(|x| match &x.target {
+                XRefTarget::Var(v) => Some((&x.source, &v.key.name)),
+                _ => None,
+            })
+            .collect();
+        let var_decls = Self::types(db, project_id, file_id, vars);
+        for var in var_decls {
+            let doc = var.doc.clone();
+            let span = var.span.clone();
+            let decl = Declaration::VarDeclaration(var.into());
+            let doc_decl = Declaration::DocDeclaration(
+                DocDecl {
+                    target: Box::new(decl.clone()),
+                    span,
+                    text: doc,
+                }
+                .into(),
+            );
+            file_decl.declarations.push(decl);
+            file_decl.declarations.push(doc_decl);
+        }
     }
 
     fn file_fact(
@@ -861,10 +925,8 @@ impl GleanIndexer {
 
     fn declarations_v2(
         db: &RootDatabase,
-        project_id: ProjectId,
         file_id: FileId,
         path: &VfsPath,
-        vars: FxHashSet<TextRange>,
     ) -> Option<FileDeclaration> {
         let mut declarations = vec![];
         let def_map = db.local_def_map(file_id);
@@ -953,9 +1015,6 @@ impl GleanIndexer {
                 .into(),
             ));
         }
-
-        let types = Self::types(db, project_id, file_id, vars);
-        declarations.extend(types);
 
         let module = match path.name_and_extension() {
             Some((name, Some("erl"))) => Some(name.to_string()),
@@ -1078,20 +1137,29 @@ impl GleanIndexer {
     }
 
     fn xref_v2_callback(
+        db: &RootDatabase,
         sema: &Semantic,
         source_file: &InFile<ast::SourceFile>,
         file_id: FileId,
         acc: &mut Vec<XRef>,
-        vars: &mut FxHashSet<TextRange>,
         ctx: &AnyCallBackCtx,
     ) -> Option<()> {
         let target = match &ctx.item {
-            hir::AnyExpr::Pat(Pat::Var(_))
-            | hir::AnyExpr::TypeExpr(TypeExpr::Var(_))
-            | hir::AnyExpr::Expr(Expr::Var(_)) => {
+            hir::AnyExpr::Pat(Pat::Var(var))
+            | hir::AnyExpr::TypeExpr(TypeExpr::Var(var))
+            | hir::AnyExpr::Expr(Expr::Var(var)) => {
+                let name = var.as_string(db);
                 let (_, range) = ctx.find_range(&sema)?;
-                vars.insert(range);
-                None
+                Some(XRef {
+                    source: range.into(),
+                    target: XRefTarget::Var(
+                        VarTarget {
+                            file_id: file_id.into(),
+                            name,
+                        }
+                        .into(),
+                    ),
+                })
             }
             hir::AnyExpr::Expr(Expr::Call { target, args }) => {
                 let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
@@ -1145,14 +1213,13 @@ impl GleanIndexer {
         db: &RootDatabase,
         project_id: ProjectId,
         file_id: FileId,
-        vars: FxHashSet<TextRange>,
-    ) -> Vec<Declaration> {
+        vars: FxHashMap<&Location, &String>,
+    ) -> Vec<VarDecl> {
         let mut result = vec![];
         if !db.is_eqwalizer_enabled(file_id, false) {
             return result;
         }
         let module_diagnostics = db.eqwalizer_diagnostics_by_project(project_id, vec![file_id]);
-        let text = db.file_text(file_id);
         if let EqwalizerDiagnostics::Diagnostics { type_info, .. } = module_diagnostics.as_ref() {
             let types = type_info
                 .values()
@@ -1162,14 +1229,15 @@ impl GleanIndexer {
             for (pos, ty) in types {
                 if let Pos::TextRange(range) = pos {
                     let range: TextRange = range.clone().into();
-                    if vars.contains(&range) {
-                        let text = &text[range];
-                        let text = format!("```erlang\n{} :: {}\n```", text, ty);
+                    let range: Location = range.into();
+                    if let Some(name) = vars.get(&range) {
+                        let text = format!("```erlang\n{} :: {}\n```", name, ty);
                         let decl = VarDecl {
+                            name: name.to_string(),
                             doc: text,
                             span: range.into(),
                         };
-                        result.push(Declaration::VarDeclaration(decl.into()));
+                        result.push(decl.into());
                     }
                 }
             }
@@ -1177,23 +1245,18 @@ impl GleanIndexer {
         result
     }
 
-    fn xrefs_v2(
-        db: &RootDatabase,
-        file_id: FileId,
-        file_ids: &FxHashSet<GleanFileId>,
-    ) -> (XRefFile, FxHashSet<TextRange>) {
+    fn xrefs_v2(db: &RootDatabase, file_id: FileId, file_ids: &FxHashSet<GleanFileId>) -> XRefFile {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
         let def_map = sema.def_map(file_id);
-        let mut vars = FxHashSet::default();
         let mut xrefs = fold::fold_file(
             &sema,
             Strategy::SurfaceOnly,
             file_id,
             vec![],
             &mut |mut acc, ctx| {
-                Self::xref_v2_callback(&sema, &source_file, file_id, &mut acc, &mut vars, &ctx);
+                Self::xref_v2_callback(db, &sema, &source_file, file_id, &mut acc, &ctx);
                 acc
             },
             &mut |mut acc, on, form_id| match (on, form_id) {
@@ -1271,13 +1334,10 @@ impl GleanIndexer {
             },
         );
         xrefs.retain(|x| file_ids.contains(&x.target.file_id()));
-        (
-            XRefFile {
-                file_id: file_id.into(),
-                xrefs,
-            },
-            vars,
-        )
+        XRefFile {
+            file_id: file_id.into(),
+            xrefs,
+        }
     }
 
     fn deprecated_xref(def_map: &DefMap, fun: &DeprecatedFa) -> Option<XRef> {
@@ -1694,8 +1754,11 @@ mod tests {
             -spec doc_foo(integer() | atom()) -> [integer()].
             doc_foo(Bar) -> A = foo(Bar), [Bar, A].
         %%          ^^^ var/Bar :: number() | atom()
+        %%          ^^^ doc/Bar :: number() | atom()
         %%                          ^^^ var/Bar :: number() | atom()
+        %%                          ^^^ doc/Bar :: number() | atom()
         %%                                 ^^^ var/Bar :: number() | atom()
+        %%                                 ^^^ doc/Bar :: number() | atom()
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
@@ -1726,16 +1789,22 @@ mod tests {
         //- /glean/app_glean/src/glean_module61.erl
         -module(glean_module61).
         foo(Bar) -> Bar + 1.
+        %%          ^^^ glean_module61/Bar/37
+        %%  ^^^ glean_module61/Bar/29
 
         //- /glean/app_glean/src/glean_module6.erl
         main() ->
             B = baz(1, 2),
+        %%  ^ glean_module6/B/14
         %%      ^^^ glean_module6/baz/2
             F = glean_module61:foo(B),
+        %%                         ^ glean_module6/B/113
+        %%  ^ glean_module6/F/90
         %%      ^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
-            F.
-        baz(A, B) ->
-            A + B."#;
+            0.
+        baz(1, 2) ->
+            1 + 2.
+        "#;
 
         xref_check(&spec);
     }
@@ -1815,15 +1884,19 @@ mod tests {
         let spec = r#"
         //- /glean/app_glean/src/glean_module71.erl
         foo(Bar) -> Bar + 1.
+        %%  ^^^ glean_module71/Bar/4
+        %%          ^^^ glean_module71/Bar/12
 
         //- /glean/app_glean/src/glean_module7.erl
         main() ->
             Foo = fun glean_module71:foo/1,
         %%        ^^^^^^^^^^^^^^^^^^^^^^^^ glean_module71/foo/1
+        %%  ^^^ glean_module7/Foo/14
             Baz = fun baz/2.
+        %%  ^^^ glean_module7/Baz/135
         %%        ^^^^^^^^^ glean_module7/baz/2
-        baz(A, B) ->
-            A + B."#;
+        baz(1, 2) ->
+            1 + 2."#;
 
         xref_check(&spec);
     }
@@ -1862,7 +1935,9 @@ mod tests {
         ) -> huuuge().
         %%   ^^^^^^^^ glean_module8/huuuge/0
         baz(A, B) ->
-            A + B."#;
+        %%  ^ glean_module8/A/265
+        %%     ^ glean_module8/B/268
+            1 + 2."#;
 
         xref_check(&spec);
     }
@@ -1896,7 +1971,8 @@ mod tests {
             size :: non_neg_integer()
         }).
         baz(A) ->
-            #query{ size = A }.
+        %%  ^ glean_module9/A/55
+            #query{ size = 1 }.
         %%  ^^^^^^ glean_module9/query/99
         "#;
 
@@ -1924,9 +2000,10 @@ mod tests {
         //- /glean/app_glean/src/glean_module10.erl
         -record(stats, {count, time}).
         baz(Time) ->
+        %%  ^^^^ glean_module10/Time/35
             [{#stats.count, 1},
         %%    ^^^^^^ glean_module10/stats/99
-            {#stats.time, Time}].
+            {#stats.time, 2}].
         %%   ^^^^^^ glean_module10/stats/99
 
         "#;
@@ -1956,8 +2033,10 @@ mod tests {
         //- /glean/app_glean/src/glean_module11.erl
         -record(stats, {count, time}).
         baz(Stats) ->
+        %%  ^^^^^ glean_module11/Stats/35
             Stats#stats.count.
         %%       ^^^^^^ glean_module11/stats/99
+        %%  ^^^^^ glean_module11/Stats/83
         "#;
 
         xref_check(&spec);
@@ -1981,9 +2060,11 @@ mod tests {
         let spec = r#"
         //- /glean/app_glean/src/glean_module12.erl
         -record(stats, {count, time}).
-        baz(Stats, NewCnt) ->
-            Stats#stats{count = NewCnt}.
+        baz(Stats, 1) ->
+        %%  ^^^^^ glean_module12/Stats/35
+            Stats#stats{count = 1}.
         %%       ^^^^^^ glean_module12/stats/99
+        %%  ^^^^^ glean_module12/Stats/86
         "#;
 
         xref_check(&spec);
@@ -2008,7 +2089,11 @@ mod tests {
         //- /glean/app_glean/src/glean_module13.erl
         -record(stats, {count, time}).
         baz(Stats) ->
+        %%  ^^^^^ glean_module13/Stats/35
             #stats{count = Count, time = Time} = Stats.
+        %%                 ^^^^^ glean_module13/Count/98
+        %%                               ^^^^ glean_module13/Time/112
+        %%                                       ^^^^^ glean_module13/Stats/120
         %%  ^^^^^^ glean_module13/stats/99
         "#;
 
@@ -2240,7 +2325,11 @@ mod tests {
                 let file_name = file_names
                     .get(xref.target.file_id())
                     .expect("must be present");
-                let label = format!("{}/{}", file_name, xref.target.to_string());
+                let label = xref.target.to_string();
+                if label.is_empty() {
+                    continue;
+                }
+                let label = format!("{}/{}", file_name, label);
                 let tuple = (range, label);
                 let idx = annotations.iter().position(|a| a == &tuple).expect(
                     format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
@@ -2432,6 +2521,7 @@ mod tests {
                 XRefTarget::Type(xref) => {
                     f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
                 }
+                XRefTarget::Var(_) => Ok(()),
             }
         }
     }
