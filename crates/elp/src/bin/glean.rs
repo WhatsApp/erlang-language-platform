@@ -1018,16 +1018,29 @@ impl GleanIndexer {
 
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
-            let span = range.into();
-            declarations.push(Declaration::TypeDeclaration(
+            let text = &db.file_text(file_id)[range];
+            let text = format!("```erlang\n{}\n```", text);
+            let span: Location = range.into();
+
+            let decl = Declaration::TypeDeclaration(
                 TypeDecl {
                     name: ty.name().to_string(),
                     arity: ty.arity(),
-                    span,
+                    span: span.clone(),
                     exported: def.exported,
                 }
                 .into(),
+            );
+
+            declarations.push(Declaration::DocDeclaration(
+                DocDecl {
+                    target: Box::new(decl.clone()),
+                    span,
+                    text,
+                }
+                .into(),
             ));
+            declarations.push(decl);
         }
 
         for (rec, def) in def_map.get_records() {
@@ -1776,6 +1789,7 @@ mod tests {
 
             -type person(Name) :: {name, list(Name)}.
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-type person(Name) :: {name, list(Name)}.
             -record(user, {name = "" :: string(), notes :: person(pos_integer())}).
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-record(user, {name = "" :: string(), notes :: person(pos_integer())}).
