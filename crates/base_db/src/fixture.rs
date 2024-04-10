@@ -26,7 +26,6 @@ use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
-use elp_project_model::test_fixture::check_unique_test_module;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::AppName;
@@ -256,7 +255,6 @@ impl ChangeFixture {
             let tmp_dir_path = project_dir;
             for (path, text) in files {
                 let path = tmp_dir_path.join(&path[1..]);
-                check_unique_test_module(&path);
                 let parent = path.parent().unwrap();
                 fs::create_dir_all(parent).unwrap();
                 let mut tmp_file = File::create(path).unwrap();

@@ -86,9 +86,6 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-use fxhash::FxHashSet;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 pub use stdx::trim_indent;
@@ -388,41 +385,6 @@ impl FixtureWithProjectMeta {
             app_data,
             otp,
             scratch_buffer,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------
-/// Tracking test modules for uniqueness.
-
-/// Because we only ever run a single erlang_service, and module names
-/// need to be unique within it, we keep track of module names used in
-/// tests and panic on re-use.
-#[track_caller]
-pub fn check_unique_test_module(path: &PathBuf) {
-    lazy_static! {
-        static ref MODULE_REGISTRY: Mutex<FxHashSet<String>> = Mutex::new(FxHashSet::default());
-        static ref SYSTEM_MODULES: FxHashSet<String> = FxHashSet::from_iter([
-            "application".to_string(),
-            "assert".to_string(),
-            "meck".to_string(),
-            "ct_helper".to_string(),
-        ]);
-    }
-
-    let mut seen_modules = MODULE_REGISTRY.lock();
-
-    if let Some(name) = path.file_stem() {
-        let name_str = name.to_string_lossy().to_string();
-        if !SYSTEM_MODULES.contains(&name_str) {
-            if !seen_modules.insert(name_str) {
-                // Already in the set
-                panic!(
-                    "duplicate module '{}'.\n Already seen: {:?}",
-                    name.to_string_lossy().to_string(),
-                    seen_modules
-                );
-            }
         }
     }
 }
