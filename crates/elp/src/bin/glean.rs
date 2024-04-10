@@ -57,6 +57,7 @@ use hir::ExprId;
 use hir::ExprSource;
 use hir::InFile;
 use hir::Literal;
+use hir::MacroName;
 use hir::Name;
 use hir::NameArity;
 use hir::PPDirective;
@@ -79,15 +80,15 @@ const HEADER_ARITY: u32 = 100;
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
 
-impl GleanFileId {
-    fn new(file_id: FileId) -> Self {
-        Self(file_id.0 + 1)
+impl Into<FileId> for GleanFileId {
+    fn into(self) -> FileId {
+        FileId(self.0 - 1)
     }
 }
 
 impl From<FileId> for GleanFileId {
     fn from(value: FileId) -> Self {
-        GleanFileId::new(value)
+        GleanFileId(value.0 + 1)
     }
 }
 
@@ -808,9 +809,9 @@ impl GleanIndexer {
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
-        let xref_v2 = Self::xrefs_v2(db, file_id, file_ids);
+        let mut xref_v2 = Self::xrefs_v2(db, file_id, file_ids);
         let mut file_decl = Self::declarations_v2(db, file_id, path)?;
-        Self::add_xref_based_declarations(db, project_id, file_id, &xref_v2, &mut file_decl);
+        Self::add_xref_based_declarations(db, project_id, file_id, &mut xref_v2, &mut file_decl);
 
         let module_index = db.module_index(project_id);
         if let Some(module) = module_index.module_for_file(file_id) {
@@ -825,17 +826,55 @@ impl GleanIndexer {
         db: &RootDatabase,
         project_id: ProjectId,
         file_id: FileId,
-        xrefs: &XRefFile,
+        xrefs: &mut XRefFile,
         file_decl: &mut FileDeclaration,
     ) {
-        let vars: FxHashMap<&Location, &String> = xrefs
-            .xrefs
-            .iter()
-            .filter_map(|x| match &x.target {
-                XRefTarget::Var(v) => Some((&x.source, &v.key.name)),
-                _ => None,
-            })
-            .collect();
+        let mut vars = FxHashMap::default();
+        for xref in &mut xrefs.xrefs {
+            match &mut xref.target {
+                XRefTarget::Var(x) => {
+                    vars.insert(&xref.source, &x.key.name);
+                }
+                XRefTarget::Macro(x) => {
+                    let id: FileId = x.key.file_id.clone().into();
+                    let def_map = db.def_map(id);
+                    let name = Name::from_erlang_service(&x.key.name);
+                    let def = def_map.get_macros().get(&MacroName::new(name, x.key.arity));
+                    if let Some(def) = def {
+                        let range = def.source(db).syntax().text_range();
+                        let text = &db.file_text(id)[range];
+                        let text = format!("```erlang\n{}\n```", text);
+                        let doc = match (&x.key.expansion, &x.key.ods_url) {
+                            (None, None) => text,
+                            (None, Some(o)) => format!("[ODS]({})\n{}", o, text),
+                            (Some(e), None) => format!("{}\n---\n\n{}", text, e),
+                            (Some(e), Some(o)) => format!("[ODS]({})\n{}\n---\n\n{}", o, text, e),
+                        };
+                        let decl = Declaration::MacroDeclaration(
+                            MacroDecl {
+                                name: x.key.name.clone(),
+                                arity: Some(xref.source.start),
+                                span: xref.source.clone(),
+                            }
+                            .into(),
+                        );
+                        let doc_decl = Declaration::DocDeclaration(
+                            DocDecl {
+                                target: Box::new(decl.clone()),
+                                span: xref.source.clone(),
+                                text: doc,
+                            }
+                            .into(),
+                        );
+                        file_decl.declarations.push(decl);
+                        file_decl.declarations.push(doc_decl);
+                        x.key.file_id = file_id.into();
+                        x.key.arity = Some(xref.source.start);
+                    }
+                }
+                _ => (),
+            }
+        }
         let var_decls = Self::types(db, project_id, file_id, vars);
         for var in var_decls {
             let doc = var.doc.clone();
@@ -2179,9 +2218,9 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
-        %%             ^^^ macro.hrl/macro/TAU/no_arity/no_ods/6.28
+        %%             ^^^ macro.erl/macro/TAU/161/no_ods/6.28
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/2/no_ods/if (N > 200) -> N; 'true' -> 200 end
+        %%             ^^^ macro.erl/macro/MAX/236/no_ods/if (N > 200) -> N; 'true' -> 200 end
 
         "#;
         xref_v2_check(&spec);
@@ -2194,7 +2233,7 @@ mod tests {
             -module(macro).
             -define(COUNT_INFRA(X), X).
             baz(atom) -> ?COUNT_INFRA(atom),
-        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/1/has_ods/'atom'
+        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/70/has_ods/'atom'
 
         "#;
         // @fb-only: xref_v2_check(&spec);
@@ -2208,7 +2247,7 @@ mod tests {
             -define(TAU, 6.28).
 
             baz(?TAU) -> 1.
-        %%       ^^^ macro.erl/macro/TAU/no_arity/no_ods/6.28
+        %%       ^^^ macro.erl/macro/TAU/54/no_ods/6.28
 
         "#;
         xref_v2_check(&spec);
@@ -2222,7 +2261,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/no_arity/no_ods/'integer'()
+        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/'integer'()
             baz(ok) -> 1.
 
         "#;
@@ -2236,7 +2275,7 @@ mod tests {
             -module(macro).
            -define(FOO(X), X).
            -wild(?FOO(atom)).
-        %%        ^^^ macro.erl/macro/FOO/1/no_ods/'atom'
+        %%        ^^^ macro.erl/macro/FOO/53/no_ods/'atom'
 
         "#;
         xref_v2_check(&spec);
