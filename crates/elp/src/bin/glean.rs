@@ -1032,14 +1032,27 @@ impl GleanIndexer {
 
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
-            let span = range.into();
-            declarations.push(Declaration::RecordDeclaration(
+            let text = &db.file_text(file_id)[range];
+            let text = format!("```erlang\n{}\n```", text);
+            let span: Location = range.into();
+
+            let decl = Declaration::RecordDeclaration(
                 RecordDecl {
                     name: rec.to_string(),
+                    span: span.clone(),
+                }
+                .into(),
+            );
+
+            declarations.push(Declaration::DocDeclaration(
+                DocDecl {
+                    target: Box::new(decl.clone()),
                     span,
+                    text,
                 }
                 .into(),
             ));
+            declarations.push(decl);
         }
 
         if let Some((name, Some("hrl"))) = path.name_and_extension() {
@@ -1765,6 +1778,7 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type/person/1/exported
             -record(user, {name = "" :: string(), notes :: person(pos_integer())}).
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-record(user, {name = "" :: string(), notes :: person(pos_integer())}).
 
             foo() -> 1.
         %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported
