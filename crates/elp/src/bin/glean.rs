@@ -221,6 +221,8 @@ pub(crate) enum Fact {
     },
     #[serde(rename = "erlang.XRefsViaFqnByFile")]
     XRef { facts: Vec<Key<XRefFact>> },
+    #[serde(rename = "erlang.DeclarationComment")]
+    DeclarationComment { facts: Vec<Key<CommentFact>> },
 }
 
 #[derive(Serialize, Debug)]
@@ -314,7 +316,7 @@ pub(crate) struct FileDeclaration {
     declarations: Vec<Declaration>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct Key<T> {
     key: T,
 }
@@ -326,6 +328,15 @@ impl<T> From<T> for Key<T> {
 }
 
 #[derive(Serialize, Debug)]
+pub(crate) struct CommentFact {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    declaration: Key<FunctionDeclarationFact>,
+    span: Location,
+    text: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub(crate) enum Declaration {
     #[serde(rename = "func")]
     FunctionDeclaration(Key<FuncDecl>),
@@ -339,20 +350,20 @@ pub(crate) enum Declaration {
     VarDeclaration(Key<VarDecl>),
     #[serde(rename = "header")]
     HeaderDeclaration(Key<HeaderDecl>),
+    #[serde(rename = "doc")]
+    DocDeclaration(Key<DocDecl>),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct FuncDecl {
     name: String,
     arity: u32,
     span: Location,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    doc: Option<String>,
     exported: bool,
     deprecated: bool,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct MacroDecl {
     name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -360,7 +371,7 @@ pub(crate) struct MacroDecl {
     span: Location,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct TypeDecl {
     name: String,
     arity: u32,
@@ -368,22 +379,29 @@ pub(crate) struct TypeDecl {
     exported: bool,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct RecordDecl {
     name: String,
     span: Location,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct VarDecl {
     doc: String,
     span: Location,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub(crate) struct HeaderDecl {
     name: String,
     span: Location,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub(crate) struct DocDecl {
+    target: Box<Declaration>,
+    span: Location,
+    text: String,
 }
 
 #[derive(Debug, Default)]
@@ -437,89 +455,115 @@ impl IndexedFacts {
         ]
     }
 
+    fn declaration_to_v1(
+        decl: Declaration,
+        file_id: GleanFileId,
+        module: String,
+    ) -> Option<FunctionDeclarationFact> {
+        let fact = match decl {
+            Declaration::FunctionDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: d.key.arity,
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            Declaration::MacroDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: d.key.arity.unwrap_or(0),
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            Declaration::TypeDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: d.key.arity,
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            Declaration::RecordDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: REC_ARITY,
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            Declaration::HeaderDeclaration(d) => {
+                let fqn = MFA {
+                    module,
+                    name: d.key.name,
+                    arity: HEADER_ARITY,
+                    file_id: file_id.clone(),
+                };
+                FunctionDeclarationFact {
+                    file_id,
+                    fqn,
+                    span: d.key.span,
+                }
+            }
+            _ => return None,
+        };
+        Some(fact)
+    }
+
     fn to_v2_facts(mut self) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.file_declarations);
         let mut declarations = vec![];
         let mut modules = FxHashMap::default();
+        let mut comments = vec![];
         for decl in declaration_fact {
             modules.insert(decl.file_id.clone(), decl.module.clone());
             for d in decl.declarations {
                 let file_id = decl.file_id.clone();
                 let module = decl.module.clone();
-                match d {
-                    Declaration::FunctionDeclaration(d) => {
-                        let fqn = MFA {
-                            module,
-                            name: d.key.name,
-                            arity: d.key.arity,
-                            file_id: file_id.clone(),
-                        };
-                        let fact = FunctionDeclarationFact {
-                            file_id,
-                            fqn,
-                            span: d.key.span,
-                        };
-                        declarations.push(fact);
+                if let Declaration::DocDeclaration(doc) = &d {
+                    let declaration = doc.key.target.as_ref();
+                    if let Some(target) = Self::declaration_to_v1(
+                        declaration.clone(),
+                        file_id.clone(),
+                        module.clone(),
+                    ) {
+                        comments.push(
+                            CommentFact {
+                                file_id,
+                                declaration: target.into(),
+                                span: doc.key.span.clone(),
+                                text: doc.key.text.clone(),
+                            }
+                            .into(),
+                        );
+                        continue;
                     }
-                    Declaration::MacroDeclaration(d) => {
-                        let fqn = MFA {
-                            module,
-                            name: d.key.name,
-                            arity: d.key.arity.unwrap_or(0),
-                            file_id: file_id.clone(),
-                        };
-                        let fact = FunctionDeclarationFact {
-                            file_id,
-                            fqn,
-                            span: d.key.span,
-                        };
-                        declarations.push(fact);
-                    }
-                    Declaration::TypeDeclaration(d) => {
-                        let fqn = MFA {
-                            module,
-                            name: d.key.name,
-                            arity: d.key.arity,
-                            file_id: file_id.clone(),
-                        };
-                        let fact = FunctionDeclarationFact {
-                            file_id,
-                            fqn,
-                            span: d.key.span,
-                        };
-                        declarations.push(fact);
-                    }
-                    Declaration::RecordDeclaration(d) => {
-                        let fqn = MFA {
-                            module,
-                            name: d.key.name,
-                            arity: REC_ARITY,
-                            file_id: file_id.clone(),
-                        };
-                        let fact = FunctionDeclarationFact {
-                            file_id,
-                            fqn,
-                            span: d.key.span,
-                        };
-                        declarations.push(fact);
-                    }
-                    Declaration::HeaderDeclaration(d) => {
-                        let fqn = MFA {
-                            module,
-                            name: d.key.name,
-                            arity: HEADER_ARITY,
-                            file_id: file_id.clone(),
-                        };
-                        let fact = FunctionDeclarationFact {
-                            file_id,
-                            fqn,
-                            span: d.key.span,
-                        };
-                        declarations.push(fact);
-                    }
-                    _ => (),
+                }
+                if let Some(fact) = Self::declaration_to_v1(d, file_id, module) {
+                    declarations.push(fact);
                 }
             }
         }
@@ -586,6 +630,7 @@ impl IndexedFacts {
                 facts: declaration_fact,
             },
             Fact::XRef { facts: xref_fact },
+            Fact::DeclarationComment { facts: comments },
         ]
     }
 }
@@ -829,34 +874,45 @@ impl GleanIndexer {
         for (fun, def) in def_map.get_functions() {
             let range = def.range(db);
             if let Some(range) = range {
-                let spec = specs.get(fun);
-                let doc = spec.map(|doc| doc.markdown_text().to_string());
                 let span = range.into();
-                declarations.push(Declaration::FunctionDeclaration(
+                let decl = Declaration::FunctionDeclaration(
                     FuncDecl {
                         name: fun.name().to_string(),
                         arity: fun.arity(),
                         span,
-                        doc,
                         exported: def.exported,
                         deprecated: def.deprecated,
                     }
                     .into(),
-                ));
+                );
+                if let (Some(spec_def), Some(spec)) = (&def.spec, specs.get(fun)) {
+                    let doc_range = spec_def.source(db).syntax().text_range();
+                    let doc = spec.markdown_text().to_string();
+                    declarations.push(Declaration::DocDeclaration(
+                        DocDecl {
+                            target: Box::new(decl.clone()),
+                            span: doc_range.into(),
+                            text: doc,
+                        }
+                        .into(),
+                    ));
+                }
+                declarations.push(decl);
             }
         }
 
         for (macros, def) in def_map.get_macros() {
             let range = def.source(db).syntax().text_range();
             let span = range.into();
-            declarations.push(Declaration::MacroDeclaration(
+            let decl = Declaration::MacroDeclaration(
                 MacroDecl {
                     name: macros.name().to_string(),
                     arity: macros.arity(),
                     span,
                 }
                 .into(),
-            ));
+            );
+            declarations.push(decl);
         }
 
         for (ty, def) in def_map.get_types() {
@@ -1455,7 +1511,6 @@ impl From<TextRange> for Location {
 mod tests {
 
     use std::collections::HashMap;
-    use std::collections::HashSet;
     use std::fmt;
 
     use elp::cli::Fake;
@@ -1495,7 +1550,6 @@ mod tests {
                     name: name.to_string(),
                     arity,
                     span: location.clone(),
-                    doc: None,
                     exported: false,
                     deprecated: false,
                 }
@@ -1614,14 +1668,16 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rec/user
 
             foo() -> 1.
-        %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported/no_docs
+        %%  ^^^^^^^^^^^ func/foo/0/not_deprecated/exported
             depr_foo(B) -> B.
-        %%  ^^^^^^^^^^^^^^^^^ func/depr_foo/1/deprecated/exported/no_docs
+        %%  ^^^^^^^^^^^^^^^^^ func/depr_foo/1/deprecated/exported
             -spec doc_foo(integer()) -> [integer()].
             doc_foo(Bar) -> [Bar].
-        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported/-spec doc_foo(integer()) -> [integer()].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer()) -> [integer()].
+
             main(A) -> A.
-        %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported/no_docs
+        %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
         "#;
         decl_v2_check(&spec);
     }
@@ -1634,13 +1690,14 @@ mod tests {
         //- /app_glean/src/glean_module5.erl app:app_glean
             -module(glean_module5).
             foo(B) -> 1.
-        %%  ^^^^^^^^^^^^ func/foo/1/not_deprecated/not_exported/no_docs
+        %%  ^^^^^^^^^^^^ func/foo/1/not_deprecated/not_exported
             -spec doc_foo(integer() | atom()) -> [integer()].
             doc_foo(Bar) -> A = foo(Bar), [Bar, A].
         %%          ^^^ var/Bar :: number() | atom()
         %%                          ^^^ var/Bar :: number() | atom()
         %%                                 ^^^ var/Bar :: number() | atom()
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported/-spec doc_foo(integer() | atom()) -> [integer()].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
         decl_v2_check(&spec);
     }
@@ -1655,7 +1712,8 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^ macro/TAU/no_arity
             -spec doc_bar(integer()) -> [integer()].
             doc_bar(Bar) -> [Bar].
-        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_bar/1/not_deprecated/not_exported/-spec doc_bar(integer()) -> [integer()].
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_bar/1/not_deprecated/not_exported
+        %%  ^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_bar(integer()) -> [integer()].
         //- /glean/app_glean/src/glean_module5.erl
             -module(glean_module5).
         "#;
@@ -2103,7 +2161,7 @@ mod tests {
         spec: &str,
     ) -> (
         IndexedFacts,
-        HashMap<GleanFileId, HashSet<(TextRange, String)>>,
+        HashMap<GleanFileId, Vec<(TextRange, String)>>,
         HashMap<GleanFileId, String>,
         DiagnosticsEnabled,
     ) {
@@ -2131,8 +2189,8 @@ mod tests {
             let name = format!("{}.{}", name, ext.unwrap());
             file_names.insert(file_id.into(), name);
             let text = db.file_text(file_id);
-            let annotations_set: HashSet<_> = extract_annotations(&text).into_iter().collect();
-            expected_by_file.insert(file_id.into(), annotations_set);
+            let annotations: Vec<_> = extract_annotations(&text);
+            expected_by_file.insert(file_id.into(), annotations);
         }
         (facts, expected_by_file, file_names, diag)
     }
@@ -2156,11 +2214,12 @@ mod tests {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
                 let tuple = (range, label);
-                if !annotations.remove(&tuple) {
-                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
-                }
+                let idx = annotations.iter().position(|a| a == &tuple).expect(
+                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
+                );
+                annotations.remove(idx);
             }
-            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+            assert_eq!(annotations, vec![], "Expected no more annotations");
         }
         assert_eq!(
             expected_by_file,
@@ -2183,11 +2242,12 @@ mod tests {
                     .expect("must be present");
                 let label = format!("{}/{}", file_name, xref.target.to_string());
                 let tuple = (range, label);
-                if !annotations.remove(&tuple) {
-                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
-                }
+                let idx = annotations.iter().position(|a| a == &tuple).expect(
+                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
+                );
+                annotations.remove(idx);
             }
-            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+            assert_eq!(annotations, vec![], "Expected no more annotations");
         }
         assert_eq!(
             expected_by_file,
@@ -2214,11 +2274,13 @@ mod tests {
             let range: TextRange = decl.key.span.clone().into();
             let label = decl.key.fqn.to_string();
             let tuple = (range, label);
-            if !annotations.remove(&tuple) {
-                panic!("Expected to find {:?} in {:?}", tuple, &annotations);
-            }
+            let idx = annotations
+                .iter()
+                .position(|a| a == &tuple)
+                .expect(format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str());
+            annotations.remove(idx);
         }
-        assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+        assert_eq!(annotations, vec![], "Expected no more annotations");
         assert_eq!(
             expected_by_file,
             HashMap::new(),
@@ -2236,11 +2298,12 @@ mod tests {
                 let range: TextRange = decl.span().clone().into();
                 let label = decl.to_string();
                 let tuple = (range, label);
-                if !annotations.remove(&tuple) {
-                    panic!("Expected to find {:?} in {:?}", tuple, &annotations);
-                }
+                let idx = annotations.iter().position(|a| a == &tuple).expect(
+                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
+                );
+                annotations.remove(idx);
             }
-            assert_eq!(annotations, HashSet::new(), "Expected no more annotations");
+            assert_eq!(annotations, vec![], "Expected no more annotations");
         }
 
         assert_eq!(
@@ -2262,6 +2325,7 @@ mod tests {
                     start: decl.key.span.start + 2,
                     length: decl.key.span.length,
                 },
+                Declaration::DocDeclaration(decl) => decl.key.target.span().clone(),
             }
         }
     }
@@ -2278,19 +2342,10 @@ mod tests {
                         true => "exported",
                         false => "not_exported",
                     };
-                    let docs = match &decl.key.doc {
-                        Some(doc) => doc
-                            .strip_prefix("```erlang\n")
-                            .unwrap()
-                            .strip_suffix("\n```")
-                            .unwrap()
-                            .to_string(),
-                        None => "no_docs".to_string(),
-                    };
                     f.write_str(
                         format!(
-                            "func/{}/{}/{}/{}/{}",
-                            decl.key.name, decl.key.arity, deprecated, exported, docs
+                            "func/{}/{}/{}/{}",
+                            decl.key.name, decl.key.arity, deprecated, exported
                         )
                         .as_str(),
                     )
@@ -2328,6 +2383,16 @@ mod tests {
                 Declaration::HeaderDeclaration(decl) => {
                     f.write_str(format!("header/{}", decl.key.name).as_str())
                 }
+                Declaration::DocDeclaration(decl) => f.write_str(
+                    format!(
+                        "doc/{}",
+                        decl.key
+                            .text
+                            .replace("```erlang\n", "")
+                            .replace("\n```", "")
+                    )
+                    .as_str(),
+                ),
             }
         }
     }
