@@ -37,10 +37,11 @@ pub(crate) fn ignore_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<
             let var: ast::Var = ctx.find_node_at_custom_offset::<ast::Var>(d.range.start())?;
             let var_name = var.text();
             let var_range = var.syntax().text_range();
-            acc.add(
+            acc.add_from_diagnostic(
                 AssistId("ignore_variable", AssistKind::QuickFix),
                 format!("Prefix the variable name with an underscore: `_{var_name}`"),
                 None,
+                (*d).clone(),
                 var_range,
                 None,
                 |builder| {

@@ -50,6 +50,8 @@ pub struct Assist {
     /// Some assists require additional input from the user, such as the name
     /// of a newly-extracted function.
     pub user_input: Option<AssistUserInput>,
+    /// If this assist is derived from a context diagnostic, it is here.
+    pub original_diagnostic: Option<AssistContextDiagnostic>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

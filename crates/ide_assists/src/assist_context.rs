@@ -321,6 +321,40 @@ impl Assists {
         user_input: Option<AssistUserInput>,
         f: impl FnOnce(&mut SourceChangeBuilder),
     ) -> Option<()> {
+        self.do_add(id, label, group, None, target, user_input, f)
+    }
+
+    pub(crate) fn add_from_diagnostic(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        group: Option<GroupLabel>,
+        original_diagnostic: AssistContextDiagnostic,
+        target: TextRange,
+        user_input: Option<AssistUserInput>,
+        f: impl FnOnce(&mut SourceChangeBuilder),
+    ) -> Option<()> {
+        self.do_add(
+            id,
+            label,
+            group,
+            Some(original_diagnostic),
+            target,
+            user_input,
+            f,
+        )
+    }
+
+    pub(crate) fn do_add(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        group: Option<GroupLabel>,
+        original_diagnostic: Option<AssistContextDiagnostic>,
+        target: TextRange,
+        user_input: Option<AssistUserInput>,
+        f: impl FnOnce(&mut SourceChangeBuilder),
+    ) -> Option<()> {
         if !self.is_allowed(&id) {
             return None;
         }
@@ -332,6 +366,7 @@ impl Assists {
             target,
             source_change: None,
             user_input,
+            original_diagnostic,
         };
         self.add_impl(assist, f)
     }

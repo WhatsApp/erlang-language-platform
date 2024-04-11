@@ -48,10 +48,11 @@ pub(crate) fn delete_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
             let id = AssistId("delete_function", AssistKind::QuickFix);
             let message = format!("Remove the unused function `{function_name}/{function_arity}`");
-            acc.add(
+            acc.add_from_diagnostic(
                 id,
                 message,
                 None,
+                (*d).clone(),
                 function_ranges.function,
                 None,
                 |builder| {

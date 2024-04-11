@@ -43,10 +43,11 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 .token_at_offset(ctx_diag.range.start())
                 .right_biased()
             {
-                acc.add(
+                acc.add_from_diagnostic(
                     AssistId("add_fixme", AssistKind::Generate),
                     "Add fixme comment",
                     Some(GroupLabel::ignore()),
+                    (*ctx_diag).clone(),
                     ctx_diag.range,
                     Some(AssistUserInput {
                         input_type: AssistUserInputType::StringAndTaskId,

@@ -761,5 +761,6 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
         target,
         source_change: None,
         user_input: None,
+        original_diagnostic: None,
     }
 }

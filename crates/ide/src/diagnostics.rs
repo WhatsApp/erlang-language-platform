@@ -222,6 +222,7 @@ impl Diagnostic {
                 target: self.range,
                 source_change: Some(source_change),
                 user_input: None,
+                original_diagnostic: None,
             };
             match &mut self.fixes {
                 Some(fixes) => fixes.push(ignore_fix),
@@ -255,6 +256,7 @@ impl Diagnostic {
                 target: self.range,
                 source_change: Some(source_change),
                 user_input: None,
+                original_diagnostic: None,
             };
             match &mut self.fixes {
                 Some(fixes) => fixes.push(ignore_fix),
