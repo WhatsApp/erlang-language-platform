@@ -182,10 +182,15 @@ impl<'a> ImplementCallbacks<'a> {
         let (funs, texts) = build_assist(self.ctx, self.behaviour, additions);
         self.acc
             .add(id, message, None, self.attr_range, None, |builder| {
-                let mut export_builder =
-                    helpers::ExportBuilder::new(&self.ctx.sema, self.ctx.file_id(), &funs, builder)
-                        .insert_at(self.insert_at)
-                        .with_comment(comment);
+                let mut export_builder = helpers::ExportBuilder::new(
+                    &self.ctx.sema,
+                    self.ctx.file_id(),
+                    helpers::ExportForm::Functions,
+                    &funs,
+                    builder,
+                )
+                .insert_at(self.insert_at)
+                .with_comment(comment);
                 if let Some(existing) = existing_callback {
                     export_builder = export_builder.group_with(existing)
                 }

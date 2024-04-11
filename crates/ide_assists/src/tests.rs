@@ -437,6 +437,7 @@ fn export_no_pre_existing() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )
@@ -480,6 +481,7 @@ fn export_single_pre_existing() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )
@@ -529,6 +531,7 @@ fn export_single_pre_existing_with_comment() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )
@@ -587,6 +590,7 @@ fn export_single_group_with_overrides_comment() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )
@@ -643,6 +647,7 @@ fn export_into_specific_pre_existing_1() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )
@@ -702,6 +707,7 @@ fn export_into_specific_pre_existing_2() {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
+                        helpers::ExportForm::Functions,
                         &[function_name_arity],
                         builder,
                     )

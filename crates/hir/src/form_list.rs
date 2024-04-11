@@ -116,6 +116,10 @@ impl FormList {
         self.data.exports.iter()
     }
 
+    pub fn type_exports(&self) -> impl Iterator<Item = (TypeExportId, &TypeExport)> {
+        self.data.type_exports.iter()
+    }
+
     pub fn specs(&self) -> impl Iterator<Item = (SpecId, &Spec)> {
         self.data.specs.iter()
     }

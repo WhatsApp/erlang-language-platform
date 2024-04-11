@@ -438,7 +438,7 @@ fn add_to_suite_0(
 
 fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBuilder) {
     let name_arity = NameArity::new(known::suite, 0);
-    ExportBuilder::new(sema, file_id, &[name_arity], builder)
+    ExportBuilder::new(sema, file_id, ExportForm::Functions, &[name_arity], builder)
         .group_with(NameArity::new(known::all, 0))
         .export_list_pos(ExportListPosition::First)
         .finish();
@@ -549,10 +549,18 @@ pub(crate) enum ExportListPosition {
     Last,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(crate) enum ExportForm {
+    Functions,
+    #[allow(unused)] // Used in next diff
+    Types,
+}
+
 pub(crate) struct ExportBuilder<'a> {
     sema: &'a Semantic<'a>,
     file_id: FileId,
-    funs: &'a [NameArity],
+    export_form: ExportForm,
+    items: &'a [NameArity],
     // `group_with`: Add `funs` to the same export as this, if found.
     // If it is added to the existing export, the comment is not used.
     group_with: Option<NameArity>,
@@ -566,13 +574,15 @@ impl<'a> ExportBuilder<'a> {
     pub(crate) fn new(
         sema: &'a Semantic<'a>,
         file_id: FileId,
-        funs: &'a [NameArity],
+        export_form: ExportForm,
+        items: &'a [NameArity],
         builder: &'a mut SourceChangeBuilder,
     ) -> ExportBuilder<'a> {
         ExportBuilder {
             sema,
             file_id,
-            funs,
+            export_form,
+            items,
             group_with: None,
             export_list_pos: ExportListPosition::Last,
             insert_at: None,
@@ -605,13 +615,17 @@ impl<'a> ExportBuilder<'a> {
         let source = self.sema.parse(self.file_id).value;
         let form_list = self.sema.form_list(self.file_id);
         let export_text = self
-            .funs
+            .items
             .iter()
-            .map(|function_name_arity| format!("{function_name_arity}"))
+            .map(|name_arity| format!("{name_arity}"))
             .collect::<Vec<_>>()
             .join(", ");
 
-        let (insert, text) = if form_list.exports().count() == 0 {
+        let export_form_count = match self.export_form {
+            ExportForm::Functions => form_list.exports().count(),
+            ExportForm::Types => form_list.type_exports().count(),
+        };
+        let (insert, text) = if export_form_count == 0 {
             self.new_export(form_list, source, export_text)
         } else {
             // Top priority: group_with
@@ -632,11 +646,19 @@ impl<'a> ExportBuilder<'a> {
                 // Preceding comment for export, always make a fresh one
                 self.new_export(form_list, source, export_text)
             } else if let Some((insert, text)) = || -> Option<_> {
-                if form_list.exports().count() == 1 {
+                if export_form_count == 1 {
                     // One existing export, add the function to it.
 
-                    let (_, export) = form_list.exports().next()?;
-                    self.add_to_export(export, &source, &export_text)
+                    match self.export_form {
+                        ExportForm::Functions => {
+                            let (_, export) = form_list.exports().next()?;
+                            self.add_to_export(export, &source, &export_text)
+                        }
+                        ExportForm::Types => {
+                            let (_, export) = form_list.type_exports().next()?;
+                            self.add_to_type_export(export, &source, &export_text)
+                        }
+                    }
                 } else {
                     // Multiple
                     None
@@ -659,6 +681,10 @@ impl<'a> ExportBuilder<'a> {
         source: elp_syntax::SourceFile,
         export_text: String,
     ) -> (TextSize, String) {
+        let export_attr = match self.export_form {
+            ExportForm::Functions => "export",
+            ExportForm::Types => "export_type",
+        };
         let insert = self.insert_at.unwrap_or_else(|| {
             if let Some(module_attr) = form_list.module_attribute() {
                 let module_attr_range = module_attr.form_id.get(&source).syntax().text_range();
@@ -670,9 +696,9 @@ impl<'a> ExportBuilder<'a> {
         match &self.with_comment {
             Some(comment) => (
                 insert,
-                format!("\n%% {comment}\n-export([{export_text}]).\n"),
+                format!("\n%% {comment}\n-{export_attr}([{export_text}]).\n"),
             ),
-            None => (insert, format!("\n-export([{export_text}]).\n")),
+            None => (insert, format!("\n-{export_attr}([{export_text}]).\n")),
         }
     }
 
@@ -691,6 +717,34 @@ impl<'a> ExportBuilder<'a> {
                 .map(|fa| (fa.syntax().text_range().start(), format!("{export_text}, "))),
             ExportListPosition::Last => export_ast
                 .funs()
+                .last()
+                .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}"))),
+        };
+        match maybe_added {
+            Some(result) => Some(result),
+            None => {
+                // Empty export list
+                let range = find_next_token(export_ast.syntax(), SyntaxKind::ANON_LBRACK)?;
+                Some((range.end(), export_text.clone()))
+            }
+        }
+    }
+
+    fn add_to_type_export(
+        &self,
+        export: &hir::TypeExport,
+        source: &elp_syntax::SourceFile,
+        export_text: &String,
+    ) -> Option<(TextSize, String)> {
+        let export_ast = export.form_id.get(source);
+
+        let maybe_added = match self.export_list_pos {
+            ExportListPosition::First => export_ast
+                .types()
+                .next()
+                .map(|fa| (fa.syntax().text_range().start(), format!("{export_text}, "))),
+            ExportListPosition::Last => export_ast
+                .types()
                 .last()
                 .map(|fa| (fa.syntax().text_range().end(), format!(", {export_text}"))),
         };

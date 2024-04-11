@@ -40,6 +40,7 @@ pub(crate) fn export_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 helpers::ExportBuilder::new(
                     &ctx.sema,
                     ctx.file_id(),
+                    helpers::ExportForm::Functions,
                     &[function_name_arity],
                     builder,
                 )
