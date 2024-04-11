@@ -75,6 +75,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             input_type: AssistUserInputType::Variable,
             prompt: None,
             value: suggest_name_for_variable(&to_extract, &ctx.sema),
+            task_id: None,
         }),
         move |edit| {
             let vars_in_clause = ctx

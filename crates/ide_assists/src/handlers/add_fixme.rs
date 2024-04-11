@@ -49,19 +49,27 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     Some(GroupLabel::ignore()),
                     ctx_diag.range,
                     Some(AssistUserInput {
-                        input_type: AssistUserInputType::String,
+                        input_type: AssistUserInputType::StringAndTaskId,
                         prompt: Some("Enter reason for fixme, including task number".to_string()),
                         value: "".to_string(),
+                        task_id: None,
                     }),
                     |builder| {
                         let indent = IndentLevel::from_token(&token);
                         let text = match &ctx.user_input {
-                            Some(input) if input.value != "" => format!(
-                                "\n{}% elp:fixme {}: {}",
-                                indent,
-                                ctx_diag.code.as_labeled_code(),
-                                input.value
-                            ),
+                            Some(input)
+                                if input.value != ""
+                                    && input.task_id.is_some()
+                                    && input.task_id != Some("".to_string()) =>
+                            {
+                                format!(
+                                    "\n{}% elp:fixme {}: [{}] {}",
+                                    indent,
+                                    ctx_diag.code.as_labeled_code(),
+                                    input.task_id.as_ref().unwrap(), // Safe because of guard
+                                    input.value
+                                )
+                            }
                             _ => format!(
                                 "\n{}% elp:fixme {} ",
                                 indent,
@@ -98,7 +106,7 @@ mod tests {
 "#,
             expect![[r#"
                 -module(main).
-                % elp:fixme W0013 (misspelled_attribute):  edited
+                % elp:fixme W0013 (misspelled_attribute): [T12345_test]  task edited
                 -dyalizer({nowarn_function, f/0}).
             "#]],
         )
@@ -106,20 +114,21 @@ mod tests {
 
     #[test]
     fn test_base_case_user_input() {
-        check_assist_with_user_input(
+        check_assist_with_user_input_and_task_id(
             add_fixme,
             "Add fixme comment",
             "the reason is simple, blah",
+            "T3333",
             r#"
 -module(main).
 -dy~alizer({nowarn_function, f/0}).
 %%<^^^^^^ 💡 W0013: misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
 "#,
             expect![[r#"
-                   -module(main).
-                   % elp:fixme W0013 (misspelled_attribute): the reason is simple, blah
-                   -dyalizer({nowarn_function, f/0}).
-   "#]],
+                -module(main).
+                % elp:fixme W0013 (misspelled_attribute): [T3333] the reason is simple, blah
+                -dyalizer({nowarn_function, f/0}).
+            "#]],
         )
     }
 }

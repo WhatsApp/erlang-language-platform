@@ -62,6 +62,7 @@ pub(crate) fn check_assist(
         Some(assist_label),
         true,
         None,
+        None,
     );
 }
 
@@ -80,6 +81,27 @@ pub(crate) fn check_assist_with_user_input(
         Some(assist_label),
         true,
         Some(user_input),
+        None,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_assist_with_user_input_and_task_id(
+    assist: Handler,
+    assist_label: &str,
+    user_input: &str,
+    task_id: &str,
+    fixture_before: &str,
+    fixture_after: Expect,
+) {
+    check(
+        assist,
+        fixture_before,
+        ExpectedResult::After(fixture_after),
+        Some(assist_label),
+        true,
+        Some(user_input),
+        Some(task_id),
     );
 }
 
@@ -99,6 +121,7 @@ pub(crate) fn check_assist_expect_parse_error(
         Some(assist_label),
         false,
         None,
+        None,
     );
 }
 
@@ -110,6 +133,7 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
         ExpectedResult::NotApplicable,
         None,
         true,
+        None,
         None,
     );
 }
@@ -129,6 +153,7 @@ fn check(
     assist_label: Option<&str>,
     check_parse_error: bool,
     user_input: Option<&str>,
+    user_task_id: Option<&str>,
 ) {
     let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
 
@@ -182,12 +207,25 @@ fn check(
                 AssistUserInputType::String => {
                     format!("{} edited", requested_user_input.value)
                 }
+                AssistUserInputType::StringAndTaskId => {
+                    format!("{} task edited", requested_user_input.value)
+                }
+            }
+        };
+        let task_id = if let Some(task_id) = user_task_id {
+            Some(task_id.to_string())
+        } else {
+            if requested_user_input.input_type == AssistUserInputType::StringAndTaskId {
+                Some("T12345_test".to_string())
+            } else {
+                None
             }
         };
         ctx.user_input = Some(AssistUserInput {
             input_type: requested_user_input.input_type,
             prompt: None,
             value,
+            task_id,
         });
         // Resolve the assist, with the edited result
         let mut acc = Assists::new(&ctx, resolve);

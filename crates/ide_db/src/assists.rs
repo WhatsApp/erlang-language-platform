@@ -311,6 +311,7 @@ pub struct AssistUserInput {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
     pub value: String,
+    pub task_id: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
@@ -318,4 +319,5 @@ pub enum AssistUserInputType {
     Variable,
     Atom,
     String,
+    StringAndTaskId,
 }
