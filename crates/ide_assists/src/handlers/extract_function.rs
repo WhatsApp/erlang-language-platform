@@ -88,6 +88,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         target_range,
         Some(AssistUserInput {
             input_type: AssistUserInputType::Atom,
+            prompt: None,
             value: make_function_name(ctx), // Maybe just a constant, this is expensive
         }),
         move |builder| {

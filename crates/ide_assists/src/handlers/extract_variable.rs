@@ -73,6 +73,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         target,
         Some(AssistUserInput {
             input_type: AssistUserInputType::Variable,
+            prompt: None,
             value: suggest_name_for_variable(&to_extract, &ctx.sema),
         }),
         move |edit| {

@@ -50,6 +50,7 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     ctx_diag.range,
                     Some(AssistUserInput {
                         input_type: AssistUserInputType::String,
+                        prompt: Some("Enter reason for fixme, including task number".to_string()),
                         value: "".to_string(),
                     }),
                     |builder| {

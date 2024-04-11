@@ -308,6 +308,8 @@ impl AssistContextDiagnostic {
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct AssistUserInput {
     pub input_type: AssistUserInputType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
     pub value: String,
 }
 

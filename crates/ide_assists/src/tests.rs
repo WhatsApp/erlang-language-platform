@@ -186,6 +186,7 @@ fn check(
         };
         ctx.user_input = Some(AssistUserInput {
             input_type: requested_user_input.input_type,
+            prompt: None,
             value,
         });
         // Resolve the assist, with the edited result
