@@ -84,6 +84,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
         "Extract into function",
+        None,
         target_range,
         Some(AssistUserInput {
             input_type: AssistUserInputType::Atom,

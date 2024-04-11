@@ -60,6 +60,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     acc.add(
         AssistId("inline_local_variable", AssistKind::RefactorInline),
         "Inline variable",
+        None,
         target,
         None,
         move |builder| {

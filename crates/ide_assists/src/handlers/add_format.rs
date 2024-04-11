@@ -56,6 +56,7 @@ pub(crate) fn add_format(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(
         AssistId("add_format", AssistKind::Generate),
         "Add @format pragma",
+        None,
         target,
         None,
         |builder| {

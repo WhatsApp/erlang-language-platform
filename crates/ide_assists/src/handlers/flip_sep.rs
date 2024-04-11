@@ -62,6 +62,7 @@ pub(crate) fn flip_sep(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(
         AssistId("flip_sep", AssistKind::RefactorRewrite),
         "Flip around separator",
+        None,
         pivot.text_range(),
         None,
         |edit| {

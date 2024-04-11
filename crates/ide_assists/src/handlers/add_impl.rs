@@ -41,6 +41,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(
         AssistId("add_impl", AssistKind::Generate),
         "Add implementation",
+        None,
         target,
         None,
         |builder| {

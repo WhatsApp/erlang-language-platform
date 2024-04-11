@@ -180,20 +180,21 @@ impl<'a> ImplementCallbacks<'a> {
         existing_callback: Option<NameArity>,
     ) {
         let (funs, texts) = build_assist(self.ctx, self.behaviour, additions);
-        self.acc.add(id, message, self.attr_range, None, |builder| {
-            let mut export_builder =
-                helpers::ExportBuilder::new(&self.ctx.sema, self.ctx.file_id(), &funs, builder)
-                    .insert_at(self.insert_at)
-                    .with_comment(comment);
-            if let Some(existing) = existing_callback {
-                export_builder = export_builder.group_with(existing)
-            }
-            export_builder.finish();
-            builder.edit_file(self.ctx.frange.file_id);
-            let mut text = texts.join("\n");
-            text.push('\n');
-            builder.insert(self.insert_at, text)
-        });
+        self.acc
+            .add(id, message, None, self.attr_range, None, |builder| {
+                let mut export_builder =
+                    helpers::ExportBuilder::new(&self.ctx.sema, self.ctx.file_id(), &funs, builder)
+                        .insert_at(self.insert_at)
+                        .with_comment(comment);
+                if let Some(existing) = existing_callback {
+                    export_builder = export_builder.group_with(existing)
+                }
+                export_builder.finish();
+                builder.edit_file(self.ctx.frange.file_id);
+                let mut text = texts.join("\n");
+                text.push('\n');
+                builder.insert(self.insert_at, text)
+            });
     }
 }
 

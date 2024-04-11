@@ -394,7 +394,7 @@ fn export_no_pre_existing() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
@@ -437,7 +437,7 @@ fn export_single_pre_existing() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
@@ -486,7 +486,7 @@ fn export_single_pre_existing_with_comment() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
@@ -544,7 +544,7 @@ fn export_single_group_with_overrides_comment() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
@@ -600,7 +600,7 @@ fn export_into_specific_pre_existing_1() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),
@@ -659,7 +659,7 @@ fn export_into_specific_pre_existing_2() {
             if !fun.exported {
                 let id = AssistId("export_function", AssistKind::QuickFix);
                 let message = format!("Export the function `{function_name_arity}`");
-                acc.add(id, message, function_range, None, |builder| {
+                acc.add(id, message, None, function_range, None, |builder| {
                     helpers::ExportBuilder::new(
                         &ctx.sema,
                         ctx.file_id(),

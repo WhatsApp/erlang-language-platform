@@ -93,6 +93,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
     acc.add(
         AssistId("inline_function", AssistKind::RefactorInline),
         "Inline function",
+        None,
         target,
         None,
         move |builder| {

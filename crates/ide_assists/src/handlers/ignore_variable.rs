@@ -40,6 +40,7 @@ pub(crate) fn ignore_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<
             acc.add(
                 AssistId("ignore_variable", AssistKind::QuickFix),
                 format!("Prefix the variable name with an underscore: `_{var_name}`"),
+                None,
                 var_range,
                 None,
                 |builder| {

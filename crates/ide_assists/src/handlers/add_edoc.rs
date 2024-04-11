@@ -66,6 +66,7 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(
         AssistId("add_edoc", AssistKind::Generate),
         "Add edoc comment",
+        None,
         target,
         None,
         |builder| {

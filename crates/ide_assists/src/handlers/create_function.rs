@@ -84,7 +84,7 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
                     let id = AssistId("create_function", AssistKind::QuickFix);
                     let message = format!("Create function `{function_name}/{function_arity}`");
-                    acc.add(id, message, function_range, None, |builder| {
+                    acc.add(id, message, None, function_range, None, |builder| {
                         let text = format!("\n{function_name}({function_args}) ->\n    erlang:error(not_implemented).\n\n");
                         builder.edit_file(ctx.frange.file_id);
                         builder.insert(insert, text)

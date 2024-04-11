@@ -49,6 +49,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(
         AssistId("add_spec", AssistKind::Generate),
         "Add spec stub",
+        None,
         target,
         None,
         |builder| {

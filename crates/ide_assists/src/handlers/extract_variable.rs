@@ -69,6 +69,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     acc.add(
         AssistId("extract_variable", AssistKind::RefactorExtract),
         "Extract into variable",
+        None,
         target,
         Some(AssistUserInput {
             input_type: AssistUserInputType::Variable,

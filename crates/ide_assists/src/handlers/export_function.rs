@@ -36,7 +36,7 @@ pub(crate) fn export_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
         if !fun.exported {
             let id = AssistId("export_function", AssistKind::QuickFix);
             let message = format!("Export the function `{function_name_arity}`");
-            acc.add(id, message, function_range, None, |builder| {
+            acc.add(id, message, None, function_range, None, |builder| {
                 helpers::ExportBuilder::new(
                     &ctx.sema,
                     ctx.file_id(),

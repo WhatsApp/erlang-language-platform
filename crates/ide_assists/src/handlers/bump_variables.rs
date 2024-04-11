@@ -129,7 +129,7 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         if let Some(edits) = rename_op {
             let id = AssistId("bump_variables", AssistKind::QuickFix);
             let message = format!("Bump variable `{variable_name}`");
-            acc.add(id, message, variable_range, None, |builder| {
+            acc.add(id, message, None, variable_range, None, |builder| {
                 builder.apply_source_change(edits);
             });
         }

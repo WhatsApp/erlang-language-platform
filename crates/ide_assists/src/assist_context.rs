@@ -11,6 +11,7 @@
 
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistUserInput;
+use elp_ide_db::assists::GroupLabel;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
@@ -315,6 +316,7 @@ impl Assists {
         &mut self,
         id: AssistId,
         label: impl Into<String>,
+        group: Option<GroupLabel>,
         target: TextRange,
         user_input: Option<AssistUserInput>,
         f: impl FnOnce(&mut SourceChangeBuilder),
@@ -326,7 +328,7 @@ impl Assists {
         let assist = Assist {
             id,
             label,
-            group: None,
+            group,
             target,
             source_change: None,
             user_input,

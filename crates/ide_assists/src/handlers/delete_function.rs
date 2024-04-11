@@ -48,10 +48,17 @@ pub(crate) fn delete_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
             let id = AssistId("delete_function", AssistKind::QuickFix);
             let message = format!("Remove the unused function `{function_name}/{function_arity}`");
-            acc.add(id, message, function_ranges.function, None, |builder| {
-                builder.edit_file(ctx.frange.file_id);
-                function_ranges.delete(builder);
-            });
+            acc.add(
+                id,
+                message,
+                None,
+                function_ranges.function,
+                None,
+                |builder| {
+                    builder.edit_file(ctx.frange.file_id);
+                    function_ranges.delete(builder);
+                },
+            );
         }
     }
     Some(())
