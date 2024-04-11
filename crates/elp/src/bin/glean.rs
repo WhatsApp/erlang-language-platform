@@ -680,7 +680,7 @@ pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
     } else {
         facts.to_v1_facts()
     };
-    write_results(facts, cli, &args.to, args.pretty)
+    write_results(facts, cli, &args.to, args.pretty, args.multi)
 }
 
 fn write_results(
@@ -688,21 +688,41 @@ fn write_results(
     cli: &mut dyn Cli,
     to: &Option<PathBuf>,
     pretty: bool,
+    multi: bool,
 ) -> Result<()> {
-    let content = if pretty {
-        serde_json::to_string_pretty(&facts)?
+    if multi {
+        for (i, fact) in facts.iter().enumerate() {
+            let content = if pretty {
+                serde_json::to_string_pretty(&[fact])?
+            } else {
+                serde_json::to_string(&[fact])?
+            };
+            match to {
+                Some(to) => std::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(to.join(format!("fact_{}.json", i)))?
+                    .write_all(content.as_bytes()),
+                None => cli.write_all(content.as_bytes()),
+            }?;
+        }
     } else {
-        serde_json::to_string(&facts)?
-    };
-    match to {
-        Some(to) => std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(to)?
-            .write_all(content.as_bytes()),
-        None => cli.write_all(content.as_bytes()),
-    }?;
+        let content = if pretty {
+            serde_json::to_string_pretty(&facts)?
+        } else {
+            serde_json::to_string(&facts)?
+        };
+        match to {
+            Some(to) => std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(to)?
+                .write_all(content.as_bytes()),
+            None => cli.write_all(content.as_bytes()),
+        }?;
+    }
     Ok(())
 }
 
@@ -877,6 +897,9 @@ impl GleanIndexer {
         }
         let var_decls = Self::types(db, project_id, file_id, vars);
         for var in var_decls {
+            if var.doc.len() > 1000 {
+                continue;
+            }
             let doc = var.doc.clone();
             let span = var.span.clone();
             let decl = Declaration::VarDeclaration(var.into());
@@ -1705,7 +1728,7 @@ mod tests {
             xref_v2: vec![xref],
         };
 
-        write_results(facts.to_v2_facts(), &mut cli, &None, false).expect("success");
+        write_results(facts.to_v2_facts(), &mut cli, &None, false, false).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];

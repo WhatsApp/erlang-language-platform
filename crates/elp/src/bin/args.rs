@@ -290,6 +290,8 @@ pub struct Glean {
     pub v2: bool,
     /// Pretty print
     pub pretty: bool,
+    /// Output each fact separately
+    pub multi: bool,
 }
 
 #[derive(Clone, Debug)]
