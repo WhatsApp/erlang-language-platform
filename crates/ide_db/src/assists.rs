@@ -14,14 +14,20 @@
 //! want to compile `ide_assists` and `ide_diagnostics` in parallel though, so
 //! we pull the common definitions upstream, to this crate.
 
+use std::fmt;
 use std::str::FromStr;
 
 use elp_syntax::label::Label;
 use elp_syntax::TextRange;
+use fxhash::FxHashMap;
+use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use crate::source_change::SourceChange;
+use crate::DiagnosticCode;
 
 #[derive(Debug, Clone)]
 pub struct Assist {
@@ -147,22 +153,105 @@ impl AssistResolveStrategy {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter)]
 pub enum AssistContextDiagnosticCode {
+    DefaultCodeForEnumIter,
     UndefinedFunction,
     UnusedFunction,
     UnusedVariable,
+    ElpDiagnostic(DiagnosticCode),
+}
+
+impl Default for AssistContextDiagnosticCode {
+    fn default() -> Self {
+        AssistContextDiagnosticCode::DefaultCodeForEnumIter
+    }
+}
+
+impl AssistContextDiagnosticCode {
+    pub fn as_labeled_code(&self) -> String {
+        match &self {
+            AssistContextDiagnosticCode::DefaultCodeForEnumIter => {
+                "DEFAULT-UNUSED-CONSTRUCTOR".to_string()
+            }
+            AssistContextDiagnosticCode::UndefinedFunction => self.make_labeled_code(),
+            AssistContextDiagnosticCode::UnusedFunction => self.make_labeled_code(),
+            AssistContextDiagnosticCode::UnusedVariable => self.make_labeled_code(),
+            AssistContextDiagnosticCode::ElpDiagnostic(code) => code.as_labeled_code(),
+        }
+    }
+
+    pub fn as_code(&self) -> String {
+        match &self {
+            AssistContextDiagnosticCode::DefaultCodeForEnumIter => {
+                "DEFAULT-UNUSED-CONSTRUCTOR".to_string()
+            }
+            AssistContextDiagnosticCode::UndefinedFunction => "L1227".to_string(),
+            AssistContextDiagnosticCode::UnusedFunction => "L1230".to_string(),
+            AssistContextDiagnosticCode::UnusedVariable => "L1268".to_string(),
+            AssistContextDiagnosticCode::ElpDiagnostic(code) => code.as_code(),
+        }
+    }
+
+    pub fn as_label(&self) -> String {
+        match &self {
+            AssistContextDiagnosticCode::DefaultCodeForEnumIter => {
+                "DEFAULT-UNUSED-CONSTRUCTOR".to_string()
+            }
+            AssistContextDiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
+            AssistContextDiagnosticCode::UnusedFunction => "unused_function".to_string(),
+            AssistContextDiagnosticCode::UnusedVariable => "unused_var".to_string(),
+            AssistContextDiagnosticCode::ElpDiagnostic(code) => code.as_label(),
+        }
+    }
+
+    pub fn make_labeled_code(&self) -> String {
+        format!("{} ({})", self.as_code(), self.as_label())
+    }
+
+    pub fn maybe_from_string(s: &str) -> Option<AssistContextDiagnosticCode> {
+        DIAGNOSTIC_CODE_LOOKUPS.get(s).cloned().or_else(|| {
+            DiagnosticCode::from_str(s)
+                .ok()
+                .map(AssistContextDiagnosticCode::ElpDiagnostic)
+        })
+    }
+}
+
+lazy_static! {
+    static ref DIAGNOSTIC_CODE_LOOKUPS: FxHashMap<String, AssistContextDiagnosticCode> = {
+        let mut res = FxHashMap::default();
+        for code in AssistContextDiagnosticCode::iter() {
+            res.insert(code.as_code(), code.clone());
+            res.insert(code.as_label(), code.clone());
+        }
+        res
+    };
 }
 
 impl FromStr for AssistContextDiagnosticCode {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "L1227" => Ok(AssistContextDiagnosticCode::UndefinedFunction),
-            "L1230" => Ok(AssistContextDiagnosticCode::UnusedFunction),
-            "L1268" => Ok(AssistContextDiagnosticCode::UnusedVariable),
-            unknown => Err(format!("Unknown AssistContextDiagnosticCode: '{unknown}'")),
+        if let Some(code) = AssistContextDiagnosticCode::maybe_from_string(s) {
+            Ok(code)
+        } else {
+            Err(format!("Unknown DiagnosticCode: '{s}'"))
         }
+    }
+}
+
+impl From<&str> for AssistContextDiagnosticCode {
+    fn from(str: &str) -> Self {
+        match AssistContextDiagnosticCode::from_str(str) {
+            Ok(c) => c,
+            Err(err) => panic!("{err}"),
+        }
+    }
+}
+
+impl fmt::Display for AssistContextDiagnosticCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_code())
     }
 }
 

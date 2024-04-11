@@ -240,6 +240,47 @@ impl DiagnosticCode {
             _ => false,
         }
     }
+
+    pub fn allows_fixme_comment(&self) -> bool {
+        // Note: exhaustive match, to make sure new ones get categorized too.
+        match self {
+            // True list
+            DiagnosticCode::MisspelledAttribute => true,
+            DiagnosticCode::CrossNodeEval => true,
+            // False list
+            DiagnosticCode::DefaultCodeForEnumIter => false,
+            DiagnosticCode::HeadMismatch => false,
+            DiagnosticCode::MissingModule => false,
+            DiagnosticCode::ModuleMismatch => false,
+            DiagnosticCode::UnusedInclude => false,
+            DiagnosticCode::BoundVarInPattern => false,
+            DiagnosticCode::UnusedMacro => false,
+            DiagnosticCode::UnusedRecordField => false,
+            DiagnosticCode::MutableVarBug => false,
+            DiagnosticCode::SyntaxError => false,
+            DiagnosticCode::Missing(_) => false,
+            DiagnosticCode::StatementHasNoEffect => false,
+            DiagnosticCode::TrivialMatch => false,
+            DiagnosticCode::UnusedFunctionArg => false,
+            DiagnosticCode::RedundantAssignment => false,
+            DiagnosticCode::UnreachableTest => false,
+            DiagnosticCode::ApplicationGetEnv => false,
+            DiagnosticCode::MissingCompileWarnMissingSpec => false,
+            DiagnosticCode::DependentHeader => false,
+            DiagnosticCode::DeprecatedFunction => false,
+            DiagnosticCode::UndefinedFunction => false,
+            DiagnosticCode::Unexpected(_) => false,
+            DiagnosticCode::ExpressionCanBeSimplified => false,
+            DiagnosticCode::CannotEvaluateCTCallbacks => false,
+            DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
+            DiagnosticCode::AtomsExhaustion => false,
+            DiagnosticCode::SlowFunction => false,
+            DiagnosticCode::ErlangService(_) => false,
+            DiagnosticCode::Eqwalizer(_) => false,
+            DiagnosticCode::AdHoc(_) => false,
+            DiagnosticCode::MetaOnly(_) => false,
+        }
+    }
 }
 
 lazy_static! {
