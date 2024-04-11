@@ -413,6 +413,11 @@ impl TypeAliasDef {
             TypeAlias::Opaque { name, .. } => name,
         }
     }
+
+    pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        let source = self.source(db);
+        Some(source.syntax().text_range())
+    }
 }
 
 impl TypeAliasSource {

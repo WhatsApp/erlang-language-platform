@@ -74,6 +74,7 @@ mod handlers {
     mod create_function;
     mod delete_function;
     mod export_function;
+    mod export_type;
     mod extract_function;
     mod extract_variable;
     mod flip_sep;
@@ -94,6 +95,7 @@ mod handlers {
             create_function::create_function,
             delete_function::delete_function,
             export_function::export_function,
+            export_type::export_type,
             extract_function::extract_function,
             extract_variable::extract_variable,
             flip_sep::flip_sep,
