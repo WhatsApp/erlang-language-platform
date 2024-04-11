@@ -544,19 +544,19 @@ fn add_to_compile_attribute(
 // ---------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum ExportListPosition {
+pub enum ExportListPosition {
     First,
     Last,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum ExportForm {
+pub enum ExportForm {
     Functions,
     #[allow(unused)] // Used in next diff
     Types,
 }
 
-pub(crate) struct ExportBuilder<'a> {
+pub struct ExportBuilder<'a> {
     sema: &'a Semantic<'a>,
     file_id: FileId,
     export_form: ExportForm,
@@ -571,7 +571,7 @@ pub(crate) struct ExportBuilder<'a> {
 }
 
 impl<'a> ExportBuilder<'a> {
-    pub(crate) fn new(
+    pub fn new(
         sema: &'a Semantic<'a>,
         file_id: FileId,
         export_form: ExportForm,
@@ -591,27 +591,27 @@ impl<'a> ExportBuilder<'a> {
         }
     }
 
-    pub(crate) fn group_with(mut self, name: NameArity) -> ExportBuilder<'a> {
+    pub fn group_with(mut self, name: NameArity) -> ExportBuilder<'a> {
         self.group_with = Some(name);
         self
     }
 
-    pub(crate) fn export_list_pos(mut self, pos: ExportListPosition) -> ExportBuilder<'a> {
+    pub fn export_list_pos(mut self, pos: ExportListPosition) -> ExportBuilder<'a> {
         self.export_list_pos = pos;
         self
     }
 
-    pub(crate) fn insert_at(mut self, location: TextSize) -> ExportBuilder<'a> {
+    pub fn insert_at(mut self, location: TextSize) -> ExportBuilder<'a> {
         self.insert_at = Some(location);
         self
     }
 
-    pub(crate) fn with_comment(mut self, comment: String) -> ExportBuilder<'a> {
+    pub fn with_comment(mut self, comment: String) -> ExportBuilder<'a> {
         self.with_comment = Some(comment);
         self
     }
 
-    pub(crate) fn finish(&mut self) {
+    pub fn finish(&mut self) {
         let source = self.sema.parse(self.file_id).value;
         let form_list = self.sema.form_list(self.file_id);
         let export_text = self

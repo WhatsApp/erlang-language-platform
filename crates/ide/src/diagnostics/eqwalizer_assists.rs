@@ -14,6 +14,7 @@ use hir::Semantic;
 use super::Diagnostic;
 
 mod expected_type;
+mod unexported_type;
 
 pub fn add_eqwalizer_assists(
     sema: &Semantic,
@@ -22,4 +23,5 @@ pub fn add_eqwalizer_assists(
     diagnostic: &mut Diagnostic,
 ) {
     expected_type::expected_type(sema, file_id, d, diagnostic);
+    unexported_type::unexported_type(sema, file_id, d, diagnostic);
 }
