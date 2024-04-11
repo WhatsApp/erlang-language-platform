@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -16,6 +16,7 @@ Available options:
         --include-generated
         --include-ct-diagnostics     Include Common Test diagnostics
         --include-edoc-diagnostics   Include EDoc diagnostics
+        --include-suppressed         Include Suppressed diagnostics (e.g. elp:fixme)
         --include-tests              Also generate diagnostics for test files
         --apply-fix                  If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
         --recursive                  If applying fixes, apply any new ones that arise from the

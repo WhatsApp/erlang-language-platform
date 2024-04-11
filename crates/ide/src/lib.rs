@@ -312,8 +312,12 @@ impl Analysis {
     }
 
     /// Computes Common Test diagnostics for the given file.
-    pub fn ct_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::ct_diagnostics(db, file_id))
+    pub fn ct_diagnostics(
+        &self,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Cancellable<Vec<Diagnostic>> {
+        self.with_db(|db| diagnostics::ct_diagnostics(db, file_id, config))
     }
 
     /// Computes the set of parse server diagnostics for the given file.

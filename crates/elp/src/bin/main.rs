@@ -852,6 +852,26 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_report_suppressed(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--module",
+                "suppressed",
+                "--experimental",
+                "--include-suppressed",
+                "--diagnostic-filter",
+                "W0007",
+            ],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/lint_report_suppressed.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_recursive(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();

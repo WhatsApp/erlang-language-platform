@@ -125,7 +125,7 @@ fn do_parse_one(
     diagnostics.set_native(file_id, native);
 
     if args.include_ct_diagnostics {
-        diagnostics.set_ct(file_id, db.ct_diagnostics(file_id)?);
+        diagnostics.set_ct(file_id, db.ct_diagnostics(file_id, config)?);
     }
     if args.include_edoc_diagnostics {
         let edoc_diagnostics = db
@@ -201,6 +201,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             let mut cfg = DiagnosticsConfig::default();
             cfg.include_generated = args.include_generated;
             cfg.experimental = args.experimental_diags;
+            cfg.include_suppressed = args.include_suppressed;
             cfg.disabled = disabled_diagnostics;
             let cfg = cfg.from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
             // Declare outside the block so it has the right lifetime for filter_diagnostics

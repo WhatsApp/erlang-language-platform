@@ -265,13 +265,17 @@ impl Snapshot {
         )
     }
 
-    pub fn ct_diagnostics(&self, file_id: FileId) -> Option<Vec<diagnostics::Diagnostic>> {
+    pub fn ct_diagnostics(
+        &self,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Option<Vec<diagnostics::Diagnostic>> {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::CommonTestDiagnostics {
             file_url: file_url.clone()
         });
 
-        self.analysis.ct_diagnostics(file_id).ok()
+        self.analysis.ct_diagnostics(file_id, config).ok()
     }
 
     pub fn erlang_service_diagnostics(

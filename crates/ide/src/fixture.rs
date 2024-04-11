@@ -172,7 +172,7 @@ pub fn diagnostics_for(
         }
     }
     if *use_ct {
-        diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id).unwrap());
+        diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id, config).unwrap());
     }
     if *use_edoc {
         let edoc_diagnostics = analysis.edoc_diagnostics(file_id).unwrap();

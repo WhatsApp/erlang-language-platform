@@ -991,10 +991,11 @@ impl Server {
             .into_iter()
             .filter(|file_id| is_supported_by_ct(&snapshot.analysis, *file_id))
             .collect();
+        let config = DiagnosticsConfig::default();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
                 .into_iter()
-                .filter_map(|file_id| Some((file_id, snapshot.ct_diagnostics(file_id)?)))
+                .filter_map(|file_id| Some((file_id, snapshot.ct_diagnostics(file_id, &config)?)))
                 .collect();
 
             Task::CommonTestDiagnostics(spinner, diagnostics)

@@ -30,6 +30,7 @@ use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
+use elp_ide_db::metadata::Kind;
 use elp_ide_db::metadata::Metadata;
 use elp_ide_db::metadata::Source;
 use elp_ide_db::source_change::SourceChange;
@@ -197,8 +198,15 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn should_be_ignored(&self, metadata: &Metadata) -> bool {
+    pub(crate) fn should_be_suppressed(
+        &self,
+        metadata: &Metadata,
+        config: &DiagnosticsConfig,
+    ) -> bool {
         metadata.by_source(Source::Elp).any(|annotation| {
+            if config.include_suppressed && annotation.kind == Kind::Fixme {
+                return false;
+            }
             annotation.codes.contains(&self.code)
                 && annotation.suppression_range.contains(self.range.start())
         })
@@ -383,6 +391,7 @@ pub struct DiagnosticsConfig<'a> {
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: Arc<LintsFromConfig>,
     pub include_generated: bool,
+    pub include_suppressed: bool,
     pub compile_options: Vec<CompileOption>,
 }
 
@@ -595,7 +604,7 @@ pub fn native_diagnostics(
         !config.disabled.contains(&d.code)
             && (config.experimental && d.has_category(Category::Experimental)
                 || !d.has_category(Category::Experimental))
-            && !d.should_be_ignored(&metadata)
+            && !d.should_be_suppressed(&metadata, config)
     });
 
     LabeledDiagnostics {
@@ -1172,7 +1181,11 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
 }
 
 /// Diagnostics requiring the erlang_service
-pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
+pub fn ct_diagnostics(
+    db: &RootDatabase,
+    file_id: FileId,
+    config: &DiagnosticsConfig,
+) -> Vec<Diagnostic> {
     let mut res: Vec<Diagnostic> = Vec::new();
     let sema = Semantic::new(db);
 
@@ -1193,7 +1206,7 @@ pub fn ct_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     };
     let metadata = db.elp_metadata(file_id);
     res.into_iter()
-        .filter(|d| !d.should_be_ignored(&metadata))
+        .filter(|d| !d.should_be_suppressed(&metadata, config))
         .collect()
 }
 
