@@ -29,6 +29,7 @@ use lsp_server::Connection;
 
 mod args;
 mod build_info_cli;
+mod config_stanza;
 mod elp_parse_cli;
 mod eqwalizer_cli;
 mod erlang_service_cli;
@@ -104,6 +105,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
         args::Command::Glean(args) => glean::index(&args, cli)?,
+        args::Command::ConfigStanza(args) => config_stanza::config_stanza(&args, cli)?,
     }
 
     log::logger().flush();
@@ -1534,6 +1536,16 @@ mod tests {
     }
 
     #[test]
+    fn config_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["config", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/config_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
     fn explain_code() {
         let args = args_vec!["explain", "--code", "W0005"];
         let (stdout, stderr, code) = elp(args);
@@ -1548,6 +1560,16 @@ mod tests {
         let args = args_vec!["explain", "--code", "does_not_exist"];
         let (stdout, stderr, code) = elp(args);
         let expected = expect_file!["../resources/test/explain_unkwnown_code.stdout"];
+        expected.assert_eq(&stdout);
+        assert!(stderr.is_empty());
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn dump_config() {
+        let args = args_vec!["config"];
+        let (stdout, stderr, code) = elp(args);
+        let expected = expect_file!["../resources/test/config_stanza.stdout"];
         expected.assert_eq(&stdout);
         assert!(stderr.is_empty());
         assert_eq!(code, 0);

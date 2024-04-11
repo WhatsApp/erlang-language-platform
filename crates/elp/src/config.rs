@@ -466,6 +466,20 @@ fn doc_comment_to_string(doc: &[&str]) -> String {
         .collect()
 }
 
+pub fn config_schema_json() -> String {
+    let s = Config::json_schema();
+    let schema = format!("{:#}", s);
+    let mut schema = schema
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .replace("\n  ", "\n")
+        .trim_start_matches('\n')
+        .trim_end()
+        .to_string();
+    schema.push_str(",\n");
+    schema
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
@@ -474,16 +488,7 @@ mod tests {
 
     #[test]
     fn generate_package_json_config() {
-        let s = Config::json_schema();
-        let schema = format!("{:#}", s);
-        let mut schema = schema
-            .trim_start_matches('{')
-            .trim_end_matches('}')
-            .replace("\n  ", "\n")
-            .trim_start_matches('\n')
-            .trim_end()
-            .to_string();
-        schema.push_str(",\n");
+        let schema = config_schema_json();
 
         let s = remove_ws(&schema);
 

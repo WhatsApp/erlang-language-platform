@@ -22,3 +22,4 @@ Available commands:
     explain               Explain a diagnostic code
     project-info          Generate project info file
     glean                 Glean indexer
+    config                Dump a JSON config stanza suitable for use in VS Code project.json

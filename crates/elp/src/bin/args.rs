@@ -296,6 +296,9 @@ pub struct Glean {
     pub multi: bool,
 }
 
+#[derive(Clone, Debug, Bpaf)]
+pub struct ConfigStanza {}
+
 #[derive(Clone, Debug)]
 pub enum Command {
     ParseAllElp(ParseAllElp),
@@ -314,6 +317,7 @@ pub enum Command {
     Explain(Explain),
     ProjectInfo(ProjectInfo),
     Glean(Glean),
+    ConfigStanza(ConfigStanza),
     Help(),
 }
 
@@ -424,6 +428,12 @@ pub fn command() -> impl Parser<Command> {
         .command("glean")
         .help("Glean indexer");
 
+    let config_stanza = config_stanza()
+        .map(Command::ConfigStanza)
+        .to_options()
+        .command("config")
+        .help("Dump a JSON config stanza suitable for use in VS Code project.json");
+
     construct!([
         eqwalize,
         eqwalize_all,
@@ -441,6 +451,7 @@ pub fn command() -> impl Parser<Command> {
         explain,
         project_info,
         glean,
+        config_stanza,
     ])
     .fallback(Help())
 }
