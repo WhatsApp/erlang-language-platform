@@ -266,7 +266,7 @@ impl GroupLabel {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssistContextDiagnostic {
     pub code: AssistContextDiagnosticCode,
     pub message: String,

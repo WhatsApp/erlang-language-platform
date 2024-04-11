@@ -79,7 +79,7 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                         };
 
                         let offset = start_of_line(&token);
-                        builder.insert(offset, text);
+                        builder.insert(offset, text.trim_end());
                     },
                 );
             }

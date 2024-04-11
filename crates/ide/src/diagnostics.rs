@@ -12,15 +12,20 @@ use std::fmt;
 use std::sync::Arc;
 
 use elp_eqwalizer::EqwalizerDiagnostic;
+use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
 use elp_ide_assists::AssistKind;
+use elp_ide_assists::AssistResolveStrategy;
 use elp_ide_assists::GroupLabel;
 use elp_ide_db::assists::Assist;
+use elp_ide_db::assists::AssistContextDiagnostic;
+use elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
@@ -279,6 +284,50 @@ impl Diagnostic {
             self.code,
             self.message
         )
+    }
+
+    pub fn as_assist_context_diagnostic(&self) -> AssistContextDiagnostic {
+        // We must be careful with the AssistContextDiagnosticCode. It
+        // is not a straight mapping to an ElpDiagnosticCode, because
+        // it breaks out certain of the Erlang Service error codes
+        let code = if let Some(code) =
+            AssistContextDiagnosticCode::maybe_from_string(self.code.as_code().as_str())
+        {
+            code
+        } else {
+            AssistContextDiagnosticCode::ElpDiagnostic(self.code.clone())
+        };
+
+        AssistContextDiagnostic::new(code, self.message.clone(), self.range)
+    }
+
+    pub fn get_diagnostic_fixes(&self, db: &RootDatabase, file_id: FileId) -> Vec<Assist> {
+        let range = FileRange {
+            file_id,
+            range: self.range,
+        };
+        let context_diagnostic = self.as_assist_context_diagnostic();
+        let code_action_assists = elp_ide_assists::assists(
+            db,
+            &AssistConfig {
+                snippet_cap: None,
+                allowed: None,
+            },
+            AssistResolveStrategy::All,
+            range,
+            &[context_diagnostic],
+            None,
+        );
+        // Make sure the assists are related to the original diagnostic.
+        let context_diagnostic = self.as_assist_context_diagnostic();
+        let assists = code_action_assists
+            .into_iter()
+            .filter(|assist| assist.original_diagnostic == Some(context_diagnostic.clone()));
+        if let Some(fixes) = &self.fixes {
+            assists.chain(fixes.clone().into_iter()).collect_vec()
+        } else {
+            assists.collect_vec()
+        }
     }
 }
 

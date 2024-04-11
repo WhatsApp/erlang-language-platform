@@ -600,7 +600,9 @@ impl<'a> Lints<'a> {
         format_normal: bool,
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
-        if let Some(fixes) = &diagnostic.fixes {
+        // Get code action ones too
+        let fixes = diagnostic.get_diagnostic_fixes(self.analysis_host.raw_database(), file_id);
+        if !fixes.is_empty() {
             let fixes: Vec<_> = fixes
                 .iter()
                 .filter(|f| {

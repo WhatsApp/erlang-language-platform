@@ -1241,6 +1241,37 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_applies_code_action_fixme_if_requested(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--module",
+                "spelling",
+                "--diagnostic-filter",
+                "W0013",
+                "--to",
+                tmp_path,
+                "--apply-fix",
+                "--ignore-fix-only",
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_fixme_spelling.stdout"),
+            101,
+            buck,
+            None,
+            tmp_path,
+            Path::new("../resources/test/lint/ignore_app_env"),
+            &[("app_a/src/spelling.erl", "spelling.erl")],
+            false,
+        )
+        .expect("Bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_errors_on_deprecated_l1500(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
