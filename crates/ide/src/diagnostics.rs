@@ -237,40 +237,6 @@ impl Diagnostic {
         self
     }
 
-    #[allow(dead_code)] // @oss-only
-    pub(crate) fn with_fixme_fix(mut self, sema: &Semantic, file_id: FileId) -> Diagnostic {
-        let mut builder = TextEdit::builder();
-        let parsed = sema.parse(file_id);
-        if let Some(token) = parsed
-            .value
-            .syntax()
-            .token_at_offset(self.range.start())
-            .right_biased()
-        {
-            let indent = IndentLevel::from_token(&token);
-            let text = format!("\n{}% elp:fixme {}", indent, self.code.as_labeled_code(),);
-
-            let offset = start_of_line(&token);
-            builder.insert(offset, text);
-            let edit = builder.finish();
-            let source_change = SourceChange::from_text_edit(file_id, edit);
-            let ignore_fix = Assist {
-                id: AssistId("add_fixme", AssistKind::QuickFix),
-                label: Label::new("Add Fixme comment"),
-                group: Some(GroupLabel::ignore()),
-                target: self.range,
-                source_change: Some(source_change),
-                user_input: None,
-                original_diagnostic: None,
-            };
-            match &mut self.fixes {
-                Some(fixes) => fixes.push(ignore_fix),
-                None => self.fixes = Some(vec![ignore_fix]),
-            };
-        }
-        self
-    }
-
     pub fn print(&self, line_index: &LineIndex) -> String {
         let start = line_index.line_col(self.range.start());
         let end = line_index.line_col(self.range.end());

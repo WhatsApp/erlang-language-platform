@@ -129,7 +129,13 @@ pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .set_experimental(true);
-    check_nth_fix(0, fixture_before, fixture_after, config);
+    check_nth_fix(
+        0,
+        fixture_before,
+        fixture_after,
+        config,
+        IncludeCodeActionAssists::No,
+    );
 }
 
 ///  Like `check_fix` but with a custom DiagnosticsConfig
@@ -139,7 +145,33 @@ pub(crate) fn check_fix_with_config(
     fixture_before: &str,
     fixture_after: &str,
 ) {
-    check_nth_fix(0, fixture_before, fixture_after, config);
+    check_nth_fix(
+        0,
+        fixture_before,
+        fixture_after,
+        config,
+        IncludeCodeActionAssists::No,
+    );
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IncludeCodeActionAssists {
+    Yes,
+    No,
+}
+
+#[track_caller]
+pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: &str) {
+    let config = DiagnosticsConfig::default()
+        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
+        .set_experimental(true);
+    check_nth_fix(
+        0,
+        fixture_before,
+        fixture_after,
+        config,
+        IncludeCodeActionAssists::Yes,
+    )
 }
 
 #[track_caller]
@@ -148,6 +180,7 @@ pub(crate) fn check_nth_fix(
     fixture_before: &str,
     fixture_after: &str,
     config: DiagnosticsConfig,
+    include_assists: IncludeCodeActionAssists,
 ) {
     let after = trim_indent(fixture_after);
 
@@ -161,7 +194,11 @@ pub(crate) fn check_nth_fix(
         .last()
         .expect("no diagnostics")
         .clone();
-    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
+    let fixes = match include_assists {
+        IncludeCodeActionAssists::Yes => diagnostic.get_diagnostic_fixes(&analysis.db, pos.file_id),
+        IncludeCodeActionAssists::No => diagnostic.fixes.expect("diagnostic misses fixes"),
+    };
+    let fix = &fixes[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();

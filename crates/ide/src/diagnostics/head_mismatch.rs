@@ -354,6 +354,7 @@ mod tests {
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_nth_fix;
+    use crate::tests::IncludeCodeActionAssists;
 
     #[track_caller]
     fn check_diagnostics(ra_fixture: &str) {
@@ -370,7 +371,13 @@ mod tests {
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
             .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
-        check_nth_fix(0, fixture_before, fixture_after, config);
+        check_nth_fix(
+            0,
+            fixture_before,
+            fixture_after,
+            config,
+            IncludeCodeActionAssists::No,
+        );
     }
 
     // The followings tests exercise head_mismatch function indirectly.
