@@ -619,7 +619,6 @@ foo() -> ok.
 "#,
             r#"
 -module(main).
-  %%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
 
 foo() -> ok.
 

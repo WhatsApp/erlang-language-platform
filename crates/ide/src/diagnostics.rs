@@ -1943,7 +1943,6 @@ baz(1)->4.
 
              baz()->
                1.
-             %%^^^^^^^ 💡 warning: match is redundant
              "#,
         );
     }
