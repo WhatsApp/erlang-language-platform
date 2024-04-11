@@ -26,13 +26,13 @@ use elp::read_lint_config_file;
 use elp::LintConfig;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
-use elp_ide::diagnostics::group_label_ignore;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
 use elp_ide::elp_ide_assists::Assist;
+use elp_ide::elp_ide_assists::GroupLabel;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::Change;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -605,9 +605,9 @@ impl<'a> Lints<'a> {
                 .iter()
                 .filter(|f| {
                     if self.args.ignore_fix_only {
-                        f.group == Some(group_label_ignore())
+                        f.group == Some(GroupLabel::ignore())
                     } else {
-                        f.group != Some(group_label_ignore())
+                        f.group != Some(GroupLabel::ignore())
                     }
                 })
                 .collect();

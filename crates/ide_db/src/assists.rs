@@ -258,6 +258,12 @@ impl fmt::Display for AssistContextDiagnosticCode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GroupLabel(pub String);
 
+impl GroupLabel {
+    pub fn ignore() -> GroupLabel {
+        GroupLabel("ignore".into())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct AssistContextDiagnostic {
     pub code: AssistContextDiagnosticCode,
@@ -275,6 +281,16 @@ impl AssistContextDiagnostic {
             code,
             message,
             range,
+        }
+    }
+
+    pub fn allows_fixme_comment(&self) -> bool {
+        match &self.code {
+            AssistContextDiagnosticCode::DefaultCodeForEnumIter => false,
+            AssistContextDiagnosticCode::UndefinedFunction => false,
+            AssistContextDiagnosticCode::UnusedFunction => false,
+            AssistContextDiagnosticCode::UnusedVariable => false,
+            AssistContextDiagnosticCode::ElpDiagnostic(code) => code.allows_fixme_comment(),
         }
     }
 }

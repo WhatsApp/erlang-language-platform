@@ -115,10 +115,6 @@ pub struct Diagnostic {
     pub code_doc_uri: Option<String>,
 }
 
-pub fn group_label_ignore() -> GroupLabel {
-    GroupLabel("ignore".into())
-}
-
 impl Diagnostic {
     pub fn new(code: DiagnosticCode, message: impl Into<String>, range: TextRange) -> Diagnostic {
         let message = message.into();
@@ -222,7 +218,7 @@ impl Diagnostic {
             let ignore_fix = Assist {
                 id: AssistId("ignore_problem", AssistKind::QuickFix),
                 label: Label::new("Ignore problem"),
-                group: Some(group_label_ignore()),
+                group: Some(GroupLabel::ignore()),
                 target: self.range,
                 source_change: Some(source_change),
                 user_input: None,
@@ -255,7 +251,7 @@ impl Diagnostic {
             let ignore_fix = Assist {
                 id: AssistId("add_fixme", AssistKind::QuickFix),
                 label: Label::new("Add Fixme comment"),
-                group: Some(group_label_ignore()),
+                group: Some(GroupLabel::ignore()),
                 target: self.range,
                 source_change: Some(source_change),
                 user_input: None,

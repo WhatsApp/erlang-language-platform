@@ -66,6 +66,7 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_edoc;
+    mod add_fixme;
     mod add_format;
     mod add_impl;
     mod add_spec;
@@ -85,6 +86,7 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_edoc::add_edoc,
+            add_fixme::add_fixme,
             add_format::add_format,
             add_impl::add_impl,
             add_spec::add_spec,
