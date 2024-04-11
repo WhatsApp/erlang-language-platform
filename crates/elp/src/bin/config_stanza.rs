@@ -9,10 +9,11 @@
 
 use anyhow::Result;
 use elp::cli::Cli;
-use elp::config::config_schema_json;
+use elp::config::Config;
 
 use crate::args::ConfigStanza;
 
 pub fn config_stanza(_args: &ConfigStanza, cli: &mut dyn Cli) -> Result<()> {
-    Ok(writeln!(cli, "{}", config_schema_json())?)
+    let schema = format!("{:#}", Config::json_schema());
+    Ok(writeln!(cli, "{}", schema)?)
 }

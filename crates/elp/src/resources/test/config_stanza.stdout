@@ -1,97 +1,98 @@
-"elp.ai.enable": {
-  "default": false,
-  "markdownDescription": "Enable support for AI-based completions.",
-  "type": "boolean"
-},
-"elp.diagnostics.disabled": {
-  "default": [],
-  "items": {
+{
+  "elp.ai.enable": {
+    "default": false,
+    "markdownDescription": "Enable support for AI-based completions.",
+    "type": "boolean"
+  },
+  "elp.diagnostics.disabled": {
+    "default": [],
+    "items": {
+      "type": "string"
+    },
+    "markdownDescription": "List of ELP diagnostics to disable.",
+    "type": "array",
+    "uniqueItems": true
+  },
+  "elp.diagnostics.enableExperimental": {
+    "default": false,
+    "markdownDescription": "Whether to show experimental ELP diagnostics that might\nhave more false positives than usual.",
+    "type": "boolean"
+  },
+  "elp.eqwalizer.all": {
+    "default": false,
+    "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
+    "type": "boolean"
+  },
+  "elp.eqwalizer.chunkSize": {
+    "default": 100,
+    "markdownDescription": "Chunk size to use for project-wide eqwalization.",
+    "minimum": 0,
+    "type": "integer"
+  },
+  "elp.eqwalizer.maxTasks": {
+    "default": 32,
+    "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
+    "minimum": 0,
+    "type": "integer"
+  },
+  "elp.hoverActions.docLinks.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.hoverActions.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show Hover Actions.",
+    "type": "boolean"
+  },
+  "elp.inlayHints.parameterHints.enable": {
+    "default": true,
+    "markdownDescription": "Whether to show function parameter name inlay hints at the call\nsite.",
+    "type": "boolean"
+  },
+  "elp.lens.debug.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show the `Debug` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.lens.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show Code Lenses in Erlang files.",
+    "type": "boolean"
+  },
+  "elp.lens.links.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.lens.run.coverage.enable": {
+    "default": false,
+    "markdownDescription": "Display code coverage information when running tests via the\nCode Lenses. Only applies when `#elp.lens.enabled` and\n`#elp.lens.run.enable#` are set.",
+    "type": "boolean"
+  },
+  "elp.lens.run.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show the `Run` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.lens.run.interactive.enable": {
+    "default": false,
+    "markdownDescription": "Whether to show the `Run Interactive` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.log": {
+    "default": "error",
+    "markdownDescription": "Configure LSP-based logging using env_logger syntax.",
     "type": "string"
   },
-  "markdownDescription": "List of ELP diagnostics to disable.",
-  "type": "array",
-  "uniqueItems": true
-},
-"elp.diagnostics.enableExperimental": {
-  "default": false,
-  "markdownDescription": "Whether to show experimental ELP diagnostics that might\nhave more false positives than usual.",
-  "type": "boolean"
-},
-"elp.eqwalizer.all": {
-  "default": false,
-  "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
-  "type": "boolean"
-},
-"elp.eqwalizer.chunkSize": {
-  "default": 100,
-  "markdownDescription": "Chunk size to use for project-wide eqwalization.",
-  "minimum": 0,
-  "type": "integer"
-},
-"elp.eqwalizer.maxTasks": {
-  "default": 32,
-  "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
-  "minimum": 0,
-  "type": "integer"
-},
-"elp.hoverActions.docLinks.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
-  "type": "boolean"
-},
-"elp.hoverActions.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show Hover Actions.",
-  "type": "boolean"
-},
-"elp.inlayHints.parameterHints.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show function parameter name inlay hints at the call\nsite.",
-  "type": "boolean"
-},
-"elp.lens.debug.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show the `Debug` lenses. Only applies when\n`#elp.lens.enable#` is set.",
-  "type": "boolean"
-},
-"elp.lens.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show Code Lenses in Erlang files.",
-  "type": "boolean"
-},
-"elp.lens.links.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
-  "type": "boolean"
-},
-"elp.lens.run.coverage.enable": {
-  "default": false,
-  "markdownDescription": "Display code coverage information when running tests via the\nCode Lenses. Only applies when `#elp.lens.enabled` and\n`#elp.lens.run.enable#` are set.",
-  "type": "boolean"
-},
-"elp.lens.run.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show the `Run` lenses. Only applies when\n`#elp.lens.enable#` is set.",
-  "type": "boolean"
-},
-"elp.lens.run.interactive.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show the `Run Interactive` lenses. Only applies when\n`#elp.lens.enable#` is set.",
-  "type": "boolean"
-},
-"elp.log": {
-  "default": "error",
-  "markdownDescription": "Configure LSP-based logging using env_logger syntax.",
-  "type": "string"
-},
-"elp.signatureHelp.enable": {
-  "default": false,
-  "markdownDescription": "Whether to show Signature Help.",
-  "type": "boolean"
-},
-"elp.typesOnHover.enable": {
-  "default": false,
-  "markdownDescription": "Display types when hovering over expressions.",
-  "type": "boolean"
-},
-
+  "elp.signatureHelp.enable": {
+    "default": true,
+    "markdownDescription": "Whether to show Signature Help.",
+    "type": "boolean"
+  },
+  "elp.typesOnHover.enable": {
+    "default": false,
+    "markdownDescription": "Display types when hovering over expressions.",
+    "type": "boolean"
+  }
+}
