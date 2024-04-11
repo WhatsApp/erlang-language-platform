@@ -278,7 +278,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
-            DiagnosticCode::MetaOnly(code) => code.allows_fixme_comment(),
+            // @fb-only: DiagnosticCode::MetaOnly(code) => code.allows_fixme_comment(),
         }
     }
 }
