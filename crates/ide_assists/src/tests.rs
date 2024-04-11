@@ -179,6 +179,9 @@ fn check(
                 AssistUserInputType::Atom => {
                     format!("{}_edited", requested_user_input.value)
                 }
+                AssistUserInputType::String => {
+                    format!("{} edited", requested_user_input.value)
+                }
             }
         };
         ctx.user_input = Some(AssistUserInput {

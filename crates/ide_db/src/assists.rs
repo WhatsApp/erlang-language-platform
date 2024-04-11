@@ -299,4 +299,5 @@ pub struct AssistUserInput {
 pub enum AssistUserInputType {
     Variable,
     Atom,
+    String,
 }
