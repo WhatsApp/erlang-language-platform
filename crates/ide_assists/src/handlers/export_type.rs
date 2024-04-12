@@ -112,6 +112,34 @@ mod tests {
     fn export_into_existing_export_if_only_one() {
         check_assist(
             export_type,
+            "Export the type `foo/0`",
+            r#"
+                -module(life).
+
+                -export([my_fun/0]).
+
+                -type fo~o() :: ok.
+
+                foo() -> ok.
+            "#,
+            expect![[r#"
+                -module(life).
+
+                -export([my_fun/0]).
+
+                -export_type([foo/0]).
+
+                -type foo() :: ok.
+
+                foo() -> ok.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn export_after_function_exports() {
+        check_assist(
+            export_type,
             "Export the type `heavy_calculations/1`",
             r#"
                 -module(life).

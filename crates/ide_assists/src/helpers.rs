@@ -8,6 +8,7 @@
  */
 
 use std::iter;
+use std::sync::Arc;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::rename::is_safe_function;
@@ -677,15 +678,15 @@ impl<'a> ExportBuilder<'a> {
 
     fn new_export(
         &self,
-        form_list: std::sync::Arc<hir::FormList>,
-        source: elp_syntax::SourceFile,
+        form_list: Arc<FormList>,
+        source: SourceFile,
         export_text: String,
     ) -> (TextSize, String) {
         let export_attr = match self.export_form {
             ExportForm::Functions => "export",
             ExportForm::Types => "export_type",
         };
-        let insert = self.insert_at.unwrap_or_else(|| {
+        let mut insert = self.insert_at.unwrap_or_else(|| {
             if let Some(module_attr) = form_list.module_attribute() {
                 let module_attr_range = module_attr.form_id.get(&source).syntax().text_range();
                 module_attr_range.end() + TextSize::from(1)
@@ -693,6 +694,14 @@ impl<'a> ExportBuilder<'a> {
                 TextSize::from(0)
             }
         });
+
+        if self.export_form == ExportForm::Types {
+            // Types are normally exported after function exports
+            if let Some((_, export)) = form_list.exports().last() {
+                let export_range = export.form_id.get(&source).syntax().text_range();
+                insert = export_range.end() + TextSize::from(1);
+            }
+        }
         match &self.with_comment {
             Some(comment) => (
                 insert,
