@@ -897,6 +897,9 @@ impl GleanIndexer {
         }
         let var_decls = Self::types(db, project_id, file_id, vars);
         for var in var_decls {
+            // sometimes eqwalizer produces very long types
+            // this check will prevent showing it on codehub
+
             if var.doc.len() > 1000 {
                 continue;
             }
