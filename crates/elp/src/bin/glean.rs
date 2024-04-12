@@ -9,7 +9,6 @@
 
 use std::io::Write;
 use std::mem;
-use std::path::PathBuf;
 
 use anyhow::Result;
 use elp::build::load;
@@ -41,7 +40,6 @@ use elp_syntax::ast::Fa;
 use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
 use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use hir::db::DefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
@@ -76,6 +74,7 @@ use crate::args::Glean;
 
 const REC_ARITY: u32 = 99;
 const HEADER_ARITY: u32 = 100;
+const FACTS_FILE: &str = "facts.json";
 
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
@@ -322,8 +321,6 @@ pub(crate) struct VarTarget {
 pub(crate) struct FileDeclaration {
     #[serde(rename = "file")]
     file_id: GleanFileId,
-    #[serde(skip)]
-    module: String, //needed for to v1 conversion
     declarations: Vec<Declaration>,
 }
 
@@ -428,6 +425,25 @@ struct IndexedFacts {
 }
 
 impl IndexedFacts {
+    fn new(
+        file_fact: FileFact,
+        line_fact: FileLinesFact,
+        decl: FileDeclaration,
+        xref: XRefFile,
+        facts_v1: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+    ) -> Self {
+        let mut facts = Self::default();
+        facts.file_facts.push(file_fact);
+        facts.file_line_facts.push(line_fact);
+        facts.file_declarations.push(decl);
+        facts.xref_v2.push(xref);
+        if let Some((decl, xref)) = facts_v1 {
+            facts.declaration_facts.extend(decl);
+            facts.xref_facts.push(xref);
+        }
+        facts
+    }
+
     fn add(
         &mut self,
         file_fact: FileFact,
@@ -442,7 +458,7 @@ impl IndexedFacts {
         self.xref_v2.push(xref);
         if let Some((decl, xref)) = facts {
             self.declaration_facts.extend(decl);
-            self.xref_facts.push(xref)
+            self.xref_facts.push(xref);
         }
     }
 
@@ -556,39 +572,38 @@ impl IndexedFacts {
         Some(fact)
     }
 
-    fn to_v2_facts(mut self) -> Vec<Fact> {
+    fn to_v2_facts(mut self, modules: &FxHashMap<GleanFileId, String>) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.file_declarations);
         let mut declarations = vec![];
-        let mut modules = FxHashMap::default();
         let mut comments = vec![];
         for decl in declaration_fact {
-            modules.insert(decl.file_id.clone(), decl.module.clone());
-            for d in decl.declarations {
-                let file_id = decl.file_id.clone();
-                let module = decl.module.clone();
-                if let Declaration::DocDeclaration(doc) = &d {
-                    let declaration = doc.key.target.as_ref();
-                    if let Some(target) = Self::declaration_to_v1(
-                        declaration.clone(),
-                        file_id.clone(),
-                        module.clone(),
-                    ) {
-                        comments.push(
-                            CommentFact {
-                                file_id,
-                                declaration: target.into(),
-                                span: doc.key.span.clone(),
-                                text: doc.key.text.clone(),
-                            }
-                            .into(),
-                        );
-                        continue;
+            if let Some(module) = modules.get(&decl.file_id) {
+                for d in decl.declarations {
+                    let file_id = decl.file_id.clone();
+                    if let Declaration::DocDeclaration(doc) = &d {
+                        let declaration = doc.key.target.as_ref();
+                        if let Some(target) = Self::declaration_to_v1(
+                            declaration.clone(),
+                            file_id.clone(),
+                            module.clone(),
+                        ) {
+                            comments.push(
+                                CommentFact {
+                                    file_id,
+                                    declaration: target.into(),
+                                    span: doc.key.span.clone(),
+                                    text: doc.key.text.clone(),
+                                }
+                                .into(),
+                            );
+                            continue;
+                        }
                     }
-                }
-                if let Some(fact) = Self::declaration_to_v1(d, file_id, module) {
-                    declarations.push(fact);
+                    if let Some(fact) = Self::declaration_to_v1(d, file_id, module.clone()) {
+                        declarations.push(fact);
+                    }
                 }
             }
         }
@@ -674,44 +689,31 @@ pub struct GleanIndexer {
 
 pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
     let (indexer, _loaded) = GleanIndexer::new(args, cli)?;
-    let facts = indexer.index()?;
-    let facts = if args.v2 {
-        facts.to_v2_facts()
-    } else {
-        facts.to_v1_facts()
-    };
-    write_results(facts, cli, &args.to, args.pretty, args.multi)
+    let (facts, module_index) = indexer.index(args.multi)?;
+    write_results(facts, module_index, cli, args)
 }
 
 fn write_results(
-    facts: Vec<Fact>,
+    facts: FxHashMap<String, IndexedFacts>,
+    module_index: FxHashMap<GleanFileId, String>,
     cli: &mut dyn Cli,
-    to: &Option<PathBuf>,
-    pretty: bool,
-    multi: bool,
+    args: &Glean,
 ) -> Result<()> {
-    if multi {
-        for (i, fact) in facts.iter().enumerate() {
-            let content = if pretty {
-                serde_json::to_string_pretty(&[fact])?
-            } else {
-                serde_json::to_string(&[fact])?
-            };
-            match to {
-                Some(to) => std::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(to.join(format!("fact_{}.json", i)))?
-                    .write_all(content.as_bytes()),
-                None => cli.write_all(content.as_bytes()),
-            }?;
-        }
-    } else {
-        let content = if pretty {
-            serde_json::to_string_pretty(&facts)?
+    for (name, fact) in facts {
+        let fact = if args.v2 {
+            fact.to_v2_facts(&module_index)
         } else {
-            serde_json::to_string(&facts)?
+            fact.to_v1_facts()
+        };
+        let content = if args.pretty {
+            serde_json::to_string_pretty(&fact)?
+        } else {
+            serde_json::to_string(&fact)?
+        };
+        let to = match (&args.to, args.multi) {
+            (None, _) => None,
+            (Some(to), true) => Some(to.join(name)),
+            (Some(to), false) => Some(to).cloned(),
         };
         match to {
             Some(to) => std::fs::OpenOptions::new()
@@ -745,13 +747,24 @@ impl GleanIndexer {
         Ok((indexer, loaded))
     }
 
-    fn index(&self) -> Result<IndexedFacts> {
+    fn index(
+        &self,
+        multi: bool,
+    ) -> Result<(
+        FxHashMap<String, IndexedFacts>,
+        FxHashMap<GleanFileId, String>,
+    )> {
         let ctx = self.analysis.with_db(|db| {
             let project_id = self.project_id;
             let files = Self::project_files(db, project_id);
-            let file_ids: FxHashSet<GleanFileId> =
-                files.iter().map(|(file_id, _)| (*file_id).into()).collect();
-            if let Some(module) = &self.module {
+            // glean module index, which fake headers as modules with name header.hrl
+            let module_index: FxHashMap<GleanFileId, String> = files
+                .iter()
+                .filter_map(|(file_id, path)| {
+                    path_to_module_name(path).map(|name| ((*file_id).into(), name))
+                })
+                .collect();
+            let facts = if let Some(module) = &self.module {
                 let index = db.module_index(self.project_id);
                 let file_id = index
                     .file_for_module(&ModuleName::new(module))
@@ -759,32 +772,50 @@ impl GleanIndexer {
                 let source_root_id = db.file_source_root(file_id);
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
-                let mut ctx = IndexedFacts::default();
-                match Self::index_file(&db, file_id, &path, project_id, &file_ids) {
-                    Some((file, line, decl, xref, facts)) => ctx.add(file, line, decl, xref, facts),
+                match Self::index_file(&db, file_id, &path, project_id, &module_index) {
+                    Some((file, line, decl, xref, facts)) => {
+                        let mut result = FxHashMap::default();
+                        result.insert(
+                            FACTS_FILE.to_string(),
+                            IndexedFacts::new(file, line, decl, xref, facts),
+                        );
+                        result
+                    }
                     None => panic!("Can't find module {}", module),
                 }
-                ctx
             } else {
-                files
+                let iter = files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
                         analysis.with_db(|db| {
-                            Self::index_file(db, file_id, &path, project_id, &file_ids)
+                            Self::index_file(db, file_id, &path, project_id, &module_index)
                         })
                     })
                     .flatten()
-                    .flatten()
+                    .flatten();
+                if multi {
+                    iter.map(|(file, line, decl, xref, facts)| {
+                        IndexedFacts::new(file, line, decl, xref, facts)
+                    })
                     .collect::<Vec<_>>()
                     .into_iter()
-                    .fold(
+                    .enumerate()
+                    .map(|(id, facts)| (format!("{}.json", id), facts))
+                    .collect()
+                } else {
+                    let mut result = FxHashMap::default();
+                    let facts = iter.collect::<Vec<_>>().into_iter().fold(
                         IndexedFacts::default(),
                         |mut acc, (file_fact, line_fact, decl, xref, facts)| {
                             acc.add(file_fact, line_fact, decl, xref, facts);
                             acc
                         },
-                    )
-            }
+                    );
+                    result.insert(FACTS_FILE.to_string(), facts);
+                    result
+                }
+            };
+            (facts, module_index)
         })?;
         Ok(ctx)
     }
@@ -819,7 +850,7 @@ impl GleanIndexer {
         file_id: FileId,
         path: &VfsPath,
         project_id: ProjectId,
-        file_ids: &FxHashSet<GleanFileId>,
+        module_index: &FxHashMap<GleanFileId, String>,
     ) -> Option<(
         FileFact,
         FileLinesFact,
@@ -829,14 +860,14 @@ impl GleanIndexer {
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
-        let mut xref_v2 = Self::xrefs_v2(db, file_id, file_ids);
+        let mut xref_v2 = Self::xrefs_v2(db, file_id, module_index);
         let mut file_decl = Self::declarations_v2(db, file_id, path)?;
         Self::add_xref_based_declarations(db, project_id, file_id, &mut xref_v2, &mut file_decl);
 
-        let module_index = db.module_index(project_id);
-        if let Some(module) = module_index.module_for_file(file_id) {
+        let elp_module_index = db.module_index(project_id);
+        if let Some(module) = elp_module_index.module_for_file(file_id) {
             let decl = Self::declarations_v1(db, file_id, module);
-            let xref = Self::xrefs(db, file_id, file_ids);
+            let xref = Self::xrefs(db, file_id, module_index);
             return Some((file_fact, line_fact, file_decl, xref_v2, Some((decl, xref))));
         }
         Some((file_fact, line_fact, file_decl, xref_v2, None))
@@ -1107,20 +1138,17 @@ impl GleanIndexer {
             ));
         }
 
-        let module = match path.name_and_extension() {
-            Some((name, Some("erl"))) => Some(name.to_string()),
-            Some((name, Some("hrl"))) => Some(format!("{}.hrl", name)),
-            _ => None,
-        }?;
-
         Some(FileDeclaration {
             file_id: file_id.into(),
-            module,
             declarations,
         })
     }
 
-    fn xrefs(db: &RootDatabase, file_id: FileId, file_ids: &FxHashSet<GleanFileId>) -> XRefFact {
+    fn xrefs(
+        db: &RootDatabase,
+        file_id: FileId,
+        module_index: &FxHashMap<GleanFileId, String>,
+    ) -> XRefFact {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let mut xrefs = fold::fold_file(
@@ -1222,7 +1250,7 @@ impl GleanIndexer {
             &mut |acc, _on, _form_id| acc,
         );
 
-        xrefs.retain(|x| file_ids.contains(&x.target.file_id));
+        xrefs.retain(|x| module_index.contains_key(&x.target.file_id));
 
         XRefFact::new(file_id, xrefs)
     }
@@ -1336,7 +1364,11 @@ impl GleanIndexer {
         result
     }
 
-    fn xrefs_v2(db: &RootDatabase, file_id: FileId, file_ids: &FxHashSet<GleanFileId>) -> XRefFile {
+    fn xrefs_v2(
+        db: &RootDatabase,
+        file_id: FileId,
+        module_index: &FxHashMap<GleanFileId, String>,
+    ) -> XRefFile {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
@@ -1424,7 +1456,7 @@ impl GleanIndexer {
                 _ => acc,
             },
         );
-        xrefs.retain(|x| file_ids.contains(&x.target.file_id()));
+        xrefs.retain(|x| module_index.contains_key(&x.target.file_id()));
         XRefFile {
             file_id: file_id.into(),
             xrefs,
@@ -1650,6 +1682,14 @@ impl GleanIndexer {
     }
 }
 
+fn path_to_module_name(path: &VfsPath) -> Option<String> {
+    match path.name_and_extension() {
+        Some((name, Some("erl"))) => Some(name.to_string()),
+        Some((name, Some("hrl"))) => Some(format!("{}.hrl", name)),
+        _ => None,
+    }
+}
+
 impl From<TextRange> for Location {
     fn from(range: TextRange) -> Self {
         let start: u32 = range.start().into();
@@ -1663,6 +1703,7 @@ mod tests {
 
     use std::collections::HashMap;
     use std::fmt;
+    use std::path::PathBuf;
 
     use elp::cli::Fake;
     use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
@@ -1695,7 +1736,6 @@ mod tests {
         let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
         let decl = FileDeclaration {
             file_id: file_id.into(),
-            module: module.to_string(),
             declarations: vec![Declaration::FunctionDeclaration(
                 FuncDecl {
                     name: name.to_string(),
@@ -1730,8 +1770,20 @@ mod tests {
             file_declarations: vec![decl],
             xref_v2: vec![xref],
         };
+        let mut map = FxHashMap::default();
+        map.insert(FACTS_FILE.to_string(), facts);
+        let args = Glean {
+            project: PathBuf::default(),
+            module: None,
+            to: None,
+            v2: true,
+            pretty: false,
+            multi: false,
+        };
+        let mut module_index = FxHashMap::default();
+        module_index.insert(file_id.into(), module.to_string());
 
-        write_results(facts.to_v2_facts(), &mut cli, &None, false, false).expect("success");
+        write_results(map, module_index, &mut cli, &args).expect("success");
 
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
@@ -2342,6 +2394,7 @@ mod tests {
         HashMap<GleanFileId, Vec<(TextRange, String)>>,
         HashMap<GleanFileId, String>,
         DiagnosticsEnabled,
+        FxHashMap<GleanFileId, String>,
     ) {
         let (db, files, diag) = RootDatabase::with_many_files(spec);
         let project_id = ProjectId(0);
@@ -2355,7 +2408,8 @@ mod tests {
             analysis: host.analysis(),
             module: None,
         };
-        let facts = glean.index().expect("success");
+        let (facts, module_index) = glean.index(false).expect("success");
+        let facts = facts.into_values().next().unwrap();
         let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
         let mut file_names = HashMap::new();
         let db = host.raw_database();
@@ -2370,12 +2424,12 @@ mod tests {
             let annotations: Vec<_> = extract_annotations(&text);
             expected_by_file.insert(file_id.into(), annotations);
         }
-        (facts, expected_by_file, file_names, diag)
+        (facts, expected_by_file, file_names, diag, module_index)
     }
 
     fn xref_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
-        let facts = facts.to_v2_facts();
+        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotataions(spec);
+        let facts = facts.to_v2_facts(&module_index);
         let xref_facts = facts
             .iter()
             .find_map(|x| match x {
@@ -2407,7 +2461,7 @@ mod tests {
     }
 
     fn xref_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, file_names, _d) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_v2 {
             let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
@@ -2439,8 +2493,8 @@ mod tests {
     }
 
     fn decl_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
-        let facts = facts.to_v2_facts();
+        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotataions(spec);
+        let facts = facts.to_v2_facts(&module_index);
         let func_decl = facts
             .iter()
             .find_map(|x| match x {
@@ -2471,7 +2525,7 @@ mod tests {
     }
 
     fn decl_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d, _) = facts_with_annotataions(spec);
         for file_decl in facts.file_declarations {
             let mut annotations = expected_by_file
                 .remove(&file_decl.file_id)
