@@ -121,6 +121,8 @@ fn make_diagnostic(
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -244,7 +246,7 @@ exists() -> ok.
 -compile(export_all).
 exists() -> ok.
 "#,
-            r#"
+            expect![[r#"
 -module(main).
 
 main() ->
@@ -253,7 +255,7 @@ main() ->
   dep:not_exists().
 
 exists() -> ok.
-"#,
+"#]],
         )
     }
 }

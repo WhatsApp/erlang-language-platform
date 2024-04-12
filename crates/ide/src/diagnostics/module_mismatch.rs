@@ -67,6 +67,8 @@ fn rename_module_to_match_filename(file_id: FileId, loc: TextRange, filename: &s
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -84,9 +86,9 @@ mod tests {
 //- /src/foo.erl
 -module(b~ar).
 "#,
-            r#"
+            expect![[r#"
 -module(foo).
-"#,
+"#]],
         )
     }
 

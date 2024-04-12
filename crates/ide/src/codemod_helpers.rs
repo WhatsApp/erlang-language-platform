@@ -479,6 +479,8 @@ mod tests {
     use elp_ide_db::elp_base_db::SourceDatabase;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
+    use expect_test::expect;
+    use expect_test::Expect;
     use hir::FunctionDef;
     use hir::InFile;
     use hir::Semantic;
@@ -567,7 +569,7 @@ mod tests {
     fn check_adhoc_function_fix(
         match_spec: &Vec<Vec<FunctionMatch>>,
         fixture_before: &str,
-        fixture_after: &str,
+        fixture_after: Expect,
     ) {
         check_fix_with_config(
             DiagnosticsConfig::default()
@@ -704,13 +706,13 @@ mod tests {
                 fo~o:bar().
             %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             bar() ->
                 % elp:ignore ad-hoc: test (ad-hoc: test)
                 foo:bar().
-             "#,
+             "#]],
         );
     }
 
@@ -724,12 +726,12 @@ mod tests {
                rpc:c~all(Node, M, F, A).
             %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
-            r#"
+            expect![[r#"
             -module(main).
             foo(Node, M,F,A) ->
                % elp:ignore ad-hoc: test (ad-hoc: test)
                rpc:call(Node, M, F, A).
-             "#,
+             "#]],
         );
     }
 
@@ -743,12 +745,12 @@ mod tests {
                baz(rpc:c~all(Node, M, F, A)).
             %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
              "#,
-            r#"
+            expect![[r#"
             -module(main).
             foo(Node, M,F,A) ->
                % elp:ignore ad-hoc: test (ad-hoc: test)
                baz(rpc:call(Node, M, F, A)).
-             "#,
+             "#]],
         );
     }
 

@@ -223,6 +223,8 @@ fn make_diagnostic(file_id: FileId, expr: &ast::Expr) -> Diagnostic {
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -238,14 +240,14 @@ mod tests {
                 ok.
             do_something() -> ok.
             "#,
-            r#"
+            expect![[r#"
             -module(main).
             test_foo(_Config) ->
                 do_something(),
                 do_something_else(),
                 ok.
             do_something() -> ok.
-            "#,
+            "#]],
         );
     }
 

@@ -368,6 +368,8 @@ mod tests {
 
     use std::sync::Arc;
 
+    use expect_test::expect;
+    use expect_test::Expect;
     use hir::Expr;
     use hir::Literal;
 
@@ -385,7 +387,7 @@ mod tests {
     pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(
         ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
         fixture_before: &str,
-        fixture_after: &str,
+        fixture_after: Expect,
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
@@ -399,7 +401,7 @@ mod tests {
     pub(crate) fn check_fix_with_lints_from_config<'a>(
         lints_from_config: LintsFromConfig,
         fixture_before: &str,
-        fixture_after: &str,
+        fixture_after: Expect,
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
@@ -450,12 +452,12 @@ mod tests {
             fire_bombs(Config) ->
                 boom.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
                 ok.
-            "#,
+            "#]],
         )
     }
 
@@ -488,13 +490,13 @@ mod tests {
             fire_bombs(FooConfig, MissilesCode) ->
                 boom.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
                 Message = qwerty,
                 transmit(Message).
-            "#,
+            "#]],
         )
     }
 
@@ -574,7 +576,7 @@ mod tests {
             regret_it(Config) -> oops.
             too_late_now_think_twice_next_time(Config) -> 'oh well'.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
@@ -582,7 +584,7 @@ mod tests {
                     fun foo:regret_it/1,
                     fun foo:too_late_now_think_twice_next_time/2
                 ], Config).
-            "#,
+            "#]],
         );
     }
 
@@ -619,7 +621,7 @@ mod tests {
             regret_it(Config) -> oops.
             too_late_now_think_twice_next_time(Config) -> 'oh well'.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
@@ -627,7 +629,7 @@ mod tests {
                     fun foo:regret_it/1,
                     fun foo:too_late_now_think_twice_next_time/2
                 ], Config).
-            "#,
+            "#]],
         );
     }
 
@@ -664,7 +666,7 @@ mod tests {
             regret_it(Config) -> oops.
             too_late_now_think_twice_next_time(Config) -> 'oh well'.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
@@ -672,7 +674,7 @@ mod tests {
                     fun foo:regret_it/1,
                     fun foo:too_late_now_think_twice_next_time/2
                 ], Config).
-            "#,
+            "#]],
         );
     }
 
@@ -707,12 +709,12 @@ mod tests {
             regret_it(Config) -> oops.
             too_late_now_think_twice_next_time(Config) -> 'oh well'.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
                 some:clearner_helper([], Config).
-            "#,
+            "#]],
         );
     }
 
@@ -747,13 +749,13 @@ mod tests {
             fire_bombs(Config, MissilesCode) ->
                 boom.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
                 Message = blah:drop_water(Config, qwerty),
                 transmit(Message).
-            "#,
+            "#]],
         )
     }
 
@@ -788,13 +790,13 @@ mod tests {
             fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
                 boom.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(_Config) ->
                 Message = foo:fire_bombs(First, Third, Second),
                 transmit(Message).
-            "#,
+            "#]],
         )
     }
 
@@ -829,13 +831,13 @@ mod tests {
             fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
                 boom.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(_Config) ->
                 Message = foo:fire_bombs(Third, Second, First, Second, Second, Third, Third),
                 transmit(Message).
-            "#,
+            "#]],
         )
     }
 
@@ -867,12 +869,12 @@ mod tests {
             regret_it(Config) -> oops.
             too_late_now_think_twice_next_time(Config) -> 'oh well'.
             "#,
-            r#"
+            expect![[r#"
             -module(blah_SUITE).
 
             end_per_suite(Config) ->
                 some:clearner_helper([], Config).
-            "#,
+            "#]],
         );
     }
 }

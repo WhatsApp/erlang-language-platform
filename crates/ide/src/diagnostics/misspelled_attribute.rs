@@ -146,6 +146,8 @@ fn make_diagnostic(
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::fixture;
@@ -166,10 +168,10 @@ mod tests {
     -module(main).
     -dyalize~r({nowarn_function, f/0}).
             "#,
-            r#"
+            expect![[r#"
     -module(main).
     -dialyzer({nowarn_function, f/0}).
-            "#,
+            "#]],
         );
     }
 

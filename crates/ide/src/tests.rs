@@ -21,6 +21,7 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::trim_indent;
+use expect_test::Expect;
 use itertools::Itertools;
 use text_edit::TextRange;
 
@@ -125,7 +126,7 @@ pub(crate) fn check_filtered_ct_fix_with_config(
 ///  * the first diagnostic fix trigger range touches the input cursor position
 ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
 #[track_caller]
-pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
+pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .set_experimental(true);
@@ -143,7 +144,7 @@ pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
 pub(crate) fn check_fix_with_config(
     config: DiagnosticsConfig,
     fixture_before: &str,
-    fixture_after: &str,
+    fixture_after: Expect,
 ) {
     check_nth_fix(
         0,
@@ -161,7 +162,7 @@ pub enum IncludeCodeActionAssists {
 }
 
 #[track_caller]
-pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: &str) {
+pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: Expect) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
         .set_experimental(true);
@@ -178,12 +179,10 @@ pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: &
 pub(crate) fn check_nth_fix(
     nth: usize,
     fixture_before: &str,
-    fixture_after: &str,
+    fixture_after: Expect,
     config: DiagnosticsConfig,
     include_assists: IncludeCodeActionAssists,
 ) {
-    let after = trim_indent(fixture_after);
-
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
 
     let diagnostics =
@@ -216,7 +215,7 @@ pub(crate) fn check_nth_fix(
         fix.target,
         pos.offset
     );
-    assert_eq_text!(&after, &actual);
+    fixture_after.assert_eq(&actual);
 }
 
 /// Takes a multi-file input fixture with annotated cursor positions,

@@ -196,6 +196,8 @@ fn as_expr_id(any_expre_id: hir::AnyExprId) -> Option<hir::ExprId> {
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -225,26 +227,26 @@ mod tests {
 
     #[test]
     fn test_fixes_list_ops() {
-        check_fix("f(X) -> []~ ++ X.", "f(X) -> X.");
-        check_fix("f(X) -> X ++ ~[].", "f(X) -> X.");
+        check_fix("f(X) -> []~ ++ X.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> X ++ ~[].", expect![["f(X) -> X."]]);
 
-        check_fix("f(X) -> []~ -- X.", "f(X) -> [].");
-        check_fix("f(X) -> X -- ~[].", "f(X) -> X.");
+        check_fix("f(X) -> []~ -- X.", expect![["f(X) -> []."]]);
+        check_fix("f(X) -> X -- ~[].", expect![["f(X) -> X."]]);
     }
 
     #[test]
     fn test_fixes_arith_ops() {
-        check_fix("f(X) -> 0~ + X.", "f(X) -> X.");
-        check_fix("f(X) -> X + ~0.", "f(X) -> X.");
+        check_fix("f(X) -> 0~ + X.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> X + ~0.", expect![["f(X) -> X."]]);
 
-        check_fix("f(X) -> 0~ - X.", "f(X) -> -X.");
-        check_fix("f(X) -> X - ~0.", "f(X) -> X.");
+        check_fix("f(X) -> 0~ - X.", expect![["f(X) -> -X."]]);
+        check_fix("f(X) -> X - ~0.", expect![["f(X) -> X."]]);
 
-        check_fix("f(X) -> 1~ * X.", "f(X) -> X.");
-        check_fix("f(X) -> X * ~1.", "f(X) -> X.");
+        check_fix("f(X) -> 1~ * X.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> X * ~1.", expect![["f(X) -> X."]]);
 
-        check_fix("f(X) -> X div ~1.", "f(X) -> X.");
-        check_fix("f(X) -> X rem ~1.", "f(X) -> 0.");
+        check_fix("f(X) -> X div ~1.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> X rem ~1.", expect![["f(X) -> 0."]]);
     }
 
     #[test]

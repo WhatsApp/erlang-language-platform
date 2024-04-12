@@ -307,6 +307,8 @@ fn make_diagnostic(
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -320,13 +322,13 @@ mod tests {
               X = ~42 = 42,
               ok.
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             do_foo() ->
               X = 42,
               ok.
-            "#,
+            "#]],
         );
         check_fix(
             r#"
@@ -336,13 +338,13 @@ mod tests {
               X = ~foo(bar),
               ok.
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             do_foo() ->
               foo(bar),
               ok.
-            "#,
+            "#]],
         )
     }
 

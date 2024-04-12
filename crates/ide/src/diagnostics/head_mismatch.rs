@@ -350,6 +350,9 @@ fn anonymous_fun_heads(fun: ast::AnonymousFun) -> Vec<HeadInfo> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+    use expect_test::Expect;
+
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
@@ -366,7 +369,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_fix(fixture_before: &str, fixture_after: &str) {
+    fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
@@ -398,11 +401,11 @@ mod tests {
     foo(0) -> 1;
     bo~o(1) -> 2.
             "#,
-            r#"
+            expect![[r#"
     -module(main).
     foo(0) -> 1;
     foo(1) -> 2.
-            "#,
+            "#]],
         );
     }
 
@@ -455,12 +458,12 @@ mod tests {
     boo(1) -> 2;
     boo(2) -> 3.
             "#,
-            r#"
+            expect![[r#"
     -module(main).
     boo(0) -> 1;
     boo(1) -> 2;
     boo(2) -> 3.
-            "#,
+            "#]],
         );
     }
 

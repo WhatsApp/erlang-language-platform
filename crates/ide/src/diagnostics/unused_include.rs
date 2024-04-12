@@ -229,6 +229,8 @@ lazy_static! {
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
@@ -617,12 +619,12 @@ foo() -> ok.
 //- /src/header.hrl
 -oncall("mary").
 "#,
-            r#"
+            expect![[r#"
 -module(main).
 
 foo() -> ok.
 
-"#,
+"#]],
         )
     }
 

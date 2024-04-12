@@ -73,6 +73,8 @@ pub fn unexported_type(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -112,13 +114,13 @@ mod tests {
                 %%             ^^^^^^^^^^^^^^ 💡 error: eqwalizer: unknown_id
                 baz() -> ok.
             "#,
-            r#"
-              -module(other).
+            expect![[r#"
+                    -module(other).
 
-          -export_type([a_type/0]).
-              -type a_type() :: ok.
+                -export_type([a_type/0]).
+                    -type a_type() :: ok.
 
-          "#,
+            "#]],
         )
     }
 }

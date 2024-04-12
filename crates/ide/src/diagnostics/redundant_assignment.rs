@@ -162,6 +162,8 @@ fn try_rename_usages(
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -177,7 +179,7 @@ mod tests {
               bar(Y),
               Y.
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             do_foo() ->
@@ -185,7 +187,7 @@ mod tests {
               X = X,
               bar(X),
               X.
-            "#,
+            "#]],
         )
     }
 

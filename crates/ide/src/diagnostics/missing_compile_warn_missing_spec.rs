@@ -153,12 +153,15 @@ fn report_diagnostic(
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+    use expect_test::Expect;
+
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
 
     #[track_caller]
-    pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
+    pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default();
         check_fix_with_config(config, fixture_before, fixture_after)
     }
@@ -332,12 +335,12 @@ mod tests {
          ~-module(main).
 
          %% a comment"#,
-            r#"
+            expect![[r#"
             -module(main).
 
             -compile([warn_missing_spec]).
 
-            %% a comment"#,
+            %% a comment"#]],
         );
     }
 
@@ -351,12 +354,12 @@ mod tests {
             -c~ompile([export_all, nowarn_export_all]).
 
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             -compile([export_all, nowarn_export_all, warn_missing_spec]).
 
-            "#,
+            "#]],
         );
     }
 
@@ -370,12 +373,12 @@ mod tests {
             -c~ompile(export_all).
 
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             -compile([export_all, warn_missing_spec]).
 
-            "#,
+            "#]],
         );
     }
 
@@ -389,12 +392,12 @@ mod tests {
             -c~ompile({foo, bar}).
 
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             -compile([{foo, bar}, warn_missing_spec]).
 
-            "#,
+            "#]],
         );
     }
 }

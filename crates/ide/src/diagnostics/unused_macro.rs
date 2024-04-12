@@ -107,6 +107,8 @@ fn delete_unused_macro(file_id: FileId, range: TextRange, name: &str) -> Assist 
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
@@ -132,9 +134,9 @@ mod tests {
 -module(main).
 -define(MEA~NING_OF_LIFE, 42).
             "#,
-            r#"
+            expect![[r#"
 -module(main).
-            "#,
+            "#]],
         )
     }
 

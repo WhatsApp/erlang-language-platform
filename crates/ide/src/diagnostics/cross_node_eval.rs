@@ -99,6 +99,9 @@ fn process_badmatches(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+    use expect_test::Expect;
+
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
@@ -113,7 +116,7 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn check_fix(fixture_before: &str, fixture_after: &str) {
+    pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
         check_fix_with_config(config, fixture_before, fixture_after)
     }
@@ -437,14 +440,14 @@ mod tests {
             %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
-            r#"
+            expect![[r#"
             -module(main).
 
             foo(Name, FuncSpec) ->
                 % elp:ignore W0014 (cross_node_eval)
                 sys:install(Name, FuncSpec).
 
-            "#,
+            "#]],
         )
     }
 }

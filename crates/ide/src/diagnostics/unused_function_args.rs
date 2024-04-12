@@ -194,6 +194,8 @@ fn make_diagnostic(file_id: FileId, range: TextRange, new_name: String) -> Diagn
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -242,14 +244,14 @@ mod tests {
                       _SomethingElseUnused -> do_something_else(_AlsoUsed)
                     end.
                 "#,
-            r#"
+            expect![[r#"
                 -module(main).
                 do_something(_Unused, Used, _AlsoUsed, _UnusedButOk) ->
                     case Used of
                       undefined -> ok;
                       _SomethingElseUnused -> do_something_else(_AlsoUsed)
                     end.
-                "#,
+                "#]],
         );
     }
 
@@ -264,14 +266,14 @@ mod tests {
                       _Unused -> do_something_else(_AlsoUsed)
                     end.
                 "#,
-            r#"
+            expect![[r#"
                 -module(main).
                 do_something(__Unused, Used, _AlsoUsed, _UnusedButOk) ->
                     case Used of
                       undefined -> ok;
                       _Unused -> do_something_else(_AlsoUsed)
                     end.
-                "#,
+                "#]],
         );
     }
 

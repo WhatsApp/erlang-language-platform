@@ -236,6 +236,8 @@ fn fix_xref_ignore(
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
 
@@ -330,13 +332,13 @@ not_ok_to_use() ->
 main() ->
   b:no~t_ok_to_use().
 "#,
-            r#"
+            expect![[r#"
 -module(a).
 -ignore_xref([{b, not_ok_to_use, 0}]).
 
 main() ->
   b:not_ok_to_use().
-"#,
+"#]],
         )
     }
 }
