@@ -78,11 +78,6 @@ impl DeprecationDetails {
         self.message = message;
         self
     }
-
-    pub fn with_severity(mut self, severity: Severity) -> Self {
-        self.severity = severity;
-        self
-    }
 }
 
 fn deprecated_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
