@@ -50,33 +50,31 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
-        if def.file.file_id == file_id {
-            let source_file = sema.parse(file_id);
+    sema.for_each_function(file_id, |def| {
+        let source_file = sema.parse(file_id);
 
-            let def_fb = def.in_function_body(sema, def);
-            def_fb.fold_function(
-                Strategy::InvisibleMacros,
-                (),
-                &mut |_acc, clause_id, ctx| {
-                    if let AnyExprId::Expr(expr_id) = ctx.item_id {
-                        let body_map = def_fb.get_body_map(clause_id);
-                        let in_clause = def_fb.in_clause(clause_id);
-                        if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
-                            if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
-                                if is_statement(&expr_ast)
-                                    && !is_macro_usage(&expr_ast)
-                                    && has_no_effect(in_clause, &expr_id)
-                                    && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
-                                {
-                                    diags.push(make_diagnostic(file_id, &expr_ast));
-                                }
+        let def_fb = def.in_function_body(sema, def);
+        def_fb.fold_function(
+            Strategy::InvisibleMacros,
+            (),
+            &mut |_acc, clause_id, ctx| {
+                if let AnyExprId::Expr(expr_id) = ctx.item_id {
+                    let body_map = def_fb.get_body_map(clause_id);
+                    let in_clause = def_fb.in_clause(clause_id);
+                    if let Some(in_file_ast_ptr) = body_map.expr(expr_id) {
+                        if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
+                            if is_statement(&expr_ast)
+                                && !is_macro_usage(&expr_ast)
+                                && has_no_effect(in_clause, &expr_id)
+                                && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
+                            {
+                                diags.push(make_diagnostic(file_id, &expr_ast));
                             }
                         }
                     }
-                },
-            );
-        }
+                }
+            },
+        );
     });
 }
 

@@ -101,10 +101,8 @@ fn deprecated_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_
         .iter()
         .map(|(m, d)| (m, d.clone()))
         .collect::<Vec<_>>();
-    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
-        if def.file.file_id == file_id {
-            check_function(diagnostics, sema, def, &matches)
-        }
+    sema.for_each_function(file_id, |def| {
+        check_function(diagnostics, sema, def, &matches)
     });
 }
 

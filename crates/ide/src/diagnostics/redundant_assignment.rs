@@ -55,11 +55,7 @@ fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
         // No point asking for changes to generated files
         return;
     }
-    sema.def_map(file_id).get_functions().for_each(|(_, def)| {
-        if def.file.file_id == file_id {
-            process_matches(diags, sema, def)
-        }
-    });
+    sema.for_each_function(file_id, |def| process_matches(diags, sema, def));
 }
 
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {

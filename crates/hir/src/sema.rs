@@ -944,6 +944,17 @@ impl<'db> Semantic<'db> {
             _ => false,
         }
     }
+
+    pub fn for_each_function<F>(&self, file_id: FileId, mut f: F)
+    where
+        F: FnMut(&FunctionDef),
+    {
+        self.def_map(file_id).get_functions().for_each(|(_, def)| {
+            if def.file.file_id == file_id {
+                f(def)
+            }
+        });
+    }
 }
 
 pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
