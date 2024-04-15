@@ -192,20 +192,9 @@ fn replace_call(
             Some(edit_builder.finish())
         }
         Replacement::Invocation { replacement } => {
-            let range: TextRange = match target {
-                CallTarget::Local { name } => in_clause
-                    .range_for_expr(name.to_owned())
-                    .expect("name in local call not found in function body."),
-                CallTarget::Remote { module, name } => {
-                    let range_module = in_clause
-                        .range_for_expr(module.to_owned())
-                        .expect("module in remote call not found in function body.");
-                    let range_name = in_clause
-                        .range_for_expr(name.to_owned())
-                        .expect("name in remote call not found in function body.");
-                    TextRange::new(range_module.start(), range_name.end())
-                }
-            };
+            let range = target
+                .range(in_clause)
+                .expect("Cannot extract range for invocation");
             edit_builder.replace(range, replacement.to_owned());
             Some(edit_builder.finish())
         }

@@ -14,6 +14,7 @@ pub use elp_syntax::ast::BinaryOp;
 pub use elp_syntax::ast::MapOp;
 pub use elp_syntax::ast::UnaryOp;
 use elp_syntax::SmolStr;
+use elp_syntax::TextRange;
 use la_arena::Idx;
 
 use crate::sema;
@@ -472,6 +473,17 @@ impl CallTarget<ExprId> {
             CallTarget::Remote { module, name } => {
                 sema.is_atom_named(&in_clause[*module], module_name)
                     && sema.is_atom_named(&in_clause[*name], fun_name)
+            }
+        }
+    }
+
+    pub fn range(&self, in_clause: &InFunctionClauseBody<&FunctionDef>) -> Option<TextRange> {
+        match self {
+            CallTarget::Local { name } => in_clause.range_for_expr(*name),
+            CallTarget::Remote { module, name } => {
+                let module_range = in_clause.range_for_expr(*module)?;
+                let name_range = in_clause.range_for_expr(*name)?;
+                Some(module_range.cover(name_range))
             }
         }
     }
