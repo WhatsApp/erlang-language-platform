@@ -249,6 +249,7 @@ pub mod known {
         ok,
         parse_transform,
         server,
+        string,
         thrift_parser,
         thrift_scanner,
         undefined,
