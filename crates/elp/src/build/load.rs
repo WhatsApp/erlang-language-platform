@@ -176,6 +176,9 @@ fn load_database(
 
     let project_id = ProjectId(0);
     db.ensure_erlang_service(project_id)?;
+    if let Some(otp_project_id) = project_apps.otp_project_id {
+        db.ensure_erlang_service(otp_project_id)?;
+    }
     let changes = vfs.take_changes();
     for file in changes {
         if file.exists() {

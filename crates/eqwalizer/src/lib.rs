@@ -46,7 +46,7 @@ use crate::ipc::EqWAlizerASTFormat;
 pub mod analyses;
 pub mod ast;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Mode {
     Cli,
     Server,

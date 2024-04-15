@@ -63,7 +63,8 @@ use crate::reporting;
 pub fn lint_all(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let mut loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let mut loaded =
+        load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Server)?;
 
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
