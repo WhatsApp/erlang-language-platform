@@ -326,6 +326,8 @@ pub enum Command {
 pub struct Args {
     #[bpaf(argument("LOG_FILE"))]
     pub log_file: Option<PathBuf>,
+    #[bpaf(argument("ERL"))]
+    pub erl: Option<PathBuf>,
     pub no_log_buffering: bool,
     #[bpaf(external(command))]
     pub command: Command,

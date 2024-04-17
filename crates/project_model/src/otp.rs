@@ -11,10 +11,12 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::RwLock;
 
 use anyhow::bail;
 use anyhow::Result;
 use elp_log::timeit;
+use lazy_static::lazy_static;
 use paths::AbsPathBuf;
 
 use crate::ProjectAppData;
@@ -24,10 +26,15 @@ pub struct Otp {
     pub lib_dir: AbsPathBuf,
 }
 
+lazy_static! {
+    pub static ref ERL: RwLock<String> = RwLock::new("erl".to_string());
+}
+
 impl Otp {
     pub fn find_otp() -> Result<PathBuf> {
         let _timer = timeit!("find otp");
-        let output = Command::new("erl")
+        let erl = ERL.read().unwrap();
+        let output = Command::new(&*erl)
             .arg("-noshell")
             .arg("-eval")
             .arg("io:format('~s', [code:root_dir()])")

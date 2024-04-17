@@ -23,6 +23,7 @@ use elp_log::timeit;
 use elp_log::FileLogger;
 use elp_log::Logger;
 use elp_project_model::eqwalizer_support;
+use elp_project_model::otp::ERL;
 use include_dir::include_dir;
 use include_dir::Dir;
 use lsp_server::Connection;
@@ -75,12 +76,24 @@ fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
     }
 }
 
-fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
-    let logger = setup_logging(args.log_file, args.no_log_buffering)?;
+fn setup_static(args: &Args) {
     if let Err(err) = eqwalizer_support::setup_eqwalizer_support(&EQWALIZER_SUPPORT_DIR) {
         log::warn!("Failed to setup eqwalizer_support: {}", err);
     }
-    INIT.call_once(setup_thread_pool);
+    if let Some(erl) = &args.erl {
+        let path = fs::canonicalize(erl).expect("erl path should be valid");
+        let mut erl = ERL.write().unwrap();
+        *erl = path.to_string_lossy().to_string();
+    }
+}
+
+fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
+    let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
+
+    INIT.call_once(|| {
+        setup_static(&args);
+        setup_thread_pool();
+    });
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli)?,
@@ -113,7 +126,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     Ok(())
 }
 
-fn setup_logging(log_file: Option<PathBuf>, no_buffering: bool) -> Result<Logger> {
+fn setup_logging(log_file: &Option<PathBuf>, no_buffering: bool) -> Result<Logger> {
     env::set_var("RUST_BACKTRACE", "short");
 
     let log_file = match log_file {

@@ -1,7 +1,8 @@
-Usage: [--log-file LOG_FILE] [--no-log-buffering] [COMMAND ...]
+Usage: [--log-file LOG_FILE] [--erl ERL] [--no-log-buffering] [COMMAND ...]
 
 Available options:
         --log-file <LOG_FILE>
+        --erl <ERL>
         --no-log-buffering
     -h, --help                 Prints help information
 
