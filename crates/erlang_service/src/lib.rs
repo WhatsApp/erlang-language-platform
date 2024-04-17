@@ -19,6 +19,7 @@ use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::Duration;
 
 use anyhow::anyhow;
@@ -45,6 +46,10 @@ use tempfile::TempPath;
 use text_size::TextRange;
 
 pub mod common_test;
+
+lazy_static! {
+    pub static ref ESCRIPT: RwLock<String> = RwLock::new("escript".to_string());
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DiagnosticLocation {
@@ -324,7 +329,9 @@ impl Connection {
         let mut escript = Builder::new().prefix("erlang_service").tempfile()?;
         escript.write_all(escript_src)?;
 
-        let mut cmd = Command::new("escript");
+        let escript_bin = ESCRIPT.read().unwrap();
+
+        let mut cmd = Command::new(&*escript_bin);
         cmd.arg(escript.path());
 
         cmd.stdin(Stdio::piped())

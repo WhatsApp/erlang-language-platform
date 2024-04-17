@@ -19,6 +19,7 @@ use bpaf::batteries;
 use elp::cli;
 use elp::cli::Cli;
 use elp::ServerSetup;
+use elp_ide::erlang_service::ESCRIPT;
 use elp_log::timeit;
 use elp_log::FileLogger;
 use elp_log::Logger;
@@ -84,6 +85,12 @@ fn setup_static(args: &Args) {
         let path = fs::canonicalize(erl).expect("erl path should be valid");
         let mut erl = ERL.write().unwrap();
         *erl = path.to_string_lossy().to_string();
+    }
+
+    if let Some(escript) = &args.escript {
+        let path = fs::canonicalize(escript).expect("escript path should be valid");
+        let mut escript = ESCRIPT.write().unwrap();
+        *escript = path.to_string_lossy().to_string();
     }
 }
 

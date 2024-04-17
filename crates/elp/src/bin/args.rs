@@ -328,6 +328,8 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     #[bpaf(argument("ERL"))]
     pub erl: Option<PathBuf>,
+    #[bpaf(argument("ESCRIPT"))]
+    pub escript: Option<PathBuf>,
     pub no_log_buffering: bool,
     #[bpaf(external(command))]
     pub command: Command,
