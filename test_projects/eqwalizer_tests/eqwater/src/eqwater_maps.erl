@@ -48,3 +48,9 @@ add_optional(Foo = #{required := _R1}, Optional) ->
   Foo#{optional => Optional};
 add_optional(Z, _) ->
   Z.
+
+-spec map_occ_08_neg
+    (#{dynamic() => dynamic()} | #{c => integer()})
+    -> err.
+map_occ_08_neg(#{a := _} = M) -> M;
+map_occ_08_neg(_) -> err.
