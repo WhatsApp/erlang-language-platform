@@ -102,7 +102,7 @@ mod progress;
 pub mod setup;
 
 const LOGGER_NAME: &str = "lsp";
-const PARSE_SERVER_SUPPORTED_EXTENSIONS: &[FileKind] = &[
+const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
     FileKind::SrcModule,
     FileKind::TestModule,
     FileKind::Header,
@@ -231,6 +231,7 @@ pub struct Server {
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
     compile_options: Vec<CompileOption>,
+    report_otp_diagnostics: bool,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -282,6 +283,7 @@ impl Server {
             vfs_config_version: 0,
             include_generated: true,
             compile_options: vec![],
+            report_otp_diagnostics: false,
         };
 
         // Run config-based initialisation
@@ -874,8 +876,12 @@ impl Server {
         let opened_documents = self.opened_documents();
         let snapshot = self.snapshot();
 
+        let supported_opened_documents: Vec<FileId> = opened_documents
+            .into_iter()
+            .filter(|file_id| self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+            .collect();
         self.task_pool.handle.spawn(move || {
-            let diagnostics = opened_documents
+            let diagnostics = supported_opened_documents
                 .into_iter()
                 .filter_map(|file_id| Some((file_id, snapshot.native_diagnostics(file_id)?)))
                 .collect();
@@ -902,8 +908,12 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EqWAlizing".to_string());
 
+        let supported_opened_documents: Vec<FileId> = opened_documents
+            .into_iter()
+            .filter(|file_id| self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+            .collect();
         self.task_pool.handle.spawn(move || {
-            let diagnostics = opened_documents
+            let diagnostics = supported_opened_documents
                 .into_iter()
                 .filter_map(|file_id| Some((file_id, snapshot.eqwalizer_diagnostics(file_id)?)))
                 .collect();
@@ -962,7 +972,10 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| is_supported_by_edoc(&snapshot.analysis, *file_id))
+            .filter(|file_id| {
+                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                    && is_supported_by_edoc(&snapshot.analysis, *file_id)
+            })
             .collect();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -989,7 +1002,10 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| is_supported_by_ct(&snapshot.analysis, *file_id))
+            .filter(|file_id| {
+                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                    && is_supported_by_ct(&snapshot.analysis, *file_id)
+            })
             .collect();
         let config = DiagnosticsConfig::default();
         self.task_pool.handle.spawn(move || {
@@ -1043,7 +1059,10 @@ impl Server {
         let snapshot = self.snapshot();
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| is_supported_by_parse_server(&snapshot.analysis, *file_id))
+            .filter(|file_id| {
+                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                    && is_supported_by_erlang_service(&snapshot.analysis, *file_id)
+            })
             .collect();
         let diagnostics_config = DiagnosticsConfig::default()
             .set_include_generated(self.include_generated)
@@ -1642,9 +1661,16 @@ pub fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
     convert::url_from_abs_path(path)
 }
 
-pub fn is_supported_by_parse_server(analysis: &Analysis, id: FileId) -> bool {
+pub fn is_otp(analysis: &Analysis, id: FileId) -> bool {
+    match analysis.is_otp(id) {
+        Ok(is_otp) => Some(true) == is_otp,
+        Err(_) => false,
+    }
+}
+
+pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {
     match analysis.file_kind(id) {
-        Ok(kind) => PARSE_SERVER_SUPPORTED_EXTENSIONS.contains(&kind),
+        Ok(kind) => ERLANG_SERVICE_SUPPORTED_EXTENSIONS.contains(&kind),
         Err(_) => false,
     }
 }

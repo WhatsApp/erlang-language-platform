@@ -161,6 +161,8 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
 
     fn is_generated(&self, file_id: FileId) -> bool;
 
+    fn is_otp(&self, file_id: FileId) -> Option<bool>;
+
     fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool>;
 
     fn file_app_type(&self, file_id: FileId) -> Option<AppType>;
@@ -214,6 +216,13 @@ fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {
 fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
     let contents = db.file_text(file_id);
     contents[0..(2001.min(contents.len()))].contains(&format!("{}generated", "@"))
+}
+
+fn is_otp(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
+    let root_id = db.file_source_root(file_id);
+    let app_data = db.app_data(root_id)?;
+    let project_id = app_data.project_id;
+    Some(db.project_data(project_id).otp_project_id == Some(project_id))
 }
 
 fn is_test_suite_or_test_helper(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {

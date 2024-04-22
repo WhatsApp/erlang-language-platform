@@ -508,6 +508,10 @@ impl Analysis {
         self.with_db(|db| db.is_test_suite_or_test_helper(file_id))
     }
 
+    pub fn is_otp(&self, file_id: FileId) -> Cancellable<Option<bool>> {
+        self.with_db(|db| db.is_otp(file_id))
+    }
+
     /// Search symbols. Only module names are currently supported.
     pub fn symbol_search(
         &self,
