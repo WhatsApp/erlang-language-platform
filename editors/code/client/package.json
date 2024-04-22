@@ -1,6 +1,6 @@
 {
 	"name": "erlang-language-platform",
-    "description": "Erlang language server, using Erlang Language Platform",
+	"description": "Erlang language server, using Erlang Language Platform",
 	"author": "Meta Platforms, Inc",
 	"license": "MIT",
 	"version": "0.0.1",

@@ -19,7 +19,7 @@ import {
 
 let client: LanguageClient;
 
-export const ELP = 'elp';
+export const ELP = 'elpClient';
 
 export function activate(context: ExtensionContext) {
 
