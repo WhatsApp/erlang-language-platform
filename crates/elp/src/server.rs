@@ -874,16 +874,14 @@ impl Server {
         let opened_documents = self.opened_documents();
         let snapshot = self.snapshot();
 
-        let supported_opened_documents: Vec<FileId> = opened_documents
-            .into_iter()
-            .filter(|file_id| {
-                self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id)
-            })
-            .collect();
+        let config =
+            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
         self.task_pool.handle.spawn(move || {
-            let diagnostics = supported_opened_documents
+            let diagnostics = opened_documents
                 .into_iter()
-                .filter_map(|file_id| Some((file_id, snapshot.native_diagnostics(file_id)?)))
+                .filter_map(|file_id| {
+                    Some((file_id, snapshot.native_diagnostics(file_id, &config)?))
+                })
                 .collect();
 
             Task::NativeDiagnostics(diagnostics)
@@ -908,16 +906,14 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EqWAlizing".to_string());
 
-        let supported_opened_documents: Vec<FileId> = opened_documents
-            .into_iter()
-            .filter(|file_id| {
-                self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id)
-            })
-            .collect();
+        let config =
+            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
         self.task_pool.handle.spawn(move || {
-            let diagnostics = supported_opened_documents
+            let diagnostics = opened_documents
                 .into_iter()
-                .filter_map(|file_id| Some((file_id, snapshot.eqwalizer_diagnostics(file_id)?)))
+                .filter_map(|file_id| {
+                    Some((file_id, snapshot.eqwalizer_diagnostics(file_id, &config)?))
+                })
                 .collect();
 
             Task::EqwalizerDiagnostics(spinner, diagnostics)
@@ -974,15 +970,14 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| {
-                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
-                    && is_supported_by_edoc(&snapshot.analysis, *file_id)
-            })
+            .filter(|file_id| is_supported_by_edoc(&snapshot.analysis, *file_id))
             .collect();
+        let config =
+            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
                 .into_iter()
-                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id))
+                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, &config))
                 .flatten()
                 .collect();
 
@@ -1004,10 +999,7 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| {
-                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
-                    && is_supported_by_ct(&snapshot.analysis, *file_id)
-            })
+            .filter(|file_id| is_supported_by_ct(&snapshot.analysis, *file_id))
             .collect();
         let config = DiagnosticsConfig::default();
         self.task_pool.handle.spawn(move || {
@@ -1061,13 +1053,11 @@ impl Server {
         let snapshot = self.snapshot();
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| {
-                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
-                    && is_supported_by_erlang_service(&snapshot.analysis, *file_id)
-            })
+            .filter(|file_id| is_supported_by_erlang_service(&snapshot.analysis, *file_id))
             .collect();
         let diagnostics_config = DiagnosticsConfig::default()
             .set_include_generated(self.include_generated)
+            .set_include_otp(self.config.enable_otp_diagnostics())
             .set_compile_options(self.compile_options.clone());
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -1661,13 +1651,6 @@ pub fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
     convert::url_from_abs_path(path)
-}
-
-pub fn is_otp(analysis: &Analysis, id: FileId) -> bool {
-    match analysis.is_otp(id) {
-        Ok(is_otp) => Some(true) == is_otp,
-        Err(_) => false,
-    }
 }
 
 pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {

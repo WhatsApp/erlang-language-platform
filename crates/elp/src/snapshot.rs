@@ -188,7 +188,15 @@ impl Snapshot {
         Ok(())
     }
 
-    pub fn native_diagnostics(&self, file_id: FileId) -> Option<LabeledDiagnostics> {
+    pub fn native_diagnostics(
+        &self,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Option<LabeledDiagnostics> {
+        if !config.include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
@@ -197,7 +205,15 @@ impl Snapshot {
             .ok()
     }
 
-    pub fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<diagnostics::Diagnostic>> {
+    pub fn eqwalizer_diagnostics(
+        &self,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Option<Vec<diagnostics::Diagnostic>> {
+        if !config.include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
         self.analysis
@@ -249,7 +265,12 @@ impl Snapshot {
     pub fn edoc_diagnostics(
         &self,
         file_id: FileId,
+        config: &DiagnosticsConfig,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
+        if !config.include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics {
             file_url: file_url.clone()
@@ -270,6 +291,10 @@ impl Snapshot {
         file_id: FileId,
         config: &DiagnosticsConfig,
     ) -> Option<Vec<diagnostics::Diagnostic>> {
+        if !config.include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::CommonTestDiagnostics {
             file_url: file_url.clone()
@@ -283,6 +308,10 @@ impl Snapshot {
         file_id: FileId,
         config: &DiagnosticsConfig,
     ) -> Option<Vec<(FileId, LabeledDiagnostics)>> {
+        if !config.include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
             file_url: file_url.clone()
@@ -326,6 +355,13 @@ impl Snapshot {
         match project_data {
             Ok(Some(project_data)) => project_data.root_dir.clone(),
             _ => self.config.root_path.clone(),
+        }
+    }
+
+    fn is_otp(&self, file_id: FileId) -> bool {
+        match self.analysis.is_otp(file_id) {
+            Ok(is_otp) => Some(true) == is_otp,
+            Err(_) => false,
         }
     }
 }

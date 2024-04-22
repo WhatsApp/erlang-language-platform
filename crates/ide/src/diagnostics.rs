@@ -402,7 +402,7 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
-    pub fn set_otp(mut self, value: bool) -> DiagnosticsConfig<'a> {
+    pub fn set_include_otp(mut self, value: bool) -> DiagnosticsConfig<'a> {
         self.include_otp = value;
         self
     }

@@ -225,7 +225,7 @@ impl Config {
         let mut config = DiagnosticsConfig::default()
             .from_config(&lints_from_config)
             .set_experimental(self.data.diagnostics_enableExperimental)
-            .set_otp(self.data.diagnostics_enableOtp);
+            .set_include_otp(self.data.diagnostics_enableOtp);
         for code in self
             .data
             .diagnostics_disabled
