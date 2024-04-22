@@ -230,6 +230,27 @@ mod tests {
     }
 
     #[test]
+    fn module_macro() {
+        // https://github.com/WhatsApp/erlang-language-platform/issues/23
+        check_diagnostics(
+            r#"
+            //- /src/elp_w0017.erl
+            -module(elp_w0017).
+            -export([loop/0]).
+
+            loop() ->
+              timer:sleep(1000),
+              ?MODULE:loop().
+
+            //- /src/timer.erl
+            -module(timer).
+            -export([sleep/1]).
+            sleep(X) -> X.
+            "#,
+        )
+    }
+
+    #[test]
     fn test_ignore_fix() {
         check_fix(
             r#"
