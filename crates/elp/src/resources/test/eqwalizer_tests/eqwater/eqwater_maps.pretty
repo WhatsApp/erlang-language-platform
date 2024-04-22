@@ -59,4 +59,14 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 +    c := ...
   }
 
-3 ERRORS
+error: incompatible_types
+   ┌─ eqwater/src/eqwater_maps.erl:55:34
+   │
+55 │ map_occ_08_neg(#{a := _} = M) -> M;
+   │                                  ^ M.
+Expression has type:   #D{dynamic() => dynamic()}
+Context expected type: 'err'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+4 ERRORS
