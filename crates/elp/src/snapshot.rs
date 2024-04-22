@@ -21,6 +21,7 @@ use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
@@ -267,6 +268,11 @@ impl Snapshot {
         file_id: FileId,
         config: &DiagnosticsConfig,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
+        let file_kind = self.analysis.file_kind(file_id).ok()?;
+        if file_kind != FileKind::SrcModule && file_kind != FileKind::TestModule {
+            return None;
+        }
+
         if !config.include_otp && self.is_otp(file_id) {
             return None;
         }
@@ -291,6 +297,11 @@ impl Snapshot {
         file_id: FileId,
         config: &DiagnosticsConfig,
     ) -> Option<Vec<diagnostics::Diagnostic>> {
+        let file_kind = self.analysis.file_kind(file_id).ok()?;
+        if file_kind != FileKind::TestModule {
+            return None;
+        }
+
         if !config.include_otp && self.is_otp(file_id) {
             return None;
         }

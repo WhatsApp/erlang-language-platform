@@ -108,8 +108,6 @@ const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
     FileKind::Header,
     FileKind::Escript,
 ];
-const EDOC_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::SrcModule, FileKind::TestModule];
-const CT_SUPPORTED_EXTENSIONS: &[FileKind] = &[FileKind::TestModule];
 const SLOW_DURATION: Duration = Duration::from_millis(300);
 
 enum Event {
@@ -968,14 +966,10 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EDoc".to_string());
 
-        let supported_opened_documents: Vec<FileId> = opened_documents
-            .into_iter()
-            .filter(|file_id| is_supported_by_edoc(&snapshot.analysis, *file_id))
-            .collect();
         let config =
             DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
         self.task_pool.handle.spawn(move || {
-            let diagnostics = supported_opened_documents
+            let diagnostics = opened_documents
                 .into_iter()
                 .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, &config))
                 .flatten()
@@ -997,13 +991,9 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("Common Test".to_string());
 
-        let supported_opened_documents: Vec<FileId> = opened_documents
-            .into_iter()
-            .filter(|file_id| is_supported_by_ct(&snapshot.analysis, *file_id))
-            .collect();
         let config = DiagnosticsConfig::default();
         self.task_pool.handle.spawn(move || {
-            let diagnostics = supported_opened_documents
+            let diagnostics = opened_documents
                 .into_iter()
                 .filter_map(|file_id| Some((file_id, snapshot.ct_diagnostics(file_id, &config)?)))
                 .collect();
@@ -1656,20 +1646,6 @@ pub fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
 pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {
     match analysis.file_kind(id) {
         Ok(kind) => ERLANG_SERVICE_SUPPORTED_EXTENSIONS.contains(&kind),
-        Err(_) => false,
-    }
-}
-
-pub fn is_supported_by_edoc(analysis: &Analysis, id: FileId) -> bool {
-    match analysis.file_kind(id) {
-        Ok(kind) => EDOC_SUPPORTED_EXTENSIONS.contains(&kind),
-        Err(_) => false,
-    }
-}
-
-pub fn is_supported_by_ct(analysis: &Analysis, id: FileId) -> bool {
-    match analysis.file_kind(id) {
-        Ok(kind) => CT_SUPPORTED_EXTENSIONS.contains(&kind),
         Err(_) => false,
     }
 }
