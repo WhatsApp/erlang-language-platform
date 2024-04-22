@@ -231,7 +231,6 @@ pub struct Server {
     ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
     compile_options: Vec<CompileOption>,
-    report_otp_diagnostics: bool,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -283,7 +282,6 @@ impl Server {
             vfs_config_version: 0,
             include_generated: true,
             compile_options: vec![],
-            report_otp_diagnostics: false,
         };
 
         // Run config-based initialisation
@@ -878,7 +876,9 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+            .filter(|file_id| {
+                self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id)
+            })
             .collect();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -910,7 +910,9 @@ impl Server {
 
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
-            .filter(|file_id| self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+            .filter(|file_id| {
+                self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id)
+            })
             .collect();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
@@ -973,7 +975,7 @@ impl Server {
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
             .filter(|file_id| {
-                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
                     && is_supported_by_edoc(&snapshot.analysis, *file_id)
             })
             .collect();
@@ -1003,7 +1005,7 @@ impl Server {
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
             .filter(|file_id| {
-                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
                     && is_supported_by_ct(&snapshot.analysis, *file_id)
             })
             .collect();
@@ -1060,7 +1062,7 @@ impl Server {
         let supported_opened_documents: Vec<FileId> = opened_documents
             .into_iter()
             .filter(|file_id| {
-                (self.report_otp_diagnostics || !is_otp(&snapshot.analysis, *file_id))
+                (self.config.enable_otp_diagnostics() || !is_otp(&snapshot.analysis, *file_id))
                     && is_supported_by_erlang_service(&snapshot.analysis, *file_id)
             })
             .collect();

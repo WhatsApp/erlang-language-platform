@@ -392,12 +392,18 @@ pub struct DiagnosticsConfig<'a> {
     pub lints_from_config: Arc<LintsFromConfig>,
     pub include_generated: bool,
     pub include_suppressed: bool,
+    pub include_otp: bool,
     pub compile_options: Vec<CompileOption>,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
     pub fn set_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
         self.experimental = value;
+        self
+    }
+
+    pub fn set_otp(mut self, value: bool) -> DiagnosticsConfig<'a> {
+        self.include_otp = value;
         self
     }
 

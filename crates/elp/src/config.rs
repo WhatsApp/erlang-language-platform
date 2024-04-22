@@ -38,6 +38,8 @@ config_data! {
       /// Whether to show experimental ELP diagnostics that might
       /// have more false positives than usual.
       diagnostics_enableExperimental: bool = json! { false },
+      /// Whether to report diagnostics for OTP files.
+      diagnostics_enableOtp: bool = json! { false },
       /// List of ELP diagnostics to disable.
       diagnostics_disabled: FxHashSet<String> = json! { [] },
       /// Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.
@@ -214,11 +216,16 @@ impl Config {
         self.data.diagnostics_enableExperimental
     }
 
+    pub fn enable_otp_diagnostics(&self) -> bool {
+        self.data.diagnostics_enableOtp
+    }
+
     pub fn diagnostics(&self, lints_from_config: Arc<LintsFromConfig>) -> DiagnosticsConfig {
         // Look up disabled diagnostics using both label and code.
         let mut config = DiagnosticsConfig::default()
             .from_config(&lints_from_config)
-            .set_experimental(self.data.diagnostics_enableExperimental);
+            .set_experimental(self.data.diagnostics_enableExperimental)
+            .set_otp(self.data.diagnostics_enableOtp);
         for code in self
             .data
             .diagnostics_disabled
@@ -492,7 +499,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.eqwalizer.all":{"default":false,"markdownDescription":"WhethertoreportEqwalizerdiagnosticsforthewholeprojectandnotonlyforopenedfiles.","type":"boolean"},"elp.eqwalizer.chunkSize":{"default":100,"markdownDescription":"Chunksizetouseforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.eqwalizer.maxTasks":{"default":32,"markdownDescription":"Maximumnumberoftaskstoruninparallelforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":false,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
+        expect![[r#""elp.ai.enable":{"default":false,"markdownDescription":"EnablesupportforAI-basedcompletions.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.eqwalizer.all":{"default":false,"markdownDescription":"WhethertoreportEqwalizerdiagnosticsforthewholeprojectandnotonlyforopenedfiles.","type":"boolean"},"elp.eqwalizer.chunkSize":{"default":100,"markdownDescription":"Chunksizetouseforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.eqwalizer.maxTasks":{"default":32,"markdownDescription":"Maximumnumberoftaskstoruninparallelforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype'docs'.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":false,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -513,6 +520,11 @@ mod tests {
             "elp.diagnostics.enableExperimental": {
               "default": false,
               "markdownDescription": "Whether to show experimental ELP diagnostics that might\nhave more false positives than usual.",
+              "type": "boolean"
+            },
+            "elp.diagnostics.enableOtp": {
+              "default": false,
+              "markdownDescription": "Whether to report diagnostics for OTP files.",
               "type": "boolean"
             },
             "elp.eqwalizer.all": {

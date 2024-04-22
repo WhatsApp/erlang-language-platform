@@ -18,6 +18,11 @@
     "markdownDescription": "Whether to show experimental ELP diagnostics that might\nhave more false positives than usual.",
     "type": "boolean"
   },
+  "elp.diagnostics.enableOtp": {
+    "default": false,
+    "markdownDescription": "Whether to report diagnostics for OTP files.",
+    "type": "boolean"
+  },
   "elp.eqwalizer.all": {
     "default": false,
     "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
