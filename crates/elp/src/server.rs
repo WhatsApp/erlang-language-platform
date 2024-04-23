@@ -75,6 +75,7 @@ use lsp_types::ShowMessageParams;
 use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
+use parking_lot::RwLockWriteGuard;
 
 use self::dispatch::RequestDispatcher;
 use self::progress::ProgressBar;
@@ -791,29 +792,50 @@ impl Server {
     }
 
     fn process_changes_to_vfs_store(&mut self) -> bool {
-        let changed_files = {
-            // Don't hold write lock, while modifying db - this can lead to deadlocks!
-            let mut vfs = self.vfs.write();
-            let mut changed_files = vfs.take_changes();
-            // Note: the append operations clears out self.newly_opened_documents too
-            changed_files.append(&mut self.newly_opened_documents);
-            changed_files
-        };
+        // We need to guard against a file being created/modified and
+        // then deleted within a change processing cycle. This is
+        // problematic because the task generating the vfs changes
+        // reported in `vfs.take_changes()` immediately updates the
+        // file contents, setting it to None for a delete. When we are
+        // processing an earlier change, the underlying vfs has
+        // already deleted it, and we will get a panic trying to call
+        // `vfs.file_contents()` for it.
+        // The protection takes two forms
+        // 1. Make sure we lock vfs for the duration of processing the
+        //    changes, so we are not victim of a delete we have not yet
+        //    been notified of.
+        // 2. Make sure that the file actually has content when we try
+        //    to process it.
+
+        let mut guard = self.vfs.write();
+        let mut changed_files = guard.take_changes();
+        // Note: the append operations clears out self.newly_opened_documents too
+        changed_files.append(&mut self.newly_opened_documents);
 
         if changed_files.is_empty() {
             return false;
         }
+
+        // downgrade to read lock to allow more readers while we are processing the changes
+        let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
+        let vfs: &Vfs = &guard;
+
+        let raw_database = self.analysis_host.raw_database_mut();
 
         // The writes to salsa as these changes are applied below will
         // trigger Cancellation any pending processing.  This makes
         // sure all calculations see a consistent view of the
         // database.
 
-        let vfs = self.vfs.read();
-        let raw_database = self.analysis_host.raw_database_mut();
-
         for file in &changed_files {
-            if file.exists() {
+            let file_exists = file_id_to_path(&vfs, file.file_id)
+                .ok()
+                // This strange call is to check that the contents is
+                // valid. see docs for `vfs.file_id()`
+                .map(|p| vfs.file_id(&VfsPath::from(p)).is_some())
+                .unwrap_or(false);
+
+            if file.change_kind != ChangeKind::Delete && file_exists {
                 // Temporary for T183487471
                 let _pctx = stdx::panic_context::enter(format!(
                     "\nserver::process_changes_to_vfs_store:{:?}:{:?}",
@@ -829,8 +851,6 @@ impl Server {
                 // causes us to remove stale squiggles from the UI
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
             } else {
-                // TODO (T105975906): Clean up stale .etf files
-
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
