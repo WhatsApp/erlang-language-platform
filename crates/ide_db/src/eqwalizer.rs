@@ -96,7 +96,6 @@ pub trait EqwalizerDatabase:
     ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
     fn type_at_position(
         &self,
-        project_id: ProjectId,
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
@@ -133,12 +132,13 @@ fn eqwalizer_stats(
 
 fn type_at_position(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
     range: FileRange,
 ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
     if !db.is_eqwalizer_enabled(range.file_id, false) {
         return None;
     }
+    let source_root = db.file_source_root(range.file_id);
+    let project_id = db.app_data(source_root)?.project_id;
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
         &(*eqwalizer_diagnostics_by_project(db, project_id, vec![range.file_id]))
     {
@@ -363,11 +363,13 @@ fn collect_references(
 
 pub fn type_references(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    file_id: FileId,
     ty: &eqwalizer::types::Type,
 ) -> Vec<(SmolStr, FileRange)> {
     let mut links = FxHashSet::default();
-    collect_references(db, project_id, ty, &mut links);
+    if let Some(project_id) = db.file_project_id(file_id) {
+        collect_references(db, project_id, ty, &mut links);
+    }
     links.into_iter().collect()
 }
 

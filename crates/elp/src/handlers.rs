@@ -544,33 +544,31 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     let mut docs: Vec<(Doc, Option<FileRange>)> = Vec::default();
 
     if snap.config.types_on_hover() {
-        if let Some(project_id) = snap.analysis.project_id(position.file_id)? {
-            if let Some(type_info) = snap.analysis.type_at_position(project_id, query_range)? {
-                let (ty, range) = &*type_info;
-                let text = &snap.analysis.file_text(range.file_id)?[range.range];
-                let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
-                docs.push((type_doc, Some(range.to_owned())));
-                let refs = snap.analysis.type_references(project_id, ty)?;
-                if !refs.is_empty() {
-                    let goto_list = refs
-                        .into_iter()
-                        .flat_map(|(name, range)| {
-                            to_proto::location(&snap, range)
-                                .map(|loc| {
-                                    format!(
-                                        "[{}]({}#L{}-{})",
-                                        name,
-                                        loc.uri,
-                                        loc.range.start.line + 1,
-                                        loc.range.end.line + 1
-                                    )
-                                })
-                                .ok()
-                        })
-                        .join(" | ");
-                    let goto_docs = Doc::new(format!("Go to: {}", goto_list));
-                    docs.push((goto_docs, None));
-                }
+        if let Some(type_info) = snap.analysis.type_at_position(query_range)? {
+            let (ty, range) = &*type_info;
+            let text = &snap.analysis.file_text(range.file_id)?[range.range];
+            let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
+            docs.push((type_doc, Some(range.to_owned())));
+            let refs = snap.analysis.type_references(range.file_id, ty)?;
+            if !refs.is_empty() {
+                let goto_list = refs
+                    .into_iter()
+                    .flat_map(|(name, range)| {
+                        to_proto::location(&snap, range)
+                            .map(|loc| {
+                                format!(
+                                    "[{}]({}#L{}-{})",
+                                    name,
+                                    loc.uri,
+                                    loc.range.start.line + 1,
+                                    loc.range.end.line + 1
+                                )
+                            })
+                            .ok()
+                    })
+                    .join(" | ");
+                let goto_docs = Doc::new(format!("Go to: {}", goto_list));
+                docs.push((goto_docs, None));
             }
         }
     }

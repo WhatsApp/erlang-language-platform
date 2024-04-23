@@ -391,10 +391,7 @@ impl TypedSemantic for RootDatabase {
     }
 
     fn eqwalizer_type_at_position(&self, range: FileRange) -> Option<Arc<(Type, FileRange)>> {
-        let project_id = self
-            .app_data(self.file_source_root(range.file_id))?
-            .project_id;
-        self.type_at_position(project_id, range)
+        self.type_at_position(range)
     }
 }
 

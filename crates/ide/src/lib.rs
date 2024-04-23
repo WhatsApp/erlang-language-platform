@@ -287,18 +287,17 @@ impl Analysis {
 
     pub fn type_at_position(
         &self,
-        project_id: ProjectId,
         range: FileRange,
     ) -> Cancellable<Option<Arc<(eqwalizer::types::Type, FileRange)>>> {
-        self.with_db(|db| db.type_at_position(project_id, range))
+        self.with_db(|db| db.type_at_position(range))
     }
 
     pub fn type_references(
         &self,
-        project_id: ProjectId,
+        file_id: FileId,
         ty: &eqwalizer::types::Type,
     ) -> Cancellable<Vec<(SmolStr, FileRange)>> {
-        self.with_db(|db| type_references(db, project_id, ty))
+        self.with_db(|db| type_references(db, file_id, ty))
     }
 
     /// Computes the set of EDoc diagnostics for the given file.
@@ -557,11 +556,10 @@ impl Analysis {
             range: TextRange::empty(position.offset),
         };
         self.with_db(|db| {
-            let project_id = self.project_id(position.file_id).ok()??;
-            let type_info = self.type_at_position(project_id, query_range).ok()??;
+            let type_info = self.type_at_position(query_range).ok()??;
             let (ty, _range) = &*type_info;
             let refs = self
-                .type_references(project_id, ty)
+                .type_references(position.file_id, ty)
                 .ok()?
                 .into_iter()
                 .map(|(_name, range)| range)
