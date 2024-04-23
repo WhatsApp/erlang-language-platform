@@ -50,7 +50,7 @@ add_optional(Z, _) ->
   Z.
 
 -spec map_occ_08_neg
-    (#{dynamic() => dynamic()} | #{c => integer()})
+    (#{eqwalizer:dynamic() => eqwalizer:dynamic()} | #{c => integer()})
     -> err.
 map_occ_08_neg(#{a := _} = M) -> M;
 map_occ_08_neg(_) -> err.

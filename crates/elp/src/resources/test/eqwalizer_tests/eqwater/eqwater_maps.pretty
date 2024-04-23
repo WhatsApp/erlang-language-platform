@@ -64,7 +64,7 @@ error: incompatible_types
    │
 55 │ map_occ_08_neg(#{a := _} = M) -> M;
    │                                  ^ M.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #D{eqwalizer:dynamic() => eqwalizer:dynamic()}
 Context expected type: 'err'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
