@@ -31,7 +31,6 @@ use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use itertools::Itertools;
 use lsp_types::SemanticTokens;
 use lsp_types::Url;
@@ -225,7 +224,6 @@ impl Snapshot {
     pub fn eqwalizer_project_diagnostics(
         &self,
         project_id: ProjectId,
-        exclude: &FxHashSet<FileId>,
         max_tasks: usize,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let module_index = self.analysis.module_index(project_id).ok()?;
@@ -233,12 +231,8 @@ impl Snapshot {
         let file_ids: Vec<FileId> = module_index
             .iter_own()
             .filter_map(|(_, _, file_id)| {
-                if !exclude.contains(&file_id) {
-                    if let Ok(true) = self.analysis.should_eqwalize(file_id, false) {
-                        Some(file_id)
-                    } else {
-                        None
-                    }
+                if let Ok(true) = self.analysis.should_eqwalize(file_id, false) {
+                    Some(file_id)
                 } else {
                     None
                 }

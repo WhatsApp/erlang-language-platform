@@ -110,6 +110,34 @@ impl DiagnosticCollection {
         combined
     }
 
+    pub fn move_eqwalizer_diagnostics_to_project_diagnostics(&mut self, file_id: FileId) {
+        let diagnostics = self
+            .eqwalizer
+            .get(&file_id)
+            .into_iter()
+            .flatten()
+            .cloned()
+            .collect();
+        set_diagnostics(&mut self.eqwalizer, file_id, Vec::new());
+        set_diagnostics(&mut self.eqwalizer_project, file_id, diagnostics);
+    }
+
+    pub fn project_diagnostics_for(&self, file_id: FileId) -> Vec<Diagnostic> {
+        let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
+        let eqwalizer_project = self
+            .eqwalizer_project
+            .get(&file_id)
+            .into_iter()
+            .flatten()
+            .cloned();
+        // The eqwalizer and eqwalizer_project could have duplicated entries by nature. Dedup.
+        eqwalizer
+            .into_iter()
+            .chain(eqwalizer_project)
+            .dedup_by(|a, b| are_diagnostics_equal(a, b))
+            .collect()
+    }
+
     pub fn take_changes(&mut self) -> Option<FxHashSet<FileId>> {
         if self.changes.is_empty() {
             return None;

@@ -686,17 +686,36 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidCloseTextDocument>(|this, params| {
-                if let Ok(path) = convert::vfs_path(&params.text_document.uri) {
+                let url = params.text_document.uri;
+                let analysis = this.snapshot().analysis;
+                let mut diagnostics = Vec::new();
+                if let Ok(path) = convert::vfs_path(&url) {
                     if this.open_document_versions.write().remove(&path).is_none() {
                         log::error!("unexpected DidCloseTextDocument: {}", path);
+                    }
+                    // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
+                    if this.config.eqwalizer().all {
+                        let vfs = this.vfs.read();
+                        if let Some(file_id) = vfs.file_id(&path) {
+                            Arc::make_mut(&mut this.diagnostics)
+                                .move_eqwalizer_diagnostics_to_project_diagnostics(file_id);
+                            if let Ok(line_index) = analysis.line_index(file_id) {
+                                diagnostics = this
+                                    .diagnostics
+                                    .project_diagnostics_for(file_id)
+                                    .iter()
+                                    .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
+                                    .collect()
+                            }
+                        }
                     }
                 }
 
                 // Clear the diagnostics for the previously known version of the file.
                 this.send_notification::<lsp_types::notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
-                        uri: params.text_document.uri,
-                        diagnostics: Vec::new(),
+                        uri: url,
+                        diagnostics,
                         version: None,
                     },
                 );
@@ -945,7 +964,6 @@ impl Server {
 
         log::info!("Recomputing EqWAlizer (project-wide) diagnostics");
 
-        let opened_documents: FxHashSet<FileId> = self.opened_documents().into_iter().collect();
         let snapshot = self.snapshot();
         let spinner = self
             .progress
@@ -961,11 +979,7 @@ impl Server {
                     let project_id = ProjectId(id as u32);
                     Some((
                         project_id,
-                        snapshot.eqwalizer_project_diagnostics(
-                            project_id,
-                            &opened_documents,
-                            max_tasks,
-                        )?,
+                        snapshot.eqwalizer_project_diagnostics(project_id, max_tasks)?,
                     ))
                 })
                 .collect();
