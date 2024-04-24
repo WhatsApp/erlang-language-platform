@@ -15,6 +15,7 @@ use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
 
+// @fb-only: mod meta_only;
 mod otp_links;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +44,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
 
 fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinition) {
     otp_links::links(res, sema, def);
+    // @fb-only: meta_only::links(res, sema, def);
 }
 
 #[cfg(test)]
