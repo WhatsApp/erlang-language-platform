@@ -733,6 +733,18 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_all_crlf_file(buck: bool) {
+        simple_snapshot(
+            args_vec!["parse-elp", "--include-generated", "--module", "crlf",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_crlf.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test]
     fn build_info_json_buck() {
         if cfg!(feature = "buck") {

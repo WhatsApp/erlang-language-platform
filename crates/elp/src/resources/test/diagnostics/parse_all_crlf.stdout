@@ -1,0 +1,5 @@
+module specified: crlf
+Diagnostics reported in 1 modules:
+  crlf: 2
+      13:0-13:9::[Warning] [L1230] function unused_fn/0 is unused
+      29:0-29:11::[Warning] [L1230] function another_fun/0 is unused
