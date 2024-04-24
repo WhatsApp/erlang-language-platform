@@ -35,7 +35,7 @@ pub mod convert;
 pub mod document;
 mod from_proto;
 mod handlers;
-mod line_endings;
+pub mod line_endings;
 pub mod lsp_ext;
 mod op_queue;
 mod project_loader;

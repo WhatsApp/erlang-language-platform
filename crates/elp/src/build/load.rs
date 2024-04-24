@@ -39,6 +39,7 @@ use elp_project_model::ProjectManifest;
 
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
+use crate::document::Document;
 use crate::reload::ProjectFolders;
 
 pub fn load_project_at(
@@ -182,20 +183,9 @@ fn load_database(
     let changes = vfs.take_changes();
     for file in changes {
         if file.exists() {
-            let contents = vfs.file_contents(file.file_id).to_vec();
-            match String::from_utf8(contents) {
-                Ok(text) => {
-                    db.set_file_text(file.file_id, Arc::from(text));
-                }
-                Err(err) => {
-                    // Fall back to lossy latin1 loading of files.
-                    // This should only affect files from yaws, and
-                    // possibly OTP that are latin1 encoded.
-                    let contents = err.into_bytes();
-                    let text: String = contents.into_iter().map(|byte| byte as char).collect();
-                    db.set_file_text(file.file_id, Arc::from(text));
-                }
-            }
+            let bytes = vfs.file_contents(file.file_id).to_vec();
+            let (text, _line_ending) = Document::vfs_to_salsa(&bytes);
+            db.set_file_text(file.file_id, Arc::from(text));
             bump_file_revision(file.file_id, db);
         }
     }

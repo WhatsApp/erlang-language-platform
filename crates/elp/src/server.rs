@@ -861,12 +861,12 @@ impl Server {
                     &file.file_id, &file.change_kind
                 ));
                 let bytes = vfs.file_contents(file.file_id).to_vec();
-                let document = Document::from_bytes(bytes);
-                let (text, line_ending) = LineEndings::normalize(document.content);
+                let (text, line_ending) = Document::vfs_to_salsa(&bytes);
+                raw_database.set_file_text(file.file_id, Arc::from(text));
                 self.line_ending_map
                     .write()
                     .insert(file.file_id, line_ending);
-                raw_database.set_file_text(file.file_id, Arc::from(text));
+
                 // causes us to remove stale squiggles from the UI
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
             } else {

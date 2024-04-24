@@ -13,12 +13,19 @@ use elp_ide::elp_ide_db::LineIndex;
 use lsp_types::TextDocumentContentChangeEvent;
 
 use crate::from_proto::text_range;
+use crate::line_endings::LineEndings;
 
 pub struct Document {
     pub content: String,
 }
 
 impl Document {
+    pub fn vfs_to_salsa(vfs_bytes: &[u8]) -> (String, LineEndings) {
+        let bytes = vfs_bytes.to_vec();
+        let document = Document::from_bytes(bytes);
+        LineEndings::normalize(document.content)
+    }
+
     pub fn from_bytes(bytes: Vec<u8>) -> Document {
         let content = match String::from_utf8(bytes) {
             Ok(text) => text,
