@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
@@ -14,9 +15,12 @@ use elp_ide::elp_ide_db::EqwalizerProgressReporter;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_project_model::Project;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indicatif::ProgressBar;
 use itertools::Itertools;
+
+use crate::line_endings::LineEndings;
 
 pub const DEFAULT_BUCK_TARGET: &str = "//erl/...";
 
@@ -24,6 +28,7 @@ pub const DEFAULT_BUCK_TARGET: &str = "//erl/...";
 pub struct LoadResult {
     pub analysis_host: AnalysisHost,
     pub vfs: Vfs,
+    pub line_ending_map: FxHashMap<FileId, LineEndings>,
     pub project_id: ProjectId,
     pub project: Project,
     pub file_set_config: FileSetConfig,
@@ -33,6 +38,7 @@ impl LoadResult {
     pub fn new(
         analysis_host: AnalysisHost,
         vfs: Vfs,
+        line_ending_map: FxHashMap<FileId, LineEndings>,
         project_id: ProjectId,
         project: Project,
         file_set_config: FileSetConfig,
@@ -40,6 +46,7 @@ impl LoadResult {
         LoadResult {
             analysis_host,
             vfs,
+            line_ending_map,
             project_id,
             project,
             file_set_config,

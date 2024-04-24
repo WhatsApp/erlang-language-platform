@@ -21,6 +21,7 @@ use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
@@ -36,10 +37,12 @@ use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
+use fxhash::FxHashMap;
 
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
 use crate::document::Document;
+use crate::line_endings::LineEndings;
 use crate::reload::ProjectFolders;
 
 pub fn load_project_at(
@@ -88,6 +91,7 @@ fn load_project(
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let mut vfs = Vfs::default();
+    let mut line_ending_map = FxHashMap::default();
     let mut loader = {
         let loader =
             vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
@@ -110,12 +114,14 @@ fn load_project(
         &project_apps,
         &folders.file_set_config,
         &mut vfs,
+        &mut line_ending_map,
         &receiver,
         eqwalizer_mode,
     )?;
     Ok(LoadResult::new(
         analysis_host,
         vfs,
+        line_ending_map,
         project_id,
         project,
         folders.file_set_config,
@@ -127,6 +133,7 @@ fn load_database(
     project_apps: &ProjectApps,
     file_set_config: &FileSetConfig,
     vfs: &mut Vfs,
+    line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
     eqwalizer_mode: elp_eqwalizer::Mode,
 ) -> Result<AnalysisHost> {
@@ -184,8 +191,9 @@ fn load_database(
     for file in changes {
         if file.exists() {
             let bytes = vfs.file_contents(file.file_id).to_vec();
-            let (text, _line_ending) = Document::vfs_to_salsa(&bytes);
+            let (text, line_ending) = Document::vfs_to_salsa(&bytes);
             db.set_file_text(file.file_id, Arc::from(text));
+            line_ending_map.insert(file.file_id, line_ending);
             bump_file_revision(file.file_id, db);
         }
     }

@@ -226,8 +226,9 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     for file in &changed_files {
         if file.exists() {
             let bytes = loaded.vfs.file_contents(file.file_id).to_vec();
-            let (text, _line_ending) = Document::vfs_to_salsa(&bytes);
+            let (text, line_ending) = Document::vfs_to_salsa(&bytes);
             raw_database.set_file_text(file.file_id, Arc::from(text));
+            loaded.line_ending_map.insert(file.file_id, line_ending);
         } else {
             raw_database.set_file_text(file.file_id, Arc::from(""));
         };
