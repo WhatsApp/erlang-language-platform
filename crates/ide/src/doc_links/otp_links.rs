@@ -14,36 +14,36 @@ use crate::DocLink;
 
 const OTP_BASE_URL: &str = "https://erlang.org";
 
-pub(crate) fn links(sema: &Semantic, def: SymbolDefinition) -> Option<Vec<DocLink>> {
+pub(crate) fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinition) {
     match def {
         SymbolDefinition::Module(module) => {
             if module.is_in_otp(sema.db) {
                 let name = module.name(sema.db);
                 let uri = format!("{}/doc/man/{}.html", OTP_BASE_URL, name);
-                Some(vec![DocLink {
+                let link = DocLink {
                     title: name.to_string(),
                     uri,
-                }])
-            } else {
-                None
+                };
+                res.push(link);
             }
         }
         SymbolDefinition::Function(function_def) => {
             if function_def.is_in_otp(sema.db) {
-                let module_name = sema.module_name(function_def.file.file_id)?.to_string();
-                let function_name = function_def.name.name();
-                let function_arity = function_def.name.arity();
-                let title = format!("{module_name}:{function_name}/{function_arity}");
-                let uri = format!(
-                    "{}/doc/man/{}.html#{}-{}",
-                    OTP_BASE_URL, module_name, function_name, function_arity
-                );
-                Some(vec![DocLink { title, uri }])
-            } else {
-                None
+                if let Some(module_name) = sema.module_name(function_def.file.file_id) {
+                    let module_name = module_name.to_string();
+                    let function_name = function_def.name.name();
+                    let function_arity = function_def.name.arity();
+                    let title = format!("{module_name}:{function_name}/{function_arity}");
+                    let uri = format!(
+                        "{}/doc/man/{}.html#{}-{}",
+                        OTP_BASE_URL, module_name, function_name, function_arity
+                    );
+                    let link = DocLink { title, uri };
+                    res.push(link);
+                }
             }
         }
-        _ => None,
+        _ => (),
     }
 }
 

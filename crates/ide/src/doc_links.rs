@@ -10,6 +10,7 @@
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
+use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
@@ -33,12 +34,15 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
         .token_at_offset(position.offset)
         .left_biased()?;
 
-    let doc_links = SymbolClass::classify(&sema, InFile::new(position.file_id, token))?
+    let mut doc_links = Vec::new();
+    SymbolClass::classify(&sema, InFile::new(position.file_id, token))?
         .iter()
-        .filter_map(|def| otp_links::links(&sema, def))
-        .flatten()
-        .collect();
+        .for_each(|def| links(&mut doc_links, &sema, &def));
     Some(doc_links)
+}
+
+fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinition) {
+    otp_links::links(res, sema, def);
 }
 
 #[cfg(test)]
