@@ -50,6 +50,10 @@ jobs:
           java-version: '17'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up SBT
+        uses: olafurpg/setup-scala@v11
+        with:
+          java-version: '17'
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -66,7 +70,7 @@ jobs:
         run: brew install erlang@${{ matrix.brew-otp-version }}
       - name: Add erl to path (MacOS Only)
         if: matrix.os == 'macos'
-        run: "echo '/usr/local/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH"
+        run: "echo '/opt/homebrew/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH"
       - name: Verify Erlang version
         run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
       - name: Install rebar3
@@ -95,7 +99,7 @@ jobs:
           name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target/${{ matrix.target}}/release/elp
       - name: Test eqwalizer
-        working-directory: eqwalizer
+        working-directory: eqwalizer/eqwalizer
         run: 'sbt test'
       - name: Upload eqwalizer native binary
         uses: "actions/upload-artifact@v3"
