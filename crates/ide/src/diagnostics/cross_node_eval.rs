@@ -45,18 +45,18 @@ fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId
 
 fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     lazy_static! {
-        static ref BAD_MATCHES: Vec<FunctionMatch> = vec![
-            vec![FunctionMatch::m("rpc")],
-            vec![FunctionMatch::mf(
+        static ref BAD_MATCHES: Vec<(FunctionMatch, Option<&'static str>)> = vec![
+            vec![(FunctionMatch::m("rpc"), None)],
+            vec![(FunctionMatch::mf(
                 "erts_internal_dist",
                 "dist_spawn_request",
-            )],
-            vec![FunctionMatch::mf("sys", "install")],
-            FunctionMatch::mfas("erlang", "spawn", vec![2, 4]),
-            FunctionMatch::mfas("erlang", "spawn_link", vec![2, 4]),
-            FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]),
-            FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]),
-            FunctionMatch::mfas("sys", "install", vec![2, 3]),
+            ), None)],
+            vec![(FunctionMatch::mf("sys", "install"), None)],
+            FunctionMatch::mfas("erlang", "spawn", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
+            FunctionMatch::mfas("erlang", "spawn_link", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
+            FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
+            FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]).into_iter().map(|fm| (fm,None)).collect(),
+            FunctionMatch::mfas("sys", "install", vec![2, 3]).into_iter().map(|fm| (fm,None)).collect(),
             // @fb-only: diagnostics::meta_only::cross_node_eval_bad_matches(),
         ]
         .into_iter()
@@ -71,15 +71,18 @@ fn process_badmatches(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
-    bad: &[FunctionMatch],
+    bad: &[(FunctionMatch, Option<&str>)],
 ) {
-    let mfas = bad.iter().map(|b| (b, ())).collect::<Vec<_>>();
+    let mfas = bad.iter().map(|(b, m)| (b, m)).collect::<Vec<_>>();
     find_call_in_function(
         diags,
         sema,
         def,
         &mfas,
-        &move |_ctx| Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
+        &move |ctx| match ctx.t {
+            Some(m) => Some(*m),
+            None => Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
+        },
         &move |MakeDiagCtx {
                    sema,
                    def_fb,
