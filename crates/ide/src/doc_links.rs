@@ -34,10 +34,12 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
 
     let mut doc_links = Vec::new();
     let in_file_token = InFile::new(file_id, token);
-    SymbolClass::classify(&sema, in_file_token.clone())?
-        .iter()
-        .for_each(|def| otp_links::links(&mut doc_links, &sema, &def));
-    // @fb-only: meta_only::links(&mut doc_links, &sema, &node, &position);
+    if let Some(class) = SymbolClass::classify(&sema, in_file_token.clone()) {
+        class
+            .iter()
+            .for_each(|def| otp_links::links(&mut doc_links, &sema, &def));
+    }
+    // @fb-only: meta_only::links(&mut doc_links, &node, &position);
     Some(doc_links)
 }
 

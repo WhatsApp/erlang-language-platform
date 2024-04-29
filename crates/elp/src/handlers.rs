@@ -592,6 +592,12 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
     let actions = snap
         .analysis
         .hover_actions(position, &hover_actions_config)?;
+
+    if docs.is_empty() && !actions.is_empty() {
+        let hover_info = (Doc::new("".to_string()), None);
+        docs.push(hover_info);
+    }
+
     to_proto::hover_response(&snap, combine_docs(&docs), actions)
 }
 
