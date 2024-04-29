@@ -10,6 +10,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use hir::FunctionDef;
 use hir::Semantic;
+use lazy_static::lazy_static;
 use text_edit::TextRange;
 
 use super::DiagnosticConditions;
@@ -35,19 +36,23 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let mut mfas = vec![
-        FunctionMatch::mfa("erlang", "binary_to_atom", 1),
-        FunctionMatch::mfa("erlang", "binary_to_atom", 2),
-        FunctionMatch::mfa("erlang", "list_to_atom", 1),
-        FunctionMatch::mfa("erlang", "binary_to_term", 1),
-        FunctionMatch::mfa("erlang", "binary_to_term", 2),
-    ];
+    lazy_static! {
+        static ref BAD_CALLS: Vec<FunctionMatch> = vec![
+            FunctionMatch::mfa("erlang", "binary_to_atom", 1),
+            FunctionMatch::mfa("erlang", "binary_to_atom", 2),
+            FunctionMatch::mfa("erlang", "list_to_atom", 1),
+            FunctionMatch::mfa("erlang", "binary_to_term", 1),
+            FunctionMatch::mfa("erlang", "binary_to_term", 2),
+        ]
+        .into_iter()
+        // @fb-only: .chain(diagnostics::meta_only::atoms_exhaustion_matches().into_iter())
+        .collect();
 
-    // @fb-only: let extra_mfas = diagnostics::meta_only::atoms_exhaustion_matches();
-    let extra_mfas = vec![]; // @oss-only
-    mfas.extend(extra_mfas);
-
-    let mfas = mfas.iter().map(|matcher| (matcher, ())).collect::<Vec<_>>();
+        static ref BAD_CALLS_MFAS: Vec<(&'static FunctionMatch, ())> = BAD_CALLS
+            .iter()
+            .map(|matcher| (matcher, ()))
+            .collect::<Vec<_>>();
+    }
 
     sema.def_map(file_id)
         .get_functions()
@@ -57,7 +62,7 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
                 // @fb-only: is_relevant = diagnostics::meta_only::is_relevant_file(sema.db.upcast(), file_id);
                 is_relevant = true; // @oss-only
                 if is_relevant {
-                    check_function(diagnostics, sema, def, &mfas);
+                    check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
                 }
             }
         });
