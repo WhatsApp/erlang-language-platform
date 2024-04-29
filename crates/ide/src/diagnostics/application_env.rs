@@ -98,28 +98,35 @@ pub(crate) enum BadEnvCallAction {
 
 fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     lazy_static! {
-        static ref BAD_MATCHES: Vec<BadEnvCall> = vec![BadEnvCall::new(
-            "application",
-            "get_env",
-            vec![2, 3],
-            BadEnvCallAction::AppArg(0)),
+        static ref BAD_MATCHES: Vec<BadEnvCall> = vec![
+            BadEnvCall::new(
+                "application",
+                "get_env",
+                vec![2, 3],
+                BadEnvCallAction::AppArg(0),
+            ),
             // @fb-only: diagnostics::meta_only::application_env_bad_matches(),
         ]
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
+
+        static ref BAD_MATCH_MFAS: Vec<(&'static FunctionMatch, &'static BadEnvCallAction)> =
+            BAD_MATCHES
+                .iter()
+                .map(|b| (&b.mfa, &b.action))
+                .collect::<Vec<_>>();
     }
 
-    process_badmatches(diags, sema, def, &BAD_MATCHES);
+    process_badmatches(diags, sema, def, &BAD_MATCH_MFAS);
 }
 
 fn process_badmatches(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
-    bad: &[BadEnvCall],
+    mfas: &[(&FunctionMatch, &BadEnvCallAction)],
 ) {
-    let mfas = bad.iter().map(|b| (&b.mfa, &b.action)).collect::<Vec<_>>();
     find_call_in_function(
         diags,
         sema,
