@@ -62,23 +62,25 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
+
+        static ref BAD_MATCHES_MFAS: Vec<(&'static FunctionMatch, &'static Option<&'static str>)>
+            = BAD_MATCHES.iter().map(|(b, m)| (b, m)).collect::<Vec<_>>();
     }
 
-    process_badmatches(diags, sema, def, &BAD_MATCHES);
+    process_badmatches(diags, sema, def, &BAD_MATCHES_MFAS);
 }
 
 fn process_badmatches(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
-    bad: &[(FunctionMatch, Option<&str>)],
+    bad: &[(&FunctionMatch, &Option<&str>)],
 ) {
-    let mfas = bad.iter().map(|(b, m)| (b, m)).collect::<Vec<_>>();
     find_call_in_function(
         diags,
         sema,
         def,
-        &mfas,
+        bad,
         &move |ctx| match ctx.t {
             Some(m) => Some(*m),
             None => Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
