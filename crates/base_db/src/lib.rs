@@ -109,6 +109,13 @@ impl FileKind {
             _ => false,
         }
     }
+
+    pub fn is_elp_supported(self) -> bool {
+        match self {
+            Self::SrcModule | Self::TestModule | Self::Header | Self::Escript => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait FileLoader {

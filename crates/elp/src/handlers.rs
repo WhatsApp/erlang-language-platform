@@ -877,6 +877,9 @@ pub(crate) fn handle_code_lens(
     let lens_config = snap.config.lens();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    if !snap.analysis.file_kind(file_id)?.is_elp_supported() {
+        return Ok(None);
+    }
     let line_index = snap.analysis.line_index(file_id)?;
     if let Ok(Some(project_id)) = snap.analysis.project_id(file_id) {
         let annotations = snap.analysis.annotations(file_id)?;
