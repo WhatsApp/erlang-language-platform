@@ -10,7 +10,6 @@
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
-use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
@@ -27,24 +26,19 @@ pub struct DocLink {
 /// Retrieve a link to documentation for the given symbol.
 pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<Vec<DocLink>> {
     let sema = Semantic::new(db);
-    let source_file = sema.parse(position.file_id);
+    let file_id = position.file_id;
+    let source_file = sema.parse(file_id);
 
-    let token = source_file
-        .value
-        .syntax()
-        .token_at_offset(position.offset)
-        .left_biased()?;
+    let node = source_file.value.syntax();
+    let token = node.token_at_offset(position.offset).left_biased()?;
 
     let mut doc_links = Vec::new();
-    SymbolClass::classify(&sema, InFile::new(position.file_id, token))?
+    let in_file_token = InFile::new(file_id, token);
+    SymbolClass::classify(&sema, in_file_token.clone())?
         .iter()
-        .for_each(|def| links(&mut doc_links, &sema, &def));
+        .for_each(|def| otp_links::links(&mut doc_links, &sema, &def));
+    // @fb-only: meta_only::links(&mut doc_links, &sema, &node, &position);
     Some(doc_links)
-}
-
-fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinition) {
-    otp_links::links(res, sema, def);
-    // @fb-only: meta_only::links(res, sema, def);
 }
 
 #[cfg(test)]

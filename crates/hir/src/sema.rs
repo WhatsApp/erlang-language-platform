@@ -54,6 +54,7 @@ pub use crate::intern::InternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 use crate::AnyExprId;
+use crate::AttributeBody;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
@@ -693,6 +694,28 @@ impl<'db> Semantic<'db> {
             .collect();
 
         if vars.is_empty() { None } else { Some(vars) }
+    }
+
+    pub fn attribute(&self, file_id: FileId, name: Name) -> Option<Arc<AttributeBody>> {
+        self.form_list(file_id)
+            .attributes()
+            .find_map(|(attr_id, attr)| {
+                if attr.name == name {
+                    let attr_id = InFile::new(file_id, attr_id);
+                    let body = self.db.attribute_body(attr_id);
+                    Some(body)
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn attribute_value_as_atom(&self, file_id: FileId, name: Name) -> Option<String> {
+        let attr = self.attribute(file_id, name)?;
+        match attr.body[attr.value] {
+            Term::Literal(Literal::Atom(atom)) => Some(atom.as_string(self.db.upcast())),
+            _ => None,
+        }
     }
 
     /// Find all other variables within the function clause that resolve
