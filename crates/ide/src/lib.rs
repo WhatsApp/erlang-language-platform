@@ -247,6 +247,10 @@ impl Analysis {
         self.with_db(|db| {
             let files_count = file_ids.len();
             let chunk_size = (files_count + max_tasks - 1) / max_tasks;
+            if chunk_size == 0 {
+                // The chunks function panics if the chunk size is 0, so we return an empty array
+                return Some(Vec::new());
+            }
             let diagnostics = file_ids
                 .chunks(chunk_size)
                 .par_bridge()
