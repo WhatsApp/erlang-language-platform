@@ -1270,8 +1270,21 @@ fn parse_error_to_diagnostic_info(
                 parse_error.msg.clone(),
             );
             match parse_error.code.as_str() {
-                // For certain warnings, OTP returns a diagnostic for the entire definition of a function or record.
-                // That can be very verbose and distracting, so we try restricting the range to the function/record name only.
+                // For certain warnings, OTP returns a diagnostic with a wide range (e.g. a full record definition)
+                // That can be very verbose and distracting, so we try restricting the range to the relevant parts only.
+                "L1227" => {
+                    let name = function_undefined_from_message(&parse_error.msg);
+                    match exported_function_name_range(db, file_id, name, range) {
+                        Some(name_range) => Some((
+                            file_id,
+                            name_range.start(),
+                            name_range.end(),
+                            parse_error.code.clone(),
+                            parse_error.msg.clone(),
+                        )),
+                        None => Some(default_range),
+                    }
+                }
                 "L1230" | "L1309" => match function_name_range(db, file_id, range) {
                     Some(name_range) => Some((
                         file_id,
@@ -1302,6 +1315,32 @@ fn parse_error_to_diagnostic_info(
             parse_error.code.clone(),
             parse_error.msg.clone(),
         )),
+    }
+}
+
+fn exported_function_name_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    name: Option<String>,
+    range: TextRange,
+) -> Option<TextRange> {
+    match name {
+        None => None,
+        Some(name) => {
+            let sema = Semantic::new(db);
+            let source_file = sema.parse(file_id);
+            let export = algo::find_node_at_offset::<ast::ExportAttribute>(
+                source_file.value.syntax(),
+                range.start(),
+            )?;
+            export.funs().find_map(|fun| {
+                if fun.to_string() == name {
+                    Some(fun.syntax().text_range())
+                } else {
+                    None
+                }
+            })
+        }
     }
 }
 
@@ -1997,7 +2036,7 @@ baz(1)->4.
 //- erlang_service
   -module(main).
   -export([foo/0, bar/0]).
-%%^^^^^^^^^^^^^^^^^^^^^^^  error: function bar/0 undefined
+%%                ^^^^^  error: function bar/0 undefined
   foo() -> ok.
 "#,
         );
