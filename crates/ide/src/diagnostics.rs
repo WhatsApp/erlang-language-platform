@@ -1989,4 +1989,17 @@ baz(1)->4.
             "#,
         );
     }
+
+    #[test]
+    fn restricted_range_for_undefined_function_diagnostic() {
+        check_diagnostics(
+            r#"
+//- erlang_service
+  -module(main).
+  -export([foo/0, bar/0]).
+%%^^^^^^^^^^^^^^^^^^^^^^^  error: function bar/0 undefined
+  foo() -> ok.
+"#,
+        );
+    }
 }
