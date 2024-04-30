@@ -2041,4 +2041,21 @@ baz(1)->4.
 "#,
         );
     }
+
+    #[test]
+    fn edoc_with_maybe_operator() {
+        check_diagnostics(
+            r#"
+//- edoc
+  -module(main).
+  -export([listen_port/2]).
+  listen_port(Port, Options) ->
+    maybe
+        {ok, ListenSocket} ?= inet_tcp:listen(Port, Options),
+        {ok, Address} ?= inet:sockname(ListenSocket),
+        {ok, {ListenSocket, Address}}
+    end.
+"#,
+        );
+    }
 }
