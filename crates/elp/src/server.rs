@@ -219,6 +219,7 @@ pub struct Server {
     status: Status,
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
+    reset_source_roots: bool,
     eqwalizer_diagnostics_requested: bool,
     eqwalizer_project_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
@@ -269,6 +270,7 @@ impl Server {
             status: Status::Initialising,
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
+            reset_source_roots: false,
             eqwalizer_diagnostics_requested: false,
             eqwalizer_project_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
@@ -831,7 +833,7 @@ impl Server {
         // Note: the append operations clears out self.newly_opened_documents too
         changed_files.append(&mut self.newly_opened_documents);
 
-        if changed_files.is_empty() {
+        if changed_files.is_empty() && !self.reset_source_roots {
             return false;
         }
 
@@ -880,9 +882,10 @@ impl Server {
             }
         }
 
-        if changed_files
-            .iter()
-            .any(|file| file.is_created_or_deleted())
+        if self.reset_source_roots
+            || changed_files
+                .iter()
+                .any(|file| file.is_created_or_deleted())
         {
             let sets = self.file_set_config.partition(&vfs);
             for (idx, set) in sets.into_iter().enumerate() {
@@ -893,6 +896,7 @@ impl Server {
                 let root = SourceRoot::new(set);
                 raw_database.set_source_root(root_id, Arc::new(root));
             }
+            self.reset_source_roots = false;
         }
 
         true
@@ -1161,6 +1165,7 @@ impl Server {
 
         self.projects = Arc::new(projects);
         self.project_loader.lock().load_completed();
+        self.reset_source_roots = true;
         Ok(())
     }
 
