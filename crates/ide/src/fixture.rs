@@ -21,6 +21,7 @@ use elp_project_model::test_fixture::DiagnosticsEnabled;
 use parking_lot::MutexGuard;
 
 use crate::diagnostics::DiagnosticsConfig;
+use crate::diagnostics::RemoveElpReported;
 use crate::diagnostics_collection::DiagnosticCollection;
 use crate::Analysis;
 use crate::AnalysisHost;
@@ -156,7 +157,7 @@ pub fn diagnostics_for(
     }
     if *use_erlang_service {
         let erlang_service_diagnostics = analysis
-            .erlang_service_diagnostics(file_id, config)
+            .erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)
             .unwrap();
         for (file_id, diags) in erlang_service_diagnostics {
             diagnostics.set_erlang_service(file_id, diags)

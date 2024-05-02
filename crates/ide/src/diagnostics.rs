@@ -880,10 +880,17 @@ pub(crate) fn make_unexpected_diagnostic(
         .with_severity(Severity::Warning)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum RemoveElpReported {
+    Yes,
+    No,
+}
+
 pub fn erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
     config: &DiagnosticsConfig,
+    remove_elp_reported: RemoveElpReported,
 ) -> Vec<(FileId, LabeledDiagnostics)> {
     if config.include_generated || !db.is_generated(file_id) {
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
@@ -943,10 +950,14 @@ pub fn erlang_service_diagnostics(
 
         // Remove diagnostics kinds already reported by ELP
         let file_kind = db.file_kind(file_id);
-        let diags: Vec<(FileId, Diagnostic)> = diags
-            .into_iter()
-            .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
-            .collect();
+        let diags: Vec<(FileId, Diagnostic)> = if remove_elp_reported == RemoveElpReported::Yes {
+            diags
+                .into_iter()
+                .filter(|(_, d)| !is_implemented_in_elp(&d.code, file_kind))
+                .collect()
+        } else {
+            diags
+        };
         let diags = if diags.is_empty() {
             // If there are no diagnostics reported, return an empty list
             // against the `file_id` to clear the list of diagnostics for
@@ -1947,6 +1958,28 @@ baz(1)->4.
 
              foo() -> syntax error oops.
              %%              ^^^^^ error: syntax error before: error
+            "#,
+        );
+    }
+
+    #[test]
+    fn group_related_diagnostics_wtf() {
+        // Note: the cascade fails because ELP errors out to such an
+        // extent we do not even see bar() as a function.
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- native
+             //- /src/a_mod.erl app:app_a
+             -module(a_mod).
+             -export([foo/0]).
+
+             foo() ->
+                  bar().
+             %%   ^^^^^ error: function bar/0 undefined
+
+             bar() -> !!! %% syntax error
+             %%<^^^^^^^^^ error: Syntax Error
             "#,
         );
     }

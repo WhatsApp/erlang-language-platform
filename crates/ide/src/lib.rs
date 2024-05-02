@@ -15,6 +15,7 @@ use call_hierarchy::CallItem;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
+use diagnostics::RemoveElpReported;
 use diagnostics_collection::DiagnosticCollection;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
@@ -328,8 +329,11 @@ impl Analysis {
         &self,
         file_id: FileId,
         config: &DiagnosticsConfig,
+        remove_elp_reported: RemoveElpReported,
     ) -> Cancellable<Vec<(FileId, LabeledDiagnostics)>> {
-        self.with_db(|db| diagnostics::erlang_service_diagnostics(db, file_id, config))
+        self.with_db(|db| {
+            diagnostics::erlang_service_diagnostics(db, file_id, config, remove_elp_reported)
+        })
     }
 
     /// Low-level access to eqwalizer

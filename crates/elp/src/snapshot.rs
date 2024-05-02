@@ -18,6 +18,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -324,7 +325,7 @@ impl Snapshot {
 
         let diags = &*self
             .analysis
-            .erlang_service_diagnostics(file_id, config)
+            .erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)
             .ok()?;
 
         Some(

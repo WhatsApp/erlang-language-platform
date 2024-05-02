@@ -543,6 +543,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn eqwalize_reports_cascading_syntax_errors(buck: bool) {
+        simple_snapshot(
+            args_vec!["eqwalize", "parse_error_a_cascade",],
+            "parse_error",
+            expect_file!("../resources/test/standard/eqwalize_all_parse_error_cascade.pretty"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics1(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "diagnostics",],

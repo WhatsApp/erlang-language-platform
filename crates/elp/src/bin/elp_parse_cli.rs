@@ -26,6 +26,7 @@ use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -305,7 +306,8 @@ fn do_parse_one(
 ) -> Result<Option<ParseResult>> {
     let url = file_id_to_url(vfs, file_id);
     let native = db.native_diagnostics(config, file_id)?;
-    let erlang_service_diagnostics = db.erlang_service_diagnostics(file_id, config)?;
+    let erlang_service_diagnostics =
+        db.erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
     let line_index = db.line_index(file_id)?;
 
     // Should we return the included file diagnostics as well? Not doing so now.

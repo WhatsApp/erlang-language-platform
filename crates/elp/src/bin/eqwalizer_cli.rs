@@ -19,12 +19,17 @@ use elp::cli::Cli;
 use elp::convert;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics::Diagnostic;
+use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::LabeledDiagnostics;
+use elp_ide::diagnostics::RemoveElpReported;
+use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_project_model::AppName;
@@ -40,8 +45,8 @@ use crate::args::EqwalizeAll;
 use crate::args::EqwalizeApp;
 use crate::args::EqwalizeStats;
 use crate::args::EqwalizeTarget;
-use crate::erlang_service_cli;
 use crate::reporting;
+use crate::reporting::ParseDiagnostic;
 use crate::reporting::Reporter;
 
 struct EqwalizerInternalArgs<'a> {
@@ -361,14 +366,45 @@ fn eqwalize(
         }
         EqwalizerDiagnostics::NoAst { module } => {
             if let Some(file_id) = analysis.module_file_id(loaded.project_id, &module)? {
-                let parse_diagnostics = erlang_service_cli::do_parse_one(
-                    analysis,
-                    None,
-                    file_id,
-                    erlang_service::Format::OffsetEtf,
-                )?;
+                let config = DiagnosticsConfig::default();
+                let erlang_service_diagnostics =
+                    analysis.erlang_service_diagnostics(file_id, &config, RemoveElpReported::No)?;
+                let erlang_service = erlang_service_diagnostics
+                    .into_iter()
+                    .find(|(f, _diags)| f == &file_id)
+                    .map(|(_, diags)| diags)
+                    .unwrap_or(LabeledDiagnostics::default());
+                let mut diagnostics = DiagnosticCollection::default();
+                diagnostics.set_erlang_service(file_id, erlang_service);
+                // `diagnostics_for` will also combine related diagnostics
+                let diags = diagnostics.diagnostics_for(file_id);
+                let mut parse_diagnostics: Vec<ParseDiagnostic> = Vec::default();
+                let line_index = analysis.with_db(|db| db.file_line_index(file_id))?;
+                for diag in diags {
+                    let vfs_path = loaded.vfs.file_path(file_id);
+                    let analysis = loaded.analysis();
+                    let root_path = &analysis
+                        .project_data(file_id)
+                        .unwrap_or_else(|_err| panic!("could not find project data"))
+                        .unwrap_or_else(|| panic!("could not find project data"))
+                        .root_dir;
+                    let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+
+                    let line_num = convert::position(&line_index, diag.range.start()).line + 1;
+                    parse_diagnostics.push(ParseDiagnostic {
+                        file_id,
+                        relative_path: relative_path.to_path_buf(),
+                        line_num,
+                        msg: diag.message,
+                        range: Some(diag.range),
+                    });
+                }
                 // The cached parse errors must be non-empty otherwise we wouldn't have `NoAst`
-                assert!(!parse_diagnostics.is_empty());
+                assert!(
+                    !parse_diagnostics.is_empty(),
+                    "Expecting erlang service diagnostics, but none found, for '{}'",
+                    module
+                );
                 let parse_diagnostics: Vec<_> = parse_diagnostics
                     .into_iter()
                     .sorted_by(|d1, d2| {
