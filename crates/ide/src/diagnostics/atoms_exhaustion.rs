@@ -41,8 +41,9 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
             FunctionMatch::mfa("erlang", "binary_to_atom", 1),
             FunctionMatch::mfa("erlang", "binary_to_atom", 2),
             FunctionMatch::mfa("erlang", "list_to_atom", 1),
-            FunctionMatch::mfa("erlang", "binary_to_term", 1),
-            FunctionMatch::mfa("erlang", "binary_to_term", 2),
+            // T187850479: Make it configurable
+            // FunctionMatch::mfa("erlang", "binary_to_term", 1),
+            // FunctionMatch::mfa("erlang", "binary_to_term", 2),
         ]
         .into_iter()
         // @fb-only: .chain(diagnostics::meta_only::atoms_exhaustion_matches().into_iter())
@@ -175,10 +176,8 @@ mod tests {
    main() ->
      Foo = term_to_binary(foo),
      binary_to_term(Foo),
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
      Bar = term_to_binary(bar),
      erlang:binary_to_term(Bar).
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
@@ -222,10 +221,8 @@ mod tests {
    main() ->
      Foo = term_to_binary(foo),
      binary_to_term(Foo, []),
-%%   ^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
      Bar = term_to_binary(bar),
      erlang:binary_to_term(Bar, []).
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
