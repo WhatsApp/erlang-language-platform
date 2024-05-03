@@ -36,6 +36,7 @@ pub enum TypeError {
     RedundantNowarnFunction(RedundantNowarnFunction),
     RedundantGuard(RedundantGuard),
     AmbiguousUnion(AmbiguousUnion),
+    ClauseNotCovered(ClauseNotCovered),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -171,4 +172,9 @@ pub struct AmbiguousUnion {
     pub expr: Expr,
     pub expected: Type,
     pub got: Type,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ClauseNotCovered {
+    pub location: eqwalizer::Pos,
 }

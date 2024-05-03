@@ -1470,6 +1470,7 @@ mod tests {
             buck,
             EqwalizerConfig {
                 check_redundant_guards: Some(true),
+                clause_coverage: Some(true),
                 ..EqwalizerConfig::default_test()
             },
         );
