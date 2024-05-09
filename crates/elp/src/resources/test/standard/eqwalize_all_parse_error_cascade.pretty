@@ -1,5 +1,5 @@
 error: parse_error
-   ┌─ parse_error_a/src/parse_error_a_cascade.erl:11:5
+   ┌─ app_a/src/parse_error_a_cascade.erl:11:5
    │
 11 │     .
    │     ^ syntax error before: '.'

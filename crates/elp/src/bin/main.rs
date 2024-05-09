@@ -546,7 +546,7 @@ mod tests {
     fn eqwalize_reports_cascading_syntax_errors(buck: bool) {
         simple_snapshot(
             args_vec!["eqwalize", "parse_error_a_cascade",],
-            "parse_error",
+            "diagnostics",
             expect_file!("../resources/test/standard/eqwalize_all_parse_error_cascade.pretty"),
             buck,
             None,
