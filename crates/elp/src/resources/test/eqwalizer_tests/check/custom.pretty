@@ -2252,11 +2252,21 @@ error: incompatible_types
      ┌─ check/src/custom.erl:2198:5
      │
 2198 │     maps:remove(A, M).
-     │     ^^^^^^^^^^^^^^^^^ maps:remove(A, M).
-Expression has type:   dict  map #D{atom() => number()}
-Context expected type: shape map #S{a := number()}
+     │     ^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:remove(A, M).
+Expression has type:   #S{a => number()}
+Context expected type: #S{a := number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+These associations do not match:
+
+  #S{
+-    a := ...
++    a => ...
+  }
 
 error: incompatible_types
      ┌─ check/src/custom.erl:2239:5
