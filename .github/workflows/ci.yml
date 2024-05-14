@@ -11,14 +11,18 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm]
+        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm, windows-latest-x64]
         otp-version: [25.3, 26.2]
         include:
           - otp-version: 25.3
             brew-otp-version: 25
+            choco-otp-version: 25.3
+            choco-rebar3-version: 3.23.0
             vscode-publish: true
           - otp-version: 26.2
             brew-otp-version: 26
+            choco-otp-version: 26.2
+            choco-rebar3-version: 3.23.0
             vscode-publish: false
           - platform-arch: ubuntu-20.04-x64
             platform: ubuntu-20.04
@@ -35,6 +39,11 @@ jobs:
             os: macos
             target: aarch64-apple-darwin
             vscode-target: darwin-arm64
+          - platform-arch: windows-latest-x64
+            platform: windows-latest
+            os: windows
+            target: x86_64-pc-windows-gnu
+            vscode-target: win32-x64
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout erlang-language-platform
@@ -71,6 +80,12 @@ jobs:
       - name: Add erl to path (MacOS Only)
         if: matrix.os == 'macos'
         run: "echo '/opt/homebrew/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH"
+      - name: Install Erlang/OTP (Windows Only)
+        if: matrix.os == 'windows'
+        run: choco install -y erlang --version ${{ matrix.choco-otp-version }}
+      - name: Install rebar3 (Windows Only)
+        if: matrix.os == 'windows'
+        run: choco install -y rebar3 --version ${{ matrix.choco-rebar3-version }}
       - name: Verify Erlang version
         run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
       - name: Install rebar3
