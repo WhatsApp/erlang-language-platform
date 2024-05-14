@@ -107,7 +107,7 @@ jobs:
       - name: Test (Windows Only)
         if: matrix.os == 'windows'
         working-directory: eqwalizer/eqwalizer
-        run: 'dir .\target'
+        run: 'dir .'
       - name: Assemble eqwalizer binary (Windows Only)
         if: matrix.os == 'windows'
         working-directory: eqwalizer/eqwalizer
