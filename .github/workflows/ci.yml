@@ -18,10 +18,12 @@ jobs:
           - otp-version: 25.3
             brew-otp-version: 25
             choco-otp-version: 25.3.2.1
+            choco-rebar3-version: 3.23.0
             vscode-publish: true
           - otp-version: 26.2
             brew-otp-version: 26
             choco-otp-version: 26.2.5
+            choco-rebar3-version: 3.23.0
             vscode-publish: false
           # - platform-arch: ubuntu-20.04-x64
           #   platform: ubuntu-20.04
@@ -85,9 +87,14 @@ jobs:
       - name: Verify Erlang version
         run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
       - name: Install rebar3
+        if: matrix.os != 'windows'
         run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
       - name: Add rebar3 to path
+        if: matrix.os != 'windows'
         run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
+      - name: Install rebar3 (Windows Only)
+        if: matrix.os == 'windows'
+        run: choco install -y rebar3 --version ${{ matrix.choco-rebar3-version }}
       - name: Verify rebar3 version
         run: rebar3 version
       - name: Assemble eqwalizer.jar
