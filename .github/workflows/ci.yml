@@ -94,8 +94,13 @@ jobs:
         working-directory: eqwalizer/eqwalizer
         run: "sbt assembly"
       - name: Assemble eqwalizer binary
+        if: matrix.os != 'windows'
         working-directory: eqwalizer/eqwalizer
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
+      - name: Assemble eqwalizer binary (Windows Only)
+        if: matrix.os == 'windows'
+        working-directory: eqwalizer/eqwalizer
+        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target\scala-2.13\eqwalizer.jar eqwalizer'
       - name: Test elp
         # Do not run the tests in case of cross-compilation
         if: matrix.platform-arch != 'macos-latest-arm'
