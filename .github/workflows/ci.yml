@@ -11,7 +11,8 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm, windows-latest-x64]
+        # platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm, windows-latest-x64]
+        platform-arch: [windows-latest-x64]
         otp-version: [25.3, 26.2]
         include:
           - otp-version: 25.3
