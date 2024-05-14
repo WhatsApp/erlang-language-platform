@@ -17,12 +17,12 @@ jobs:
         include:
           - otp-version: 25.3
             brew-otp-version: 25
-            choco-otp-version: 25.3
+            choco-otp-version: 25.3.2.1
             choco-rebar3-version: 3.23.0
             vscode-publish: true
           - otp-version: 26.2
             brew-otp-version: 26
-            choco-otp-version: 26.2
+            choco-otp-version: 26.2.5
             choco-rebar3-version: 3.23.0
             vscode-publish: false
           - platform-arch: ubuntu-20.04-x64
