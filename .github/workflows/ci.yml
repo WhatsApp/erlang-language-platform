@@ -11,8 +11,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        # platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm, windows-latest-x64]
-        platform-arch: [windows-latest-x64]
+        platform-arch: [ubuntu-20.04-x64, macos-latest-x64, macos-latest-arm, windows-latest-x64]
         otp-version: [25.3, 26.2]
         include:
           - otp-version: 25.3
@@ -25,21 +24,21 @@ jobs:
             choco-otp-version: 26.2.5
             choco-rebar3-version: 3.23.0
             vscode-publish: false
-          - platform-arch: ubuntu-20.04-x64
-            platform: ubuntu-20.04
-            os: linux
-            target: x86_64-unknown-linux-gnu
-            vscode-target: linux-x64
-          - platform-arch: macos-latest-x64
-            platform: macos-latest
-            os: macos
-            target: x86_64-apple-darwin
-            vscode-target: darwin-x64
-          - platform-arch: macos-latest-arm
-            platform: macos-latest
-            os: macos
-            target: aarch64-apple-darwin
-            vscode-target: darwin-arm64
+          # - platform-arch: ubuntu-20.04-x64
+          #   platform: ubuntu-20.04
+          #   os: linux
+          #   target: x86_64-unknown-linux-gnu
+          #   vscode-target: linux-x64
+          # - platform-arch: macos-latest-x64
+          #   platform: macos-latest
+          #   os: macos
+          #   target: x86_64-apple-darwin
+          #   vscode-target: darwin-x64
+          # - platform-arch: macos-latest-arm
+          #   platform: macos-latest
+          #   os: macos
+          #   target: aarch64-apple-darwin
+          #   vscode-target: darwin-arm64
           - platform-arch: windows-latest-x64
             platform: windows-latest
             os: windows
