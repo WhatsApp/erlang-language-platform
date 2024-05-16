@@ -221,8 +221,15 @@ fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {
 }
 
 fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
+    lazy_static! {
+        // We operate a byte level via a regex (as opposed to use .contains)
+        // to avoid issues with UTF8 character boundaries.
+        // See https://github.com/WhatsApp/erlang-language-platform/issues/24
+        // The format macro is used to avoid marking the whole file as generated
+        static ref RE: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}generated", "@")).unwrap();
+    }
     let contents = db.file_text(file_id);
-    contents[0..(2001.min(contents.len()))].contains(&format!("{}generated", "@"))
+    RE.is_match(&contents.as_bytes()[0..(2001.min(contents.len()))])
 }
 
 fn is_otp(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
