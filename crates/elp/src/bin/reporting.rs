@@ -41,6 +41,7 @@ pub trait Reporter {
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()>;
     fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()>;
+    #[allow(unused)]
     fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()>;
     fn write_error_count(&mut self) -> Result<()>;
     fn write_stats(&mut self, count: u64, total: u64) -> Result<()>;
