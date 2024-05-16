@@ -1,0 +1,12 @@
+module specified: otp27_docstrings
+Diagnostics reported in 1 modules:
+  otp27_docstrings: 9
+      10:8-10:9::[Error] [P1711] Syntax Error
+      11:8-11:9::[Error] [P1711] Syntax Error
+      16:6-18:18::[Warning] [W0004] Missing '.'
+      18:18-18:19::[Error] [P1711] Syntax Error
+      18:21-18:22::[Error] [P1711] Syntax Error
+      18:24-18:25::[Error] [P1711] Syntax Error
+      21:13-21:14::[Error] [P1711] Syntax Error
+      31:4-31:7::[Error] [P1711] Syntax Error
+      33:8-33:23::[Warning] [W0002] Unused macro (THIS_IS_THE_END)

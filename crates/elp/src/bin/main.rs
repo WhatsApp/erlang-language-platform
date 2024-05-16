@@ -1620,6 +1620,18 @@ mod tests {
         assert_eq!(code, 0);
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_otp27_docstrings(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "otp27_docstrings"],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_otp27_docstrings.jsonl"),
+            buck,
+            None,
+        );
+    }
+
     #[track_caller]
     fn simple_snapshot(
         args: Vec<OsString>,
