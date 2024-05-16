@@ -37,6 +37,7 @@ mod from_proto;
 mod handlers;
 pub mod line_endings;
 pub mod lsp_ext;
+mod meta_only;
 mod op_queue;
 mod project_loader;
 pub mod reload;
@@ -105,11 +106,9 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
                  "yaws_server", "yaws_appmod_dav", "yaws_runmod_lock",
                  "jsonrpc",
                  "redbug_dtop",
-
-                 // This causes a timout in CI. Disable until T165009382 resolved
-                 "smax_check_biz", "smax_check_message_deliver"
                  ]
                 .iter()
+                // @fb-only: .chain(meta_only::FILES_TO_IGNORE.iter())
                 .map(SmolStr::new)
                 .collect();
     }

@@ -19,6 +19,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp::otp_file_to_ignore;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -107,6 +108,10 @@ pub fn do_parse_one(
 ) -> Result<Vec<ParseDiagnostic>> {
     if format == erlang_service::Format::Text {
         panic!("text format is for test purposes only!")
+    }
+
+    if otp_file_to_ignore(db, file_id) {
+        return Ok(vec![]);
     }
 
     let result = db.module_ast(file_id, format, vec![])?;
