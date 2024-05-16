@@ -1579,7 +1579,7 @@ error: incompatible_types
      │
 1411 │     erlang:min(X, Y).
      │     ^^^^^^^^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   atom() | number()
+Expression has type:   number()
 Context expected type: none()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
