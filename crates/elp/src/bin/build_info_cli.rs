@@ -15,11 +15,13 @@ use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_project_model::buck::query_buck_targets_raw;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
+use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 
 use crate::args::BuildInfo;
@@ -60,6 +62,14 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
         ),
         None => Box::new(std::io::stdout()),
     };
+
+    if args.buck_query {
+        if let ProjectBuildData::Buck(buck) = &project.project_build_data {
+            let buck_targets_query = query_buck_targets_raw(&buck.buck_conf);
+            writer.write_all(b"================buck targets query raw================\n")?;
+            writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
+        };
+    }
     writer.write_all(b"================manifest================\n")?;
     writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
     writer.write_all(b"================project_build_data================\n")?;

@@ -276,6 +276,8 @@ pub struct ProjectInfo {
     /// Path to a directory where to dump wa.build_info
     #[bpaf(argument("TO"))]
     pub to: Option<PathBuf>,
+    /// Include the buck uquery results in the output
+    pub buck_query: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

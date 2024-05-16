@@ -183,7 +183,7 @@ impl BuckProject {
 }
 
 #[derive(Deserialize, Debug)]
-struct BuckTarget {
+pub struct BuckTarget {
     name: String,
     //Some if target is test
     suite: Option<String>,
@@ -332,6 +332,23 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 
 fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
     let _timer = timeit!("load buck targets");
+    let result = query_buck_targets_raw(buck_config)?;
+    let result = result
+        .into_iter()
+        .filter(|(name, _)| {
+            !buck_config
+                .excluded_targets
+                .iter()
+                .any(|excluded| name.starts_with(excluded))
+        })
+        .filter(|(_, target)| {
+            target.suite.is_some() || !target.srcs.is_empty() || !target.includes.is_empty()
+        })
+        .collect();
+    Ok(result)
+}
+
+pub fn query_buck_targets_raw(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut kinds = String::new();
     for target in &buck_config.included_targets {
         if kinds.is_empty() {
@@ -356,7 +373,6 @@ fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullNa
             kinds.push_str(format!("+ kind(erlang_app$, {})", deps_target).as_str());
         }
     }
-
     let output = buck_config
         .buck_command()
         .arg("uquery")
@@ -374,7 +390,6 @@ fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullNa
         .arg("--output-attribute")
         .arg("labels")
         .output()?;
-
     if !output.status.success() {
         let reason = match output.status.code() {
             Some(code) => format!("Exited with status code: {code}"),
@@ -388,21 +403,8 @@ fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullNa
             "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Reason: {reason}. Details: {details}",
         );
     }
-
     let string = String::from_utf8(output.stdout)?;
     let result: FxHashMap<TargetFullName, BuckTarget> = serde_json::from_str(&string)?;
-    let result = result
-        .into_iter()
-        .filter(|(name, _)| {
-            !buck_config
-                .excluded_targets
-                .iter()
-                .any(|excluded| name.starts_with(excluded))
-        })
-        .filter(|(_, target)| {
-            target.suite.is_some() || !target.srcs.is_empty() || !target.includes.is_empty()
-        })
-        .collect();
     Ok(result)
 }
 
