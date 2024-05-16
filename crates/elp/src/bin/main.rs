@@ -884,6 +884,17 @@ mod tests {
         );
     }
 
+    #[test]
+    fn parse_elp_custom_build_tool() {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "app_b"],
+            "custom_build_tool",
+            expect_file!("../resources/test/custom_build_tool/parse_elp_custom_build_tool.jsonl"),
+            true,
+            None,
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_2(buck: bool) {

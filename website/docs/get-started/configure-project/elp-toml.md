@@ -41,6 +41,9 @@ This section is used to configure project discovery.
 | Key        | Type   | Description                                                                                                                                                                                            |
 | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | build_info | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](#the-build_infojson-format) section. |
+| generate_build_info | Boolean | If enabled, generate a `build_info.json` file by scanning the directories listed in `build_info_apps` and `build_info_deps`. |
+| build_info_apps | String | A string pattern used to identify applications for the project. Only used if `generate_build_info` is specified. E.g. `apps/*`|
+| build_info_deps | String | A string pattern used to identify dependencies for the project. Only used if `generate_build_info` is specified. E.g. `deps/*`|
 
 ### \[eqwalizer\]
 

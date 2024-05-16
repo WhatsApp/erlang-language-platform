@@ -1,0 +1,3 @@
+generate_build_info = true
+build_info_apps = "apps/*"
+build_info_deps = "deps/*"

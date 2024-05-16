@@ -30,6 +30,8 @@ use buck::BuckConfig;
 use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
+use fxhash::FxHashMap;
+use glob::glob;
 use itertools::Either;
 use json::JsonProjectAppData;
 use parking_lot::MutexGuard;
@@ -290,6 +292,12 @@ impl ProjectManifest {
                             );
                         }
                     }
+                } else if Some(true) == elp_config.generate_build_info {
+                    let apps = elp_config.json_project_app_data(elp_config.build_info_apps.clone());
+                    let deps = elp_config.json_project_app_data(elp_config.build_info_deps.clone());
+                    let config_path = elp_config.clone().config_path.expect("Missing config path");
+                    let json_config = json::JsonConfig::new(apps, deps, config_path);
+                    return Ok((elp_config.clone(), ProjectManifest::Json(json_config)));
                 } else {
                     let manifest = ProjectManifest::discover_in_place(
                         elp_config.config_path(),
@@ -368,6 +376,9 @@ pub struct ElpConfig {
     config_path: Option<AbsPathBuf>,
     /// Path to the `BUILD_INFO_FILE`.
     pub build_info: Option<PathBuf>,
+    pub generate_build_info: Option<bool>,
+    pub build_info_apps: Option<String>,
+    pub build_info_deps: Option<String>,
     pub buck: Option<BuckConfig>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
@@ -443,6 +454,9 @@ impl ElpConfig {
         config_path: AbsPathBuf,
         buck: Option<BuckConfig>,
         build_info: Option<PathBuf>,
+        generate_build_info: Option<bool>,
+        build_info_apps: Option<String>,
+        build_info_deps: Option<String>,
         eqwalizer: EqwalizerConfig,
         rebar: ElpRebarConfig,
     ) -> Self {
@@ -450,6 +464,9 @@ impl ElpConfig {
             config_path: Some(config_path),
             buck,
             build_info,
+            generate_build_info,
+            build_info_apps,
+            build_info_deps,
             eqwalizer,
             rebar,
         }
@@ -502,9 +519,53 @@ impl ElpConfig {
         Some(absolute_path)
     }
 
+    pub fn json_project_app_data(&self, apps_string: Option<String>) -> Vec<JsonProjectAppData> {
+        let mut res = Vec::new();
+
+        if let Some(apps_string) = apps_string {
+            let apps_string = self
+                .config_path()
+                .parent()
+                .unwrap()
+                .to_path_buf()
+                .join(apps_string);
+            for entry in glob(&apps_string.as_os_str().to_string_lossy())
+                .expect("Failed to read glob pattern")
+            {
+                match entry {
+                    Ok(path) => {
+                        if let Some(app_data) = app_data_from_path(&path) {
+                            res.push(app_data);
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Glob Error: {:?}", e)
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
     pub fn rebar_profile(&self) -> Profile {
         Profile(self.rebar.profile.clone())
     }
+}
+
+fn app_data_from_path(path: &PathBuf) -> Option<JsonProjectAppData> {
+    let name = path.file_name()?.to_string_lossy().to_string();
+    let dir = path.to_string_lossy().to_string();
+    let app_data = JsonProjectAppData {
+        name,
+        dir,
+        src_dirs: vec!["src".to_string()],
+        ebin: None,
+        extra_src_dirs: vec!["test".to_string()],
+        include_dirs: vec!["include".to_string()],
+        macros: FxHashMap::default(),
+    };
+    Some(app_data)
 }
 
 /// This is the key data structure related to project discovery and
@@ -1655,6 +1716,9 @@ mod tests {
         let result = toml::to_string::<ElpConfig>(&ElpConfig {
             config_path: None,
             build_info: Some(PathBuf::from("path/to/file")),
+            generate_build_info: None,
+            build_info_apps: None,
+            build_info_deps: None,
             buck: Some(BuckConfig {
                 config_path: None,
                 buck_root: None,

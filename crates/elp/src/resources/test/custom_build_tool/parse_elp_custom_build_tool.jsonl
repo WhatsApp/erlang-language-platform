@@ -1,0 +1,4 @@
+module specified: app_b
+Diagnostics reported in 1 modules:
+  app_b: 1
+      2:13-2:38::[Error] [E1516] can't find include lib "app_a/include/app_b.hrl"
