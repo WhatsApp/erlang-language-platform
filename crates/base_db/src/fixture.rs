@@ -22,6 +22,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::Otp;
 use elp_project_model::rebar::RebarProject;
@@ -282,7 +283,8 @@ impl ChangeFixture {
             };
             let (elp_config, manifest) =
                 ProjectManifest::discover(&AbsPathBuf::assert(json_config_file.into())).unwrap();
-            let loaded_project = Project::load(&manifest, elp_config.eqwalizer).unwrap();
+            let loaded_project =
+                Project::load(&manifest, elp_config.eqwalizer, &BuckQueryConfig::Original).unwrap();
             project = loaded_project;
         }
 

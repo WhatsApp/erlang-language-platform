@@ -27,6 +27,7 @@ use elp_ide::erlang_service;
 use elp_ide::erlang_service::DiagnosticLocation;
 use elp_ide::Analysis;
 use elp_log::timeit;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use indicatif::ParallelProgressIterator;
@@ -36,9 +37,16 @@ use crate::args::ParseAll;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
 
-pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli) -> Result<()> {
+pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::No, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::No,
+        Mode::Cli,
+        query_config,
+    )?;
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;
     let format = erlang_service::Format::OffsetEtf;

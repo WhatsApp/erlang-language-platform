@@ -32,6 +32,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::AnalysisHost;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
@@ -51,6 +52,7 @@ pub fn load_project_at(
     conf: DiscoverConfig,
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
+    query_config: &BuckQueryConfig,
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert(root);
@@ -76,7 +78,7 @@ pub fn load_project_at(
 
     log::info!("Discovered project: {:?}", manifest);
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(&manifest, elp_config.eqwalizer.clone())?;
+    let project = Project::load(&manifest, elp_config.eqwalizer.clone(), query_config)?;
     pb.finish();
 
     load_project(cli, project, include_otp, eqwalizer_mode)

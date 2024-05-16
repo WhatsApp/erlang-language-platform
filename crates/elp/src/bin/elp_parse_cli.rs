@@ -40,6 +40,7 @@ use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use indicatif::ParallelProgressIterator;
@@ -59,11 +60,22 @@ struct ParseResult {
     diagnostics: DiagnosticCollection,
 }
 
-pub fn parse_all(args: &ParseAllElp, cli: &mut dyn Cli) -> Result<()> {
+pub fn parse_all(
+    args: &ParseAllElp,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
 
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?

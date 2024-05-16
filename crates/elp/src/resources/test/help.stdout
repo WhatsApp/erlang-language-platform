@@ -1,10 +1,12 @@
-Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [COMMAND ...]
+Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [--buck-bxl] [--buck-deps-includes] [COMMAND ...]
 
 Available options:
         --log-file <LOG_FILE>
         --erl <ERL>
         --escript <ESCRIPT>
         --no-log-buffering
+        --buck-bxl             Use BXL when querying for a buck project model
+        --buck-deps-includes   When using BXL for buck project model, get includes from deps too
     -h, --help                 Prints help information
 
 Available commands:

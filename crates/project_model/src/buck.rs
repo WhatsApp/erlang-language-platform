@@ -164,8 +164,9 @@ pub struct BuckProject {
 impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
+        query_config: &BuckQueryConfig,
     ) -> Result<(BuckProject, Vec<ProjectAppData>, BuildInfoFile, PathBuf), anyhow::Error> {
-        let target_info = load_buck_targets(buck_conf)?;
+        let target_info = load_buck_targets(buck_conf, query_config)?;
         let otp_root = Otp::find_otp()?;
         let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
         let build_info_term = build_info(buck_conf, &project_app_data, &otp_root);
@@ -217,7 +218,10 @@ pub enum TargetType {
     ErlangTestUtils,
 }
 
-pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
+pub fn load_buck_targets(
+    buck_config: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
     let root = buck_config.buck_root();
 
@@ -226,7 +230,7 @@ pub fn load_buck_targets(buck_config: &BuckConfig) -> Result<TargetInfo> {
     } else {
         FxHashMap::default()
     };
-    let buck_targets = query_buck_targets(buck_config)?;
+    let buck_targets = query_buck_targets(buck_config, query_config)?;
 
     let mut target_info = TargetInfo::default();
     for (name, target) in buck_targets {
@@ -330,9 +334,24 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     }
 }
 
-fn query_buck_targets(buck_config: &BuckConfig) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BuckQueryConfig {
+    Original,
+    BxlOnly,
+    BxlWithDepsIncludes,
+}
+
+fn query_buck_targets(
+    buck_config: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
     let _timer = timeit!("load buck targets");
-    let result = query_buck_targets_raw(buck_config)?;
+    let result = match query_config {
+        BuckQueryConfig::Original => query_buck_targets_raw(buck_config)?,
+        BuckQueryConfig::BxlOnly => todo!(),
+        BuckQueryConfig::BxlWithDepsIncludes => todo!(),
+    };
+
     let result = result
         .into_iter()
         .filter(|(name, _)| {

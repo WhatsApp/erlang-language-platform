@@ -18,12 +18,15 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
     use elp_ide::erlang_service::Format;
+    use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::AppType;
     use elp_project_model::DiscoverConfig;
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
     use elp_project_model::ProjectManifest;
     use itertools::Itertools;
+
+    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Original;
 
     #[test]
     #[ignore]
@@ -33,12 +36,18 @@ mod tests {
         let cli = Fake::default();
 
         let conf = DiscoverConfig::buck();
-        let result =
-            load::load_project_at(&cli, &path, conf, IncludeOtp::No, elp_eqwalizer::Mode::Cli)
-                .expect(&format!(
-                    "Can't load project from path {}",
-                    &path.to_string_lossy()
-                ));
+        let result = load::load_project_at(
+            &cli,
+            &path,
+            conf,
+            IncludeOtp::No,
+            elp_eqwalizer::Mode::Cli,
+            &BUCK_QUERY_CONFIG,
+        )
+        .expect(&format!(
+            "Can't load project from path {}",
+            &path.to_string_lossy()
+        ));
         let analysis = &result.analysis();
         let modules = vec![
             ("test_elp", true),
@@ -80,7 +89,8 @@ mod tests {
         let (elp_config, buck_config) =
             ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
 
-        let project = Project::load(&buck_config, elp_config.eqwalizer).unwrap();
+        let project =
+            Project::load(&buck_config, elp_config.eqwalizer, &BUCK_QUERY_CONFIG).unwrap();
 
         let project_data: Vec<ProjectAppData> = project
             .non_otp_apps()

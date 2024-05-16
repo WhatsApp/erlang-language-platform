@@ -32,6 +32,7 @@ use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::erlang_service;
 use elp_ide::Analysis;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppName;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectBuildData;
@@ -56,9 +57,20 @@ struct EqwalizerInternalArgs<'a> {
     reporter: &'a mut dyn reporting::Reporter,
 }
 
-pub fn eqwalize_module(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
+pub fn eqwalize_module(
+    args: &Eqwalize,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_module(args, &loaded, cli)
 }
@@ -89,9 +101,20 @@ pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cl
     })
 }
 
-pub fn eqwalize_all(args: &EqwalizeAll, cli: &mut dyn Cli) -> Result<()> {
+pub fn eqwalize_all(
+    args: &EqwalizeAll,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_all(args, &loaded, cli)
 }
@@ -141,9 +164,20 @@ pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cl
     })
 }
 
-pub fn eqwalize_app(args: &EqwalizeApp, cli: &mut dyn Cli) -> Result<()> {
+pub fn eqwalize_app(
+    args: &EqwalizeApp,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
     build::compile_deps(&loaded, cli)?;
     do_eqwalize_app(args, &loaded, cli)
 }
@@ -175,9 +209,20 @@ pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cl
     })
 }
 
-pub fn eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
+pub fn eqwalize_target(
+    args: &EqwalizeTarget,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let config = DiscoverConfig::buck();
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
 
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
@@ -239,9 +284,20 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
     })
 }
 
-pub fn eqwalize_stats(args: &EqwalizeStats, cli: &mut dyn Cli) -> Result<()> {
+pub fn eqwalize_stats(
+    args: &EqwalizeStats,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(cli, &args.project, config, IncludeOtp::Yes, Mode::Cli)?;
+    let loaded = load::load_project_at(
+        cli,
+        &args.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Cli,
+        query_config,
+    )?;
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;

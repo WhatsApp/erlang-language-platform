@@ -27,6 +27,7 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use buck::BuckConfig;
+use buck::BuckQueryConfig;
 use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
@@ -913,7 +914,11 @@ impl Project {
         }
     }
 
-    pub fn load(manifest: &ProjectManifest, eqwalizer_config: EqwalizerConfig) -> Result<Project> {
+    pub fn load(
+        manifest: &ProjectManifest,
+        eqwalizer_config: EqwalizerConfig,
+        query_config: &BuckQueryConfig,
+    ) -> Result<Project> {
         let (project_build_info, mut project_apps, build_info, otp_root) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
@@ -950,7 +955,8 @@ impl Project {
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, apps, build_info, otp_root) = BuckProject::load_from_config(buck)?;
+                let (project, apps, build_info, otp_root) =
+                    BuckProject::load_from_config(buck, query_config)?;
                 (
                     ProjectBuildData::Buck(project),
                     apps,

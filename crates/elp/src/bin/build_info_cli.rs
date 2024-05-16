@@ -16,6 +16,7 @@ use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::buck::query_buck_targets_raw;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::EqwalizerConfig;
@@ -27,11 +28,11 @@ use elp_project_model::ProjectManifest;
 use crate::args::BuildInfo;
 use crate::args::ProjectInfo;
 
-pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
+pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
     let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
-    let project = Project::load(&manifest, EqwalizerConfig::default())?;
+    let project = Project::load(&manifest, EqwalizerConfig::default(), query_config)?;
     if args.json {
         let mut writer = File::create(&args.to)?;
         let json_str = serde_json::to_string_pretty::<JsonConfig>(&project.as_json(root))?;
@@ -47,10 +48,11 @@ pub(crate) fn save_build_info(args: BuildInfo) -> Result<()> {
     }
 }
 
-pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
+pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfig) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert(root);
-    let (manifest, project) = load_project(&root).or_else(|_| load_fallback(&root))?;
+    let (manifest, project) =
+        load_project(&root, query_config).or_else(|_| load_fallback(&root, query_config))?;
 
     let mut writer: Box<dyn Write> = match args.to {
         Some(to) => Box::new(
@@ -79,15 +81,21 @@ pub(crate) fn save_project_info(args: ProjectInfo) -> Result<()> {
     Ok(())
 }
 
-fn load_project(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
+fn load_project(
+    root: &AbsPath,
+    query_config: &BuckQueryConfig,
+) -> Result<(ProjectManifest, Project)> {
     let (elp_config, manifest) = ProjectManifest::discover(root)?;
-    let project = Project::load(&manifest, elp_config.eqwalizer)?;
+    let project = Project::load(&manifest, elp_config.eqwalizer, query_config)?;
     Ok((manifest, project))
 }
 
-fn load_fallback(root: &AbsPath) -> Result<(ProjectManifest, Project)> {
+fn load_fallback(
+    root: &AbsPath,
+    query_config: &BuckQueryConfig,
+) -> Result<(ProjectManifest, Project)> {
     let manifest = ProjectManifest::discover_no_manifest(root, IncludeParentDirs::Yes);
     let elp_config = ElpConfig::default();
-    let project = Project::load(&manifest, elp_config.eqwalizer)?;
+    let project = Project::load(&manifest, elp_config.eqwalizer, query_config)?;
     Ok((manifest, project))
 }

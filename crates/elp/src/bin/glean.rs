@@ -31,6 +31,7 @@ use elp_ide::elp_ide_db::RootDatabase;
 // @fb-only: use elp_ide::meta_only::ods_links::build_ods_url;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_syntax::ast;
@@ -687,8 +688,8 @@ pub struct GleanIndexer {
     module: Option<String>,
 }
 
-pub fn index(args: &Glean, cli: &mut dyn Cli) -> Result<()> {
-    let (indexer, _loaded) = GleanIndexer::new(args, cli)?;
+pub fn index(args: &Glean, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config)?;
     let (facts, module_index) = indexer.index(args.multi)?;
     write_results(facts, module_index, cli, args)
 }
@@ -729,7 +730,11 @@ fn write_results(
 }
 
 impl GleanIndexer {
-    pub fn new(args: &Glean, cli: &mut dyn Cli) -> Result<(Self, LoadResult)> {
+    pub fn new(
+        args: &Glean,
+        cli: &mut dyn Cli,
+        query_config: &BuckQueryConfig,
+    ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
         let loaded = load::load_project_at(
             cli,
@@ -737,6 +742,7 @@ impl GleanIndexer {
             config,
             IncludeOtp::Yes,
             elp_eqwalizer::Mode::Server,
+            query_config,
         )?;
         let analysis = loaded.analysis();
         let indexer = Self {

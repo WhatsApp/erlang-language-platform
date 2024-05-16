@@ -4,6 +4,16 @@
     "markdownDescription": "Enable support for AI-based completions.",
     "type": "boolean"
   },
+  "elp.buck.query.depsIncludes.enable": {
+    "default": false,
+    "markdownDescription": "When using BXL to query for buck project model, extend include paths from deps too.",
+    "type": "boolean"
+  },
+  "elp.buck.query.useBxl.enable": {
+    "default": false,
+    "markdownDescription": "Use BXL to query for buck project model.",
+    "type": "boolean"
+  },
   "elp.diagnostics.disabled": {
     "default": [],
     "items": {

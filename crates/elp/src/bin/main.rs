@@ -101,30 +101,35 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         setup_static(&args);
         setup_thread_pool();
     });
+    let query_config = args.query_config();
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
-        args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli)?,
-        args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(&args, cli)?,
-        args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(&args, cli)?,
-        args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(&args, cli)?,
-        args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(&args, cli)?,
-        args::Command::EqwalizeStats(args) => eqwalizer_cli::eqwalize_stats(&args, cli)?,
-        args::Command::EqwalizeTarget(args) => eqwalizer_cli::eqwalize_target(&args, cli)?,
-        args::Command::BuildInfo(args) => build_info_cli::save_build_info(args)?,
-        args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args)?,
-        args::Command::Lint(args) => lint_cli::lint_all(&args, cli)?,
+        args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli, &query_config)?,
+        args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(&args, cli, &query_config)?,
+        args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(&args, cli, &query_config)?,
+        args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(&args, cli, &query_config)?,
+        args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(&args, cli, &query_config)?,
+        args::Command::EqwalizeStats(args) => {
+            eqwalizer_cli::eqwalize_stats(&args, cli, &query_config)?
+        }
+        args::Command::EqwalizeTarget(args) => {
+            eqwalizer_cli::eqwalize_target(&args, cli, &query_config)?
+        }
+        args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
+        args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
+        args::Command::Lint(args) => lint_cli::lint_all(&args, cli, &query_config)?,
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
             writeln!(cli, "#Please run this:\n{}", instructions)?
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
-        args::Command::Shell(args) => shell::run_shell(&args, cli)?,
+        args::Command::Shell(args) => shell::run_shell(&args, cli, &query_config)?,
         args::Command::Help() => {
             let help = batteries::get_usage(args::args());
             writeln!(cli, "{}", help)?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
-        args::Command::Glean(args) => glean::index(&args, cli)?,
+        args::Command::Glean(args) => glean::index(&args, cli, &query_config)?,
         args::Command::ConfigStanza(args) => config_stanza::config_stanza(&args, cli)?,
     }
 
@@ -198,6 +203,7 @@ mod tests {
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
     use expect_test::expect;
@@ -211,6 +217,8 @@ mod tests {
 
     use super::reporting::Reporter;
     use super::*;
+
+    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Original;
 
     macro_rules! args_vec {
         ($($e:expr$(,)?)+) => {
@@ -309,6 +317,7 @@ mod tests {
                 project_config,
                 IncludeOtp::Yes,
                 Mode::Cli,
+                &BUCK_QUERY_CONFIG,
             )
             .with_context(|| format!("Failed to load project at {}", str_path))
             .unwrap();

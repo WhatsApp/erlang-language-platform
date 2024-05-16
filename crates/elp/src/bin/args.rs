@@ -16,6 +16,7 @@ use bpaf::construct;
 use bpaf::long;
 use bpaf::Bpaf;
 use bpaf::Parser;
+use elp_project_model::buck::BuckQueryConfig;
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -333,8 +334,28 @@ pub struct Args {
     #[bpaf(argument("ESCRIPT"))]
     pub escript: Option<PathBuf>,
     pub no_log_buffering: bool,
+
+    /// Use BXL when querying for a buck project model
+    pub buck_bxl: bool,
+    /// When using BXL for buck project model, get includes from deps too
+    pub buck_deps_includes: bool,
+
     #[bpaf(external(command))]
     pub command: Command,
+}
+
+impl Args {
+    pub fn query_config(&self) -> BuckQueryConfig {
+        if self.buck_bxl {
+            if self.buck_deps_includes {
+                BuckQueryConfig::BxlWithDepsIncludes
+            } else {
+                BuckQueryConfig::BxlOnly
+            }
+        } else {
+            BuckQueryConfig::Original
+        }
+    }
 }
 
 pub fn command() -> impl Parser<Command> {

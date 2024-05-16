@@ -54,6 +54,7 @@ use elp_log::timeit;
 use elp_log::timeit_exceeds;
 use elp_log::Logger;
 use elp_log::TimeIt;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
@@ -1306,6 +1307,7 @@ impl Server {
 
     fn reload_project(&mut self, paths: Vec<AbsPathBuf>) {
         let loader = self.project_loader.clone();
+        let query_config = self.config.buck_query();
         if !paths.is_empty() {
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
@@ -1316,7 +1318,12 @@ impl Server {
                             let manifest = loader.load_manifest_if_new(&path);
                             if let Some((elp_config, main, fallback)) = manifest {
                                 if let Ok(project) = Server::load_project_or_fallback(
-                                    &path, elp_config, main, fallback, &sender,
+                                    &path,
+                                    elp_config,
+                                    main,
+                                    fallback,
+                                    &sender,
+                                    &query_config,
                                 ) {
                                     projects.push(project);
                                 }
@@ -1338,6 +1345,7 @@ impl Server {
         main: Result<ProjectManifest>,
         fallback: ProjectManifest,
         sender: &Sender<Task>,
+        query_config: &BuckQueryConfig,
     ) -> Result<Project> {
         let mut fallback_used = false;
         let mut errors = vec![];
@@ -1354,7 +1362,7 @@ impl Server {
                 fallback.clone()
             }
         };
-        let mut project = Project::load(&manifest, elp_config.eqwalizer.clone());
+        let mut project = Project::load(&manifest, elp_config.eqwalizer.clone(), query_config);
         if let Err(err) = &project {
             log::error!(
                 "Failed to load project for manifest {:?}, error: {:?}",
@@ -1363,7 +1371,7 @@ impl Server {
             );
             errors.push(err.to_string());
             if !fallback_used {
-                project = Project::load(&fallback, elp_config.eqwalizer);
+                project = Project::load(&fallback, elp_config.eqwalizer, query_config);
                 if let Err(err) = &project {
                     log::error!(
                         "Failed to load project for fallback manifest {:?}, error: {:?}",
@@ -1387,13 +1395,19 @@ impl Server {
     fn fetch_projects_if_needed(&mut self, path: &AbsPath) {
         let path = path.to_path_buf();
         let loader = self.project_loader.clone();
+        let query_config = self.config.buck_query();
         self.project_pool.handle.spawn_with_sender({
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
                 let project = match manifest {
-                    Some((elp_config, main, fallback)) => {
-                        Server::load_project_or_fallback(&path, elp_config, main, fallback, &sender)
-                    }
+                    Some((elp_config, main, fallback)) => Server::load_project_or_fallback(
+                        &path,
+                        elp_config,
+                        main,
+                        fallback,
+                        &sender,
+                        &query_config,
+                    ),
                     None => return,
                 };
 

@@ -28,6 +28,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::DiscoverConfig;
 use rustyline::error::ReadlineError;
 use serde::Deserialize;
@@ -277,14 +278,20 @@ fn update_changes(
     Ok(time)
 }
 
-pub fn run_shell(shell: &Shell, cli: &mut dyn Cli) -> Result<()> {
+pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let watchman = Watchman::new(&shell.project)
         .map_err(|_err| anyhow::Error::msg(
             "Could not find project. Are you in an Erlang project directory, or is one specified using --project?"
         ))?;
     let config = DiscoverConfig::new(false, "test");
-    let mut loaded =
-        load::load_project_at(cli, &shell.project, config, IncludeOtp::Yes, Mode::Shell)?;
+    let mut loaded = load::load_project_at(
+        cli,
+        &shell.project,
+        config,
+        IncludeOtp::Yes,
+        Mode::Shell,
+        query_config,
+    )?;
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
     loop {
