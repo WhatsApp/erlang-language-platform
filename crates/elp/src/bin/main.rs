@@ -1632,6 +1632,18 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_otp27_sigils(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "otp27_sigils"],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_otp27_sigils.jsonl"),
+            buck,
+            None,
+        );
+    }
+
     #[track_caller]
     fn simple_snapshot(
         args: Vec<OsString>,
