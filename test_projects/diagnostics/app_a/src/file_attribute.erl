@@ -1,0 +1,2 @@
+-module(file_attribute).
+-file("file_attribute.hrl", 1).

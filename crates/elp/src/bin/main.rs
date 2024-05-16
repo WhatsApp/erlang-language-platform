@@ -565,6 +565,18 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_elp_file_attribute(buck: bool) {
+        simple_snapshot(
+            args_vec!["parse-elp", "--module", "file_attribute",],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_elp_file_attribute.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test]
     // Can only be buck test, --rebar ignores other config
     fn eqwalize_all_reads_json_config() {

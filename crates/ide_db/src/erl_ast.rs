@@ -68,17 +68,30 @@ impl AstLoader for crate::RootDatabase {
         for option in compile_options {
             options.push(option.clone());
         }
-        let path = path.to_path_buf().into();
+        let path: PathBuf = path.to_path_buf().into();
         let req = ParseRequest {
             options,
-            path,
+            path: path.clone(),
             format,
         };
-
         if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
             let r = erlang_service.request_parse(req, || self.unwind_if_cancelled());
             let included_files = files_from_bytes(&r.files);
             for file in included_files {
+                let file_path = PathBuf::from(file.clone());
+                let file = if file_path.is_absolute() {
+                    file
+                } else {
+                    match path.parent() {
+                        None => file,
+                        Some(file) => file
+                            .to_path_buf()
+                            .join(file)
+                            .as_os_str()
+                            .to_string_lossy()
+                            .to_string(),
+                    }
+                };
                 let file_path = VfsPath::new_real_path(file);
                 if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
                     // Dummy read of file revision to make DB track changes
