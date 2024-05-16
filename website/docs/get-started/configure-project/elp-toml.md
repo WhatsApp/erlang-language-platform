@@ -13,13 +13,14 @@ will not perform any upward auto-discovery for the structure of a project.
 
 ## A Sample `.elp.toml` Configuration File
 
-Here is an example of a full `.elp.toml` file. All sections are optional. An
-[empty section](#empty-section) can be used to mark the root of a project (via
+Here is an example of a full `.elp.toml` file. All sections are optional. The
+[build_info](#empty-section) can be used to mark the root of a project (via
 the `build_info` property). The available configuration sections are described
 below.
 
 ```toml
-build_info = my_hand_crafted_build_info.json
+[build_info]
+file = "my_hand_crafted_build_info.json"
 
 [eqwalizer]
 enable_all = true
@@ -34,16 +35,15 @@ profile = "test"
 
 ## Configuration Sections
 
-### Empty Section
+### Build Info
 
 This section is used to configure project discovery.
 
 | Key        | Type   | Description                                                                                                                                                                                            |
 | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| build_info | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](#the-build_infojson-format) section. |
-| generate_build_info | Boolean | If enabled, generate a `build_info.json` file by scanning the directories listed in `build_info_apps` and `build_info_deps`. |
-| build_info_apps | String | A string pattern used to identify applications for the project. Only used if `generate_build_info` is specified. E.g. `apps/*`|
-| build_info_deps | String | A string pattern used to identify dependencies for the project. Only used if `generate_build_info` is specified. E.g. `deps/*`|
+| file | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](#the-build_infojson-format) section. |
+| apps | String | A string pattern used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. E.g. `apps/*`|
+| deps | String | A string pattern used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. E.g. `deps/*`|
 
 ### \[eqwalizer\]
 
@@ -89,4 +89,4 @@ Configure ELP for [rebar3](https://rebar3.org/)-based projects.
 
 | Key     | Type   | Description                                                                                                                                    | Default |
 | ------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| profile | String | The `rebar3` profile to use for project discovery. Only used if the `build_info` property is specified in the [empty section](#empty-section). | test    |
+| profile | String | The `rebar3` profile to use for project discovery. Only used if the `file` property is specified in the [build_info](#build-info) section.     | test    |

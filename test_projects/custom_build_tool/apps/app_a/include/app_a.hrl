@@ -1,0 +1,1 @@
+-compile(debug_info).

@@ -292,9 +292,9 @@ impl ProjectManifest {
                             );
                         }
                     }
-                } else if Some(true) == elp_config.generate_build_info {
-                    let apps = elp_config.json_project_app_data(elp_config.build_info_apps.clone());
-                    let deps = elp_config.json_project_app_data(elp_config.build_info_deps.clone());
+                } else if elp_config.generate_build_info() {
+                    let apps = elp_config.json_project_app_data(elp_config.build_info_apps());
+                    let deps = elp_config.json_project_app_data(elp_config.build_info_deps());
                     let config_path = elp_config.clone().config_path.expect("Missing config path");
                     let json_config = json::JsonConfig::new(apps, deps, config_path);
                     return Ok((elp_config.clone(), ProjectManifest::Json(json_config)));
@@ -374,11 +374,7 @@ pub struct ElpConfig {
     #[serde(skip_deserializing)]
     #[serde(skip_serializing)]
     config_path: Option<AbsPathBuf>,
-    /// Path to the `BUILD_INFO_FILE`.
-    pub build_info: Option<PathBuf>,
-    pub generate_build_info: Option<bool>,
-    pub build_info_apps: Option<String>,
-    pub build_info_deps: Option<String>,
+    pub build_info: Option<BuildInfoConfig>,
     pub buck: Option<BuckConfig>,
     #[serde(default)]
     pub eqwalizer: EqwalizerConfig,
@@ -423,6 +419,24 @@ impl Default for EqwalizerConfig {
 
 #[derive(
     Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
+pub struct BuildInfoConfig {
+    pub file: Option<PathBuf>,
+    pub apps: Option<String>,
+    pub deps: Option<String>,
+}
+
+#[derive(
+    Debug,
     Clone,
     PartialEq,
     Eq,
@@ -453,10 +467,7 @@ impl ElpConfig {
     pub fn new(
         config_path: AbsPathBuf,
         buck: Option<BuckConfig>,
-        build_info: Option<PathBuf>,
-        generate_build_info: Option<bool>,
-        build_info_apps: Option<String>,
-        build_info_deps: Option<String>,
+        build_info: Option<BuildInfoConfig>,
         eqwalizer: EqwalizerConfig,
         rebar: ElpRebarConfig,
     ) -> Self {
@@ -464,9 +475,6 @@ impl ElpConfig {
             config_path: Some(config_path),
             buck,
             build_info,
-            generate_build_info,
-            build_info_apps,
-            build_info_deps,
             eqwalizer,
             rebar,
         }
@@ -501,12 +509,37 @@ impl ElpConfig {
         }
     }
 
+    pub fn generate_build_info(&self) -> bool {
+        if let Some(build_info) = &self.build_info {
+            build_info.file.is_none()
+        } else {
+            false
+        }
+    }
+
+    pub fn build_info_apps(&self) -> Option<String> {
+        if let Some(build_info) = &self.build_info {
+            build_info.apps.clone()
+        } else {
+            None
+        }
+    }
+
+    pub fn build_info_deps(&self) -> Option<String> {
+        if let Some(build_info) = &self.build_info {
+            build_info.deps.clone()
+        } else {
+            None
+        }
+    }
+
     pub fn config_path(&self) -> &AbsPath {
         self.config_path.as_ref().unwrap()
     }
 
     pub fn build_info_path(&self) -> Option<AbsPathBuf> {
-        let build_info_file = self.build_info.clone()?;
+        let build_info = self.build_info.clone()?;
+        let build_info_file = build_info.file?;
         let absolute_path = if build_info_file.is_absolute() {
             AbsPathBuf::assert(build_info_file)
         } else {
@@ -1571,7 +1604,8 @@ mod tests {
     fn test_toml_incorrect_build_info_path() {
         let spec = r#"
         //- /.elp.toml
-        build_info = "nonexistent_file"
+        [build_info]
+        file = "nonexistent_file"
         //- /app_a/src/app.erl
         -module(app).
         "#;
@@ -1600,7 +1634,8 @@ mod tests {
     fn test_toml_build_info_parse_error() {
         let spec = r#"
         //- /.elp.toml
-        build_info = "info.json"
+        [build_info]
+        file = "info.json"
         //- /info.json
         {
         syntax error!
@@ -1626,7 +1661,8 @@ mod tests {
     fn test_toml_build_info_manifest() {
         let spec = r#"
         //- /.elp.toml
-        build_info = "info.json"
+        [build_info]
+        file = "info.json"
         //- /info.json
         {
             "apps": [
@@ -1715,10 +1751,11 @@ mod tests {
     fn serde_serialize_elp_toml() {
         let result = toml::to_string::<ElpConfig>(&ElpConfig {
             config_path: None,
-            build_info: Some(PathBuf::from("path/to/file")),
-            generate_build_info: None,
-            build_info_apps: None,
-            build_info_deps: None,
+            build_info: Some(BuildInfoConfig {
+                file: Some(PathBuf::from("path/to/file")),
+                apps: None,
+                deps: None,
+            }),
             buck: Some(BuckConfig {
                 config_path: None,
                 buck_root: None,
@@ -1745,7 +1782,8 @@ mod tests {
         })
         .unwrap();
         expect![[r#"
-            build_info = "path/to/file"
+            [build_info]
+            file = "path/to/file"
 
             [buck]
             enabled = true
@@ -1769,7 +1807,8 @@ mod tests {
     fn serde_deserialize_elp_toml() {
         let lints: ElpConfig = toml::from_str(
             r#"
-            build_info = "path/to/file"
+            [build_info]
+            file = "path/to/file"
 
             [buck]
             enabled = true
@@ -1793,7 +1832,13 @@ mod tests {
             ElpConfig {
                 config_path: None,
                 build_info: Some(
-                    "path/to/file",
+                    BuildInfoConfig {
+                        file: Some(
+                            "path/to/file",
+                        ),
+                        apps: None,
+                        deps: None,
+                    },
                 ),
                 buck: Some(
                     BuckConfig {

@@ -1,1 +1,2 @@
-build_info = "build_info.json"
+[build_info]
+file = "build_info.json"
