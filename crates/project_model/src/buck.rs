@@ -878,6 +878,9 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+    use expect_test::Expect;
+
     use super::*;
     use crate::test_fixture::FixtureWithProjectMeta;
 
@@ -1018,5 +1021,87 @@ mod tests {
         let actual = find_app_root(root, &target_name, &target);
         let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
         assert_eq!(expected, actual)
+    }
+
+    #[track_caller]
+    fn check_buck_bxl_query(deps_includes: bool, expect: Expect) {
+        let buck_root = AbsPathBuf::assert(std::env::current_dir().unwrap());
+        let buck_config = BuckConfig {
+            config_path: None,
+            buck_root: Some(buck_root),
+            enabled: true,
+            deps_target: None,
+            build_deps: false,
+            included_targets: vec![
+                "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...".to_string(),
+            ],
+            excluded_targets: vec![],
+            source_root: Some(PathBuf::from("whatsapp/elp/test_projects/buck_tests_2")),
+        };
+        let deps_args = if deps_includes {
+            vec!["--deps_includes", "true"]
+        } else {
+            vec![]
+        };
+        let output = buck_config
+            .buck_command()
+            .arg("bxl")
+            .arg("prelude//erlang/elp.bxl:elp_config")
+            .arg("--")
+            .arg("--included_targets")
+            .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...")
+            .args(deps_args)
+            .output()
+            .unwrap();
+        if !output.status.success() {
+            panic!("{:#?}", output);
+        }
+        let string = String::from_utf8(output.stdout).unwrap();
+
+        let to_replace = env!("CARGO_WORKSPACE_DIR");
+        let string = string.replace(to_replace, "/[..]/");
+        expect.assert_eq(&string);
+    }
+
+    #[test]
+    fn build_info_buck_bxl_query_no_deps_includes() {
+        check_buck_bxl_query(
+            false,
+            expect![[r#"
+                {
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
+                    "name": "app_a",
+                    "suite": null,
+                    "srcs": [
+                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
+                    ],
+                    "includes": [],
+                    "labels": []
+                  }
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn build_info_buck_bxl_query_with_deps_includes() {
+        check_buck_bxl_query(
+            true,
+            expect![[r#"
+                {
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
+                    "name": "app_a",
+                    "suite": null,
+                    "srcs": [
+                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
+                    ],
+                    "includes": [
+                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a"
+                    ],
+                    "labels": []
+                  }
+                }
+            "#]],
+        );
     }
 }
