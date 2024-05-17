@@ -1023,44 +1023,50 @@ mod tests {
         assert_eq!(expected, actual)
     }
 
+    // TODO: enable when buck is properly set up on github project
+    // @fb-only: const BUCK_TESTS_ENABLED: bool = true;
+    const BUCK_TESTS_ENABLED: bool = false; // @oss-only
+
     #[track_caller]
     fn check_buck_bxl_query(deps_includes: bool, expect: Expect) {
-        let buck_root = AbsPathBuf::assert(std::env::current_dir().unwrap());
-        let buck_config = BuckConfig {
-            config_path: None,
-            buck_root: Some(buck_root),
-            enabled: true,
-            deps_target: None,
-            build_deps: false,
-            included_targets: vec![
-                "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...".to_string(),
-            ],
-            excluded_targets: vec![],
-            source_root: Some(PathBuf::from("whatsapp/elp/test_projects/buck_tests_2")),
-        };
-        let deps_args = if deps_includes {
-            vec!["--deps_includes", "true"]
-        } else {
-            vec![]
-        };
-        let output = buck_config
-            .buck_command()
-            .arg("bxl")
-            .arg("prelude//erlang/elp.bxl:elp_config")
-            .arg("--")
-            .arg("--included_targets")
-            .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...")
-            .args(deps_args)
-            .output()
-            .unwrap();
-        if !output.status.success() {
-            panic!("{:#?}", output);
-        }
-        let string = String::from_utf8(output.stdout).unwrap();
+        if BUCK_TESTS_ENABLED {
+            let buck_root = AbsPathBuf::assert(std::env::current_dir().unwrap());
+            let buck_config = BuckConfig {
+                config_path: None,
+                buck_root: Some(buck_root),
+                enabled: true,
+                deps_target: None,
+                build_deps: false,
+                included_targets: vec![
+                    "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...".to_string(),
+                ],
+                excluded_targets: vec![],
+                source_root: Some(PathBuf::from("whatsapp/elp/test_projects/buck_tests_2")),
+            };
+            let deps_args = if deps_includes {
+                vec!["--deps_includes", "true"]
+            } else {
+                vec![]
+            };
+            let output = buck_config
+                .buck_command()
+                .arg("bxl")
+                .arg("prelude//erlang/elp.bxl:elp_config")
+                .arg("--")
+                .arg("--included_targets")
+                .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...")
+                .args(deps_args)
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                panic!("{:#?}", output);
+            }
+            let string = String::from_utf8(output.stdout).unwrap();
 
-        let to_replace = env!("CARGO_WORKSPACE_DIR");
-        let string = string.replace(to_replace, "/[..]/");
-        expect.assert_eq(&string);
+            let to_replace = env!("CARGO_WORKSPACE_DIR");
+            let string = string.replace(to_replace, "/[..]/");
+            expect.assert_eq(&string);
+        }
     }
 
     #[test]
