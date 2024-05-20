@@ -346,11 +346,7 @@ fn query_buck_targets(
     query_config: &BuckQueryConfig,
 ) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
     let _timer = timeit!("load buck targets");
-    let result = match query_config {
-        BuckQueryConfig::Original => query_buck_targets_raw(buck_config)?,
-        BuckQueryConfig::BxlOnly => todo!(),
-        BuckQueryConfig::BxlWithDepsIncludes => todo!(),
-    };
+    let result = query_buck_targets_raw(buck_config, query_config)?;
 
     let result = result
         .into_iter()
@@ -366,8 +362,18 @@ fn query_buck_targets(
         .collect();
     Ok(result)
 }
+pub fn query_buck_targets_raw(
+    buck_config: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<FxHashMap<String, BuckTarget>> {
+    match query_config {
+        BuckQueryConfig::Original => query_buck_targets_orig(buck_config),
+        BuckQueryConfig::BxlOnly => query_buck_targets_bxl(buck_config, false),
+        BuckQueryConfig::BxlWithDepsIncludes => query_buck_targets_bxl(buck_config, true),
+    }
+}
 
-pub fn query_buck_targets_raw(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
+pub fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut kinds = String::new();
     for target in &buck_config.included_targets {
         if kinds.is_empty() {
@@ -427,6 +433,49 @@ pub fn query_buck_targets_raw(buck_config: &BuckConfig) -> Result<FxHashMap<Stri
     Ok(result)
 }
 
+pub fn query_buck_targets_bxl(
+    buck_config: &BuckConfig,
+    deps_includes: bool,
+) -> Result<FxHashMap<String, BuckTarget>> {
+    let mut targets = Vec::default();
+    for target in &buck_config.included_targets {
+        targets.push("--included_targets");
+        targets.push(target);
+    }
+    if let Some(deps_target) = &buck_config.deps_target {
+        targets.push("--deps_target");
+        targets.push(deps_target);
+    }
+    if deps_includes {
+        targets.push("--deps_includes");
+        targets.push("true");
+    }
+    let output = buck_config
+        .buck_command()
+        .arg("bxl")
+        .arg("--config=client.id=elp")
+        .arg("prelude//erlang/elp.bxl:elp_config")
+        .arg("--")
+        .args(targets)
+        .output()?;
+    if !output.status.success() {
+        let reason = match output.status.code() {
+            Some(code) => format!("Exited with status code: {code}"),
+            None => "Process terminated by signal".to_string(),
+        };
+        let details = match String::from_utf8(output.stderr) {
+            Ok(err) => err,
+            Err(_) => "".to_string(),
+        };
+        bail!(
+            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Reason: {reason}. Details: {details}",
+        );
+    }
+    let string = String::from_utf8(output.stdout)?;
+    let result: FxHashMap<TargetFullName, BuckTarget> = serde_json::from_str(&string)?;
+    Ok(result)
+}
+
 fn build_third_party_targets(
     buck_config: &BuckConfig,
 ) -> Result<FxHashMap<TargetFullName, AbsPathBuf>> {
@@ -463,11 +512,18 @@ fn build_third_party_targets(
 
 /// Convert cell//path/to/project_file.erl to /Users/$USER/buckroot/path/to/project_file.erl
 fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
-    let mut split = target.split("//");
-    let _ = split.next(); // "cell" or empty in case of //...
-    match split.next() {
-        None => bail!("couldn't find a path for target {:?}", target),
-        Some(path) => Ok(root.join(path)),
+    // TODO: remove this function once the BXL query is used instead.
+    //       It is an approximation, targets may be in different cells.
+    //       T188371274
+    if target.contains("//") {
+        let mut split = target.split("//");
+        let _ = split.next(); // "cell" or empty in case of //...
+        match split.next() {
+            None => bail!("couldn't find a path for target {:?}", target),
+            Some(path) => Ok(root.join(path)),
+        }
+    } else {
+        Ok(root.join(target))
     }
 }
 
@@ -1108,5 +1164,36 @@ mod tests {
                 }
             "#]],
         );
+    }
+
+    #[test]
+    fn test_buck_path_to_abs_path() {
+        let root = AbsPath::assert(Path::new("/blah"));
+        expect![[r#"
+            Ok(
+                AbsPathBuf(
+                    "/blah/foo/bar",
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&buck_path_to_abs_path(&root, "cell//foo/bar"));
+
+        expect![[r#"
+            Ok(
+                AbsPathBuf(
+                    "/blah/foo/bar",
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&buck_path_to_abs_path(&root, "//foo/bar"));
+
+        expect![[r#"
+            Ok(
+                AbsPathBuf(
+                    "/blah/foo/bar",
+                ),
+            )
+        "#]]
+        .assert_debug_eq(&buck_path_to_abs_path(&root, "foo/bar"))
     }
 }

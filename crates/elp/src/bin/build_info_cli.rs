@@ -74,7 +74,7 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
 
     if args.buck_query {
         if let ProjectBuildData::Buck(buck) = &project.project_build_data {
-            let buck_targets_query = query_buck_targets_raw(&buck.buck_conf);
+            let buck_targets_query = query_buck_targets_raw(&buck.buck_conf, query_config);
             writer.write_all(b"================buck targets query raw================\n")?;
             writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
         };
