@@ -49,11 +49,6 @@ pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -
 }
 
 pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfig) -> Result<()> {
-    let root = fs::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert(root);
-    let (manifest, project) =
-        load_project(&root, query_config).or_else(|_| load_fallback(&root, query_config))?;
-
     let mut writer: Box<dyn Write> = match args.to {
         Some(to) => Box::new(
             std::fs::OpenOptions::new()
@@ -63,6 +58,18 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
                 .open(to)?,
         ),
         None => Box::new(std::io::stdout()),
+    };
+    let root = fs::canonicalize(&args.project)?;
+    let root = AbsPathBuf::assert(root);
+    let (manifest, project) = match load_project(&root, query_config) {
+        Ok(res) => res,
+        Err(err) => {
+            writer.write_all(
+                format!("could not load manifest:\n-----\n{err},\n-----\nfalling back\n")
+                    .as_bytes(),
+            )?;
+            load_fallback(&root, query_config)?
+        }
     };
 
     if args.buck_query {
