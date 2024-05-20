@@ -198,7 +198,7 @@ pub struct BuckTarget {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Target {
-    //full-name, like  waserver//erl/chatd:chatd
+    // full-name, like cell//path/to/target/...
     pub name: TargetFullName,
     pub app_name: String,
     pub dir: AbsPathBuf,
@@ -461,10 +461,10 @@ fn build_third_party_targets(
         .collect())
 }
 
-/// Convert waserver//erl/util/thrift/src/thrift_compiler.erl to /Users/$USER/local/whatsapp/server/erl/util/thrift/src/thrift_compiler.erl
+/// Convert cell//path/to/project_file.erl to /Users/$USER/buckroot/path/to/project_file.erl
 fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
     let mut split = target.split("//");
-    let _ = split.next(); //waserver or empty in case of //...
+    let _ = split.next(); // "cell" or empty in case of //...
     match split.next() {
         None => bail!("couldn't find a path for target {:?}", target),
         Some(path) => Ok(root.join(path)),
@@ -544,7 +544,7 @@ pub fn build_info(config: &BuckConfig, project_apps: &[ProjectAppData], otp_root
     make_build_info(apps, deps, otp_root, path.as_ref())
 }
 
-/// convert waserver//erl/chatd:chatd into abs path ~/local/whatsapp/server/erl/chatd
+/// convert call//path/target:tgt_name into abs path ~/buckroot/path/target
 fn find_buck_file_base_target_dir(
     root: &AbsPath,
     target_name: &TargetFullName,
@@ -892,11 +892,11 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
-            srcs: vec!["waserver//app_a/src/app.erl".to_string()],
+            srcs: vec!["cell//app_a/src/app.erl".to_string()],
             includes: vec![],
             labels: FxHashSet::default(),
         };
@@ -914,12 +914,12 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
             srcs: vec![],
-            includes: vec!["waserver//app_a/include/app.hrl".to_string()],
+            includes: vec!["cell//app_a/include/app.hrl".to_string()],
             labels: FxHashSet::default(),
         };
 
@@ -936,10 +936,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
-            suite: Some("waserver//app_a/test/app_SUITE.erl".to_string()),
+            suite: Some("cell//app_a/test/app_SUITE.erl".to_string()),
             srcs: vec![],
             includes: vec![],
             labels: FxHashSet::default(),
@@ -951,7 +951,6 @@ mod tests {
     }
 
     #[test]
-    //aka wa_zippy case
     fn test_find_app_root_multiple_src() {
         let spec = r#"
         //- /app_a/src/app.erl
@@ -960,13 +959,13 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
             srcs: vec![
-                "waserver//app_a/entity/entity.erl".to_string(),
-                "waserver//app_a/src/app.erl".to_string(),
+                "cell//app_a/entity/entity.erl".to_string(),
+                "cell//app_a/src/app.erl".to_string(),
             ],
             includes: vec![],
             labels: FxHashSet::default(),
@@ -986,12 +985,12 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
-            srcs: vec!["waserver//app_a/app.erl".to_string()],
-            includes: vec!["waserver//app_a/app.hrl".to_string()],
+            srcs: vec!["cell//app_a/app.erl".to_string()],
+            includes: vec!["cell//app_a/app.hrl".to_string()],
             labels: FxHashSet::default(),
         };
 
@@ -1009,12 +1008,12 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(dir.path());
-        let target_name = "waserver//app_a:app_a".to_string();
+        let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
-            srcs: vec!["waserver//app_a/sub/app.erl".to_string()],
-            includes: vec!["waserver//app_a/sub/app.hrl".to_string()],
+            srcs: vec!["cell//app_a/sub/app.erl".to_string()],
+            includes: vec!["cell//app_a/sub/app.hrl".to_string()],
             labels: FxHashSet::default(),
         };
 
