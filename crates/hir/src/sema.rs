@@ -31,6 +31,7 @@ use la_arena::Idx;
 use la_arena::RawIdx;
 
 use self::find::FindForm;
+pub use self::to_def::AtomDef;
 pub use self::to_def::CallDef;
 pub use self::to_def::DefinitionOrReference;
 pub use self::to_def::FaDef;

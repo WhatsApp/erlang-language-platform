@@ -3632,4 +3632,40 @@ foo() ->
             "#,
         )
     }
+
+    #[test]
+    fn testcase_from_groups() {
+        check(
+            r#"
+         //- /test/main_SUITE.erl
+            -module(main_SUITE).
+
+            -export([all/0, groups/0]).
+            all() -> [{group, [], my_group}].
+            groups() -> [{my_group, [], [my_tes~tcase]}].
+            my_testcase(_Config) ->
+         %% ^^^^^^^^^^^
+                ok.
+         //- /src/my_testcase.erl
+            -module(my_testcase).
+            "#,
+        )
+    }
+
+    #[test]
+    fn module_from_groups() {
+        check(
+            r#"
+         //- /test/main_SUITE.erl
+            -module(main_SUITE).
+
+            -export([all/0, groups/0]).
+            all() -> [{group, [], my_group}].
+            groups() -> [{my_group, [], [my_tes~tcase]}].
+         //- /src/my_testcase.erl
+            -module(my_testcase).
+         %% ^^^^^^^^^^^^^^^^^^^^^
+            "#,
+        )
+    }
 }

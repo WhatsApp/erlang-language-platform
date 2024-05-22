@@ -11,6 +11,7 @@ use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
 use elp_syntax::AstNode;
+use hir::AtomDef;
 use hir::InFile;
 use hir::NameArity;
 
@@ -61,16 +62,19 @@ fn complete_remote_name(
         Some(':') | None => (),
         _ => return None,
     };
-    let module = sema.to_def(InFile::new(file_position.file_id, module_atom))?;
-    let def_map = sema.def_map(module.file.file_id);
-
-    let completions = def_map
-        .get_exported_types()
-        .iter()
-        .filter(|na| na.name().starts_with(fun_prefix))
-        .map(create_call_completion);
-    acc.extend(completions);
-    Some(())
+    match sema.to_def(InFile::new(file_position.file_id, module_atom)) {
+        Some(AtomDef::Module(module)) => {
+            let def_map = sema.def_map(module.file.file_id);
+            let completions = def_map
+                .get_exported_types()
+                .iter()
+                .filter(|na| na.name().starts_with(fun_prefix))
+                .map(create_call_completion);
+            acc.extend(completions);
+            Some(())
+        }
+        _ => None,
+    }
 }
 
 pub(crate) fn add_local(

@@ -8,6 +8,7 @@
  */
 
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::match_ast;
@@ -66,8 +67,13 @@ impl<Definition, Reference> DefinitionOrReference<Definition, Reference> {
 
 // ---------------------------------------------------------------------
 
+pub enum AtomDef {
+    Module(Module),
+    Function(FunctionDef),
+}
+
 impl ToDef for ast::Atom {
-    type Def = Module;
+    type Def = AtomDef;
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
@@ -82,9 +88,9 @@ impl ToDef for ast::Atom {
             _ => return None,
         };
         let name = sema.db.lookup_atom(*atom);
-        let def = resolve_module_name(sema, file_id, &name)?;
-
-        Some(def)
+        resolve_testcase(sema, file_id, &name)
+            .map(AtomDef::Function)
+            .or_else(|| resolve_module_name(sema, file_id, &name).map(AtomDef::Module))
     }
 }
 
@@ -627,6 +633,16 @@ fn resolve_record(
         sema.db.lookup_atom(name),
         field.map(|name| sema.db.lookup_atom(name)),
     ))
+}
+
+fn resolve_testcase(sema: &Semantic<'_>, file_id: FileId, name: &Name) -> Option<FunctionDef> {
+    if sema.db.file_kind(file_id) != FileKind::TestModule {
+        return None;
+    }
+    sema.db
+        .def_map(file_id)
+        .get_function(&NameArity::new(name.clone(), 1))
+        .cloned()
 }
 
 // ---------------------------------------------------------------------

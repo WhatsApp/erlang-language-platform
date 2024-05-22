@@ -23,6 +23,7 @@ use hir::db::DefDatabase;
 use hir::known;
 use hir::AnyExprRef;
 use hir::AsName;
+use hir::AtomDef;
 use hir::CallDef;
 use hir::CallTarget;
 use hir::CallbackDef;
@@ -344,6 +345,15 @@ impl From<FaDef> for SymbolDefinition {
             FaDef::Function(function) => function.into(),
             FaDef::Type(alias) => alias.into(),
             FaDef::Callback(cb) => cb.into(),
+        }
+    }
+}
+
+impl From<AtomDef> for SymbolDefinition {
+    fn from(it: AtomDef) -> Self {
+        match it {
+            AtomDef::Module(module) => module.into(),
+            AtomDef::Function(function) => function.into(),
         }
     }
 }

@@ -141,6 +141,7 @@ pub use name::AsName;
 pub use name::MacroName;
 pub use name::Name;
 pub use name::NameArity;
+pub use sema::AtomDef;
 pub use sema::CallDef;
 pub use sema::DefinitionOrReference;
 pub use sema::FaDef;
