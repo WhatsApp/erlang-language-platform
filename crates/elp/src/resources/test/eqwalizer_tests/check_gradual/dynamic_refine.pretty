@@ -13,7 +13,7 @@ error: incompatible_types
    │
 95 │     is_list(Dyn) -> {Dyn}
    │                     ^^^^^ {Dyn}.
-Expression has type:   {dynamic()}
+Expression has type:   {dynamic([term()])}
 Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -33,7 +33,7 @@ error: incompatible_types
     │
 111 │     is_binary(Dyn) -> {Dyn};
     │                       ^^^^^ {Dyn}.
-Expression has type:   {dynamic()}
+Expression has type:   {dynamic(binary())}
 Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -114,16 +114,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'error' is not compatible with 'ok'
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_refine.erl:228:18
-    │
-228 │   atom_to_binary(Id).
-    │                  ^^ Id.
-Expression has type:   number()
-Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
     ┌─ check_gradual/src/dynamic_refine.erl:236:18
     │
 236 │   atom_to_binary(Id).
@@ -172,14 +162,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'err' is not compatible with 'ok'
 
-error: incompatible_types
-    ┌─ check_gradual/src/dynamic_refine.erl:297:27
-    │
-297 │     when is_integer(I) -> R#ref_rec.a.
-    │                           ^^^^^^^^^^^ ...#ref_rec.a.
-Expression has type:   term()
-Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-16 ERRORS
+14 ERRORS

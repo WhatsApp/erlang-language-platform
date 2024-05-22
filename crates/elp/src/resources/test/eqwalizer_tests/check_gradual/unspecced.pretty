@@ -68,14 +68,4 @@ Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:44:18
-   │
-44 │   atom_to_binary(Id).
-   │                  ^^ Id.
-Expression has type:   number()
-Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-8 ERRORS
+7 ERRORS
