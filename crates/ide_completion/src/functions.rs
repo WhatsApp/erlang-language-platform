@@ -11,6 +11,7 @@ use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
+use hir::sema::to_def::resolve_module_name;
 use hir::Semantic;
 
 use crate::helpers;
@@ -139,11 +140,21 @@ pub(crate) fn add_completions(
         [.., (K::ATOM, function_prefix)] if trigger.is_none() => {
             let def_map = sema.def_map(file_position.file_id);
             let completions = def_map
-                .get_functions()
+                .get_functions_in_scope()
                 .filter(|(na, _)| na.name().starts_with(function_prefix.text()))
-                .filter_map(|(na, _)| {
+                .filter_map(|(na, module)| {
                     let function_name = na.name();
-                    let def = def_map.get_function(na)?;
+                    let module_file_id = module
+                        .and_then(|module| {
+                            Some(
+                                resolve_module_name(sema, file_position.file_id, module.as_str())?
+                                    .file
+                                    .file_id,
+                            )
+                        })
+                        .unwrap_or(file_position.file_id);
+                    let def_map = sema.db.def_map(module_file_id);
+                    let def = def_map.get_function(&na)?;
                     let fun_decl_ast = def.source(sema.db.upcast());
                     let deprecated = def_map.is_deprecated(na);
                     match ctx {
@@ -155,7 +166,7 @@ pub(crate) fn add_completions(
                         _ => {
                             let contents = helpers::function_contents(
                                 sema.db.upcast(),
-                                def,
+                                &def,
                                 function_name,
                                 helpers::should_include_args(next_token),
                             )?;
@@ -269,6 +280,53 @@ mod test {
             expect![[r#"
                 {label:foo/0, kind:Function, contents:Snippet("foo()"), position:Some(FilePosition { file_id: FileId(1), offset: 73 })}
                 {label:foon/2, kind:Function, contents:Snippet("foon(${1:A}, ${2:B})"), position:Some(FilePosition { file_id: FileId(1), offset: 86 })}"#]],
+        );
+    }
+
+    #[test]
+    fn test_otp_calls_no_trigger() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+
+        check(
+            r#"
+    //- /src/sample1.erl
+    -module(sample1).
+    local() ->
+        len~.
+
+    //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+       -module(erlang).
+       -export([length/1]).
+       length(_) -> 1.
+    "#,
+            None,
+            expect![[
+                r#"{label:length/1, kind:Function, contents:Snippet("length(${1:Arg1})"), position:Some(FilePosition { file_id: FileId(1), offset: 47 })}"#
+            ]],
+        );
+    }
+
+    #[test]
+    fn test_import_calls_no_trigger() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+
+        check(
+            r#"
+    //- /src/sample1.erl
+    -module(sample1).
+    -import(other, [a_fun/1]).
+    local() ->
+        a_f~.
+
+    //- /src/other.erl
+       -module(other).
+       -export([a_fun/1]).
+       a_fun(_) -> 1.
+    "#,
+            None,
+            expect![[
+                r#"{label:a_fun/1, kind:Function, contents:Snippet("a_fun(${1:Arg1})"), position:Some(FilePosition { file_id: FileId(1), offset: 45 })}"#
+            ]],
         );
     }
 
