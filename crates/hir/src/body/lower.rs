@@ -14,7 +14,9 @@ use std::sync::Arc;
 use either::Either;
 use elp_base_db::FileId;
 use elp_syntax::ast;
+use elp_syntax::ast::is_erlang_fun;
 use elp_syntax::ast::ExprMax;
+use elp_syntax::ast::HasArity;
 use elp_syntax::ast::MacroCallArgs;
 use elp_syntax::ast::MacroDefReplacement;
 use elp_syntax::ast::MapOp;
@@ -91,6 +93,7 @@ pub struct Ctx<'a> {
     function_info: Option<(Atom, u32)>,
     function_name: Option<NameArity>, // Equivalent to function_info, cached
     body: Body,
+    module_expr_ids: FxHashMap<Name, ExprId>, // Lowering of module `Name`s as literals
     source_map: BodySourceMap,
     // For sanity checks, when presetting macro environment
     starting_stack_size: usize,
@@ -127,6 +130,7 @@ impl<'a> Ctx<'a> {
             function_info: None,
             function_name: None,
             body: Body::new(origin),
+            module_expr_ids: FxHashMap::default(),
             source_map: BodySourceMap::default(),
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
@@ -873,7 +877,7 @@ impl<'a> Ctx<'a> {
                 }
             }
             ast::Expr::Call(call) => {
-                let target = self.lower_call_target(call.expr());
+                let target = self.lower_call_target(call.expr(), call.arity_value());
                 let args = call
                     .args()
                     .iter()
@@ -1023,10 +1027,14 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_call_target(&mut self, expr: Option<ast::Expr>) -> CallTarget<ExprId> {
+    fn lower_call_target(
+        &mut self,
+        expr: Option<ast::Expr>,
+        arity: ast::Arity,
+    ) -> CallTarget<ExprId> {
         match expr.as_ref() {
             Some(ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren))) => {
-                self.lower_call_target(paren.expr())
+                self.lower_call_target(paren.expr(), arity)
             }
             Some(ast::Expr::Remote(remote)) => CallTarget::Remote {
                 module: self.lower_optional_expr(
@@ -1047,7 +1055,7 @@ impl<'a> Ctx<'a> {
                         })
                     }
                     MacroReplacement::Ast(_defidx, ast::MacroDefReplacement::Expr(expr)) => {
-                        Some(this.lower_call_target(Some(expr)))
+                        Some(this.lower_call_target(Some(expr), arity))
                     }
                     MacroReplacement::Ast(_, _) => None,
                     // This would mean double parens in the call - invalid
@@ -1068,12 +1076,59 @@ impl<'a> Ctx<'a> {
                         name: self.alloc_expr(Expr::Missing, expr.as_ref()),
                     }
                 }),
-            Some(expr) => CallTarget::Local {
-                name: self.lower_expr(expr),
-            },
+            Some(expr) => {
+                let name = self.lower_expr(expr);
+                self.disambiguate_call_target(name, arity)
+            }
             None => CallTarget::Local {
                 name: self.alloc_expr(Expr::Missing, None),
             },
+        }
+    }
+
+    fn disambiguate_call_target(&mut self, name: ExprId, arity: ast::Arity) -> CallTarget<ExprId> {
+        if let Some(module) = self.import_or_erlang_bif(name, arity) {
+            CallTarget::Remote { module, name }
+        } else {
+            CallTarget::Local { name }
+        }
+    }
+
+    fn import_or_erlang_bif(&mut self, name_expr_id: ExprId, arity: ast::Arity) -> Option<ExprId> {
+        let atom = self.body[name_expr_id].as_atom()?;
+        let name = self.db.lookup_atom(atom);
+
+        // Check that it's not imported, e.g. -import(lists, [length/1]).
+        if let Some(import_module) = self.imported_module(name, arity) {
+            Some(self.module_expr_id(&import_module))
+        } else if is_erlang_fun(&atom.as_string(self.db.upcast()), arity?) {
+            Some(self.erlang_expr_id())
+        } else {
+            None
+        }
+    }
+
+    fn imported_module(&self, name: Name, arity: ast::Arity) -> Option<Name> {
+        let name_arity = NameArity::new(name, arity? as u32);
+        self.db
+            .def_map(self.file_id())
+            .get_imports()
+            .get(&name_arity)
+            .cloned()
+    }
+
+    fn erlang_expr_id(&mut self) -> ExprId {
+        self.module_expr_id(&known::erlang)
+    }
+
+    fn module_expr_id(&mut self, module: &Name) -> ExprId {
+        if let Some(expr_id) = self.module_expr_ids.get(module) {
+            *expr_id
+        } else {
+            let atom = self.db.atom(module.clone());
+            let expr_id = self.alloc_expr(Expr::Literal(Literal::Atom(atom)), None);
+            self.module_expr_ids.insert(module.clone(), expr_id);
+            expr_id
         }
     }
 
@@ -1193,9 +1248,11 @@ impl<'a> Ctx<'a> {
                 self.alloc_expr(value, Some(expr))
             }
             ast::ExprMax::InternalFun(fun) => {
-                let target = CallTarget::Local {
-                    name: self.lower_optional_expr(fun.fun().map(Into::into)),
-                };
+                let arity = fun
+                    .arity()
+                    .and_then(|arity| arity.value().and_then(|arity| arity.arity_value()));
+                let name = self.lower_optional_expr(fun.fun().map(Into::into));
+                let target = self.disambiguate_call_target(name, arity);
                 let arity = self.lower_optional_expr(
                     fun.arity().and_then(|arity| arity.value()).map(Into::into),
                 );
@@ -1249,7 +1306,7 @@ impl<'a> Ctx<'a> {
                         ast::MacroDefReplacement::Expr(replacement),
                         args,
                     ) => {
-                        let target = this.lower_call_target(Some(replacement));
+                        let target = this.lower_call_target(Some(replacement), args.arity_value());
                         let args = args
                             .args()
                             .map(|expr| this.lower_optional_expr(expr.expr()))

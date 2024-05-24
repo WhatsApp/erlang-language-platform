@@ -482,11 +482,17 @@ fn call() {
         r#"
 foo() ->
     foo(),
+    size(A),
+    size(),
     foo:bar(A).
 "#,
         expect![[r#"
             foo() ->
                 'foo'(),
+                'erlang':'size'(
+                    A
+                ),
+                'size'(),
                 'foo':'bar'(
                     A
                 ).
@@ -500,12 +506,14 @@ fn capture_fun() {
         r#"
 foo() ->
     fun foo/1,
+    fun halt/0,
     fun mod:foo/1,
     fun Mod:Foo/Arity.
 "#,
         expect![[r#"
             foo() ->
                 fun 'foo'/1,
+                fun 'erlang':'halt'/0,
                 fun 'mod':'foo'/1,
                 fun Mod:Foo/Arity.
         "#]],
@@ -524,7 +532,7 @@ foo() ->
         expect![[r#"
             foo() ->
                 if
-                    'is_atom'(
+                    'erlang':'is_atom'(
                         X
                     ) ->
                         'ok';

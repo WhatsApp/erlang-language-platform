@@ -1851,7 +1851,8 @@ mod tests {
                                     guard
                                         Expr::Call {
                                             target
-                                                CallTarget::Local {
+                                                CallTarget::Remote {
+                                                    Literal(Atom('erlang'))
                                                     Literal(Atom('is_atom'))
                                                 }
                                             args

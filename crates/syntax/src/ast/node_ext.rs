@@ -291,6 +291,12 @@ impl HasArity for super::ExprArgs {
     }
 }
 
+impl HasArity for super::MacroCallArgs {
+    fn arity_value(&self) -> Arity {
+        Some(self.args().count())
+    }
+}
+
 // ---------------------------------------------------------------------
 
 impl PpDefine {

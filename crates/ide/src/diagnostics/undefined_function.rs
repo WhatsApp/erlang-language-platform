@@ -98,8 +98,6 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
     sema.is_atom_named(function, known::module_info) && (arity == 0 || arity == 1)
         || sema.is_atom_named(module, known::erlang)
-            && sema.is_atom_named(function, known::get_stacktrace)
-            && arity == 0
         || sema.is_atom_named(module, known::graphql_scanner)
         || sema.is_atom_named(module, known::graphql_parser)
         || sema.is_atom_named(module, known::thrift_scanner)
@@ -134,6 +132,20 @@ mod tests {
   main() ->
     exists(),
     not_exists().
+
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_bif() {
+        check_diagnostics(
+            r#"
+  -module(main).
+  main(A) ->
+    size(A),
+    exists().
 
   exists() -> ok.
             "#,

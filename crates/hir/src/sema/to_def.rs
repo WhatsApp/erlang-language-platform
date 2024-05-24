@@ -10,7 +10,6 @@
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_syntax::ast;
-use elp_syntax::ast::in_erlang_module;
 use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 
@@ -518,10 +517,9 @@ pub fn resolve_call_target(
     file_id: FileId,
     body: &Body,
 ) -> Option<FunctionDef> {
-    let (is_local, file_id, fun_expr) = match target {
-        CallTarget::Local { name } => (true, file_id, *name),
+    let (file_id, fun_expr) = match target {
+        CallTarget::Local { name } => (file_id, *name),
         CallTarget::Remote { module, name } => (
-            false,
             resolve_module_expr(sema, body, file_id, *module)?
                 .file
                 .file_id,
@@ -531,32 +529,7 @@ pub fn resolve_call_target(
 
     let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
     let name_arity = NameArity::new(name, arity);
-    if let Some(def) = sema.db.def_map(file_id).get_function(&name_arity).cloned() {
-        Some(def)
-    } else {
-        let module_name = sema
-            .db
-            .def_map(file_id)
-            .get_imports()
-            .get(&name_arity)
-            .cloned()
-            .or_else(|| {
-                in_erlang_module(&name_arity.name().as_str(), arity as usize)
-                    .then_some(known::erlang)
-            })?;
-        let module = resolve_module_name(sema, file_id, &module_name)?;
-        let def = sema
-            .db
-            .def_map(module.file.file_id)
-            .get_function(&name_arity)
-            .cloned()?;
-        // Check that the definition comes from the module in the import attribute
-        if is_local || def.file.file_id == file_id {
-            Some(def)
-        } else {
-            None
-        }
-    }
+    sema.db.def_map(file_id).get_function(&name_arity).cloned()
 }
 
 pub fn resolve_type_target(
