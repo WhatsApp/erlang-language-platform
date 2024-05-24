@@ -368,7 +368,7 @@ pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &String, ari
         .db
         .local_def_map(file_id)
         .get_functions_in_scope()
-        .all(|name| !(&name.name().to_string() == new_name && name.arity() == arity));
+        .all(|(name, _)| !(&name.name().to_string() == new_name && name.arity() == arity));
 
     scope_ok && !in_erlang_module(new_name, arity as usize)
 }

@@ -26,6 +26,7 @@ use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use lazy_static::lazy_static;
 use profile::Count;
 
 use crate::db::DefDatabase;
@@ -418,11 +419,23 @@ impl DefMap {
         &self.imported_functions
     }
 
-    pub fn get_functions_in_scope(&self) -> impl Iterator<Item = &NameArity> {
+    pub fn get_erlang_module(&self) -> Option<&Name> {
+        lazy_static! {
+            static ref ERLANG_MODULE: Name = known::erlang;
+        }
+        Some(&ERLANG_MODULE)
+    }
+
+    pub fn get_functions_in_scope(&self) -> impl Iterator<Item = (&NameArity, Option<&Name>)> {
         self.get_imports()
-            .keys()
-            .chain(self.functions_by_fa.keys())
-            .chain(erlang_funs().iter())
+            .iter()
+            .map(|(na, m)| (na, Some(m)))
+            .chain(self.functions_by_fa.keys().map(|na| (na, None)))
+            .chain(
+                erlang_funs()
+                    .iter()
+                    .map(|na| (na, self.get_erlang_module())),
+            )
     }
 
     // TODO: tweak API T127375780
@@ -1063,6 +1076,6 @@ foo(X,Y, Z) -> ok.
     fn test_erlang_functions_in_scope() {
         let def_map = DefMap::default();
         let mut functions = def_map.get_functions_in_scope();
-        assert!(functions.any(|f| f.name() == "is_atom"))
+        assert!(functions.any(|(f, _)| f.name() == "is_atom"))
     }
 }

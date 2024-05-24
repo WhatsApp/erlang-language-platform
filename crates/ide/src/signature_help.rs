@@ -152,13 +152,13 @@ fn signature_help_for_call(
     let def_map = sema.def_map(file_id);
     let functions = def_map
         .get_functions_in_scope()
-        .filter(|&name_arity| {
+        .filter(|(name_arity, _)| {
             *name_arity.name() == fun_name
                 && name_arity.arity() >= arity
                 && (module_name.is_none() || def_map.is_function_exported(name_arity))
         })
         .sorted();
-    for name_arity in functions {
+    for (name_arity, _) in functions {
         match def_map.get_function(name_arity) {
             Some(def) => {
                 let help = build_signature_help(
