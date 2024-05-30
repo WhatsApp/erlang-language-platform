@@ -255,6 +255,25 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     true
 }
 
+fn should_reload_project(watchman: &Watchman, last_read: &WatchmanClock) -> Result<bool> {
+    let project_paths = vec![
+        "BUCK",
+        "TARGETS",
+        "TARGETS.v2",
+        "rebar.config",
+        "rebar.config.script",
+        "**/BUCK",
+        "**/TARGETS",
+        "**/TARGETS.v2",
+        "**/rebar.config",
+        "**/rebar.config.script",
+    ];
+    Ok(!watchman
+        .get_changes(last_read, project_paths)?
+        .files
+        .is_empty())
+}
+
 fn update_changes(
     loaded: &mut LoadResult,
     watchman: &Watchman,
@@ -287,7 +306,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
     let mut loaded = load::load_project_at(
         cli,
         &shell.project,
-        config,
+        config.clone(),
         IncludeOtp::Yes,
         Mode::Shell,
         query_config,
@@ -299,6 +318,19 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str())?;
+                let reload_project = should_reload_project(&watchman, &last_read)?;
+                if reload_project {
+                    let _ = cli.write(b"Project change detected, reloading project\n");
+                    loaded = load::load_project_at(
+                        cli,
+                        &shell.project,
+                        config.clone(),
+                        IncludeOtp::Yes,
+                        Mode::Shell,
+                        query_config,
+                    )?;
+                    last_read = watchman.get_clock()?;
+                }
                 last_read = update_changes(&mut loaded, &watchman, &last_read)?;
                 match ShellCommand::parse(shell, line) {
                     Ok(None) => (),
