@@ -8,6 +8,7 @@
  */
 
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::bail;
 use anyhow::Context;
@@ -17,6 +18,8 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp_eqwalizer::EqwalizerConfig;
+use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticsConfig;
@@ -63,7 +66,7 @@ pub fn eqwalize_module(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
@@ -72,10 +75,15 @@ pub fn eqwalize_module(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_module(args, &loaded, cli)
+    do_eqwalize_module(args, &mut loaded, cli)
 }
 
-pub fn do_eqwalize_module(args: &Eqwalize, loaded: &LoadResult, cli: &mut dyn Cli) -> Result<()> {
+pub fn do_eqwalize_module(
+    args: &Eqwalize,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let mut file_ids = vec![];
     for module in &args.modules {
@@ -107,7 +115,7 @@ pub fn eqwalize_all(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
@@ -116,10 +124,15 @@ pub fn eqwalize_all(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_all(args, &loaded, cli)
+    do_eqwalize_all(args, &mut loaded, cli)
 }
 
-pub fn do_eqwalize_all(args: &EqwalizeAll, loaded: &LoadResult, cli: &mut dyn Cli) -> Result<()> {
+pub fn do_eqwalize_all(
+    args: &EqwalizeAll,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
@@ -170,7 +183,7 @@ pub fn eqwalize_app(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
@@ -179,10 +192,15 @@ pub fn eqwalize_app(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_app(args, &loaded, cli)
+    do_eqwalize_app(args, &mut loaded, cli)
 }
 
-pub fn do_eqwalize_app(args: &EqwalizeApp, loaded: &LoadResult, cli: &mut dyn Cli) -> Result<()> {
+pub fn do_eqwalize_app(
+    args: &EqwalizeApp,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
@@ -215,7 +233,7 @@ pub fn eqwalize_target(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     let config = DiscoverConfig::buck();
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
@@ -223,6 +241,8 @@ pub fn eqwalize_target(
         Mode::Cli,
         query_config,
     )?;
+
+    set_eqwalizer_config(&mut loaded, args.clause_coverage);
 
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
@@ -491,4 +511,15 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
             let _ = analysis.module_ast(file_id, erlang_service::Format::OffsetEtf, vec![]);
         });
     pb.finish();
+}
+
+fn set_eqwalizer_config(loaded: &mut LoadResult, clause_coverage: bool) -> () {
+    let config = EqwalizerConfig {
+        clause_coverage: clause_coverage.then_some(true),
+        ..EqwalizerConfig::default()
+    };
+    loaded
+        .analysis_host
+        .raw_database_mut()
+        .set_eqwalizer_config(Arc::new(config));
 }

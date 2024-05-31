@@ -327,6 +327,10 @@ fn module_diagnostics(
     // diagnostics, and not attempt to back-date them if they are equal to
     // the memoized ones.
     let timestamp = Instant::now();
+    // Dummy read eqWAlizer config for Salsa
+    // Ideally, the config should be passed per module to eqWAlizer instead
+    // of being set in the command's environment
+    let _ = db.eqwalizer_config();
     match get_module_diagnostics(db, project_id, module.clone()) {
         Ok(diag) => (Arc::new(diag), timestamp),
         Err(err) => (

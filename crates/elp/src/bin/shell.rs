@@ -131,10 +131,12 @@ impl ShellCommand {
             match *cmd {
                 "help" => return Ok(Some(ShellCommand::Help)),
                 "eqwalize" => {
-                    if let [option, ..] = options[..] {
+                    let clause_coverage = options.contains(&"--clause-coverage");
+                    if let Some(other) = options.into_iter().find(|&opt| opt != "--clause-coverage")
+                    {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize".into(),
-                            option.into(),
+                            other.into(),
                         ));
                     }
                     if args.len() >= 1 {
@@ -143,15 +145,17 @@ impl ShellCommand {
                             profile,
                             rebar,
                             modules: args.iter().map(|s| s.to_string()).collect(),
+                            clause_coverage,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize".into()));
                 }
                 "eqwalize-app" => {
+                    let clause_coverage = options.contains(&"--clause-coverage");
                     let include_generated = options.contains(&"--include-generated");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated")
+                        .find(|&opt| opt != "--include-generated" && opt != "--clause-coverage")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-app".into(),
@@ -168,15 +172,17 @@ impl ShellCommand {
                             rebar,
                             app: app.into(),
                             include_generated,
+                            clause_coverage,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize-app".into()));
                 }
                 "eqwalize-all" => {
+                    let clause_coverage = options.contains(&"--clause-coverage");
                     let include_generated = options.contains(&"--include-generated");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated")
+                        .find(|&opt| opt != "--include-generated" && opt != "--clause-coverage")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-all".into(),
@@ -192,6 +198,7 @@ impl ShellCommand {
                         rebar,
                         format: None,
                         include_generated,
+                        clause_coverage,
                     })));
                 }
                 "exit" | "quit" => return Ok(Some(ShellCommand::Quit)),
@@ -207,11 +214,14 @@ COMMANDS:
     help                       Print this help
     exit                       Exit the interactive session
     quit                       Exit the interactive session
-    eqwalize <modules>          Eqwalize specified modules
+    eqwalize <modules>         Eqwalize specified modules
+        --clause-coverage      Use experimental clause coverage checker
     eqwalize-all               Eqwalize all modules in the current project
         --include-generated    Include generated modules
+        --clause-coverage      Use experimental clause coverage checker
     eqwalize-app <app>         Eqwalize all modules in specified application
         --include-generated    Include generated modules
+        --clause-coverage      Use experimental clause coverage checker
 ";
 
 // Adapted from elp::server
@@ -337,15 +347,15 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
                     Ok(Some(ShellCommand::Help)) => write!(cli, "{}", HELP)?,
                     Ok(Some(ShellCommand::Quit)) => break,
                     Ok(Some(ShellCommand::ShellEqwalize(eqwalize))) => {
-                        eqwalizer_cli::do_eqwalize_module(&eqwalize, &loaded, cli)
+                        eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut loaded, cli)
                             .or_else(|e| writeln!(cli, "Error: {}", e))?;
                     }
                     Ok(Some(ShellCommand::ShellEqwalizeApp(eqwalize_app))) => {
-                        eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &loaded, cli)
+                        eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut loaded, cli)
                             .or_else(|e| writeln!(cli, "Error: {}", e))?;
                     }
                     Ok(Some(ShellCommand::ShellEqwalizeAll(eqwalize_all))) => {
-                        eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &loaded, cli)
+                        eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut loaded, cli)
                             .or_else(|e| writeln!(cli, "Error: {}", e))?;
                     }
                     Err(err) => write!(cli, "{}\n{}", err, HELP)?,

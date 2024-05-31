@@ -90,6 +90,8 @@ pub struct Eqwalize {
     pub profile: String,
     /// Run with rebar
     pub rebar: bool,
+    /// Use experimental clause coverage checker
+    pub clause_coverage: bool,
     /// Eqwalize specified modules
     #[bpaf(
         positional("MODULES"),
@@ -118,6 +120,8 @@ pub struct EqwalizeAll {
     pub rebar: bool,
     /// Also eqwalize opted-in generated modules from project
     pub include_generated: bool,
+    /// Use experimental clause coverage checker
+    pub clause_coverage: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -130,6 +134,8 @@ pub struct EqwalizeTarget {
     /// target, like //erl/chatd/...
     #[bpaf(positional::< String > ("TARGET"))]
     pub target: String,
+    /// Use experimental clause coverage checker
+    pub clause_coverage: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -147,6 +153,8 @@ pub struct EqwalizeApp {
     /// app name
     #[bpaf(positional::< String > ("APP"))]
     pub app: String,
+    /// Use experimental clause coverage checker
+    pub clause_coverage: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
