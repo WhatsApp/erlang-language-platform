@@ -35,7 +35,7 @@ profile = "test"
 
 ## Configuration Sections
 
-### Build Info
+### \[build\_info\]
 
 This section is used to configure project discovery.
 
