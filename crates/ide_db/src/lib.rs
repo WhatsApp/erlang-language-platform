@@ -27,6 +27,7 @@ use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerConfig;
+use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
@@ -112,13 +113,26 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     hir::db::InternDatabaseStorage,
     hir::db::DefDatabaseStorage
 )]
-#[derive(Default)]
+
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
     erlang_services: Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>,
     eqwalizer: Eqwalizer,
     eqwalizer_progress_reporter: EqwalizerProgressReporterBox,
     ipc_handles: Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHandle>>>>>>,
+}
+impl Default for RootDatabase {
+    fn default() -> Self {
+        let mut db = RootDatabase {
+            storage: salsa::Storage::default(),
+            erlang_services: Arc::default(),
+            eqwalizer: Eqwalizer::default(),
+            eqwalizer_progress_reporter: EqwalizerProgressReporterBox::default(),
+            ipc_handles: Arc::default(),
+        };
+        db.set_eqwalizer_config(Arc::new(EqwalizerConfig::default()));
+        db
+    }
 }
 
 impl Upcast<dyn SourceDatabase> for RootDatabase {
@@ -222,10 +236,6 @@ impl RootDatabase {
 
     pub fn set_eqwalizer_mode(&mut self, mode: Mode) {
         self.eqwalizer.mode = mode
-    }
-
-    pub fn set_eqwalizer_config(&mut self, config: EqwalizerConfig) {
-        self.eqwalizer.config = config
     }
 
     pub fn resolved_includes(&self, file_id: FileId) -> Option<Includes> {

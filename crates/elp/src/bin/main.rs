@@ -191,6 +191,7 @@ mod tests {
     use std::ffi::OsString;
     use std::path::Path;
     use std::str;
+    use std::sync::Arc;
 
     use anyhow::Context;
     use bpaf::Args;
@@ -199,6 +200,7 @@ mod tests {
     use elp::cli::Fake;
     use elp_eqwalizer::EqwalizerConfig;
     use elp_eqwalizer::EqwalizerDiagnostics;
+    use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
     use elp_eqwalizer::Mode;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -324,7 +326,7 @@ mod tests {
             loaded
                 .analysis_host
                 .raw_database_mut()
-                .set_eqwalizer_config(config);
+                .set_eqwalizer_config(Arc::new(config));
             build::compile_deps(&loaded, &mut cli)
                 .with_context(|| format!("Failed to compile deps for project {}", project))
                 .unwrap();

@@ -101,7 +101,6 @@ pub struct Eqwalizer {
     cmd: OsString,
     args: Vec<OsString>,
     pub mode: Mode,
-    pub config: EqwalizerConfig,
     // Used only for the Drop implementation
     _file: Option<Arc<TempPath>>,
 }
@@ -170,6 +169,9 @@ pub trait DbApi {
 
 #[salsa::query_group(EqwalizerDiagnosticsDatabaseStorage)]
 pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
+    #[salsa::input]
+    fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
+
     fn module_diagnostics(
         &self,
         project_id: ProjectId,
@@ -241,7 +243,6 @@ impl Eqwalizer {
             cmd,
             args,
             mode: Mode::Server,
-            config: EqwalizerConfig::default(),
             _file: temp_file.map(Arc::new),
         }
     }
@@ -261,7 +262,7 @@ impl Eqwalizer {
         modules: Vec<&str>,
     ) -> EqwalizerDiagnostics {
         let mut cmd = self.cmd();
-        self.config.set_cmd_env(&mut cmd);
+        db.eqwalizer_config().set_cmd_env(&mut cmd);
         cmd.arg("ipc");
         cmd.args(modules);
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());

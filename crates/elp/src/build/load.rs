@@ -140,11 +140,10 @@ fn load_database(
     eqwalizer_mode: elp_eqwalizer::Mode,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
-    analysis_host
-        .raw_database_mut()
-        .set_eqwalizer_mode(eqwalizer_mode);
 
     let db = analysis_host.raw_database_mut();
+
+    db.set_eqwalizer_mode(eqwalizer_mode);
 
     let pb = cli.simple_progress(0, "Loading applications");
 
