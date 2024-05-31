@@ -136,7 +136,7 @@ pub enum Task {
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
-    UpdateCache(ProgressBar, Vec<FileId>),
+    UpdateCache(Vec<FileId>),
     ScheduleEqwalizeAll(ProjectId),
     UpdateEqwalizeAll(ProgressBar, ProjectId, String, Vec<FileId>),
 }
@@ -461,7 +461,7 @@ impl Server {
                         self.eqwalizer_diagnostics_requested = true;
                     }
                     Task::Progress(progress) => self.report_progress(progress),
-                    Task::UpdateCache(spinner, files) => self.update_cache(spinner, files),
+                    Task::UpdateCache(files) => self.update_cache(files),
                     Task::ScheduleCache => self.schedule_cache(),
                     Task::UpdateEqwalizeAll(spinner, project_id, project_name, files) => {
                         self.update_eqwalize_all(spinner, project_id, project_name, files)
@@ -1450,9 +1450,6 @@ impl Server {
             return;
         }
         let snapshot = self.snapshot();
-        let bar = self
-            .progress
-            .begin_bar("Background parsing".to_string(), None);
 
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             let mut files = vec![];
@@ -1470,13 +1467,12 @@ impl Server {
                     files.push(file_id);
                 }
             }
-            sender.send(Task::UpdateCache(bar, files)).unwrap();
+            sender.send(Task::UpdateCache(files)).unwrap();
         });
     }
 
-    fn update_cache(&mut self, bar: ProgressBar, mut files: Vec<FileId>) {
+    fn update_cache(&mut self, mut files: Vec<FileId>) {
         if files.is_empty() {
-            bar.end();
             self.cache_scheduled = true;
             if self.config.eqwalizer().all {
                 for (i, _) in self.snapshot().projects.iter().enumerate() {
@@ -1489,15 +1485,10 @@ impl Server {
         let snapshot = self.snapshot();
         let eqwalize_all = self.config.eqwalizer().all;
         self.cache_pool.handle.spawn_with_sender(move |sender| {
-            let total = files.len();
-            let mut done = 0;
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
                 match snapshot.update_cache_for_file(file_id, false, eqwalize_all) {
-                    Ok(_) => {
-                        done += 1;
-                        bar.report(done, total);
-                    }
+                    Ok(_) => {}
                     Err(_) => {
                         // Got canceled
                         files.push(file_id);
@@ -1505,7 +1496,7 @@ impl Server {
                     }
                 }
             }
-            sender.send(Task::UpdateCache(bar, files)).unwrap();
+            sender.send(Task::UpdateCache(files)).unwrap();
         });
     }
 
