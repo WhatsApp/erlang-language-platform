@@ -145,10 +145,10 @@ impl ToDef for ast::Call {
         let def = match body.get_any(any_expr_id) {
             AnyExprRef::Expr(Expr::Call { target, args }) => {
                 let arity = args.len().try_into().ok()?;
-                resolve_call_target(sema, target, arity, file_id, &body)
+                resolve_call_target(sema, target, Some(arity), file_id, &body)
                     .map(CallDef::Function)
                     .or_else(|| {
-                        resolve_call_target_any_arity(sema, target, file_id, &body)
+                        resolve_call_target(sema, target, None, file_id, &body)
                             .map(CallDef::FuzzyFunction)
                     })
             }
@@ -534,7 +534,7 @@ pub fn resolve_module_name(sema: &Semantic<'_>, file_id: FileId, name: &str) -> 
 pub fn resolve_call_target(
     sema: &Semantic<'_>,
     target: &CallTarget<ExprId>,
-    arity: u32,
+    arity: Option<u32>,
     file_id: FileId,
     body: &Body,
 ) -> Option<FunctionDef> {
@@ -549,31 +549,17 @@ pub fn resolve_call_target(
     };
 
     let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
-    let name_arity = NameArity::new(name, arity);
-    sema.db.def_map(file_id).get_function(&name_arity).cloned()
-}
-
-pub fn resolve_call_target_any_arity(
-    sema: &Semantic<'_>,
-    target: &CallTarget<ExprId>,
-    file_id: FileId,
-    body: &Body,
-) -> Option<FunctionDef> {
-    let (file_id, fun_expr) = match target {
-        CallTarget::Local { name } => (file_id, *name),
-        CallTarget::Remote { module, name } => (
-            resolve_module_expr(sema, body, file_id, *module)?
-                .file
-                .file_id,
-            *name,
-        ),
-    };
-
-    let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
-    sema.db
-        .def_map(file_id)
-        .get_function_any_arity(&name)
-        .cloned()
+    match arity {
+        None => sema
+            .db
+            .def_map(file_id)
+            .get_function_any_arity(&name)
+            .cloned(),
+        Some(arity) => {
+            let name_arity = NameArity::new(name, arity);
+            sema.db.def_map(file_id).get_function(&name_arity).cloned()
+        }
+    }
 }
 
 pub fn resolve_type_target(
@@ -610,7 +596,7 @@ fn resolve_capture(sema: &Semantic<'_>, fun: InFile<ast::Expr>) -> Option<Functi
         Expr::Literal(Literal::Integer(int)) => int.try_into().ok()?,
         _ => return None,
     };
-    resolve_call_target(sema, target, arity, fun.file_id, &body)
+    resolve_call_target(sema, target, Some(arity), fun.file_id, &body)
 }
 
 fn resolve_record(
@@ -774,7 +760,8 @@ fn look_for_apply_call(
             // apply/2
             let arity = arity_from_apply_args(args[1], body)?;
             let apply_target = CallTarget::Local { name: args[0] };
-            resolve_call_target(sema, &apply_target, arity, file_id, body).map(CallDef::Function)
+            resolve_call_target(sema, &apply_target, Some(arity), file_id, body)
+                .map(CallDef::Function)
         } else if args.len() == 3 {
             // apply/3
             let arity = arity_from_apply_args(args[2], body)?;
@@ -782,7 +769,8 @@ fn look_for_apply_call(
                 module: args[0],
                 name: args[1],
             };
-            resolve_call_target(sema, &apply_target, arity, file_id, body).map(CallDef::Function)
+            resolve_call_target(sema, &apply_target, Some(arity), file_id, body)
+                .map(CallDef::Function)
         } else {
             None
         }

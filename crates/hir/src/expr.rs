@@ -430,7 +430,7 @@ impl CallTarget<ExprId> {
         file_id: FileId,
         body: &Body,
     ) -> Option<FunctionDef> {
-        sema::to_def::resolve_call_target(sema, self, arity, file_id, body)
+        sema::to_def::resolve_call_target(sema, self, Some(arity), file_id, body)
     }
 
     pub fn label(&self, arity: u32, sema: &Semantic, body: &Body) -> Option<SmolStr> {

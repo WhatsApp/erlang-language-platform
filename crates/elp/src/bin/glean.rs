@@ -1515,7 +1515,7 @@ impl GleanIndexer {
         body: &Body,
         range: TextRange,
     ) -> Option<XRefFactVal> {
-        let def = resolve_call_target(sema, target, arity, file_id, body)?;
+        let def = resolve_call_target(sema, target, Some(arity), file_id, body)?;
         let module = &def.module?;
         let mfa = MFA::new(module, def.name.name(), arity, def.file.file_id);
         Some(XRefFactVal::new(range.into(), mfa))
@@ -1529,7 +1529,7 @@ impl GleanIndexer {
         body: &Body,
         range: TextRange,
     ) -> Option<XRef> {
-        let def = resolve_call_target(sema, target, arity, file_id, body)?;
+        let def = resolve_call_target(sema, target, Some(arity), file_id, body)?;
         let target = FunctionTarget {
             file_id: def.file.file_id.into(),
             name: def.name.name().to_string(),
