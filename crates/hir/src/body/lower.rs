@@ -15,6 +15,7 @@ use either::Either;
 use elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::ast::is_erlang_fun;
+use elp_syntax::ast::is_erlang_type;
 use elp_syntax::ast::ExprMax;
 use elp_syntax::ast::HasArity;
 use elp_syntax::ast::MacroCallArgs;
@@ -94,6 +95,7 @@ pub struct Ctx<'a> {
     function_name: Option<NameArity>, // Equivalent to function_info, cached
     body: Body,
     module_expr_ids: FxHashMap<Name, ExprId>, // Lowering of module `Name`s as literals
+    erlang_type_expr_id: Option<TypeExprId>,
     source_map: BodySourceMap,
     // For sanity checks, when presetting macro environment
     starting_stack_size: usize,
@@ -131,6 +133,7 @@ impl<'a> Ctx<'a> {
             function_name: None,
             body: Body::new(origin),
             module_expr_ids: FxHashMap::default(),
+            erlang_type_expr_id: None,
             source_map: BodySourceMap::default(),
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
@@ -1121,6 +1124,10 @@ impl<'a> Ctx<'a> {
         self.module_expr_id(&known::erlang)
     }
 
+    fn erlang_type_expr_id(&mut self) -> TypeExprId {
+        self.module_type_expr_id(&known::erlang)
+    }
+
     fn module_expr_id(&mut self, module: &Name) -> ExprId {
         if let Some(expr_id) = self.module_expr_ids.get(module) {
             *expr_id
@@ -1129,6 +1136,17 @@ impl<'a> Ctx<'a> {
             let expr_id = self.alloc_expr(Expr::Literal(Literal::Atom(atom)), None);
             self.module_expr_ids.insert(module.clone(), expr_id);
             expr_id
+        }
+    }
+
+    fn module_type_expr_id(&mut self, module: &Name) -> TypeExprId {
+        if let Some(expr_id) = self.erlang_type_expr_id {
+            expr_id
+        } else {
+            let atom = self.db.atom(module.clone());
+            let type_expr_id = self.alloc_type_expr(TypeExpr::Literal(Literal::Atom(atom)), None);
+            self.erlang_type_expr_id = Some(type_expr_id);
+            type_expr_id
         }
     }
 
@@ -1655,7 +1673,7 @@ impl<'a> Ctx<'a> {
                 }
             }
             ast::Expr::Call(call) => {
-                let target = self.lower_type_call_target(call.expr());
+                let target = self.lower_type_call_target(call.expr(), call.arity_value());
                 let args = call
                     .args()
                     .iter()
@@ -1773,10 +1791,14 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_type_call_target(&mut self, expr: Option<ast::Expr>) -> CallTarget<TypeExprId> {
+    fn lower_type_call_target(
+        &mut self,
+        expr: Option<ast::Expr>,
+        arity: ast::Arity,
+    ) -> CallTarget<TypeExprId> {
         match expr.as_ref() {
             Some(ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren))) => {
-                self.lower_type_call_target(paren.expr())
+                self.lower_type_call_target(paren.expr(), arity)
             }
             Some(ast::Expr::Remote(remote)) => CallTarget::Remote {
                 module: self.lower_optional_type_expr(
@@ -1797,7 +1819,7 @@ impl<'a> Ctx<'a> {
                         })
                     }
                     MacroReplacement::Ast(_, ast::MacroDefReplacement::Expr(expr)) => {
-                        Some(this.lower_type_call_target(Some(expr)))
+                        Some(this.lower_type_call_target(Some(expr), arity))
                     }
                     MacroReplacement::Ast(_, _) => None,
                     // This would mean double parens in the call - invalid
@@ -1818,12 +1840,38 @@ impl<'a> Ctx<'a> {
                         name: self.alloc_type_expr(TypeExpr::Missing, expr.as_ref()),
                     }
                 }),
-            Some(expr) => CallTarget::Local {
-                name: self.lower_type_expr(expr),
-            },
+            Some(expr) => {
+                let name = self.lower_type_expr(expr);
+                self.disambiguate_type_call_target(name, arity)
+            }
             None => CallTarget::Local {
                 name: self.alloc_type_expr(TypeExpr::Missing, None),
             },
+        }
+    }
+
+    fn disambiguate_type_call_target(
+        &mut self,
+        name: TypeExprId,
+        arity: ast::Arity,
+    ) -> CallTarget<TypeExprId> {
+        if let Some(module) = self.erlang_bif_type_module(name, arity) {
+            CallTarget::Remote { module, name }
+        } else {
+            CallTarget::Local { name }
+        }
+    }
+
+    fn erlang_bif_type_module(
+        &mut self,
+        name_expr_id: TypeExprId,
+        arity: ast::Arity,
+    ) -> Option<TypeExprId> {
+        let atom = self.body[name_expr_id].as_atom()?;
+        if is_erlang_type(&atom.as_string(self.db.upcast()), arity?) {
+            Some(self.erlang_type_expr_id())
+        } else {
+            None
         }
     }
 
@@ -1926,7 +1974,8 @@ impl<'a> Ctx<'a> {
                         ast::MacroDefReplacement::Expr(replacement),
                         args,
                     ) => {
-                        let target = this.lower_type_call_target(Some(replacement));
+                        let target =
+                            this.lower_type_call_target(Some(replacement), args.arity_value());
                         let args = args
                             .args()
                             .map(|expr| this.lower_optional_type_expr(expr.expr()))

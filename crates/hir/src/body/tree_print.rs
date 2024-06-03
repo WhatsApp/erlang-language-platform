@@ -2479,7 +2479,8 @@ mod tests {
                             TypeExpr::Var(A),
                             TypeExpr::Call {
                                 target
-                                    CallTarget::Local {
+                                    CallTarget::Remote {
+                                        Literal(Atom('erlang'))
                                         Literal(Atom('integer'))
                                     }
                                 args
@@ -2498,7 +2499,8 @@ mod tests {
                             TypeExpr::Var(A),
                             TypeExpr::Call {
                                 target
-                                    CallTarget::Local {
+                                    CallTarget::Remote {
+                                        Literal(Atom('erlang'))
                                         Literal(Atom('integer'))
                                     }
                                 args
@@ -2628,7 +2630,8 @@ mod tests {
                         Atom('a'):
                             TypeExpr::Call {
                                 target
-                                    CallTarget::Local {
+                                    CallTarget::Remote {
+                                        Literal(Atom('erlang'))
                                         Literal(Atom('integer'))
                                     }
                                 args
@@ -2691,7 +2694,8 @@ mod tests {
                     ty
                         TypeExpr::Call {
                             target
-                                CallTarget::Local {
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
                                     Literal(Atom('any'))
                                 }
                             args

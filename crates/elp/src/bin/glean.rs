@@ -2373,7 +2373,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/'integer'()
+        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/'erlang':'integer'()
             baz(ok) -> 1.
 
         "#;
@@ -2466,6 +2466,7 @@ mod tests {
         );
     }
 
+    #[track_caller]
     fn xref_v2_check(spec: &str) {
         let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotataions(spec);
         for xref_fact in facts.xref_v2 {

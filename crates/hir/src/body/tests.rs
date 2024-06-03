@@ -1016,7 +1016,7 @@ fn ann_type() {
 -type foo() :: A :: any().
 "#,
         expect![[r#"
-            -type foo() :: (A  :: 'any'()).
+            -type foo() :: (A  :: 'erlang':'any'()).
         "#]],
     );
 }
@@ -1154,15 +1154,30 @@ fn call_type() {
             -type local(A) :: 'local'(
                 (
                     A |
-                    'integer'()
+                    'erlang':'integer'()
                 )
             ).
 
             -type remote(A) :: 'module':'remote'(
                 (
                     A |
-                    'integer'()
+                    'erlang':'integer'()
                 )
+            ).
+        "#]],
+    );
+}
+
+#[test]
+fn call_type_erlang_bif() {
+    check(
+        r#"
+-type remote() :: erlang:pid() | pid().
+"#,
+        expect![[r#"
+            -type remote() :: (
+                'erlang':'pid'() |
+                'erlang':'pid'()
             ).
         "#]],
     );
@@ -1176,18 +1191,18 @@ fn record_type() {
 -type foo2(B) :: #record{a :: integer(), b :: B}.
 -type foo3() :: #record{a ::}.
 "#,
-        expect![[r##"
+        expect![[r#"
             -type foo1() :: #record{}.
 
             -type foo2(B) :: #record{
-                a :: 'integer'(),
+                a :: 'erlang':'integer'(),
                 b :: B
             }.
 
             -type foo3() :: #record{
                 a :: [missing]
             }.
-        "##]],
+        "#]],
     );
 }
 
@@ -1238,8 +1253,8 @@ fn multi_sig_spec() {
 "#,
         expect![[r#"
             -spec foo
-                ('atom'()) -> 'atom'();
-                ('integer'()) -> 'integer'().
+                ('erlang':'atom'()) -> 'erlang':'atom'();
+                ('erlang':'integer'()) -> 'erlang':'integer'().
         "#]],
     );
 }
@@ -1252,7 +1267,7 @@ fn ann_var_spec() {
 "#,
         expect![[r#"
             -spec foo
-                ((A  :: 'any'())) -> 'ok'.
+                ((A  :: 'erlang':'any'())) -> 'ok'.
         "#]],
     );
 }
@@ -1267,7 +1282,7 @@ fn guarded_spec() {
         expect![[r#"
             -spec foo
                 (A) -> A
-                    when A :: 'any'().
+                    when A :: 'erlang':'any'().
         "#]],
     );
 }
