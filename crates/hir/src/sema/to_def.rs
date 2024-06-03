@@ -121,6 +121,7 @@ impl ToDef for ast::ImportAttribute {
 #[derive(Debug)]
 pub enum CallDef {
     Function(FunctionDef),
+    FuzzyFunction(FunctionDef),
     Type(TypeAliasDef),
 }
 
@@ -148,7 +149,7 @@ impl ToDef for ast::Call {
                     .map(CallDef::Function)
                     .or_else(|| {
                         resolve_call_target_any_arity(sema, target, file_id, &body)
-                            .map(CallDef::Function)
+                            .map(CallDef::FuzzyFunction)
                     })
             }
             AnyExprRef::TypeExpr(TypeExpr::Call { target, args }) => {
@@ -358,6 +359,7 @@ impl ToDef for ast::PpIncludeLib {
 
 pub enum FaDef {
     Function(FunctionDef),
+    FuzzyFunction(FunctionDef),
     Type(TypeAliasDef),
     Callback(CallbackDef),
 }
@@ -387,7 +389,7 @@ impl ToDef for ast::Fa {
                                 .def_map(ast.file_id)
                                 .get_function_any_arity(&form_list[entry].name.name())
                                 .cloned()
-                                .map(FaDef::Function)
+                                .map(FaDef::FuzzyFunction)
                         })
                 },
                 ast::ImportAttribute(attr) => {
@@ -408,7 +410,7 @@ impl ToDef for ast::Fa {
                                 .def_map(imported_module.file.file_id)
                                 .get_function_any_arity(&form_list[entry].name.name())
                                 .cloned()
-                                .map(FaDef::Function)
+                                .map(FaDef::FuzzyFunction)
                         })
                 },
                 ast::ExportTypeAttribute(attr) => {

@@ -17,6 +17,7 @@ use elp_ide_db::rename::RenameResult;
 use elp_ide_db::rename::SafetyChecks;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::ReferenceClass;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
@@ -95,6 +96,10 @@ fn find_definitions(
                         };
                         match SymbolClass::classify(sema, location) {
                             Some(SymbolClass::Definition(def)) => Some(Ok(vec![def])),
+                            Some(SymbolClass::Reference {
+                                refs: _,
+                                typ: ReferenceType::Fuzzy,
+                            }) => None,
                             Some(SymbolClass::Reference { refs, typ: _ }) => match refs {
                                 ReferenceClass::Definition(def) => Some(Ok(vec![def])),
                                 ReferenceClass::MultiVar(defs) => Some(Ok(defs

@@ -14,6 +14,7 @@ use elp_ide_db::rename::RenameResult;
 use elp_ide_db::rename::SafetyChecks;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::ReferenceClass;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
@@ -103,6 +104,10 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                             var_defs.push((SymbolDefinition::Var(d), nv));
                         }
                         SymbolClass::Definition(_) => {}
+                        SymbolClass::Reference {
+                            refs: _,
+                            typ: ReferenceType::Fuzzy,
+                        } => {}
                         SymbolClass::Reference { refs, typ: _ } => {
                             if let ReferenceClass::Definition(SymbolDefinition::Var(d)) = refs {
                                 var_defs.push((SymbolDefinition::Var(d), nv));

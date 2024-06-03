@@ -10,6 +10,7 @@
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::find_best_token;
 use elp_ide_db::ReferenceCategory;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
@@ -84,6 +85,10 @@ fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<Hi
     let token = find_best_token(sema, position)?;
     match SymbolClass::classify(sema, token.clone()) {
         Some(SymbolClass::Definition(def)) => Some(search(def)),
+        Some(SymbolClass::Reference {
+            refs: _,
+            typ: ReferenceType::Fuzzy,
+        }) => None,
         Some(SymbolClass::Reference { refs, typ: _ }) => {
             Some(refs.iter().flat_map(search).collect())
         }

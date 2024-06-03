@@ -57,6 +57,7 @@ pub enum SymbolClass {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReferenceType {
     Direct,
+    Fuzzy,
     Other, // spec, import, export
 }
 
@@ -123,7 +124,14 @@ impl SymbolClass {
                     reference_other(sema.to_def(token.with_value(&import)))
                 },
                 ast::Fa(fa) => {
-                    reference_other(sema.to_def(token.with_value(&fa)))
+                    match sema.to_def(token.with_value(&fa)) {
+                        Some(FaDef::FuzzyFunction(def)) => {
+                            reference_fuzzy(Some(def))
+                        },
+                        def => {
+                            reference_other(def)
+                        }
+                    }
                 },
                 ast::TypeName(ty) => {
                     definition(sema.to_def(token.with_value(&ty)))
@@ -199,17 +207,17 @@ impl SymbolClass {
                     from_wrapper(sema, &token, wrapper)
                 },
                 ast::Remote(remote) => {
-                    if let Some(call) = sema.to_def(token.with_value(&remote)) {
-                        reference_direct(Some(call))
-                    } else {
-                        classify_var(sema, token.file_id, wrapper)
+                    match sema.to_def(token.with_value(&remote)) {
+                        Some(CallDef::FuzzyFunction(remote)) => reference_fuzzy(Some(remote)),
+                        Some(call) => reference_direct(Some(call)),
+                        _ => classify_var(sema, token.file_id, wrapper)
                     }
                 },
                 ast::Call(call) => {
-                    if let Some(call) = sema.to_def(token.with_value(&call)) {
-                        reference_direct(Some(call))
-                    } else {
-                        classify_var(sema, token.file_id, wrapper)
+                    match sema.to_def(token.with_value(&call)) {
+                        Some(CallDef::FuzzyFunction(call)) => reference_fuzzy(Some(call)),
+                        Some(call) => reference_direct(Some(call)),
+                        _ => classify_var(sema, token.file_id, wrapper)
                     }
                 },
                 ast::PpInclude(include) => {
@@ -342,7 +350,7 @@ impl From<File> for SymbolDefinition {
 impl From<FaDef> for SymbolDefinition {
     fn from(it: FaDef) -> Self {
         match it {
-            FaDef::Function(function) => function.into(),
+            FaDef::Function(function) | FaDef::FuzzyFunction(function) => function.into(),
             FaDef::Type(alias) => alias.into(),
             FaDef::Callback(cb) => cb.into(),
         }
@@ -361,7 +369,7 @@ impl From<AtomDef> for SymbolDefinition {
 impl From<CallDef> for SymbolDefinition {
     fn from(it: CallDef) -> Self {
         match it {
-            CallDef::Function(function) => function.into(),
+            CallDef::Function(function) | CallDef::FuzzyFunction(function) => function.into(),
             CallDef::Type(alias) => alias.into(),
         }
     }
@@ -419,6 +427,13 @@ fn reference_direct<Def: Into<SymbolDefinition>>(def: Option<Def>) -> Option<Sym
     def.map(|def| SymbolClass::Reference {
         refs: ReferenceClass::Definition(def.into()),
         typ: ReferenceType::Direct,
+    })
+}
+
+fn reference_fuzzy<Def: Into<SymbolDefinition>>(def: Option<Def>) -> Option<SymbolClass> {
+    def.map(|def| SymbolClass::Reference {
+        refs: ReferenceClass::Definition(def.into()),
+        typ: ReferenceType::Fuzzy,
     })
 }
 

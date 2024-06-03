@@ -19,6 +19,7 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::find_best_token;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
@@ -79,6 +80,10 @@ pub(crate) fn find_all_refs(
 
     match SymbolClass::classify(sema, token)? {
         SymbolClass::Definition(def) => Some(vec![search(def)]),
+        SymbolClass::Reference {
+            refs: _,
+            typ: ReferenceType::Fuzzy,
+        } => None,
         SymbolClass::Reference { refs, typ: _ } => Some(refs.iter().map(search).collect()),
     }
 }
@@ -410,98 +415,75 @@ should_not_match() -> #foo{a = 1}.
     fn test_function() {
         check(
             r#"
-//- /src/main.erl
+        //- /src/main.erl
 
--export([foo/0]).
+        -export([foo/0]).
 
-  foo~() -> ok.
-%%^^^def
+          foo~() -> ok.
+        %%^^^def
 
-bar() -> foo().
-%%       ^^^
-baz() -> foo(1).
-%%       ^^^
+        bar() -> foo().
+        %%       ^^^
+        baz() -> foo(1).
 
-//- /src/another.erl
+        //- /src/another.erl
 
--import(main, [foo/0]).
-"#,
+        -import(main, [foo/0]).
+        "#,
         );
 
         check(
             r#"
-//- /src/main.erl
+        //- /src/main.erl
 
--export([foo/0]).
+        -export([foo/0]).
 
-  foo~() -> ok.
-%%^^^def
+          foo() -> ok.
+        %%^^^def
 
-foo(X) -> X.
+        bar() -> foo().
+        %%       ^^^
+        baz() -> foo(1).
 
-bar() -> foo().
-%%       ^^^
-baz() -> foo(1).
+        //- /src/another.erl
 
-//- /src/another.erl
+        -import(main, [foo/0]).
 
--import(main, [foo/0]).
-"#,
+        baz() -> main:foo~().
+        %%            ^^^
+        "#,
         );
 
         check(
             r#"
-//- /src/main.erl
+        -export([foo/0]).
 
--export([foo/0]).
-
-  foo() -> ok.
-%%^^^def
-
-bar() -> foo().
-%%       ^^^
-baz() -> foo(1).
-%%       ^^^
-
-//- /src/another.erl
-
--import(main, [foo/0]).
-
-baz() -> main:foo~().
-%%            ^^^
-"#,
-        );
-
-        check(
-            r#"
--export([foo/0]).
-
--spec foo~() -> ok.
-  foo() -> ok.
-%%^^^def
-"#,
+        -spec foo~() -> ok.
+          foo() -> ok.
+        %%^^^def
+        "#,
         );
 
         // Finding reference works from any clause,
         // the first clause is considered the "definition"
         check(
             r#"
--export([foo/1]).
+        -export([foo/1]).
 
-  foo~(1) -> ok;
-%%^^^def
-foo(2) -> error.
-"#,
+          foo~(1) -> ok;
+        %%^^^def
+        foo(2) -> error.
+        "#,
         );
 
         check(
             r#"
--export([foo/1]).
+        -export([foo/1]).
 
-  foo(1) -> ok;
-%%^^^def
-foo~(2) -> error.
-"#,
+          foo(1) -> ok;
+        %%^^^def
+        foo~(2) -> error.
+        "#,
         );
     }
 

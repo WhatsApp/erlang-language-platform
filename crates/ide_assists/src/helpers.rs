@@ -14,6 +14,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::rename::is_safe_function;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::ReferenceClass;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
@@ -276,6 +277,10 @@ pub(crate) fn ranges_for_delete_function(
     // Look for a possible spec, and delete it too.
     let function_def = match ctx.classify_offset()? {
         SymbolClass::Definition(SymbolDefinition::Function(fun_def)) => Some(fun_def),
+        SymbolClass::Reference {
+            refs: _,
+            typ: ReferenceType::Fuzzy,
+        } => None,
         SymbolClass::Reference {
             refs: ReferenceClass::Definition(SymbolDefinition::Function(fun_def)),
             typ: _,

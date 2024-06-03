@@ -298,6 +298,10 @@ impl<'a> FindUsages<'a> {
                     if let Some(token) = name.syntax().first_token() {
                         match SymbolClass::classify(sema, InFile::new(file_id, token)) {
                             Some(SymbolClass::Definition(_)) => {}
+                            Some(SymbolClass::Reference {
+                                refs: _,
+                                typ: ReferenceType::Fuzzy,
+                            }) => {}
                             Some(SymbolClass::Reference { refs, typ }) => {
                                 if refs.iter().any(|def| {
                                     def == self.def

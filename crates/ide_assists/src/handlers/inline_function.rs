@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::find_best_token;
 use elp_ide_db::rename::SafetyChecks;
+use elp_ide_db::ReferenceType;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
@@ -657,6 +658,10 @@ fn can_inline_function(ctx: &AssistContext) -> Option<InlineData> {
         SymbolClass::Definition(SymbolDefinition::Function(fun)) => {
             Some(SymbolDefinition::Function(fun))
         }
+        SymbolClass::Reference {
+            refs: _,
+            typ: ReferenceType::Fuzzy,
+        } => None,
         SymbolClass::Reference { refs, typ: _ } => {
             if let Some(SymbolDefinition::Function(fun)) = refs.iter().next() {
                 Some(SymbolDefinition::Function(fun))
