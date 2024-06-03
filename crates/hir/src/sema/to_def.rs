@@ -144,7 +144,12 @@ impl ToDef for ast::Call {
         let def = match body.get_any(any_expr_id) {
             AnyExprRef::Expr(Expr::Call { target, args }) => {
                 let arity = args.len().try_into().ok()?;
-                resolve_call_target(sema, target, arity, file_id, &body).map(CallDef::Function)
+                resolve_call_target(sema, target, arity, file_id, &body)
+                    .map(CallDef::Function)
+                    .or_else(|| {
+                        resolve_call_target_any_arity(sema, target, file_id, &body)
+                            .map(CallDef::Function)
+                    })
             }
             AnyExprRef::TypeExpr(TypeExpr::Call { target, args }) => {
                 let arity = args.len().try_into().ok()?;
@@ -377,6 +382,13 @@ impl ToDef for ast::Fa {
                         .get_function(&form_list[entry].name)
                         .cloned()
                         .map(FaDef::Function)
+                        .or_else(|| {
+                            sema.db
+                                .def_map(ast.file_id)
+                                .get_function_any_arity(&form_list[entry].name.name())
+                                .cloned()
+                                .map(FaDef::Function)
+                        })
                 },
                 ast::ImportAttribute(attr) => {
                     let import_attr = sema.find_form(ast.with_value(&attr))?;
@@ -391,6 +403,13 @@ impl ToDef for ast::Fa {
                         .get_function(&form_list[entry].name)
                         .cloned()
                         .map(FaDef::Function)
+                        .or_else(|| {
+                            sema.db
+                                .def_map(imported_module.file.file_id)
+                                .get_function_any_arity(&form_list[entry].name.name())
+                                .cloned()
+                                .map(FaDef::Function)
+                        })
                 },
                 ast::ExportTypeAttribute(attr) => {
                     let export_attr = sema.find_form(ast.with_value(&attr))?;
@@ -530,6 +549,29 @@ pub fn resolve_call_target(
     let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
     let name_arity = NameArity::new(name, arity);
     sema.db.def_map(file_id).get_function(&name_arity).cloned()
+}
+
+pub fn resolve_call_target_any_arity(
+    sema: &Semantic<'_>,
+    target: &CallTarget<ExprId>,
+    file_id: FileId,
+    body: &Body,
+) -> Option<FunctionDef> {
+    let (file_id, fun_expr) = match target {
+        CallTarget::Local { name } => (file_id, *name),
+        CallTarget::Remote { module, name } => (
+            resolve_module_expr(sema, body, file_id, *module)?
+                .file
+                .file_id,
+            *name,
+        ),
+    };
+
+    let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
+    sema.db
+        .def_map(file_id)
+        .get_function_any_arity(&name)
+        .cloned()
 }
 
 pub fn resolve_type_target(

@@ -420,6 +420,28 @@ should_not_match() -> #foo{a = 1}.
 bar() -> foo().
 %%       ^^^
 baz() -> foo(1).
+%%       ^^^
+
+//- /src/another.erl
+
+-import(main, [foo/0]).
+"#,
+        );
+
+        check(
+            r#"
+//- /src/main.erl
+
+-export([foo/0]).
+
+  foo~() -> ok.
+%%^^^def
+
+foo(X) -> X.
+
+bar() -> foo().
+%%       ^^^
+baz() -> foo(1).
 
 //- /src/another.erl
 
@@ -439,6 +461,7 @@ baz() -> foo(1).
 bar() -> foo().
 %%       ^^^
 baz() -> foo(1).
+%%       ^^^
 
 //- /src/another.erl
 

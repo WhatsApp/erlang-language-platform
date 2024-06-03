@@ -211,6 +211,21 @@ foo() -> b~ar().
     }
 
     #[test]
+    fn local_call_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+foo() -> b~ar().
+
+  bar(X) -> ok.
+%%^^^
+"#,
+        )
+    }
+
+    #[test]
     fn local_call_from_record_def() {
         check(
             r#"
@@ -863,6 +878,21 @@ foo() -> Another:b~ar().
     }
 
     #[test]
+    fn remote_call_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+foo() -> main:b~ar(foobar).
+
+  bar() -> ok.
+%%^^^
+"#,
+        );
+    }
+
+    #[test]
     fn remote_call_to_header() {
         check(
             r#"
@@ -1304,6 +1334,21 @@ foo() -> #rec{field1 = 1, f~ield3 = ok, field2 = ""}.
     }
 
     #[test]
+    fn export_entry_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-export([f~oo/1]).
+
+  foo() -> ok.
+%%^^^
+"#,
+        )
+    }
+
+    #[test]
     fn import_entry() {
         check(
             r#"
@@ -1311,6 +1356,24 @@ foo() -> #rec{field1 = 1, f~ield3 = ok, field2 = ""}.
 -module(main).
 
 -import(another, [f~oo/1]).
+
+//- /src/another.erl
+-module(another).
+
+  foo(_) -> ok.
+%%^^^
+"#,
+        )
+    }
+
+    #[test]
+    fn import_entry_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-import(another, [f~oo/14]).
 
 //- /src/another.erl
 -module(another).

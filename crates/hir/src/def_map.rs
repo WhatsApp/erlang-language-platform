@@ -384,6 +384,19 @@ impl DefMap {
             .and_then(|idx| self.functions.get(idx))
     }
 
+    pub fn get_function_any_arity(&self, name: &Name) -> Option<&FunctionDef> {
+        self.functions_by_fa
+            .iter()
+            .filter_map(|(name_arity, function_id)| {
+                if name_arity.name() == name {
+                    self.get_by_function_id(function_id)
+                } else {
+                    None
+                }
+            })
+            .next()
+    }
+
     pub fn get_functions(&self) -> impl Iterator<Item = (&NameArity, &FunctionDef)> {
         self.functions_by_fa.iter().filter_map(|(k, _)| {
             if let Some(def) = self.get_function(k) {
