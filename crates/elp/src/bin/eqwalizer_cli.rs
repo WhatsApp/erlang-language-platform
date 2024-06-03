@@ -518,8 +518,8 @@ fn set_eqwalizer_config(loaded: &mut LoadResult, clause_coverage: bool) -> () {
         clause_coverage: clause_coverage.then_some(true),
         ..EqwalizerConfig::default()
     };
-    loaded
-        .analysis_host
-        .raw_database_mut()
-        .set_eqwalizer_config(Arc::new(config));
+    let db = loaded.analysis_host.raw_database_mut();
+    if config != *db.eqwalizer_config() {
+        db.set_eqwalizer_config(Arc::new(config));
+    }
 }

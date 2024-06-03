@@ -62,7 +62,7 @@ impl Mode {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EqwalizerConfig {
     pub gradual_typing: Option<bool>,
     pub check_redundant_guards: Option<bool>,
