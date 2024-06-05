@@ -22,6 +22,7 @@ use elp::document::Document;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
@@ -58,6 +59,8 @@ struct WatchmanChanges {
 struct WatchmanFile {
     name: String,
     exists: bool,
+    #[serde(default)]
+    new: bool,
 }
 
 impl Watchman {
@@ -243,7 +246,11 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
         } else {
             raw_database.set_file_text(file.file_id, Arc::from(""));
         };
-        bump_file_revision(file.file_id, raw_database);
+        if file.change_kind == ChangeKind::Create {
+            raw_database.set_file_revision(file.file_id, 0);
+        } else {
+            bump_file_revision(file.file_id, raw_database);
+        }
     }
 
     if changed_files
@@ -278,10 +285,17 @@ fn should_reload_project(watchman: &Watchman, last_read: &WatchmanClock) -> Resu
         "**/rebar.config",
         "**/rebar.config.script",
     ];
-    Ok(!watchman
+    let project_path_changed = !watchman
         .get_changes(last_read, project_paths)?
         .files
-        .is_empty())
+        .is_empty();
+    let suite_files = vec!["**/*_SUITE.erl"];
+    let suite_file_created = watchman
+        .get_changes(last_read, suite_files)?
+        .files
+        .iter()
+        .any(|f| f.new || !f.exists);
+    Ok(project_path_changed || suite_file_created)
 }
 
 fn update_changes(
