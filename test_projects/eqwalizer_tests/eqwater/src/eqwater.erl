@@ -479,7 +479,7 @@ record_occ03(#union_field2{field = A})
   #b{id = A#a.id};
 record_occ03(#union_field2{field = B}) ->
   B.
-  
+
 -spec record_occ04
   (#union_field{}) -> binary().
 record_occ04(R)
@@ -487,7 +487,7 @@ record_occ04(R)
   R#union_field.field;
 record_occ04(R) ->
   atom_to_binary(R#union_field.field).
-    
+
 -spec record_occ05_neg
   (#union_field{}) -> binary().
 record_occ05_neg(#union_field{field = B})
@@ -501,7 +501,7 @@ record_occ06(#union_field{field = B})
   when is_binary(B) -> B;
 record_occ06(R) ->
   atom_to_binary(R#union_field.field).
-  
+
 -spec record_occ07_tuple
   ({union_field, atom()}) -> binary().
 record_occ07_tuple({_, A}) -> atom_to_binary(A).
@@ -519,7 +519,7 @@ record_occ08_neg(#union_field{field = A})
   when is_atom(A) -> A;
 record_occ08_neg(R) ->
   record_occ07_tuple(R).
-  
+
 -record(union_field3, {
   union :: atom() | binary(),
   field :: atom()
@@ -531,14 +531,14 @@ record_occ09(#union_field3{_ = U, field = A})
   when is_binary(U) -> A;
 record_occ09(#union_field3{_ = U, field = _}) ->
   U.
-  
+
 -spec record_occ10
     (#union_field{}) -> binary().
 record_occ10(#union_field{_ = U})
   when is_atom(U) -> atom_to_binary(U);
 record_occ10(#union_field{_ = U}) ->
   U.
-    
+
 -record(union_field4, {
   x :: integer() | ok,
   y :: integer() | err
@@ -565,8 +565,8 @@ record_occ13_neg(#union_field4{x = A, y = _}) -> A.
 -spec triple_union_occ
     (#triple_union{}) -> atom().
 triple_union_occ(#triple_union{field = R})
-    when 
-        not is_record(R, a), 
+    when
+        not is_record(R, a),
         not is_record(R, b)
     -> R#c.id;
 triple_union_occ(#triple_union{field = R})
@@ -575,7 +575,7 @@ triple_union_occ(#triple_union{field = R})
     -> R#b.id;
 triple_union_occ(#triple_union{field = R})
     -> R#a.id.
-    
+
 % Do we want to support this?
 -spec triple_union_occ2
     (#triple_union{}) -> atom().
@@ -590,7 +590,7 @@ triple_union_occ2({triple_union, B})
     -> B#b.id;
 triple_union_occ2({triple_union, A})
     -> A#a.id.
-    
+
 -record(refrec, {
     z = undefined :: eqwalizer:refinable(undefined | string())
 }).
@@ -1065,7 +1065,7 @@ occ49(A1, A2) ->
     _ ->
       {A1, A2}
   end.
-  
+
 -spec occ50
     (ok, integer() | undefined)
     -> integer().
@@ -1113,7 +1113,7 @@ occ56(V, A) ->
         [_] -> V;
         _ -> [A]
     end.
-    
+
 -spec occ57_neg
     ([atom()] | atom(), atom()) -> [atom()].
 occ57_neg(V, _) ->
@@ -1121,7 +1121,7 @@ occ57_neg(V, _) ->
         [_] -> V;
         A -> [A]
     end.
-    
+
 -spec occ58_neg
     ([atom()] | atom(), atom()) -> [atom()].
 occ58_neg(V, A) ->
@@ -1280,3 +1280,8 @@ andalso_throw_2(V) ->
 andalso_throw_3(V) ->
     is_atom(V) andalso throw(error),
     V.
+
+-spec negate_atoms_neg
+  (a | b | c) -> a | b.
+negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
+negate_atoms_neg(A) -> A.
