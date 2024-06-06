@@ -514,4 +514,23 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' is not compatible with 'b'
 
-32 ERRORS
+error: incompatible_types
+     ┌─ eqwater/src/eqwater.erl:1286:60
+     │
+1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
+     │                                                            ^
+     │                                                            │
+     │                                                            A.
+Expression has type:   none() | 'c'
+Context expected type: 'a' | 'b'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                                                            
+
+  none() | 'c' is not compatible with 'a' | 'b'
+  because
+  'c' is not compatible with 'a' | 'b'
+  because
+  'c' is not compatible with 'a'
+
+33 ERRORS
