@@ -8,6 +8,7 @@
  */
 
 use crossbeam_channel::Receiver;
+use crossbeam_channel::SendError;
 use crossbeam_channel::Sender;
 use lsp_types::NumberOrString;
 use lsp_types::ProgressParams;
@@ -161,5 +162,7 @@ fn send_progress(sender: &Sender<ProgressTask>, token: NumberOrString, msg: Work
         token,
         value: ProgressParamsValue::WorkDone(msg),
     };
-    sender.send(ProgressTask::Notify(params)).unwrap();
+    if let Err(SendError(err)) = sender.send(ProgressTask::Notify(params)) {
+        log::error!("Failed to send progress message: {:?}", err);
+    }
 }
