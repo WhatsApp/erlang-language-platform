@@ -2404,10 +2404,6 @@ mod tests {
     ) {
         let (db, files, diag) = RootDatabase::with_many_files(spec);
         let project_id = ProjectId(0);
-        if diag.use_erlang_service {
-            db.ensure_erlang_service(project_id)
-                .expect("erlang service started");
-        }
         let host = AnalysisHost::new(db);
         let glean = GleanIndexer {
             project_id,

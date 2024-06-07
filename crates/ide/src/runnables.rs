@@ -181,10 +181,8 @@ mod tests {
     #[track_caller]
     fn check_runnables(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
-        let (analysis, pos, _diagnostics_enabled, _guard, mut annotations) =
+        let (analysis, pos, _diagnostics_enabled, mut annotations) =
             fixture::annotations(&trimmed_fixture.as_str());
-        let project_id = analysis.project_id(pos.file_id).unwrap().unwrap();
-        let _ = analysis.db.ensure_erlang_service(project_id);
         let runnables = analysis.runnables(pos.file_id).unwrap();
         let mut actual = Vec::new();
         for runnable in runnables {

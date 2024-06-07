@@ -17,7 +17,6 @@ use elp_ide_db::elp_base_db::fixture::remove_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::trim_indent;
@@ -350,11 +349,6 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
     let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
-    if diagnostics_enabled.needs_erlang_service() {
-        let file_id = FileId(0);
-        let project_id = db.file_project_id(file_id).unwrap();
-        db.ensure_erlang_service(project_id).unwrap();
-    }
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
@@ -382,11 +376,6 @@ pub(crate) fn check_filtered_diagnostics_with_config(
     filter: &dyn Fn(&Diagnostic) -> bool,
 ) {
     let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
-    if diagnostics_enabled.needs_erlang_service() {
-        let file_id = FileId(0);
-        let project_id = db.file_project_id(file_id).unwrap();
-        db.ensure_erlang_service(project_id).unwrap();
-    }
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
@@ -475,7 +464,7 @@ pub fn check_call_hierarchy(prepare_fixture: &str, incoming_fixture: &str, outgo
 
 fn check_call_hierarchy_prepare(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, _guard, mut annotations) =
+    let (analysis, pos, _diagnostics_enabled, mut annotations) =
         fixture::annotations(trimmed_fixture.as_str());
     let mut navs = analysis.call_hierarchy_prepare(pos).unwrap().unwrap().info;
     assert_eq!(navs.len(), 1);
@@ -491,7 +480,7 @@ fn check_call_hierarchy_prepare(fixture: &str) {
 
 fn check_call_hierarchy_incoming_calls(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, _guard, mut expected) =
+    let (analysis, pos, _diagnostics_enabled, mut expected) =
         fixture::annotations(trimmed_fixture.as_str());
     let incoming_calls = analysis.incoming_calls(pos).unwrap().unwrap();
     let mut actual = Vec::new();
@@ -522,7 +511,7 @@ fn check_call_hierarchy_incoming_calls(fixture: &str) {
 
 fn check_call_hierarchy_outgoing_calls(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, _guard, mut expected) =
+    let (analysis, pos, _diagnostics_enabled, mut expected) =
         fixture::annotations(trimmed_fixture.as_str());
     let outgoing_calls = analysis.outgoing_calls(pos).unwrap().unwrap();
     let mut actual = Vec::new();

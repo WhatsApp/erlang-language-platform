@@ -14,7 +14,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
 use elp_base_db::salsa;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
@@ -41,9 +40,9 @@ use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use hir::InFile;
 use hir::Semantic;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
+use parking_lot::RwLockUpgradableReadGuard;
 use salsa::Database;
 use serde::Deserialize;
 use serde::Serialize;
@@ -190,25 +189,29 @@ impl RootDatabase {
         self.erlang_services.write().clear();
     }
 
-    pub fn ensure_erlang_service(&self, project_id: ProjectId) -> Result<()> {
-        lazy_static! {
-            static ref CONN: Connection = Connection::start().unwrap();
+    pub fn erlang_service_for(&self, project_id: ProjectId) -> Connection {
+        let read = self.erlang_services.upgradable_read();
+        if let Some(conn) = read.get(&project_id).cloned() {
+            return conn;
         }
-
-        let project_data = self.project_data(project_id);
-        let path: Vec<PathBuf> = project_data
-            .deps_ebins
-            .iter()
-            .map(|path| path.clone().into())
-            .collect();
-        if path.len() > 0 {
-            // For a test fixture this should never happen
-            CONN.add_code_path(path);
-        }
-
-        let connection: Connection = CONN.to_owned();
-        self.erlang_services.write().insert(project_id, connection);
-        Ok(())
+        let mut write = RwLockUpgradableReadGuard::upgrade(read);
+        write
+            .entry(project_id)
+            .or_insert_with(|| {
+                let conn = Connection::start().expect("failed to establish connection");
+                let project_data = self.project_data(project_id);
+                let path: Vec<PathBuf> = project_data
+                    .deps_ebins
+                    .iter()
+                    .map(|path| path.clone().into())
+                    .collect();
+                if path.len() > 0 {
+                    // For a test fixture this should never happen
+                    conn.add_code_path(path);
+                }
+                conn
+            })
+            .clone()
     }
 
     pub fn update_erlang_service_paths(&self) {

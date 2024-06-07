@@ -316,48 +316,37 @@ impl DocLoader for crate::RootDatabase {
         };
 
         let project_id = app_data.project_id;
-        if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
-            let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
-            let raw_doc = erlang_service.request_doc(
-                DocRequest {
-                    src_path: path.to_path_buf().into(),
-                    doc_origin,
-                },
-                || src_db.unwind_if_cancelled(),
-            );
-            match raw_doc {
-                Ok(d) => FileDoc {
-                    module_doc: Some(Doc {
-                        markdown_text: d.module_doc,
-                    }),
-                    function_docs: d
-                        .function_docs
-                        .into_iter()
-                        .map(|((name, arity), markdown_text)| {
-                            (
-                                NameArity::new(Name::from_erlang_service(&name), arity),
-                                Doc { markdown_text },
-                            )
-                        })
-                        .collect(),
-                    diagnostics: d.diagnostics,
-                },
-                Err(_) => FileDoc {
-                    module_doc: None,
-                    function_docs: FxHashMap::default(),
-                    diagnostics: vec![],
-                },
-            }
-        } else {
-            log::error!(
-                "No erlang_service found for project: {:?}, so no docs can be loaded",
-                project_id
-            );
-            FileDoc {
+        let erlang_service = self.erlang_service_for(project_id);
+        let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
+        let raw_doc = erlang_service.request_doc(
+            DocRequest {
+                src_path: path.to_path_buf().into(),
+                doc_origin,
+            },
+            || src_db.unwind_if_cancelled(),
+        );
+        match raw_doc {
+            Ok(d) => FileDoc {
+                module_doc: Some(Doc {
+                    markdown_text: d.module_doc,
+                }),
+                function_docs: d
+                    .function_docs
+                    .into_iter()
+                    .map(|((name, arity), markdown_text)| {
+                        (
+                            NameArity::new(Name::from_erlang_service(&name), arity),
+                            Doc { markdown_text },
+                        )
+                    })
+                    .collect(),
+                diagnostics: d.diagnostics,
+            },
+            Err(_) => FileDoc {
                 module_doc: None,
                 function_docs: FxHashMap::default(),
                 diagnostics: vec![],
-            }
+            },
         }
     }
 }

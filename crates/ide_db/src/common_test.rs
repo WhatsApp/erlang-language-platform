@@ -111,36 +111,33 @@ impl CommonTestLoader for crate::RootDatabase {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
     ) -> CommonTestInfo {
-        if let Some(erlang_service) = self.erlang_services.read().get(&project_id).cloned() {
-            let includes = include_path
-                .iter()
-                .map(|path| path.clone().into())
-                .collect();
-            let compile_options = vec![
-                CompileOption::Includes(includes),
-                CompileOption::Macros(macros.to_vec()),
-                CompileOption::ParseTransforms(parse_transforms.to_vec()),
-            ];
-            let should_request_groups = def_map
-                .is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
-            let request = CTInfoRequest {
-                module: eetf::Atom::from(module.to_string()),
-                src_path,
-                compile_options,
-                should_request_groups,
-            };
-            match erlang_service.ct_info(request, || self.unwind_if_cancelled()) {
-                Ok(result) => match result.all() {
-                    Ok(all) => match result.groups() {
-                        Ok(groups) => CommonTestInfo::Result { all, groups },
-                        Err(err) => CommonTestInfo::ConversionError(err),
-                    },
+        let erlang_service = self.erlang_service_for(project_id);
+        let includes = include_path
+            .iter()
+            .map(|path| path.clone().into())
+            .collect();
+        let compile_options = vec![
+            CompileOption::Includes(includes),
+            CompileOption::Macros(macros.to_vec()),
+            CompileOption::ParseTransforms(parse_transforms.to_vec()),
+        ];
+        let should_request_groups =
+            def_map.is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
+        let request = CTInfoRequest {
+            module: eetf::Atom::from(module.to_string()),
+            src_path,
+            compile_options,
+            should_request_groups,
+        };
+        match erlang_service.ct_info(request, || self.unwind_if_cancelled()) {
+            Ok(result) => match result.all() {
+                Ok(all) => match result.groups() {
+                    Ok(groups) => CommonTestInfo::Result { all, groups },
                     Err(err) => CommonTestInfo::ConversionError(err),
                 },
-                Err(err) => CommonTestInfo::EvalError(err),
-            }
-        } else {
-            CommonTestInfo::SetupError("No Erlang service".to_string())
+                Err(err) => CommonTestInfo::ConversionError(err),
+            },
+            Err(err) => CommonTestInfo::EvalError(err),
         }
     }
 }

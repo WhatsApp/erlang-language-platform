@@ -82,7 +82,7 @@ mod tests {
     #[track_caller]
     fn check(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
-        let (analysis, pos, _diagnostics_enabled, _guard, mut annotations) =
+        let (analysis, pos, _diagnostics_enabled, mut annotations) =
             fixture::annotations(trimmed_fixture.as_str());
         let mut actual = Vec::new();
         for annotation in analysis.annotations(pos.file_id).unwrap() {

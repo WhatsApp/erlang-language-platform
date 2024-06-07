@@ -758,8 +758,7 @@ mod tests {
 
     #[track_caller]
     fn check_type(fixture: &str) {
-        let (db, position, _diagnostics_enabled, _guard, expected) =
-            fixture::db_annotations(fixture);
+        let (db, position, _diagnostics_enabled, expected) = fixture::db_annotations(fixture);
         let host = AnalysisHost { db };
         let sema = Semantic::new(&host.db);
         if expected.len() != 1 {

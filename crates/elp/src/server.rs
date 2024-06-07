@@ -1132,14 +1132,6 @@ impl Server {
         let folders = ProjectFolders::new(&project_apps);
         project_apps.app_structure().apply(raw_db);
 
-        for (project_id, _) in projects.iter().enumerate() {
-            let project_id = ProjectId(project_id as u32);
-            raw_db.ensure_erlang_service(project_id)?;
-        }
-        if let Some(otp_project_id) = project_apps.otp_project_id {
-            raw_db.ensure_erlang_service(otp_project_id)?;
-        }
-
         self.file_set_config = folders.file_set_config;
 
         let register_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
