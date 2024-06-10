@@ -227,6 +227,12 @@ COMMANDS:
         --clause-coverage      Use experimental clause coverage checker
 ";
 
+pub const WELCOME: &str = "\
+\n
+ELP shell automatically keeps state in between eqWAlizer commands to cut down on processing time.
+Type \x1b[0;33mhelp\x1b[0m to see available commands (eqwalize, eqwalize-all, ...).\n
+";
+
 // Adapted from elp::server
 fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     let changed_files = loaded.vfs.take_changes();
@@ -337,6 +343,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
     )?;
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
+    write!(cli, "{}", WELCOME)?;
     loop {
         let readline = rl.readline("> ");
         match readline {

@@ -13,6 +13,8 @@ use std::sync::Arc;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use codespan_reporting::term::termcolor::Color;
+use codespan_reporting::term::termcolor::ColorSpec;
 use elp::build;
 use elp::build::load;
 use elp::build::types::LoadResult;
@@ -42,6 +44,7 @@ use elp_project_model::ProjectBuildData;
 use fxhash::FxHashMap;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use rayon::prelude::*;
 
 use crate::args::Eqwalize;
@@ -109,11 +112,16 @@ pub fn do_eqwalize_module(
     })
 }
 
+pub const SHELL_HINT: &str = "\
+eqWAlizing frequently? Consider using command \x1b[0;33melp shell\x1b[0m to cut down on processing time.";
+
 pub fn eqwalize_all(
     args: &EqwalizeAll,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    // Hack to avoid hint appearing in tests
+    cli.spinner(SHELL_HINT).finish();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -522,4 +530,12 @@ fn set_eqwalizer_config(loaded: &mut LoadResult, clause_coverage: bool) -> () {
     if config != *db.eqwalizer_config() {
         db.set_eqwalizer_config(Arc::new(config));
     }
+}
+
+lazy_static! {
+    static ref YELLOW_COLOR_SPEC: ColorSpec = {
+        let mut spec = ColorSpec::default();
+        spec.set_fg(Some(Color::Yellow));
+        spec
+    };
 }
