@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Neovim
@@ -28,5 +28,3 @@ You can update all packages managed by `mason.nvim` by running `:Mason` and pres
 `:LspInfo` shows the current status of the LSP client.
 
 `:LspLog` opens the log file for the LSP client, which can be useful for debugging.
-
-
