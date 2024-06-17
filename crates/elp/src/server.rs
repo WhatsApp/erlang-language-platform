@@ -111,6 +111,8 @@ const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
     FileKind::Escript,
 ];
 const SLOW_DURATION: Duration = Duration::from_millis(300);
+/// If the main loop exceeds this time, log the specific request causing the problem
+const TOO_SLOW_DURATION: Duration = Duration::from_millis(3000);
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -360,7 +362,8 @@ impl Server {
                     return Ok(());
                 }
             }
-            let _timer = timeit_exceeds!("main_loop_health", SLOW_DURATION);
+            let _timer1 = timeit_exceeds!("main_loop_health", SLOW_DURATION);
+            let _timer2 = timeit_exceeds!(format!("slow_event:{:?}", event), TOO_SLOW_DURATION);
             self.handle_event(event)?;
         }
 
