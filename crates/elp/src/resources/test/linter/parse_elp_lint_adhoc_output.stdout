@@ -1,0 +1,16 @@
+module specified: app_b
+Diagnostics reported in 1 modules:
+  app_b: 1
+      4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+---------------------------------------------
+
+Applying fix in module 'app_b' for
+      4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+@@ -1,5 +1,5 @@
+ -module(app_b).
+ -export([application_env_error/0]).
+ 
+ application_env_error() ->
+-    application:get_env(misc, key).
++    ok.
+

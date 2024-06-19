@@ -1,0 +1,15 @@
+enabled_lints = ["ad-hoc: application:get_env/2"]
+# disabled_lints = []
+
+[[ad_hoc_lints.lints]]
+type = "ReplaceCall"
+
+[ad_hoc_lints.lints.matcher]
+type = "MFA"
+module = "application"
+name = "get_env"
+arity = 2
+
+[ad_hoc_lints.lints.action]
+action = "Replace"
+type = "UseOk"

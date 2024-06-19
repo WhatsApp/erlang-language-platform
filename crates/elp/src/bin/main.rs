@@ -1123,6 +1123,37 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_custom_ad_hoc_lints(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--experimental",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_adhoc.toml",
+                "--module",
+                "app_b",
+                "--apply-fix",
+                "--to",
+                tmp_path,
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_adhoc_output.stdout"),
+            0,
+            buck,
+            None,
+            tmp_path,
+            Path::new("../resources/test/lint/from_config"),
+            &[("app_b/src/app_b.erl", "app_b.erl")],
+            false,
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_diagnostic_ignore(buck: bool) {
         simple_snapshot(
             args_vec![
