@@ -53,6 +53,8 @@
     "got": ">=11.8.5",
     "trim": ">=0.0.3",
     "wait-on": ">=7.2.0",
-    "follow-redirects": ">=1.15.4"
+    "follow-redirects": ">=1.15.4",
+    "braces": ">=3.0.3",
+    "ws": ">=8.17.1"
   }
 }
