@@ -53,7 +53,7 @@ bin_base_type bin_unit_type
 maybe_expr maybe_match_exprs maybe_match.
 
 Terminals
-char integer float atom sigil_type string sigil_suffix var
+char integer float atom sigil_prefix string sigil_suffix var
 
 '(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' ';' ':' '#' '.'
 'after' 'begin' 'case' 'try' 'catch' 'end' 'fun' 'if' 'of' 'receive' 'when'
@@ -279,6 +279,7 @@ pat_expr_max -> var : '$1'.
 pat_expr_max -> atomic : '$1'.
 pat_expr_max -> list : '$1'.
 pat_expr_max -> binary : '$1'.
+pat_expr_max -> sigil : '$1'.
 pat_expr_max -> tuple : '$1'.
 pat_expr_max -> '(' pat_expr ')' : '$2'.
 
@@ -324,7 +325,7 @@ bit_type -> atom ':' integer : {{element(3,'$1'), element(3,'$3')}, ?anno('$1', 
 
 bit_size_expr -> expr_max : '$1'.
 
-sigil -> sigil_type string sigil_suffix : build_sigil('$1', '$2', '$3').
+sigil -> sigil_prefix string sigil_suffix : build_sigil('$1', '$2', '$3').
 
 list_comprehension -> '[' expr '||' lc_exprs ']' :
 	{lc,?anno('$1','$5'),'$2','$4'}.
@@ -1411,8 +1412,8 @@ check_clauses(Cs, Name, Arity) ->
 build_try(Try, Es, Scs, {Ccs, As, End}) ->
     {'try', ?anno(Try, End), Es, Scs, Ccs, As}.
 
-build_sigil(SigilType, String, SigilSuffix) ->
-    Type = element(3, SigilType),
+build_sigil(SigilPrefix, String, SigilSuffix) ->
+    Type = element(3, SigilPrefix),
     Suffix = element(3, SigilSuffix),
     if
         Type =:= 'S';
@@ -1433,7 +1434,7 @@ build_sigil(SigilType, String, SigilSuffix) ->
             case Suffix of
                 "" ->
                     %% Convert to UTF-8 binary()
-                    {bin,?anno(SigilType),
+                    {bin,?anno(SigilPrefix),
                         [{bin_element,
                         ?anno(String),String,default,[utf8]}]};
                 _ ->
@@ -1443,7 +1444,7 @@ build_sigil(SigilType, String, SigilSuffix) ->
             end;
         true ->
             ret_err(
-                element(2, SigilType),
+                element(2, SigilPrefix),
                 "illegal sigil type.")
     end.
 
