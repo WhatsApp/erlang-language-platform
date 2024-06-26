@@ -1425,7 +1425,7 @@ build_sigil(SigilPrefix, String, SigilSuffix) ->
                 _ ->
                     ret_err(
                       element(2, SigilSuffix),
-                      "illegal sigil suffix.")
+                      "illegal sigil suffix")
             end;
         Type =:= '';    % The empty (default) sigil
         Type =:= 'B';
@@ -1440,12 +1440,12 @@ build_sigil(SigilPrefix, String, SigilSuffix) ->
                 _ ->
                     ret_err(
                         element(2, SigilSuffix),
-                        "illegal sigil suffix.")
+                        "illegal sigil suffix")
             end;
         true ->
             ret_err(
                 element(2, SigilPrefix),
-                "illegal sigil type.")
+                "illegal sigil type")
     end.
 
 -spec ret_err(_, _) -> no_return().
