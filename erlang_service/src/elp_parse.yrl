@@ -1417,14 +1417,22 @@ build_sigil(SigilType, String, SigilSuffix) ->
     if
         Type =:= 'S';
         Type =:= 's' ->
-            %% Keep as string()
-            String;
+            case Suffix of
+                "" ->
+                    %% Keep as string()
+                    String;
+                _ ->
+                    ret_err(
+                      element(2, SigilSuffix),
+                      "illegal sigil suffix.")
+            end;
         Type =:= '';    % The empty (default) sigil
         Type =:= 'B';
         Type =:= 'b' ->
             %% Convert to UTF-8 binary()
             case Suffix of
                 "" ->
+                    %% Convert to UTF-8 binary()
                     {bin,?anno(SigilType),
                         [{bin_element,
                         ?anno(String),String,default,[utf8]}]};
@@ -1433,12 +1441,6 @@ build_sigil(SigilType, String, SigilSuffix) ->
                         element(2, SigilSuffix),
                         "illegal sigil suffix.")
             end;
-        Type =:= 'r' -> % Regular expression
-            %% Convert to {re,RE,Flags}
-            {tuple, ?anno(SigilType),
-                [{atom,?anno(SigilType),'re'},
-                String,
-                {string,?anno(SigilSuffix),Suffix}]};
         true ->
             ret_err(
                 element(2, SigilType),
