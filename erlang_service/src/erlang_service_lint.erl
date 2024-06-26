@@ -9,7 +9,7 @@
 
 -export([run/1]).
 
-run([FileName, Options0, PostProcess, Deterministic]) ->
+run([FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
     Options1 =
         case Deterministic of
             true ->
@@ -43,7 +43,7 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
                     ElpMetadata ->
                         elp_metadata:insert_metadata(ElpMetadata, Forms2)
                 end,
-            case lint_file(Forms3, FileName, Options3) of
+            case lint_file(Forms3, FileName, Options3, OverrideOptions) of
                 {ok, []} ->
                     {Stub, AST, FILES} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
@@ -82,7 +82,7 @@ run([FileName, Options0, PostProcess, Deterministic]) ->
             {error, Msg}
     end.
 
-lint_file(Forms, FileName, Options0) ->
+lint_file(Forms, FileName, Options0, OverrideOptions) ->
     Options =
         case filename:extension(FileName) of
             ".hrl" ->
@@ -90,7 +90,7 @@ lint_file(Forms, FileName, Options0) ->
             _ ->
                 Options0
         end,
-    elp_lint:module(Forms, FileName, Options).
+    elp_lint:module(Forms, FileName, Options, OverrideOptions).
 
 collect_parse_transforms([], Forms, Transforms) ->
     {Transforms, lists:reverse(Forms)};

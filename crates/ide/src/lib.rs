@@ -359,8 +359,9 @@ impl Analysis {
         file_id: FileId,
         format: erlang_service::Format,
         compile_options: Vec<CompileOption>,
+        override_compile_options: Vec<CompileOption>,
     ) -> Cancellable<Arc<ParseResult>> {
-        self.with_db(|db| db.module_ast(file_id, format, compile_options))
+        self.with_db(|db| db.module_ast(file_id, format, compile_options, override_compile_options))
     }
 
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {

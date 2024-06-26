@@ -34,7 +34,18 @@ STUB
 
 
 WARNINGS
-[]
+[
+    ParseError {
+        path: "fixtures/override_warn_missing_spec_all.erl",
+        location: Some(
+            Normal(
+                144..164,
+            ),
+        ),
+        msg: "missing specification for function not_exported/0",
+        code: "L1309",
+    },
+]
 
 ERRORS
 []

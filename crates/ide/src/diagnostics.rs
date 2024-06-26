@@ -394,6 +394,7 @@ pub struct DiagnosticsConfig<'a> {
     pub include_suppressed: bool,
     pub include_otp: bool,
     pub compile_options: Vec<CompileOption>,
+    pub override_compile_options: Vec<CompileOption>,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
@@ -896,7 +897,12 @@ pub fn erlang_service_diagnostics(
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
         let format = erlang_service::Format::OffsetEtf;
 
-        let res = db.module_ast(file_id, format, config.compile_options.clone());
+        let res = db.module_ast(
+            file_id,
+            format,
+            config.compile_options.clone(),
+            config.override_compile_options.clone(),
+        );
 
         // We use a BTreeSet of a tuple because neither ParseError nor
         // Diagnostic nor TextRange has an Ord instance
@@ -1097,7 +1103,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
     // so let's return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, vec![]);
+    let ast = db.module_ast(file_id, format, vec![], vec![]);
     if !ast.is_ok() {
         return vec![];
     };
@@ -1189,7 +1195,7 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     // If the file cannot be parsed, return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, vec![]);
+    let ast = db.module_ast(file_id, format, vec![], vec![]);
     if !ast.is_ok() {
         return Arc::new(CommonTestInfo::BadAST);
     }

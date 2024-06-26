@@ -38,6 +38,7 @@ pub trait AstLoader {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         compile_options: Vec<CompileOption>,
+        override_compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult;
@@ -52,6 +53,7 @@ impl AstLoader for crate::RootDatabase {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         compile_options: Vec<CompileOption>,
+        override_compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
@@ -65,12 +67,17 @@ impl AstLoader for crate::RootDatabase {
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
+        let mut override_options = vec![];
         for option in compile_options {
             options.push(option.clone());
+        }
+        for option in override_compile_options {
+            override_options.push(option.clone());
         }
         let path: PathBuf = path.to_path_buf().into();
         let req = ParseRequest {
             options,
+            override_options,
             path: path.clone(),
             format,
         };
@@ -109,6 +116,7 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
         file_id: FileId,
         format: Format,
         compile_options: Vec<CompileOption>,
+        override_compile_options: Vec<CompileOption>,
     ) -> Arc<ParseResult>;
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
@@ -118,6 +126,7 @@ fn module_ast(
     file_id: FileId,
     format: Format,
     compile_options: Vec<CompileOption>,
+    override_compile_options: Vec<CompileOption>,
 ) -> Arc<ParseResult> {
     // Dummy read of file revision make DB track changes.
     // Note that include file tracking tackes place in db.load_ast().
@@ -146,6 +155,7 @@ fn module_ast(
         &app_data.macros,
         &app_data.parse_transforms,
         compile_options,
+        override_compile_options,
         metadata.into(),
         format,
     ))

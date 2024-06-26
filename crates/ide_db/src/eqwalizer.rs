@@ -380,7 +380,12 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
-            let result = self.module_ast(file_id, elp_erlang_service::Format::OffsetEtf, vec![]);
+            let result = self.module_ast(
+                file_id,
+                elp_erlang_service::Format::OffsetEtf,
+                vec![],
+                vec![],
+            );
             if result.is_ok() {
                 Ok(result.ast.clone())
             } else {
@@ -397,7 +402,12 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
-            let result = self.module_ast(file_id, elp_erlang_service::Format::OffsetEtf, vec![]);
+            let result = self.module_ast(
+                file_id,
+                elp_erlang_service::Format::OffsetEtf,
+                vec![],
+                vec![],
+            );
             if result.is_ok() {
                 Ok(result.stub.clone())
             } else {

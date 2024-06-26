@@ -1,2 +1,4 @@
 module specified: erlang_diagnostics_force_warn_missing_spec_all
-No errors reported
+Diagnostics reported in 1 modules:
+  erlang_diagnostics_force_warn_missing_spec_all: 1
+      8:0-8:12::[Warning] [L1309] missing specification for function not_exported/0

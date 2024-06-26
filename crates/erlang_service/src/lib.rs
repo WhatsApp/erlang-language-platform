@@ -131,6 +131,7 @@ pub enum Format {
 #[derive(Debug, Clone)]
 pub struct ParseRequest {
     pub options: Vec<CompileOption>,
+    pub override_options: Vec<CompileOption>,
     pub path: PathBuf,
     pub format: Format,
 }
@@ -824,9 +825,15 @@ impl ParseRequest {
             .into_iter()
             .map(|option| option.into())
             .collect::<Vec<eetf::Term>>();
+        let override_options = self
+            .override_options
+            .into_iter()
+            .map(|option| option.into())
+            .collect::<Vec<eetf::Term>>();
         let list = eetf::List::from(vec![
             path_into_list(self.path).into(),
             eetf::List::from(options).into(),
+            eetf::List::from(override_options).into(),
         ]);
         let mut buf = Vec::new();
         eetf::Term::from(list).encode(&mut buf).unwrap();
@@ -1042,12 +1049,13 @@ mod tests {
         );
     }
 
-    fn expect_module(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
+    fn expect_module(path: PathBuf, expected: ExpectFile, override_options: Vec<CompileOption>) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
         let request = ParseRequest {
-            options,
+            options: vec![],
+            override_options,
             path,
             format: Format::Text,
         };
@@ -1064,13 +1072,14 @@ mod tests {
     fn expect_module_filtered_error(
         path: PathBuf,
         expected: ExpectFile,
-        options: Vec<CompileOption>,
+        override_options: Vec<CompileOption>,
     ) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
         let request = ParseRequest {
-            options,
+            options: vec![],
+            override_options,
             path,
             format: Format::Text,
         };

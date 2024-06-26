@@ -119,7 +119,7 @@ pub fn parse_all(
     cfg.include_generated = args.include_generated;
 
     if args.force_warn_missing_spec_all {
-        cfg.compile_options
+        cfg.override_compile_options
             .push(CompileOption::ForceWarnMissingSpecAll);
     }
 
