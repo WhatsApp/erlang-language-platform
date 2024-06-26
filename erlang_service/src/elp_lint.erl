@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2023. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2024. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 %%
 %% Do necessary checking of Erlang code.
 
-%% Copied from https://github.com/erlang/otp/blob/7b0b6ec4cf75b841d20e16b1f2113a2ba99bfc18/lib/stdlib/src/erl_lint.erl
+%% Copied from https://github.com/erlang/otp/blob/945c940f6bc6c0bcb026cdc6ae8f3ce358e859bb/lib/stdlib/src/elp_lint.erl
 
 -module(elp_lint).
 -feature(maybe_expr, enable).
@@ -162,6 +162,8 @@ value_option(Flag, Default, On, OnVal, Off, OffVal, Opts) ->
                usage = #usage{}		:: #usage{},
                specs = maps:new()               %Type specifications
                    :: #{mfa() => anno()},
+               hidden_docs = sets:new()                %Documentation enabled
+                   :: sets:set({atom(),arity()}),
                callbacks = maps:new()           %Callback types
                    :: #{mfa() => anno()},
                optional_callbacks = maps:new()  %Optional callbacks
@@ -176,7 +178,9 @@ value_option(Flag, Default, On, OnVal, Off, OffVal, Opts) ->
                bvt = none :: 'none' | [any()],  %Variables in binary pattern
                gexpr_context = guard            %Context of guard expression
                    :: gexpr_context(),
-               load_nif=false :: boolean()      %true if calls erlang:load_nif/2
+               load_nif=false :: boolean(),      %true if calls erlang:load_nif/2
+               doc_defined = false :: {true, erl_anno:anno(), boolean()} | false,
+               moduledoc_defined = false :: {true, erl_anno:anno(), boolean()} | false
               }).
 
 -type lint_state() :: #lint{}.
@@ -252,6 +256,8 @@ format_error(multiple_on_loads) ->
     "more than one on_load attribute";
 format_error({bad_on_load_arity,{F,A}}) ->
     io_lib:format("function ~tw/~w has wrong arity (must be 0)", [F,A]);
+format_error({Tag, duplicate_doc_attribute, Ann}) ->
+    io_lib:format("redefining documentation attribute (~p) previously set at line ~p", [Tag, Ann]);
 format_error({undefined_on_load,{F,A}}) ->
     io_lib:format("function ~tw/~w undefined", [F,A]);
 format_error(nif_inline) ->
@@ -298,6 +304,12 @@ format_error({deprecated_type, {M1, F1, A1}, String, Rel}) ->
 format_error({deprecated_type, {M1, F1, A1}, String}) when is_list(String) ->
     io_lib:format("the type ~p:~p~s is deprecated; ~s",
                   [M1, F1, gen_type_paren(A1), String]);
+format_error({deprecated_callback, {M1, F1, A1}, String, Rel}) ->
+    io_lib:format("the callback ~p:~p~s is deprecated and will be removed in ~s; ~s",
+                  [M1, F1, gen_type_paren(A1), Rel, String]);
+format_error({deprecated_callback, {M1, F1, A1}, String}) when is_list(String) ->
+    io_lib:format("the callback ~p:~p~s is deprecated; ~s",
+                  [M1, F1, gen_type_paren(A1), String]);
 format_error({removed, MFA, ReplacementMFA, Rel}) ->
     io_lib:format("call to ~s will fail, since it was removed in ~s; "
 		  "use ~s", [format_mfa(MFA), Rel, format_mfa(ReplacementMFA)]);
@@ -305,6 +317,8 @@ format_error({removed, MFA, String}) when is_list(String) ->
     io_lib:format("~s is removed; ~s", [format_mfa(MFA), String]);
 format_error({removed_type, MNA, String}) ->
     io_lib:format("the type ~s is removed; ~s", [format_mna(MNA), String]);
+format_error({removed_callback, MNA, String}) ->
+    io_lib:format("the callback ~s is removed; ~s", [format_mna(MNA), String]);
 format_error({obsolete_guard, {F, A}}) ->
     io_lib:format("~p/~p obsolete (use is_~p/~p)", [F, A, F, A]);
 format_error({obsolete_guard_overridden,Test}) ->
@@ -314,6 +328,8 @@ format_error({obsolete_guard_overridden,Test}) ->
 format_error({too_many_arguments,Arity}) ->
     io_lib:format("too many arguments (~w) - "
 		  "maximum allowed is ~w", [Arity,?MAX_ARGUMENTS]);
+format_error(update_literal) ->
+    "expression updates a literal";
 %% --- patterns and guards ---
 format_error(illegal_pattern) -> "illegal pattern";
 format_error(illegal_map_key) -> "illegal map key in pattern";
@@ -322,6 +338,9 @@ format_error({illegal_guard_local_call, {F,A}}) ->
     io_lib:format("call to local/imported function ~tw/~w is illegal in guard",
 		  [F,A]);
 format_error(illegal_guard_expr) -> "illegal guard expression";
+format_error(match_float_zero) ->
+    "matching on the float 0.0 will no longer also match -0.0 in OTP 27. If "
+    "you specifically intend to match 0.0 alone, write +0.0 instead.";
 %% --- maps ---
 format_error(illegal_map_construction) ->
     "only association operators '=>' are allowed in map construction";
@@ -597,7 +616,7 @@ module(Forms, FileName, Opts0) ->
     %% FIXME Hmm, this is not coherent with the semantics of features
     %% We want the options given on the command line to take
     %% precedence over options in the module.
-    Opts = compiler_options(Forms) ++ Opts0,
+    Opts = Opts0 ++ compiler_options(Forms),
     St = forms(Forms, start(FileName, Opts)),
     return_status(St).
 
@@ -648,6 +667,9 @@ start(File, Opts) ->
 	 {deprecated_type,
 	  bool_option(warn_deprecated_type, nowarn_deprecated_type,
 		      true, Opts)},
+	 {deprecated_callback,
+	  bool_option(warn_deprecated_callback, nowarn_deprecated_callback,
+		      true, Opts)},
          {obsolete_guard,
           bool_option(warn_obsolete_guard, nowarn_obsolete_guard,
                       true, Opts)},
@@ -656,6 +678,9 @@ start(File, Opts) ->
 		      false, Opts)},
 	 {missing_spec,
 	  bool_option(warn_missing_spec, nowarn_missing_spec,
+		      false, Opts)},
+	 {missing_spec_documented,
+	  bool_option(warn_missing_spec_documented, nowarn_missing_spec_documented,
 		      false, Opts)},
 	 {missing_spec_all,
 	  bool_option(warn_missing_spec_all, nowarn_missing_spec_all,
@@ -671,6 +696,15 @@ start(File, Opts) ->
                       false, Opts)},
          {redefined_builtin_type,
           bool_option(warn_redefined_builtin_type, nowarn_redefined_builtin_type,
+                      true, Opts)},
+         {singleton_typevar,
+          bool_option(warn_singleton_typevar, nowarn_singleton_typevar,
+                      true, Opts)},
+         {match_float_zero,
+          bool_option(warn_match_float_zero, nowarn_match_float_zero,
+                      true, Opts)},
+         {update_literal,
+          bool_option(warn_update_literal, nowarn_update_literal,
                       true, Opts)}
 	],
     Enabled1 = [Category || {Category,true} <- Enabled0],
@@ -793,7 +827,7 @@ pre_scan([], St) ->
     St.
 
 includes_qlc_hrl(Forms, St) ->
-    %% QLC calls erl_lint several times, sometimes with the compile
+    %% QLC calls elp_lint several times, sometimes with the compile
     %% attribute removed. The file attribute, however, is left as is.
     QH = [File || {attribute,_,file,{File,_line}} <- Forms,
                   filename:basename(File) =:= "qlc.hrl"],
@@ -856,10 +890,10 @@ start_state({attribute,Anno,module,M}, St0) ->
     check_module_name(M, Anno, St2);
 start_state(Form, St) ->
     Anno = case Form of
-               {eof, {0, 0}} ->
-                   %% Special case for empty files, since erl_anno requires
-                   %% the column number to be strictly greater than 1.
-                   erl_anno:new(0);
+                {eof, {0, 0}} ->
+                    %% Special case for empty files, since erl_anno requires
+                    %% the column number to be strictly greater than 1.
+                    erl_anno:new(0);
                {eof, Location} -> erl_anno:new(Location);
                %% {warning, Warning} and {error, Error} not possible here.
                _ -> element(2, Form)
@@ -892,21 +926,77 @@ attribute_state({attribute,Aa,behaviour,Behaviour}, St) ->
 attribute_state({attribute,Aa,behavior,Behaviour}, St) ->
     St#lint{behaviour=St#lint.behaviour ++ [{Aa,Behaviour}]};
 attribute_state({attribute,A,type,{TypeName,TypeDef,Args}}, St) ->
-    type_def(type, A, TypeName, TypeDef, Args, St);
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(type, A, TypeName, TypeDef, Args, St1);
 attribute_state({attribute,A,opaque,{TypeName,TypeDef,Args}}, St) ->
-    type_def(opaque, A, TypeName, TypeDef, Args, St);
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(opaque, A, TypeName, TypeDef, Args, St1);
 attribute_state({attribute,A,spec,{Fun,Types}}, St) ->
     spec_decl(A, Fun, Types, St);
 attribute_state({attribute,A,callback,{Fun,Types}}, St) ->
-    callback_decl(A, Fun, Types, St);
+    St1 = untrack_doc({callback, Fun}, St),
+    callback_decl(A, Fun, Types, St1);
 attribute_state({attribute,A,optional_callbacks,Es}, St) ->
     optional_callbacks(A, Es, St);
 attribute_state({attribute,A,on_load,Val}, St) ->
     on_load(A, Val, St);
+attribute_state({attribute, _A, moduledoc, _Doc}=AST, St)  ->
+    track_doc(AST, St);
+attribute_state({attribute, _A, doc, _Doc}=AST, St)  ->
+    track_doc(AST, St);
 attribute_state({attribute,_A,_Other,_Val}, St) -> % Ignore others
     St;
 attribute_state(Form, St) ->
     function_state(Form, St#lint{state=function}).
+
+
+%% Tracks whether we have read a documentation attribute string multiple times.
+%% Terminal elements that reset the state of the documentation attribute tracking
+%% are:
+%%
+%% - function,
+%% - opaque,
+%% - type
+%% - callback
+%%
+%% These terminal elements are also the only ones where one should place
+%% documentation attributes.
+track_doc({attribute, A, Tag, Doc}, #lint{}=St) when
+      is_list(Doc) orelse is_binary(Doc) orelse Doc =:= false orelse Doc =:= hidden ->
+    case get_doc_attr(Tag, St) of
+        {true, Ann, _} -> add_error(A, {Tag, duplicate_doc_attribute, erl_anno:line(Ann)}, St);
+        false -> update_doc_attr(Tag, A, Doc =:= hidden orelse Doc =:= false, St)
+    end;
+track_doc(_, St) ->
+    St.
+
+%%
+%% Helper functions to track documentation attributes
+%%
+get_doc_attr(moduledoc, #lint{moduledoc_defined = Moduledoc}) -> Moduledoc;
+get_doc_attr(doc, #lint{doc_defined = Doc}) -> Doc.
+
+update_doc_attr(moduledoc, A, Hidden, #lint{}=St) ->
+    St#lint{moduledoc_defined = {true, A, Hidden}};
+update_doc_attr(doc, A, Hidden, #lint{}=St) ->
+    St#lint{doc_defined = {true, A, Hidden}}.
+
+%% Reset the tracking of a documentation attribute.
+%%
+%% That is, assume that a terminal object was reached, thus we need to reset
+%% the state so that the linter understands that we have not seen any other
+%% documentation attribute.
+untrack_doc({callback,{_M, F, A}}, St) ->
+    untrack_doc({callback, F, A}, St);
+untrack_doc({callback,{F, A}}, St) ->
+    untrack_doc({callback,F, A}, St);
+untrack_doc({function, F, A}, #lint{ hidden_docs = Ds, doc_defined = {_, _, true} } = St) ->
+    St#lint{hidden_docs = sets:add_element({F,A}, Ds), doc_defined = false};
+untrack_doc({function, F, A}, #lint{ hidden_docs = Ds, moduledoc_defined = {_, _, true} } = St) ->
+    St#lint{hidden_docs = sets:add_element({F,A}, Ds), doc_defined = false};
+untrack_doc(_KFA, St) ->
+    St#lint{ doc_defined = false }.
+
 
 %% function_state(Form, State) ->
 %%      State'
@@ -917,17 +1007,24 @@ attribute_state(Form, St) ->
 function_state({attribute,A,record,{Name,Fields}}, St) ->
     record_def(A, Name, Fields, St);
 function_state({attribute,A,type,{TypeName,TypeDef,Args}}, St) ->
-    type_def(type, A, TypeName, TypeDef, Args, St);
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(type, A, TypeName, TypeDef, Args, St1);
 function_state({attribute,A,opaque,{TypeName,TypeDef,Args}}, St) ->
-    type_def(opaque, A, TypeName, TypeDef, Args, St);
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(opaque, A, TypeName, TypeDef, Args, St1);
 function_state({attribute,A,spec,{Fun,Types}}, St) ->
     spec_decl(A, Fun, Types, St);
+function_state({attribute,_A,doc,_Val}=AST, St) ->
+    track_doc(AST, St);
+function_state({attribute,_A,moduledoc,_Val}=AST, St) ->
+    track_doc(AST, St);
 function_state({attribute,_A,dialyzer,_Val}, St) ->
     St;
 function_state({attribute,Aa,Attr,_Val}, St) ->
     add_error(Aa, {attribute,Attr}, St);
 function_state({function,Anno,N,A,Cs}, St) ->
-    function(Anno, N, A, Cs, St);
+    St1 = untrack_doc({function, N, A}, St),
+    function(Anno, N, A, Cs, St1);
 function_state({eof,Location}, St) -> eof(Location, St).
 
 %% eof(LastLocation, State) ->
@@ -1004,7 +1101,7 @@ disallowed_compile_flags(Forms, St0) ->
 %% data about calls etc. have been collected.
 
 post_traversal_check(Forms, St0) ->
-    %% We don't load behaviours in the parse sever, ignore behaviour checks
+    %% We don't load behaviours in the Erlang Service, ignore behaviour checks
     % St1 = check_behaviour(St0),
     St2 = check_deprecated(Forms, St0),
     St3 = check_imports(Forms, St2),
@@ -1321,7 +1418,7 @@ check_unused_records(Forms, St0) ->
                                          maps:remove(Used, Recs)
                                  end, St1#lint.records, UsedRecords),
             Unused = [{Name,Anno} ||
-                         {Name,{Anno,_Fields}} <- maps:to_list(URecs),
+                         Name := {Anno,_Fields} <- URecs,
                          element(1, loc(Anno, St1)) =:= FirstFile],
             foldl(fun ({N,Anno}, St) ->
                           add_warning(Anno, {unused_record, N}, St)
@@ -1427,7 +1524,10 @@ import(Anno, {Mod,Fs}, St00) ->
 			      AutoImpSup = is_autoimport_suppressed(St0#lint.no_auto,{F,A}),
 			      {Err,if
 				       Warn and (not AutoImpSup) ->
-                       add_error(Anno, {redefine_old_bif_import, {F,A}}, St0);
+					   add_error
+					     (Anno,
+					      {redefine_bif_import, {F,A}},
+					      St0);
 				       true ->
 					   St0
 				   end};
@@ -1602,7 +1702,12 @@ pattern({var,Anno,V}, _Vt, Old, St) ->
     pat_var(V, Anno, Old, [], St);
 pattern({char,_Anno,_C}, _Vt, _Old, St) -> {[],[],St};
 pattern({integer,_Anno,_I}, _Vt, _Old, St) -> {[],[],St};
-pattern({float,_Anno,_F}, _Vt, _Old, St) -> {[],[],St};
+pattern({float,Anno,F}, _Vt, _Old, St0) ->
+    St = case F == 0 andalso is_warn_enabled(match_float_zero, St0) of
+             true -> add_warning(Anno, match_float_zero, St0);
+             false -> St0
+         end,
+    {[], [], St};
 pattern({atom,Anno,A}, _Vt, _Old, St) ->
     {[],[],keyword_warning(Anno, A, St)};
 pattern({string,_Anno,_S}, _Vt, _Old, St) -> {[],[],St};
@@ -2047,6 +2152,9 @@ gexpr({op,_,'andalso',L,R}, Vt, St) ->
     gexpr_list([L,R], Vt, St);
 gexpr({op,_,'orelse',L,R}, Vt, St) ->
     gexpr_list([L,R], Vt, St);
+gexpr({op,_Anno,EqOp,L,R}, Vt, St0) when EqOp =:= '=:='; EqOp =:= '=/=' ->
+    St1 = expr_check_match_zero(R, expr_check_match_zero(L, St0)),
+    gexpr_list([L,R], Vt, St1);
 gexpr({op,Anno,Op,L,R}, Vt, St0) ->
     {Avt,St1} = gexpr_list([L,R], Vt, St0),
     case is_gexpr_op(Op, 2) of
@@ -2108,13 +2216,8 @@ is_guard_test(Expression, Forms, IsOverridden) ->
     %% processing the forms until we'll know that the record
     %% definitions are truly needed.
     F = fun() ->
-                St = foldl(fun({attribute, _, record, _}=Attr0, St0) ->
-                                   Attr = set_file(Attr0, "none"),
-                                   attribute_state(Attr, St0);
-                              (_, St0) ->
-                                   St0
-                           end, start(), Forms),
-                St#lint.records
+                #{Name => {A,Fs} ||
+                    {attribute, A, record, {Name, Fs}} <- Forms}
         end,
 
     is_guard_test2(NoFileExpression, {F,IsOverridden}).
@@ -2252,10 +2355,10 @@ expr({tuple,_Anno,Es}, Vt, St) ->
     expr_list(Es, Vt, St);
 expr({map,_Anno,Es}, Vt, St) ->
     map_fields(Es, Vt, check_assoc_fields(Es, St), fun expr_list/3);
-expr({map,_Anno,Src,Es}, Vt, St) ->
+expr({map,Anno,Src,Es}, Vt, St) ->
     {Svt,St1} = expr(Src, Vt, St),
     {Fvt,St2} = map_fields(Es, Vt, St1, fun expr_list/3),
-    {vtupdate(Svt, Fvt),St2};
+    {vtupdate(Svt, Fvt), warn_if_literal_update(Anno, Src, St2)};
 expr({record_index,Anno,Name,Field}, _Vt, St) ->
     check_record(Anno, Name, St,
                  fun (Dfs, St1) -> record_field(Field, Name, Dfs, St1) end);
@@ -2278,7 +2381,7 @@ expr({record,Anno,Rec,Name,Upds}, Vt, St0) ->
                                   update_fields(Upds, Name, Dfs, Vt, St)
                           end ),
     case has_wildcard_field(Upds) of
-        no -> {vtmerge(Rvt, Usvt),St2};
+        no -> {vtmerge(Rvt, Usvt), warn_if_literal_update(Anno, Rec, St2)};
         WildAnno -> {[],add_error(WildAnno, {wildcard_in_update,Name}, St2)}
     end;
 expr({bin,_Anno,Fs}, Vt, St) ->
@@ -2452,14 +2555,33 @@ expr({op,Anno,Op,L,R}, Vt, St0) when Op =:= 'orelse'; Op =:= 'andalso' ->
     {Evt2,St2} = expr(R, Vt1, St1),
     Evt3 = vtupdate(vtunsafe({Op,Anno}, Evt2, Vt1), Evt2),
     {vtmerge(Evt1, Evt3),St2};
+expr({op,_Anno,EqOp,L,R}, Vt, St0) when EqOp =:= '=:='; EqOp =:= '=/=' ->
+    St = expr_check_match_zero(R, expr_check_match_zero(L, St0)),
+    expr_list([L,R], Vt, St);                   %They see the same variables
 expr({op,_Anno,_Op,L,R}, Vt, St) ->
     expr_list([L,R], Vt, St);                   %They see the same variables
 %% The following are not allowed to occur anywhere!
 expr({remote,_Anno,M,_F}, _Vt, St) ->
     {[],add_error(erl_parse:first_anno(M), illegal_expr, St)};
+expr({executable_line,_,_}, _Vt, St) ->
+    {[], St};
 expr({ssa_check_when,_Anno,_WantedResult,_Args,_Tag,_Exprs}, _Vt, St) ->
     {[], St}.
 
+%% Checks whether 0.0 occurs naked in the LHS or RHS of an equality check. Note
+%% that we do not warn when it's being used as arguments for expressions in
+%% in general: `A =:= abs(0.0)` is fine.
+expr_check_match_zero({float,Anno,F}, St) ->
+    case F == 0 andalso is_warn_enabled(match_float_zero, St) of
+        true -> add_warning(Anno, match_float_zero, St);
+        false -> St
+    end;
+expr_check_match_zero({cons,_Anno,H,T}, St) ->
+    expr_check_match_zero(H, expr_check_match_zero(T, St));
+expr_check_match_zero({tuple,_Anno,Es}, St) ->
+    foldl(fun expr_check_match_zero/2, St, Es);
+expr_check_match_zero(_Expr, St) ->
+    St.
 
 %% expr_list(Expressions, Variables, State) ->
 %%      {UsedVarTable,State}
@@ -2821,6 +2943,16 @@ check_type(Types, St) ->
 			  "_"++_ -> AccSt;
 			  _ -> add_error(Anno, {singleton_typevar, Var}, AccSt)
 		      end;
+                 (Var, {seen_once_union, Anno}, AccSt) ->
+                      case is_warn_enabled(singleton_typevar, AccSt) of
+                          true ->
+                              case atom_to_list(Var) of
+                                  "_"++_ -> AccSt;
+                                  _ -> add_warning(Anno, {singleton_typevar, Var}, AccSt)
+                              end;
+                          false ->
+                              AccSt
+                      end;
 		 (_Var, seen_multiple, AccSt) ->
 		      AccSt
 	      end, St1, SeenVars).
@@ -2861,6 +2993,7 @@ check_type_2({var, A, Name}, SeenVars, St) ->
     NewSeenVars =
 	case maps:find(Name, SeenVars) of
 	    {ok, {seen_once, _}} -> maps:put(Name, seen_multiple, SeenVars);
+	    {ok, {seen_once_union, _}} -> maps:put(Name, seen_multiple, SeenVars);
 	    {ok, seen_multiple} -> SeenVars;
 	    error -> maps:put(Name, {seen_once, A}, SeenVars)
 	end,
@@ -2912,16 +3045,30 @@ check_type_2({type, _A, Tag, Args}=_F, SeenVars, St) when Tag =:= product;
     lists:foldl(fun(T, {AccSeenVars, AccSt}) ->
                         check_type_1(T, AccSeenVars, AccSt)
                 end, {SeenVars, St}, Args);
-check_type_2({type, _A, union, Args}=_F, SeenVars, St) ->
-    lists:foldl(fun(T, {AccSeenVars, AccSt}) ->
-                        {SeenVars0, St0} = check_type_1(T, SeenVars, AccSt),
-                        UpdatedSeenVars = maps:merge_with(fun (_K, {seen_once, _}, {seen_once, _}=R) -> R;
-                                                              (_K, {seen_once, _}, Else) -> Else;
-                                                              (_K, Else, {seen_once, _}) -> Else;
-                                                              (_K, Else1, _Else2)        -> Else1
-                                                          end, SeenVars0, AccSeenVars),
-                        {UpdatedSeenVars, St0}
-                end, {SeenVars, St}, Args);
+check_type_2({type, _A, union, Args}=_F, SeenVars0, St) ->
+    lists:foldl(fun(T, {AccSeenVars0, AccSt}) ->
+                        {SeenVars1, St0} = check_type_1(T, SeenVars0, AccSt),
+                        AccSeenVars = maps:merge_with(
+                                        fun (K, {seen_once, Anno}, {seen_once, _}) ->
+                                                case SeenVars0 of
+                                                    #{K := _} ->
+                                                        %% Unused outside of this union.
+                                                        {seen_once, Anno};
+                                                    #{} ->
+                                                        {seen_once_union, Anno}
+                                                end;
+                                            (_K, {seen_once, Anno}, {seen_once_union, _}) ->
+                                                {seen_once_union, Anno};
+                                            (_K, {seen_once_union, _}=R, {seen_once, _}) -> R;
+                                            (_K, {seen_once_union, _}=R, {seen_once_union, _}) -> R;
+                                            (_K, {seen_once_union, _}, Else) -> Else;
+                                            (_K, {seen_once, _}, Else) -> Else;
+                                            (_K, Else, {seen_once_union, _}) -> Else;
+                                            (_K, Else, {seen_once, _}) -> Else;
+                                            (_K, Else1, _Else2)        -> Else1
+                                        end, AccSeenVars0, SeenVars1),
+                        {AccSeenVars, St0}
+                end, {SeenVars0, St}, Args);
 check_type_2({type, Anno, TypeName, Args}, SeenVars, St) ->
     #lint{module = Module, types=Types} = St,
     Arity = length(Args),
@@ -3179,8 +3326,13 @@ check_functions_without_spec(Forms, St0) ->
 		true ->
 		    add_missing_spec_warnings(Forms, St0, exported);
 		false ->
-		    St0
-	    end
+                    case is_warn_enabled(missing_spec_documented, St0) of
+                        true ->
+                            add_missing_spec_warnings(Forms, St0, documented);
+                        false ->
+                            St0
+                    end
+            end
     end.
 
 add_missing_spec_warnings(Forms, St0, Type) ->
@@ -3190,9 +3342,15 @@ add_missing_spec_warnings(Forms, St0, Type) ->
 	    all ->
 		[{FA,Anno} || {function,Anno,F,A,_} <- Forms,
 			   not lists:member(FA = {F,A}, Specs)];
-	    exported ->
+	    _ ->
                 Exps0 = gb_sets:to_list(exports(St0)) -- pseudolocals(),
-                Exps = Exps0 -- Specs,
+                Exps1 =
+                    if Type =:= documented ->
+                            Exps0 -- sets:to_list(St0#lint.hidden_docs);
+                       true ->
+                            Exps0
+                    end,
+                Exps = Exps1 -- Specs,
 		[{FA,Anno} || {function,Anno,F,A,_} <- Forms,
 			   member(FA = {F,A}, Exps)]
 	end,
@@ -3235,7 +3393,7 @@ check_unused_types_1(Forms, #lint{types=Ts}=St) ->
 
 reached_types(#lint{usage = Usage}) ->
     Es = [{From, {type, To}} ||
-             {To, UsedTs} <- maps:to_list(Usage#usage.used_types),
+             To := UsedTs <- Usage#usage.used_types,
              #used_type{at = From} <- UsedTs],
     Initial = initially_reached_types(Es),
     G = sofs:family_to_digraph(sofs:rel2fam(sofs:relation(Es))),
@@ -3918,6 +4076,38 @@ check_record_info_call(Anno,_Aa,_As,St) ->
 has_wildcard_field([{record_field,_Af,{var,Aa,'_'},_Val}|_Fs]) -> Aa;
 has_wildcard_field([_|Fs]) -> has_wildcard_field(Fs);
 has_wildcard_field([]) -> no.
+
+%% Raises a warning when updating a (map, record) literal, as that is most
+%% likely unintentional. For example, if we forget a comma in a list like the
+%% following:
+%%
+%%    -record(foo, {bar}).
+%%
+%%    list() ->
+%%        [
+%%            #foo{bar = foo} %% MISSING COMMA!
+%%            #foo{bar = bar}
+%%        ].
+%%
+%% We only raise a warning when the expression-to-be-updated is a map or a
+%% record, as better warnings will be raised elsewhere for other funny
+%% constructs.
+warn_if_literal_update(Anno, Expr, St) ->
+    case is_literal_update(Expr) andalso is_warn_enabled(update_literal, St) of
+        true -> add_warning(Anno, update_literal, St);
+        false -> St
+    end.
+
+is_literal_update({record, _, Inner, _, _}) ->
+    is_literal_update(Inner);
+is_literal_update({record, _, _, _}) ->
+    true;
+is_literal_update({map, _, Inner, _}) ->
+    is_literal_update(Inner);
+is_literal_update({map, _, _}) ->
+    true;
+is_literal_update(_Expr) ->
+    false.
 
 %% check_remote_function(Anno, ModuleName, FuncName, [Arg], State) -> State.
 %%  Perform checks on known remote calls.
