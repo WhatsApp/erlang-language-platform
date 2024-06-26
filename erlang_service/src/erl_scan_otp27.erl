@@ -94,11 +94,7 @@
 %%% Local record.
 -record(erl_scan, {
     resword_fun = fun reserved_word/1 :: resword_fun(),
-    has_fun = false :: boolean(),
-    %% True if requested to parse %ssa%-check comments
-    checks = false :: boolean(),
-    %% True if we're scanning inside a %ssa%-check comment
-    in_check = false :: boolean()
+    has_fun = false :: boolean()
 }).
 
 %%----------------------------------------------------------------------------
@@ -252,13 +248,10 @@ options(Opts0) when is_list(Opts0) ->
             R ->
                 R
         end,
-    Internal = proplists:get_value(compiler_internal, Opts, []),
-    Checks = proplists:get_bool(ssa_checks, Internal),
     HasFun = true,
     #erl_scan{
         resword_fun = RW_fun,
-        has_fun = HasFun,
-        checks = Checks
+        has_fun = HasFun
     };
 options(Opt) ->
     options([Opt]).
@@ -335,8 +328,6 @@ scan1([$; | Cs], St, Line, Col, Toks) ->
     tok2(Cs, St, Line, Col, Toks, ";", ';', 1);
 scan1([$_ = C | Cs], St, Line, Col, Toks) ->
     scan_variable(Cs, St, Line, Col, Toks, [C]);
-scan1([$\% = C | Cs], St, Line, Col, Toks) when St#erl_scan.checks ->
-    scan_check(Cs, St, Line, Col, Toks, [C]);
 scan1([$\% | Cs], St, Line, Col, Toks) ->
     skip_comment(Cs, St, Line, Col, Toks, 1);
 %% More punctuation characters below.
@@ -558,10 +549,6 @@ scan_name([], Wcs) ->
 scan_name(Cs, Wcs) ->
     {Wcs, Cs}.
 
-scan_dot([C | _] = Cs, St, Line, Col, Toks, Ncs) when
-    St#erl_scan.in_check, C =/= $.
-->
-    tok2(Cs, St#erl_scan{in_check = false}, Line, Col, Toks, Ncs, '.', 1);
 scan_dot([$% | _] = Cs, St, Line, Col, Toks, _Ncs) ->
     Anno = anno(Line, Col, St, []),
     {ok, [{dot, Anno} | Toks], Cs, Line, incr_column(Col, 1)};
@@ -1735,54 +1722,6 @@ skip_comment([] = Cs, St, Line, Col, Toks, N) ->
     {more, {Cs, St, Col, Toks, Line, N, fun skip_comment_fun/6}};
 skip_comment(Cs, St, Line, Col, Toks, N) ->
     scan1(Cs, St, Line, incr_column(Col, N), Toks).
-
-scan_check("%%ssa%" ++ Cs, St, Line, Col, Toks, _Ncs) ->
-    scan_check1(Cs, St, Line, Toks, Col, 7);
-scan_check("%%ssa" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%%ss" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%%s" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%%" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%ssa%" ++ Cs, St, Line, Col, Toks, _Ncs) ->
-    scan_check1(Cs, St, Line, Toks, Col, 6);
-scan_check("%ssa" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%ss" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("%s" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("ssa%" ++ Cs, St, Line, Col, Toks, _Ncs) ->
-    scan_check1(Cs, St, Line, Toks, Col, 5);
-scan_check("ssa" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("ss" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check("s" = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check([] = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check(Cs, St, Line, Col, Toks, _Ncs) ->
-    skip_comment(Cs, St, Line, Col, Toks, 1).
-
-scan_check1(Cs, St = #erl_scan{in_check = true}, Line, Toks, Col, NoofCols) ->
-    %% Skip as we are already in the check mode
-    scan1(Cs, St, Line, incr_column(Col, NoofCols), Toks);
-scan_check1(Cs, St, Line, Toks, Col, NoofCols) ->
-    tok2(
-        Cs,
-        St#erl_scan{in_check = true},
-        Line,
-        Col,
-        Toks,
-        "%ssa%",
-        '%ssa%',
-        NoofCols
-    ).
 
 tok2(Cs, #erl_scan{has_fun = false} = St, Line, no_col = Col, Toks, _Wcs, P) ->
     scan1(Cs, St, Line, Col, [{P, anno(Line)} | Toks]);
