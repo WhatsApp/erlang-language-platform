@@ -47,30 +47,18 @@
 %%
 %% Must watch using × \327, very close to x \170.
 
--module(erl_scan).
+-module(erl_scan_otp27).
 
 %%% External exports
 
 -export([
-    string/1, string/2, string/3,
     tokens/3, tokens/4,
-    format_error/1,
-    reserved_word/1,
-    f_reserved_word/1
-]).
-
--export([
-    column/1,
-    end_location/1,
     line/1,
     location/1,
-    text/1,
-    category/1,
-    symbol/1
+    symbol/1,
+    format_error/1,
+    reserved_word/1
 ]).
-
-%%% Private
--export([continuation_location/1]).
 
 -export_type([
     error_info/0,
@@ -79,19 +67,6 @@
     token/0,
     tokens/0,
     tokens_result/0
-]).
-
-%% Removed functions and types
--removed([
-    {set_attribute, 3, "use erl_anno:set_line/2 instead"},
-    {attributes_info, '_', "use erl_anno:{column,line,location,text}/1 instead"},
-    {token_info, '_', "use erl_scan:{category,column,line,location,symbol,text}/1 instead"}
-]).
-
--removed_type([
-    {column, 0, "use erl_anno:column() instead"},
-    {line, 0, "use erl_anno:line() instead"},
-    {location, 0, "use erl_anno:location() instead"}
 ]).
 
 %%%
@@ -106,15 +81,7 @@
 
 -type category() :: atom().
 -type resword_fun() :: fun((atom()) -> boolean()).
--type text_fun() :: fun((atom(), string()) -> boolean()).
--type option() ::
-    'return'
-    | 'return_white_spaces'
-    | 'return_comments'
-    | 'text'
-    | {'reserved_word_fun', resword_fun()}
-    | {'text_fun', text_fun()}
-    | {'compiler_internal', [term()]}.
+-type option() :: {'reserved_word_fun', resword_fun()}.
 -type options() :: option() | [option()].
 -type symbol() :: atom() | float() | integer() | string().
 -type token() ::
@@ -127,9 +94,6 @@
 %%% Local record.
 -record(erl_scan, {
     resword_fun = fun reserved_word/1 :: resword_fun(),
-    text_fun = fun(_, _) -> false end :: text_fun(),
-    ws = false :: boolean(),
-    comment = false :: boolean(),
     has_fun = false :: boolean(),
     %% True if requested to parse %ssa%-check comments
     checks = false :: boolean(),
@@ -165,45 +129,6 @@ format_error(string_concat) ->
     "adjacent string literals without intervening white space";
 format_error(Other) ->
     lists:flatten(io_lib:write(Other)).
-
--spec string(String) -> Return when
-    String :: string(),
-    Return ::
-        {'ok', Tokens :: tokens(), EndLocation}
-        | {'error', ErrorInfo :: error_info(), ErrorLocation},
-    EndLocation :: erl_anno:location(),
-    ErrorLocation :: erl_anno:location().
-string(String) ->
-    string(String, 1, []).
-
--spec string(String, StartLocation) -> Return when
-    String :: string(),
-    Return ::
-        {'ok', Tokens :: tokens(), EndLocation}
-        | {'error', ErrorInfo :: error_info(), ErrorLocation},
-    StartLocation :: erl_anno:location(),
-    EndLocation :: erl_anno:location(),
-    ErrorLocation :: erl_anno:location().
-string(String, StartLocation) ->
-    string(String, StartLocation, []).
-
--spec string(String, StartLocation, Options) -> Return when
-    String :: string(),
-    Options :: options(),
-    Return ::
-        {'ok', Tokens :: tokens(), EndLocation}
-        | {'error', ErrorInfo :: error_info(), ErrorLocation},
-    StartLocation :: erl_anno:location(),
-    EndLocation :: erl_anno:location(),
-    ErrorLocation :: erl_anno:location().
-string(String, Line, Options) when ?STRING(String), ?ALINE(Line) ->
-    string1(String, options(Options), Line, no_col, []);
-string(String, {Line, Column}, Options) when
-    ?STRING(String),
-    ?ALINE(Line),
-    ?COLUMN(Column)
-->
-    string1(String, options(Options), Line, Column, []).
 
 -type char_spec() :: string() | 'eof'.
 -type cont_fun() :: fun(
@@ -256,23 +181,6 @@ tokens(
 ) ->
     tokens1(Cs ++ CharSpec, St, Line, Col, Toks, Fun, Any).
 
-continuation_location({erl_scan_continuation, _, no_col, _, Line, _, _, _}) ->
-    Line;
-continuation_location({erl_scan_continuation, _, Col, _, Line, _, _, _}) ->
-    {Line, Col}.
-
--spec column(Token) -> erl_anno:column() | 'undefined' when
-    Token :: token().
-
-column(Token) ->
-    erl_anno:column(element(2, Token)).
-
--spec end_location(Token) -> erl_anno:location() | 'undefined' when
-    Token :: token().
-
-end_location(Token) ->
-    erl_anno:end_location(element(2, Token)).
-
 -spec line(Token) -> erl_anno:line() when
     Token :: token().
 
@@ -284,22 +192,6 @@ line(Token) ->
 
 location(Token) ->
     erl_anno:location(element(2, Token)).
-
--spec text(Token) -> erl_anno:text() | 'undefined' when
-    Token :: token().
-
-text(Token) ->
-    erl_anno:text(element(2, Token)).
-
--spec category(Token) -> category() when
-    Token :: token().
-
-category({Category, _Anno}) ->
-    Category;
-category({Category, _Anno, _Symbol}) ->
-    Category;
-category(T) ->
-    erlang:error(badarg, [T]).
 
 -spec symbol(Token) -> symbol() when
     Token :: token().
@@ -360,24 +252,11 @@ options(Opts0) when is_list(Opts0) ->
             R ->
                 R
         end,
-    Comment = proplists:get_bool(return_comments, Opts),
-    WS = proplists:get_bool(return_white_spaces, Opts),
-    Txt = proplists:get_bool(text, Opts),
-    TxtFunOpt = proplists:get_value(text_fun, Opts, none),
     Internal = proplists:get_value(compiler_internal, Opts, []),
     Checks = proplists:get_bool(ssa_checks, Internal),
-    DefTxtFun = fun(_, _) -> Txt end,
-    {HasFun, TxtFun} =
-        if
-            Txt -> {Txt, DefTxtFun};
-            TxtFunOpt == none -> {Txt, DefTxtFun};
-            true -> {true, TxtFunOpt}
-        end,
+    HasFun = true,
     #erl_scan{
         resword_fun = RW_fun,
-        comment = Comment,
-        ws = WS,
-        text_fun = TxtFun,
         has_fun = HasFun,
         checks = Checks
     };
@@ -430,32 +309,11 @@ tokens1(Cs, St, Line, Col, Toks, Fun, Any) when ?STRING(Cs); Cs =:= eof ->
             {done, Error, Rest}
     end.
 
-string1(Cs, St, Line, Col, Toks) ->
-    case scan1(Cs, St, Line, Col, Toks) of
-        {more, {Cs0, Nst, Ncol, Ntoks, Nline, Any, Fun}} ->
-            case Fun(Cs0 ++ eof, Nst, Nline, Ncol, Ntoks, Any) of
-                {ok, Toks1, _Rest, Line2, Col2} ->
-                    {ok, lists:reverse(Toks1), location(Line2, Col2)};
-                {{error, _, _} = Error, _Rest} ->
-                    Error
-            end;
-        {ok, Ntoks, [_ | _] = Rest, Nline, Ncol} ->
-            string1(Rest, St, Nline, Ncol, Ntoks);
-        {ok, Ntoks, _, Nline, Ncol} ->
-            {ok, lists:reverse(Ntoks), location(Nline, Ncol)};
-        {{error, _, _} = Error, _Rest} ->
-            Error
-    end.
-
 scan(Cs, #erl_scan{} = St, Line, Col, Toks, _) ->
     scan1(Cs, St, Line, Col, Toks).
 
-scan1([$\s | Cs], St, Line, Col, Toks) when St#erl_scan.ws ->
-    scan_spcs(Cs, St, Line, Col, Toks, 1);
 scan1([$\s | Cs], St, Line, Col, Toks) ->
     skip_white_space(Cs, St, Line, Col, Toks, 1);
-scan1([$\n | Cs], St, Line, Col, Toks) when St#erl_scan.ws ->
-    scan_newline(Cs, St, Line, Col, Toks);
 scan1([$\n | Cs], St, Line, Col, Toks) ->
     skip_white_space(Cs, St, Line + 1, new_column(Col, 1), Toks, 0);
 %% Optimization: some very common punctuation characters:
@@ -479,10 +337,8 @@ scan1([$_ = C | Cs], St, Line, Col, Toks) ->
     scan_variable(Cs, St, Line, Col, Toks, [C]);
 scan1([$\% = C | Cs], St, Line, Col, Toks) when St#erl_scan.checks ->
     scan_check(Cs, St, Line, Col, Toks, [C]);
-scan1([$\% | Cs], St, Line, Col, Toks) when not St#erl_scan.comment ->
+scan1([$\% | Cs], St, Line, Col, Toks) ->
     skip_comment(Cs, St, Line, Col, Toks, 1);
-scan1([$\% = C | Cs], St, Line, Col, Toks) ->
-    scan_comment(Cs, St, Line, Col, Toks, [C]);
 %% More punctuation characters below.
 scan1([C | _], _St, _Line, _Col0, _Toks) when not ?CHAR(C) ->
     error({not_character, C});
@@ -512,23 +368,14 @@ scan1([$~ = C | Cs], St, Line, Col, Toks) ->
     scan_sigil_prefix(Cs, St, Line, Col, Toks, [C]);
 scan1([$$ | Cs], St, Line, Col, Toks) ->
     scan_char(Cs, St, Line, Col, Toks);
-scan1([$\r | Cs], St, Line, Col, Toks) when St#erl_scan.ws ->
-    white_space_end(Cs, St, Line, Col, Toks, 1, "\r");
 scan1([C | Cs], St, Line, Col, Toks) when C >= $ß, C =< $ÿ, C =/= $÷ ->
     scan_atom(Cs, St, Line, Col, Toks, [C]);
 scan1([C | Cs], St, Line, Col, Toks) when C >= $À, C =< $Þ, C /= $× ->
     scan_variable(Cs, St, Line, Col, Toks, [C]);
-scan1([$\t | Cs], St, Line, Col, Toks) when St#erl_scan.ws ->
-    scan_tabs(Cs, St, Line, Col, Toks, 1);
 scan1([$\t | Cs], St, Line, Col, Toks) ->
     skip_white_space(Cs, St, Line, Col, Toks, 1);
 scan1([C | Cs], St, Line, Col, Toks) when ?WHITE_SPACE(C) ->
-    case St#erl_scan.ws of
-        true ->
-            scan_white_space(Cs, St, Line, Col, Toks, [C]);
-        false ->
-            skip_white_space(Cs, St, Line, Col, Toks, 1)
-    end;
+    skip_white_space(Cs, St, Line, Col, Toks, 1);
 %% Punctuation characters and operators, first recognise multiples.
 %% ?= for the maybe ... else ... end construct
 scan1("?=" ++ Cs, St, Line, Col, Toks) ->
@@ -711,191 +558,24 @@ scan_name([], Wcs) ->
 scan_name(Cs, Wcs) ->
     {Wcs, Cs}.
 
--define(STR(Cl, St, S),
-    case
-        ((St)#erl_scan.has_fun) andalso
-            ((St)#erl_scan.text_fun)((Cl), begin
-                S
-            end)
-    of
-        true ->
-            begin
-                S
-            end;
-        false ->
-            []
-    end
-).
--define(STR(Cl, St, Tmp, S),
-    case ((St)#erl_scan.has_fun) of
-        true ->
-            Tmp = begin
-                S
-            end,
-            case ((St)#erl_scan.text_fun)((Cl), Tmp) of
-                true -> Tmp;
-                false -> []
-            end;
-        false ->
-            []
-    end
-).
-
 scan_dot([C | _] = Cs, St, Line, Col, Toks, Ncs) when
     St#erl_scan.in_check, C =/= $.
 ->
     tok2(Cs, St#erl_scan{in_check = false}, Line, Col, Toks, Ncs, '.', 1);
-scan_dot([$% | _] = Cs, St, Line, Col, Toks, Ncs) ->
-    Anno = anno(Line, Col, St, ?STR(dot, St, Ncs)),
+scan_dot([$% | _] = Cs, St, Line, Col, Toks, _Ncs) ->
+    Anno = anno(Line, Col, St, []),
     {ok, [{dot, Anno} | Toks], Cs, Line, incr_column(Col, 1)};
-scan_dot([$\n = C | Cs], St, Line, Col, Toks, Ncs) ->
-    Anno = anno(Line, Col, St, ?STR(dot, St, Ncs ++ [C])),
+scan_dot([$\n | Cs], St, Line, Col, Toks, _Ncs) ->
+    Anno = anno(Line, Col, St, []),
     {ok, [{dot, Anno} | Toks], Cs, Line + 1, new_column(Col, 1)};
-scan_dot([C | Cs], St, Line, Col, Toks, Ncs) when ?WHITE_SPACE(C) ->
-    Anno = anno(Line, Col, St, ?STR(dot, St, Ncs ++ [C])),
+scan_dot([C | Cs], St, Line, Col, Toks, _Ncs) when ?WHITE_SPACE(C) ->
+    Anno = anno(Line, Col, St, []),
     {ok, [{dot, Anno} | Toks], Cs, Line, incr_column(Col, 2)};
-scan_dot(eof = Cs, St, Line, Col, Toks, Ncs) ->
-    Anno = anno(Line, Col, St, ?STR(dot, St, Ncs)),
+scan_dot(eof = Cs, St, Line, Col, Toks, _Ncs) ->
+    Anno = anno(Line, Col, St, []),
     {ok, [{dot, Anno} | Toks], Cs, Line, incr_column(Col, 1)};
 scan_dot(Cs, St, Line, Col, Toks, Ncs) ->
     tok2(Cs, St, Line, Col, Toks, Ncs, '.', 1).
-
-%%% White space characters are very common, so it is worthwhile to
-%%% scan them fast and store them compactly. (The words "whitespace"
-%%% and "white space" usually mean the same thing. The Erlang
-%%% specification denotes the characters with ASCII code in the
-%%% interval 0 to 32 as "white space".)
-%%%
-%%% Convention: if there is a white newline ($\n) it will always be
-%%% the first character in the text string. As a consequence, there
-%%% cannot be more than one newline in a white_space token string.
-%%%
-%%% Some common combinations are recognized, some are not. Examples
-%%% of the latter are tab(s) followed by space(s), like "\t  ".
-%%% (They will be represented by two (or more) tokens.)
-%%%
-%%% Note: the character sequence "\r\n" is *not* recognized since it
-%%% would violate the property that $\n will always be the first
-%%% character. (But since "\r\n\r\n" is common, it pays off to
-%%% recognize "\n\r".)
-
-scan_newline([$\s | Cs], St, Line, Col, Toks) ->
-    scan_nl_spcs(Cs, St, Line, Col, Toks, 2);
-scan_newline([$\t | Cs], St, Line, Col, Toks) ->
-    scan_nl_tabs(Cs, St, Line, Col, Toks, 2);
-scan_newline([$\r | Cs], St, Line, Col, Toks) ->
-    newline_end(Cs, St, Line, Col, Toks, 2, "\n\r");
-scan_newline([$\f | Cs], St, Line, Col, Toks) ->
-    newline_end(Cs, St, Line, Col, Toks, 2, "\n\f");
-scan_newline([], St, Line, Col, Toks) ->
-    {more, {[$\n], St, Col, Toks, Line, [], fun scan/6}};
-scan_newline(Cs, St, Line, Col, Toks) ->
-    scan_nl_white_space(Cs, St, Line, Col, Toks, "\n").
-
-scan_nl_spcs_fun(Cs, #erl_scan{} = St, Line, Col, Toks, N) when
-    is_integer(N)
-->
-    scan_nl_spcs(Cs, St, Line, Col, Toks, N).
-
-scan_nl_spcs([$\s | Cs], St, Line, Col, Toks, N) when N < 17 ->
-    scan_nl_spcs(Cs, St, Line, Col, Toks, N + 1);
-scan_nl_spcs([] = Cs, St, Line, Col, Toks, N) ->
-    {more, {Cs, St, Col, Toks, Line, N, fun scan_nl_spcs_fun/6}};
-scan_nl_spcs(Cs, St, Line, Col, Toks, N) ->
-    newline_end(Cs, St, Line, Col, Toks, N, nl_spcs(N)).
-
-scan_nl_tabs_fun(Cs, #erl_scan{} = St, Line, Col, Toks, N) when
-    is_integer(N)
-->
-    scan_nl_tabs(Cs, St, Line, Col, Toks, N).
-
-scan_nl_tabs([$\t | Cs], St, Line, Col, Toks, N) when N < 11 ->
-    scan_nl_tabs(Cs, St, Line, Col, Toks, N + 1);
-scan_nl_tabs([] = Cs, St, Line, Col, Toks, N) ->
-    {more, {Cs, St, Col, Toks, Line, N, fun scan_nl_tabs_fun/6}};
-scan_nl_tabs(Cs, St, Line, Col, Toks, N) ->
-    newline_end(Cs, St, Line, Col, Toks, N, nl_tabs(N)).
-
-scan_nl_white_space_fun(Cs, #erl_scan{} = St, Line, Col, Toks, Ncs) ->
-    scan_nl_white_space(Cs, St, Line, Col, Toks, Ncs).
-
-%% Note: returning {more,Cont} is meaningless here; one could just as
-%% well return several tokens. But since tokens() scans up to a full
-%% stop anyway, nothing is gained by not collecting all white spaces.
-scan_nl_white_space(
-    [$\n | Cs],
-    #erl_scan{has_fun = false} = St,
-    Line,
-    no_col = Col,
-    Toks0,
-    Ncs
-) ->
-    Toks = [{white_space, anno(Line), lists:reverse(Ncs)} | Toks0],
-    scan_newline(Cs, St, Line + 1, Col, Toks);
-scan_nl_white_space([$\n | Cs], St, Line, Col, Toks, Ncs0) ->
-    Ncs = lists:reverse(Ncs0),
-    Anno = anno(Line, Col, St, ?STR(white_space, St, Ncs)),
-    Token = {white_space, Anno, Ncs},
-    scan_newline(Cs, St, Line + 1, new_column(Col, length(Ncs)), [Token | Toks]);
-scan_nl_white_space([C | Cs], St, Line, Col, Toks, Ncs) when
-    ?WHITE_SPACE(C)
-->
-    scan_nl_white_space(Cs, St, Line, Col, Toks, [C | Ncs]);
-scan_nl_white_space([] = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_nl_white_space_fun/6}};
-scan_nl_white_space(
-    Cs,
-    #erl_scan{has_fun = false} = St,
-    Line,
-    no_col = Col,
-    Toks,
-    Ncs
-) ->
-    Anno = anno(Line),
-    scan1(Cs, St, Line + 1, Col, [{white_space, Anno, lists:reverse(Ncs)} | Toks]);
-scan_nl_white_space(Cs, St, Line, Col, Toks, Ncs0) ->
-    Ncs = lists:reverse(Ncs0),
-    Anno = anno(Line, Col, St, ?STR(white_space, St, Ncs)),
-    Token = {white_space, Anno, Ncs},
-    scan1(Cs, St, Line + 1, new_column(Col, length(Ncs)), [Token | Toks]).
-
-newline_end(
-    Cs,
-    #erl_scan{has_fun = false} = St,
-    Line,
-    no_col = Col,
-    Toks,
-    _N,
-    Ncs
-) ->
-    scan1(Cs, St, Line + 1, Col, [{white_space, anno(Line), Ncs} | Toks]);
-newline_end(Cs, #erl_scan{} = St, Line, Col, Toks, N, Ncs) ->
-    Anno = anno(Line, Col, St, ?STR(white_space, St, Ncs)),
-    scan1(Cs, St, Line + 1, new_column(Col, N), [{white_space, Anno, Ncs} | Toks]).
-
-scan_spcs_fun(Cs, #erl_scan{} = St, Line, Col, Toks, N) when
-    is_integer(N), N >= 1
-->
-    scan_spcs(Cs, St, Line, Col, Toks, N).
-
-scan_spcs([$\s | Cs], St, Line, Col, Toks, N) when N < 16 ->
-    scan_spcs(Cs, St, Line, Col, Toks, N + 1);
-scan_spcs([] = Cs, St, Line, Col, Toks, N) ->
-    {more, {Cs, St, Col, Toks, Line, N, fun scan_spcs_fun/6}};
-scan_spcs(Cs, St, Line, Col, Toks, N) ->
-    white_space_end(Cs, St, Line, Col, Toks, N, spcs(N)).
-
-scan_tabs_fun(Cs, #erl_scan{} = St, Line, Col, Toks, N) when
-    is_integer(N), N >= 1
-->
-    scan_tabs(Cs, St, Line, Col, Toks, N).
-
-scan_tabs([$\t | Cs], St, Line, Col, Toks, N) when N < 10 ->
-    scan_tabs(Cs, St, Line, Col, Toks, N + 1);
-scan_tabs([] = Cs, St, Line, Col, Toks, N) ->
-    {more, {Cs, St, Col, Toks, Line, N, fun scan_tabs_fun/6}};
-scan_tabs(Cs, St, Line, Col, Toks, N) ->
-    white_space_end(Cs, St, Line, Col, Toks, N, tabs(N)).
 
 skip_white_space_fun(Cs, #erl_scan{} = St, Line, Col, Toks, N) ->
     skip_white_space(Cs, St, Line, Col, Toks, N).
@@ -909,24 +589,6 @@ skip_white_space([] = Cs, St, Line, Col, Toks, N) ->
 skip_white_space(Cs, St, Line, Col, Toks, N) ->
     scan1(Cs, St, Line, incr_column(Col, N), Toks).
 
-scan_white_space_fun(Cs, #erl_scan{} = St, Line, Col, Toks, Ncs) ->
-    scan_white_space(Cs, St, Line, Col, Toks, Ncs).
-
-%% Maybe \t and \s should break the loop.
-scan_white_space([$\n | _] = Cs, St, Line, Col, Toks, Ncs) ->
-    white_space_end(Cs, St, Line, Col, Toks, length(Ncs), lists:reverse(Ncs));
-scan_white_space([C | Cs], St, Line, Col, Toks, Ncs) when ?WHITE_SPACE(C) ->
-    scan_white_space(Cs, St, Line, Col, Toks, [C | Ncs]);
-scan_white_space([] = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_white_space_fun/6}};
-scan_white_space(Cs, St, Line, Col, Toks, Ncs) ->
-    white_space_end(Cs, St, Line, Col, Toks, length(Ncs), lists:reverse(Ncs)).
-
--compile({inline, [white_space_end/7]}).
-
-white_space_end(Cs, St, Line, Col, Toks, N, Ncs) ->
-    tok3(Cs, St, Line, Col, Toks, white_space, Ncs, Ncs, N).
-
 scan_char([$\\ | Cs] = Cs0, St, Line, Col, Toks) ->
     case scan_escape(Cs, incr_column(Col, 2)) of
         more ->
@@ -935,22 +597,22 @@ scan_char([$\\ | Cs] = Cs0, St, Line, Col, Toks) ->
             scan_error(Error, Line, Col, Line, Ncol, Ncs);
         {eof, Ncol} ->
             scan_error({unterminated, char}, Line, Col, Line, Ncol, eof);
-        {nl, Val, Str, Ncs, Ncol} ->
+        {nl, Val, _Str, Ncs, Ncol} ->
             %"
-            Anno = anno(Line, Col, St, ?STR(char, St, "$\\" ++ Str)),
+            Anno = anno(Line, Col, St, []),
             Ntoks = [{char, Anno, Val} | Toks],
             scan1(Ncs, St, Line + 1, Ncol, Ntoks);
-        {Val, Str, Ncs, Ncol} ->
+        {Val, _Str, Ncs, Ncol} ->
             %"
-            Anno = anno(Line, Col, St, ?STR(char, St, "$\\" ++ Str)),
+            Anno = anno(Line, Col, St, []),
             Ntoks = [{char, Anno, Val} | Toks],
             scan1(Ncs, St, Line, Ncol, Ntoks)
     end;
 scan_char([$\n = C | Cs], St, Line, Col, Toks) ->
-    Anno = anno(Line, Col, St, ?STR(char, St, [$$, C])),
+    Anno = anno(Line, Col, St, []),
     scan1(Cs, St, Line + 1, new_column(Col, 1), [{char, Anno, C} | Toks]);
 scan_char([C | Cs], St, Line, Col, Toks) when ?UNICODE(C) ->
-    Anno = anno(Line, Col, St, ?STR(char, St, [$$, C])),
+    Anno = anno(Line, Col, St, []),
     scan1(Cs, St, Line, incr_column(Col, 2), [{char, Anno, C} | Toks]);
 scan_char([C | _Cs], _St, Line, Col, _Toks) when ?CHAR(C) ->
     scan_error({illegal, character}, Line, Col, Line, incr_column(Col, 1), eof);
@@ -981,7 +643,7 @@ scan_sigil_prefix(Cs, St, Line, Col, Toks, Wcs) ->
             SigilCs = lists:reverse(Nwcs),
             try list_to_atom(tl(SigilCs)) of
                 SigilType when is_atom(SigilType) ->
-                    Anno = anno(Line, Col, St, ?STR(Type, St, SigilCs)),
+                    Anno = anno(Line, Col, St, []),
                     Tok = {Type, Anno, SigilType},
                     scan_string(Ncs, St, Line, Ncol, [Tok | Toks], SigilType)
             catch
@@ -1322,8 +984,8 @@ scan_tqstring_finish(Cs, St, Line, Col, Toks, Tqs) ->
     %% all others has newline characters as from the input.
     case tqstring_finish(lists:reverse(IndentR), NcontentR, Line - 1) of
         Content when is_list(Content) ->
-            #tqs{str = Str, sigil_type = SigilType} = Tqs,
-            AnnoStr = ?STR(string, St, Text, lists:reverse(Str)),
+            #tqs{str = _Str, sigil_type = SigilType} = Tqs,
+            AnnoStr = [],
             Tok = {string, anno(Line0, Col0, St, AnnoStr), Content},
             scan_sigil_suffix(
                 Cs, St, Line, new_column(Col0, Col), [Tok | Toks], SigilType
@@ -1478,15 +1140,14 @@ scan_qstring(
     #qstring{q2 = Q2, str = Str, wcs = Wcs} = Qstring
 ) ->
     case scan_string0(Cs, St, Line, Col, Q2, Str, Wcs) of
-        {ok, {Ncs, Nline, Ncol, Nstr, Nwcs}} ->
+        {ok, {Ncs, Nline, Ncol, _Nstr, Nwcs}} ->
             #qstring{
                 line = Line0,
                 col = Col0,
-                sigil_type = SigilType,
-                q1 = Q1
+                sigil_type = SigilType
             } = Qstring,
             AnnoStr =
-                ?STR(string, St, Text, [Q1 | lists:reverse(Nstr, [Q2])]),
+                [],
             Anno = anno(Line0, Col0, St, AnnoStr),
             Tok = {string, Anno, lists:reverse(Nwcs)},
             scan_sigil_suffix(Ncs, St, Nline, Ncol, [Tok | Toks], SigilType);
@@ -1537,7 +1198,7 @@ scan_sigil_suffix(Cs, St, Line, Col, Toks, Wcs) when is_list(Wcs) ->
             Suffix = lists:reverse(Nwcs),
             try list_to_atom(Suffix) of
                 A when is_atom(A) ->
-                    Anno = anno(Line, Col, St, ?STR(Type, St, Suffix)),
+                    Anno = anno(Line, Col, St, []),
                     Tok = {Type, Anno, Suffix},
                     scan_string_concat(
                         Ncs, St, Line, Ncol, [Tok | Toks], Suffix
@@ -1590,11 +1251,10 @@ scan_vstring(
             #vstring{
                 line = Line0,
                 col = Col0,
-                sigil_type = SigilType,
-                q1 = Q1
+                sigil_type = SigilType
             } = Vstring,
             AnnoStr =
-                ?STR(string, St, Text, [Q1 | lists:reverse(Nwcs, [Q2])]),
+                [],
             Anno = anno(Line0, Col0, St, AnnoStr),
             Tok = {string, Anno, lists:reverse(Nwcs)},
             scan_sigil_suffix(Ncs, St, Nline, Ncol, [Tok | Toks], SigilType);
@@ -1687,12 +1347,12 @@ scan_qatom(
     %'
     C = $',
     case scan_string0(Cs, St, Line, Col, C, Str, Wcs) of
-        {ok, {Ncs, Nline, Ncol, Nstr, Nwcs}} ->
+        {ok, {Ncs, Nline, Ncol, _Nstr, Nwcs}} ->
             #qatom{line = Line0, col = Col0} = Qatom,
             try list_to_atom(lists:reverse(Nwcs)) of
                 A when is_atom(A) ->
                     AnnoStr =
-                        ?STR(atom, St, Text, [C | lists:reverse(Nstr, [C])]),
+                        [],
                     Anno = anno(Line0, Col0, St, AnnoStr),
                     Tok = {atom, Anno, A},
                     scan1(Ncs, St, Nline, Ncol, [Tok | Toks])
@@ -2076,25 +1736,6 @@ skip_comment([] = Cs, St, Line, Col, Toks, N) ->
 skip_comment(Cs, St, Line, Col, Toks, N) ->
     scan1(Cs, St, Line, incr_column(Col, N), Toks).
 
-scan_comment_fun(Cs, #erl_scan{} = St, Line, Col, Toks, Ncs) ->
-    scan_comment(Cs, St, Line, Col, Toks, Ncs).
-
-scan_comment([C | Cs], St, Line, Col, Toks, Ncs) when
-    C =/= $\n, ?CHAR(C)
-->
-    case ?UNICODE(C) of
-        true ->
-            scan_comment(Cs, St, Line, Col, Toks, [C | Ncs]);
-        false ->
-            Ncol = incr_column(Col, length(Ncs) + 1),
-            scan_error({illegal, character}, Line, Col, Line, Ncol, Cs)
-    end;
-scan_comment([] = Cs, St, Line, Col, Toks, Ncs) ->
-    {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_comment_fun/6}};
-scan_comment(Cs, St, Line, Col, Toks, Ncs0) ->
-    Ncs = lists:reverse(Ncs0),
-    tok3(Cs, St, Line, Col, Toks, comment, Ncs, Ncs).
-
 scan_check("%%ssa%" ++ Cs, St, Line, Col, Toks, _Ncs) ->
     scan_check1(Cs, St, Line, Toks, Col, 7);
 scan_check("%%ssa" = Cs, St, Line, Col, Toks, Ncs) ->
@@ -2125,8 +1766,6 @@ scan_check("s" = Cs, St, Line, Col, Toks, Ncs) ->
     {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
 scan_check([] = Cs, St, Line, Col, Toks, Ncs) ->
     {more, {Cs, St, Col, Toks, Line, Ncs, fun scan_check/6}};
-scan_check(Cs, St = #erl_scan{comment = true}, Line, Col, Toks, Ncs) ->
-    scan_comment(Cs, St, Line, Col, Toks, Ncs);
 scan_check(Cs, St, Line, Col, Toks, _Ncs) ->
     skip_comment(Cs, St, Line, Col, Toks, 1).
 
@@ -2148,36 +1787,20 @@ scan_check1(Cs, St, Line, Toks, Col, NoofCols) ->
 tok2(Cs, #erl_scan{has_fun = false} = St, Line, no_col = Col, Toks, _Wcs, P) ->
     scan1(Cs, St, Line, Col, [{P, anno(Line)} | Toks]);
 tok2(Cs, #erl_scan{} = St, Line, Col, Toks, Wcs, P) ->
-    Anno = anno(Line, Col, St, ?STR(P, St, Wcs)),
+    Anno = anno(Line, Col, St, []),
     scan1(Cs, St, Line, incr_column(Col, length(Wcs)), [{P, Anno} | Toks]).
 
 tok2(Cs, #erl_scan{has_fun = false} = St, Line, no_col = Col, Toks, _Wcs, P, _N) ->
     scan1(Cs, St, Line, Col, [{P, anno(Line)} | Toks]);
-tok2(Cs, #erl_scan{} = St, Line, Col, Toks, Wcs, P, N) ->
-    Anno = anno(Line, Col, St, ?STR(P, St, Wcs)),
+tok2(Cs, #erl_scan{} = St, Line, Col, Toks, _Wcs, P, N) ->
+    Anno = anno(Line, Col, St, []),
     scan1(Cs, St, Line, incr_column(Col, N), [{P, Anno} | Toks]).
 
 tok3(Cs, #erl_scan{has_fun = false} = St, Line, no_col = Col, Toks, Item, _S, Sym) ->
     scan1(Cs, St, Line, Col, [{Item, anno(Line), Sym} | Toks]);
 tok3(Cs, #erl_scan{} = St, Line, Col, Toks, Item, String, Sym) ->
-    Token = {Item, anno(Line, Col, St, ?STR(Item, St, String)), Sym},
+    Token = {Item, anno(Line, Col, St, []), Sym},
     scan1(Cs, St, Line, incr_column(Col, length(String)), [Token | Toks]).
-
-tok3(
-    Cs,
-    #erl_scan{has_fun = false} = St,
-    Line,
-    no_col = Col,
-    Toks,
-    Item,
-    _String,
-    Sym,
-    _Length
-) ->
-    scan1(Cs, St, Line, Col, [{Item, anno(Line), Sym} | Toks]);
-tok3(Cs, #erl_scan{} = St, Line, Col, Toks, Item, String, Sym, Length) ->
-    Token = {Item, anno(Line, Col, St, ?STR(Item, St, String)), Sym},
-    scan1(Cs, St, Line, incr_column(Col, Length), [Token | Toks]).
 
 scan_error(Error, Line, Col, EndLine, EndCol, Rest) ->
     Loc = location(Line, Col),
@@ -2241,62 +1864,6 @@ lists_duplicate(N, X, L) -> lists_duplicate(N - 1, X, [X | L]).
 %% lists:foldl/3 over lists:reverse/2
 lists_foldl_reverse(Lists, Acc) ->
     lists:foldl(fun lists:reverse/2, Acc, Lists).
-
-nl_spcs(2) -> "\n ";
-nl_spcs(3) -> "\n  ";
-nl_spcs(4) -> "\n   ";
-nl_spcs(5) -> "\n    ";
-nl_spcs(6) -> "\n     ";
-nl_spcs(7) -> "\n      ";
-nl_spcs(8) -> "\n       ";
-nl_spcs(9) -> "\n        ";
-nl_spcs(10) -> "\n         ";
-nl_spcs(11) -> "\n          ";
-nl_spcs(12) -> "\n           ";
-nl_spcs(13) -> "\n            ";
-nl_spcs(14) -> "\n             ";
-nl_spcs(15) -> "\n              ";
-nl_spcs(16) -> "\n               ";
-nl_spcs(17) -> "\n                ".
-
-spcs(1) -> " ";
-spcs(2) -> "  ";
-spcs(3) -> "   ";
-spcs(4) -> "    ";
-spcs(5) -> "     ";
-spcs(6) -> "      ";
-spcs(7) -> "       ";
-spcs(8) -> "        ";
-spcs(9) -> "         ";
-spcs(10) -> "          ";
-spcs(11) -> "           ";
-spcs(12) -> "            ";
-spcs(13) -> "             ";
-spcs(14) -> "              ";
-spcs(15) -> "               ";
-spcs(16) -> "                ".
-
-nl_tabs(2) -> "\n\t";
-nl_tabs(3) -> "\n\t\t";
-nl_tabs(4) -> "\n\t\t\t";
-nl_tabs(5) -> "\n\t\t\t\t";
-nl_tabs(6) -> "\n\t\t\t\t\t";
-nl_tabs(7) -> "\n\t\t\t\t\t\t";
-nl_tabs(8) -> "\n\t\t\t\t\t\t\t";
-nl_tabs(9) -> "\n\t\t\t\t\t\t\t\t";
-nl_tabs(10) -> "\n\t\t\t\t\t\t\t\t\t";
-nl_tabs(11) -> "\n\t\t\t\t\t\t\t\t\t\t".
-
-tabs(1) -> "\t";
-tabs(2) -> "\t\t";
-tabs(3) -> "\t\t\t";
-tabs(4) -> "\t\t\t\t";
-tabs(5) -> "\t\t\t\t\t";
-tabs(6) -> "\t\t\t\t\t\t";
-tabs(7) -> "\t\t\t\t\t\t\t";
-tabs(8) -> "\t\t\t\t\t\t\t\t";
-tabs(9) -> "\t\t\t\t\t\t\t\t\t";
-tabs(10) -> "\t\t\t\t\t\t\t\t\t\t".
 
 %% Dynamic version of reserved_word that knows about the possibility
 %% that enabled features might change the set of reserved words.
