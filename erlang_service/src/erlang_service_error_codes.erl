@@ -297,6 +297,16 @@ make_code(elp_lint, {bad_dialyzer_option, _Term}) ->
     "L1316";
 make_code(elp_lint, {format_error, {_Fmt, _Args}}) ->
     "L1317";
+make_code(elp_lint, update_literal) ->
+    "L1318";
+make_code(elp_lint, {deprecated_callback, _, _, _}) ->
+    "L1319";
+make_code(elp_lint, {deprecated_callback, _, _}) ->
+    "L1320";
+make_code(elp_lint, {removed_callback, _, _}) ->
+    "L1321";
+make_code(elp_lint, match_float_zero) ->
+    "L1322";
 make_code(elp_lint, _Other) ->
     "L1399";
 %% stdlib-3.15.2/src/erl_scan.erl
