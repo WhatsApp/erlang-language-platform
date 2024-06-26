@@ -43,7 +43,7 @@ function_call argument_list
 exprs body_exprs guard
 atomic strings
 prefix_op mult_op add_op list_op comp_op
-binary bin_elements bin_element bit_expr
+binary bin_elements bin_element bit_expr sigil
 opt_bit_size_expr bit_size_expr opt_bit_type_list bit_type_list bit_type
 top_type top_types type typed_expr typed_attr_val
 type_sig type_sigs type_guard type_guards fun_type binary_type
@@ -53,7 +53,7 @@ bin_base_type bin_unit_type
 maybe_expr maybe_match_exprs maybe_match.
 
 Terminals
-char integer float atom string var
+char integer float atom sigil_type string sigil_suffix var
 
 '(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' ';' ':' '#' '.'
 'after' 'begin' 'case' 'try' 'catch' 'end' 'fun' 'if' 'of' 'receive' 'when'
@@ -251,6 +251,7 @@ expr_max -> var : '$1'.
 expr_max -> atomic : '$1'.
 expr_max -> list : '$1'.
 expr_max -> binary : '$1'.
+expr_max -> sigil : '$1'.
 expr_max -> list_comprehension : '$1'.
 expr_max -> map_comprehension : '$1'.
 expr_max -> binary_comprehension : '$1'.
@@ -322,6 +323,8 @@ bit_type -> atom             : {element(3,'$1'), ?anno('$1')}.
 bit_type -> atom ':' integer : {{element(3,'$1'), element(3,'$3')}, ?anno('$1', '$3')}.
 
 bit_size_expr -> expr_max : '$1'.
+
+sigil -> sigil_type string sigil_suffix : build_sigil('$1', '$2', '$3').
 
 list_comprehension -> '[' expr '||' lc_exprs ']' :
 	{lc,?anno('$1','$5'),'$2','$4'}.
@@ -1407,6 +1410,40 @@ check_clauses(Cs, Name, Arity) ->
 
 build_try(Try, Es, Scs, {Ccs, As, End}) ->
     {'try', ?anno(Try, End), Es, Scs, Ccs, As}.
+
+build_sigil(SigilType, String, SigilSuffix) ->
+    Type = element(3, SigilType),
+    Suffix = element(3, SigilSuffix),
+    if
+        Type =:= 'S';
+        Type =:= 's' ->
+            %% Keep as string()
+            String;
+        Type =:= '';    % The empty (default) sigil
+        Type =:= 'B';
+        Type =:= 'b' ->
+            %% Convert to UTF-8 binary()
+            case Suffix of
+                "" ->
+                    {bin,?anno(SigilType),
+                        [{bin_element,
+                        ?anno(String),String,default,[utf8]}]};
+                _ ->
+                    ret_err(
+                        element(2, SigilSuffix),
+                        "illegal sigil suffix.")
+            end;
+        Type =:= 'r' -> % Regular expression
+            %% Convert to {re,RE,Flags}
+            {tuple, ?anno(SigilType),
+                [{atom,?anno(SigilType),'re'},
+                String,
+                {string,?anno(SigilSuffix),Suffix}]};
+        true ->
+            ret_err(
+                element(2, SigilType),
+                "illegal sigil type.")
+    end.
 
 -spec ret_err(_, _) -> no_return().
 ret_err(Anno, S) ->
