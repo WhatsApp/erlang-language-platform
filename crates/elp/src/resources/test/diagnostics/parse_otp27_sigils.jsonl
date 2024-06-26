@@ -1,6 +1,7 @@
 module specified: otp27_sigils
 Diagnostics reported in 1 modules:
   otp27_sigils: 133
+      3:14-3:17::[Error] [L1227] function g/0 undefined
       10:5-10:6::[Error] [P1711] Syntax Error
       10:14-10:15::[Error] [P1711] Syntax Error
       10:20-10:21::[Error] [P1711] Syntax Error
@@ -130,7 +131,6 @@ Diagnostics reported in 1 modules:
       64:14-64:15::[Error] [P1711] Syntax Error
       64:20-64:21::[Error] [P1711] Syntax Error
       65:4-65:5::[Error] [P1711] Syntax Error
-      75:4-75:5::[Error] [P1711] syntax error before: '~'
       75:5-78:7::[Warning] [W0006] this statement has no effect
       79:8-79:10::[Warning] [W0004] Missing '.'
       127:8-127:23::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
