@@ -66,7 +66,8 @@
     return_cont/0,
     token/0,
     tokens/0,
-    tokens_result/0
+    tokens_result/0,
+    location/0
 ]).
 
 %%%
