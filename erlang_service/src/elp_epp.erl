@@ -33,6 +33,8 @@
 ]).
 -export([normalize_typed_record_fields/1, restore_typed_record_fields/1]).
 
+-include_lib("kernel/include/file.hrl").
+
 %%------------------------------------------------------------------------
 
 -export_type([source_encoding/0]).
@@ -256,6 +258,10 @@ format_error({circular, M, A}) ->
     io_lib:format("circular macro '~ts/~p'", [M, A]);
 format_error({include, W, F}) ->
     io_lib:format("can't find include ~s \"~ts\"", [W, F]);
+format_error({Tag, invalid, Alternative}) when Tag =:= moduledoc; Tag =:= doc ->
+    io_lib:format("invalid ~s tag, only ~s allowed", [Tag, Alternative]);
+format_error({Tag, W, Filename}) when Tag =:= moduledoc; Tag =:= doc ->
+    io_lib:format("can't find ~s ~s \"~ts\"", [Tag, W, Filename]);
 format_error({illegal, How, What}) ->
     io_lib:format("~s '-~s'", [How, What]);
 format_error({illegal_function, Macro}) ->
@@ -276,9 +282,9 @@ format_error(tqstring) ->
     "triple-quoted (or more) strings will change meaning in OTP-27.0";
 format_error(string_concat) ->
     "adjacent string literals without intervening white space\n"
-        "In OTP-27.0 this will be a triple-quoted string or an error.\n"
-        "Rewrite them as one string, or insert white space\n"
-        "between the strings.";
+    "In OTP-27.0 this will be a triple-quoted string or an error.\n"
+    "Rewrite them as one string, or insert white space\n"
+    "between the strings.";
 format_error(E) ->
     file:format_error(E).
 
@@ -370,15 +376,17 @@ parse_file(Epp) ->
     %% Code duplicated from parse_erl_form(Epp), but with
     %% added search for tokens to warn for
     case epp_request(Epp, scan_erl_form) of
-        {ok,Toks} ->
+        {ok, Toks} ->
             Warnings =
-                [{warning, {erl_anno:location(Anno), ?MODULE, Tag}}
+                [
+                    {warning, {erl_anno:location(Anno), ?MODULE, Tag}}
                  || {Tag, Anno, _} <- Toks,
                     %% Warn for string concatenation without white space
-                    Tag =:= string_concat],
+                    Tag =:= string_concat
+                ],
             case elp_parse:parse_form(Toks) of
                 {ok, Form} ->
-                    [Form|Warnings] ++ parse_file(Epp);
+                    [Form | Warnings] ++ parse_file(Epp);
                 Problem2 ->
                     parse_file_problem(Epp, Problem2, Warnings)
             end;
@@ -388,12 +396,12 @@ parse_file(Epp) ->
 
 parse_file_problem(Epp, Problem, Warnings) ->
     case Problem of
-    {error,E} ->
-        [{error,E}|Warnings] ++ parse_file(Epp);
-    {warning,W} ->
-        [{warning,W}|Warnings] ++ parse_file(Epp);
-    {eof,Offset} ->
-        [{eof,{Offset, Offset}}|Warnings]
+        {error, E} ->
+            [{error, E} | Warnings] ++ parse_file(Epp);
+        {warning, W} ->
+            [{warning, W} | Warnings] ++ parse_file(Epp);
+        {eof, Offset} ->
+            [{eof, {Offset, Offset}} | Warnings]
     end.
 
 -spec default_encoding() -> source_encoding().
@@ -736,7 +744,7 @@ predef_macros(File) ->
     maps:from_list(Defs).
 
 %% user_predef(PreDefMacros, Macros) ->
-%%	{ok,MacroDict} | {error,E}
+%%{ok,MacroDict} | {error,E}
 %%  Add the predefined macros to the macros dictionary. A macro without a
 %%  value gets the value 'true'.
 
@@ -938,6 +946,14 @@ scan_toks([{'-', _Lh}, {atom, _Ld, warning} = Warn | Toks], From, St) ->
     scan_err_warn(Toks, Warn, From, leave_prefix(St));
 scan_toks([{'-', _Lh}, {atom, _Li, include} = Inc | Toks], From, St) ->
     scan_include(Toks, Inc, From, St);
+scan_toks([{'-', _Lh}, {atom, _Ld, D} = Doc | [{'(', _}, {'{', _} | _] = Toks], From, St) when
+    D =:= doc; D =:= moduledoc
+->
+    scan_filedoc(coalesce_strings(Toks), Doc, From, St);
+scan_toks([{'-', _Lh}, {atom, _Ld, D} = Doc | [{'{', _} | _] = Toks], From, St) when
+    D =:= doc; D =:= moduledoc
+->
+    scan_filedoc(coalesce_strings(Toks), Doc, From, St);
 scan_toks([{'-', _Lh}, {atom, _Li, include_lib} = IncLib | Toks], From, St) ->
     scan_include_lib(Toks, IncLib, From, St);
 scan_toks([{'-', _Lh}, {atom, _Li, ifdef} = IfDef | Toks], From, St) ->
@@ -981,6 +997,102 @@ scan_toks(Toks0, From, St) ->
             wait_req_scan(St)
     end.
 
+%% First we parse either ({file, "filename"}) or {file, "filename"} and
+%% return proper errors if syntax is incorrect. Only literal strings are allowed.
+scan_filedoc(
+    [
+        {'(', _},
+        {'{', _},
+        {atom, _, file},
+        {',', _},
+        {string, _, _} = DocFilename,
+        {'}', _},
+        {')', _},
+        {dot, _} = Dot
+    ],
+    DocType,
+    From,
+    St
+) ->
+    scan_filedoc_content(DocFilename, Dot, DocType, From, St);
+scan_filedoc([{'(', _}, {'{', _}, {atom, _, file} | _] = Toks, DocType, From, St) ->
+    T = find_mismatch(['(', '{', atom, ',', string, '}', ')', dot], Toks, DocType),
+    epp_reply(From, {error, {loc(T), epp, {bad, DocType}}}),
+    wait_req_scan(St);
+scan_filedoc([{'(', _}, {'{', _}, T | _], DocType, From, St) ->
+    epp_reply(From, {error, {loc(T), epp, {DocType, invalid, file}}}),
+    wait_req_scan(St);
+scan_filedoc(
+    [
+        {'{', _},
+        {atom, _, file},
+        {',', _},
+        {string, _, _} = DocFilename,
+        {'}', _},
+        {dot, _} = Dot
+    ],
+    DocType,
+    From,
+    St
+) ->
+    scan_filedoc_content(DocFilename, Dot, DocType, From, St);
+scan_filedoc([{'{', _}, {atom, _, file} | _] = Toks, {atom, _, DocType}, From, St) ->
+    T = find_mismatch(['{', {atom, file}, ',', string, '}', dot], Toks, DocType),
+    epp_reply(From, {error, {loc(T), epp, {bad, DocType}}}),
+    wait_req_scan(St);
+scan_filedoc([{'{', _}, T | _], {atom, _, DocType}, From, St) ->
+    epp_reply(From, {error, {loc(T), epp, {DocType, invalid, file}}}),
+    wait_req_scan(St).
+
+%% Reads the content of the file and rewrites the AST as if
+%% the content had been written in-place.
+scan_filedoc_content(
+    {string, _A, DocFilename},
+    Dot,
+    {atom, DocLoc, Doc},
+    From,
+    #epp{name = CurrentFilename} = St
+) ->
+    %% The head of the path is the dir where the current file is
+    Cwd = hd(St#epp.path),
+    case file:path_open([Cwd], DocFilename, [read, binary]) of
+        {ok, NewF, Pname} ->
+            case file:read_file_info(NewF) of
+                {ok, #file_info{size = Sz}} ->
+                    {ok, Bin} = file:read(NewF, Sz),
+                    ok = file:close(NewF),
+                    Offset = St#epp.offset,
+                    %% Enter a new file for this doc entry
+                    enter_file_reply(
+                        From,
+                        Pname,
+                        Offset,
+                        Offset
+                    ),
+                    epp_reply(
+                        From,
+                        {ok,
+                            [{'-', Offset}, {atom, Offset, Doc}] ++
+                                [{string, Offset, unicode:characters_to_list(Bin)}, {dot, Offset}]}
+                    ),
+                    %% Restore the previous file
+                    enter_file_reply(
+                        From,
+                        CurrentFilename,
+                        erl_anno:new(loc(Dot)),
+                        loc(Dot)
+                    ),
+                    wait_req_scan(St);
+                {error, _} ->
+                    ok = file:close(NewF),
+                    epp_reply(From, {error, {DocLoc, epp, {Doc, file, DocFilename}}}),
+                    wait_req_scan(St)
+            end;
+        {error, _} ->
+            epp_reply(From, {error, {DocLoc, epp, {Doc, file, DocFilename}}}),
+            wait_req_scan(St)
+    end.
+
 %% Determine whether we have passed the prefix where a -feature
 %% directive is allowed.
 in_prefix({atom, _, Atom}) ->
@@ -997,7 +1109,9 @@ in_prefix({atom, _, Atom}) ->
         'define',
         'undef',
         'include',
-        'include_lib'
+        'include_lib',
+        'moduledoc',
+        'doc'
     ]);
 in_prefix(_T) ->
     false.
@@ -1258,8 +1372,9 @@ expand_lib_dir_for_path(Name, EppPath) ->
                 [H] -> {ok, fname_join([EppPath, H | Path])};
                 [_ | _] -> {ok, fname_join([EppPath, lists:last(lists:sort(Matched)) | Path])}
             end;
-        _ -> error
-     end.
+        _ ->
+            error
+    end.
 
 check_dir(Dir, Name) ->
     case string:split(Dir, Name ++ "-") of
@@ -1455,7 +1570,7 @@ assert_guard_expr(_) ->
 
 %% evaluate_builtins(AbstractForm0, #epp{}) -> AbstractForm.
 %%   Evaluate call to special functions for the preprocessor.
-evaluate_builtins({call,_,{atom,_,defined},[N0]}, #epp{macs=Macs}) ->
+evaluate_builtins({call, _, {atom, _, defined}, [N0]}, #epp{macs = Macs}) ->
     %% Evaluate defined(Symbol).
     N =
         case N0 of
@@ -1464,8 +1579,8 @@ evaluate_builtins({call,_,{atom,_,defined},[N0]}, #epp{macs=Macs}) ->
             _ -> throw({bad, 'if'})
         end,
     {atom, erl_anno:new(0), maps:is_key(N, Macs)};
-evaluate_builtins([H|T], St) ->
-    [evaluate_builtins(H, St)|evaluate_builtins(T, St)];
+evaluate_builtins([H | T], St) ->
+    [evaluate_builtins(H, St) | evaluate_builtins(T, St)];
 evaluate_builtins(Tuple, St) when is_tuple(Tuple) ->
     list_to_tuple(evaluate_builtins(tuple_to_list(Tuple), St));
 evaluate_builtins(Other, _) ->
@@ -2002,6 +2117,8 @@ find_mismatch([Tag | Tags], [{Tag, _A, _V} = T | Ts], _T0) ->
 find_mismatch([var_or_atom | Tags], [{var, _A, _V} = T | Ts], _T0) ->
     find_mismatch(Tags, Ts, T);
 find_mismatch([var_or_atom | Tags], [{atom, _A, _N} = T | Ts], _T0) ->
+    find_mismatch(Tags, Ts, T);
+find_mismatch([{Tag, Value} | Tags], [{Tag, _A, Value} = T | Ts], _T0) ->
     find_mismatch(Tags, Ts, T);
 find_mismatch(_, Ts, T0) ->
     no_match(Ts, T0).
