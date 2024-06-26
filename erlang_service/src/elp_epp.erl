@@ -1423,7 +1423,7 @@ eval_if(Toks0, St) ->
             {ok, Es0} -> Es0;
             {error, E} -> throw(E)
         end,
-    Es = rewrite_expr(Es1, St),
+    Es = evaluate_builtins(Es1, St),
     assert_guard_expr(Es),
     Bs = erl_eval:new_bindings(),
     LocalFun = fun(_Name, _Args) ->
@@ -1437,8 +1437,7 @@ eval_if(Toks0, St) ->
             false
     end.
 
-assert_guard_expr([E0]) ->
-    E = rewrite_expr(E0, none),
+assert_guard_expr([E]) ->
     case elp_lint:is_guard_expr(E) of
         false ->
             throw({bad, 'if'});
@@ -1448,13 +1447,9 @@ assert_guard_expr([E0]) ->
 assert_guard_expr(_) ->
     throw({bad, 'if'}).
 
-%% Dual-purpose rewriting function. When the second argument is
-%% an #epp{} record, calls to defined(Symbol) will be evaluated.
-%% When the second argument is 'none', legal calls to our built-in
-%% functions are eliminated in order to turn the expression into
-%% a legal guard expression.
-
-rewrite_expr({call, _, {atom, _, defined}, [N0]}, #epp{macs = Macs}) ->
+%% evaluate_builtins(AbstractForm0, #epp{}) -> AbstractForm.
+%%   Evaluate call to special functions for the preprocessor.
+evaluate_builtins({call,_,{atom,_,defined},[N0]}, #epp{macs=Macs}) ->
     %% Evaluate defined(Symbol).
     N =
         case N0 of
@@ -1463,33 +1458,12 @@ rewrite_expr({call, _, {atom, _, defined}, [N0]}, #epp{macs = Macs}) ->
             _ -> throw({bad, 'if'})
         end,
     {atom, erl_anno:new(0), maps:is_key(N, Macs)};
-rewrite_expr({call, _, {atom, _, Name}, As0}, none) ->
-    As = rewrite_expr(As0, none),
-    Arity = length(As),
-    case
-        erl_internal:bif(Name, Arity) andalso
-            not erl_internal:guard_bif(Name, Arity)
-    of
-        false ->
-            %% A guard BIF, an -if built-in, or an unknown function.
-            %% Eliminate the call so that elp_lint will not complain.
-            %% The call might fail later at evaluation time.
-            to_conses(As);
-        true ->
-            %% An auto-imported BIF (not guard BIF). Not allowed.
-            throw({bad, 'if'})
-    end;
-rewrite_expr([H | T], St) ->
-    [rewrite_expr(H, St) | rewrite_expr(T, St)];
-rewrite_expr(Tuple, St) when is_tuple(Tuple) ->
-    list_to_tuple(rewrite_expr(tuple_to_list(Tuple), St));
-rewrite_expr(Other, _) ->
+evaluate_builtins([H|T], St) ->
+    [evaluate_builtins(H, St)|evaluate_builtins(T, St)];
+evaluate_builtins(Tuple, St) when is_tuple(Tuple) ->
+    list_to_tuple(evaluate_builtins(tuple_to_list(Tuple), St));
+evaluate_builtins(Other, _) ->
     Other.
-
-to_conses([H | T]) ->
-    {cons, erl_anno:new(0), H, to_conses(T)};
-to_conses([]) ->
-    {nil, erl_anno:new(0)}.
 
 %% scan_elif(Tokens, EndifToken, From, EppState)
 %%  Handle the conditional parsing of a file.
