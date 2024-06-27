@@ -275,5 +275,6 @@ pub mod known {
         author,
         oncall,
         moduledoc,
+        doc,
     );
 }

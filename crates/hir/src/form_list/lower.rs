@@ -22,6 +22,7 @@ use la_arena::RawIdx;
 use profile::Count;
 
 use super::form_id::FormIdMap;
+use super::DocAttribute;
 use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
@@ -632,6 +633,10 @@ impl<'a> Ctx<'a> {
             Some(FormIdx::ModuleDocAttribute(
                 self.data.module_doc_attributes.alloc(res),
             ))
+        } else if name == known::doc {
+            let form_id = self.id_map.get_id(attribute);
+            let res = DocAttribute { cond, form_id };
+            Some(FormIdx::DocAttribute(self.data.doc_attributes.alloc(res)))
         } else {
             let form_id = self.id_map.get_id(attribute);
             let res = Attribute {

@@ -80,6 +80,18 @@ Convenience functions for encoding and decoding from base64.
 }
 
 #[test]
+fn doc_attribute() {
+    check(
+        r#"
+-doc "Example".
+"#,
+        expect![[r#"
+            -doc(...). %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn function() {
     check(
         r#"

@@ -14,6 +14,7 @@ use std::fmt::Write as _;
 use la_arena::IdxRange;
 use la_arena::RawIdx;
 
+use super::DocAttribute;
 use super::FeatureAttribute;
 use super::ModuleDocAttribute;
 use crate::form_list::DeprecatedAttribute;
@@ -82,6 +83,7 @@ impl<'a> Printer<'a> {
             FormIdx::ModuleDocAttribute(idx) => {
                 self.print_module_doc_attribute(&self.forms[idx])?
             }
+            FormIdx::DocAttribute(idx) => self.print_doc_attribute(&self.forms[idx])?,
             FormIdx::FeatureAttribute(idx) => self.print_feature_attribute(&self.forms[idx])?,
             FormIdx::DeprecatedAttribute(idx) => self.print_deprecated(&self.forms[idx])?,
         }
@@ -363,6 +365,10 @@ impl<'a> Printer<'a> {
             "-moduledoc(...). %% cond: {:?}",
             raw_cond(&attribute.cond)
         )
+    }
+
+    fn print_doc_attribute(&mut self, attribute: &DocAttribute) -> fmt::Result {
+        writeln!(self, "-doc(...). %% cond: {:?}", raw_cond(&attribute.cond))
     }
 
     fn print_feature_attribute(&mut self, attribute: &FeatureAttribute) -> fmt::Result {

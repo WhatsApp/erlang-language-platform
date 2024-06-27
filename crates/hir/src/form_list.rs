@@ -134,6 +134,10 @@ impl FormList {
         self.data.module_doc_attributes.iter()
     }
 
+    pub fn doc_attributes(&self) -> impl Iterator<Item = (DocAttributeId, &DocAttribute)> {
+        self.data.doc_attributes.iter()
+    }
+
     pub fn pp_stack(&self) -> &Arena<PPDirective> {
         &self.data.pp_directives
     }
@@ -197,6 +201,7 @@ impl FormList {
             FormIdx::Record(idx) => Form::Record(&self[idx]),
             FormIdx::Attribute(idx) => Form::Attribute(&self[idx]),
             FormIdx::ModuleDocAttribute(idx) => Form::ModuleDocAttribute(&self[idx]),
+            FormIdx::DocAttribute(idx) => Form::DocAttribute(&self[idx]),
             FormIdx::CompileOption(idx) => Form::CompileOption(&self[idx]),
             FormIdx::DeprecatedAttribute(idx) => Form::DeprecatedAttribute(&self[idx]),
             FormIdx::FeatureAttribute(idx) => Form::FeatureAttribute(&self[idx]),
@@ -230,6 +235,7 @@ pub(crate) struct FormListData {
     attributes: Arena<Attribute>,
     feature_attributes: Arena<FeatureAttribute>,
     module_doc_attributes: Arena<ModuleDocAttribute>,
+    doc_attributes: Arena<DocAttribute>,
     compile_options: Arena<CompileOption>,
     record_fields: Arena<RecordField>,
     fa_entries: Arena<FaEntry>,
@@ -257,6 +263,7 @@ impl FormListData {
             records,
             attributes,
             module_doc_attributes,
+            doc_attributes,
             feature_attributes,
             compile_options,
             record_fields,
@@ -281,6 +288,7 @@ impl FormListData {
         compile_options.shrink_to_fit();
         attributes.shrink_to_fit();
         module_doc_attributes.shrink_to_fit();
+        doc_attributes.shrink_to_fit();
         feature_attributes.shrink_to_fit();
         record_fields.shrink_to_fit();
         fa_entries.shrink_to_fit();
@@ -305,6 +313,7 @@ pub enum FormIdx {
     Record(RecordId),
     Attribute(AttributeId),
     ModuleDocAttribute(ModuleDocAttributeId),
+    DocAttribute(DocAttributeId),
     CompileOption(CompileOptionId),
     DeprecatedAttribute(DeprecatedAttributeId),
     FeatureAttribute(FeatureAttributeId),
@@ -327,6 +336,7 @@ pub enum Form<'a> {
     Record(&'a Record),
     Attribute(&'a Attribute),
     ModuleDocAttribute(&'a ModuleDocAttribute),
+    DocAttribute(&'a DocAttribute),
     CompileOption(&'a CompileOption),
     DeprecatedAttribute(&'a DeprecatedAttribute),
     FeatureAttribute(&'a FeatureAttribute),
@@ -349,6 +359,7 @@ pub type OptionalCallbacksId = Idx<OptionalCallbacks>;
 pub type RecordId = Idx<Record>;
 pub type AttributeId = Idx<Attribute>;
 pub type ModuleDocAttributeId = Idx<ModuleDocAttribute>;
+pub type DocAttributeId = Idx<DocAttribute>;
 pub type CompileOptionId = Idx<CompileOption>;
 pub type RecordFieldId = Idx<RecordField>;
 pub type FaEntryId = Idx<FaEntry>;
@@ -488,6 +499,14 @@ impl Index<ModuleDocAttributeId> for FormList {
 
     fn index(&self, index: ModuleDocAttributeId) -> &Self::Output {
         &self.data.module_doc_attributes[index]
+    }
+}
+
+impl Index<DocAttributeId> for FormList {
+    type Output = DocAttribute;
+
+    fn index(&self, index: DocAttributeId) -> &Self::Output {
+        &self.data.doc_attributes[index]
     }
 }
 
@@ -845,6 +864,12 @@ pub struct Attribute {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ModuleDocAttribute {
+    pub cond: Option<PPConditionId>,
+    pub form_id: FormId<ast::WildAttribute>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DocAttribute {
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::WildAttribute>,
 }

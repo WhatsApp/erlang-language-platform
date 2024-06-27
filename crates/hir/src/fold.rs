@@ -1761,6 +1761,7 @@ bar() ->
                         Form::Record(_) => acc,
                         Form::Attribute(_) => acc,
                         Form::ModuleDocAttribute(_) => acc,
+                        Form::DocAttribute(_) => acc,
                         Form::CompileOption(_) => acc,
                         Form::DeprecatedAttribute(_) => acc,
                         Form::FeatureAttribute(_) => acc,
