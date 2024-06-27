@@ -2202,6 +2202,28 @@ fn triple_quoted_strings_1() {
     );
 }
 
+#[test]
+fn triple_quoted_strings_2() {
+    check(
+        r#"
+        foo() ->
+                 """"""
+                 hello
+                  """
+                 there
+                 """""".
+        "#,
+        expect![[r#"
+            foo() ->
+                """"""
+                         hello
+                          """
+                         there
+                         """""".
+        "#]],
+    );
+}
+
 // -------------------------------------
 
 // Direct copy of expect_test::expect! macro, but allowing an expr not
@@ -2422,6 +2444,26 @@ fn verbatim_string_with_sigil_in_tq_string() {
                """.
         "#,
         my_expect![[VERBATIM_STRING_EXPECT]],
+    );
+
+    // End of verbatim string tests
+    // -------------------------------------
+}
+
+#[test]
+fn verbatim_string_with_sigil_in_tq_string_multi_delimiters() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~S"""""
+                 """"
+               ab"c"\d
+               """"".
+        "#,
+        expect![[r#"
+            f() ->
+                "  \"\"\"\"\nab\"c\"\\d".
+        "#]],
     );
 
     // End of verbatim string tests

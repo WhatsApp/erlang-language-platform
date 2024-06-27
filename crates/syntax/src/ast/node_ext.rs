@@ -424,7 +424,7 @@ fn trim_quotes_and_sigils(s: &str) -> String {
     }
     let mut quoted = true;
     let trimmed = if let Some(captures) = RE.captures(s) {
-        let is_tq = captures[2] == *"\"\"\"";
+        let is_tq = captures[2].starts_with("\"\"\"");
         if captures.len() > 3 {
             if (captures[1] == *"B" || captures[1] == *"S")
                 || (captures[1] == *"" && is_tq)
@@ -965,6 +965,18 @@ mod tests {
             r#"~B"""
               ab\"c\"\d
               """"#,
+        ));
+
+        // -----------------------------
+        expect![[r#"
+                     """
+                    ab\"c\"\d"#]]
+        .assert_eq(&trim_quotes_and_sigils(
+            // Normal (verbatim) string, multiple `"` delimiters, with internal `"""`
+            r#"""""
+               """
+              ab\"c\"\d
+              """""#,
         ));
     }
 }
