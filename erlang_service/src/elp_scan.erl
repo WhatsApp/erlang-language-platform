@@ -742,9 +742,9 @@ scan_tqstring_lines(Cs, St, Off, Toks, Tqs) ->
                 Toks,
                 Tqs#tqs{str = Nstr, content_r = NcontentR, acc = IndentR}
             );
-        {more, Ncs, Nst, Noff, Nstr, Nqn, NcontentR, Nacc} ->
+        {more, Ncs, Noff, Nstr, Nqn, NcontentR, Nacc} ->
             {more,
-                {Ncs, Nst, Noff, Toks,
+                {Ncs, St, Noff, Toks,
                     Tqs#tqs{
                         qn = Nqn, str = Nstr, content_r = NcontentR, acc = Nacc
                     },
