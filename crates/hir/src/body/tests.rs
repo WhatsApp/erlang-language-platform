@@ -2186,13 +2186,244 @@ fn fundecl_clauses_1() {
 fn triple_quoted_strings_1() {
     check(
         r#"
-        foo() -> """
+        foo() ->
+                 """
                  hello
+                 there
                  """.
         "#,
         expect![[r#"
             foo() ->
-                "\"\"\n         hello\n         \"\"".
+                """
+                         hello
+                         there
+                         """.
         "#]],
     );
+}
+
+// -------------------------------------
+
+// Direct copy of expect_test::expect! macro, but allowing an expr not
+// just a literal.
+// This allows
+// - Nice diffs on test failure
+// - Proper location reporting for failing tests
+macro_rules! my_expect {
+    [$data:literal] => { $crate::expect![[$data]] };
+    [[$data:expr]] => {expect_test::Expect {
+        position: expect_test::Position {
+            file: file!(),
+            line: line!(),
+            column: column!(),
+        },
+        data: $data,
+        indent: true,
+    }};
+    [] => { expect_test::expect![[""]] };
+    [[]] => { expect_test::expect![[""]] };
+}
+
+// -------------------------------------
+// This section based on QB tests in
+// https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R60-R65
+
+const QUOTED_BINARY_EXPECT: &'static str = r#"
+            f() ->
+                <<
+                    "ab\"c\"\u{7f}"/utf8
+                >>.
+        "#;
+
+#[test]
+fn quoted_binary_no_sigil() {
+    check(
+        r#"
+        f() -> <<"ab\"c\"\d"/utf8>>.
+
+        "#,
+        my_expect![[QUOTED_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn quoted_binary_default_sigil() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~"ab\"c\"\d".
+        "#,
+        my_expect![[QUOTED_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn quoted_binary_explicit_sigil() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~b"ab\"c\"\d".
+        "#,
+        my_expect![[QUOTED_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn quoted_binary_explicit_sigil_in_tq_string() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~b"""
+                ab"c"\d
+                """.
+        "#,
+        my_expect![[QUOTED_BINARY_EXPECT]],
+    );
+}
+
+// -------------------------------------
+// This section based on VB tests in
+// https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R66-R73
+
+const VERBATIM_BINARY_EXPECT: &'static str = r#"
+        f() ->
+            <<
+                "ab\"c\"\\d"/utf8
+            >>.
+    "#;
+
+#[test]
+fn verbatim_binary_no_sigil() {
+    check(
+        r#"
+        f() ->  <<"ab\"c\"\\d"/utf8>>.
+        "#,
+        my_expect![[VERBATIM_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn verbatim_binary_with_sigil() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~B"ab\"c\"\d".
+        "#,
+        my_expect![[VERBATIM_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn verbatim_binary_in_default_sigil_tq_string() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~"""
+                ab"c"\d
+                """.
+        "#,
+        my_expect![[VERBATIM_BINARY_EXPECT]],
+    );
+}
+
+#[test]
+fn verbatim_binary_in_verbatim_sigil_tq_string() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~B"""
+                ab"c"\d
+                """.
+        "#,
+        my_expect![[VERBATIM_BINARY_EXPECT]],
+    );
+}
+
+// -------------------------------------
+// This section based on QS tests in
+// https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R75-R79
+
+const QUOTED_STRING_EXPECT: &'static str = r#"
+            f() ->
+                "ab\"c\"\u{7f}".
+        "#;
+
+#[test]
+fn quoted_string_no_sigil() {
+    check(
+        r#"
+        f() -> "ab\"c\"\d".
+        "#,
+        my_expect![[QUOTED_STRING_EXPECT]],
+    );
+}
+
+#[test]
+fn quoted_string_with_sigil() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~s"ab\"c\"\d".
+        "#,
+        my_expect![[QUOTED_STRING_EXPECT]],
+    );
+}
+
+#[test]
+fn quoted_string_with_sigil_in_tq_string() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~s"""
+                ab"c"\d
+                """.
+        "#,
+        my_expect![[QUOTED_STRING_EXPECT]],
+    );
+}
+
+// -------------------------------------
+// This section based on VS tests in
+// https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R80-R84
+
+const VERBATIM_STRING_EXPECT: &'static str = r#"
+            f() ->
+                "ab\"c\"\\d".
+        "#;
+
+#[test]
+fn verbatim_string_no_sigil() {
+    check(
+        r#"
+        f() -> "ab\"c\"\\d".
+        "#,
+        my_expect![[VERBATIM_STRING_EXPECT]],
+    );
+}
+
+#[test]
+fn verbatim_string_with_sigil() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~S"ab\"c\"\d".
+        "#,
+        my_expect![[VERBATIM_STRING_EXPECT]],
+    );
+}
+
+#[test]
+fn verbatim_string_with_sigil_in_tq_string() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f() -> \~S"""
+               ab"c"\d
+               """.
+        "#,
+        my_expect![[VERBATIM_STRING_EXPECT]],
+    );
+
+    // End of verbatim string tests
+    // -------------------------------------
 }

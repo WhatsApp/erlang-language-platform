@@ -405,9 +405,12 @@ impl From<nodes::String> for std::string::String {
 /// Trim leading and trailing quote marks and sigils.  It also dedents
 /// triple quoted strings, and returns verbatim or quoted strings
 /// according to the sigil
-///  No sigil           : Quoted (unescaped)
-///  `~"`, `~b"`, `~s"` : Quoted (unescaped)
-///        `~B"`, `~S"` : Verbatim
+///  No sigil     : Quoted (unescaped) (not tq strings
+///  `~s"` : Quoted (unescaped)
+///  `~B"` : Verbatim, but unescape '"' and NL for SQ
+///  `~S"` : Verbatim for tq, unescape '"' and NL for sq
+///  `~"`  : Verbatim for tq, Quoted for single quote
+///  `~b"` : Verbatim vor tq, Quoted (unescaped) for sq
 fn trim_quotes_and_sigils(s: &str) -> String {
     lazy_static! {
         // See https://docs.rs/regex/latest/regex/#example-verbose-mode
@@ -421,11 +424,15 @@ fn trim_quotes_and_sigils(s: &str) -> String {
     }
     let mut quoted = true;
     let trimmed = if let Some(captures) = RE.captures(s) {
+        let is_tq = captures[2] == *"\"\"\"";
         if captures.len() > 3 {
-            if captures[1] == *"B" || captures[1] == *"S" {
+            if (captures[1] == *"B" || captures[1] == *"S")
+                || (captures[1] == *"" && is_tq)
+                || (captures[1] == *"b" && is_tq)
+            {
                 quoted = false;
             }
-            if captures[2] == *"\"\"\"" {
+            if is_tq {
                 let trimmed = trim_indent(&captures[3].trim_end_matches("\""));
                 if let Some(rest) = trimmed.strip_suffix("\n") {
                     // tq string terminates with \n whitespace, quotes
@@ -434,7 +441,16 @@ fn trim_quotes_and_sigils(s: &str) -> String {
                     trimmed
                 }
             } else {
-                captures[3].trim_end_matches("\"").to_string()
+                if captures[1] == *"B" || captures[1] == *"S" {
+                    // Verbatim non-tq string. Only escape processed
+                    // is for `\"`, to avoid clash with final terminator.
+                    captures[3]
+                        .trim_end_matches("\"")
+                        .to_string()
+                        .replace("\\\"", "\"")
+                } else {
+                    captures[3].trim_end_matches("\"").to_string()
+                }
             }
         } else {
             captures[0].to_string()
@@ -897,7 +913,7 @@ mod tests {
 
     #[test]
     fn test_trim_quotes_and_sigils() {
-        // Note: \d escapes to ctrl-?
+        // Note: \d escapes to ctrl-?, i.e. ^?
 
         // Quoted
         expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"ab\"c\"\d"#));
@@ -907,38 +923,46 @@ mod tests {
         expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"~b"ab\"c\"\d""#));
 
         // Verbatim
-        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~S"ab\"c\"\d""#));
-        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~B"ab\"c\"\d""#));
+        expect![[r#"ab"c"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~S"ab\"c\"\d""#));
+        expect![[r#"ab"c"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~B"ab\"c\"\d""#));
 
         // Triple quoted strings -------------------
         // Quoted
+        expect![[r#"ab"c"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            // Quoted Binary
+            r#"~b"""
+              ab"c"\d
+              """"#,
+        ));
         expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+            // Quoted String
+            r#"~s"""
+              ab"c"\d
+              """"#,
+        ));
+
+        // Verbatim
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            // Normal (verbatim) string
             r#""""
               ab\"c\"\d
               """"#,
         ));
-        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            // Verbatim String (explicit sigil, not needed)
+            r#"~S"""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            // Verbatim Binary (default sigil)
             r#"~"""
               ab\"c\"\d
               """"#,
         ));
-        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
-            r#"~b"""
-              ab\"c\"\d
-              """"#,
-        ));
         expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            // Verbatim Binary (explicit sigil)
             r#"~B"""
-              ab\"c\"\d
-              """"#,
-        ));
-        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
-            r#"~s"""
-              ab\"c\"\d
-              """"#,
-        ));
-        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
-            r#"~S"""
               ab\"c\"\d
               """"#,
         ));

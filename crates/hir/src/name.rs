@@ -253,6 +253,7 @@ pub mod known {
         thrift_parser,
         thrift_scanner,
         undefined,
+        utf8,
         // Common Test framework
         all,
         end_per_group,
