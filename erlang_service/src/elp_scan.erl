@@ -599,7 +599,8 @@ scan_sigil_prefix(Cs, St, Off, Toks, {Wcs, N0}) ->
             SigilCs = lists:reverse(Nwcs),
             try list_to_atom(tl(SigilCs)) of
                 SigilType when is_atom(SigilType) ->
-                    scan_string(Ncs, St, Off + N, [Type | Toks], SigilType)
+                    Tok = {Type, {Off, Off + N}, SigilType},
+                    scan_string(Ncs, St, Off + N, [Tok | Toks], SigilType)
             catch
                 _:_ ->
                     scan_error({illegal, Type}, Off, Off + N, Ncs)
@@ -1091,20 +1092,21 @@ scan_sigil_suffix(Cs, St, Off, Toks, SigilType) when
     % Sigil string - scan suffix
     is_atom(SigilType)
 ->
-    scan_sigil_suffix(Cs, St, Off, Toks, {"", 1});
+    scan_sigil_suffix(Cs, St, Off, Toks, {"", 0});
 %%
 scan_sigil_suffix(Cs, St, Off, Toks, {Wcs, N0}) when is_list(Wcs) ->
     case scan_name(Cs, Wcs, N0) of
-        {more, Nwcs} ->
-            {more, {[], St, Off, Toks, Nwcs, fun scan_sigil_suffix/5}};
-        {Nwcs, Ncs} ->
+        {more, Nwcs, N} ->
+            {more, {[], St, Off, Toks, {Nwcs, N}, fun scan_sigil_suffix/5}};
+        {done, Nwcs, Ncs, N} ->
             Type = sigil_suffix,
-            Noff = Off + length(Nwcs),
+            Noff = Off + N,
             Suffix = lists:reverse(Nwcs),
             try list_to_atom(Suffix) of
                 A when is_atom(A) ->
+                    Tok = {Type, {Off, Noff}, Suffix},
                     scan_string_concat(
-                        Ncs, St, Noff, [Type | Toks], {Suffix, 1}
+                        Ncs, St, Noff, [Tok | Toks], {Suffix, 1}
                     )
             catch
                 _:_ ->
