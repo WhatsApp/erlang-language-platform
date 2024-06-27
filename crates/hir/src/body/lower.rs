@@ -2484,7 +2484,7 @@ impl<'a> Ctx<'a> {
         let contents: String = str.clone().into();
         if let Some(_rest) = s.strip_prefix("\"\"\"") {
             // Triple Quoted String.  Verbatim String
-            Some(literal(Literal::String(StringVariant::TripleQuoted(
+            Some(literal(Literal::String(StringVariant::Verbatim(
                 str.text().to_string(),
             ))))
         } else if let Some(_rest) = s.strip_prefix("~\"\"\"") {
@@ -2608,7 +2608,7 @@ impl<'a> Ctx<'a> {
         if let Literal::String(str) = string {
             let segs = match str {
                 StringVariant::Normal(s) => s.into(),
-                StringVariant::TripleQuoted(s) => s.into(),
+                StringVariant::Verbatim(s) => s.into(),
             };
             Some(Term::Binary(segs))
         } else {

@@ -146,14 +146,14 @@ pub enum Literal {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum StringVariant {
     Normal(String),
-    TripleQuoted(String),
+    Verbatim(String),
 }
 
 impl StringVariant {
     pub fn chars(&self) -> Chars<'_> {
         match self {
             StringVariant::Normal(s) => s.chars(),
-            StringVariant::TripleQuoted(s) => s.chars(),
+            StringVariant::Verbatim(s) => s.chars(),
         }
     }
 }

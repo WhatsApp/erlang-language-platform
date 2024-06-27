@@ -775,7 +775,7 @@ impl<'a> Printer<'a> {
     fn print_literal(&mut self, lit: &Literal) -> fmt::Result {
         match lit {
             Literal::String(StringVariant::Normal(string)) => write!(self, "{:?}", string),
-            Literal::String(StringVariant::TripleQuoted(string)) => {
+            Literal::String(StringVariant::Verbatim(string)) => {
                 write!(self, "{}", string)
             }
             Literal::Char(char) => write!(self, "${}", char),
