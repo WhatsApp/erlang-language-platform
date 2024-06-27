@@ -2427,3 +2427,20 @@ fn verbatim_string_with_sigil_in_tq_string() {
     // End of verbatim string tests
     // -------------------------------------
 }
+#[test]
+// Since we use a generic lowering thoroughly tested for `Expr`, we
+// just do an existence test for `Pat`.
+fn verbatim_binary_sigil_in_pat() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        f(\~B"ab\"c\"\d") -> ok.
+        "#,
+        expect![[r#"
+            f(<<
+                "ab\"c\"\\d"/utf8
+            >>) ->
+                'ok'.
+        "#]],
+    );
+}

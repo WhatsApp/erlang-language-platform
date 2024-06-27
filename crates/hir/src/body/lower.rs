@@ -813,7 +813,14 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::String(str) => {
-                let value = lower_str(str).map_or(Pat::Missing, Pat::Literal);
+                let value = self
+                    .lower_str_or_sigil(
+                        str,
+                        expr,
+                        Self::lower_binary_string_literal_pat,
+                        Pat::Literal,
+                    )
+                    .unwrap_or(Pat::Missing);
                 self.alloc_pat(value, Some(expr))
             }
             ast::ExprMax::TryExpr(try_expr) => {
@@ -2552,6 +2559,21 @@ impl<'a> Ctx<'a> {
             unit: None,
         }];
         Some(Expr::Binary { segs })
+    }
+
+    fn lower_binary_string_literal_pat(
+        &mut self,
+        string: Literal,
+        expr: &ast::Expr,
+    ) -> Option<Pat> {
+        let elem = self.alloc_pat(Pat::Literal(string), Some(expr));
+        let segs = vec![BinarySeg {
+            elem,
+            size: None,
+            tys: vec![self.db.atom(known::utf8)],
+            unit: None,
+        }];
+        Some(Pat::Binary { segs })
     }
 
     fn resolve_name(&mut self, name: ast::Name) -> Option<Atom> {
