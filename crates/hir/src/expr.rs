@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::str::Chars;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
@@ -135,11 +136,26 @@ impl<'a> From<&'a Term> for AnyExprRef<'a> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Literal {
-    String(String),
+    String(StringVariant),
     Char(char),
     Atom(Atom),
     Integer(i128), // TODO: bigints
     Float(u64),    // FIXME: f64 is not Eq
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum StringVariant {
+    Normal(String),
+    TripleQuoted(String),
+}
+
+impl StringVariant {
+    pub fn chars(&self) -> Chars<'_> {
+        match self {
+            StringVariant::Normal(s) => s.chars(),
+            StringVariant::TripleQuoted(s) => s.chars(),
+        }
+    }
 }
 
 impl Literal {

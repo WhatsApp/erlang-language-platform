@@ -2181,3 +2181,18 @@ fn fundecl_clauses_1() {
         "#]],
     );
 }
+
+#[test]
+fn triple_quoted_strings_1() {
+    check(
+        r#"
+        foo() -> """
+                 hello
+                 """.
+        "#,
+        expect![[r#"
+            foo() ->
+                "\"\"\n         hello\n         \"\"".
+        "#]],
+    );
+}

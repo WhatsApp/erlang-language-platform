@@ -32,6 +32,7 @@ use super::TopLevelMacro;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::MaybeExpr;
+use crate::expr::StringVariant;
 use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
@@ -2413,9 +2414,9 @@ impl<'a> Ctx<'a> {
             // It somewhat replicates the behaviour of -deterministic option
             BuiltInMacro::FILE => {
                 let form_list = self.db.file_form_list(self.file_id());
-                form_list
-                    .module_attribute()
-                    .map(|attr| Literal::String(format!("{}.erl", attr.name)))
+                form_list.module_attribute().map(|attr| {
+                    Literal::String(StringVariant::Normal(format!("{}.erl", attr.name)))
+                })
             }
             BuiltInMacro::FUNCTION_NAME => self.function_info.map(|(name, _)| Literal::Atom(name)),
             BuiltInMacro::FUNCTION_ARITY => self
@@ -2433,7 +2434,7 @@ impl<'a> Ctx<'a> {
                 let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
-                    .map(|attr| Literal::String(attr.name.to_string()))
+                    .map(|attr| Literal::String(StringVariant::Normal(attr.name.to_string())))
             }
             BuiltInMacro::MACHINE => Some(Literal::Atom(self.db.atom(known::ELP))),
             // Dummy value, must be an integer
@@ -2693,9 +2694,15 @@ fn lower_int(int: &ast::Integer) -> Option<Literal> {
 }
 
 fn lower_str(str: &ast::String) -> Option<Literal> {
-    Some(Literal::String(
-        unescape::unescape_string(&str.text())?.to_string(),
-    ))
+    if str.text().starts_with("\"\"\"") {
+        Some(Literal::String(StringVariant::TripleQuoted(
+            unescape::unescape_string(&str.text())?.to_string(),
+        )))
+    } else {
+        Some(Literal::String(StringVariant::Normal(
+            unescape::unescape_string(&str.text())?.to_string(),
+        )))
+    }
 }
 
 fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {
@@ -2706,10 +2713,11 @@ fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {
         match concatable {
             ast::Concatable::MacroCallExpr(_) => return None,
             ast::Concatable::MacroString(_) => return None,
+            // TODO: do we have to normalise triple quoted strings here?
             ast::Concatable::String(str) => buf.push_str(&unescape::unescape_string(&str.text())?),
             ast::Concatable::Var(_) => return None,
         }
     }
 
-    Some(Literal::String(buf))
+    Some(Literal::String(StringVariant::Normal(buf)))
 }

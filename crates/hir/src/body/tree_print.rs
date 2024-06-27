@@ -1259,7 +1259,7 @@ mod tests {
                 -compile(
                     Term::List {
                         exprs
-                            Literal(String("blah")),
+                            Literal(String(Normal("blah"))),
                             Literal(Atom('foo')),
                         tail
                             Literal(Char($b)),
