@@ -25,11 +25,13 @@ use super::form_id::FormIdMap;
 use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
+use super::ModuleDocAttribute;
 use super::ParamName;
 use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
+use crate::known;
 use crate::macro_exp::MacroExpCtx;
 use crate::name::AsName;
 use crate::Attribute;
@@ -623,13 +625,22 @@ impl<'a> Ctx<'a> {
     fn lower_attribute(&mut self, attribute: &ast::WildAttribute) -> Option<FormIdx> {
         let cond = self.conditions.last().copied();
         let name = self.resolve_name(&attribute.name()?.name()?);
-        let form_id = self.id_map.get_id(attribute);
-        let res = Attribute {
-            cond,
-            form_id,
-            name,
-        };
-        Some(FormIdx::Attribute(self.data.attributes.alloc(res)))
+        // SmolStr does not impl PartialEq, can't match on `Name`
+        if name == known::moduledoc {
+            let form_id = self.id_map.get_id(attribute);
+            let res = ModuleDocAttribute { cond, form_id };
+            Some(FormIdx::ModuleDocAttribute(
+                self.data.module_doc_attributes.alloc(res),
+            ))
+        } else {
+            let form_id = self.id_map.get_id(attribute);
+            let res = Attribute {
+                cond,
+                form_id,
+                name,
+            };
+            Some(FormIdx::Attribute(self.data.attributes.alloc(res)))
+        }
     }
 
     fn lower_feature_attribute(&mut self, attribute: &ast::FeatureAttribute) -> Option<FormIdx> {

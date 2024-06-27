@@ -204,6 +204,7 @@ fn is_file_used(
                 FormIdx::CompileOption(_) => return true,
                 FormIdx::DeprecatedAttribute(_) => return true,
                 FormIdx::FeatureAttribute(_) => return true,
+                FormIdx::ModuleDocAttribute(_) => {}
                 FormIdx::FunctionClause(_) => {}
                 FormIdx::PPDirective(_) => {}
                 FormIdx::PPCondition(_) => {}

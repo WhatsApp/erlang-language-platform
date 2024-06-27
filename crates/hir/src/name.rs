@@ -274,5 +274,6 @@ pub mod known {
         // Attribute names
         author,
         oncall,
+        moduledoc,
     );
 }

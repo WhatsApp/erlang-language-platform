@@ -66,6 +66,20 @@ fn feature_attribute() {
 }
 
 #[test]
+fn module_doc_attribute() {
+    check(
+        r#"
+-moduledoc "
+Convenience functions for encoding and decoding from base64.
+".
+"#,
+        expect![[r#"
+            -moduledoc(...). %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn function() {
     check(
         r#"

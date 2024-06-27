@@ -15,6 +15,7 @@ use la_arena::IdxRange;
 use la_arena::RawIdx;
 
 use super::FeatureAttribute;
+use super::ModuleDocAttribute;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -78,6 +79,9 @@ impl<'a> Printer<'a> {
             FormIdx::Record(idx) => self.print_record(&self.forms[idx])?,
             FormIdx::CompileOption(idx) => self.print_compile(&self.forms[idx])?,
             FormIdx::Attribute(idx) => self.print_attribute(&self.forms[idx])?,
+            FormIdx::ModuleDocAttribute(idx) => {
+                self.print_module_doc_attribute(&self.forms[idx])?
+            }
             FormIdx::FeatureAttribute(idx) => self.print_feature_attribute(&self.forms[idx])?,
             FormIdx::DeprecatedAttribute(idx) => self.print_deprecated(&self.forms[idx])?,
         }
@@ -349,6 +353,14 @@ impl<'a> Printer<'a> {
             self,
             "-{}(...). %% cond: {:?}",
             attribute.name,
+            raw_cond(&attribute.cond)
+        )
+    }
+
+    fn print_module_doc_attribute(&mut self, attribute: &ModuleDocAttribute) -> fmt::Result {
+        writeln!(
+            self,
+            "-moduledoc(...). %% cond: {:?}",
             raw_cond(&attribute.cond)
         )
     }
