@@ -5636,22 +5636,18 @@ impl std::fmt::Display for Spec {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-#[doc = r" Via NodeType::Literal 2"]
+#[doc = r" Via NodeType::Node 2 struct inner"]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct String {
     pub(crate) syntax: SyntaxNode,
 }
-#[doc = r" Via NodeType::Literal 2"]
-impl String {
-    pub fn self_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, STRING, 0)
-    }
-}
-#[doc = r" Via NodeType::Literal 2"]
+impl String {}
+#[doc = r" Via NodeType::Node 2 struct"]
 impl AstNode for String {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == STRING
     }
+    #[doc = r" Via field_casts"]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -5661,6 +5657,12 @@ impl AstNode for String {
     }
     fn syntax(&self) -> &SyntaxNode {
         &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for String {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 #[doc = r" Via NodeType::Enum 2"]
