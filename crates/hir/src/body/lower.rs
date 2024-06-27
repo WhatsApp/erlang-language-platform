@@ -1395,7 +1395,14 @@ impl<'a> Ctx<'a> {
                 self.alloc_expr(Expr::Receive { clauses, after }, Some(expr))
             }
             ast::ExprMax::String(str) => {
-                let value = self.lower_str_or_sigil(str).unwrap_or(Expr::Missing);
+                let value = self
+                    .lower_str_or_sigil(
+                        str,
+                        expr,
+                        Self::lower_binary_string_literal_expr,
+                        Expr::Literal,
+                    )
+                    .unwrap_or(Expr::Missing);
                 self.alloc_expr(value, Some(expr))
             }
             ast::ExprMax::TryExpr(try_expr) => {
@@ -2445,60 +2452,68 @@ impl<'a> Ctx<'a> {
     // With OTP 27 string sigils as syntactic sugar, we sometimes convert
     // them into a binary.  So use the same technique as in
     // `lower_bin_element`.
-    fn lower_str_or_sigil(&mut self, str: &ast::String) -> Option<Expr> {
+    fn lower_str_or_sigil<Id>(
+        &mut self,
+        str: &ast::String,
+        expr: &ast::Expr,
+        lower: fn(&mut Self, Literal, &ast::Expr) -> Option<Id>,
+        literal: fn(Literal) -> Id,
+    ) -> Option<Id> {
         let s = str.text();
         let contents: String = str.clone().into();
         if let Some(_rest) = s.strip_prefix("\"\"\"") {
             // Triple Quoted String.  Verbatim String
-            Some(Expr::Literal(Literal::String(StringVariant::TripleQuoted(
+            Some(literal(Literal::String(StringVariant::TripleQuoted(
                 str.text().to_string(),
             ))))
         } else if let Some(_rest) = s.strip_prefix("~\"\"\"") {
             // Verbatim Binary (default sigil)
-            self.lower_verbatim_binary_sigil(str, true)
+            self.lower_verbatim_binary_sigil(str, expr, true, lower)
         } else if let Some(_rest) = s.strip_prefix("~B\"\"\"") {
             // Verbatim Binary (explicit sigil)
-            self.lower_verbatim_binary_sigil(str, true)
+            self.lower_verbatim_binary_sigil(str, expr, true, lower)
         } else if let Some(_rest) = s.strip_prefix("~S\"\"\"") {
             // Verbatim string
             let contents: String = str.clone().into();
-            Some(Expr::Literal(Literal::String(StringVariant::Normal(
-                contents,
-            ))))
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if let Some(_rest) = s.strip_prefix("~s\"\"\"") {
             // Quoted String
-            Some(Expr::Literal(Literal::String(StringVariant::Normal(
+            Some(literal(Literal::String(StringVariant::Normal(
                 unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
             ))))
         } else if let Some(_rest) = s.strip_prefix("~\"") {
             // Quoted binary, default when no additional char
-            self.lower_quoted_binary_sigil(str)
+            self.lower_quoted_binary_sigil(str, expr, lower)
         } else if let Some(_rest) = s.strip_prefix("~b\"") {
             // Quoted binary
-            self.lower_quoted_binary_sigil(str)
+            self.lower_quoted_binary_sigil(str, expr, lower)
         } else if let Some(_rest) = s.strip_prefix("~B\"") {
             // Verbatim Binary
-            self.lower_verbatim_binary_sigil(str, false)
+            self.lower_verbatim_binary_sigil(str, expr, false, lower)
         } else if let Some(_rest) = s.strip_prefix("~s\"") {
             // Quoted String
-            Some(Expr::Literal(Literal::String(StringVariant::Normal(
+            Some(literal(Literal::String(StringVariant::Normal(
                 unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
             ))))
         } else if let Some(_rest) = s.strip_prefix("~S\"") {
             // Verbatim string
             let contents: String = str.clone().into();
-            Some(Expr::Literal(Literal::String(StringVariant::Normal(
-                contents,
-            ))))
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else {
             // ordinary string
-            Some(Expr::Literal(Literal::String(StringVariant::Normal(
+            Some(literal(Literal::String(StringVariant::Normal(
                 unescape::unescape_string(&str.text())?.to_string(),
             ))))
         }
     }
 
-    fn lower_verbatim_binary_sigil(&mut self, str: &ast::String, is_not_tq: bool) -> Option<Expr> {
+    fn lower_verbatim_binary_sigil<Id>(
+        &mut self,
+        str: &ast::String,
+        expr: &ast::Expr,
+        is_not_tq: bool,
+        lower: fn(&mut Self, Literal, &ast::Expr) -> Option<Id>,
+    ) -> Option<Id> {
         let contents: String = str.clone().into();
         let string_variant = if is_not_tq {
             Literal::String(StringVariant::Normal(
@@ -2507,27 +2522,29 @@ impl<'a> Ctx<'a> {
         } else {
             Literal::String(StringVariant::Normal(contents))
         };
-        self.lower_binary_string_literal(string_variant, str)
+        lower(self, string_variant, expr)
     }
 
-    fn lower_quoted_binary_sigil(&mut self, str: &ast::String) -> Option<Expr> {
+    fn lower_quoted_binary_sigil<Id>(
+        &mut self,
+        str: &ast::String,
+        expr: &ast::Expr,
+        lower: fn(&mut Self, Literal, &ast::Expr) -> Option<Id>,
+    ) -> Option<Id> {
         let contents: String = str.clone().into();
         let string_variant = Literal::String(StringVariant::Normal(
             unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
         ));
 
-        self.lower_binary_string_literal(string_variant, str)
+        lower(self, string_variant, expr)
     }
 
-    fn lower_binary_string_literal(
+    fn lower_binary_string_literal_expr(
         &mut self,
-        string_variant: Literal,
-        str: &ast::String,
+        string: Literal,
+        expr: &ast::Expr,
     ) -> Option<Expr> {
-        let elem = self.alloc_expr(
-            Expr::Literal(string_variant),
-            Some(&ast::Expr::ExprMax(ast::ExprMax::String(str.clone()))),
-        );
+        let elem = self.alloc_expr(Expr::Literal(string), Some(expr));
         let segs = vec![BinarySeg {
             elem,
             size: None,
