@@ -1,9 +1,61 @@
 module specified: otp27_sigils
 Diagnostics reported in 1 modules:
-  otp27_sigils: 6
+  otp27_sigils: 58
       0:0-0:0::[Error] [E1500] 191: cannot parse file, giving up
       3:9-3:12::[Error] [L1227] function f/0 undefined
       3:14-3:17::[Error] [L1227] function g/0 undefined
       8:0-8:15::[Error] [L1308] spec for undefined function f/0
-      123:22-125:6::[Error] [P1711] Syntax Error
+      10:5-10:23::[Warning] [W0006] this statement has no effect
+      11:4-11:23::[Warning] [W0006] this statement has no effect
+      12:4-12:23::[Warning] [W0006] this statement has no effect
+      13:4-13:23::[Warning] [W0006] this statement has no effect
+      14:4-14:23::[Warning] [W0006] this statement has no effect
+      16:5-16:23::[Warning] [W0006] this statement has no effect
+      17:4-17:23::[Warning] [W0006] this statement has no effect
+      18:4-18:23::[Warning] [W0006] this statement has no effect
+      19:4-19:23::[Warning] [W0006] this statement has no effect
+      20:4-20:23::[Warning] [W0006] this statement has no effect
+      22:5-22:23::[Warning] [W0006] this statement has no effect
+      23:4-23:23::[Warning] [W0006] this statement has no effect
+      24:4-24:23::[Warning] [W0006] this statement has no effect
+      25:4-25:23::[Warning] [W0006] this statement has no effect
+      26:4-26:23::[Warning] [W0006] this statement has no effect
+      28:5-28:23::[Warning] [W0006] this statement has no effect
+      29:4-29:23::[Warning] [W0006] this statement has no effect
+      30:4-30:23::[Warning] [W0006] this statement has no effect
+      31:4-31:23::[Warning] [W0006] this statement has no effect
+      32:4-32:23::[Warning] [W0006] this statement has no effect
+      34:5-34:23::[Warning] [W0006] this statement has no effect
+      35:4-35:23::[Warning] [W0006] this statement has no effect
+      36:4-36:23::[Warning] [W0006] this statement has no effect
+      37:4-37:23::[Warning] [W0006] this statement has no effect
+      38:4-38:23::[Warning] [W0006] this statement has no effect
+      40:5-40:23::[Warning] [W0006] this statement has no effect
+      41:4-41:23::[Warning] [W0006] this statement has no effect
+      42:4-42:23::[Warning] [W0006] this statement has no effect
+      43:4-43:23::[Warning] [W0006] this statement has no effect
+      44:4-44:23::[Warning] [W0006] this statement has no effect
+      46:5-46:23::[Warning] [W0006] this statement has no effect
+      47:4-47:23::[Warning] [W0006] this statement has no effect
+      48:4-48:23::[Warning] [W0006] this statement has no effect
+      49:4-49:23::[Warning] [W0006] this statement has no effect
+      50:4-50:23::[Warning] [W0006] this statement has no effect
+      52:5-52:23::[Warning] [W0006] this statement has no effect
+      52:5-52:23::[Warning] [W0006] this statement has no effect
+      53:4-53:23::[Warning] [W0006] this statement has no effect
+      53:4-53:23::[Warning] [W0006] this statement has no effect
+      54:4-54:23::[Warning] [W0006] this statement has no effect
+      54:4-54:23::[Warning] [W0006] this statement has no effect
+      55:4-55:23::[Warning] [W0006] this statement has no effect
+      56:4-56:23::[Warning] [W0006] this statement has no effect
+      58:5-58:23::[Warning] [W0006] this statement has no effect
+      59:4-59:23::[Warning] [W0006] this statement has no effect
+      60:4-60:23::[Warning] [W0006] this statement has no effect
+      61:4-61:23::[Warning] [W0006] this statement has no effect
+      62:4-62:23::[Warning] [W0006] this statement has no effect
+      64:5-64:23::[Warning] [W0006] this statement has no effect
+      65:4-65:23::[Warning] [W0006] this statement has no effect
+      66:4-66:23::[Warning] [W0006] this statement has no effect
+      67:4-67:23::[Warning] [W0006] this statement has no effect
+      68:4-68:23::[Warning] [W0006] this statement has no effect
       127:8-127:23::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
