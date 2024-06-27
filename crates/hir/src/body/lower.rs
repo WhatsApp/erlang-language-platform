@@ -2051,7 +2051,14 @@ impl<'a> Ctx<'a> {
                 self.alloc_type_expr(TypeExpr::Missing, Some(expr))
             }
             ast::ExprMax::String(str) => {
-                let value = lower_str(str).map_or(TypeExpr::Missing, TypeExpr::Literal);
+                let value = self
+                    .lower_str_or_sigil(
+                        str,
+                        expr,
+                        Self::lower_binary_string_literal_type_expr,
+                        TypeExpr::Literal,
+                    )
+                    .unwrap_or(TypeExpr::Missing);
                 self.alloc_type_expr(value, Some(expr))
             }
             ast::ExprMax::TryExpr(_try_expr) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
@@ -2574,6 +2581,14 @@ impl<'a> Ctx<'a> {
             unit: None,
         }];
         Some(Pat::Binary { segs })
+    }
+
+    fn lower_binary_string_literal_type_expr(
+        &mut self,
+        _string: Literal,
+        _expr: &ast::Expr,
+    ) -> Option<TypeExpr> {
+        None
     }
 
     fn resolve_name(&mut self, name: ast::Name) -> Option<Atom> {
