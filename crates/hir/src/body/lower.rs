@@ -2403,7 +2403,14 @@ impl<'a> Ctx<'a> {
             }
             ast::ExprMax::ReceiveExpr(_receive) => self.alloc_term(Term::Missing, Some(expr)),
             ast::ExprMax::String(str) => {
-                let value = lower_str(str).map_or(Term::Missing, Term::Literal);
+                let value = self
+                    .lower_str_or_sigil(
+                        str,
+                        expr,
+                        Self::lower_binary_string_literal_term,
+                        Term::Literal,
+                    )
+                    .unwrap_or(Term::Missing);
                 self.alloc_term(value, Some(expr))
             }
             ast::ExprMax::TryExpr(_try_expr) => self.alloc_term(Term::Missing, Some(expr)),
@@ -2589,6 +2596,24 @@ impl<'a> Ctx<'a> {
         _expr: &ast::Expr,
     ) -> Option<TypeExpr> {
         None
+    }
+
+    // This function is passed in to another one, so needs to comply
+    // with the expected signature.  Hence the unused `_expr` parameter.
+    fn lower_binary_string_literal_term(
+        &mut self,
+        string: Literal,
+        _expr: &ast::Expr,
+    ) -> Option<Term> {
+        if let Literal::String(str) = string {
+            let segs = match str {
+                StringVariant::Normal(s) => s.into(),
+                StringVariant::TripleQuoted(s) => s.into(),
+            };
+            Some(Term::Binary(segs))
+        } else {
+            None
+        }
     }
 
     fn resolve_name(&mut self, name: ast::Name) -> Option<Atom> {
@@ -2840,18 +2865,6 @@ fn lower_raw_int(int: &ast::Integer) -> Option<i128> {
 
 fn lower_int(int: &ast::Integer) -> Option<Literal> {
     lower_raw_int(int).map(Literal::Integer)
-}
-
-fn lower_str(str: &ast::String) -> Option<Literal> {
-    if str.text().starts_with("\"\"\"") {
-        Some(Literal::String(StringVariant::TripleQuoted(
-            unescape::unescape_string(&str.text())?.to_string(),
-        )))
-    } else {
-        Some(Literal::String(StringVariant::Normal(
-            unescape::unescape_string(&str.text())?.to_string(),
-        )))
-    }
 }
 
 fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {

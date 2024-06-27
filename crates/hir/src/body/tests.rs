@@ -2463,3 +2463,18 @@ fn verbatim_binary_sigil_in_type() {
         "#]],
     );
 }
+
+#[test]
+// Since we use a generic lowering thoroughly tested for `Expr`, we
+// just do an existence test for `Term`.
+fn verbatim_binary_sigil_in_term() {
+    // Note: \~ gets replaced by ~ in the fixture parsing
+    check(
+        r#"
+        -wild(\~B"ab\"c\"\d").
+        "#,
+        expect![[r#"
+            -wild(<<"ab\"c\"\\d"/utf8>>).
+        "#]],
+    );
+}
