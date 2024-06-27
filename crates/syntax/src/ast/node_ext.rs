@@ -12,11 +12,14 @@
 
 use std::borrow::Cow;
 
+use lazy_static::lazy_static;
+use regex::Regex;
 use rowan::GreenNodeData;
 use rowan::GreenTokenData;
 use rowan::NodeOrToken;
 use rowan::TextRange;
 use smol_str::SmolStr;
+use stdx::trim_indent;
 
 use super::generated::nodes;
 use super::ArithOp;
@@ -33,6 +36,7 @@ use super::UnaryOp;
 use crate::ast::AstNode;
 use crate::ast::SyntaxNode;
 use crate::token_text::TokenText;
+use crate::unescape;
 use crate::unescape::unescape_string;
 use crate::SyntaxKind;
 use crate::SyntaxKind::*;
@@ -394,12 +398,57 @@ impl From<nodes::Integer> for i32 {
 impl From<nodes::String> for std::string::String {
     fn from(s: nodes::String) -> Self {
         let source: std::string::String = From::from(s.syntax.text());
-        trim_quotes(source)
+        trim_quotes_and_sigils(&source)
     }
 }
 
-fn trim_quotes(s: String) -> String {
-    s.as_str().trim_matches(|c: char| c == '"').to_string()
+/// Trim leading and trailing quote marks and sigils.  It also dedents
+/// triple quoted strings, and returns verbatim or quoted strings
+/// according to the sigil
+///  No sigil           : Quoted (unescaped)
+///  `~"`, `~b"`, `~s"` : Quoted (unescaped)
+///        `~B"`, `~S"` : Verbatim
+fn trim_quotes_and_sigils(s: &str) -> String {
+    lazy_static! {
+        // See https://docs.rs/regex/latest/regex/#example-verbose-mode
+        // And https://docs.rs/regex/latest/regex/#syntax
+        static ref RE: Regex = Regex::new(r#"(?sx) # . match \n, whitespace ignored, allow comments
+              ^~?([bBsS]?) # Optional sigil prefix                              (cap 1)
+              ("+)         # followed by quotes, as a match group to count them (cap 2)
+              (.*)         # The actual string contents we care about           (cap 3)
+              $            # End of string. Do not match quotes, we trim separately
+            "#).unwrap();
+    }
+    let mut quoted = true;
+    let trimmed = if let Some(captures) = RE.captures(s) {
+        if captures.len() > 3 {
+            if captures[1] == *"B" || captures[1] == *"S" {
+                quoted = false;
+            }
+            if captures[2] == *"\"\"\"" {
+                let trimmed = trim_indent(&captures[3].trim_end_matches("\""));
+                if let Some(rest) = trimmed.strip_suffix("\n") {
+                    // tq string terminates with \n whitespace, quotes
+                    rest.to_string()
+                } else {
+                    trimmed
+                }
+            } else {
+                captures[3].trim_end_matches("\"").to_string()
+            }
+        } else {
+            captures[0].to_string()
+        }
+    } else {
+        s.to_string()
+    };
+    if quoted {
+        unescape::unescape_string(&format!("\"{trimmed}\""))
+            .map(|s| s.to_string())
+            .unwrap_or(trimmed)
+    } else {
+        trimmed
+    }
 }
 
 // Operators
@@ -657,6 +706,8 @@ impl From<nodes::PpUndef> for nodes::Form {
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use super::*;
     use crate::ast;
 
@@ -842,5 +893,54 @@ mod tests {
 
         check("X => Y", "=>", MapOp::Assoc);
         check("X := Y", ":=", MapOp::Exact);
+    }
+
+    #[test]
+    fn test_trim_quotes_and_sigils() {
+        // Note: \d escapes to ctrl-?
+
+        // Quoted
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"ab\"c\"\d"#));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#""ab\"c\"\d""#));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"~"ab\"c\"\d""#));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"~s"ab\"c\"\d""#));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(r#"~b"ab\"c\"\d""#));
+
+        // Verbatim
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~S"ab\"c\"\d""#));
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(r#"~B"ab\"c\"\d""#));
+
+        // Triple quoted strings -------------------
+        // Quoted
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+            r#""""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+            r#"~"""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+            r#"~b"""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            r#"~B"""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab"c""#]].assert_eq(&trim_quotes_and_sigils(
+            r#"~s"""
+              ab\"c\"\d
+              """"#,
+        ));
+        expect![[r#"ab\"c\"\d"#]].assert_eq(&trim_quotes_and_sigils(
+            r#"~S"""
+              ab\"c\"\d
+              """"#,
+        ));
     }
 }
