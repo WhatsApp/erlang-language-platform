@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--one-shot] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -23,6 +23,8 @@ Available options:
                                      prior fixes recursively. Limited in scope to the clause of the
                                      prior change.
         --in-place                   When applying a fix, modify the original file.
+        --one-shot                   Apply to all matching diagnostic occurrences at once, rather
+                                     than one at a time.
         --diagnostic-ignore <CODE>   Ignore the specified diagnostic, by code or label
         --diagnostic-filter <CODE>   Filter out all reported diagnostics except this one, by code or label
         --ignore-fix-only            Only apply elp:ignore fixes

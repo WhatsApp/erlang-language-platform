@@ -42,6 +42,7 @@ use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::source_change::SourceChange;
 use elp_ide::elp_ide_db::LineCol;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
@@ -585,18 +586,27 @@ impl<'a> Lints<'a> {
         format_normal: bool,
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
-        // Only apply a single fix, then re-parse. This avoids potentially
-        // conflicting changes.
-        let changes = self
-            .diags
-            .iter()
-            .flat_map(|(m, file_id, ds)| {
-                ds.iter().next().map_or(Ok(vec![]), |d| {
-                    self.apply_fixes(m, d, *file_id, format_normal, cli)
+        let mut changes: Vec<FixResult> = Vec::default();
+        if self.args.one_shot {
+            self.diags.iter().for_each(|(m, file_id, ds)| {
+                if let Ok(fs) = self.apply_all_fixes(m, ds, *file_id, format_normal, cli) {
+                    changes.extend(fs.into_iter());
+                }
+            });
+        } else {
+            // Only apply a single fix, then re-parse. This avoids potentially
+            // conflicting changes.
+            changes = self
+                .diags
+                .iter()
+                .flat_map(|(m, file_id, ds)| {
+                    ds.iter().next().map_or(Ok(vec![]), |d| {
+                        self.apply_fixes(m, d, *file_id, format_normal, cli)
+                    })
                 })
-            })
-            .flatten()
-            .collect::<Vec<FixResult>>();
+                .flatten()
+                .collect::<Vec<FixResult>>();
+        };
         Ok(changes)
     }
 
@@ -648,9 +658,86 @@ impl<'a> Lints<'a> {
         }
     }
 
+    fn apply_all_fixes(
+        &self,
+        name: &String,
+        diagnostics: &[diagnostics::Diagnostic],
+        file_id: FileId,
+        format_normal: bool,
+        cli: &mut dyn Cli,
+    ) -> Result<Vec<FixResult>> {
+        // Get code action ones too
+        let fixes = diagnostics
+            .into_iter()
+            .filter_map(|d| {
+                let fs = d
+                    .get_diagnostic_fixes(self.analysis_host.raw_database(), file_id)
+                    .iter()
+                    .filter(|f| {
+                        if self.args.ignore_fix_only {
+                            f.group == Some(GroupLabel::ignore())
+                        } else {
+                            f.group != Some(GroupLabel::ignore())
+                        }
+                    })
+                    .map(|a| a.clone())
+                    .collect_vec();
+                if fs.is_empty() {
+                    None
+                } else {
+                    Some((d.clone(), fs))
+                }
+            })
+            .collect_vec();
+        if !fixes.is_empty() {
+            let (diagnostics, assists): (Vec<diagnostics::Diagnostic>, Vec<Vec<Assist>>) =
+                fixes.iter().cloned().unzip();
+            if format_normal {
+                writeln!(cli, "---------------------------------------------\n")?;
+                writeln!(cli, "Applying fix(es) in module '{name}' for")?;
+                for diagnostic in diagnostics {
+                    print_diagnostic(&diagnostic, &self.analysis_host.analysis(), file_id, cli)?;
+                }
+            }
+            let source_change =
+                Self::assists_to_source_change(&assists.into_iter().flatten().collect_vec());
+            let changed = self
+                .apply_one_source_change(&source_change, name)
+                .into_iter()
+                .collect_vec();
+            if format_normal {
+                changed.iter().for_each(|r| {
+                    if let Some(unified) = &r.diff {
+                        _ = writeln!(cli, "{unified}");
+                    }
+                });
+            }
+            Ok(changed)
+        } else {
+            bail!("No fixes in {:?}", diagnostics);
+        }
+    }
+
+    fn assists_to_source_change(assists: &[Assist]) -> SourceChange {
+        assists
+            .iter()
+            .filter_map(|a| a.source_change.as_ref())
+            .map(|c| (*c).clone())
+            .reduce(|acc, elem| acc.merge(elem))
+            .unwrap_or(SourceChange::default())
+    }
+
     /// Apply a single assist
     fn apply_one_fix(&self, fix: &Assist, name: &str) -> Option<FixResult> {
         let source_change = fix.source_change.as_ref()?;
+        self.apply_one_source_change(source_change, name)
+    }
+
+    fn apply_one_source_change(
+        &self,
+        source_change: &SourceChange,
+        name: &str,
+    ) -> Option<FixResult> {
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
         let mut actual = self
             .analysis_host

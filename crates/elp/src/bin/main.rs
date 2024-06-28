@@ -1149,6 +1149,7 @@ mod tests {
                 "--module",
                 "app_b",
                 "--apply-fix",
+                "--one-shot",
                 "--to",
                 tmp_path,
             ],

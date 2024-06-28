@@ -248,6 +248,9 @@ pub struct Lint {
     pub recursive: bool,
     /// When applying a fix, modify the original file.
     pub in_place: bool,
+    /// Apply to all matching diagnostic occurrences at once, rather
+    /// than one at a time.
+    pub one_shot: bool,
     /// Ignore the specified diagnostic, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,
