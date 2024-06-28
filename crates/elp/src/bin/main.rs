@@ -32,6 +32,7 @@ use lsp_server::Connection;
 mod args;
 mod build_info_cli;
 mod config_stanza;
+mod dialyzer_cli;
 mod elp_parse_cli;
 mod eqwalizer_cli;
 mod erlang_service_cli;
@@ -108,6 +109,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(&args, cli, &query_config)?,
         args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(&args, cli, &query_config)?,
         args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(&args, cli, &query_config)?,
+        args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(&args, cli)?,
         args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(&args, cli, &query_config)?,
         args::Command::EqwalizeStats(args) => {
             eqwalizer_cli::eqwalize_stats(&args, cli, &query_config)?
@@ -561,6 +563,17 @@ mod tests {
             expect_file!("../resources/test/standard/eqwalize_all_parse_error_cascade.pretty"),
             buck,
             None,
+        );
+    }
+
+    #[ignore]
+    #[test]
+    fn dialyzer_cli() {
+        simple_dialyzer_snapshot(
+            args_vec!["dialyze-all"],
+            "diagnostics",
+            expect_file!("../resources/test/standard/dialyze_all.stdout"),
+            0,
         );
     }
 
@@ -1576,6 +1589,16 @@ mod tests {
     }
 
     #[test]
+    fn dialyze_all_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["dialyze-all", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/dialyze_all_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
     fn parse_all_help() {
         let args = args::args()
             .run_inner(Args::from(&["parse-all", "--help"]))
@@ -1750,6 +1773,31 @@ mod tests {
                     stderr
                 )
             }
+        }
+    }
+
+    #[track_caller]
+    fn simple_dialyzer_snapshot(
+        args: Vec<OsString>,
+        _project: &str,
+        expected: ExpectFile,
+        expected_code: i32,
+    ) {
+        let (stdout, stderr, code) = elp(args);
+        assert_eq!(
+            code, expected_code,
+            "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
+            code, expected_code, stdout, stderr
+        );
+        let path = PathBuf::from("");
+        assert_normalised_file(expected, &stdout, path);
+        if expected_code == 0 {
+            assert_eq!(
+                stderr.is_empty(),
+                true,
+                "expected stderr to be empty, got:\n{}",
+                stderr
+            )
         }
     }
 

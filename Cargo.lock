@@ -421,6 +421,7 @@ dependencies = [
  "threadpool",
  "tikv-jemallocator",
  "time",
+ "timeout-readwrite",
  "toml",
  "vfs-notify",
 ]

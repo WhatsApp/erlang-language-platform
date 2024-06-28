@@ -52,6 +52,7 @@ strsim.workspace = true
 tempfile.workspace = true
 text-edit.workspace = true
 threadpool.workspace = true
+timeout-readwrite.workspace = true
 toml.workspace = true
 vfs-notify.workspace = true
 

@@ -14,6 +14,7 @@ Available commands:
     eqwalize-all          Eqwalize all opted-in modules in a project
     eqwalize-app          Eqwalize all opted-in modules in specified application
     eqwalize-target       Eqwalize all opted-in modules in specified buck target
+    dialyze-all           Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.
     lint                  Parse files in project and emit diagnostics, optionally apply fixes.
     server                Run lsp server
     generate-completions  Generate shell completions

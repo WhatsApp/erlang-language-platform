@@ -172,6 +172,9 @@ pub struct EqwalizeStats {
 }
 
 #[derive(Clone, Debug, Bpaf)]
+pub struct DialyzeAll {}
+
+#[derive(Clone, Debug, Bpaf)]
 pub struct BuildInfo {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
@@ -319,6 +322,7 @@ pub enum Command {
     EqwalizeTarget(EqwalizeTarget),
     EqwalizeApp(EqwalizeApp),
     EqwalizeStats(EqwalizeStats),
+    DialyzeAll(DialyzeAll),
     BuildInfo(BuildInfo),
     GenerateCompletions(GenerateCompletions),
     RunServer(RunServer),
@@ -409,6 +413,13 @@ pub fn command() -> impl Parser<Command> {
         .command("eqwalize-stats")
         .help("Return statistics about code quality for eqWAlizer");
 
+    let dialyze_all = dialyze_all()
+        .map(Command::DialyzeAll)
+        .to_options()
+        .command("dialyze-all")
+        .help("Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.")
+        .hide_usage();
+
     let build_info = build_info()
         .map(Command::BuildInfo)
         .to_options()
@@ -474,6 +485,7 @@ pub fn command() -> impl Parser<Command> {
         eqwalize_all,
         eqwalize_app,
         eqwalize_target,
+        dialyze_all,
         lint,
         run_server,
         generate_completions,
