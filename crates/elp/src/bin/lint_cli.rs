@@ -174,14 +174,14 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             } else {
                 LintConfig::default()
             };
-            let mut cfg = DiagnosticsConfig::default();
-            cfg =
-                cfg.configure_diagnostics(&cfg_from_file, diagnostic_filter, diagnostic_ignore)?;
+            let cfg = DiagnosticsConfig::default()
+                .configure_diagnostics(&cfg_from_file, diagnostic_filter, diagnostic_ignore)?
+                .set_include_generated(args.include_generated)
+                .set_experimental(args.experimental_diags)
+                .set_include_suppressed(args.include_suppressed)
+                .set_lints_from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
+
             let allowed_diagnostics = cfg.enabled.clone();
-            cfg.include_generated = args.include_generated;
-            cfg.experimental = args.experimental_diags;
-            cfg.include_suppressed = args.include_suppressed;
-            let cfg = cfg.from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
 
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;

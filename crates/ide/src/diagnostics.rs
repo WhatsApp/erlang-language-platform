@@ -465,6 +465,11 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
+    pub fn set_include_suppressed(mut self, value: bool) -> DiagnosticsConfig<'a> {
+        self.include_suppressed = value;
+        self
+    }
+
     pub fn set_compile_options(mut self, options: Vec<CompileOption>) -> DiagnosticsConfig<'a> {
         self.compile_options = options;
         self
@@ -483,7 +488,10 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
-    pub fn from_config(mut self, lints_from_config: &LintsFromConfig) -> DiagnosticsConfig<'a> {
+    pub fn set_lints_from_config(
+        mut self,
+        lints_from_config: &LintsFromConfig,
+    ) -> DiagnosticsConfig<'a> {
         self.lints_from_config = lints_from_config.clone();
         self
     }

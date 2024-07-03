@@ -226,12 +226,10 @@ impl Config {
     }
 
     pub fn diagnostics_config(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
-        let config = DiagnosticsConfig::default()
+        let mut config = DiagnosticsConfig::default()
             .configure_diagnostics(&lint_config, &None, &None)
-            .unwrap_or(DiagnosticsConfig::default());
-
-        let mut config = config
-            .from_config(&lint_config.ad_hoc_lints)
+            .unwrap_or(DiagnosticsConfig::default())
+            .set_lints_from_config(&lint_config.ad_hoc_lints)
             .set_experimental(self.data.diagnostics_enableExperimental)
             .set_include_otp(self.data.diagnostics_enableOtp);
         for code in self

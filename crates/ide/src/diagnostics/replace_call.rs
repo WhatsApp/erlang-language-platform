@@ -387,7 +387,7 @@ mod tests {
             .set_experimental(true)
             .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::UndefinedFunction)
-            .from_config(&Arc::new(lints_from_config));
+            .set_lints_from_config(&Arc::new(lints_from_config));
         check_fix_with_config(config, fixture_before, fixture_after)
     }
 
