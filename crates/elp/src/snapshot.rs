@@ -205,7 +205,10 @@ impl Snapshot {
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
         self.analysis
-            .native_diagnostics(&self.config.diagnostics(self.lint_config.clone()), file_id)
+            .native_diagnostics(
+                &self.config.diagnostics_config(self.lint_config.clone()),
+                file_id,
+            )
             .ok()
     }
 

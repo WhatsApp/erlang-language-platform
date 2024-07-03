@@ -721,7 +721,19 @@ pub fn diagnostics_from_descriptors(
         .unwrap_or(false);
     descriptors.into_iter().for_each(|descriptor| {
         if descriptor.conditions.enabled(config, is_generated, is_test) {
-            (descriptor.checker)(res, sema, file_id, file_kind);
+            if descriptor.conditions.explicit_enable {
+                // Filter the returned diagnostics to ensure they are
+                // enabled
+                let mut diags: Vec<Diagnostic> = Vec::default();
+                (descriptor.checker)(&mut diags, sema, file_id, file_kind);
+                for diag in diags {
+                    if config.enabled.contains(&diag.code) {
+                        res.push(diag);
+                    }
+                }
+            } else {
+                (descriptor.checker)(res, sema, file_id, file_kind);
+            }
         }
     });
 }

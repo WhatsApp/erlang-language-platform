@@ -225,9 +225,12 @@ impl Config {
         self.data.diagnostics_enableOtp
     }
 
-    pub fn diagnostics(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
-        // Look up disabled diagnostics using both label and code.
-        let mut config = DiagnosticsConfig::default()
+    pub fn diagnostics_config(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &None, &None)
+            .unwrap_or(DiagnosticsConfig::default());
+
+        let mut config = config
             .from_config(&lint_config.ad_hoc_lints)
             .set_experimental(self.data.diagnostics_enableExperimental)
             .set_include_otp(self.data.diagnostics_enableOtp);
@@ -235,6 +238,7 @@ impl Config {
             .data
             .diagnostics_disabled
             .iter()
+            // Look up disabled diagnostics using both label and code.
             .filter_map(|code| DiagnosticCode::maybe_from_string(&code))
         {
             config = config.disable(code);
