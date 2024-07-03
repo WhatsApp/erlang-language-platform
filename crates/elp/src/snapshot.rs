@@ -17,7 +17,7 @@ use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
-use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -98,7 +98,7 @@ pub type SharedMap<Key, Value> = Arc<RwLock<FxHashMap<Key, Value>>>;
 /// An immutable snapshot of the world's state at a point in time.
 pub struct Snapshot {
     pub(crate) config: Arc<Config>,
-    pub(crate) ad_hoc_lints: Arc<LintsFromConfig>,
+    pub(crate) lint_config: Arc<LintConfig>,
     // Note: Analysis is a salsa::Snapshot.  According to the docs,
     // any attempt to `set` an input will block.
     pub(crate) analysis: Analysis,
@@ -114,7 +114,7 @@ pub struct Snapshot {
 impl Snapshot {
     pub fn new(
         config: Arc<Config>,
-        ad_hoc_lints: Arc<LintsFromConfig>,
+        lint_config: Arc<LintConfig>,
         analysis: Analysis,
         diagnostics: Arc<DiagnosticCollection>,
         vfs: Arc<RwLock<Vfs>>,
@@ -125,7 +125,7 @@ impl Snapshot {
     ) -> Self {
         Snapshot {
             config,
-            ad_hoc_lints,
+            lint_config,
             analysis,
             diagnostics,
             semantic_tokens_cache: Arc::new(Default::default()),
@@ -205,7 +205,7 @@ impl Snapshot {
         let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
 
         self.analysis
-            .native_diagnostics(&self.config.diagnostics(self.ad_hoc_lints.clone()), file_id)
+            .native_diagnostics(&self.config.diagnostics(self.lint_config.clone()), file_id)
             .ok()
     }
 

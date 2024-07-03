@@ -25,7 +25,7 @@ use elp_ai::AiCompletion;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
-use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
@@ -217,7 +217,7 @@ pub struct Server {
     file_set_config: FileSetConfig,
     line_ending_map: SharedMap<FileId, LineEndings>,
     config: Arc<Config>,
-    ad_hoc_lints: Arc<LintsFromConfig>,
+    lint_config: Arc<LintConfig>,
     analysis_host: AnalysisHost,
     status: Status,
     projects: Arc<Vec<Project>>,
@@ -268,7 +268,7 @@ impl Server {
             file_set_config: FileSetConfig::default(),
             line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
-            ad_hoc_lints: Arc::new(LintsFromConfig::default()),
+            lint_config: Arc::new(LintConfig::default()),
             analysis_host: AnalysisHost::default(),
             status: Status::Initialising,
             projects: Arc::new(vec![]),
@@ -296,7 +296,7 @@ impl Server {
     pub fn snapshot(&self) -> Snapshot {
         Snapshot::new(
             Arc::clone(&self.config),
-            Arc::clone(&self.ad_hoc_lints),
+            Arc::clone(&self.lint_config),
             self.analysis_host.analysis(),
             Arc::clone(&self.diagnostics),
             Arc::clone(&self.vfs),
@@ -1216,12 +1216,12 @@ impl Server {
             // Read the lint config file
             let loader = self.project_loader.clone();
             let loader = loader.lock();
-            //TODO not correct, there is always OTP path in project roots
-            if let Some(path) = loader.project_roots.keys().next() {
-                let ppp: PathBuf = path.clone().into();
-                if let Ok(lint_config) = read_lint_config_file(&ppp, &None) {
+            // The OTP root is added with a project root value of None, skip it
+            if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
+                let path_buf: PathBuf = path.clone().into();
+                if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                     log::warn!("update_configuration: read lint file: {:?}", lint_config);
-                    self.ad_hoc_lints = Arc::new(lint_config.ad_hoc_lints);
+                    self.lint_config = Arc::new(lint_config);
                 }
             }
         }

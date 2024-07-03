@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
-use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
@@ -225,10 +225,10 @@ impl Config {
         self.data.diagnostics_enableOtp
     }
 
-    pub fn diagnostics(&self, lints_from_config: Arc<LintsFromConfig>) -> DiagnosticsConfig {
+    pub fn diagnostics(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
         // Look up disabled diagnostics using both label and code.
         let mut config = DiagnosticsConfig::default()
-            .from_config(&lints_from_config)
+            .from_config(&lint_config.ad_hoc_lints)
             .set_experimental(self.data.diagnostics_enableExperimental)
             .set_include_otp(self.data.diagnostics_enableOtp);
         for code in self

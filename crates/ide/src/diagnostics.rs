@@ -394,7 +394,7 @@ pub struct DiagnosticsConfig<'a> {
     pub disabled: FxHashSet<DiagnosticCode>,
     pub enabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
-    pub lints_from_config: Arc<LintsFromConfig>,
+    pub lints_from_config: LintsFromConfig,
     pub include_generated: bool,
     pub include_suppressed: bool,
     pub include_otp: bool,
@@ -480,10 +480,7 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
-    pub fn from_config(
-        mut self,
-        lints_from_config: &Arc<LintsFromConfig>,
-    ) -> DiagnosticsConfig<'a> {
+    pub fn from_config(mut self, lints_from_config: &LintsFromConfig) -> DiagnosticsConfig<'a> {
         self.lints_from_config = lints_from_config.clone();
         self
     }
