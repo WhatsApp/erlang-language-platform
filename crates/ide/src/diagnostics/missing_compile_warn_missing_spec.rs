@@ -17,7 +17,6 @@
 use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
@@ -32,7 +31,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::Term;
 use lazy_static::lazy_static;
-use regex::Regex;
 use text_edit::TextRange;
 
 use super::Diagnostic;
@@ -44,8 +42,8 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
         experimental: false,
         include_generated: false,
-        include_tests: true,
-        explicit_enable: false,
+        include_tests: false,
+        explicit_enable: true,
     },
     checker: &|diags, sema, file_id, _ext| {
         missing_compile_warn_missing_spec(diags, sema, file_id);
@@ -57,9 +55,6 @@ fn missing_compile_warn_missing_spec(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    if Some(false) == is_in_src_dir(sema.db.upcast(), file_id) {
-        return;
-    }
     let form_list = sema.form_list(file_id);
     if form_list.compile_attributes().next().is_none() {
         report_diagnostic(sema, None, file_id, (Found::No, None), diags);
@@ -139,22 +134,6 @@ lazy_static! {
     };
 }
 
-fn is_in_src_dir(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
-    // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_in_src_dir: {:?}", file_id));
-    let root_id = db.file_source_root(file_id);
-    let root = db.source_root(root_id);
-    let path = root.path_for_file(&file_id)?.as_path()?.as_ref().to_str()?;
-    Some(is_srcdir_path(path))
-}
-
-fn is_srcdir_path(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^.*/erl/[^/]+/src/.*\.erl$").unwrap();
-    }
-    RE.is_match(s)
-}
-
 fn report_diagnostic(
     sema: &Semantic,
     range: Option<TextRange>,
@@ -194,6 +173,7 @@ fn report_diagnostic(
 #[cfg(test)]
 mod tests {
 
+    use elp_ide_db::DiagnosticCode;
     use expect_test::expect;
     use expect_test::Expect;
 
@@ -203,15 +183,24 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let config = DiagnosticsConfig::default();
+        let mut config = DiagnosticsConfig::default();
+        config.enabled.insert(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_fix_with_config(config, fixture_before, fixture_after)
     }
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
+        let mut config = DiagnosticsConfig::default();
+        config.enabled.insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        check_diagnostics_with_config(config, fixture)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics_no_enable(fixture: &str) {
         let config = DiagnosticsConfig::default();
         check_diagnostics_with_config(config, fixture)
     }
+
 
     #[test]
     fn no_compile_attribute() {
@@ -236,6 +225,18 @@ mod tests {
             -compile([export_all, nowarn_export_all]).
          %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
+            "#,
+        )
+    }
+
+    #[test]
+    fn compile_attribute_missing_setting_no_explict_enable() {
+        check_diagnostics_no_enable(
+            r#"
+         //- /erl/my_app/src/main.erl
+            -module(main).
+
+            -compile([export_all, nowarn_export_all]).
             "#,
         )
     }
