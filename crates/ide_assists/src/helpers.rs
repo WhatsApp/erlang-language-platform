@@ -30,6 +30,7 @@ use elp_syntax::TextRange;
 use fxhash::FxHashSet;
 use hir::known;
 use hir::CompileOption;
+use hir::CompileOptionId;
 use hir::FormList;
 use hir::FunctionClauseBody;
 use hir::FunctionDef;
@@ -526,8 +527,8 @@ fn add_to_compile_attribute(
     option: &str,
     builder: &mut SourceChangeBuilder,
 ) -> Option<()> {
-    let export_ast = co.form_id.get(source);
-    match &export_ast.options()? {
+    let attr_ast = co.form_id.get(source);
+    match &attr_ast.options()? {
         ast::Expr::ExprMax(ast::ExprMax::List(e)) => {
             // Skip the trailing "]"
             let mut r = e.syntax().text_range().end();
@@ -544,6 +545,31 @@ fn add_to_compile_attribute(
         }
         _ => return None,
     };
+    Some(())
+}
+
+pub fn rename_atom_in_compile_attribute(
+    sema: &Semantic,
+    file_id: FileId,
+    co_id: &CompileOptionId,
+    old: &str,
+    new: &str,
+    builder: &mut SourceChangeBuilder,
+) -> Option<()> {
+    let form_list = sema.form_list(file_id);
+    let source = sema.parse(file_id).value;
+    let co = &form_list[*co_id];
+    let attr_ast = co.form_id.get(&source);
+    attr_ast
+        .options()?
+        .syntax()
+        .descendants()
+        .filter_map(ast::Atom::cast)
+        .for_each(|n| {
+            if n.syntax().text() == old {
+                builder.replace(n.syntax().text_range(), new);
+            }
+        });
     Some(())
 }
 

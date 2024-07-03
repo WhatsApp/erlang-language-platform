@@ -15,6 +15,7 @@
 //!
 
 use elp_ide_assists::helpers::add_compile_option;
+use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -22,6 +23,7 @@ use elp_syntax::AstNode;
 use fxhash::FxHashSet;
 use hir::known;
 use hir::AnyExpr;
+use hir::CompileOptionId;
 use hir::FoldCtx;
 use hir::InFile;
 use hir::Literal;
@@ -60,7 +62,7 @@ fn missing_compile_warn_missing_spec(
     }
     let form_list = sema.form_list(file_id);
     if form_list.compile_attributes().next().is_none() {
-        report_diagnostic(sema, None, file_id, diags);
+        report_diagnostic(sema, None, file_id, (Found::No, None), diags);
     }
     let attributes = form_list
         .compile_attributes()
@@ -70,14 +72,18 @@ fn missing_compile_warn_missing_spec(
                 Strategy::InvisibleMacros,
                 &co.body,
                 co.value,
-                false,
+                (Found::No, None),
                 &mut |acc, ctx| match &ctx.item {
                     AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
                         let name = sema.db.lookup_atom(*atom);
-                        if MISSING_SPEC_OPTIONS.contains(&name) {
-                            true
+                        if MISSING_SPEC_ALL_OPTIONS.contains(&name) {
+                            (Found::WarnMissingSpecAll, Some(idx))
                         } else {
-                            acc
+                            if MISSING_SPEC_OPTIONS.contains(&name) {
+                                (Found::WarnMissingSpec, Some(idx))
+                            } else {
+                                acc
+                            }
                         }
                     }
                     _ => acc,
@@ -86,7 +92,17 @@ fn missing_compile_warn_missing_spec(
             (is_present, compile_attribute)
         })
         .collect::<Vec<_>>();
-    if !attributes.iter().any(|(present, _)| *present) {
+
+    let what = attributes
+        .iter()
+        .fold((Found::No, None), |acc, ((present, idx), _)| {
+            if acc.0 == Found::No {
+                (*present, *idx)
+            } else {
+                acc
+            }
+        });
+    if what.0 != Found::WarnMissingSpecAll {
         // Report on first compile attribute only
         if let Some((_, compile_attribute)) = attributes.first() {
             let range = compile_attribute
@@ -94,20 +110,29 @@ fn missing_compile_warn_missing_spec(
                 .get_ast(sema.db, file_id)
                 .syntax()
                 .text_range();
-            report_diagnostic(sema, Some(range), file_id, diags)
+            report_diagnostic(sema, Some(range), file_id, what, diags)
         }
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum Found {
+    No,
+    WarnMissingSpec,
+    WarnMissingSpecAll,
+}
+
 lazy_static! {
+    static ref MISSING_SPEC_ALL_OPTIONS: FxHashSet<Name> = {
+        let mut res = FxHashSet::default();
+        for name in vec![known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
+            res.insert(name);
+        }
+        res
+    };
     static ref MISSING_SPEC_OPTIONS: FxHashSet<Name> = {
         let mut res = FxHashSet::default();
-        for name in vec![
-            known::warn_missing_spec,
-            known::nowarn_missing_spec,
-            known::warn_missing_spec_all,
-            known::nowarn_missing_spec_all,
-        ] {
+        for name in vec![known::warn_missing_spec, known::nowarn_missing_spec] {
             res.insert(name);
         }
         res
@@ -134,19 +159,34 @@ fn report_diagnostic(
     sema: &Semantic,
     range: Option<TextRange>,
     file_id: FileId,
+    what: (Found, Option<CompileOptionId>),
     diags: &mut Vec<Diagnostic>,
 ) {
     let range = range.unwrap_or(TextRange::empty(0.into()));
 
     let mut builder = SourceChangeBuilder::new(file_id);
-    add_compile_option(sema, file_id, "warn_missing_spec", None, &mut builder);
+    if what.0 == Found::No {
+        add_compile_option(sema, file_id, "warn_missing_spec_all", None, &mut builder);
+    } else {
+        // We already have warn_missing_spec, upgrade it to warn_missing_spec_all
+        if let Some(co_id) = what.1 {
+            rename_atom_in_compile_attribute(
+                sema,
+                file_id,
+                &co_id,
+                "warn_missing_spec",
+                "warn_missing_spec_all",
+                &mut builder
+            );
+        }
+    }
     let edit = builder.finish();
     let d = Diagnostic::new(
         crate::diagnostics::DiagnosticCode::MissingCompileWarnMissingSpec,
-            "Please add \"-compile(warn_missing_spec).\" or \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced.".to_string(),
+            "Please add \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced.".to_string(),
         range,
-    ).with_fixes(Some(vec![fix("add_warn_missing_spec",
-                               "Add compile option 'warn_missing_spec'",
+    ).with_fixes(Some(vec![fix("add_warn_missing_spec_all",
+                               "Add compile option 'warn_missing_spec_all'",
                                edit, range)]));
     diags.push(d);
 }
@@ -178,7 +218,7 @@ mod tests {
         check_diagnostics(
             r#"
             //- /erl/my_app/src/main.erl
-            %% <<< 💡 error: Please add "-compile(warn_missing_spec)." or "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            %% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             -module(main).
 
@@ -194,33 +234,35 @@ mod tests {
             -module(main).
 
             -compile([export_all, nowarn_export_all]).
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec)." or "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
     }
 
     #[test]
-    fn warn_missing_spec_ok() {
+    fn warn_missing_spec_not_ok() {
         check_diagnostics(
             r#"
-            //- /erl/my_app/src/main.erl
+         //- /erl/my_app/src/main.erl
             -module(main).
 
             -compile(warn_missing_spec).
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
     }
 
     #[test]
-    fn nowarn_missing_spec_ok() {
+    fn nowarn_missing_spec_not_ok() {
         check_diagnostics(
             r#"
-            //- /erl/my_app/src/main.erl
+         //- /erl/my_app/src/main.erl
             -module(main).
 
             -compile(nowarn_missing_spec).
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
@@ -259,7 +301,7 @@ mod tests {
             //- /erl/my_app/src/main.erl
             -module(main).
 
-            -compile(warn_missing_spec).
+            -compile(warn_missing_spec_all).
             -compile([export_all, nowarn_export_all]).
             "#,
         )
@@ -273,7 +315,7 @@ mod tests {
             -module(main).
 
             -compile(export_all).
-         %% ^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec)." or "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
             -compile(nowarn_export_all).
             "#,
         )
@@ -339,7 +381,7 @@ mod tests {
             expect![[r#"
             -module(main).
 
-            -compile([warn_missing_spec]).
+            -compile([warn_missing_spec_all]).
 
             %% a comment"#]],
         );
@@ -358,7 +400,7 @@ mod tests {
             expect![[r#"
             -module(main).
 
-            -compile([export_all, nowarn_export_all, warn_missing_spec]).
+            -compile([export_all, nowarn_export_all, warn_missing_spec_all]).
 
             "#]],
         );
@@ -377,7 +419,7 @@ mod tests {
             expect![[r#"
             -module(main).
 
-            -compile([export_all, warn_missing_spec]).
+            -compile([export_all, warn_missing_spec_all]).
 
             "#]],
         );
@@ -396,7 +438,26 @@ mod tests {
             expect![[r#"
             -module(main).
 
-            -compile([{foo, bar}, warn_missing_spec]).
+            -compile([{foo, bar}, warn_missing_spec_all]).
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn applies_fix_upgrade_to_all() {
+        check_fix(
+            r#"
+            //- /erl/my_app/src/main.erl
+            -module(main).
+
+            -c~ompile(warn_missing_spec).
+
+            "#,
+            expect![[r#"
+            -module(main).
+
+            -compile(warn_missing_spec_all).
 
             "#]],
         );
