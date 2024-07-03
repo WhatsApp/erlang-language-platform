@@ -14,7 +14,6 @@ use elp_ide::elp_ide_db::elp_base_db::AppType;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use lsp_types::WatchKind;
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -82,18 +81,30 @@ impl ProjectFolders {
 
         for project in &project_apps.projects {
             let root = project.root();
+            // LSP spec says "If omitted it defaults to
+            // WatchKind.Create | WatchKind.Change | WatchKind.Delete
+            // which is 7".
+            let kind = None;
             watch.extend(vec![
                 lsp_types::FileSystemWatcher {
                     glob_pattern: format!("{}/**/BUCK", root.display()),
-                    kind: Some(WatchKind::Create),
+                    kind,
                 },
                 lsp_types::FileSystemWatcher {
                     glob_pattern: format!("{}/**/TARGETS", root.display()),
-                    kind: Some(WatchKind::Create),
+                    kind,
                 },
                 lsp_types::FileSystemWatcher {
                     glob_pattern: format!("{}/**/TARGETS.v2", root.display()),
-                    kind: Some(WatchKind::Create),
+                    kind,
+                },
+                lsp_types::FileSystemWatcher {
+                    glob_pattern: format!("{}/.elp.toml", root.display()),
+                    kind,
+                },
+                lsp_types::FileSystemWatcher {
+                    glob_pattern: format!("{}/.elp_lint.toml", root.display()),
+                    kind,
                 },
             ]);
         }

@@ -223,6 +223,7 @@ pub struct Server {
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
     reset_source_roots: bool,
+    native_diagnostics_requested: bool,
     eqwalizer_diagnostics_requested: bool,
     eqwalizer_project_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
@@ -274,6 +275,7 @@ impl Server {
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             reset_source_roots: false,
+            native_diagnostics_requested: false,
             eqwalizer_diagnostics_requested: false,
             eqwalizer_project_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
@@ -489,7 +491,7 @@ impl Server {
         let changed = self.process_changes_to_vfs_store();
 
         if self.status == Status::Running {
-            if changed {
+            if mem::take(&mut self.native_diagnostics_requested) || changed {
                 self.update_native_diagnostics();
             }
 
@@ -768,11 +770,23 @@ impl Server {
             (Some("TARGETS"), Some("v2")) => true,
             (Some("rebar"), Some("config")) => true,
             (Some("rebar.config"), Some("script")) => true,
+            (Some(".elp"), Some("toml")) => true,
             (Some(file), Some("erl"))
                 if change.typ == FileChangeType::CREATED && file.ends_with("_SUITE") =>
             {
                 true
             }
+            _ => false,
+        };
+        result && path_ref.is_file()
+    }
+
+    fn should_reload_config_for_path(&self, path: &AbsPath) -> bool {
+        let path_ref: &Path = path.as_ref();
+        let file_name = path.file_stem().and_then(|name| name.to_str());
+        let ext = path.extension().and_then(|ext| ext.to_str());
+        let result = match (file_name, ext) {
+            (Some(".elp_lint"), Some("toml")) => true,
             _ => false,
         };
         result && path_ref.is_file()
@@ -1221,6 +1235,9 @@ impl Server {
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                 log::warn!("update_configuration: read lint file: {:?}", lint_config);
                 self.lint_config = Arc::new(lint_config);
+                // Diagnostic config may have changed, regen native, the
+                // others are requested after this
+                self.native_diagnostics_requested = true;
             }
         }
     }
@@ -1299,9 +1316,9 @@ impl Server {
     }
 
     fn reload_project(&mut self, paths: Vec<AbsPathBuf>) {
-        let loader = self.project_loader.clone();
-        let query_config = self.config.buck_query();
         if !paths.is_empty() {
+            let loader = self.project_loader.clone();
+            let query_config = self.config.buck_query();
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
                     let mut loader = loader.lock();
@@ -1631,10 +1648,14 @@ fn lsp_msg_for_context(message: &lsp_server::Message) -> String {
 
 fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
     let mut to_reload = vec![];
+    let mut refresh_config = false;
     for change in changes {
         if let Ok(path) = convert::abs_path(&change.uri) {
             if this.should_reload_project_for_path(&path, change) {
                 to_reload.push(path.clone());
+            }
+            if this.should_reload_config_for_path(&path) {
+                refresh_config = true;
             }
             let opened = convert::vfs_path(&change.uri)
                 .map(|vfs_path| this.open_document_versions.read().contains_key(&vfs_path))
@@ -1654,6 +1675,9 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
         }
     }
     this.reload_project(to_reload);
+    if refresh_config {
+        this.refresh_config();
+    }
     this.eqwalizer_diagnostics_requested = true;
     if this.config.eqwalizer().all {
         this.eqwalizer_project_diagnostics_requested = true;
