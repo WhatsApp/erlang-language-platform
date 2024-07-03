@@ -29,6 +29,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: false,
         include_generated: true,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         missing_separator_semantic(diags, sema, file_id);

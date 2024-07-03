@@ -40,6 +40,7 @@ pub(crate) static DESCRIPTOR_SEMANTIC: DiagnosticDescriptor = DiagnosticDescript
         experimental: false,
         include_generated: true,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         head_mismatch_semantic(diags, sema, file_id);

@@ -44,6 +44,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: true,
         include_generated: false,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         redundant_assignment(diags, sema, file_id);

@@ -45,6 +45,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: false,
         include_generated: true,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         mutable_variable_bug(diags, sema, file_id);

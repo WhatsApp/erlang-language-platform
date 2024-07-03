@@ -43,6 +43,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: false,
         include_generated: false,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         missing_compile_warn_missing_spec(diags, sema, file_id);

@@ -368,6 +368,9 @@ pub struct DiagnosticConditions {
     pub experimental: bool,
     pub include_generated: bool,
     pub include_tests: bool,
+    /// By default this diagnostic is disabled. It must be explicitly enabled in
+    /// `LintConfig.enabled_lints`
+    pub explicit_enable: bool,
 }
 
 impl DiagnosticConditions {

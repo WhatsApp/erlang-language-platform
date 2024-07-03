@@ -33,6 +33,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: false,
         include_generated: true,
         include_tests: true,
+        explicit_enable: false,
     },
     checker: &|diags, sema, file_id, file_kind| {
         dependent_header(diags, sema, file_id, file_kind);
