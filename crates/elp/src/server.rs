@@ -1212,17 +1212,15 @@ impl Server {
             .reconfigure(LOGGER_NAME, self.config.log_filter());
         self.logger.reconfigure("default", self.config.log_filter());
 
-        if self.config.enable_experimental_diagnostics() {
-            // Read the lint config file
-            let loader = self.project_loader.clone();
-            let loader = loader.lock();
-            // The OTP root is added with a project root value of None, skip it
-            if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
-                let path_buf: PathBuf = path.clone().into();
-                if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
-                    log::warn!("update_configuration: read lint file: {:?}", lint_config);
-                    self.lint_config = Arc::new(lint_config);
-                }
+        // Read the lint config file
+        let loader = self.project_loader.clone();
+        let loader = loader.lock();
+        // The OTP root is added with a project root value of None, skip it
+        if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
+            let path_buf: PathBuf = path.clone().into();
+            if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
+                log::warn!("update_configuration: read lint file: {:?}", lint_config);
+                self.lint_config = Arc::new(lint_config);
             }
         }
     }
