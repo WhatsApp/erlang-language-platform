@@ -23,11 +23,11 @@ use elp::convert;
 use elp::document::Document;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
-use elp::LintConfig;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
@@ -174,45 +174,15 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
             } else {
                 LintConfig::default()
             };
-            let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = cfg_from_file
-                .enabled_lints
-                .into_iter()
-                .collect::<FxHashSet<_>>();
-            let mut disabled_diagnostics: FxHashSet<DiagnosticCode> =
-                cfg_from_file.disabled_lints.into_iter().collect();
-
-            if let Some(diagnostic_ignore) = diagnostic_ignore {
-                let diagnostic_ignore = DiagnosticCode::from(diagnostic_ignore.as_str());
-                // Make sure we do not mask the one we explicitly asked for
-                allowed_diagnostics.remove(&diagnostic_ignore);
-                disabled_diagnostics.insert(diagnostic_ignore);
-            }
-
-            if let Some(diagnostic_filter) = diagnostic_filter {
-                // We have replaced L1500 with W0020. Generate an error if we get L1500.
-                if diagnostic_filter == "L1500" {
-                    bail!("Code L1500 has been superseded by W0020");
-                }
-
-                let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
-                // Make sure we do not mask the one we explicitly asked for
-                disabled_diagnostics.remove(&diagnostic_filter);
-                allowed_diagnostics.insert(diagnostic_filter);
-            }
-
-            // Make sure the enabled ones win out over disabled if a lint appears in both
-            disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
-
-            if allowed_diagnostics.is_empty() {
-                bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
-            }
-
             let mut cfg = DiagnosticsConfig::default();
+            cfg =
+                cfg.configure_diagnostics(&cfg_from_file, diagnostic_filter, diagnostic_ignore)?;
+            let allowed_diagnostics = cfg.enabled.clone();
             cfg.include_generated = args.include_generated;
             cfg.experimental = args.experimental_diags;
             cfg.include_suppressed = args.include_suppressed;
-            cfg.disabled = disabled_diagnostics;
             let cfg = cfg.from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
+
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;
             let mut diags = {

@@ -11,6 +11,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::sync::Arc;
 
+use anyhow::bail;
+use anyhow::Result;
 use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -66,6 +68,8 @@ use hir::Semantic;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Deserialize;
+use serde::Serialize;
 use text_edit::TextEdit;
 
 use crate::common_test;
@@ -388,6 +392,7 @@ pub struct DiagnosticDescriptor<'a> {
 pub struct DiagnosticsConfig<'a> {
     pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
+    pub enabled: FxHashSet<DiagnosticCode>,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: Arc<LintsFromConfig>,
     pub include_generated: bool,
@@ -398,6 +403,50 @@ pub struct DiagnosticsConfig<'a> {
 }
 
 impl<'a> DiagnosticsConfig<'a> {
+    pub fn configure_diagnostics(
+        mut self,
+        lint_config: &LintConfig,
+        diagnostic_filter: &Option<String>,
+        diagnostic_ignore: &Option<String>,
+    ) -> Result<DiagnosticsConfig<'a>> {
+        let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = lint_config
+            .enabled_lints
+            .iter()
+            .cloned()
+            .collect::<FxHashSet<_>>();
+        let mut disabled_diagnostics: FxHashSet<DiagnosticCode> =
+            lint_config.disabled_lints.iter().cloned().collect();
+
+        if let Some(diagnostic_ignore) = diagnostic_ignore {
+            let diagnostic_ignore = DiagnosticCode::from(diagnostic_ignore.as_str());
+            // Make sure we do not mask the one we explicitly asked for
+            allowed_diagnostics.remove(&diagnostic_ignore);
+            disabled_diagnostics.insert(diagnostic_ignore);
+        }
+
+        if let Some(diagnostic_filter) = diagnostic_filter {
+            // We have replaced L1500 with W0020. Generate an error if we get L1500.
+            if diagnostic_filter == "L1500" {
+                bail!("Code L1500 has been superseded by W0020");
+            }
+
+            let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
+            // Make sure we do not mask the one we explicitly asked for
+            disabled_diagnostics.remove(&diagnostic_filter);
+            allowed_diagnostics.insert(diagnostic_filter);
+        }
+
+        // Make sure the enabled ones win out over disabled if a lint appears in both
+        disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
+
+        if allowed_diagnostics.is_empty() {
+            bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
+        }
+        self.disabled = disabled_diagnostics;
+        self.enabled = allowed_diagnostics;
+        Ok(self)
+    }
+
     pub fn set_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
         self.experimental = value;
         self
@@ -438,6 +487,19 @@ impl<'a> DiagnosticsConfig<'a> {
         self.lints_from_config = lints_from_config.clone();
         self
     }
+}
+
+// ---------------------------------------------------------------------
+
+/// Configuration file format for lints. Deserialized from .toml
+/// initially.  But could by anything supported by serde.
+#[derive(Deserialize, Serialize, Default, Debug)]
+pub struct LintConfig {
+    pub enabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
+    pub disabled_lints: Vec<DiagnosticCode>,
+    #[serde(default)]
+    pub ad_hoc_lints: LintsFromConfig,
 }
 
 // ---------------------------------------------------------------------

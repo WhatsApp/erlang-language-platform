@@ -15,16 +15,13 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Result;
-use elp_ide::diagnostics::DiagnosticCode;
-use elp_ide::diagnostics::LintsFromConfig;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::Analysis;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use serde::Serialize;
 pub use server::setup::ServerSetup;
 
 pub mod arc_types;
@@ -120,17 +117,6 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
 }
 
 // ---------------------------------------------------------------------
-
-/// Configuration file format for lints. Deserialized from .toml
-/// initially.  But could by anything supported by serde.
-#[derive(Deserialize, Serialize, Default, Debug)]
-pub struct LintConfig {
-    pub enabled_lints: Vec<DiagnosticCode>,
-    #[serde(default)]
-    pub disabled_lints: Vec<DiagnosticCode>,
-    #[serde(default)]
-    pub ad_hoc_lints: LintsFromConfig,
-}
 
 pub const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
