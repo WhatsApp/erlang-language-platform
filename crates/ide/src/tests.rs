@@ -37,9 +37,7 @@ use crate::NavigationTarget;
 
 #[track_caller]
 pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
     let diagnostic_filter = &|_d: &Diagnostic| true;
     let assist_filter = &|_d: &Assist| true;
     check_filtered_ct_fix_with_config(
@@ -58,9 +56,7 @@ pub(crate) fn check_filtered_ct_fix(
     diagnostic_filter: &dyn Fn(&Diagnostic) -> bool,
     assist_filter: &dyn Fn(&Assist) -> bool,
 ) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
     check_filtered_ct_fix_with_config(
         fixture_before,
         fixture_after,
@@ -126,9 +122,7 @@ pub(crate) fn check_filtered_ct_fix_with_config(
 ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
 #[track_caller]
 pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .set_experimental(true);
+    let config = DiagnosticsConfig::default().set_experimental(true);
     check_nth_fix(
         0,
         fixture_before,
@@ -162,9 +156,7 @@ pub enum IncludeCodeActionAssists {
 
 #[track_caller]
 pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: Expect) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .set_experimental(true);
+    let config = DiagnosticsConfig::default().set_experimental(true);
     check_nth_fix(
         0,
         fixture_before,
@@ -224,9 +216,7 @@ pub(crate) fn check_nth_fix(
 ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
 #[track_caller]
 pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: &str) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .set_experimental(true);
+    let config = DiagnosticsConfig::default().set_experimental(true);
     check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config);
 }
 
@@ -296,9 +286,7 @@ pub(crate) fn check_specific_fix_with_config(
 
 #[track_caller]
 pub(crate) fn check_diagnostics(fixture: &str) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .set_experimental(true);
+    let config = DiagnosticsConfig::default().set_experimental(true);
     check_diagnostics_with_config(config, fixture)
 }
 
@@ -415,9 +403,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
 #[track_caller]
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
-    let config = DiagnosticsConfig::default()
-        .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
-        .disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
     check_no_parse_errors_with_config(analysis, file_id, &config);
 }
 

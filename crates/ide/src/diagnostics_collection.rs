@@ -256,7 +256,6 @@ mod tests {
     use crate::diagnostics;
     use crate::diagnostics::attach_related_diagnostics;
     use crate::diagnostics::Diagnostic;
-    use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::LabeledDiagnostics;
     use crate::diagnostics::Severity;
     use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
@@ -393,8 +392,7 @@ mod tests {
             labeled_undefined_errors,
         };
 
-        let config =
-            DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default();
         check_diagnostics_with_config_and_extra(
             config,
             &extra_diags,

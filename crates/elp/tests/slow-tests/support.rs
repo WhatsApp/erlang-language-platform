@@ -155,7 +155,6 @@ impl Project {
                 ..Default::default()
             },
         );
-        config.ignore_diagnostic(DiagnosticCode::MissingCompileWarnMissingSpec);
         config.ignore_diagnostic(DiagnosticCode::UndefinedFunction);
 
         let handle = thread::spawn(|| {

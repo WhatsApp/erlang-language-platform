@@ -555,7 +555,6 @@ mod tests {
     fn check_adhoc_function_match(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
         check_diagnostics_with_config(
             DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
                 .disable(DiagnosticCode::CrossNodeEval)
                 .disable(DiagnosticCode::UndefinedFunction)
                 .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
@@ -573,7 +572,6 @@ mod tests {
     ) {
         check_fix_with_config(
             DiagnosticsConfig::default()
-                .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
                 .disable(DiagnosticCode::CrossNodeEval)
                 .disable(DiagnosticCode::UndefinedFunction)
                 .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {

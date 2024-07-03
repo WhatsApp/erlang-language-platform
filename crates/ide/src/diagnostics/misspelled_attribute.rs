@@ -148,7 +148,6 @@ fn make_diagnostic(
 mod tests {
     use expect_test::expect;
 
-    use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::fixture;
     use crate::tests::check_diagnostics;
@@ -183,10 +182,7 @@ mod tests {
     -di~alyzer({nowarn_function, f/0}).
             "#,
         );
-        let mut config = DiagnosticsConfig::default();
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default();
         let diags = analysis
             .native_diagnostics(&config, position.file_id)
             .unwrap();
@@ -207,10 +203,7 @@ mod tests {
     f(#dyalizer{field = Bar}) -> Bar.
             "#,
         );
-        let mut config = DiagnosticsConfig::default();
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default();
         let diags = analysis
             .native_diagnostics(&config, position.file_id)
             .unwrap();

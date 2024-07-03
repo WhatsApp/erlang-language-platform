@@ -363,7 +363,6 @@ mod tests {
     #[track_caller]
     fn check_diagnostics(ra_fixture: &str) {
         let config = DiagnosticsConfig::default()
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
             .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
         check_diagnostics_with_config(config, ra_fixture)
@@ -372,7 +371,6 @@ mod tests {
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default()
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
             .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
         check_nth_fix(

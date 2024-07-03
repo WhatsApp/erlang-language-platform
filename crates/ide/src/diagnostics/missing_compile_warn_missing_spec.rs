@@ -12,7 +12,6 @@
 //! Return a diagnostic if a the file does not have
 //! `warn_missing_spec(_all)` in a compile attribute
 //! Add this as a fix.
-//!
 
 use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
@@ -155,7 +154,7 @@ fn report_diagnostic(
                 &co_id,
                 "warn_missing_spec",
                 "warn_missing_spec_all",
-                &mut builder
+                &mut builder,
             );
         }
     }
@@ -183,15 +182,15 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let mut config = DiagnosticsConfig::default();
-        config.enabled.insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config =
+            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_fix_with_config(config, fixture_before, fixture_after)
     }
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let mut config = DiagnosticsConfig::default();
-        config.enabled.insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config =
+            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_diagnostics_with_config(config, fixture)
     }
 
@@ -200,7 +199,6 @@ mod tests {
         let config = DiagnosticsConfig::default();
         check_diagnostics_with_config(config, fixture)
     }
-
 
     #[test]
     fn no_compile_attribute() {

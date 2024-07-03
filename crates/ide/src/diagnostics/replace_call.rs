@@ -371,7 +371,6 @@ mod tests {
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::UndefinedFunction)
             .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
         check_fix_with_config(config, fixture_before, fixture_after)
@@ -385,7 +384,6 @@ mod tests {
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::UndefinedFunction)
             .set_lints_from_config(&Arc::new(lints_from_config));
         check_fix_with_config(config, fixture_before, fixture_after)
@@ -398,7 +396,6 @@ mod tests {
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::UndefinedFunction)
             .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
         check_diagnostics_with_config(config, fixture)

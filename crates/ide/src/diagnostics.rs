@@ -483,6 +483,11 @@ impl<'a> DiagnosticsConfig<'a> {
         self
     }
 
+    pub fn enable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
+        self.enabled.insert(code);
+        self
+    }
+
     pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
         self.disabled.insert(code);
         self
@@ -1800,7 +1805,6 @@ baz(1)->4.
                     file_id,
                 )
             }])
-            .disable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::UndefinedFunction);
         check_diagnostics_with_config(
             DiagnosticsConfig {
@@ -2000,8 +2004,7 @@ baz(1)->4.
             labeled_undefined_errors,
         };
 
-        let config =
-            DiagnosticsConfig::default().disable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default();
         check_diagnostics_with_config_and_extra(
             config,
             &extra_diags,

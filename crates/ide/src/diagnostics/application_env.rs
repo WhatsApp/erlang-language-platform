@@ -238,16 +238,12 @@ fn check_valid_application(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
 
     #[track_caller]
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
-        let mut config = DiagnosticsConfig::default();
-        config
-            .disabled
-            .insert(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default();
         check_diagnostics_with_config(config, ra_fixture)
     }
 
