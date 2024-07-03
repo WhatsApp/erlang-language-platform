@@ -919,13 +919,12 @@ impl Server {
         let opened_documents = self.opened_documents();
         let snapshot = self.snapshot();
 
-        let config =
-            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
+        let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
                 .into_iter()
                 .filter_map(|file_id| {
-                    Some((file_id, snapshot.native_diagnostics(file_id, &config)?))
+                    Some((file_id, snapshot.native_diagnostics(file_id, include_otp)?))
                 })
                 .collect();
 
@@ -951,13 +950,15 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EqWAlizing".to_string());
 
-        let config =
-            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
+        let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
                 .into_iter()
                 .filter_map(|file_id| {
-                    Some((file_id, snapshot.eqwalizer_diagnostics(file_id, &config)?))
+                    Some((
+                        file_id,
+                        snapshot.eqwalizer_diagnostics(file_id, include_otp)?,
+                    ))
                 })
                 .collect();
 
@@ -1008,12 +1009,11 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EDoc".to_string());
 
-        let config =
-            DiagnosticsConfig::default().set_include_otp(self.config.enable_otp_diagnostics());
+        let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
                 .into_iter()
-                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, &config))
+                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, include_otp))
                 .flatten()
                 .collect();
 

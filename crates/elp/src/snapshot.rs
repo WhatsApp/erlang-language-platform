@@ -195,9 +195,9 @@ impl Snapshot {
     pub fn native_diagnostics(
         &self,
         file_id: FileId,
-        config: &DiagnosticsConfig,
+        include_otp: bool,
     ) -> Option<LabeledDiagnostics> {
-        if !config.include_otp && self.is_otp(file_id) {
+        if !include_otp && self.is_otp(file_id) {
             return None;
         }
 
@@ -212,9 +212,9 @@ impl Snapshot {
     pub fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
-        config: &DiagnosticsConfig,
+        include_otp: bool,
     ) -> Option<Vec<diagnostics::Diagnostic>> {
-        if !config.include_otp && self.is_otp(file_id) {
+        if !include_otp && self.is_otp(file_id) {
             return None;
         }
 
@@ -264,14 +264,14 @@ impl Snapshot {
     pub fn edoc_diagnostics(
         &self,
         file_id: FileId,
-        config: &DiagnosticsConfig,
+        include_otp: bool,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let file_kind = self.analysis.file_kind(file_id).ok()?;
         if file_kind != FileKind::SrcModule && file_kind != FileKind::TestModule {
             return None;
         }
 
-        if !config.include_otp && self.is_otp(file_id) {
+        if !include_otp && self.is_otp(file_id) {
             return None;
         }
 
