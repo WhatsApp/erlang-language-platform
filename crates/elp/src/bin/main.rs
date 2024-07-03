@@ -1226,6 +1226,31 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_explicit_enable_diagnostic(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        check_lint_fix(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_test2.toml"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_explicit_enable_output.stdout"),
+            101,
+            buck,
+            None,
+            tmp_path,
+            Path::new("../resources/test/lint/lint_recursive"),
+            &[],
+            false,
+        )
+        .expect("bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_json_output(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
