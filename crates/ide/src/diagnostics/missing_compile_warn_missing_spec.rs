@@ -165,7 +165,8 @@ fn report_diagnostic(
         range,
     ).with_fixes(Some(vec![fix("add_warn_missing_spec_all",
                                "Add compile option 'warn_missing_spec_all'",
-                               edit, range)]));
+                               edit, range)]))
+    .with_ignore_fix(sema, file_id);
     diags.push(d);
 }
 
@@ -179,12 +180,20 @@ mod tests {
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
+    use crate::tests::check_specific_fix_with_config;
 
     #[track_caller]
     pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config =
             DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_fix_with_config(config, fixture_before, fixture_after)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: Expect) {
+        let config =
+            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config)
     }
 
     #[track_caller]
@@ -457,6 +466,68 @@ mod tests {
             -module(main).
 
             -compile(warn_missing_spec_all).
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn applies_fix_elp_ignore_module_level() {
+        check_specific_fix(
+            "Ignore problem",
+            r#"
+            //- /erl/my_app/src/main.erl
+            ~
+            -module(main).
+
+            "#,
+            expect![[r#"
+
+                % elp:ignore W0012 (compile-warn-missing-spec)
+                -module(main).
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn applies_fix_elp_ignore_module_level_header_comments() {
+        check_specific_fix(
+            "Ignore problem",
+            r#"
+            //- /erl/my_app/src/main.erl
+            ~%% a comment at the
+            %% top of the file
+
+            -module(main).
+
+            "#,
+            expect![[r#"
+                %% a comment at the
+                %% top of the file
+
+                % elp:ignore W0012 (compile-warn-missing-spec)
+                -module(main).
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn applies_fix_elp_ignore_module_level_header_comments_no_module_attribute() {
+        check_specific_fix(
+            "Ignore problem",
+            r#"
+            //- /erl/my_app/src/main.erl
+            ~%% a comment at the
+            %% top of the file
+
+            "#,
+            expect![[r#"
+
+                % elp:ignore W0012 (compile-warn-missing-spec)
+                %% a comment at the
+                %% top of the file
 
             "#]],
         );

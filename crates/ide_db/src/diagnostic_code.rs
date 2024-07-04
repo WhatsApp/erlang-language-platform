@@ -247,6 +247,7 @@ impl DiagnosticCode {
             // True list
             DiagnosticCode::MisspelledAttribute => true,
             DiagnosticCode::CrossNodeEval => true,
+            DiagnosticCode::MissingCompileWarnMissingSpec => true,
             // False list
             DiagnosticCode::DefaultCodeForEnumIter => false,
             DiagnosticCode::HeadMismatch => false,
@@ -265,7 +266,6 @@ impl DiagnosticCode {
             DiagnosticCode::RedundantAssignment => false,
             DiagnosticCode::UnreachableTest => false,
             DiagnosticCode::ApplicationGetEnv => false,
-            DiagnosticCode::MissingCompileWarnMissingSpec => false,
             DiagnosticCode::DependentHeader => false,
             DiagnosticCode::DeprecatedFunction => false,
             DiagnosticCode::UndefinedFunction => false,

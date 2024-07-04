@@ -226,9 +226,33 @@ impl Diagnostic {
             .right_biased()
         {
             let indent = IndentLevel::from_token(&token);
-            let text = format!("\n{}% elp:ignore {}", indent, self.code.as_labeled_code(),);
 
-            let offset = start_of_line(&token);
+            let mut offset = start_of_line(&token);
+            let mut suffix = "";
+            if self.range == TextRange::empty(0.into()) {
+                // Change the location to be just before the module form if it exists
+                let form_list = sema.form_list(file_id);
+                if let Some(module_attribute) = form_list.module_attribute() {
+                    let ma_form = module_attribute.form_id.get(&parsed.value);
+                    if let Some(ma_token) = parsed
+                        .value
+                        .syntax()
+                        .token_at_offset(ma_form.syntax().text_range().start())
+                        .right_biased()
+                    {
+                        offset = start_of_line(&ma_token);
+                    }
+                } else {
+                    suffix = "\n";
+                }
+            }
+            let text = format!(
+                "\n{}% elp:ignore {}{}",
+                indent,
+                self.code.as_labeled_code(),
+                suffix
+            );
+
             builder.insert(offset, text);
             let edit = builder.finish();
             let source_change = SourceChange::from_text_edit(file_id, edit);
