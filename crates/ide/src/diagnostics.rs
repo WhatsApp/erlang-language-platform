@@ -2087,12 +2087,12 @@ baz(1)->4.
                Fo~o = 1.
              %%^^^^^^^ 💡 warning: match is redundant
              "#,
-            r#"
+            expect![[r#"
              -module(main).
 
              baz()->
                1.
-             "#,
+             "#]],
         );
     }
 
@@ -2108,13 +2108,13 @@ baz(1)->4.
                Fo~o = 1.
              %%^^^^^^^ 💡 warning: match is redundant
              "#,
-            r#"
+            expect![[r#"
              -module(main).
 
              baz()->
                1.
              %%^^^^^^^ 💡 warning: match is redundant
-             "#,
+             "#]],
         );
     }
 

@@ -163,6 +163,8 @@ fn get_spec(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
     use crate::tests::check_specific_fix;
 
@@ -194,12 +196,12 @@ mod tests {
             baz() -> somet~hing_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
-            r#"
+            expect![[r#"
             -module(bar3e).
 
             -spec baz() -> spec_atom.
             baz() -> spec_atom.
-         "#,
+         "#]],
         )
     }
 
@@ -216,12 +218,12 @@ mod tests {
             baz() -> somethin~g_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
-            r#"
+            expect![[r#"
             -module(bar4e).
 
             -spec baz() -> something_else.
             baz() -> something_else.
-         "#,
+         "#]],
         )
     }
 
@@ -238,12 +240,12 @@ mod tests {
             baz() -> 5~3.
                   %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
-            r#"
+            expect![[r#"
             -module(bar5e).
 
             -spec baz() -> {ok, number()}.
             baz() -> {ok, 53}.
-         "#,
+         "#]],
         )
     }
 
@@ -260,12 +262,12 @@ mod tests {
             baz() -> 5~3.
                   %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
-            r#"
+            expect![[r#"
             -module(bar6e).
 
             -spec baz() -> number().
             baz() -> 53.
-         "#,
+         "#]],
         )
     }
 }

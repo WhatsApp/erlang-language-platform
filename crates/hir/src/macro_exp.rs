@@ -285,6 +285,7 @@ mod tests {
     use crate::DefineDef;
     use crate::File;
 
+    #[track_caller]
     fn resolve_macro(fixture: &str) -> (Option<ResolvedMacro>, TestDB, ChangeFixture) {
         let (db, fixture) = TestDB::with_fixture(fixture);
         let position = fixture.position();

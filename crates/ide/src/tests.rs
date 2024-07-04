@@ -215,7 +215,7 @@ pub(crate) fn check_nth_fix(
 ///  * the first diagnostic fix trigger range touches the input cursor position
 ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
 #[track_caller]
-pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: &str) {
+pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: Expect) {
     let config = DiagnosticsConfig::default().set_experimental(true);
     check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config);
 }
@@ -224,11 +224,9 @@ pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixtu
 pub(crate) fn check_specific_fix_with_config(
     assist_label: Option<&str>,
     fixture_before: &str,
-    fixture_after: &str,
+    fixture_after: Expect,
     config: DiagnosticsConfig,
 ) {
-    let after = trim_indent(fixture_after);
-
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
     let diagnostics =
         fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
@@ -281,7 +279,7 @@ pub(crate) fn check_specific_fix_with_config(
         fix.target,
         pos.offset
     );
-    assert_eq_text!(&after, &actual);
+    fixture_after.assert_eq(&actual);
 }
 
 #[track_caller]

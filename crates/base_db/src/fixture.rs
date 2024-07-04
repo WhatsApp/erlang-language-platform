@@ -343,6 +343,7 @@ impl ChangeFixture {
             .collect()
     }
 
+    #[track_caller]
     pub fn position(&self) -> FilePosition {
         let (file_id, range_or_offset) = self
             .file_position

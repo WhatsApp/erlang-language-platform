@@ -25,6 +25,7 @@ use crate::AnalysisHost;
 use crate::FilePosition;
 
 /// Creates analysis from a single file fixture, returns the file id
+#[track_caller]
 pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
     let (db, file_id) = RootDatabase::with_single_file(fixture);
     let host = AnalysisHost { db };
@@ -32,6 +33,7 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 }
 
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
+#[track_caller]
 pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEnabled) {
     let (db, position, diagnostics_enabled) = RootDatabase::with_position(fixture);
     let host = AnalysisHost { db };
@@ -39,6 +41,7 @@ pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEna
 }
 
 /// Creates analysis from a multi-file fixture
+#[track_caller]
 pub(crate) fn multi_file(fixture: &str) -> Analysis {
     let (db, _fixture) = RootDatabase::with_fixture(fixture);
     let host = AnalysisHost { db };
