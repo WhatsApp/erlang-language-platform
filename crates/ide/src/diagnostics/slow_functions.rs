@@ -30,7 +30,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         experimental: false,
         include_generated: false,
         include_tests: false,
-        explicit_enable: false,
+        default_disabled: false,
     },
     checker: &|diags, sema, file_id, _ext| {
         slow_functions(diags, sema, file_id);

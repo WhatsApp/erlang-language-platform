@@ -370,7 +370,7 @@ pub struct DiagnosticConditions {
     pub include_tests: bool,
     /// By default this diagnostic is disabled. It must be explicitly enabled in
     /// `LintConfig.enabled_lints`
-    pub explicit_enable: bool,
+    pub default_disabled: bool,
 }
 
 impl DiagnosticConditions {
@@ -734,7 +734,7 @@ pub fn diagnostics_from_descriptors(
         .unwrap_or(false);
     descriptors.into_iter().for_each(|descriptor| {
         if descriptor.conditions.enabled(config, is_generated, is_test) {
-            if descriptor.conditions.explicit_enable {
+            if descriptor.conditions.default_disabled {
                 // Filter the returned diagnostics to ensure they are
                 // enabled
                 let mut diags: Vec<Diagnostic> = Vec::default();
