@@ -720,7 +720,7 @@ scan_tqstring(Cs, St, Off, Toks, {SigilType, Qs}) ->
                     %"
                     str = lists_duplicate(Nqs, $", "")
                 },
-            scan_tqstring_lines(Ncs, St, Qs, Toks, Tqs)
+            scan_tqstring_lines(Ncs, St, Nqs, Toks, Tqs)
     end.
 
 %% Scan off characters that are C and count them
@@ -1106,7 +1106,7 @@ scan_sigil_suffix(Cs, St, Off, Toks, {Wcs, N0}) when is_list(Wcs) ->
                 A when is_atom(A) ->
                     Tok = {Type, {Off, Noff}, Suffix},
                     scan_string_concat(
-                        Ncs, St, Noff, [Tok | Toks], {Suffix, 1}
+                        Ncs, St, Noff, [Tok | Toks], {Suffix, 0}
                     )
             catch
                 _:_ ->

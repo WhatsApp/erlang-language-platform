@@ -54,7 +54,7 @@ Diagnostics reported in 1 modules:
       66:4-66:23::[Warning] [W0006] this statement has no effect
       67:4-67:23::[Warning] [W0006] this statement has no effect
       68:4-68:23::[Warning] [W0006] this statement has no effect
-      70:54-70:55::[Warning] [L1268] variable 'X' is unused
+      70:4-70:5::[Warning] [L1268] variable 'X' is unused
       75:4-78:7::[Warning] [W0006] this statement has no effect
       75:4-78:7::[Warning] [W0006] this statement has no effect
       79:4-83:8::[Warning] [W0006] this statement has no effect
@@ -63,5 +63,5 @@ Diagnostics reported in 1 modules:
       84:4-88:9::[Warning] [W0006] this statement has no effect
       89:4-93:10::[Warning] [W0006] this statement has no effect
       94:4-98:11::[Warning] [W0006] this statement has no effect
-      111:55-111:56::[Error] [P1711] syntax error before: X
+      111:3-111:4::[Error] [P1711] syntax error before: X
       127:8-127:23::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
