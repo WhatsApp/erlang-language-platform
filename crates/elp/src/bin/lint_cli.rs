@@ -178,8 +178,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                 .configure_diagnostics(&cfg_from_file, diagnostic_filter, diagnostic_ignore)?
                 .set_include_generated(args.include_generated)
                 .set_experimental(args.experimental_diags)
-                .set_include_suppressed(args.include_suppressed)
-                .set_lints_from_config(&Arc::new(cfg_from_file.ad_hoc_lints));
+                .set_include_suppressed(args.include_suppressed);
 
             let allowed_diagnostics = cfg.enabled.clone();
 

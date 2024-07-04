@@ -447,6 +447,7 @@ impl<'a> DiagnosticsConfig<'a> {
         }
         self.disabled = disabled_diagnostics;
         self.enabled = allowed_diagnostics;
+        self.lints_from_config = lint_config.ad_hoc_lints.clone();
         Ok(self)
     }
 
