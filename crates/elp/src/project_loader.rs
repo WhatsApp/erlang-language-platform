@@ -7,7 +7,7 @@
  * of this source tree.
  */
 
-use std::time::Instant;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
@@ -21,7 +21,7 @@ use fxhash::FxHashMap;
 
 pub struct ProjectLoader {
     pub(crate) project_roots: FxHashMap<AbsPathBuf, Option<ProjectManifest>>,
-    start: Instant,
+    start: SystemTime,
     initialized: bool,
 }
 
@@ -33,7 +33,7 @@ impl ProjectLoader {
             let otp_root = AbsPathBuf::assert(otp_root);
             project_roots.insert(otp_root, None);
         }
-        let start = Instant::now();
+        let start = SystemTime::now();
         let initialized = false;
         ProjectLoader {
             project_roots,
@@ -104,9 +104,9 @@ impl ProjectLoader {
     pub fn load_completed(&mut self) {
         if !self.initialized {
             self.initialized = true;
-            let diff = self.start.elapsed().as_millis() as u32;
+            let diff = self.start.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
             let data = serde_json::Value::String("project_loading_completed".to_string());
-            telemetry::send_with_duration(module_path!().to_string(), data, diff);
+            telemetry::send_with_duration(module_path!().to_string(), data, diff, self.start);
         }
     }
 }

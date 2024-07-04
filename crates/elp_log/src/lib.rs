@@ -12,6 +12,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
+use std::time::SystemTime;
 
 pub use env_logger::filter::Builder;
 pub use env_logger::filter::Filter;
@@ -174,6 +175,7 @@ where
     data: T,
     module_path: &'static str,
     instant: Option<Instant>,
+    start_time: SystemTime,
     telemetry: Telemetry,
 }
 
@@ -189,13 +191,16 @@ where
             data,
             module_path,
             instant: Some(Instant::now()),
+            start_time: SystemTime::now(),
             telemetry,
         }
     }
 
-    fn send_with_duration(&self, duration_ms: u32) {
+    fn send_with_duration(&self, duration_ms: u32, start_time: SystemTime) {
         match serde_json::to_value(self.data.clone()) {
-            Ok(value) => send_with_duration(String::from("telemetry"), value, duration_ms),
+            Ok(value) => {
+                send_with_duration(String::from("telemetry"), value, duration_ms, start_time)
+            }
             Err(err) => log::warn!(
                 "Error serializing telemetry data. data: {}, err: {}",
                 self.data,
@@ -228,12 +233,12 @@ where
                 Telemetry::No => self.log(duration_ms),
                 Telemetry::Always => {
                     self.log(duration_ms);
-                    self.send_with_duration(duration_ms);
+                    self.send_with_duration(duration_ms, self.start_time);
                 }
                 Telemetry::Exceeds(threshold) => {
                     if duration_ms > threshold.as_millis() as u32 {
                         self.log(duration_ms);
-                        self.send_with_duration(duration_ms)
+                        self.send_with_duration(duration_ms, self.start_time)
                     }
                 }
             }
