@@ -35,6 +35,7 @@ use text_edit::TextRange;
 use super::Diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
+use super::DIAGNOSTIC_WHOLE_FILE_RANGE;
 use crate::fix;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
@@ -140,7 +141,7 @@ fn report_diagnostic(
     what: (Found, Option<CompileOptionId>),
     diags: &mut Vec<Diagnostic>,
 ) {
-    let range = range.unwrap_or(TextRange::empty(0.into()));
+    let range = range.unwrap_or(DIAGNOSTIC_WHOLE_FILE_RANGE);
 
     let mut builder = SourceChangeBuilder::new(file_id);
     if what.0 == Found::No {
@@ -531,5 +532,17 @@ mod tests {
 
             "#]],
         );
+    }
+
+    #[test]
+    fn ignore_is_honoured() {
+        check_diagnostics(
+            r#"
+         //- /erl/my_app/src/main.erl
+         % elp:ignore W0012 (compile-warn-missing-spec)
+         %% a comment at the
+         %% top of the file
+            "#,
+        )
     }
 }

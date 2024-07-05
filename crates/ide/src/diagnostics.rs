@@ -113,6 +113,8 @@ pub use replace_call::Replacement;
 
 use self::eqwalizer_assists::add_eqwalizer_assists;
 
+pub const DIAGNOSTIC_WHOLE_FILE_RANGE: TextRange = TextRange::empty(TextSize::new(0));
+
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostic {
     pub message: String,
@@ -212,7 +214,8 @@ impl Diagnostic {
                 return false;
             }
             annotation.codes.contains(&self.code)
-                && annotation.suppression_range.contains(self.range.start())
+                && (annotation.suppression_range.contains(self.range.start())
+                    || self.range == DIAGNOSTIC_WHOLE_FILE_RANGE)
         })
     }
 
@@ -229,7 +232,7 @@ impl Diagnostic {
 
             let mut offset = start_of_line(&token);
             let mut suffix = "";
-            if self.range == TextRange::empty(0.into()) {
+            if self.range == DIAGNOSTIC_WHOLE_FILE_RANGE {
                 // Change the location to be just before the module form if it exists
                 let form_list = sema.form_list(file_id);
                 if let Some(module_attribute) = form_list.module_attribute() {
