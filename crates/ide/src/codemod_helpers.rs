@@ -28,6 +28,8 @@ use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
 use hir::Strategy;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -202,7 +204,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
             FunctionMatch::Any => {
                 match_any = Some((*c, t));
             }
-            FunctionMatch::MFA(mfa) => {
+            FunctionMatch::MFA { mfa } => {
                 if mfa.module == "erlang" && in_erlang_module(&mfa.name, mfa.arity as usize) {
                     labels_full.insert(Some(mfa.short_label().into()), (*c, t));
                 }
@@ -285,7 +287,9 @@ impl<'a, T> FunctionMatcher<'a, T> {
 #[allow(clippy::upper_case_acronyms)]
 pub enum FunctionMatch {
     Any,
-    MFA(MFA),
+    MFA {
+        mfa: MFA,
+    },
     MF {
         module: String,
         name: String,
@@ -305,11 +309,13 @@ impl FunctionMatch {
     }
 
     pub fn mfa(m: &str, f: &str, arity: u32) -> FunctionMatch {
-        FunctionMatch::MFA(MFA {
-            module: m.into(),
-            name: f.into(),
-            arity,
-        })
+        FunctionMatch::MFA {
+            mfa: MFA {
+                module: m.into(),
+                name: f.into(),
+                arity,
+            },
+        }
     }
 
     pub fn typed_mfa(m: &str, f: &str, types: Vec<eqwalizer::types::Type>) -> FunctionMatch {
@@ -324,12 +330,12 @@ impl FunctionMatch {
     pub fn mfas(m: &str, f: &str, arity: Vec<u32>) -> Vec<FunctionMatch> {
         arity
             .into_iter()
-            .map(|a| {
-                FunctionMatch::MFA(MFA {
+            .map(|a| FunctionMatch::MFA {
+                mfa: MFA {
                     module: m.into(),
                     name: f.into(),
                     arity: a,
-                })
+                },
             })
             .collect()
     }
@@ -348,6 +354,7 @@ impl FunctionMatch {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[allow(clippy::upper_case_acronyms)]
+#[serde(try_from = "String", into = "String")]
 pub struct MFA {
     pub module: String,
     pub name: String,
@@ -387,6 +394,44 @@ impl MFA {
 
     pub fn short_label(&self) -> String {
         format!("{}/{}", self.name, self.arity)
+    }
+}
+
+// Serde serialization via String
+impl Into<String> for MFA {
+    fn into(self) -> String {
+        format!("{}:{}/{}", self.module, self.name, self.arity)
+    }
+}
+
+// Serde serialization via String
+impl TryFrom<String> for MFA {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        TryFrom::try_from(value.as_str())
+    }
+}
+impl TryFrom<&str> for MFA {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").unwrap();
+        }
+        if let Some(captures) = RE.captures(&value) {
+            if captures.len() > 3 {
+                let arity = captures[3]
+                    .parse::<u32>()
+                    .expect(format!("bad arity field for `{value}'").as_str());
+                return Ok(MFA {
+                    module: captures[1].to_string(),
+                    name: captures[2].to_string(),
+                    arity,
+                });
+            }
+        }
+        return Err(format!("invalid MFA '{value}'"));
     }
 }
 

@@ -406,11 +406,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 1,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 1,
+                        },
+                    },
                     Replacement::UseOk,
                     &adhoc_diagnostic,
                     acc,
@@ -443,11 +445,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 2,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 2,
+                        },
+                    },
                     Replacement::UseCallArg { n: 1 },
                     &adhoc_diagnostic,
                     acc,
@@ -482,11 +486,13 @@ mod tests {
         check_diagnostics_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site_if_args_match(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 2,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 2,
+                        },
+                    },
                     &|CheckCallCtx {
                           args, in_clause, ..
                       }: CheckCallCtx<()>| match in_clause[args[1]] {
@@ -525,11 +531,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 1,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 1,
+                        },
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -570,11 +578,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 1,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 1,
+                        },
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -615,11 +625,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 1,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 1,
+                        },
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -660,11 +672,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 remove_fun_ref_from_list(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 1,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 1,
+                        },
+                    },
                     &adhoc_diagnostic,
                     acc,
                     sema,
@@ -700,11 +714,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 2,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 2,
+                        },
+                    },
                     Replacement::Invocation {
                         replacement: "blah:drop_water".to_owned(),
                     },
@@ -741,11 +757,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 5,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 5,
+                        },
+                    },
                     Replacement::ArgsPermutation {
                         perm: vec![1, 3, 2],
                     },
@@ -782,11 +800,13 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "fire_bombs".into(),
-                        arity: 5,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "fire_bombs".into(),
+                            arity: 5,
+                        },
+                    },
                     Replacement::ArgsPermutation {
                         perm: vec![3, 2, 1, 2, 2, 3, 3],
                     },
@@ -821,11 +841,13 @@ mod tests {
     #[test]
     fn check_fix_remove_fun_ref_from_list_singleton_via_config() {
         let lints = vec![Lint::ReplaceCall(ReplaceCall {
-            matcher: FunctionMatch::MFA(MFA {
-                module: "foo".into(),
-                name: "fire_bombs".into(),
-                arity: 1,
-            }),
+            matcher: FunctionMatch::MFA {
+                mfa: MFA {
+                    module: "foo".into(),
+                    name: "fire_bombs".into(),
+                    arity: 1,
+                },
+            },
             action: crate::diagnostics::ReplaceCallAction::RemoveFromList,
         })];
         let lints_from_config = LintsFromConfig { lints };

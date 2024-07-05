@@ -6,9 +6,7 @@ type = "ReplaceCall"
 
 [ad_hoc_lints.lints.matcher]
 type = "MFA"
-module = "application"
-name = "get_env"
-arity = 2
+mfa = "application:get_env/2"
 
 [ad_hoc_lints.lints.action]
 action = "Replace"

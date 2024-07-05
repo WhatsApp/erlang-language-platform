@@ -99,14 +99,84 @@ mod tests {
     fn serde_serialize_function_match_mfa() {
         expect![[r#"
             type = "MFA"
-            module = "mod"
-            name = "fun"
-            arity = 3
+            mfa = "mod:fun/3"
         "#]]
         .assert_eq(
-            &toml::to_string::<FunctionMatch>(&FunctionMatch::MFA(MFA::new("mod", "fun", 3)))
-                .unwrap(),
+            &toml::to_string::<FunctionMatch>(&FunctionMatch::MFA {
+                mfa: MFA::new("mod", "fun", 3),
+            })
+            .unwrap(),
         );
+    }
+
+    #[test]
+    fn serde_deserialize_function_match_mfa() {
+        let function_match: FunctionMatch = toml::from_str(
+            r#"
+              type = "MFA"
+              mfa = "mod:fun/3"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            MFA {
+                mfa: MFA {
+                    module: "mod",
+                    name: "fun",
+                    arity: 3,
+                },
+            }
+        "#]]
+        .assert_debug_eq(&function_match);
+    }
+
+    #[test]
+    fn serde_deserialize_function_match_mfa_arity_bogus() {
+        expect![[r#"
+            Err(
+                Error {
+                    inner: ErrorInner {
+                        kind: Custom,
+                        line: None,
+                        col: 0,
+                        at: None,
+                        message: "invalid MFA 'mod:fun/x'",
+                        key: [],
+                    },
+                },
+            )
+        "#]]
+        .assert_debug_eq(&toml::from_str::<FunctionMatch>(
+            r#"
+              type = "MFA"
+              mfa = "mod:fun/x"
+             "#,
+        ));
+    }
+
+    #[test]
+    fn serde_deserialize_function_match_mfa_bad_format() {
+        expect![[r#"
+            Err(
+                Error {
+                    inner: ErrorInner {
+                        kind: Custom,
+                        line: None,
+                        col: 0,
+                        at: None,
+                        message: "invalid MFA 'junk'",
+                        key: [],
+                    },
+                },
+            )
+        "#]]
+        .assert_debug_eq(&toml::from_str::<FunctionMatch>(
+            r#"
+              type = "MFA"
+              mfa = "junk"
+             "#,
+        ));
     }
 
     #[test]

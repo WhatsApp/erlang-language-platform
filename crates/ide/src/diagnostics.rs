@@ -1821,11 +1821,13 @@ baz(1)->4.
         let config = DiagnosticsConfig::default()
             .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
                 replace_call::replace_call_site(
-                    &FunctionMatch::MFA(MFA {
-                        module: "foo".into(),
-                        name: "bar".into(),
-                        arity: 0,
-                    }),
+                    &FunctionMatch::MFA {
+                        mfa: MFA {
+                            module: "foo".into(),
+                            name: "bar".into(),
+                            arity: 0,
+                        },
+                    },
                     replace_call::Replacement::UseOk,
                     &replace_call::adhoc_diagnostic,
                     acc,
