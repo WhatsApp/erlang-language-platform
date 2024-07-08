@@ -11,8 +11,7 @@
 
 -record(state, {io = erlang:group_leader() :: pid()}).
 -type state() :: #state{}.
--type id() :: binary().
--type size() :: binary().
+-type id() :: integer().
 -type doc_origin() :: edoc | eep48.
 
 -spec main([]) -> no_return().
@@ -22,94 +21,75 @@ main(_Args) ->
     {ok, _} = application:ensure_all_started(erlang_service, permanent),
     State = #state{},
     io:setopts(State#state.io, [binary, {encoding, latin1}]),
-    loop(State).
+    try loop(State)
+    catch
+        K:R:S ->
+            io:format(standard_error, "Erlang service crashing: ~ts~n", [erl_error:format_exception(K, R, S)]),
+            erlang:raise(K, R, S)
+    end.
 
 -spec loop(state()) -> no_return().
 loop(State0) ->
-    case io:get_line(State0#state.io, "") of
-        Line when is_binary(Line) ->
-            State = process(binary_part(Line, 0, byte_size(Line) - 1), State0),
-            loop(State);
-        _ ->
+    case file:read(State0#state.io, 4) of
+        {ok, <<Size:32/big>>} ->
+            {ok, Data} = file:read(State0#state.io, Size),
+            loop(process(Data, State0));
+        eof ->
+            erlang:halt(0);
+        Err ->
+            io:format(standard_error, "Main loop error ~p~n", [Err]),
             erlang:halt(1)
     end.
 
 -spec process(binary(), state()) -> state().
-process(<<"ADD_PATHS ", BinLen/binary>>, State) ->
-    add_paths(BinLen, State);
-process(<<"COMPILE ", Binary/binary>>, State) ->
-    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
+process(<<"ACP", _:64/big, Data/binary>>, State) ->
+    add_paths(Data, State);
+process(<<"COM", Id:64/big, Data/binary>>, State) ->
     PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
     % ETF files are consumed by eqwalizer,
     % which requires full paths for snapshot tests.
-    elp_lint(Id, BinLen, State, PostProcess, false);
-process(<<"TEXT ", Binary/binary>>, State) ->
-    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
+    elp_lint(Id, Data, State, PostProcess, false);
+process(<<"TXT", Id:64/big, Data/binary>>, State) ->
     PostProcess =
         fun(Forms, _) ->
             unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
         end,
-    elp_lint(Id, BinLen, State, PostProcess, false);
-process(<<"DOC_EDOC ", Binary/binary>>, State) ->
-    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
-    get_docs(Id, BinLen, State, edoc);
-process(<<"DOC_EEP48 ", Binary/binary>>, State) ->
-    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
-    get_docs(Id, BinLen, State, eep48);
-process(<<"CT_INFO ", Binary/binary>>, State) ->
-    [Id, BinLen] = binary:split(Binary, <<" ">>, [global]),
-    ct_info(Id, BinLen, State);
-process(<<"EXIT">>, State) ->
+    elp_lint(Id, Data, State, PostProcess, false);
+process(<<"DCE", Id:64/big, Data/binary>>, State) ->
+    get_docs(Id, Data, State, edoc);
+process(<<"DCP", Id:64/big, Data/binary>>, State) ->
+    get_docs(Id, Data, State, eep48);
+process(<<"CTI", Id:64/big, Data/binary>>, State) ->
+    ct_info(Id, Data, State);
+process(<<"EXT", _/binary>>, State) ->
+    erlang_service_server:terminate(),
     init:stop(),
     State.
 
--spec add_paths(size(), state()) -> state().
-add_paths(BinLen, State) ->
-    Len = binary_to_integer(BinLen),
-    Paths = collect_paths(Len, State),
+-spec add_paths(binary(), state()) -> state().
+add_paths(Data, State) ->
+    Paths = collect_paths(Data),
     code:add_pathsa(Paths),
     State.
 
--spec collect_paths(non_neg_integer(), state()) -> [string()].
-collect_paths(0, _State) ->
-    [];
-collect_paths(Len, State) ->
-    case io:get_line(State#state.io, "") of
-        eof ->
-            [];
-        Line ->
-            Path =
-                unicode:characters_to_list(
-                    string:trim(Line, trailing)
-                ),
-            is_list(Path) orelse error({invalid_line, Line}),
-            [Path | collect_paths(Len - 1, State)]
-    end.
+collect_paths(<<>>) -> [];
+collect_paths(<<Size:32/big, Data:Size/binary, Rest/binary>>) ->
+    [Data | collect_paths(Rest)].
 
--spec get_docs(id(), size(), state(), doc_origin()) -> state().
-get_docs(Id, BinLen, State, DocOrigin) ->
-    Data = read_request(BinLen, State#state.io),
+-spec get_docs(id(), binary(), state(), doc_origin()) -> state().
+get_docs(Id, Data, State, DocOrigin) ->
     erlang_service_server:get_docs(Id, Data, DocOrigin),
     State.
 
--spec ct_info(id(), size(), state()) -> state().
-ct_info(Id, BinLen, State) ->
-    Data = read_request(BinLen, State#state.io),
+-spec ct_info(id(), binary(), state()) -> state().
+ct_info(Id, Data, State) ->
     erlang_service_server:ct_info(Id, Data),
     State.
 
--spec elp_lint(id(), size(), state(), fun((any(), any()) -> binary()), boolean()) -> state().
-elp_lint(Id, BinLen, State, PostProcess, Deterministic) ->
-    Data = read_request(BinLen, State#state.io),
+-spec elp_lint(id(), binary(), state(), fun((any(), any()) -> binary()), boolean()) -> state().
+elp_lint(Id, Data, State, PostProcess, Deterministic) ->
     erlang_service_server:elp_lint(Id, Data, PostProcess, Deterministic),
     State.
-
--spec read_request(size(), pid()) -> string() | binary().
-read_request(BinLen, Device) ->
-    Len = binary_to_integer(BinLen),
-    %% Use file:read/2 since it reads bytes
-    {ok, Data} = file:read(Device, Len),
-    Data.
 
 -spec configure_logging() -> ok.
 configure_logging() ->

@@ -30,6 +30,7 @@ erl_ast = { path = "./crates/erl_ast" }
 always-assert = "0.1.3"
 anyhow = "1.0.70"
 bpaf = { version = "=0.7.9", features = ["derive", "autocomplete", "batteries"] }
+byteorder = "1.5.0"
 codespan-reporting = "0.11.1"
 cov-mark = "2.0.0-pre.1"
 criterion = "0.3.6"

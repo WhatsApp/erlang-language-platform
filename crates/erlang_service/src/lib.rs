@@ -7,11 +7,12 @@
  * of this source tree.
  */
 
-use std::io::BufRead;
 use std::io::BufReader;
 use std::io::BufWriter;
+use std::io::Cursor;
 use std::io::Read;
 use std::io::Write;
+use std::mem;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::ChildStdin;
@@ -25,6 +26,9 @@ use std::time::Duration;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use byteorder::BigEndian;
+use byteorder::ReadBytesExt;
+use byteorder::WriteBytesExt;
 use common_test::ConversionError;
 use common_test::GroupDef;
 pub use common_test::TestDef;
@@ -167,14 +171,6 @@ pub struct CTInfoRequest {
     pub should_request_groups: bool,
 }
 
-#[derive(Debug, Clone)]
-enum Request {
-    ParseRequest(ParseRequest, Sender<Result<UndecodedParseResult>>),
-    AddCodePath(Vec<PathBuf>),
-    DocRequest(DocRequest, Sender<Result<DocResult>>),
-    CTInfoRequest(CTInfoRequest, Sender<Result<UndecodedCTInfoResult>>),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError {
     pub path: PathBuf,
@@ -191,18 +187,8 @@ pub struct DocDiagnostic {
     pub message: String,
 }
 
-pub type ParseResult = RawParseResult<ParseError>;
-type UndecodedParseResult = RawParseResult<u8>;
 type RawNameArity = (String, u32);
 type RawMarkdown = String;
-
-pub type DocResult = RawModuleDoc<DocDiagnostic>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UndecodedCTInfoResult {
-    all: Vec<u8>,
-    groups: Vec<u8>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CTInfoResult {
@@ -219,87 +205,49 @@ impl CTInfoResult {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    DecodeError(String),
-    ConversionError(ConversionError),
-}
-
-impl From<eetf::DecodeError> for Error {
-    fn from(err: eetf::DecodeError) -> Self {
-        let message = err.to_string();
-        Error::DecodeError(message)
-    }
-}
-
-impl From<ConversionError> for Error {
-    fn from(err: ConversionError) -> Self {
-        Error::ConversionError(err)
-    }
-}
-
-impl UndecodedCTInfoResult {
-    pub fn decode(self) -> Result<CTInfoResult, Error> {
-        let all = Term::decode(&*self.all)?;
-        let groups = Term::decode(&*self.groups)?;
-        Ok(CTInfoResult { all, groups })
-    }
-}
-
 #[derive(Debug)]
-pub struct RawModuleDoc<Error> {
+pub struct DocResult {
     pub module_doc: RawMarkdown,
     pub function_docs: FxHashMap<RawNameArity, RawMarkdown>,
-    pub diagnostics: Vec<Error>,
+    pub diagnostics: Vec<DocDiagnostic>,
 }
+
+type Request = (Tag, Vec<u8>, Option<Sender<Response>>);
+
+type Tag = &'static [u8; 3];
 
 #[derive(Debug)]
-enum Reply {
-    ParseReply(Result<UndecodedParseResult>),
-    DocReply(Result<DocResult>),
-    CTInfoReply(Result<UndecodedCTInfoResult>),
-}
+struct Response(Cursor<Vec<u8>>);
 
-#[derive(Debug)]
-enum ResponseSender {
-    ParseResponseSender(Sender<Result<UndecodedParseResult>>),
-    DocResponseSender(Sender<Result<DocResult>>),
-    CTInfoResponseSender(Sender<Result<UndecodedCTInfoResult>>),
-}
-
-impl ResponseSender {
-    fn send_exn(&self, e: anyhow::Error) -> Result<()> {
-        let result = match self {
-            ResponseSender::ParseResponseSender(r) => r.send(Result::Err(e))?,
-            ResponseSender::DocResponseSender(r) => r.send(Result::Err(e))?,
-            ResponseSender::CTInfoResponseSender(r) => r.send(Result::Err(e))?,
-        };
-        Ok(result)
+impl Response {
+    fn decode_segments(self, mut f: impl FnMut(&[u8; 3], Vec<u8>) -> Result<()>) -> Result<()> {
+        let mut cursor = self.0;
+        if cursor.read_u8().expect("no status for message") != 0 {
+            let mut buf = String::new();
+            cursor
+                .read_to_string(&mut buf)
+                .expect("malformed error message");
+            Err(anyhow!("erlang service failed with: {}", buf))
+        } else {
+            let mut tag = [0; 3];
+            while let Ok(()) = cursor.read_exact(&mut tag) {
+                let size = cursor.read_u32::<BigEndian>().expect("malformed segment");
+                let mut buf = vec![0; size as usize];
+                cursor.read_exact(&mut buf).expect("malfomrmed segment");
+                f(&tag, buf)?
+            }
+            Ok(())
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RawParseResult<Error> {
+pub struct ParseResult {
     pub ast: Arc<Vec<u8>>,
     pub stub: Arc<Vec<u8>>,
     pub files: Arc<Vec<u8>>,
-    pub errors: Vec<Error>,
-    pub warnings: Vec<Error>,
-}
-
-impl UndecodedParseResult {
-    pub fn decode(self) -> Result<ParseResult> {
-        let errors = decode_errors(&self.errors).with_context(|| "when decoding errors")?;
-        let warnings = decode_errors(&self.warnings).with_context(|| "when decoding warnings")?;
-
-        Ok(ParseResult {
-            ast: self.ast,
-            stub: self.stub,
-            files: self.files,
-            errors,
-            warnings,
-        })
-    }
+    pub errors: Vec<ParseError>,
+    pub warnings: Vec<ParseError>,
 }
 
 impl ParseResult {
@@ -350,112 +298,183 @@ impl Connection {
         })
     }
 
-    pub fn request_parse<F>(&self, request_in: ParseRequest, unwind: F) -> ParseResult
-    where
-        F: Fn(),
-    {
-        let (sender, receiver) = bounded::<Result<UndecodedParseResult>>(0);
-        let path = request_in.path.clone();
-        let request = Request::ParseRequest(request_in.clone(), sender);
-        self.sender.send(request).unwrap();
+    fn request_reply(&self, tag: Tag, request: Vec<u8>, unwind: impl Fn()) -> Response {
+        let (sender, receiver) = bounded::<Response>(0);
+        self.sender
+            .send((tag, request, Some(sender)))
+            .expect("failed sending request to parse server");
+
+        // Every 100ms check if the db was cancelled by calling back to db.
+        // If the query was cancelled the `unwind` callback will panic and
+        // we'll abandon the computation. This is important to avoid blocking
+        // the main loop for too long - cancellation is sent when updating the
+        // db on user edits
         loop {
             match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(result) => {
-                    return match result {
-                        Ok(result) => match result.decode() {
-                            Result::Ok(result) => result,
-                            Err(error) => {
-                                log::error!("Decoding parse result failed: {:?}", error);
-                                ParseResult::error(ParseError {
-                                    path,
-                                    location: None,
-                                    msg: format!("Could not parse, error: {}", error),
-                                    code: "L0001".to_string(),
-                                })
-                            }
-                        },
-                        Err(error) => {
-                            log::error!(
-                                "Erlang service crashed for: {:?}, error: {:?}",
-                                request_in,
-                                error
-                            );
-                            ParseResult::error(ParseError {
-                                path,
-                                location: None,
-                                msg: format!("Could not parse, error: {}", error),
-                                code: "L0002".to_string(),
-                            })
-                        }
-                    };
-                }
+                Ok(result) => return result,
                 Err(_) => unwind(),
             }
         }
     }
 
-    pub fn request_doc<F>(&self, request: DocRequest, unwind: F) -> Result<DocResult, String>
-    where
-        F: Fn(),
-    {
-        let (sender, receiver) = bounded::<Result<DocResult>>(0);
-        let request = Request::DocRequest(request, sender);
-        self.sender.send(request.clone()).unwrap();
-        loop {
-            match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(result) => {
-                    return {
-                        match result {
-                            Result::Ok(result) => Result::Ok(result),
-                            Err(error) => {
-                                log::error!(
-                                    "Erlang service crashed for: {:?}, error: {:?}",
-                                    request,
-                                    error
-                                );
-                                Err(format!(
-                                    "Erlang service crash when trying to load docs: {:?}",
-                                    request
-                                ))
-                            }
-                        }
-                    };
-                }
-                Err(_) => unwind(),
-            }
+    pub fn request_parse(&self, request: ParseRequest, unwind: impl Fn()) -> ParseResult {
+        let path = request.path.clone();
+        let tag = request.tag();
+        let request = request.encode();
+        let reply = self.request_reply(tag, request, unwind);
+
+        let mut ast = vec![];
+        let mut stub = vec![];
+        let mut files = vec![];
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        reply
+            .decode_segments(|tag, data| {
+                match tag {
+                    b"AST" => ast = data,
+                    b"STU" => stub = data,
+                    b"FIL" => files = data,
+                    b"WAR" => warnings = data,
+                    b"ERR" => errors = data,
+                    _ => log::error!("unrecognised segment {:?}", tag),
+                };
+                Ok(())
+            })
+            .and_then(|()| {
+                Ok(ParseResult {
+                    ast: Arc::new(ast),
+                    stub: Arc::new(stub),
+                    files: Arc::new(files),
+                    warnings: decode_errors(&warnings).context("decoding warnings")?,
+                    errors: decode_errors(&errors).context("decoding errors")?,
+                })
+            })
+            .unwrap_or_else(|error| {
+                ParseResult::error(ParseError {
+                    path,
+                    location: None,
+                    msg: format!("Could not parse, error: {}", error),
+                    code: "L0002".to_string(),
+                })
+            })
+    }
+
+    pub fn request_doc(&self, request: DocRequest, unwind: impl Fn()) -> Result<DocResult, String> {
+        lazy_static! {
+            static ref FUNCTION_DOC_REGEX: Regex =
+                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
+            static ref DOC_DIAGNOSTIC_REGEX: Regex =
+                Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
+                    .unwrap();
         }
+
+        let tag = request.tag();
+        let encoded = request.clone().encode();
+        let reply = self.request_reply(tag, encoded, unwind);
+
+        let mut function_docs = FxHashMap::default();
+        let mut module_doc = String::new();
+        let mut diagnostics = Vec::new();
+
+        reply
+            .decode_segments(|segment, data| {
+                match segment {
+                    b"MDC" => module_doc = String::from_utf8(data)?,
+                    b"FDC" => {
+                        let text = decode_utf8_or_latin1(data);
+                        if let Some(caps) = FUNCTION_DOC_REGEX.captures(&text) {
+                            let name = caps.name("name").unwrap().as_str().to_string();
+                            let arity = caps.name("arity").unwrap().as_str().parse::<u32>()?;
+                            let doc = caps.name("doc").unwrap().as_str().to_string();
+                            function_docs.insert((name, arity), doc);
+                        } else {
+                            log::error!("Could not capture in FUNCTION_DOC: {text}");
+                        }
+                    }
+                    b"EDC" => {
+                        let text = decode_utf8_or_latin1(data);
+                        if let Some(caps) = DOC_DIAGNOSTIC_REGEX.captures(&text) {
+                            let code = caps.name("code").unwrap().as_str().to_string();
+                            let severity = caps.name("severity").unwrap().as_str().to_string();
+                            let line = caps.name("line").unwrap().as_str().parse::<u32>()?;
+                            let message = caps.name("message").unwrap().as_str().to_string();
+                            diagnostics.push(DocDiagnostic {
+                                code,
+                                severity,
+                                line,
+                                message,
+                            });
+                        } else {
+                            log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
+                        }
+                    }
+                    _ => log::error!("Unrecognised segment: {:?}", segment),
+                };
+                Ok(())
+            })
+            .map(|()| DocResult {
+                module_doc,
+                function_docs,
+                diagnostics,
+            })
+            .map_err(|error| {
+                log::error!(
+                    "Erlang service crashed for: {:?}, error: {:?}",
+                    request,
+                    error
+                );
+                format!(
+                    "Erlang service crash when trying to load docs: {:?}",
+                    request
+                )
+            })
+    }
+
+    pub fn ct_info(
+        &self,
+        request: CTInfoRequest,
+        unwind: impl Fn(),
+    ) -> Result<CTInfoResult, String> {
+        let module = request.module.clone();
+        let tag = request.tag();
+        let request = request.encode();
+        let reply = self.request_reply(tag, request, unwind);
+
+        let mut all = vec![];
+        let mut groups = vec![];
+
+        reply
+            .decode_segments(|segment, data| {
+                match segment {
+                    b"ALL" => all = data,
+                    b"GRP" => groups = data,
+                    _ => log::error!("Unrecognised segment: {:?}", segment),
+                };
+                Ok(())
+            })
+            .and_then(|()| {
+                Ok(CTInfoResult {
+                    all: Term::decode(&*all)?,
+                    groups: Term::decode(&*groups)?,
+                })
+            })
+            .map_err(|error| {
+                log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
+                format!("Failed to fetch CT Info for {:?}", module.name)
+            })
     }
 
     pub fn add_code_path(&self, paths: Vec<PathBuf>) {
-        let request = Request::AddCodePath(paths);
-        self.sender.send(request).unwrap();
-    }
-
-    pub fn ct_info<F>(&self, request: CTInfoRequest, unwind: F) -> Result<CTInfoResult, String>
-    where
-        F: Fn(),
-    {
-        let module = request.module.clone();
-        let (sender, receiver) = bounded::<Result<UndecodedCTInfoResult>>(0);
-        let request = Request::CTInfoRequest(request, sender);
-        self.sender.send(request).unwrap();
-        loop {
-            match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(result) => {
-                    return match result {
-                        Result::Ok(result) => match result.decode() {
-                            Ok(result) => Ok(result),
-                            Err(err) => Err(format!("Decoding error: {:?}", err)),
-                        },
-                        Err(error) => {
-                            log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
-                            Err(format!("Failed to fetch CT Info for {:?}", module.name))
-                        }
-                    };
-                }
-                Err(_) => unwind(),
-            }
+        let mut buf = Vec::new();
+        for path in paths {
+            let path = path.to_str().expect("non UTF8 path encountered");
+            buf.write_u32::<BigEndian>(path.len() as u32)
+                .expect("buf write failed");
+            buf.write_all(path.as_bytes()).expect("buf write failed");
         }
+        let request = (b"ACP", buf, None);
+        self.sender.send(request).unwrap();
     }
 }
 
@@ -482,7 +501,7 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
                 let _ = outstream.read(&mut buf);
                 let remaining = String::from_utf8_lossy(&buf);
                 log::error!(
-                    "reader failed with {}\nremaining data:\n\n{}",
+                    "reader failed with {:?}\nremaining data:\n\n{}",
                     err,
                     remaining
                 );
@@ -495,265 +514,62 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
 
 fn reader_run(
     outstream: &mut BufReader<ChildStdout>,
-    inflight: Arc<Mutex<FxHashMap<usize, ResponseSender>>>,
+    inflight: Arc<Mutex<FxHashMap<u64, Sender<Response>>>>,
 ) -> Result<()> {
-    let mut line_buf = String::new();
     loop {
-        line_buf.clear();
-        outstream.read_line(&mut line_buf)?;
-        let parts = line_buf.split_ascii_whitespace().collect::<Vec<_>>();
-        if parts.is_empty() {
-            break;
+        let size = outstream.read_u32::<BigEndian>()? as usize;
+        let mut buf = vec![0; size];
+        outstream.read_exact(&mut buf)?;
+        if buf == b"EXT" {
+            log::info!("Reader terminating");
+            return Ok(());
         }
 
-        let id: usize = parts[1].parse()?;
-        let size: usize = parts[2].parse()?;
-
-        let sender = inflight.lock().remove(&id).unwrap();
-
-        match parts[0] {
-            "REPLY" => {
-                let reply = decode_segments(outstream, &mut line_buf, size)?;
-                send_reply(sender, reply)?;
-            }
-            "EXCEPTION" => {
-                let mut buf = vec![0; size];
-                outstream.read_exact(&mut buf)?;
-                let resp = String::from_utf8(buf).unwrap();
-                let error = anyhow!("{}", resp);
-                if let Err(err) = sender.send_exn(error) {
-                    log::info!(
-                        "Got exception erlang service response, but request was canceled: {}",
-                        err
-                    );
-                }
-            }
-            _ => {
-                log::error!("Unrecognised message: {}", line_buf);
-                break;
-            }
-        }
-    }
-
-    fn decode_segments(
-        outstream: &mut BufReader<ChildStdout>,
-        line_buf: &mut String,
-        num: usize,
-    ) -> Result<Reply> {
-        let mut ast = Vec::new();
-        let mut stub = Vec::new();
-        let mut files = Vec::new();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-
-        let mut function_docs = FxHashMap::default();
-        let mut module_doc = Vec::new();
-        let mut edoc_diagnostics = Vec::new();
-
-        let mut is_doc = false;
-        let mut is_ct_info = false;
-
-        let mut ct_info_all = Vec::new();
-        let mut ct_info_groups = Vec::new();
-
-        lazy_static! {
-            static ref FUNCTION_DOC_REGEX: Regex =
-                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
-            static ref DOC_DIAGNOSTIC_REGEX: Regex =
-                Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
-                    .unwrap();
-        }
-
-        for _ in 0..num {
-            line_buf.clear();
-            outstream.read_line(line_buf)?;
-            let parts = line_buf.split_ascii_whitespace().collect::<Vec<_>>();
-            if parts.is_empty() {
-                break;
-            }
-            let size: usize = parts[1].parse()?;
-            let mut buf = vec![0; size];
-
-            outstream.read_exact(&mut buf)?;
-
-            match parts[0] {
-                "AST" => ast = buf,
-                "STUB" => stub = buf,
-                "FILES" => files = buf,
-                "WARNINGS" => warnings = buf,
-                "ERRORS" => errors = buf,
-                "MODULE_DOC" => {
-                    is_doc = true;
-                    module_doc = buf
-                }
-                "FUNCTION_DOC" => {
-                    is_doc = true;
-                    let text = match String::from_utf8(buf) {
-                        Ok(text) => text,
-                        Err(err) => {
-                            log::warn!("Failed UTF-8 conversion in FUNCTION_DOC: {err}");
-                            // Fall back to lossy latin1 loading of files.
-                            // This should only affect files from yaws, and
-                            // possibly OTP that are latin1 encoded.
-                            let contents = err.into_bytes();
-                            contents.into_iter().map(|byte| byte as char).collect()
-                        }
-                    };
-                    if let Some(caps) = FUNCTION_DOC_REGEX.captures(&text) {
-                        let name = caps.name("name").unwrap().as_str().to_string();
-                        let arity = caps.name("arity").unwrap().as_str().parse::<u32>()?;
-                        let doc = caps.name("doc").unwrap().as_str().to_string();
-                        function_docs.insert((name, arity), doc);
-                    } else {
-                        log::error!("Could not capture in FUNCTION_DOC: {text}");
-                    }
-                }
-                "EDOC_DIAGNOSTIC" => {
-                    let text = match String::from_utf8(buf) {
-                        Ok(text) => text,
-                        Err(err) => {
-                            log::warn!("Failed UTF-8 conversion in EDOC_DIAGNOSTIC: {err}");
-                            // Fall back to lossy latin1 loading of files.
-                            // This should only affect files from yaws, and
-                            // possibly OTP that are latin1 encoded.
-                            let contents = err.into_bytes();
-                            contents.into_iter().map(|byte| byte as char).collect()
-                        }
-                    };
-                    if let Some(caps) = DOC_DIAGNOSTIC_REGEX.captures(&text) {
-                        let code = caps.name("code").unwrap().as_str().to_string();
-                        let severity = caps.name("severity").unwrap().as_str().to_string();
-                        let line = caps.name("line").unwrap().as_str().parse::<u32>()?;
-                        let message = caps.name("message").unwrap().as_str().to_string();
-                        edoc_diagnostics.push(DocDiagnostic {
-                            code,
-                            severity,
-                            line,
-                            message,
-                        });
-                    } else {
-                        log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
-                    }
-                }
-                "CT_INFO_ALL" => {
-                    is_ct_info = true;
-                    ct_info_all = buf
-                }
-                "CT_INFO_GROUPS" => ct_info_groups = buf,
-                _ => {
-                    log::error!("Unrecognised segment: {}", line_buf);
-                    break;
-                }
-            }
-        }
-        if is_doc {
-            let module_doc_str = String::from_utf8(module_doc).unwrap();
-            Ok(Reply::DocReply(Ok(RawModuleDoc {
-                module_doc: module_doc_str,
-                function_docs,
-                diagnostics: edoc_diagnostics,
-            })))
-        } else {
-            if is_ct_info {
-                Ok(Reply::CTInfoReply(Ok(UndecodedCTInfoResult {
-                    all: ct_info_all,
-                    groups: ct_info_groups,
-                })))
-            } else {
-                Ok(Reply::ParseReply(Ok(UndecodedParseResult {
-                    ast: Arc::new(ast),
-                    stub: Arc::new(stub),
-                    files: Arc::new(files),
-                    warnings,
-                    errors,
-                })))
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn send_reply(sender: ResponseSender, reply: Reply) -> Result<()> {
-    match (sender, reply) {
-        (ResponseSender::ParseResponseSender(s), Reply::ParseReply(r)) => {
-            if let Err(err) = s.send(r) {
-                log::info!("Got parse response, but request was canceled: {}", err);
-            }
-            Result::Ok(())
-        }
-        (ResponseSender::DocResponseSender(s), Reply::DocReply(r)) => {
-            if let Err(err) = s.send(r) {
-                log::info!("Got edoc response, but request was canceled: {}", err);
-            }
-            Result::Ok(())
-        }
-        (ResponseSender::CTInfoResponseSender(s), Reply::CTInfoReply(r)) => {
-            if let Err(err) = s.send(r) {
-                log::info!(
-                    "Got common test response, but request was canceled: {}",
-                    err
-                );
-            }
-            Result::Ok(())
-        }
-        (sender, reply) => Result::Err(anyhow!(format!(
-            "erlang_service response mismatch: Got a {:?} reply when expecting a {:?} reply",
-            reply, sender
-        ))),
+        let mut cursor = Cursor::new(buf);
+        let id = cursor.read_u64::<BigEndian>()?;
+        let sender = inflight.lock().remove(&id).expect("unexpected response id");
+        if let Err(err) = sender.send(Response(cursor)) {
+            log::info!("Got response {}, but request was canceled: {}", id, err);
+        };
     }
 }
 
 fn writer_run(
     receiver: Receiver<Request>,
     mut instream: BufWriter<ChildStdin>,
-    inflight: Arc<Mutex<FxHashMap<usize, ResponseSender>>>,
+    inflight: Arc<Mutex<FxHashMap<u64, Sender<Response>>>>,
 ) -> Result<()> {
     let mut counter = 0;
-    receiver.into_iter().try_for_each(|request| match request {
-        Request::ParseRequest(request, sender) => {
+    receiver
+        .into_iter()
+        .try_for_each(|(tag, request, sender)| {
             counter += 1;
-            inflight
-                .lock()
-                .insert(counter, ResponseSender::ParseResponseSender(sender));
-            let tag = request.tag();
-            let bytes = request.encode();
-            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
-            instream.write_all(&bytes)?;
-            instream.flush()
-        }
-        Request::AddCodePath(paths) => {
-            writeln!(instream, "ADD_PATHS {}", paths.len())?;
-            for path in paths {
-                writeln!(instream, "{}", path.display())?;
+            if let Some(sender) = sender {
+                inflight.lock().insert(counter, sender);
             }
-            Result::Ok(())
-        }
-        Request::DocRequest(request, sender) => {
-            counter += 1;
-            inflight
-                .lock()
-                .insert(counter, ResponseSender::DocResponseSender(sender));
-            let tag = request.tag();
-            let bytes = request.encode();
-            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
-            instream.write_all(&bytes)?;
+            let len = tag.len() + mem::size_of::<u64>() + request.len();
+            instream.write_u32::<BigEndian>(len.try_into().expect("message too large"))?;
+            instream.write_all(tag)?;
+            instream.write_u64::<BigEndian>(counter)?;
+            instream.write_all(&request)?;
             instream.flush()
-        }
-        Request::CTInfoRequest(request, sender) => {
-            counter += 1;
-            inflight
-                .lock()
-                .insert(counter, ResponseSender::CTInfoResponseSender(sender));
-            let tag = request.tag();
-            let bytes = request.encode();
-            writeln!(instream, "{} {} {}", tag, counter, bytes.len())?;
-            instream.write_all(&bytes)?;
-            instream.flush()
-        }
-    })?;
-    instream.write_all(b"EXIT\n")?;
+        })?;
+
+    instream.write_u32::<BigEndian>(3)?;
+    instream.write_all(b"EXT")?;
+    instream.flush()?;
     Ok(())
+}
+
+fn decode_utf8_or_latin1(data: Vec<u8>) -> String {
+    String::from_utf8(data).unwrap_or_else(|err| {
+        log::warn!("Failed UTF-8 conversion in FUNCTION_DOC: {err}");
+        // Fall back to lossy latin1 loading of files.
+        // This should only affect files from yaws, and
+        // possibly OTP that are latin1 encoded.
+        let contents = err.into_bytes();
+        contents.into_iter().map(|byte| byte as char).collect()
+    })
 }
 
 fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
@@ -812,10 +628,10 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
 }
 
 impl ParseRequest {
-    fn tag(&self) -> &'static str {
+    fn tag(&self) -> Tag {
         match self.format {
-            Format::OffsetEtf { .. } => "COMPILE",
-            Format::Text => "TEXT",
+            Format::OffsetEtf { .. } => b"COM",
+            Format::Text => b"TXT",
         }
     }
 
@@ -842,10 +658,10 @@ impl ParseRequest {
 }
 
 impl DocRequest {
-    fn tag(&self) -> &'static str {
+    fn tag(&self) -> Tag {
         match self.doc_origin {
-            DocOrigin::Edoc => "DOC_EDOC",
-            DocOrigin::Eep48 => "DOC_EEP48",
+            DocOrigin::Edoc => b"DCE",
+            DocOrigin::Eep48 => b"DCP",
         }
     }
 
@@ -858,8 +674,8 @@ impl DocRequest {
 }
 
 impl CTInfoRequest {
-    fn tag(&self) -> &'static str {
-        "CT_INFO"
+    fn tag(&self) -> Tag {
+        b"CTI"
     }
 
     fn encode(self) -> Vec<u8> {

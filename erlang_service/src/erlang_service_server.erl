@@ -30,7 +30,7 @@
 ]).
 
 %% API
--export([get_docs/3, ct_info/2, elp_lint/4]).
+-export([get_docs/3, ct_info/2, elp_lint/4, terminate/0]).
 
 %%==============================================================================
 %% Includes
@@ -71,6 +71,9 @@ ct_info(Id, Data) ->
 elp_lint(Id, Data, PostProcess, Deterministic) ->
     gen_server:cast(?SERVER, {request, elp_lint, Id, Data, [PostProcess, Deterministic]}).
 
+terminate() ->
+    gen_server:call(?SERVER, terminate).
+
 %%==============================================================================
 %% gen_server callbacks
 %%==============================================================================
@@ -80,7 +83,9 @@ init(noargs) ->
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {reply, any(), state()}.
-handle_call(_Request, _From, State) ->
+handle_call(terminate, _From, #{io := Device} = State) ->
+    Reply = <<"EXT">>,
+    file:write(Device, <<(byte_size(Reply)):32/big, Reply/binary>>),
     {reply, ok, State}.
 
 -spec handle_cast(request() | result() | exception(), state()) -> {noreply, state()}.
@@ -133,22 +138,19 @@ handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
 %%==============================================================================
 %% Internal Functions
 %%==============================================================================
-reply(Id, Segments, Device) ->
+reply(Id, Data, Device) ->
+    Reply = [<<Id:64/big, 0>> | Data],
+    Size = erlang:iolist_size(Reply),
     %% Use file:write/2 since it writes bytes
-    Size = integer_to_binary(length(Segments)),
-    Data = [encode_segment(Segment) || Segment <- Segments],
-    file:write(Device, [<<"REPLY ">>, Id, $\s, Size, $\n | Data]),
+    file:write(Device, [<<Size:32/big>> | Reply]),
     ok.
 
 reply_exception(Id, Data, Device) ->
+    Reply = [<<Id:64/big, 1>> | Data],
+    Size = erlang:iolist_size(Reply),
     %% Use file:write/2 since it writes bytes
-    Size = integer_to_binary(byte_size(Data)),
-    file:write(Device, [<<"EXCEPTION ">>, Id, $\s, Size, $\n | Data]),
+    file:write(Device, [<<Size:32/big>> | Reply]),
     ok.
-
-encode_segment({Tag, Data}) ->
-    Size = integer_to_binary(byte_size(Data)),
-    [Tag, $\s, Size, $\n | Data].
 
 -spec process_request_async(atom(), id(), binary(), [any()]) -> pid().
 process_request_async(Module, Id, Data, AdditionalParams) ->
@@ -158,7 +160,7 @@ process_request_async(Module, Id, Data, AdditionalParams) ->
                 Params = binary_to_term(Data),
                 case Module:run(Params ++ AdditionalParams) of
                     {ok, Result} ->
-                        gen_server:cast(?SERVER, {result, Id, Result});
+                        gen_server:cast(?SERVER, {result, Id, encode_segments(Result)});
                     {error, Error} ->
                         gen_server:cast(?SERVER, {exception, Id, Error})
                 end
@@ -177,3 +179,10 @@ callback_module(elp_lint) -> erlang_service_lint.
 
 timeout(ct_info) -> 10000;
 timeout(_) -> infinity.
+
+encode_segments(Segments) ->
+    %% collapse to iovec for efficiently sending between processes
+    erlang:iolist_to_iovec([encode_segment(Segment) || Segment <- Segments]).
+
+encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
+    [Tag, <<(byte_size(Data)):32/big>> | Data].
