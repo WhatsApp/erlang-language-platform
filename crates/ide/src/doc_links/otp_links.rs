@@ -35,7 +35,7 @@ pub(crate) fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinit
                     let function_arity = function_def.name.arity();
                     let title = format!("{module_name}:{function_name}/{function_arity}");
                     let uri = format!(
-                        "{}/doc/man/{}.html#{}-{}",
+                        "{}/doc/man/{}.html#{}/{}",
                         OTP_BASE_URL, module_name, function_name, function_arity
                     );
                     let link = DocLink { title, uri };
@@ -101,7 +101,7 @@ mod tests {
  a() ->
    lists:rev~erse([]).
          "#,
-            vec!["https://erlang.org/doc/man/lists.html#reverse-1"],
+            vec!["https://erlang.org/doc/man/lists.html#reverse/1"],
         )
     }
 
