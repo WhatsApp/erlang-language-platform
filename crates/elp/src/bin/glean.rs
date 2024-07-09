@@ -1834,7 +1834,7 @@ mod tests {
         //- /glean/app_glean/src/glean_module2.erl
         -module(glean_module2).
         "#;
-        let result = facts_with_annotataions(spec).0;
+        let result = facts_with_annotations(spec).0;
         assert_eq!(result.file_facts.len(), 1);
         let file_fact = &result.file_facts[0];
         assert_eq!(
@@ -1853,7 +1853,7 @@ mod tests {
             multi: false,
             prefix: Some("my/prefix".to_string()),
         };
-        let result = facts_with_annotataions_with_config(spec, config).0;
+        let result = facts_with_annotations_with_config(spec, config).0;
         assert_eq!(result.file_facts.len(), 1);
         let file_fact = &result.file_facts[0];
         assert_eq!(
@@ -1871,7 +1871,7 @@ mod tests {
             bar.
 
         "#;
-        let result = facts_with_annotataions(spec).0;
+        let result = facts_with_annotations(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
         let line_fact = &result.file_line_facts[0];
         assert!(line_fact.ends_with_new_line);
@@ -1885,7 +1885,7 @@ mod tests {
         -module(glean_module4).
         main() ->
             bar."#;
-        let result = facts_with_annotataions(spec).0;
+        let result = facts_with_annotations(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
         let line_fact = &result.file_line_facts[0];
         assert_eq!(line_fact.ends_with_new_line, false);
@@ -2443,7 +2443,7 @@ mod tests {
         xref_v2_check(&spec);
     }
 
-    fn facts_with_annotataions(
+    fn facts_with_annotations(
         spec: &str,
     ) -> (
         IndexedFacts,
@@ -2453,10 +2453,10 @@ mod tests {
         FxHashMap<GleanFileId, String>,
     ) {
         let config = IndexConfig::default();
-        facts_with_annotataions_with_config(spec, config)
+        facts_with_annotations_with_config(spec, config)
     }
 
-    fn facts_with_annotataions_with_config(
+    fn facts_with_annotations_with_config(
         spec: &str,
         config: IndexConfig,
     ) -> (
@@ -2494,7 +2494,7 @@ mod tests {
     }
 
     fn xref_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
         let facts = facts.to_v2_facts(&module_index);
         let xref_facts = facts
             .iter()
@@ -2528,7 +2528,7 @@ mod tests {
 
     #[track_caller]
     fn xref_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotations(spec);
         for xref_fact in facts.xref_v2 {
             let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
@@ -2560,7 +2560,7 @@ mod tests {
     }
 
     fn decl_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
         let facts = facts.to_v2_facts(&module_index);
         let func_decl = facts
             .iter()
@@ -2592,7 +2592,7 @@ mod tests {
     }
 
     fn decl_v2_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d, _) = facts_with_annotataions(spec);
+        let (facts, mut expected_by_file, _, _d, _) = facts_with_annotations(spec);
         for file_decl in facts.file_declarations {
             let mut annotations = expected_by_file
                 .remove(&file_decl.file_id)
