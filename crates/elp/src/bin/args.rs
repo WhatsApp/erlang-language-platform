@@ -311,6 +311,8 @@ pub struct Glean {
     pub pretty: bool,
     /// Output each fact separately
     pub multi: bool,
+    /// Optional prefix to prepend to each fact
+    pub prefix: Option<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]
