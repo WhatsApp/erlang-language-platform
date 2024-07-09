@@ -13,6 +13,7 @@
 //! specified type replacement in it
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::DiagnosticCode;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
@@ -25,9 +26,11 @@ use hir::Strategy;
 use hir::TypeExpr;
 use serde::Deserialize;
 use serde::Serialize;
+use text_edit::TextEdit;
 
 use super::Diagnostic;
 use super::Severity;
+use crate::fix;
 use crate::MFA;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,19 +86,30 @@ pub fn replace_in_spec(
                                         if let Some(range) =
                                             spec.body.range_for_any(sema, ctx.item_id)
                                         {
-                                            diags.push(
-                                                Diagnostic::new(
-                                                    DiagnosticCode::AdHoc(action_from.label()),
-                                                    format!(
-                                                        "Replace '{}' with '{}'",
-                                                        &action_from.label(),
-                                                        action_to
-                                                    ),
-                                                    range,
-                                                )
-                                                .with_severity(Severity::WeakWarning)
-                                                .experimental(),
+                                            let mut edit_builder = TextEdit::builder();
+                                            edit_builder.replace(range, action_to.to_string());
+                                            let edit = edit_builder.finish();
+
+                                            let diag_label = format!(
+                                                "Replace '{}' with '{}'",
+                                                &action_from.label(),
+                                                action_to
                                             );
+
+                                            let diag = Diagnostic::new(
+                                                DiagnosticCode::AdHoc(action_from.label()),
+                                                diag_label.clone(),
+                                                range,
+                                            )
+                                            .with_severity(Severity::WeakWarning)
+                                            .experimental()
+                                            .with_fixes(Some(vec![fix(
+                                                "replace_type",
+                                                &diag_label,
+                                                SourceChange::from_text_edit(file_id, edit),
+                                                range,
+                                            )]));
+                                            diags.push(diag);
                                         }
                                     }
                                 }
@@ -113,11 +127,27 @@ pub fn replace_in_spec(
 mod tests {
 
     use elp_ide_db::DiagnosticCode;
+    use expect_test::expect;
+    use expect_test::Expect;
 
     use super::*;
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_fix_with_config;
     use crate::DiagnosticsConfig;
+
+    #[track_caller]
+    pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(
+        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+        fixture_before: &str,
+        fixture_after: Expect,
+    ) {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::UndefinedFunction)
+            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
+        check_fix_with_config(config, fixture_before, fixture_after)
+    }
 
     #[track_caller]
     pub(crate) fn check_diagnostics_with_ad_hoc_semantics<'a>(
@@ -150,10 +180,41 @@ mod tests {
 
             -type one() :: one.
             -spec fn(integer()) -> modu:one().
-            %%                     ^^^^^^^^^^ weak: Replace 'modu:one/0' with 'modu:other()'
+            %%                     ^^^^^^^^^^ 💡 weak: Replace 'modu:one/0' with 'modu:other()'
             fn(0) -> one.
 
             "#,
+        )
+    }
+
+    #[test]
+    fn check_fix_replace_in_spec() {
+        check_fix_with_ad_hoc_semantics(
+            vec![&|acc, sema, file_id, _ext| {
+                replace_in_spec(
+                    &vec!["modu:fn/1".try_into().unwrap()],
+                    &"modu:one/0".try_into().unwrap(),
+                    "modu:other()",
+                    acc,
+                    sema,
+                    file_id,
+                )
+            }],
+            r#"
+            //- /src/modu.erl
+            -module(modu).
+
+            -type one() :: one.
+            -spec fn(integer()) -> mo~du:one().
+            fn(0) -> one.
+            "#,
+            expect![[r#"
+            -module(modu).
+
+            -type one() :: one.
+            -spec fn(integer()) -> modu:other().
+            fn(0) -> one.
+            "#]],
         )
     }
 }
