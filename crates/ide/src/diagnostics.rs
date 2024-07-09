@@ -96,6 +96,7 @@ mod module_mismatch;
 mod mutable_variable;
 mod redundant_assignment;
 mod replace_call;
+mod replace_in_spec;
 mod slow_functions;
 mod trivial_match;
 mod undefined_function;
@@ -110,6 +111,7 @@ pub use from_config::LintsFromConfig;
 pub use from_config::ReplaceCall;
 pub use from_config::ReplaceCallAction;
 pub use replace_call::Replacement;
+pub use replace_in_spec::TypeReplacement;
 
 use self::eqwalizer_assists::add_eqwalizer_assists;
 

@@ -16,8 +16,11 @@ use serde::Serialize;
 
 use super::replace_call;
 use super::replace_call::Replacement;
+use super::replace_in_spec;
 use super::Diagnostic;
+use super::TypeReplacement;
 use crate::codemod_helpers::FunctionMatch;
+use crate::MFA;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct LintsFromConfig {
@@ -36,12 +39,14 @@ impl LintsFromConfig {
 #[serde(tag = "type")]
 pub enum Lint {
     ReplaceCall(ReplaceCall),
+    ReplaceInSpec(ReplaceInSpec),
 }
 
 impl Lint {
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
         match self {
             Lint::ReplaceCall(l) => l.get_diagnostics(acc, sema, file_id),
+            Lint::ReplaceInSpec(l) => l.get_diagnostics(acc, sema, file_id),
         }
     }
 }
@@ -83,6 +88,35 @@ impl ReplaceCall {
 
 // ---------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ReplaceInSpec {
+    pub functions: Vec<MFA>,
+    pub action: ReplaceInSpecAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "action")]
+pub enum ReplaceInSpecAction {
+    Replace(TypeReplacement),
+}
+
+impl ReplaceInSpec {
+    pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+        match &self.action {
+            ReplaceInSpecAction::Replace(replace) => replace_in_spec::replace_in_spec(
+                &self.functions,
+                replace,
+                &replace_call::adhoc_diagnostic,
+                acc,
+                sema,
+                file_id,
+            ),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
@@ -91,9 +125,12 @@ mod tests {
     use super::LintsFromConfig;
     use super::ReplaceCall;
     use super::ReplaceCallAction;
+    use super::ReplaceInSpec;
+    use super::ReplaceInSpecAction;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
     use crate::diagnostics::replace_call::Replacement;
+    use crate::diagnostics::TypeReplacement;
 
     #[test]
     fn serde_serialize_function_match_mfa() {
@@ -308,6 +345,67 @@ mod tests {
     }
 
     #[test]
+    fn serde_serialize_replace_in_spec() {
+        expect![[r#"
+            functions = ["modu:fn/3"]
+
+            [action]
+            action = "Replace"
+            type = "TypeAliasWithString"
+            from = "modu:one/0"
+            to = "modu:other()"
+        "#]]
+        .assert_eq(
+            &toml::to_string::<ReplaceInSpec>(&ReplaceInSpec {
+                functions: vec!["modu:fn/3".try_into().unwrap()],
+                action: ReplaceInSpecAction::Replace(TypeReplacement::TypeAliasWithString {
+                    from: "modu:one/0".try_into().unwrap(),
+                    to: "modu:other()".to_string(),
+                }),
+            })
+            .unwrap(),
+        );
+    }
+    #[test]
+    fn serde_deserialize_replace_in_spec() {
+        let replace_in_spec: ReplaceInSpec = toml::from_str(
+            r#"
+              functions = ["modu:fn/3"]
+
+              [action]
+              action = "Replace"
+              type = "TypeAliasWithString"
+              from = "modu:one/0"
+              to = "modu:other()"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            ReplaceInSpec {
+                functions: [
+                    MFA {
+                        module: "modu",
+                        name: "fn",
+                        arity: 3,
+                    },
+                ],
+                action: Replace(
+                    TypeAliasWithString {
+                        from: MFA {
+                            module: "modu",
+                            name: "one",
+                            arity: 0,
+                        },
+                        to: "modu:other()",
+                    },
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&replace_in_spec);
+    }
+
+    #[test]
     fn serde_serialize_lints_from_config() {
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
             lints: vec![Lint::ReplaceCall(ReplaceCall {
@@ -369,5 +467,31 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&lints);
+    }
+
+    #[test]
+    fn serde_serialize_lints_from_config_2() {
+        let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
+            lints: vec![Lint::ReplaceInSpec(ReplaceInSpec {
+                functions: vec!["modu:fn/3".try_into().unwrap()],
+                action: ReplaceInSpecAction::Replace(TypeReplacement::TypeAliasWithString {
+                    from: "modu:one/0".try_into().unwrap(),
+                    to: "modu:other()".to_string(),
+                }),
+            })],
+        })
+        .unwrap();
+        expect![[r#"
+            [[lints]]
+            type = "ReplaceInSpec"
+            functions = ["modu:fn/3"]
+
+            [lints.action]
+            action = "Replace"
+            type = "TypeAliasWithString"
+            from = "modu:one/0"
+            to = "modu:other()"
+        "#]]
+        .assert_eq(&result);
     }
 }
