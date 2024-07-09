@@ -103,14 +103,18 @@ pub enum ReplaceInSpecAction {
 impl ReplaceInSpec {
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
         match &self.action {
-            ReplaceInSpecAction::Replace(replace) => replace_in_spec::replace_in_spec(
-                &self.functions,
-                replace,
-                &replace_call::adhoc_diagnostic,
-                acc,
-                sema,
-                file_id,
-            ),
+            ReplaceInSpecAction::Replace(replace) => match replace {
+                TypeReplacement::TypeAliasWithString { from, to } => {
+                    replace_in_spec::replace_in_spec(
+                        &self.functions,
+                        &from,
+                        &to,
+                        acc,
+                        sema,
+                        file_id,
+                    )
+                }
+            },
         }
     }
 }

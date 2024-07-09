@@ -436,6 +436,20 @@ impl CallTarget<TypeExprId> {
     ) -> Option<TypeAliasDef> {
         sema::to_def::resolve_type_target(sema, self, arity, file_id, body)
     }
+
+    pub fn label(&self, arity: u32, sema: &Semantic, body: &Body) -> Option<SmolStr> {
+        match self {
+            CallTarget::Local { name } => {
+                let name = sema.db.lookup_atom(body[*name].as_atom()?);
+                Some(SmolStr::new(format!("{name}/{arity}")))
+            }
+            CallTarget::Remote { module, name } => {
+                let name = sema.db.lookup_atom(body[*name].as_atom()?);
+                let module = sema.db.lookup_atom(body[*module].as_atom()?);
+                Some(SmolStr::new(format!("{module}:{name}/{arity}",)))
+            }
+        }
+    }
 }
 
 impl CallTarget<ExprId> {
