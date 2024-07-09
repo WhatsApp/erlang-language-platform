@@ -31,3 +31,13 @@ uncovered_5(_) -> ok.
 -spec uncovered_6(#{atom() => atom()}) -> ok.
 uncovered_6(#{a := V}) when is_integer(V) -> V;
 uncovered_6(_) -> ok.
+
+-spec uncovered_number(number() | ok) -> ok.
+uncovered_number(I) when is_integer(I) -> ok;
+uncovered_number(F) when is_float(F) -> ok;
+uncovered_number(A) -> A.
+
+-spec uncovered_number_2(number() | ok) -> ok.
+uncovered_number_2(F) when is_float(F) -> ok;
+uncovered_number_2(I) when is_integer(I) -> ok;
+uncovered_number_2(A) -> A.

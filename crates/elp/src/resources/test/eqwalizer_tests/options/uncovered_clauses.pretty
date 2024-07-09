@@ -38,4 +38,20 @@ error: clause_not_covered
 
 See https://fb.me/eqwalizer_errors#clause_not_covered
 
-5 ERRORS
+error: clause_not_covered
+   ┌─ options/src/uncovered_clauses.erl:37:1
+   │
+37 │ uncovered_number(F) when is_float(F) -> ok;
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+See https://fb.me/eqwalizer_errors#clause_not_covered
+
+error: clause_not_covered
+   ┌─ options/src/uncovered_clauses.erl:42:1
+   │
+42 │ uncovered_number_2(I) when is_integer(I) -> ok;
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+See https://fb.me/eqwalizer_errors#clause_not_covered
+
+7 ERRORS
