@@ -1,0 +1,4 @@
+module specified: expression_updates_literal
+Diagnostics reported in 1 modules:
+  expression_updates_literal: 1
+      7:6-8:15::[Warning] [L1318] expression updates a literal

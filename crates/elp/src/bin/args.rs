@@ -232,6 +232,8 @@ pub struct Lint {
     /// Run with rebar
     pub rebar: bool,
     pub include_generated: bool,
+    /// Include erlang service diagnostics
+    pub include_erlang_service_diagnostics: bool,
     /// Include Common Test diagnostics
     pub include_ct_diagnostics: bool,
     /// Include EDoc diagnostics

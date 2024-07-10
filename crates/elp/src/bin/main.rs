@@ -1187,6 +1187,25 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_reports_erlang_service_diagnostics(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--include-erlang-service-diagnostics",
+                "--diagnostic-filter",
+                "L1318",
+                "--module",
+                "expression_updates_literal"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_erlang_service.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_config_file_parse_error(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();

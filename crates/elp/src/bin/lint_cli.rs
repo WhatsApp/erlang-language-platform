@@ -28,6 +28,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LintConfig;
+use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::diff::diff_from_textedit;
 use elp_ide::diff::DiffRange;
@@ -132,7 +133,13 @@ fn do_parse_one(
     let mut diagnostics = DiagnosticCollection::default();
     let native = db.native_diagnostics(config, file_id)?;
     diagnostics.set_native(file_id, native);
-
+    if args.include_erlang_service_diagnostics {
+        let erlang_service =
+            db.erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
+        for (file_id, diags) in erlang_service {
+            diagnostics.set_erlang_service(file_id, diags);
+        }
+    }
     if args.include_ct_diagnostics {
         diagnostics.set_ct(file_id, db.ct_diagnostics(file_id, config)?);
     }
