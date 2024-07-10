@@ -1,34 +1,34 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlang-service-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--one-shot] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--one-shot] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
 
 Available options:
-        --project <PROJECT>                   Path to directory with project, or to a JSON file (defaults to `.`)
-        --module <MODULE>                     Parse a single module from the project, not the entire project.
-        --file <FILE>                         Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
-        --to <TO>                             Path to a directory where to dump result files
-        --no-diags                            Do not print the full diagnostics for a file, just the count
-        --experimental                        Report experimental diagnostics too, if diagnostics are enabled
-        --as <PROFILE>                        Rebar3 profile to pickup (default is test)
-        --format <FORMAT>                     Show diagnostics in JSON format
-        --rebar                               Run with rebar
+        --project <PROJECT>          Path to directory with project, or to a JSON file (defaults to `.`)
+        --module <MODULE>            Parse a single module from the project, not the entire project.
+        --file <FILE>                Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
+        --to <TO>                    Path to a directory where to dump result files
+        --no-diags                   Do not print the full diagnostics for a file, just the count
+        --experimental               Report experimental diagnostics too, if diagnostics are enabled
+        --as <PROFILE>               Rebar3 profile to pickup (default is test)
+        --format <FORMAT>            Show diagnostics in JSON format
+        --rebar                      Run with rebar
         --include-generated
-        --include-erlang-service-diagnostics  Include erlang service diagnostics
-        --include-ct-diagnostics              Include Common Test diagnostics
-        --include-edoc-diagnostics            Include EDoc diagnostics
-        --include-suppressed                  Include Suppressed diagnostics (e.g. elp:fixme)
-        --include-tests                       Also generate diagnostics for test files
-        --apply-fix                           If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
-        --recursive                           If applying fixes, apply any new ones that arise from the
-                                              prior fixes recursively. Limited in scope to the clause of the
-                                              prior change.
-        --in-place                            When applying a fix, modify the original file.
-        --one-shot                            Apply to all matching diagnostic occurrences at once, rather
-                                              than one at a time.
-        --diagnostic-ignore <CODE>            Ignore the specified diagnostic, by code or label
-        --diagnostic-filter <CODE>            Filter out all reported diagnostics except this one, by code or label
-        --ignore-fix-only                     Only apply elp:ignore fixes
-        --read-config                         Get some configuration from a .elp_lint.toml file instead in the project root
-        --config-file <CONFIG_FILE>           Override normal configuration file. When set, acts as if READ_CONFIG is true.
-    -h, --help                                Prints help information
+        --include-erlc-diagnostics   Include diagnostics produced by erlc
+        --include-ct-diagnostics     Include Common Test diagnostics
+        --include-edoc-diagnostics   Include EDoc diagnostics
+        --include-suppressed         Include Suppressed diagnostics (e.g. elp:fixme)
+        --include-tests              Also generate diagnostics for test files
+        --apply-fix                  If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
+        --recursive                  If applying fixes, apply any new ones that arise from the
+                                     prior fixes recursively. Limited in scope to the clause of the
+                                     prior change.
+        --in-place                   When applying a fix, modify the original file.
+        --one-shot                   Apply to all matching diagnostic occurrences at once, rather
+                                     than one at a time.
+        --diagnostic-ignore <CODE>   Ignore the specified diagnostic, by code or label
+        --diagnostic-filter <CODE>   Filter out all reported diagnostics except this one, by code or label
+        --ignore-fix-only            Only apply elp:ignore fixes
+        --read-config                Get some configuration from a .elp_lint.toml file instead in the project root
+        --config-file <CONFIG_FILE>  Override normal configuration file. When set, acts as if READ_CONFIG is true.
+    -h, --help                       Prints help information
