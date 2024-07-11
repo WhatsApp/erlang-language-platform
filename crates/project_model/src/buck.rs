@@ -206,6 +206,7 @@ pub struct Target {
     pub include_files: Vec<AbsPathBuf>,
     pub ebin: Option<AbsPathBuf>,
     pub target_type: TargetType,
+    /// true if there are .hrl files in the src dir
     pub private_header: bool,
 }
 
