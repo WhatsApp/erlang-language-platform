@@ -98,7 +98,6 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
 
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
     sema.is_atom_named(function, known::module_info) && (arity == 0 || arity == 1)
-        || sema.is_atom_named(module, known::erlang)
         || sema.is_atom_named(module, known::graphql_scanner)
         || sema.is_atom_named(module, known::graphql_parser)
         || sema.is_atom_named(module, known::thrift_scanner)
@@ -143,12 +142,38 @@ mod tests {
     fn test_bif() {
         check_diagnostics(
             r#"
+//- /src/main.erl
   -module(main).
   main(A) ->
     size(A),
     exists().
 
   exists() -> ok.
+//- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+    -module(erlang).
+    -export([size/1]).
+    size(_) -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_erlang_typo() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    _T0 = erlang:monotonic_time(milliseconds),
+    _T2 = erlang:monitonic_time(milliseconds),
+%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:monitonic_time/1' is undefined.
+    exists().
+
+  exists() -> ok.
+//- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+    -module(erlang).
+    -export([monotonic_time/1]).
+    monotonic_time(_) -> ok.
             "#,
         )
     }
@@ -210,13 +235,15 @@ mod tests {
     }
 
     #[test]
-    fn test_exclude_get_stacktrace() {
+    fn test_do_not_exclude_get_stacktrace() {
+        // erlang:get_stacktrace/0 last existed in OTP20. Do not special-case it
         check_diagnostics(
             r#"
 //- /src/main.erl
   -module(main).
   main() ->
     erlang:get_stacktrace(),
+%%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:get_stacktrace/0' is undefined.
     dependency:get_stacktrace().
 %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:get_stacktrace/0' is undefined.
             "#,
