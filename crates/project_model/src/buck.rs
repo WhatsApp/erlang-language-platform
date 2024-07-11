@@ -812,7 +812,6 @@ impl ProjectAppDataAcc {
                     .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|extra| extra.parent())
                     .map(|extra| extra.to_path_buf())
-                    .filter(|dir| dir.file_name() != Some(&SRC_EXT))
                     .collect();
 
                 let extra_src_dirs: Vec<String> = abs_extra_dirs
