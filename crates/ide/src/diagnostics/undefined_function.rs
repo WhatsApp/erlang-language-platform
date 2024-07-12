@@ -87,10 +87,8 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                 hir::CallTarget::Local { .. } => None,
             }
         },
-        &move |MakeDiagCtx {
-                   sema, extra, range, ..
-               }| {
-            let diag = make_diagnostic(sema, def.file.file_id, range, &extra.0);
+        &move |ctx @ MakeDiagCtx { sema, extra, .. }| {
+            let diag = make_diagnostic(sema, def.file.file_id, ctx.range_mf_only(), &extra.0);
             Some(diag)
         },
     );
@@ -166,7 +164,7 @@ mod tests {
   main() ->
     _T0 = erlang:monotonic_time(milliseconds),
     _T2 = erlang:monitonic_time(milliseconds),
-%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:monitonic_time/1' is undefined.
+%%        ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:monitonic_time/1' is undefined.
     exists().
 
   exists() -> ok.
@@ -187,7 +185,7 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:not_exists().
-%%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:not_exists/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:not_exists/0' is undefined.
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -224,7 +222,7 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:module_info(a, b).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:module_info/2' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:module_info/2' is undefined.
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -243,9 +241,9 @@ mod tests {
   -module(main).
   main() ->
     erlang:get_stacktrace(),
-%%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:get_stacktrace/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'erlang:get_stacktrace/0' is undefined.
     dependency:get_stacktrace().
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:get_stacktrace/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:get_stacktrace/0' is undefined.
             "#,
         )
     }

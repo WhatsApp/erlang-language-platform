@@ -463,7 +463,6 @@ pub struct MakeDiagCtx<'a, U> {
 impl<'a, U> MakeDiagCtx<'a, U> {
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
-    #[allow(dead_code)]
     pub fn range_mf_only(&self) -> TextRange {
         self.range_mf_only.unwrap_or(self.range)
     }
