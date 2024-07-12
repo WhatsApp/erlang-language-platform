@@ -466,9 +466,24 @@ impl<'a, U> MakeDiagCtx<'a, U> {
     pub fn range_mf_only(&self) -> TextRange {
         self.range_mf_only.unwrap_or(self.range)
     }
+
+    #[allow(dead_code)]
+    pub fn range(&self, use_range: &UseRange) -> TextRange {
+        match use_range {
+            UseRange::WithArgs => self.range,
+            UseRange::NameOnly => self.range_mf_only(),
+        }
+    }
 }
 
 pub type MakeDiag<'a, T> = &'a dyn Fn(MakeDiagCtx<T>) -> Option<Diagnostic>;
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub enum UseRange {
+    WithArgs,
+    #[allow(dead_code)]
+    NameOnly,
+}
 
 pub(crate) fn find_call_in_function<T, U>(
     diags: &mut Vec<Diagnostic>,
@@ -551,6 +566,7 @@ mod tests {
     use super::find_call_in_function;
     use super::FunctionMatch;
     use super::MakeDiagCtx;
+    use super::UseRange;
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
@@ -559,12 +575,6 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix_with_config;
     use crate::AnalysisHost;
-
-    #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-    enum UseRange {
-        WithArgs,
-        NameOnly,
-    }
 
     fn check_functions(
         diags: &mut Vec<Diagnostic>,

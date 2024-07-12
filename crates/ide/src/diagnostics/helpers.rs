@@ -18,6 +18,7 @@ use super::Diagnostic;
 use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::UseRange;
 use crate::FunctionMatch;
 
 // ---------------------------------------------------------------------
@@ -28,6 +29,7 @@ pub(crate) struct DiagnosticTemplate {
     pub(crate) message: String,
     pub(crate) severity: Severity,
     pub(crate) with_ignore_fix: bool,
+    pub(crate) use_range: UseRange,
 }
 
 /// Define a checker for a function that should not be used. Generate
@@ -65,15 +67,18 @@ pub(crate) fn check_function_with_diagnostic_template(
         def,
         mfas,
         &move |ctx| Some(*ctx.t),
-        &move |MakeDiagCtx {
+        &move |ctx @ MakeDiagCtx {
                    sema,
                    def_fb,
                    extra,
-                   range,
                    ..
                }: MakeDiagCtx<'_, &DiagnosticTemplate>| {
-            let diag = Diagnostic::new(extra.code.clone(), extra.message.clone(), range)
-                .with_severity(extra.severity);
+            let diag = Diagnostic::new(
+                extra.code.clone(),
+                extra.message.clone(),
+                ctx.range(&extra.use_range),
+            )
+            .with_severity(extra.severity);
             let diag = if extra.with_ignore_fix {
                 diag.with_ignore_fix(sema, def_fb.file_id())
             } else {
@@ -93,6 +98,7 @@ mod tests {
     use super::check_used_functions;
     use super::DiagnosticTemplate;
     use super::FunctionCallDiagnostic;
+    use crate::codemod_helpers::UseRange;
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
@@ -124,6 +130,7 @@ mod tests {
                             message: "diagnostic message".to_string(),
                             severity: Severity::Warning,
                             with_ignore_fix: true,
+                            use_range: UseRange::WithArgs,
                         },
                         matches: vec![FunctionMatch::mfas("main", "foo", vec![0])]
                             .into_iter()

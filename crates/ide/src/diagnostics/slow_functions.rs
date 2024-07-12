@@ -21,6 +21,7 @@ use super::Diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
 use crate::codemod_helpers::FunctionMatch;
+use crate::codemod_helpers::UseRange;
 use crate::diagnostics::helpers::FunctionCallDiagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -58,6 +59,7 @@ See https://www.erlang.org/doc/man/sets.html
                 .to_string(),
                 severity: Severity::Warning,
                 with_ignore_fix: true,
+                use_range: UseRange::WithArgs
             },
             matches: vec![
                 FunctionMatch::mfas("sets", "new", vec![0]),
@@ -77,6 +79,7 @@ See https://www.erlang.org/doc/man/sets.html
                 .to_string(),
                 severity: Severity::Warning,
                 with_ignore_fix: true,
+                use_range: UseRange::WithArgs
             },
             matches: vec![FunctionMatch::m("dict")],
         },
