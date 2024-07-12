@@ -453,8 +453,20 @@ pub struct MakeDiagCtx<'a, U> {
     pub def_fb: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
     pub target: &'a CallTarget<ExprId>,
     pub args: &'a [ExprId],
+    /// Range of the module:fun part of an MFA, if not defined in a
+    /// macro, in which case the macro call location is used.
+    pub range_mf_only: Option<TextRange>,
     pub range: TextRange,
     pub extra: &'a U,
+}
+
+impl<'a, U> MakeDiagCtx<'a, U> {
+    /// Range of the module:fun part of an MFA, if not defined in a
+    /// macro, in which case the macro call location is used.
+    #[allow(dead_code)]
+    pub fn range_mf_only(&self) -> TextRange {
+        self.range_mf_only.unwrap_or(self.range)
+    }
 }
 
 pub type MakeDiag<'a, T> = &'a dyn Fn(MakeDiagCtx<T>) -> Option<Diagnostic>;
@@ -497,12 +509,19 @@ pub(crate) fn find_call_in_function<T, U>(
                             ctx.item_id
                         };
                         if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
+                            let range_mf_only = if !ctx.in_macro.is_some() {
+                                target.range(in_clause)
+                            } else {
+                                // We need to rather use the full range, of the macro
+                                None
+                            };
                             if let Some(diag) = make_diag(MakeDiagCtx {
                                 sema,
                                 def_fb: in_clause,
                                 target: &target,
                                 args: &args,
                                 extra: &extra,
+                                range_mf_only,
                                 range: *range,
                             }) {
                                 diags.push(diag)
@@ -542,15 +561,22 @@ mod tests {
     use crate::tests::check_fix_with_config;
     use crate::AnalysisHost;
 
+    #[derive(Eq, PartialEq, Copy, Clone, Debug)]
+    enum UseRange {
+        WithArgs,
+        NameOnly,
+    }
+
     fn check_functions(
         diags: &mut Vec<Diagnostic>,
         sema: &Semantic,
         file_id: FileId,
         match_spec: &Vec<Vec<FunctionMatch>>,
+        use_range: UseRange,
     ) {
         sema.def_map(file_id)
             .get_functions()
-            .for_each(|(_, def)| check_function(diags, sema, def, match_spec.clone()));
+            .for_each(|(_, def)| check_function(diags, sema, def, match_spec.clone(), use_range));
     }
 
     fn check_function(
@@ -558,13 +584,14 @@ mod tests {
         sema: &Semantic,
         def: &FunctionDef,
         match_spec: Vec<Vec<FunctionMatch>>,
+        use_range: UseRange,
     ) {
         let matches = match_spec
             .into_iter()
             .flatten()
             .collect::<Vec<FunctionMatch>>();
 
-        process_matches(diags, sema, def, &matches);
+        process_matches(diags, sema, def, &matches, use_range);
     }
 
     fn process_matches(
@@ -572,6 +599,7 @@ mod tests {
         sema: &Semantic,
         def: &FunctionDef,
         bad: &[FunctionMatch],
+        use_range: UseRange,
     ) {
         let mfas = bad.iter().map(|b| (b, ())).collect::<Vec<_>>();
         find_call_in_function(
@@ -580,17 +608,24 @@ mod tests {
             def,
             &mfas,
             &move |_ctx| Some("Diagnostic Message"),
-            &move |MakeDiagCtx {
+            &move |ctx @ MakeDiagCtx {
                        sema,
                        def_fb,
                        extra,
                        range,
                        ..
                    }: MakeDiagCtx<'_, &str>| {
-                let diag =
-                    Diagnostic::new(DiagnosticCode::AdHoc("test".to_string()), *extra, range)
-                        .with_severity(Severity::Warning)
-                        .with_ignore_fix(sema, def_fb.file_id());
+                let diag_range = match use_range {
+                    UseRange::WithArgs => range,
+                    UseRange::NameOnly => ctx.range_mf_only(),
+                };
+                let diag = Diagnostic::new(
+                    DiagnosticCode::AdHoc("test".to_string()),
+                    *extra,
+                    diag_range,
+                )
+                .with_severity(Severity::Warning)
+                .with_ignore_fix(sema, def_fb.file_id());
                 Some(diag)
             },
         );
@@ -603,7 +638,20 @@ mod tests {
                 .disable(DiagnosticCode::CrossNodeEval)
                 .disable(DiagnosticCode::UndefinedFunction)
                 .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
-                    check_functions(acc, sema, file_id, match_spec)
+                    check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
+                }]),
+            fixture,
+        );
+    }
+
+    #[track_caller]
+    fn check_adhoc_function_match_range_mf(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
+        check_diagnostics_with_config(
+            DiagnosticsConfig::default()
+                .disable(DiagnosticCode::CrossNodeEval)
+                .disable(DiagnosticCode::UndefinedFunction)
+                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
+                    check_functions(acc, sema, file_id, match_spec, UseRange::NameOnly)
                 }]),
             fixture,
         );
@@ -620,7 +668,7 @@ mod tests {
                 .disable(DiagnosticCode::CrossNodeEval)
                 .disable(DiagnosticCode::UndefinedFunction)
                 .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
-                    check_functions(acc, sema, file_id, match_spec)
+                    check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
                 }]),
             fixture_before,
             fixture_after,
@@ -641,6 +689,38 @@ mod tests {
             %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
                 foo:fire_bombs(Config, zz).
             %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            "#,
+        )
+    }
+
+    #[test]
+    fn find_call_in_function_1a() {
+        check_adhoc_function_match_range_mf(
+            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1, 2])],
+            r#"
+            -module(main).
+
+            bar(Config) ->
+                foo:fire_bombs(Config),
+            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+                foo:fire_bombs(Config, zz).
+            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            "#,
+        )
+    }
+
+    #[test]
+    fn find_call_in_function_full_range_for_macro() {
+        check_adhoc_function_match_range_mf(
+            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
+            r#"
+            -module(main).
+
+            -define(MY_MACRO(A), fun() -> foo:fire_bombs(A) end).
+
+            bar(Config) ->
+                ?MY_MACRO(Config).
+            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
             "#,
         )
     }

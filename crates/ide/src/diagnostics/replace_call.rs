@@ -87,6 +87,7 @@ pub fn replace_call_site_if_args_match(
                        args,
                        extra,
                        range,
+                       ..
                    }: MakeDiagCtx<'_, (String, String)>| {
                 let mfa = MFA::from_call_target(
                     target,
