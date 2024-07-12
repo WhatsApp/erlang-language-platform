@@ -725,6 +725,20 @@ mod tests {
     }
 
     #[test]
+    fn find_call_in_function_full_mf_auto_erlang() {
+        check_adhoc_function_match_range_mf(
+            &vec![FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],
+            r#"
+            -module(main).
+
+            bar(Node) ->
+                spawn(Node, mod, fff, []).
+            %%  ^^^^^ 💡 warning: Diagnostic Message
+            "#,
+        )
+    }
+
+    #[test]
     fn find_call_in_function_erlang_module() {
         check_adhoc_function_match(
             &vec![FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],

@@ -18,6 +18,7 @@ use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use la_arena::Idx;
 
+use crate::known;
 use crate::sema;
 use crate::Atom;
 use crate::Body;
@@ -511,9 +512,18 @@ impl CallTarget<ExprId> {
         match self {
             CallTarget::Local { name } => in_clause.range_for_expr(*name),
             CallTarget::Remote { module, name } => {
-                let module_range = in_clause.range_for_expr(*module)?;
                 let name_range = in_clause.range_for_expr(*name)?;
-                Some(module_range.cover(name_range))
+                if let Some(module_range) = in_clause.range_for_expr(*module) {
+                    Some(module_range.cover(name_range))
+                } else {
+                    // We may have the erlang module, inserted while lowering
+                    let module_atom = &in_clause[*module].as_atom()?;
+                    if in_clause.sema.db.lookup_atom(*module_atom) == known::erlang {
+                        Some(name_range)
+                    } else {
+                        None
+                    }
+                }
             }
         }
     }
