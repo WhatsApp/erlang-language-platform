@@ -120,7 +120,12 @@ impl LineIndex {
     pub fn offset(&self, line_col: LineCol) -> TextSize {
         //FIXME: return Result
         let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
-        self.newlines[line_col.line as usize] + col
+        if let Some(offset) = self.newlines.get(line_col.line as usize) {
+            offset + col
+        } else {
+            log::warn!("line_index.offset, limiting");
+            self.newlines[self.newlines.len() - 1] + col
+        }
     }
 
     pub fn safe_offset(&self, line_col: LineCol) -> Option<TextSize> {

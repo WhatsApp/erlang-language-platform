@@ -12,7 +12,7 @@ use std::ops::Range;
 use elp_ide::elp_ide_db::LineIndex;
 use lsp_types::TextDocumentContentChangeEvent;
 
-use crate::from_proto::text_range;
+use crate::from_proto::safe_text_range;
 use crate::line_endings::LineEndings;
 
 pub struct Document {
@@ -71,9 +71,21 @@ impl Document {
                         line_index = LineIndex::new(&self.content);
                     }
                     index_valid = IndexValid::UpToLineExclusive(range.start.line);
-                    let range = text_range(&line_index, range);
-                    self.content
-                        .replace_range(Range::<usize>::from(range), &change.text);
+                    if let Some(range) = safe_text_range(&line_index, range) {
+                        if self.content.is_char_boundary(range.start().into())
+                            && self.content.is_char_boundary(range.end().into())
+                        {
+                            self.content
+                                .replace_range(Range::<usize>::from(range), &change.text);
+                        } else {
+                            log::warn!(
+                                "discarding invalid document change char boundary: {:?}",
+                                &change
+                            );
+                        }
+                    } else {
+                        log::warn!("discarding invalid document change range: {:?}", &change);
+                    }
                 }
                 None => {
                     self.content = change.text;
