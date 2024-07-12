@@ -467,7 +467,6 @@ impl<'a, U> MakeDiagCtx<'a, U> {
         self.range_mf_only.unwrap_or(self.range)
     }
 
-    #[allow(dead_code)]
     pub fn range(&self, use_range: &UseRange) -> TextRange {
         match use_range {
             UseRange::WithArgs => self.range,
@@ -481,7 +480,6 @@ pub type MakeDiag<'a, T> = &'a dyn Fn(MakeDiagCtx<T>) -> Option<Diagnostic>;
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum UseRange {
     WithArgs,
-    #[allow(dead_code)]
     NameOnly,
 }
 

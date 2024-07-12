@@ -59,7 +59,7 @@ See https://www.erlang.org/doc/man/sets.html
                 .to_string(),
                 severity: Severity::Warning,
                 with_ignore_fix: true,
-                use_range: UseRange::WithArgs
+                use_range: UseRange::NameOnly
             },
             matches: vec![
                 FunctionMatch::mfas("sets", "new", vec![0]),
@@ -79,7 +79,7 @@ See https://www.erlang.org/doc/man/sets.html
                 .to_string(),
                 severity: Severity::Warning,
                 with_ignore_fix: true,
-                use_range: UseRange::WithArgs
+                use_range: UseRange::NameOnly
             },
             matches: vec![FunctionMatch::m("dict")],
         },
@@ -98,18 +98,18 @@ mod tests {
              //- /src/main.erl
              -module(main).
              foo() -> sets:new().
-             %%       ^^^^^^^^^^ 💡 warning: Prefer the map-based sets implementation.
-             %%                |The old implementation of sets was very slow. Use `[{version, 2}]` when constructing a set.
-             %%                | 
-             %%                |See https://www.erlang.org/doc/man/sets.html
-             %%                | 
+             %%       ^^^^^^^^ 💡 warning: Prefer the map-based sets implementation.
+             %%              |The old implementation of sets was very slow. Use `[{version, 2}]` when constructing a set.
+             %%              | 
+             %%              |See https://www.erlang.org/doc/man/sets.html
+             %%              | 
 
              bar() -> sets:from_list([]).
-             %%       ^^^^^^^^^^^^^^^^^^ 💡 warning: Prefer the map-based sets implementation.
-             %%                        |The old implementation of sets was very slow. Use `[{version, 2}]` when constructing a set.
-             %%                        | 
-             %%                        |See https://www.erlang.org/doc/man/sets.html
-             %%                        | 
+             %%       ^^^^^^^^^^^^^^ 💡 warning: Prefer the map-based sets implementation.
+             %%                    |The old implementation of sets was very slow. Use `[{version, 2}]` when constructing a set.
+             %%                    | 
+             %%                    |See https://www.erlang.org/doc/man/sets.html
+             %%                    | 
 
              //- /src/sets.erl
              -module(sets).
@@ -128,18 +128,18 @@ mod tests {
              //- /src/main.erl
              -module(main).
              foo() -> dict:new().
-             %%       ^^^^^^^^^^ 💡 warning: The dict module is very slow in Erlang. 
-             %%                |It is recommend to use maps instead of the dict module.
-             %%                | 
-             %%                |See https://fb.workplace.com/groups/1178411125511220/permalink/3495040030514973
-             %%                | 
+             %%       ^^^^^^^^ 💡 warning: The dict module is very slow in Erlang. 
+             %%              |It is recommend to use maps instead of the dict module.
+             %%              | 
+             %%              |See https://fb.workplace.com/groups/1178411125511220/permalink/3495040030514973
+             %%              | 
 
              bar() -> dict:from_list([]).
-             %%       ^^^^^^^^^^^^^^^^^^ 💡 warning: The dict module is very slow in Erlang. 
-             %%                        |It is recommend to use maps instead of the dict module.
-             %%                        | 
-             %%                        |See https://fb.workplace.com/groups/1178411125511220/permalink/3495040030514973
-             %%                        | 
+             %%       ^^^^^^^^^^^^^^ 💡 warning: The dict module is very slow in Erlang. 
+             %%                    |It is recommend to use maps instead of the dict module.
+             %%                    | 
+             %%                    |See https://fb.workplace.com/groups/1178411125511220/permalink/3495040030514973
+             %%                    | 
 
              //- /src/dict.erl
              -module(dict).
