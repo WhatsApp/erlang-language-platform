@@ -479,6 +479,7 @@ pub type MakeDiag<'a, T> = &'a dyn Fn(MakeDiagCtx<T>) -> Option<Diagnostic>;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum UseRange {
+    #[allow(dead_code)]
     WithArgs,
     NameOnly,
 }
