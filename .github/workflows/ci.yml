@@ -12,11 +12,8 @@ jobs:
     strategy:
       matrix:
         platform-arch: [ubuntu-20.04-x64, ubuntu-20.04-arm, macos-13-x64, macos-latest-arm]
-        otp-version: [25.3, 26.2]
+        otp-version: [ 26.2]
         include:
-          - otp-version: 25.3
-            brew-otp-version: 25
-            vscode-publish: true
           - otp-version: 26.2
             brew-otp-version: 26
             vscode-publish: false
