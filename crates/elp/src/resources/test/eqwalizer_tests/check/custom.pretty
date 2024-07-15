@@ -2214,14 +2214,12 @@ error: incompatible_types
      │     │
      │     Device.
 Expression has type:   file:io_device()
-Context expected type: file:fd()
+Context expected type: #file_descriptor{}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │     
 
-  file:io_device() is not compatible with file:fd()
-  because
-  pid() | file:fd() is not compatible with file:fd()
+  file:io_device() is not compatible with #file_descriptor{}
   because
   pid() | file:fd() is not compatible with #file_descriptor{}
   because
@@ -2235,14 +2233,12 @@ error: incompatible_types
      │     │
      │     Device.
 Expression has type:   file:io_device()
-Context expected type: file:fd()
+Context expected type: #file_descriptor{}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │     
 
-  file:io_device() is not compatible with file:fd()
-  because
-  pid() | file:fd() is not compatible with file:fd()
+  file:io_device() is not compatible with #file_descriptor{}
   because
   pid() | file:fd() is not compatible with #file_descriptor{}
   because
