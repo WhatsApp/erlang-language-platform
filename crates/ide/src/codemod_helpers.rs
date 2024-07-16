@@ -436,6 +436,7 @@ impl TryFrom<&str> for MFA {
 }
 
 pub struct CheckCallCtx<'a, T> {
+    #[allow(unused)]
     pub mfa: &'a FunctionMatch,
     pub parents: &'a Vec<HirIdx>,
     pub target: &'a CallTarget<ExprId>,
