@@ -30,7 +30,7 @@
 ]).
 
 %% API
--export([get_docs/3, ct_info/2, elp_lint/4, terminate/0]).
+-export([process/1]).
 
 %%==============================================================================
 %% Includes
@@ -46,12 +46,10 @@
 %%==============================================================================
 -type state() :: #{io := pid(), requests := [request_entry()]}.
 -type request_entry() :: {pid(), id(), reference() | infinity}.
--type request() :: {request, request_type(), id(), data(), [any()]}.
+-type request() :: {process, binary()}.
 -type result() :: {result, id(), [segment()]}.
 -type exception() :: {exception, id(), any()}.
--type id() :: binary().
--type request_type() :: get_docs | ct_info | elp_lint.
--type data() :: binary().
+-type id() :: integer().
 -type segment() :: {string(), binary()}.
 
 %%==============================================================================
@@ -62,17 +60,9 @@ start_link() ->
     process_flag(trap_exit, true),
     {ok, _Pid} = gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
-get_docs(Id, Data, DocOrigin) ->
-    gen_server:cast(?SERVER, {request, get_docs, Id, Data, [DocOrigin]}).
-
-ct_info(Id, Data) ->
-    gen_server:cast(?SERVER, {request, ct_info, Id, Data, []}).
-
-elp_lint(Id, Data, PostProcess, Deterministic) ->
-    gen_server:cast(?SERVER, {request, elp_lint, Id, Data, [PostProcess, Deterministic]}).
-
-terminate() ->
-    gen_server:call(?SERVER, terminate).
+-spec process(binary()) -> ok.
+process(Data) ->
+    gen_server:cast(?SERVER, {process, Data}).
 
 %%==============================================================================
 %% gen_server callbacks
@@ -83,22 +73,12 @@ init(noargs) ->
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {reply, any(), state()}.
-handle_call(terminate, _From, #{io := Device} = State) ->
-    Reply = <<"EXT">>,
-    file:write(Device, <<(byte_size(Reply)):32/big, Reply/binary>>),
-    {reply, ok, State}.
+handle_call(Req, _From, State) ->
+    {stop, {unexpected_request, Req}, State}.
 
 -spec handle_cast(request() | result() | exception(), state()) -> {noreply, state()}.
-handle_cast({request, Request, Id, Data, AdditionalParams}, #{requests := Requests} = State) ->
-    Pid = process_request_async(callback_module(Request), Id, Data, AdditionalParams),
-    Timer =
-        case timeout(Request) of
-            infinity ->
-                infinity;
-            Timeout ->
-                erlang:send_after(Timeout, ?SERVER, {timeout, Pid})
-        end,
-    {noreply, State#{requests => [{Pid, Id, Timer} | Requests]}};
+handle_cast({process, Data}, State) ->
+    handle_request(Data, State);
 handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Id, 2, Requests) of
         {value, {_Pid, _Id, infinity}, NewRequests} ->
@@ -173,16 +153,55 @@ process_request_async(Module, Id, Data, AdditionalParams) ->
         end
     ).
 
-callback_module(get_docs) -> erlang_service_edoc;
-callback_module(ct_info) -> erlang_service_ct;
-callback_module(elp_lint) -> erlang_service_lint.
+-spec handle_request(binary(), state()) -> {noreply, state()}.
+handle_request(<<"ACP", _:64/big, Data/binary>>, State) ->
+    Paths = collect_paths(Data),
+    code:add_pathsa(Paths),
+    {noreply, State};
+handle_request(<<"COM", Id:64/big, Data/binary>>, State) ->
+    PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
+    request(erlang_service_lint, Id, Data, [PostProcess, false], infinity, State);
+handle_request(<<"TXT", Id:64/big, Data/binary>>, State) ->
+    PostProcess =
+        fun(Forms, _) ->
+            unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
+        end,
+    request(erlang_service_lint, Id, Data, [PostProcess, false], infinity, State);
+handle_request(<<"DCE", Id:64/big, Data/binary>>, State) ->
+    request(erlang_service_edoc, Id, Data, [edoc], infinity, State);
+handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
+    request(erlang_service_edoc, Id, Data, [eep48], infinity, State);
+handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
+    request(erlang_service_ct, Id, Data, [], 10_000, State);
+handle_request(<<"EXT">>, #{io := Io} = State) ->
+    Reply = <<"EXT">>,
+    file:write(Io, <<(byte_size(Reply)):32/big, Reply/binary>>),
+    init:stop(),
+    {noreply, State}.
 
-timeout(ct_info) -> 10000;
-timeout(_) -> infinity.
 
+-spec request(module(), id(), binary(), [any()], timeout(), state()) -> {noreply, state()}.
+request(Module, Id, Data, AdditionalParams, Timeout, #{requests := Requests} = State) ->
+    Pid = process_request_async(Module, Id, Data, AdditionalParams),
+    Timer =
+        case Timeout of
+            infinity ->
+                infinity;
+            Timeout ->
+                erlang:send_after(Timeout, ?SERVER, {timeout, Pid})
+        end,
+    {noreply, State#{requests => [{Pid, Id, Timer} | Requests]}}.
+
+-spec collect_paths(binary()) -> [file:filename()].
+collect_paths(<<>>) -> [];
+collect_paths(<<Size:32/big, Data:Size/binary, Rest/binary>>) ->
+    [binary_to_list(Data) | collect_paths(Rest)].
+
+-spec encode_segments([segment()]) -> iodata().
 encode_segments(Segments) ->
     %% collapse to iovec for efficiently sending between processes
     erlang:iolist_to_iovec([encode_segment(Segment) || Segment <- Segments]).
 
+-spec encode_segment(segment()) -> iodata().
 encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
     [Tag, <<(byte_size(Data)):32/big>> | Data].

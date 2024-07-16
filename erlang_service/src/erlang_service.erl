@@ -6,6 +6,7 @@
 %%% of this source tree.
 %%% % @format
 -module(erlang_service).
+-compile(warn_missing_spec_all).
 
 -export([main/1]).
 
@@ -29,67 +30,18 @@ main(_Args) ->
     end.
 
 -spec loop(state()) -> no_return().
-loop(State0) ->
-    case file:read(State0#state.io, 4) of
+loop(State) ->
+    case file:read(State#state.io, 4) of
         {ok, <<Size:32/big>>} ->
-            {ok, Data} = file:read(State0#state.io, Size),
-            loop(process(Data, State0));
+            {ok, Data} = file:read(State#state.io, Size),
+            erlang_service_server:process(Data),
+            loop(State);
         eof ->
             erlang:halt(0);
         Err ->
             io:format(standard_error, "Main loop error ~p~n", [Err]),
             erlang:halt(1)
     end.
-
--spec process(binary(), state()) -> state().
-process(<<"ACP", _:64/big, Data/binary>>, State) ->
-    add_paths(Data, State);
-process(<<"COM", Id:64/big, Data/binary>>, State) ->
-    PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
-    % ETF files are consumed by eqwalizer,
-    % which requires full paths for snapshot tests.
-    elp_lint(Id, Data, State, PostProcess, false);
-process(<<"TXT", Id:64/big, Data/binary>>, State) ->
-    PostProcess =
-        fun(Forms, _) ->
-            unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
-        end,
-    elp_lint(Id, Data, State, PostProcess, false);
-process(<<"DCE", Id:64/big, Data/binary>>, State) ->
-    get_docs(Id, Data, State, edoc);
-process(<<"DCP", Id:64/big, Data/binary>>, State) ->
-    get_docs(Id, Data, State, eep48);
-process(<<"CTI", Id:64/big, Data/binary>>, State) ->
-    ct_info(Id, Data, State);
-process(<<"EXT", _/binary>>, State) ->
-    erlang_service_server:terminate(),
-    init:stop(),
-    State.
-
--spec add_paths(binary(), state()) -> state().
-add_paths(Data, State) ->
-    Paths = collect_paths(Data),
-    code:add_pathsa(Paths),
-    State.
-
-collect_paths(<<>>) -> [];
-collect_paths(<<Size:32/big, Data:Size/binary, Rest/binary>>) ->
-    [Data | collect_paths(Rest)].
-
--spec get_docs(id(), binary(), state(), doc_origin()) -> state().
-get_docs(Id, Data, State, DocOrigin) ->
-    erlang_service_server:get_docs(Id, Data, DocOrigin),
-    State.
-
--spec ct_info(id(), binary(), state()) -> state().
-ct_info(Id, Data, State) ->
-    erlang_service_server:ct_info(Id, Data),
-    State.
-
--spec elp_lint(id(), binary(), state(), fun((any(), any()) -> binary()), boolean()) -> state().
-elp_lint(Id, Data, State, PostProcess, Deterministic) ->
-    erlang_service_server:elp_lint(Id, Data, PostProcess, Deterministic),
-    State.
 
 -spec configure_logging() -> ok.
 configure_logging() ->
