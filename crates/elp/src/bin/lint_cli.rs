@@ -133,7 +133,7 @@ fn do_parse_one(
     let mut diagnostics = DiagnosticCollection::default();
     let native = db.native_diagnostics(config, file_id)?;
     diagnostics.set_native(file_id, native);
-    if args.include_erlc_diagnostics {
+    if args.include_erlc_diagnostics || config.request_erlang_service_diagnostics {
         let erlang_service =
             db.erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
         for (file_id, diags) in erlang_service {

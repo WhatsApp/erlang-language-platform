@@ -1191,7 +1191,6 @@ mod tests {
         simple_snapshot(
             args_vec![
                 "lint",
-                "--include-erlc-diagnostics",
                 "--diagnostic-filter",
                 "L1318",
                 "--module",

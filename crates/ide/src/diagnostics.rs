@@ -432,6 +432,9 @@ pub struct DiagnosticsConfig<'a> {
     pub include_otp: bool,
     pub compile_options: Vec<CompileOption>,
     pub override_compile_options: Vec<CompileOption>,
+    /// Used in `elp lint` to request erlang service diagnostics if
+    /// needed.
+    pub request_erlang_service_diagnostics: bool,
 }
 
 impl<'a> DiagnosticsConfig<'a> {
@@ -477,6 +480,7 @@ impl<'a> DiagnosticsConfig<'a> {
         self.disabled = disabled_diagnostics;
         self.enabled = allowed_diagnostics;
         self.lints_from_config = lint_config.ad_hoc_lints.clone();
+        self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
     }
 
@@ -529,6 +533,19 @@ impl<'a> DiagnosticsConfig<'a> {
     ) -> DiagnosticsConfig<'a> {
         self.lints_from_config = lints_from_config.clone();
         self
+    }
+
+    /// If any diagnostics are enabled that are produced by the erlang
+    /// service, tell `elp lint` to request diagnostics from that source.
+    fn request_erlang_service_diagnostics(&self) -> bool {
+        lazy_static! {
+            static ref NEEDS_ERLANG_SERVICE: FxHashSet<DiagnosticCode> =
+                FxHashSet::from_iter(vec![DiagnosticCode::ErlangService("L1318".to_string())]);
+        }
+        self.enabled
+            .intersection(&NEEDS_ERLANG_SERVICE)
+            .next()
+            .is_some()
     }
 }
 
