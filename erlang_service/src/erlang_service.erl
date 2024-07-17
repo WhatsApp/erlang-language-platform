@@ -10,38 +10,12 @@
 
 -export([main/1]).
 
--record(state, {io = erlang:group_leader() :: pid()}).
--type state() :: #state{}.
--type id() :: integer().
--type doc_origin() :: edoc | eep48.
-
 -spec main([]) -> no_return().
 main(_Args) ->
     configure_logging(),
     erlang:system_flag(backtrace_depth, 20),
     {ok, _} = application:ensure_all_started(erlang_service, permanent),
-    State = #state{},
-    io:setopts(State#state.io, [binary, {encoding, latin1}]),
-    try loop(State)
-    catch
-        K:R:S ->
-            io:format(standard_error, "Erlang service crashing: ~ts~n", [erl_error:format_exception(K, R, S)]),
-            erlang:raise(K, R, S)
-    end.
-
--spec loop(state()) -> no_return().
-loop(State) ->
-    case file:read(State#state.io, 4) of
-        {ok, <<Size:32/big>>} ->
-            {ok, Data} = file:read(State#state.io, Size),
-            erlang_service_server:process(Data),
-            loop(State);
-        eof ->
-            erlang:halt(0);
-        Err ->
-            io:format(standard_error, "Main loop error ~p~n", [Err]),
-            erlang:halt(1)
-    end.
+    timer:sleep(infinity).
 
 -spec configure_logging() -> ok.
 configure_logging() ->

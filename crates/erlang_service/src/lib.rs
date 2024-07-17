@@ -554,10 +554,6 @@ fn writer_run(
             instream.write_all(&request)?;
             instream.flush()
         })?;
-
-    instream.write_u32::<BigEndian>(3)?;
-    instream.write_all(b"EXT")?;
-    instream.flush()?;
     Ok(())
 }
 

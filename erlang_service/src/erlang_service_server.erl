@@ -44,9 +44,8 @@
 %%==============================================================================
 %% Type Definitions
 %%==============================================================================
--type state() :: #{io := pid(), requests := [request_entry()]}.
+-type state() :: #{io := port(), requests := [request_entry()]}.
 -type request_entry() :: {pid(), id(), reference() | infinity}.
--type request() :: {process, binary()}.
 -type result() :: {result, id(), [segment()]}.
 -type exception() :: {exception, id(), any()}.
 -type id() :: integer().
@@ -69,16 +68,19 @@ process(Data) ->
 %%==============================================================================
 -spec init(noargs) -> {ok, state()}.
 init(noargs) ->
-    State = #{io => erlang:group_leader(), requests => []},
+    %% Open stdin/out as a port, requires node to be started with -noinput
+    %% We do this to avoid the overhead of the normal Erlang stdout/in stack
+    %% which is very significant for raw binary data, mostly because it's prepared
+    %% to work with unicode input and does multiple encoding/decoding rounds for raw bytes
+    Port = open_port({fd, 0, 1}, [eof, binary, {packet, 4}]),
+    State = #{io => Port, requests => []},
     {ok, State}.
 
--spec handle_call(any(), any(), state()) -> {reply, any(), state()}.
+-spec handle_call(any(), any(), state()) -> {stop, any(), state()}.
 handle_call(Req, _From, State) ->
     {stop, {unexpected_request, Req}, State}.
 
--spec handle_cast(request() | result() | exception(), state()) -> {noreply, state()}.
-handle_cast({process, Data}, State) ->
-    handle_request(Data, State);
+-spec handle_cast(result() | exception(), state()) -> {noreply, state()}.
 handle_cast({result, Id, Result}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Id, 2, Requests) of
         {value, {_Pid, _Id, infinity}, NewRequests} ->
@@ -105,6 +107,14 @@ handle_cast({exception, Id, ExceptionData}, #{io := IO, requests := Requests} = 
     end.
 
 -spec handle_info(any(), state()) -> {noreply, state()}.
+handle_info({IO, {data, Data}}, #{io := IO} = State) when is_binary(Data) ->
+    handle_request(Data, State);
+handle_info({IO, eof}, #{io := IO} = State) ->
+    %% stdin closed, we're done
+    %% use port_command to make this a synchronous write
+    port_command(IO, <<"EXT">>),
+    erlang:halt(0),
+    {noreply, State};
 handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Pid, 1, Requests) of
         {value, {Pid, Id, _Timer}, NewRequests} ->
@@ -120,16 +130,12 @@ handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
 %%==============================================================================
 reply(Id, Data, Device) ->
     Reply = [<<Id:64/big, 0>> | Data],
-    Size = erlang:iolist_size(Reply),
-    %% Use file:write/2 since it writes bytes
-    file:write(Device, [<<Size:32/big>> | Reply]),
+    Device ! {self(), {command, Reply}},
     ok.
 
 reply_exception(Id, Data, Device) ->
     Reply = [<<Id:64/big, 1>> | Data],
-    Size = erlang:iolist_size(Reply),
-    %% Use file:write/2 since it writes bytes
-    file:write(Device, [<<Size:32/big>> | Reply]),
+    Device ! {self(), {command, Reply}},
     ok.
 
 -spec process_request_async(atom(), id(), binary(), [any()]) -> pid().
@@ -172,12 +178,7 @@ handle_request(<<"DCE", Id:64/big, Data/binary>>, State) ->
 handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_edoc, Id, Data, [eep48], infinity, State);
 handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
-    request(erlang_service_ct, Id, Data, [], 10_000, State);
-handle_request(<<"EXT">>, #{io := Io} = State) ->
-    Reply = <<"EXT">>,
-    file:write(Io, <<(byte_size(Reply)):32/big, Reply/binary>>),
-    init:stop(),
-    {noreply, State}.
+    request(erlang_service_ct, Id, Data, [], 10_000, State).
 
 
 -spec request(module(), id(), binary(), [any()], timeout(), state()) -> {noreply, state()}.
