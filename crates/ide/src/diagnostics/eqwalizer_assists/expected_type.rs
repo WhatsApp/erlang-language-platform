@@ -84,6 +84,12 @@ pub fn expected_type(
                     _ => {}
                 }
             }
+
+            // Anything in spec, atom in body
+            (_other, Type::AtomLitType(_)) => {
+                add_spec_fix(sema, file_id, got, diagnostic);
+            }
+
             _ => {}
         }
     }
@@ -119,6 +125,12 @@ fn add_spec_fix(
                     }
                     _ => {}
                 },
+                TypeExpr::Call { .. } => {
+                    if let &Type::AtomLitType(_) = got {
+                        let fix_label = format!("Update function spec to return '{got}'");
+                        make_spec_fix(sema, file_id, spec_id, sig, fix_label, got, diagnostic)?;
+                    }
+                }
                 _ => {}
             }
         }
@@ -267,6 +279,28 @@ mod tests {
 
             -spec baz() -> number().
             baz() -> 53.
+         "#]],
+        )
+    }
+
+    #[test]
+    fn mismatched_integer_fix_spec() {
+        check_specific_fix(
+            "Update function spec to return 'ok'",
+            r#"
+            //- eqwalizer
+            //- /play/src/bar.erl app:play
+            -module(bar).
+
+            -spec foo() -> integer().
+            foo() -> o~k.
+                  %% ^^ 💡 error: eqwalizer: incompatible_types
+            "#,
+            expect![[r#"
+            -module(bar).
+
+            -spec foo() -> ok.
+            foo() -> ok.
          "#]],
         )
     }
