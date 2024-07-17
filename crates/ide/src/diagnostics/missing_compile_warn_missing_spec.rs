@@ -16,6 +16,7 @@
 use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
@@ -45,8 +46,8 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         include_tests: false,
         default_disabled: true,
     },
-    checker: &|diags, sema, file_id, _ext| {
-        missing_compile_warn_missing_spec(diags, sema, file_id);
+    checker: &|diags, sema, file_id, file_kind| {
+        missing_compile_warn_missing_spec(diags, sema, file_id, file_kind);
     },
 };
 
@@ -54,7 +55,15 @@ fn missing_compile_warn_missing_spec(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
+    file_kind: FileKind,
 ) {
+    match file_kind {
+        FileKind::Header | FileKind::Other | FileKind::OutsideProjectModel => {
+            return;
+        }
+        _ => {}
+    }
+
     let form_list = sema.form_list(file_id);
     if form_list.compile_attributes().next().is_none() {
         report_diagnostic(sema, None, file_id, (Found::No, None), diags);
@@ -191,7 +200,11 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn check_specific_fix(assist_label: &str, fixture_before: &str, fixture_after: Expect) {
+    pub(crate) fn check_specific_fix(
+        assist_label: &str,
+        fixture_before: &str,
+        fixture_after: Expect,
+    ) {
         let config =
             DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config)
@@ -359,6 +372,26 @@ mod tests {
             %% Version source: git
             -module(main).
             -eqwalizer(ignore).
+
+            "#,
+        )
+    }
+
+    #[test]
+    fn not_in_header_file() {
+        check_diagnostics(
+            r#"
+            //- /erl/my_app/src/header.hrl
+              -define(OK, ok).
+
+            //- /erl/my_app/src/main.erl
+              -module(main).
+              -eqwalizer(ignore).
+              -compile([warn_missing_spec_all]).
+
+              -include("header.hrl").
+
+              foo () -> ?OK.
 
             "#,
         )
