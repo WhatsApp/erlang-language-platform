@@ -470,6 +470,7 @@ dependencies = [
  "elp_syntax",
  "elp_types_db",
  "fxhash",
+ "itertools",
  "lazy_static",
  "log",
  "parking_lot 0.12.1",

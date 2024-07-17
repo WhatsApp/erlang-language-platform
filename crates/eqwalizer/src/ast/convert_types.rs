@@ -45,6 +45,7 @@ use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
+use itertools::Itertools;
 
 use super::TypeConversionError;
 
@@ -353,6 +354,12 @@ impl TypeConverter {
                     let props = ty
                         .props
                         .into_iter()
+                        .unique_by(|prop| {
+                            let ExtType::AtomLitExtType(atom_ty) = prop.key() else {
+                                panic!("Illegal state: is_shape implies key is always an atom")
+                            };
+                            atom_ty.atom.clone()
+                        })
                         .map(|prop| self.to_shape_prop(sub, prop))
                         .collect::<Result<Result<Vec<_>, _>, _>>()?;
                     Ok(props.map(|props| Type::ShapeMap(ShapeMap { props })))

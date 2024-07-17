@@ -11,6 +11,7 @@ elp_types_db.workspace = true
 anyhow.workspace = true
 eetf.workspace = true
 fxhash.workspace = true
+itertools.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
