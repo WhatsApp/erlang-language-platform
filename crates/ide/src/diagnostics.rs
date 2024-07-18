@@ -1098,6 +1098,12 @@ pub fn erlang_service_diagnostics(
         } else {
             diags
         };
+
+        let metadata = db.elp_metadata(file_id);
+        let diags = diags
+            .into_iter()
+            .filter(|(_file_id, d)| !d.should_be_suppressed(&metadata, config))
+            .collect_vec();
         let diags = if diags.is_empty() {
             // If there are no diagnostics reported, return an empty list
             // against the `file_id` to clear the list of diagnostics for
@@ -1113,6 +1119,7 @@ pub fn erlang_service_diagnostics(
             });
             diags_map.into_iter().collect()
         };
+
         label_erlang_service_diagnostics(db, diags)
     } else {
         vec![]
@@ -2249,6 +2256,22 @@ baz(1)->4.
     -spec main() -> ok.
     main() -> ok.
 "#,
+        );
+    }
+
+    // https://github.com/WhatsApp/erlang-language-platform/issues/39
+    #[test]
+    fn can_ignore_parse_transform_error() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- /my_app/src/a_file.erl
+              -module(a_file).
+              % elp:ignore L0002
+              -compile({parse_transform, epipe}).
+              foo() -> ok.
+
+            "#,
         );
     }
 }
