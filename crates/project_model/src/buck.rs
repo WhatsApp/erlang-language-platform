@@ -14,6 +14,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::ffi::OsStr;
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -821,7 +822,7 @@ impl ProjectAppDataAcc {
                     .collect();
 
                 for abs_extra in &abs_extra_dirs {
-                    self.add_parent_if_not_exist(abs_extra);
+                    self.add_include_if_not_exist(abs_extra);
                 }
 
                 self.extra_src_dirs.extend(extra_src_dirs);
@@ -837,19 +838,25 @@ impl ProjectAppDataAcc {
         //erlclient/src/erlclient.hrl
         if target.private_header {
             for src in &target.src_files {
-                self.add_parent_if_not_exist(src);
+                self.add_include_if_not_exist(src);
             }
         }
 
         for inc in &target.include_files {
-            self.add_parent_if_not_exist(inc);
+            self.add_include_if_not_exist(inc);
         }
     }
 
-    fn add_parent_if_not_exist(&mut self, path: &AbsPath) {
-        if let Some(parent) = path.parent() {
-            if !self.include_path.contains(parent) {
-                self.include_path.insert(parent.to_path_buf());
+    fn add_include_if_not_exist(&mut self, path: &AbsPath) {
+        // The bxl query returns directories already, do not parent unless it is a file
+        let include_dir = if path.as_ref().is_file() {
+            path.parent()
+        } else {
+            Some(path)
+        };
+        if let Some(include_dir) = include_dir {
+            if !self.include_path.contains(include_dir) {
+                self.include_path.insert(include_dir.to_path_buf());
             }
         }
     }
@@ -862,7 +869,14 @@ impl ProjectAppDataAcc {
         let it = target
             .include_files
             .iter()
-            .filter_map(|inc| inc.parent())
+            .filter_map(|inc| {
+                let path: &Path = inc.as_ref();
+                if path.is_file() {
+                    inc.parent()
+                } else {
+                    Some(inc.deref())
+                }
+            })
             //in case of .*_test_utils target it is possible to have *.hrl file in test dir
             //which buck treats as include. This check prevents it in case we already added
             //the folder as test folder
