@@ -413,11 +413,19 @@ error: incompatible_types
     ┌─ check/src/custom.erl:496:5
     │
 496 │     maps:map(F, M).
-    │     ^^^^^^^^^^^^^^ maps:map(F, M).
-Expression has type:   dict  map #D{'a' | 'b' => boolean()}
-Context expected type: shape map #S{a => 'a', b => 'b'}
+    │     ^^^^^^^^^^^^^^
+    │     │
+    │     maps:map(F, M).
+Expression has type:   #S{a := boolean(), b := boolean()}
+Context expected type: #S{a => 'a', b => 'b'}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+    │     
+
+  at shape key 'a':
+  #S{a := boolean(), b := boolean()} is not compatible with #S{a => 'a', b => 'b'}
+  because
+  boolean() is not compatible with 'a'
 
 error: incompatible_types
     ┌─ check/src/custom.erl:502:17
