@@ -434,52 +434,44 @@ impl Server {
                     Err(_) => break,
                 }
             },
-            Event::Task(mut task) => loop {
-                match task {
-                    Task::Response(response) => self.send_response(response),
-                    Task::FetchProject(projects) => self.fetch_project_completed(projects)?,
-                    Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
-                    Task::EqwalizerDiagnostics(spinner, diags) => {
-                        spinner.end();
-                        self.eqwalizer_diagnostics_completed(diags)
-                    }
-                    Task::EqwalizerProjectDiagnostics(spinner, diags) => {
-                        spinner.end();
-                        self.eqwalizer_project_diagnostics_completed(diags)
-                    }
-                    Task::EdocDiagnostics(spinner, diags) => {
-                        spinner.end();
-                        self.edoc_diagnostics_completed(diags)
-                    }
-                    Task::CommonTestDiagnostics(spinner, diags) => {
-                        spinner.end();
-                        self.ct_diagnostics_completed(diags)
-                    }
-                    Task::ErlangServiceDiagnostics(diags) => {
-                        self.erlang_service_diagnostics_completed(diags)
-                    }
-                    Task::CompileDeps(spinner) => {
-                        self.analysis_host
-                            .raw_database()
-                            .update_erlang_service_paths();
-                        spinner.end();
-                        self.eqwalizer_diagnostics_requested = true;
-                    }
-                    Task::Progress(progress) => self.report_progress(progress),
-                    Task::UpdateCache(files) => self.update_cache(files),
-                    Task::ScheduleCache => self.schedule_cache(),
-                    Task::UpdateEqwalizeAll(spinner, project_id, project_name, files) => {
-                        self.update_eqwalize_all(spinner, project_id, project_name, files)
-                    }
-                    Task::ScheduleEqwalizeAll(project_id) => self.schedule_eqwalize_all(project_id),
-                    Task::ShowMessage(params) => self.show_message(params),
+            Event::Task(task) => match task {
+                Task::Response(response) => self.send_response(response),
+                Task::FetchProject(projects) => self.fetch_project_completed(projects)?,
+                Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
+                Task::EqwalizerDiagnostics(spinner, diags) => {
+                    spinner.end();
+                    self.eqwalizer_diagnostics_completed(diags)
                 }
-
-                // Coalesce many tasks into a single main loop turn
-                task = match self.task_pool.receiver.try_recv() {
-                    Ok(task) => task,
-                    Err(_) => break,
+                Task::EqwalizerProjectDiagnostics(spinner, diags) => {
+                    spinner.end();
+                    self.eqwalizer_project_diagnostics_completed(diags)
                 }
+                Task::EdocDiagnostics(spinner, diags) => {
+                    spinner.end();
+                    self.edoc_diagnostics_completed(diags)
+                }
+                Task::CommonTestDiagnostics(spinner, diags) => {
+                    spinner.end();
+                    self.ct_diagnostics_completed(diags)
+                }
+                Task::ErlangServiceDiagnostics(diags) => {
+                    self.erlang_service_diagnostics_completed(diags)
+                }
+                Task::CompileDeps(spinner) => {
+                    self.analysis_host
+                        .raw_database()
+                        .update_erlang_service_paths();
+                    spinner.end();
+                    self.eqwalizer_diagnostics_requested = true;
+                }
+                Task::Progress(progress) => self.report_progress(progress),
+                Task::UpdateCache(files) => self.update_cache(files),
+                Task::ScheduleCache => self.schedule_cache(),
+                Task::UpdateEqwalizeAll(spinner, project_id, project_name, files) => {
+                    self.update_eqwalize_all(spinner, project_id, project_name, files)
+                }
+                Task::ScheduleEqwalizeAll(project_id) => self.schedule_eqwalize_all(project_id),
+                Task::ShowMessage(params) => self.show_message(params),
             },
             Event::Telemetry(message) => self.on_telemetry(message),
         }
