@@ -64,7 +64,6 @@ impl Mode {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EqwalizerConfig {
-    pub gradual_typing: Option<bool>,
     pub check_redundant_guards: Option<bool>,
     pub fault_tolerance: Option<bool>,
     pub occurrence_typing: Option<bool>,
@@ -72,8 +71,6 @@ pub struct EqwalizerConfig {
 }
 impl EqwalizerConfig {
     fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
-        self.gradual_typing
-            .map(|cfg| cmd.env("EQWALIZER_GRADUAL_TYPING", cfg.to_string()));
         self.check_redundant_guards
             .map(|cfg| cmd.env("EQWALIZER_CHECK_REDUNDANT_GUARDS", cfg.to_string()));
         self.fault_tolerance
@@ -86,7 +83,6 @@ impl EqwalizerConfig {
 
     pub fn default_test() -> EqwalizerConfig {
         EqwalizerConfig {
-            gradual_typing: Some(false),
             check_redundant_guards: Some(false),
             fault_tolerance: Some(false),
             occurrence_typing: Some(true),

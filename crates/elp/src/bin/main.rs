@@ -1662,10 +1662,7 @@ mod tests {
             "eqwalizer_tests",
             "check_gradual",
             buck,
-            EqwalizerConfig {
-                gradual_typing: Some(true),
-                ..EqwalizerConfig::default_test()
-            },
+            EqwalizerConfig::default_test(),
         );
     }
 
@@ -1725,7 +1722,6 @@ mod tests {
             "fault_tolerance",
             buck,
             EqwalizerConfig {
-                gradual_typing: Some(true),
                 occurrence_typing: Some(true),
                 fault_tolerance: Some(true),
                 ..EqwalizerConfig::default_test()
