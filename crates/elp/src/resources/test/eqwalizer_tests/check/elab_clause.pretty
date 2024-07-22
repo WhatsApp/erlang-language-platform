@@ -42,15 +42,15 @@ error: incompatible_types
    │     ^^^
    │     │
    │     Res.
-Expression has type:   number() | [term()]
+Expression has type:   number() | [dynamic()]
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
-  number() | [term()] is not compatible with number()
+  number() | [dynamic()] is not compatible with number()
   because
-  [term()] is not compatible with number()
+  [dynamic()] is not compatible with number()
 
 error: incompatible_types
    ┌─ check/src/elab_clause.erl:93:17
@@ -67,7 +67,7 @@ error: incompatible_types
     │
 101 │         Class:_:Stack  -> {Class, Stack}
     │                           ^^^^^^^^^^^^^^ {Class, Stack}.
-Expression has type:   {'error' | 'exit' | 'throw', [term()]}
+Expression has type:   {'error' | 'exit' | 'throw', [dynamic()]}
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types

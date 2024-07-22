@@ -164,32 +164,32 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with T
 
 error: incompatible_types
-    ┌─ check/src/generic_fun_application.erl:126:7
+    ┌─ check/src/generic_fun_application.erl:126:5
     │
 126 │     F(Tuple).
-    │       ^^^^^ Tuple.
-Expression has type:   tuple()
-Context expected type: {X}
+    │     ^^^^^^^^ F(Tuple).
+Expression has type:   X
+Context expected type: 'false'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check/src/generic_fun_application.erl:130:10
+    ┌─ check/src/generic_fun_application.erl:130:5
     │
 130 │     lmap(F, [2, 4]).
-    │          ^ F.
-Expression has type:   fun()
-Context expected type: fun((A) -> B)
+    │     ^^^^^^^^^^^^^^^ lmap(F, [2, 4]).
+Expression has type:   [dynamic()]
+Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check/src/generic_fun_application.erl:134:18
+    ┌─ check/src/generic_fun_application.erl:134:5
     │
 134 │     mapl([2, 4], F).
-    │                  ^ F.
-Expression has type:   fun()
-Context expected type: fun((number()) -> B)
+    │     ^^^^^^^^^^^^^^^ mapl([2, 4], F).
+Expression has type:   [dynamic()]
+Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 

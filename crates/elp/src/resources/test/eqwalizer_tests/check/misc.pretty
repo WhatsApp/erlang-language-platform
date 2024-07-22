@@ -303,48 +303,6 @@ Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-error: unbound_var
-    ┌─ check/src/misc.erl:253:5
-    │
-253 │     fun misc:test54_unspecced/0.
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: misc:test54_unspecced/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
-error: unbound_var
-    ┌─ check/src/misc.erl:258:5
-    │
-258 │     fun test54_unspecced/0.
-    │     ^^^^^^^^^^^^^^^^^^^^^^ Unbound var: test54_unspecced/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
-error: unbound_var
-    ┌─ check/src/misc.erl:288:9
-    │
-288 │     X = misc:test54_unspecced(),
-    │         ^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: misc:test54_unspecced/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
-error: unbound_var
-    ┌─ check/src/misc.erl:293:9
-    │
-293 │     X = test54_unspecced(),
-    │         ^^^^^^^^^^^^^^^^^^ Unbound var: test54_unspecced/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
-error: incompatible_types
-    ┌─ check/src/misc.erl:347:5
-    │
-347 │     catch test69_pos([atom]).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^ catch.
-Expression has type:   term()
-Context expected type: [atom() | number()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
 error: incompatible_types
     ┌─ check/src/misc.erl:352:22
     │
@@ -380,32 +338,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'atom' is not compatible with [atom()]
 
 error: incompatible_types
-    ┌─ check/src/misc.erl:386:18
+    ┌─ check/src/misc.erl:404:11
     │
-386 │ test77_neg(A) -> catch(test76_pos(A)).
-    │                  ^^^^^^^^^^^^^^^^^^^^ catch.
+404 │     after Timeout ->
+    │           ^^^^^^^ Timeout.
 Expression has type:   term()
-Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
-    ┌─ check/src/misc.erl:397:14
-    │
-397 │         X -> X
-    │              ^ X.
-Expression has type:   term()
-Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
-    ┌─ check/src/misc.erl:403:14
-    │
-403 │         X -> X
-    │              ^ X.
-Expression has type:   term()
-Context expected type: atom()
+Context expected type: timeout()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -424,7 +362,7 @@ error: incompatible_types
     │
 424 │     {Msg}.
     │     ^^^^^ {Msg}.
-Expression has type:   {'default' | 'atom'}
+Expression has type:   {'default' | dynamic('atom')}
 Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -585,16 +523,6 @@ Context expected type: [term()]
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check/src/misc.erl:593:5
-    │
-593 │     El.
-    │     ^^ El.
-Expression has type:   term()
-Context expected type: none()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
     ┌─ check/src/misc.erl:599:23
     │
 599 │ start_neg([] ++ X) -> X.
@@ -632,18 +560,6 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check/src/misc.erl:636:5
-    │  
-636 │ ╭     catch case X of
-637 │ │             X when is_number(X) -> X
-638 │ │         end.
-    │ ╰───────────^ catch.
-Expression has type:   term()
-Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
     ┌─ check/src/misc.erl:644:15
     │
 644 │ badspec(_) -> ok.
@@ -672,14 +588,6 @@ Expression has type:   {}
 Context expected type: fun((A) -> B)
 
 See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: unbound_var
-    ┌─ check/src/misc.erl:666:1
-    │
-666 │ fun generics_with_unions:test_03_neg/3.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: generics_with_unions:test_03_neg/3
-
-See https://fb.me/eqwalizer_errors#unbound_var
 
 error: incompatible_types
     ┌─ check/src/misc.erl:671:17
@@ -749,14 +657,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'v2_op' | v1_op() is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
   because
   'v2_op' is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
-
-error: unbound_var
-    ┌─ check/src/misc.erl:780:16
-    │
-780 │     {Res, _} = callbacks1_pos:init({}),
-    │                ^^^^^^^^^^^^^^^^^^^^^^^ Unbound var: callbacks1_pos:init/1
-
-See https://fb.me/eqwalizer_errors#unbound_var
 
 error: type_alias_is_non_productive
     ┌─ check/src/misc.erl:783:1
@@ -941,4 +841,4 @@ error: non_exported_id
 
 See https://fb.me/eqwalizer_errors#non_exported_id
 
-81 ERRORS
+70 ERRORS

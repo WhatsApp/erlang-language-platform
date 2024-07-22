@@ -18,21 +18,14 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   [[]] is not compatible with []
 
 error: incompatible_types
-   ┌─ check/src/funs2.erl:53:9
+   ┌─ check/src/funs2.erl:54:5
    │
-53 │         [1, 2, 3]),
-   │         ^^^^^^^^^
-   │         │
-   │         [1, 2, 3].
-Expression has type:   [number()]
-Context expected type: [none()]
+54 │     X.
+   │     ^ X.
+Expression has type:   [dynamic()]
+Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
-   │         
-
-  [number()] is not compatible with [none()]
-  because
-  number() is not compatible with none()
 
 error: incompatible_types
    ┌─ check/src/funs2.erl:95:24

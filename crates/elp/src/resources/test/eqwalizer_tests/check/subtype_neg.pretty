@@ -213,16 +213,6 @@ Context expected type: shape map #S{}
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check/src/subtype_neg.erl:76:14
-   │
-76 │ tuple1(X) -> X.
-   │              ^ X.
-Expression has type:   tuple()
-Context expected type: {term()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
    ┌─ check/src/subtype_neg.erl:79:15
    │
 79 │ any_fun(F) -> F.
@@ -313,4 +303,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   ['a'] is not compatible with []
 
-21 ERRORS
+20 ERRORS

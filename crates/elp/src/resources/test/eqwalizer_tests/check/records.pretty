@@ -511,7 +511,7 @@ error: reveal_type
     ┌─ check/src/records.erl:445:27
     │
 445 │     eqwalizer:reveal_type(Field2),
-    │                           ^^^^^^ term()
+    │                           ^^^^^^ dynamic()
 
 See https://fb.me/eqwalizer_errors#reveal_type
 

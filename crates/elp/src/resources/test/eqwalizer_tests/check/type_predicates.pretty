@@ -19,16 +19,6 @@ Context expected type: #rec1{}
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check/src/type_predicates.erl:145:39
-    │
-145 │     when is_function(F, A) -> #f0{f = F}.
-    │                                       ^ F.
-Expression has type:   fun()
-Context expected type: fun(() -> term())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
     ┌─ check/src/type_predicates.erl:149:39
     │
 149 │     when is_function(F, 2) -> #f1{f = F}.
@@ -38,4 +28,4 @@ Context expected type: fun((term()) -> term())
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-4 ERRORS
+3 ERRORS

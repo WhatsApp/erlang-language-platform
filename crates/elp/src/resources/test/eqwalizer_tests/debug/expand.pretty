@@ -107,6 +107,14 @@ error: reference_to_invalid_type
 
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
+error: unbound_record
+   ┌─ debug/src/expand.erl:70:17
+   │
+70 │ mk_bad_rec() -> #bad_rec{}.
+   │                 ^^^^^^^^^^ Unbound rec: bad_rec
+
+See https://fb.me/eqwalizer_errors#unbound_record
+
 error: ty_var_with_multiple_constraints
    ┌─ debug/src/expand.erl:72:23
    │  
@@ -117,4 +125,4 @@ error: ty_var_with_multiple_constraints
 
 See https://fb.me/eqwalizer_errors#ty_var_with_multiple_constraints
 
-14 ERRORS
+15 ERRORS

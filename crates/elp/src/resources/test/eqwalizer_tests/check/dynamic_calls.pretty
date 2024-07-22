@@ -48,14 +48,6 @@ Got: fun(() -> 'ok')
 
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
-error: unbound_var
-   ┌─ check/src/dynamic_calls.erl:66:9
-   │
-66 │     F = fun unspecced/0,
-   │         ^^^^^^^^^^^^^^^ Unbound var: unspecced/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
 error: expected_fun_type
    ┌─ check/src/dynamic_calls.erl:71:5
    │
@@ -174,4 +166,4 @@ Got: fun(('a') -> 'b') | fun(() -> 'b')
 
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
-15 ERRORS
+14 ERRORS

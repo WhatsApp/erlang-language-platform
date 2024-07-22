@@ -1,58 +1,19 @@
 error: incompatible_types
-   ┌─ check/src/use_dynamic_strict.erl:12:26
-   │
-12 │ use_dynamic_type(Dyn) -> {Dyn}.
-   │                          ^^^^^
-   │                          │
-   │                          {Dyn}.
-Expression has type:   {eqwalizer:dynamic()}
-Context expected type: {atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-   │                          
-
-  at tuple index 1:
-  {eqwalizer:dynamic()} is not compatible with {atom()}
-  because
-  eqwalizer:dynamic() is not compatible with atom()
-  because
-  term() is not compatible with atom()
-
-error: incompatible_types
-   ┌─ check/src/use_dynamic_strict.erl:17:26
+   ┌─ check/src/use_dynamic_strict.erl:17:3
    │
 17 │   {erlang:atom_to_binary(Dyn)}.
-   │                          ^^^
-   │                          │
-   │                          Dyn.
-Expression has type:   eqwalizer:dynamic()
-Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-   │                          
-
-  eqwalizer:dynamic() is not compatible with atom()
-  because
-  term() is not compatible with atom()
-
-error: incompatible_types
-   ┌─ check/src/use_dynamic_strict.erl:22:3
-   │
-22 │   {Dyn}.
-   │   ^^^^^
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    │   │
-   │   {Dyn}.
-Expression has type:   {eqwalizer:dynamic()}
+   │   {erlang:atom_to_binary(Dyn)}.
+Expression has type:   {binary()}
 Context expected type: {atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   at tuple index 1:
-  {eqwalizer:dynamic()} is not compatible with {atom()}
+  {binary()} is not compatible with {atom()}
   because
-  eqwalizer:dynamic() is not compatible with atom()
-  because
-  term() is not compatible with atom()
+  binary() is not compatible with atom()
 
-3 ERRORS
+1 ERROR

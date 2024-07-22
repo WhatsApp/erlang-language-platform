@@ -32,14 +32,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   [A] is not compatible with A
 
-error: unbound_var
-   ┌─ check/src/otp_opaques.erl:72:12
-   │
-72 │ empty() -> gb_set:empty().
-   │            ^^^^^^^^^^^^^^ Unbound var: gb_set:empty/0
-
-See https://fb.me/eqwalizer_errors#unbound_var
-
 error: incompatible_types
    ┌─ check/src/otp_opaques.erl:93:14
    │
@@ -107,4 +99,4 @@ Got: sets:set('a')
 
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
-9 ERRORS
+8 ERRORS
