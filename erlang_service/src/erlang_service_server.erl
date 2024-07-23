@@ -56,7 +56,6 @@
 %%==============================================================================
 -spec start_link() -> {ok, pid()}.
 start_link() ->
-    process_flag(trap_exit, true),
     {ok, _Pid} = gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
 -spec process(binary()) -> ok.
