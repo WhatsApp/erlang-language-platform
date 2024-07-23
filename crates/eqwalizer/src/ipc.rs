@@ -32,13 +32,7 @@ use crate::ast::Pos;
 
 #[derive(Deserialize, Debug)]
 pub enum EqWAlizerASTFormat {
-    RawForms,
     ConvertedForms,
-    RawStub,
-    ConvertedStub,
-    ExpandedStub,
-    ContractiveStub,
-    CovariantStub,
     TransitiveStub,
 }
 

@@ -364,26 +364,8 @@ fn get_module_diagnostics(
                 let module_name = ModuleName::new(&module);
                 let ast = {
                     match format {
-                        EqWAlizerASTFormat::RawForms => {
-                            db.get_erl_ast_bytes(project_id, module_name)
-                        }
                         EqWAlizerASTFormat::ConvertedForms => {
                             db.converted_ast_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::RawStub => {
-                            db.get_erl_stub_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::ConvertedStub => {
-                            db.converted_stub_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::ExpandedStub => {
-                            db.expanded_stub_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::ContractiveStub => {
-                            db.contractive_stub_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::CovariantStub => {
-                            db.covariant_stub_bytes(project_id, module_name)
                         }
                         EqWAlizerASTFormat::TransitiveStub => {
                             db.transitive_stub_bytes(project_id, module_name)

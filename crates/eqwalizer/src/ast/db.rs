@@ -49,11 +49,6 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
     fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
-    fn converted_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
 
     fn type_ids(
         &self,
@@ -71,33 +66,18 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
-    fn expanded_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
 
     fn contractive_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
-    fn contractive_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
 
     fn covariant_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
-    fn covariant_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
 
     fn transitive_stub(
         &self,
@@ -162,15 +142,6 @@ fn converted_stub(
     }
 }
 
-fn converted_stub_bytes(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
-    db.converted_stub(project_id, module)
-        .map(|ast| Arc::new(super::to_bytes(&ast)))
-}
-
 fn beam_path(
     db: &dyn EqwalizerASTDatabase,
     project_id: ProjectId,
@@ -217,15 +188,6 @@ fn expanded_stub(
         .map_err(Error::TypeConversionError)
 }
 
-fn expanded_stub_bytes(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
-    db.expanded_stub(project_id, module)
-        .map(|stub| Arc::new(stub.to_bytes()))
-}
-
 fn contractive_stub(
     db: &dyn EqwalizerASTDatabase,
     project_id: ProjectId,
@@ -239,15 +201,6 @@ fn contractive_stub(
         .map_err(Error::ContractivityError)
 }
 
-fn contractive_stub_bytes(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
-    db.contractive_stub(project_id, module)
-        .map(|stub| Arc::new(stub.to_bytes()))
-}
-
 fn covariant_stub(
     db: &dyn EqwalizerASTDatabase,
     project_id: ProjectId,
@@ -259,15 +212,6 @@ fn covariant_stub(
         .check(&stub)
         .map(Arc::new)
         .map_err(Error::VarianceCheckError)
-}
-
-fn covariant_stub_bytes(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
-    db.covariant_stub(project_id, module)
-        .map(|stub| Arc::new(stub.to_bytes()))
 }
 
 fn transitive_stub(
