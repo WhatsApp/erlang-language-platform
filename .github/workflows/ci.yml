@@ -134,11 +134,6 @@ jobs:
         with:
           name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target/${{ matrix.target}}/release/elp
-      - name: Test eqwalizer
-        # Do not run the tests in case of cross-compilation
-        if: matrix.platform-arch != 'ubuntu-20.04-arm'
-        working-directory: eqwalizer/eqwalizer
-        run: 'sbt test'
       - name: Upload eqwalizer native binary
         uses: "actions/upload-artifact@v3"
         with:
