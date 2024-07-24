@@ -1017,10 +1017,10 @@ scan_filedoc(
     scan_filedoc_content(DocFilename, Dot, DocType, From, St);
 scan_filedoc([{'(', _}, {'{', _}, {atom, _, file} | _] = Toks, DocType, From, St) ->
     T = find_mismatch(['(', '{', atom, ',', string, '}', ')', dot], Toks, DocType),
-    epp_reply(From, {error, {loc(T), epp, {bad, DocType}}}),
+    epp_reply(From, {error, {loc(T), elp_epp, {bad, DocType}}}),
     wait_req_scan(St);
 scan_filedoc([{'(', _}, {'{', _}, T | _], DocType, From, St) ->
-    epp_reply(From, {error, {loc(T), epp, {DocType, invalid, file}}}),
+    epp_reply(From, {error, {loc(T), elp_epp, {DocType, invalid, file}}}),
     wait_req_scan(St);
 scan_filedoc(
     [
@@ -1038,18 +1038,18 @@ scan_filedoc(
     scan_filedoc_content(DocFilename, Dot, DocType, From, St);
 scan_filedoc([{'{', _}, {atom, _, file} | _] = Toks, {atom, _, DocType}, From, St) ->
     T = find_mismatch(['{', {atom, file}, ',', string, '}', dot], Toks, DocType),
-    epp_reply(From, {error, {loc(T), epp, {bad, DocType}}}),
+    epp_reply(From, {error, {loc(T), elp_epp, {bad, DocType}}}),
     wait_req_scan(St);
 scan_filedoc([{'{', _}, T | _], {atom, _, DocType}, From, St) ->
-    epp_reply(From, {error, {loc(T), epp, {DocType, invalid, file}}}),
+    epp_reply(From, {error, {loc(T), elp_epp, {DocType, invalid, file}}}),
     wait_req_scan(St).
 
 %% Reads the content of the file and rewrites the AST as if
 %% the content had been written in-place.
 scan_filedoc_content(
-    {string, _A, DocFilename},
+    {string, DocLoc, DocFilename},
     Dot,
-    {atom, DocLoc, Doc},
+    {atom, _DocLoc, Doc},
     From,
     #epp{name = CurrentFilename} = St
 ) ->
@@ -1085,11 +1085,24 @@ scan_filedoc_content(
                     wait_req_scan(St);
                 {error, _} ->
                     ok = file:close(NewF),
-                    epp_reply(From, {error, {DocLoc, epp, {Doc, file, DocFilename}}}),
+                    epp_reply(From, {error, {DocLoc, elp_epp, {Doc, file, DocFilename}}}),
                     wait_req_scan(St)
             end;
         {error, _} ->
-            epp_reply(From, {error, {DocLoc, epp, {Doc, file, DocFilename}}}),
+            %% We are unable to load the specified include file for the doc contents.
+            %% The `erlang.erl` OTP file tries to include files not shipped. So skip them.
+            case maps:get('MODULE', St#epp.macs) of
+               {none, [{atom, _, erlang}]} ->
+                    Loc = DocLoc,
+                    epp_reply(
+                    From,
+                    {ok,
+                    [{'-', Loc}, {atom, Loc, Doc}] ++
+                        [{string, Loc, unicode:characters_to_list("**skipping**")}, {dot, Loc}]}
+                    );
+                _ ->
+                  epp_reply(From, {error, {DocLoc, elp_epp, {Doc, file, DocFilename}}})
+            end,
             wait_req_scan(St)
     end.
 
@@ -1525,9 +1538,9 @@ scan_if([{'(', _} | _] = Toks, If, From, St) ->
                     {_, erl_parse, _} ->
                         {error, Error0};
                     {error, ErrL, What} ->
-                        {error, {ErrL, epp, What}};
+                        {error, {ErrL, elp_epp, What}};
                     _ ->
-                        {error, {loc(If), epp, Error0}}
+                        {error, {loc(If), elp_epp, Error0}}
                 end,
             epp_reply(From, Error),
             wait_req_skip(St, ['if'])

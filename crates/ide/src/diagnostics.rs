@@ -2274,4 +2274,35 @@ baz(1)->4.
             "#,
         );
     }
+
+    #[test]
+    fn file_not_found_doc_attribute() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- native
+            //- /my_app/src/a_file.erl
+              -module(a_file).
+
+              -doc {file,"../../doc/src/info.md"}.
+             %%          ^^^^^^^^^^^^^^^^^^^^^^^ error: can't find doc file "../../doc/src/info.md"
+
+            "#,
+        );
+    }
+
+    #[test]
+    fn file_not_found_doc_attribute_ignored_in_erlang() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- native
+            //- /my_app/src/erlang.erl
+              -module(erlang).
+
+              -doc {file,"../../doc/src/info.md"}.
+
+            "#,
+        );
+    }
 }
