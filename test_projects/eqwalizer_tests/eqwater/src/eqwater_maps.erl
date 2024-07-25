@@ -50,7 +50,12 @@ add_optional(Z, _) ->
   Z.
 
 -spec map_occ_08_neg
-    (#{eqwalizer:dynamic() => eqwalizer:dynamic()} | #{c => integer()})
-    -> err.
+  (#{eqwalizer:dynamic() => eqwalizer:dynamic()} | #{c => integer()})
+  -> err.
 map_occ_08_neg(#{a := _} = M) -> M;
 map_occ_08_neg(_) -> err.
+
+-spec map_occ_09(#{a => undefined | map()} | #{b => term()}) -> term().
+map_occ_09(#{a := undefined}) -> 1;
+map_occ_09(#{a := Map}) -> Map#{2 => 2};
+map_occ_09(_) -> 3.

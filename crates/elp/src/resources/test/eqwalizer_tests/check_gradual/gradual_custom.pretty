@@ -203,4 +203,116 @@ error: reveal_type
 
 See https://fb.me/eqwalizer_errors#reveal_type
 
-21 ERRORS
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:245:19
+    │
+245 │ min3_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:257:19
+    │
+257 │ min5_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | atom() | binary()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+  number() | atom() | binary() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:263:19
+    │
+263 │ min6_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | dynamic() | number() | atom() | dynamic()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+  number() | dynamic() | number() | atom() | dynamic() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:269:19
+    │
+269 │ min7_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | dynamic() | atom() | dynamic()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │                   
+
+  number() | dynamic() | atom() | dynamic() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: reveal_type
+    ┌─ check_gradual/src/gradual_custom.erl:277:25
+    │
+277 │   eqwalizer:reveal_type(Y),
+    │                         ^ dynamic() | {none()}
+
+See https://fb.me/eqwalizer_errors#reveal_type
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:325:13
+    │
+325 │     true -> Atom;
+    │             ^^^^
+    │             │
+    │             Atom.
+Expression has type:   'bar' | 'undefined' | 'foo'
+Context expected type: 'foo' | 'bar' | binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │             
+
+  'bar' | 'undefined' | 'foo' is not compatible with 'foo' | 'bar' | binary()
+  because
+  'undefined' is not compatible with 'foo' | 'bar' | binary()
+  because
+  'undefined' is not compatible with 'foo'
+
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_custom.erl:343:3
+    │
+343 │   parse_atom(Bin, [foo, bar]).
+    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    │   │
+    │   parse_atom(Bin, ['foo', 'bar']).
+Expression has type:   'foo' | 'bar'
+Context expected type: 'foo'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │   
+
+  'foo' | 'bar' is not compatible with 'foo'
+  because
+  'bar' is not compatible with 'foo'
+
+28 ERRORS

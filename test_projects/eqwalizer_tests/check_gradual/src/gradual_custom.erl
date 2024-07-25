@@ -223,3 +223,121 @@ filename_join_1_dyn2(Dyn) ->
   Res = filename:join([Dyn, Dyn]),
   eqwalizer:reveal_type(Res),
   Res.
+
+-spec min1(
+    integer(),
+    integer() | undefined
+) -> integer().
+min1(X, Y) ->
+  min(X, Y).
+
+-spec min2(
+    integer() | undefined,
+    integer()
+) -> integer().
+min2(X, Y) ->
+  5 + min(X, Y).
+
+-spec min3_neg(
+    number() | undefined,
+    number() | undefined
+) -> number().
+min3_neg(X, Y) -> min(X, Y).
+
+-spec min4(
+    number(),
+    atom()
+) -> number().
+min4(X, Y) -> min(X, Y).
+
+-spec min5_neg(
+    number(),
+    atom() | binary()
+) -> number().
+min5_neg(X, Y) -> min(X, Y).
+
+-spec min6_neg(
+    number() | eqwalizer:dynamic(),
+    number() | atom() | eqwalizer:dynamic()
+) -> number().
+min6_neg(X, Y) -> min(X, Y).
+
+-spec min7_neg(
+    number() | eqwalizer:dynamic(),
+    atom() | eqwalizer:dynamic()
+) -> number().
+min7_neg(X, Y) -> min(X, Y).
+
+-spec min8_neg(
+    eqwalizer:dynamic() | atom() | none(),
+    eqwalizer:dynamic() | {none()}
+) -> number().
+min8_neg(X, Y) ->
+  Y = min(X, Y),
+  eqwalizer:reveal_type(Y),
+  Y.
+
+-type version() :: {integer(), integer(), integer()}.
+
+-spec parse_version(binary()) -> version().
+parse_version(_) -> error(not_implemented).
+
+-spec repro(#{binary() => binary()}) -> version() | undefined.
+repro(Releases) ->
+  OldestAcceptableDate = <<>>,
+  maps:fold(
+    fun(Version, LaunchDate, OldestVersionTuple) ->
+      VersionTuple = parse_version(Version),
+      case OldestAcceptableDate =< LaunchDate of
+        true when OldestVersionTuple == undefined -> VersionTuple;
+        true -> min(VersionTuple, OldestVersionTuple);
+        _ -> OldestVersionTuple
+      end
+    end,
+    undefined,
+    Releases
+  ).
+
+-spec lists_member_1(atom()) -> foo | bar.
+lists_member_1(Atom) ->
+  lists:member(Atom, [foo, bar]) orelse error(bad_arg),
+  Atom.
+
+-spec lists_member_2(atom()) -> foo | bar | binary().
+lists_member_2(Atom) ->
+  Res =
+    case lists:member(Atom, [foo, bar]) of
+      true -> Atom;
+      _ -> <<>>
+    end,
+  Res.
+
+-spec lists_member_3(atom()) -> foo | bar | binary().
+lists_member_3(Atom) ->
+  case lists:member(Atom, [foo, bar]) of
+    true -> Atom;
+    _ -> <<>>
+  end.
+
+-spec lists_member_4_neg(atom()) -> foo | bar | binary().
+lists_member_4_neg(Atom) ->
+  case lists:member(Atom, [foo, bar, undefined]) of
+    true -> Atom;
+    _ -> <<>>
+  end.
+
+-spec parse_atom(binary(), [A]) -> A.
+parse_atom(Bin, Atoms) ->
+  Atom = binary_to_existing_atom(Bin),
+  case lists:member(Atom, Atoms) of
+    true -> Atom;
+    false -> error(bad_atom)
+  end.
+
+-spec parse_1(binary()) -> foo | bar.
+parse_1(Bin) ->
+  parse_atom(Bin, [foo, bar]).
+
+-spec parse_2(binary()) -> foo.
+parse_2(Bin) ->
+  parse_atom(Bin, [foo, bar]).

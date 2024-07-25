@@ -8,6 +8,7 @@
 -import(maps, [get/2, get/3]).
 -compile([export_all, nowarn_export_all]).
 -include_lib("kernel/include/file.hrl").
+
 -record(foo, {
     a :: ok | error,
     b :: number(),
@@ -502,6 +503,22 @@ maps_map_2_10_neg() ->
     maps:map(F, non_kv),
     nok.
 
+-spec maps_map_2_11(
+    fun((dynamic(), dynamic()) -> ret),
+    #{ka => va, kb => vb}
+) ->
+    #{ka => ret, kb => ret}.
+maps_map_2_11(Fun, M) ->
+    maps:map(Fun, M).
+
+-spec maps_map_2_12(
+    fun((dynamic(), dynamic()) -> ret),
+    #{ka => va1, kb => vb1} | #{ka => va2, kb => vb2} | #{kb => vb3, kc => vc3}
+) ->
+    #{ka => ret, kb => ret} | #{kb => ret, kc => ret}.
+maps_map_2_12(Fun, M) ->
+    maps:map(Fun, M).
+
 -spec maps_fold_3_1()
         -> [number() | a | b].
 maps_fold_3_1() ->
@@ -628,6 +645,60 @@ maps_fold_4_3_neg(M) ->
         [],
         M
     ).
+
+-spec maps_to_list_1(#{a => string(), b => number(), c => atom()}) ->
+    [{a, string()} | {b, number()} | {c, atom()}].
+maps_to_list_1(M) -> maps:to_list(M).
+
+-spec maps_to_list_2(#{number() => atom()}) -> [{number(), atom()}].
+maps_to_list_2(M) -> maps:to_list(M).
+
+-spec maps_to_list_3(dynamic()) -> dynamic().
+maps_to_list_3(M) -> maps:to_list(M).
+
+-spec maps_to_list_4(#{a => string(), b => [number()]} | #{b => [atom()], c => atom()}) ->
+    [{a, string()} | {b, [number()] | [atom()]} | {c, atom()}].
+maps_to_list_4(M) -> maps:to_list(M).
+
+-spec maps_to_list_5(#{a => string()} | #{atom() => map()}) ->
+    [{a, string()} | {atom(), map()}].
+maps_to_list_5(M) -> maps:to_list(M).
+
+-spec maps_to_list_6(map()) -> [dynamic()].
+maps_to_list_6(M) -> maps:to_list(M).
+
+-spec maps_to_list_7_neg(number()) -> dynamic().
+maps_to_list_7_neg(Num) -> maps:to_list(Num).
+
+-spec maps_merge_1(#{a => string(), b => number()}, #{b => number(), c => atom()}) ->
+    #{a => string(), b => number(), c => atom()}.
+maps_merge_1(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_2(#{a => string(), b => number()}, #{b => boolean(), c => atom()}) ->
+    #{a => string(), b => number() | boolean(), c => atom()}.
+maps_merge_2(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_3(#{a := string(), b => number()}, #{b := boolean(), c => atom()}) ->
+    #{a := string(), b := boolean(), c => atom()}.
+maps_merge_3(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_4(#{a => string(), b => number()}, #{atom() => boolean()}) ->
+    #{atom() => boolean() | string() | number()}.
+maps_merge_4(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_5(#{string() => number()}, #{atom() => boolean()}) ->
+    #{string() | atom() => boolean() | number()}.
+maps_merge_5(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_6(#{a => binary()}, map()) -> map().
+maps_merge_6(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_7_neg(#{a => binary()}, number()) -> term().
+maps_merge_7_neg(M1, M2) -> maps:merge(M1, M2).
+
+-spec maps_merge_8(#{a := atom()}, #{b := number()} | #{}) ->
+    #{a := atom(), b := number()} | #{a := atom()}.
+maps_merge_8(M1, M2) -> maps:merge(M1, M2).
 
 -spec lists_filtermap_1() -> [number()].
 lists_filtermap_1() ->
@@ -2308,6 +2379,17 @@ re_replace_5_neg(Subj) ->
 re_replace_6_neg(Subj) ->
     Res = re:replace(Subj, "+", "-", [{return, something}]),
     Res.
+
+-spec maps_fold_keys(#{a => atom(), b => atom()}) -> ok.
+maps_fold_keys(M) ->
+    maps:fold(
+        fun(K, _V, Acc) -> process_key(K), Acc end,
+        ok,
+        M
+    ).
+
+-spec process_key(a | b) -> ok.
+process_key(_K) -> ok.
 
 -spec maps_fold_4_clauses_1(map()) -> #{a => a, b => b, c => c, d => d}.
 maps_fold_4_clauses_1(M) ->
