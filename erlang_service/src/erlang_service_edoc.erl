@@ -113,7 +113,51 @@ fetch_diagnostics_from_dict() ->
      || {Line, _Where, Format, Args, Severity} <- get(?DICT_KEY)
     ].
 
-% Format used by OTP docs
+% Format used by OTP docs for OTP >= 27
+render_docs_v1(
+    _ModuleName,
+    {docs_v1, _Anno, _BeamLang, <<"text/markdown">> = _Format,
+       #{ <<"en">> := ModuleDoc} = _ModuleDoc, _Metadata, FunctionDocs} =
+        _DocsV1,
+    Diagnostics = []
+) ->
+    #{
+        module_doc =>
+            begin
+            logger:warning("render_docs_v1:module_doc: [~p]", [ModuleDoc]),
+            ModuleDoc
+            end,
+        function_docs =>
+            % TODO: T196938446
+            % This processing does not deal with `equiv` metadata, when the FDoc is empty.
+            % It needs to extract the MFA from the `equiv` field and render it as a function doc.
+            % Example case:
+            % {{function,get_application,0},                      :: KNA
+            %     {1011,1},                                       :: Anno
+            %     [<<"get_application()">>],                      :: FSig
+            %     none,                                           :: FDoc
+            %     #{equiv => <<"get_application(self())">>}},     :: FMetadata
+            % And no docs here, need to get them from {function,get_application,1}
+            [
+                begin
+                    NA = kna_to_name_arity(KNA),
+                    case FDoc of
+                        #{<<"en">> := FDocEn} ->  FDocEn;
+                        _ ->
+                            case FMetadata of
+                                #{equiv := Equiv} ->
+                                    FDocEn = << <<"equivalent to `">>/binary, Equiv/binary, <<"`">>/binary>>;
+                                _ -> FDocEn = <<>>
+                            end
+                    end,
+                    {NA, FDocEn}
+                end
+             || {KNA, _FAnno, _FSig, FDoc, FMetadata} <- FunctionDocs,
+                none =/= kna_to_name_arity(KNA)
+            ],
+        diagnostics => Diagnostics
+    };
+% Format used by OTP docs for OTP < 27
 render_docs_v1(
     ModuleName,
     {docs_v1, _Anno, _BeamLang, <<"application/erlang+html">> = _Format, _ModuleDoc, _Metadata, FunctionDocs} =

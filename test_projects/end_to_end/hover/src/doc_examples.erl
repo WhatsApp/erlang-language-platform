@@ -10,7 +10,7 @@
 %% @end
 -spec f([T]) -> [T].
 f(L) ->
-    ListsMod = lists,
+    ListsMod = string,
     code:ensure_loaded(ListsMod), % A reference to the `lists` OTP module
     % We'll check we get the doc for reverse/2.
     lists:reverse(L).
