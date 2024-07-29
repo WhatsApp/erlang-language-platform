@@ -21,27 +21,6 @@ use crate::eqwalizer::types::VarType;
 use crate::eqwalizer::TextRange;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum InternalForm {
-    Module(ModuleAttr),
-    Export(ExportAttr),
-    Import(ImportAttr),
-    ExportType(ExportTypeAttr),
-    FunDecl(FunDecl),
-    File(FileAttr),
-    ElpMetadata(ElpMetadataAttr),
-    Behaviour(BehaviourAttr),
-    EqwalizerNowarnFunction(EqwalizerNowarnFunctionAttr),
-    EqwalizerUnlimitedRefinement(EqwalizerUnlimitedRefinementAttr),
-    FunSpec(FunSpec),
-    OverloadedFunSpec(OverloadedFunSpec),
-    Callback(Callback),
-    RecDecl(RecDecl),
-    OpaqueTypeDecl(OpaqueTypeDecl),
-    TypeDecl(TypeDecl),
-    InvalidForm(InvalidForm),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExternalForm {
     Module(ModuleAttr),
     CompileExportAll(CompileExportAllAttr),
