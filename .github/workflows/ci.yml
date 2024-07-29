@@ -46,6 +46,7 @@ jobs:
         with:
           repository: WhatsApp/eqwalizer
           path: eqwalizer
+          ref: main
       - name: Set up GraalVM
         if: matrix.platform-arch != 'ubuntu-20.04-arm'
         uses: graalvm/setup-graalvm@v1
