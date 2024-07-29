@@ -523,4 +523,21 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'c' is not compatible with 'a'
 
-32 ERRORS
+error: incompatible_types
+     ┌─ eqwater/src/eqwater.erl:1297:21
+     │
+1297 │ negate_number(N) -> N.
+     │                     ^
+     │                     │
+     │                     N.
+Expression has type:   number() | atom()
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                     
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+33 ERRORS

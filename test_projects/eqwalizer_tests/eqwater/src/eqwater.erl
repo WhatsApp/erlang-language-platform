@@ -1285,3 +1285,13 @@ andalso_throw_3(V) ->
   (a | b | c) -> a | b.
 negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
 negate_atoms_neg(A) -> A.
+
+-spec negate_number_neg
+  (number()) -> ok.
+negate_number_neg(N) when not (N == 1) -> N;
+negate_number_neg(_) -> ok.
+
+-spec negate_number
+  (number() | atom()) -> number().
+negate_number(N) when not (N == 1) -> 0;
+negate_number(N) -> N.
