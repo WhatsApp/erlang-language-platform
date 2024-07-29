@@ -267,6 +267,6 @@ pub fn exported_type_ids(ast: &AST) -> FxHashSet<Id> {
         .collect()
 }
 
-pub fn to_bytes(ast: &AST) -> Vec<u8> {
+pub fn to_bytes(ast: &Vec<&ExternalForm>) -> Vec<u8> {
     serde_json::to_vec(ast).unwrap()
 }

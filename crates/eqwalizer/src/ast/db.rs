@@ -14,6 +14,7 @@ use elp_base_db::AppType;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
+use elp_types_db::eqwalizer::form::ExternalForm;
 use fxhash::FxHashSet;
 
 use super::contractivity::StubContractivityChecker;
@@ -117,8 +118,24 @@ fn converted_ast_bytes(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<Vec<u8>>, Error> {
-    db.converted_ast(project_id, module)
-        .map(|ast| Arc::new(super::to_bytes(&ast)))
+    db.converted_ast(project_id, module).map(|ast| {
+        Arc::new(super::to_bytes(
+            &ast.iter().filter(is_non_stub_form).collect(),
+        ))
+    })
+}
+
+fn is_non_stub_form(form: &&ExternalForm) -> bool {
+    match form {
+        ExternalForm::Module(_) => true,
+        ExternalForm::FunDecl(_) => true,
+        ExternalForm::File(_) => true,
+        ExternalForm::ElpMetadata(_) => true,
+        ExternalForm::Behaviour(_) => true,
+        ExternalForm::EqwalizerNowarnFunction(_) => true,
+        ExternalForm::EqwalizerUnlimitedRefinement(_) => true,
+        _ => false,
+    }
 }
 
 fn converted_stub(
