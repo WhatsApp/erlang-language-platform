@@ -32,6 +32,8 @@ pub fn compute_eqwalizer_stats(
     module: ModuleName,
 ) -> Arc<Vec<EqwalizerDiagnostic>> {
     let mut diagnostics = vec![];
-    escape_hatches::escape_hatches(db, &mut diagnostics, project_id, module);
+    if let Ok(ast) = db.converted_ast(project_id, module) {
+        escape_hatches::escape_hatches(&mut diagnostics, &ast);
+    }
     Arc::new(diagnostics)
 }

@@ -7,14 +7,12 @@
  * of this source tree.
  */
 
-use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::visitor::Visitor;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::TextRange;
+use elp_types_db::eqwalizer::AST;
 
-use super::EqwalizerAnalysesDatabase;
 use crate::ast::Pos;
 
 struct EscapeHatchesVisitor<'a> {
@@ -82,14 +80,7 @@ fn nowarn_diagnostic(pos: &Pos) -> Option<EqwalizerDiagnostic> {
     }
 }
 
-pub(crate) fn escape_hatches(
-    db: &dyn EqwalizerAnalysesDatabase,
-    diagnostics: &mut Vec<EqwalizerDiagnostic>,
-    project_id: ProjectId,
-    module: ModuleName,
-) {
-    if let Ok(ast) = db.converted_ast(project_id, module) {
-        let mut visitor = EscapeHatchesVisitor { diagnostics };
-        let _ = visitor.visit_ast(&ast);
-    }
+pub(crate) fn escape_hatches(diagnostics: &mut Vec<EqwalizerDiagnostic>, ast: &AST) {
+    let mut visitor = EscapeHatchesVisitor { diagnostics };
+    let _ = visitor.visit_ast(ast);
 }
