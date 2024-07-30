@@ -16,6 +16,7 @@ use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use crate::ast::db::EqwalizerASTDatabase;
 
 mod escape_hatches;
+mod overloaded_specs;
 
 #[salsa::query_group(EqwalizerAnalysesDatabaseStorage)]
 pub trait EqwalizerAnalysesDatabase: EqwalizerASTDatabase {
@@ -34,6 +35,7 @@ pub fn compute_eqwalizer_stats(
     let mut diagnostics = vec![];
     if let Ok(ast) = db.converted_ast(project_id, module) {
         escape_hatches::escape_hatches(&mut diagnostics, &ast);
+        overloaded_specs::overloaded_specs(&mut diagnostics, &ast);
     }
     Arc::new(diagnostics)
 }
