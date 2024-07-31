@@ -92,7 +92,7 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum FileKind {
     SrcModule,
     TestModule,

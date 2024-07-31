@@ -669,13 +669,16 @@ pub fn native_diagnostics(
     file_id: FileId,
 ) -> LabeledDiagnostics {
     lazy_static! {
-        static ref EXTENSIONS: Vec<FileKind> =
-            vec![FileKind::SrcModule, FileKind::TestModule, FileKind::Header];
+        static ref EXTENSIONS: FxHashSet<FileKind> = FxHashSet::from_iter(vec![
+            FileKind::SrcModule,
+            FileKind::TestModule,
+            FileKind::Header
+        ]);
     };
     let parse = db.parse(file_id);
 
     let file_kind = db.file_kind(file_id);
-    let report_diagnostics = EXTENSIONS.iter().any(|it| it == &file_kind);
+    let report_diagnostics = EXTENSIONS.contains(&file_kind);
 
     let mut res = Vec::new();
 
@@ -1027,7 +1030,18 @@ pub fn erlang_service_diagnostics(
     config: &DiagnosticsConfig,
     remove_elp_reported: RemoveElpReported,
 ) -> Vec<(FileId, LabeledDiagnostics)> {
-    if config.include_generated || !db.is_generated(file_id) {
+    lazy_static! {
+        static ref EXTENSIONS: FxHashSet<FileKind> = FxHashSet::from_iter(vec![
+            FileKind::SrcModule,
+            FileKind::Escript,
+            FileKind::TestModule,
+            FileKind::Header
+        ]);
+    };
+    let file_kind = db.file_kind(file_id);
+    let report_diagnostics = EXTENSIONS.contains(&file_kind);
+
+    if report_diagnostics && (config.include_generated || !db.is_generated(file_id)) {
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
         let format = erlang_service::Format::OffsetEtf;
 
@@ -2301,6 +2315,42 @@ baz(1)->4.
               -module(erlang).
 
               -doc {file,"../../doc/src/info.md"}.
+
+            "#,
+        );
+    }
+
+    #[test]
+    fn erlang_service_include_resolution() {
+        check_diagnostics(
+            r#"
+               //- erlang_service
+               //- /src/main.erl
+                   -module(main).
+                   -export([foo/0]).
+                   -include("header.hrl").
+
+                   foo() -> bar().
+
+               //- /src/header.hrl
+                   bar() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn erlang_service_include_resolution_doc() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- native
+            //- /my_app/src/a_file.erl
+              -module(a_file).
+
+              -doc {file,"../doc/info.md"}.
+
+            //- /my_app/doc/info.md
+              % Doc stuff included in file
 
             "#,
         );

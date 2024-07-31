@@ -1072,14 +1072,14 @@ scan_filedoc_content(
                     epp_reply(
                         From,
                         {ok,
-                            [{'-', Offset}, {atom, Offset, Doc}] ++
-                                [{string, Offset, unicode:characters_to_list(Bin)}, {dot, Offset}]}
+                            [{'-', DocLoc}, {atom, DocLoc, Doc}] ++
+                                [{string, DocLoc, unicode:characters_to_list(Bin)}, {dot, loc(Dot)}]}
                     ),
                     %% Restore the previous file
                     enter_file_reply(
                         From,
                         CurrentFilename,
-                        erl_anno:new(loc(Dot)),
+                        loc(Dot),
                         loc(Dot)
                     ),
                     wait_req_scan(St);
