@@ -123,10 +123,7 @@ render_docs_v1(
 ) ->
     #{
         module_doc =>
-            begin
-            logger:warning("render_docs_v1:module_doc: [~p]", [ModuleDoc]),
-            ModuleDoc
-            end,
+            ModuleDoc,
         function_docs =>
             % TODO: T196938446
             % This processing does not deal with `equiv` metadata, when the FDoc is empty.
