@@ -96,3 +96,6 @@ test20(S) ->
     if "foo" == S orelse "bar" == S ->
         S
     end.
+
+-spec test21_neg(a | b | c) -> c.
+test21_neg(X) when (X =:= a) or (X =:= b) -> X.
