@@ -24,15 +24,15 @@ error: incompatible_types
    │   ^
    │   │
    │   R.
-Expression has type:   #r2{} | #r1{}
+Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
-  #r2{} | #r1{} is not compatible with r1()
+  #r1{} | #r2{} is not compatible with r1()
   because
-  #r2{} | #r1{} is not compatible with #r1{}
+  #r1{} | #r2{} is not compatible with #r1{}
   because
   #r2{} is not compatible with #r1{}
 

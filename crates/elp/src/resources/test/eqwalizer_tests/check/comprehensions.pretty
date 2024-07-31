@@ -260,27 +260,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'undefined' is not compatible with binary()
 
-error: incompatible_types
-    ┌─ check/src/comprehensions.erl:329:5
-    │
-329 │     Res.
-    │     ^^^
-    │     │
-    │     Res.
-Expression has type:   [#rec1{} | #rec2{} | binary()]
-Context expected type: [#rec1{} | #rec2{}]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │     
-
-  [#rec1{} | #rec2{} | binary()] is not compatible with [#rec1{} | #rec2{}]
-  because
-  #rec1{} | #rec2{} | binary() is not compatible with #rec1{} | #rec2{}
-  because
-  binary() is not compatible with #rec1{} | #rec2{}
-  because
-  binary() is not compatible with #rec1{}
-
 error: expected_fun_type
     ┌─ check/src/comprehensions.erl:386:9
     │
@@ -291,4 +270,4 @@ Got: fun(() -> atom()) | fun((number()) -> atom())
 
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
-23 ERRORS
+22 ERRORS

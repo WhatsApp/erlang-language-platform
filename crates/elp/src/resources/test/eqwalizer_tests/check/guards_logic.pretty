@@ -1,14 +1,4 @@
 error: incompatible_types
-   ┌─ check/src/guards_logic.erl:23:33
-   │
-23 │ test04(X, Y) when X orelse Y -> X.
-   │                                 ^ X.
-Expression has type:   atom()
-Context expected type: boolean()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
    ┌─ check/src/guards_logic.erl:32:38
    │
 32 │ test07_neg(X, Y) when X andalso Y -> Y.
@@ -64,5 +54,15 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   {term(), term()} is not compatible with {number(), number()}
   because
   term() is not compatible with number()
+
+error: incompatible_types
+    ┌─ check/src/guards_logic.erl:101:46
+    │
+101 │ test21_neg(X) when (X =:= a) or (X =:= b) -> X.
+    │                                              ^ X.
+Expression has type:   'a' | 'b'
+Context expected type: 'c'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
 
 5 ERRORS
