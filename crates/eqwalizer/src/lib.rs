@@ -64,15 +64,12 @@ impl Mode {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EqwalizerConfig {
-    pub check_redundant_guards: Option<bool>,
     pub fault_tolerance: Option<bool>,
     pub occurrence_typing: Option<bool>,
     pub clause_coverage: Option<bool>,
 }
 impl EqwalizerConfig {
     fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
-        self.check_redundant_guards
-            .map(|cfg| cmd.env("EQWALIZER_CHECK_REDUNDANT_GUARDS", cfg.to_string()));
         self.fault_tolerance
             .map(|cfg| cmd.env("EQWALIZER_TOLERATE_ERRORS", cfg.to_string()));
         self.occurrence_typing
@@ -83,7 +80,6 @@ impl EqwalizerConfig {
 
     pub fn default_test() -> EqwalizerConfig {
         EqwalizerConfig {
-            check_redundant_guards: Some(false),
             fault_tolerance: Some(false),
             occurrence_typing: Some(true),
             clause_coverage: Some(false),
