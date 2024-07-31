@@ -12,7 +12,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::eqwalizer;
-use crate::eqwalizer::expr::Expr;
 use crate::eqwalizer::types::Type;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -42,7 +41,6 @@ pub enum TypeError {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedSubtype {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     pub expected: Type,
     pub got: Type,
 }
@@ -50,7 +48,6 @@ pub struct ExpectedSubtype {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedFunType {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     pub expected_arity: u32,
     pub got: Type,
 }
@@ -58,13 +55,11 @@ pub struct ExpectedFunType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NoDynamicRemoteFun {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NoSpecialType {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
 }
@@ -72,7 +67,6 @@ pub struct NoSpecialType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LambdaArityMismatch {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     pub lambda_arity: u32,
     pub args_arity: u32,
 }
@@ -80,7 +74,6 @@ pub struct LambdaArityMismatch {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IndexOutOfBounds {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     pub index: u32,
     pub tuple_arity: u32,
 }
@@ -88,7 +81,6 @@ pub struct IndexOutOfBounds {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NotSupportedLambdaInOverloadedCall {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -169,7 +161,6 @@ pub struct RedundantGuard {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AmbiguousUnion {
     pub location: eqwalizer::Pos,
-    pub expr: Expr,
     pub expected: Type,
     pub got: Type,
 }
