@@ -267,6 +267,21 @@ impl ParseResult {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IncludeType {
+    Normal,
+    Lib,
+}
+impl From<&str> for IncludeType {
+    fn from(value: &str) -> Self {
+        match value {
+            "L" => IncludeType::Lib,
+            _ => IncludeType::Normal,
+        }
+    }
+}
+pub type ResolveInclude<'a> = dyn Fn(IncludeType, &str) -> Option<String>;
+
 impl Connection {
     pub fn start() -> Result<Connection> {
         let escript_src =
@@ -322,7 +337,7 @@ impl Connection {
         &self,
         request: ParseRequest,
         unwind: impl Fn(),
-        resolve_include: &impl Fn(String) -> Option<String>,
+        resolve_include: &impl Fn(IncludeType, &str) -> Option<String>,
     ) -> ParseResult {
         let path = request.path.clone();
         let tag = request.tag();
@@ -356,7 +371,7 @@ impl Connection {
         &self,
         path: &PathBuf,
         reply: Response,
-        resolve_include: impl Fn(String) -> Option<String>,
+        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
     ) -> Option<ParseResult> {
         let mut ast = vec![];
         let mut stub = vec![];
@@ -401,8 +416,8 @@ impl Connection {
         } else {
             // We have a request for resolving a file.
             // Assumption: if this is non-empty, all the others *are* empty.
-            let path = decode_utf8_or_latin1(opens);
-            if let Some(resolved) = resolve_include(path) {
+            let string_val = decode_utf8_or_latin1(opens);
+            if let Some(resolved) = Self::do_resolve(&string_val, resolve_include) {
                 let mut buf = Vec::new();
                 buf.write_u64::<BigEndian>(id).expect("buf write failed");
                 buf.write_u32::<BigEndian>(resolved.len() as u32)
@@ -422,6 +437,14 @@ impl Connection {
             }
             None
         }
+    }
+
+    pub fn do_resolve(
+        string_val: &str,
+        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
+    ) -> Option<String> {
+        let (normal_or_lib, path) = string_val.split_once(":")?;
+        resolve_include(normal_or_lib.into(), path)
     }
 
     pub fn request_doc(&self, request: DocRequest, unwind: impl Fn()) -> Result<DocResult, String> {
@@ -946,7 +969,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || (), &|_| None);
+        let response = CONN.request_parse(request, || (), &|_, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let actual = format!(
@@ -970,7 +993,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || (), &|_| None);
+        let response = CONN.request_parse(request, || (), &|_, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let errors = &response

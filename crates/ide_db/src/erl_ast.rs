@@ -21,6 +21,7 @@ use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
 use elp_erlang_service::Format;
+use elp_erlang_service::IncludeType;
 use elp_erlang_service::ParseError;
 use elp_erlang_service::ParseResult;
 
@@ -86,9 +87,11 @@ impl AstLoader for crate::RootDatabase {
             format,
         };
         let erlang_service = self.erlang_service_for(project_id);
-        let r = erlang_service.request_parse(req, || self.unwind_if_cancelled(), &|path| {
-            resolve_include(self, file_id, &path)
-        });
+        let r = erlang_service.request_parse(
+            req,
+            || self.unwind_if_cancelled(),
+            &move |include_type, path| resolve_include(self, file_id, include_type, &path),
+        );
         let included_files = files_from_bytes(&r.files);
         for file in included_files {
             let file_path = PathBuf::from(file.clone());
@@ -115,8 +118,16 @@ impl AstLoader for crate::RootDatabase {
     }
 }
 
-fn resolve_include(db: &dyn SourceDatabase, file_id: FileId, path: &str) -> Option<String> {
-    let include_file_id = IncludeCtx::new(db, file_id).resolve_include(path)?;
+fn resolve_include(
+    db: &dyn SourceDatabase,
+    file_id: FileId,
+    include_type: IncludeType,
+    path: &str,
+) -> Option<String> {
+    let include_file_id = match include_type {
+        IncludeType::Normal => IncludeCtx::new(db, file_id).resolve_include(path)?,
+        IncludeType::Lib => IncludeCtx::new(db, file_id).resolve_include_lib(path)?,
+    };
     path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())
 }
 

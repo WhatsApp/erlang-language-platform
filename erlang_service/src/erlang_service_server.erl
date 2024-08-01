@@ -10,7 +10,7 @@
 %%==============================================================================
 -module(erlang_service_server).
 
--export([path_open/2]).
+-export([path_open/3]).
 
 %%==============================================================================
 %% Behaviours
@@ -67,8 +67,10 @@ start_link() ->
 process(Data) ->
     gen_server:cast(?SERVER, {process, Data}).
 
-path_open(ReqId, Name) ->
-  gen_server:call(?SERVER, {path_open, ReqId, Name}).
+-spec path_open(erlang_service:id(), string(), normal|lib)
+   -> {value, string()} | {failed, string()}.
+path_open(ReqId, Name, IncludeType) ->
+  gen_server:call(?SERVER, {path_open, ReqId, Name, IncludeType}).
 
 %%==============================================================================
 %% gen_server callbacks
@@ -84,11 +86,12 @@ init(noargs) ->
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {stop|reply, any(), state()}.
-handle_call({path_open, ReqId, Req}, From,
+handle_call({path_open, ReqId, Req, IncludeType}, From,
             #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->
     case lists:keytake(ReqId, 2, Requests) of
         {value, {_Pid, Id, _}, _NewRequests} ->
-            request(Id, encode_segments([{<<"OPN">>, unicode:characters_to_binary(Req)}]), IO),
+            request(Id, encode_segments([{<<"OPN">>,
+                    unicode:characters_to_binary(add_include_type(Req, IncludeType))}]), IO),
             {noreply, State#{own_requests => [{Id, From}|OwnRequests]}};
         _ ->
             {reply, {failed, Req}, State}
@@ -238,3 +241,10 @@ encode_segments(Segments) ->
 -spec encode_segment(segment()) -> [iodata()].
 encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
     [Tag, <<(byte_size(Data)):32/big>> | Data].
+
+-spec add_include_type(string(), normal|lib) -> io_lib:chars().
+add_include_type(Path, IncludeType) ->
+    case IncludeType of
+        normal -> io_lib:format("N:~s", [Path]);
+        lib    -> io_lib:format("L:~s", [Path])
+    end.
