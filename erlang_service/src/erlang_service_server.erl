@@ -10,6 +10,8 @@
 %%==============================================================================
 -module(erlang_service_server).
 
+-export([path_open/1]).
+
 %%==============================================================================
 %% Behaviours
 %%==============================================================================
@@ -62,6 +64,9 @@ start_link() ->
 process(Data) ->
     gen_server:cast(?SERVER, {process, Data}).
 
+path_open(Name) ->
+  gen_server:call(?SERVER, {path_open, Name}).
+
 %%==============================================================================
 %% gen_server callbacks
 %%==============================================================================
@@ -75,7 +80,9 @@ init(noargs) ->
     State = #{io => Port, requests => []},
     {ok, State}.
 
--spec handle_call(any(), any(), state()) -> {stop, any(), state()}.
+-spec handle_call(any(), any(), state()) -> {stop|reply, any(), state()}.
+handle_call({path_open, Req}, _From, State) ->
+    {reply, Req, State};
 handle_call(Req, _From, State) ->
     {stop, {unexpected_request, Req}, State}.
 
@@ -202,6 +209,6 @@ encode_segments(Segments) ->
     %% collapse to iovec for efficiently sending between processes
     erlang:iolist_to_iovec([encode_segment(Segment) || Segment <- Segments]).
 
--spec encode_segment(segment()) -> iodata().
+-spec encode_segment(segment()) -> [iodata()].
 encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
     [Tag, <<(byte_size(Data)):32/big>> | Data].

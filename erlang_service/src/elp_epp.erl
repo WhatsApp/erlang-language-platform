@@ -821,6 +821,7 @@ enter_file(_NewName, Inc, From, St) when
     epp_reply(From, {error, {loc(Inc), elp_epp, {depth, "include"}}}),
     wait_req_scan(St);
 enter_file(NewName, Inc, From, St) ->
+    R = erlang_service_server:path_open(NewName),
     case file:path_open(St#epp.path, NewName, [read]) of
         {ok, NewF, Pname} ->
             wait_req_scan(enter_file2(NewF, Pname, From, St));
