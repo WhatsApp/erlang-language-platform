@@ -18,6 +18,7 @@ use elp_syntax::TextSize;
 use lazy_static::lazy_static;
 
 mod change;
+mod include;
 mod input;
 mod module_index;
 
@@ -29,6 +30,7 @@ pub mod fixture;
 pub mod test_utils;
 pub use change::Change;
 pub use elp_project_model::AppType;
+pub use include::IncludeCtx;
 pub use input::AppData;
 pub use input::AppRoots;
 pub use input::AppStructure;
