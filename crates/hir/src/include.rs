@@ -29,7 +29,24 @@ pub(crate) fn resolve(
     db: &dyn DefDatabase,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
-    IncludeCtx::new(db, include_id.file_id).resolve(include_id.value)
+    resolve_in_ctx(&IncludeCtx::new(db, include_id.file_id), include_id.value)
+}
+
+fn resolve_in_ctx(ctx: &IncludeCtx, id: IncludeAttributeId) -> Option<FileId> {
+    let form_list = ctx.db.file_form_list(ctx.file_id);
+    let (path, file_id) = match &form_list[id] {
+        IncludeAttribute::Include { path, .. } => (path, ctx.resolve_include(path)),
+        IncludeAttribute::IncludeLib { path, .. } => (path, ctx.resolve_include_lib(path)),
+    };
+    if file_id.is_none() {
+        let module_str = if let Some(module_attribute) = form_list.module_attribute() {
+            module_attribute.name.as_str().to_string()
+        } else {
+            format!("{:?}", ctx.file_id)
+        };
+        log::warn!("Unable to resolve \"{path}\" in '{module_str}'");
+    }
+    file_id
 }
 
 impl<'a> IncludeCtx<'a> {
@@ -44,23 +61,6 @@ impl<'a> IncludeCtx<'a> {
             source_root_id,
             source_root,
         }
-    }
-
-    fn resolve(&self, id: IncludeAttributeId) -> Option<FileId> {
-        let form_list = self.db.file_form_list(self.file_id);
-        let (path, file_id) = match &form_list[id] {
-            IncludeAttribute::Include { path, .. } => (path, self.resolve_include(path)),
-            IncludeAttribute::IncludeLib { path, .. } => (path, self.resolve_include_lib(path)),
-        };
-        if file_id.is_none() {
-            let module_str = if let Some(module_attribute) = form_list.module_attribute() {
-                module_attribute.name.as_str().to_string()
-            } else {
-                format!("{:?}", self.file_id)
-            };
-            log::warn!("Unable to resolve \"{path}\" in '{module_str}'");
-        }
-        file_id
     }
 
     fn resolve_include(&self, path: &str) -> Option<FileId> {
