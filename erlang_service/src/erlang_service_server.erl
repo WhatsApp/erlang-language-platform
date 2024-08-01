@@ -203,7 +203,8 @@ handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_edoc, Id, Data, [eep48], infinity, State);
 handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_ct, Id, Data, [], 10_000, State);
-handle_request(<<"OPN", _:64/big, OrigId:64/big, Data/binary>>,
+%% Start of callback responses
+handle_request(<<"REP", OrigId:64/big, Data/binary>>,
                #{own_requests := OwnRequests} = State) ->
     Path = collect_paths(Data),
     case lists:keytake(OrigId, 1, OwnRequests) of
