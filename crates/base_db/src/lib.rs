@@ -13,6 +13,7 @@ use elp_project_model::AppName;
 use elp_syntax::ast::SourceFile;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
+use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use lazy_static::lazy_static;
@@ -186,6 +187,12 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange;
 
     fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
+
+    #[salsa::invoke(IncludeCtx::resolve_local_query)]
+    fn resolve_local(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
+
+    #[salsa::invoke(IncludeCtx::resolve_remote_query)]
+    fn resolve_remote(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
 }
 
 fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleIndex> {

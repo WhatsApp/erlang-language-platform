@@ -9,6 +9,7 @@
 
 use std::sync::Arc;
 
+use elp_syntax::SmolStr;
 use vfs::FileId;
 
 use crate::SourceDatabase;
@@ -38,12 +39,12 @@ impl<'a> IncludeCtx<'a> {
 
     pub fn resolve_include(&self, path: &str) -> Option<FileId> {
         self.resolve_relative(path)
-            .or_else(|| self.resolve_local(path))
+            .or_else(|| self.db.resolve_local(self.source_root_id, path.into()))
     }
 
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
         self.resolve_include(path)
-            .or_else(|| self.resolve_remote(path))
+            .or_else(|| self.db.resolve_remote(self.source_root_id, path.into()))
     }
 
     pub fn resolve_include_doc(&self, path: &str) -> Option<FileId> {
@@ -54,22 +55,33 @@ impl<'a> IncludeCtx<'a> {
         self.source_root.relative_path(self.file_id, path)
     }
 
-    fn resolve_local(&self, path: &str) -> Option<FileId> {
-        let app_data = self.db.app_data(self.source_root_id)?;
+    /// Called via salsa for inserting in the graph
+    pub(crate) fn resolve_local_query(
+        db: &dyn SourceDatabase,
+        source_root_id: SourceRootId,
+        path: SmolStr,
+    ) -> Option<FileId> {
+        let path: &str = &path;
+        let app_data = db.app_data(source_root_id)?;
+        let source_root = db.source_root(source_root_id);
         app_data.include_path.iter().find_map(|include| {
             let name = include.join(path);
-            self.source_root.file_for_path(&name.into())
+            source_root.file_for_path(&name.into())
         })
     }
 
-    fn resolve_remote(&self, path: &str) -> Option<FileId> {
-        let app_data = self.db.app_data(self.source_root_id)?;
-        let project_data = self.db.project_data(app_data.project_id);
-
+    /// Called via salsa for inserting in the graph
+    pub(crate) fn resolve_remote_query(
+        db: &dyn SourceDatabase,
+        source_root_id: SourceRootId,
+        path: SmolStr,
+    ) -> Option<FileId> {
+        let app_data = db.app_data(source_root_id)?;
+        let project_data = db.project_data(app_data.project_id);
         let (app_name, path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
-        let source_root = self.db.source_root(source_root_id);
-        let target_app_data = self.db.app_data(source_root_id)?;
+        let source_root = db.source_root(source_root_id);
+        let target_app_data = db.app_data(source_root_id)?;
         let path = target_app_data.dir.join(path);
         source_root.file_for_path(&path.into())
     }
