@@ -82,7 +82,8 @@ impl AstLoader for crate::RootDatabase {
             format,
         };
         let erlang_service = self.erlang_service_for(project_id);
-        let r = erlang_service.request_parse(req, || self.unwind_if_cancelled());
+        let r =
+            erlang_service.request_parse(req, || self.unwind_if_cancelled(), &|path| Some(path));
         let included_files = files_from_bytes(&r.files);
         for file in included_files {
             let file_path = PathBuf::from(file.clone());

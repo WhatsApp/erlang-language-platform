@@ -10,7 +10,7 @@
 %%==============================================================================
 -module(erlang_service_server).
 
--export([path_open/1]).
+-export([path_open/2]).
 
 %%==============================================================================
 %% Behaviours
@@ -66,8 +66,8 @@ start_link() ->
 process(Data) ->
     gen_server:cast(?SERVER, {process, Data}).
 
-path_open(Name) ->
-  gen_server:call(?SERVER, {path_open, Name}).
+path_open(ReqId, Name) ->
+  gen_server:call(?SERVER, {path_open, ReqId, Name}).
 
 %%==============================================================================
 %% gen_server callbacks
@@ -83,7 +83,13 @@ init(noargs) ->
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {stop|reply, any(), state()}.
-handle_call({path_open, Req}, _From, State) ->
+handle_call({path_open, ReqId, Req}, _From, #{io := IO, requests := Requests} = State) ->
+    case lists:keytake(ReqId, 2, Requests) of
+        {value, {_Pid, Id, _}, _NewRequests} ->
+            request(Id, encode_segments([{<<"OPN">>, unicode:characters_to_binary(Req)}]), IO);
+        _ ->
+            logger:warning(":handle_call:path_open:id not found [~p]", [ReqId])
+    end,
     {reply, Req, State};
 handle_call(Req, _From, State) ->
     {stop, {unexpected_request, Req}, State}.
@@ -144,6 +150,11 @@ reply(Id, Data, Device) ->
 reply_exception(Id, Data, Device) ->
     Reply = [<<Id:64/big, 1>> | Data],
     Device ! {self(), {command, Reply}},
+    ok.
+
+request(Id, Data, Device) ->
+    Req = [<<"OPN", Id:64/big, 0>> | Data],
+    Device ! {self(), {command, Req}},
     ok.
 
 -spec process_request_async(atom(), id(), binary(), [any()]) -> pid().

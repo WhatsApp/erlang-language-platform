@@ -317,19 +317,54 @@ impl Connection {
         }
     }
 
-    pub fn request_parse(&self, request: ParseRequest, unwind: impl Fn()) -> ParseResult {
+    pub fn request_parse(
+        &self,
+        request: ParseRequest,
+        unwind: impl Fn(),
+        resolve_include: &impl Fn(String) -> Option<String>,
+    ) -> ParseResult {
         let path = request.path.clone();
         let tag = request.tag();
         let request = request.encode();
-        let reply = self.request_reply(tag, request, unwind);
+        let (sender, receiver) = bounded::<Response>(0);
+        self.sender
+            .send((tag, request, Some(sender)))
+            .expect("failed sending request to parse server");
 
+        // Every 100ms check if the db was cancelled by calling back to db.
+        // If the query was cancelled the `unwind` callback will panic and
+        // we'll abandon the computation. This is important to avoid blocking
+        // the main loop for too long - cancellation is sent when updating the
+        // db on user edits
+        loop {
+            // TODO: if it is a callback, process it and continue waiting.
+            match receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(result) => {
+                    if let Some(parse) =
+                        self.handle_request_parse_response(&path, result, resolve_include)
+                    {
+                        return parse;
+                    }
+                }
+                Err(_) => unwind(),
+            }
+        }
+    }
+
+    fn handle_request_parse_response(
+        &self,
+        path: &PathBuf,
+        reply: Response,
+        resolve_include: impl Fn(String) -> Option<String>,
+    ) -> Option<ParseResult> {
         let mut ast = vec![];
         let mut stub = vec![];
         let mut files = vec![];
         let mut warnings = vec![];
         let mut errors = vec![];
+        let mut opens = vec![];
 
-        reply
+        let parse_result = reply
             .decode_segments(|tag, data| {
                 match tag {
                     b"AST" => ast = data,
@@ -337,6 +372,7 @@ impl Connection {
                     b"FIL" => files = data,
                     b"WAR" => warnings = data,
                     b"ERR" => errors = data,
+                    b"OPN" => opens = data,
                     _ => log::error!("unrecognised segment {:?}", tag),
                 };
                 Ok(())
@@ -352,12 +388,21 @@ impl Connection {
             })
             .unwrap_or_else(|error| {
                 ParseResult::error(ParseError {
-                    path,
+                    path: path.clone(),
                     location: None,
                     msg: format!("Could not parse, error: {}", error),
                     code: "L0002".to_string(),
                 })
-            })
+            });
+        if opens.is_empty() {
+            Some(parse_result)
+        } else {
+            // We have a request for resolving a file.
+            // Assumption: if this is non-empty, all the others *are* empty.
+            let path = decode_utf8_or_latin1(opens);
+            let _resolved = resolve_include(path);
+            None
+        }
     }
 
     pub fn request_doc(&self, request: DocRequest, unwind: impl Fn()) -> Result<DocResult, String> {
@@ -524,13 +569,24 @@ fn reader_run(
             log::info!("Reader terminating");
             return Ok(());
         }
-
-        let mut cursor = Cursor::new(buf);
-        let id = cursor.read_u64::<BigEndian>()?;
-        let sender = inflight.lock().remove(&id).expect("unexpected response id");
-        if let Err(err) = sender.send(Response(cursor)) {
-            log::info!("Got response {}, but request was canceled: {}", id, err);
-        };
+        if &buf[0..3] == b"OPN" {
+            log::info!("File name resolution request received");
+            let buf: Vec<u8> = Vec::from(&buf[3..]);
+            let mut cursor = Cursor::new(buf);
+            let id = cursor.read_u64::<BigEndian>()?;
+            let inflight = inflight.lock();
+            let sender = inflight.get(&id).expect("unexpected response id");
+            if let Err(err) = sender.send(Response(cursor)) {
+                log::info!("Got response {}, but request was canceled: {}", id, err);
+            };
+        } else {
+            let mut cursor = Cursor::new(buf);
+            let id = cursor.read_u64::<BigEndian>()?;
+            let sender = inflight.lock().remove(&id).expect("unexpected response id");
+            if let Err(err) = sender.send(Response(cursor)) {
+                log::info!("Got response {}, but request was canceled: {}", id, err);
+            };
+        }
     }
 }
 
@@ -871,7 +927,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || ());
+        let response = CONN.request_parse(request, || (), &|_| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let actual = format!(
@@ -895,7 +951,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || ());
+        let response = CONN.request_parse(request, || (), &|_| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let errors = &response
