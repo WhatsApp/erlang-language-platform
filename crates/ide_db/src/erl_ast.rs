@@ -19,7 +19,6 @@ use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
-use elp_base_db::VfsPath;
 use elp_erlang_service::Format;
 use elp_erlang_service::IncludeType;
 use elp_erlang_service::ParseError;
@@ -30,7 +29,6 @@ use crate::erlang_service::ParseRequest;
 use crate::metadata;
 use crate::metadata::Metadata;
 use crate::LineIndexDatabase;
-use crate::RootDatabase;
 
 pub trait AstLoader {
     fn load_ast(
@@ -92,28 +90,6 @@ impl AstLoader for crate::RootDatabase {
             || self.unwind_if_cancelled(),
             &move |include_type, path| resolve_include(self, file_id, include_type, &path),
         );
-        let included_files = files_from_bytes(&r.files);
-        for file in included_files {
-            let file_path = PathBuf::from(file.clone());
-            let file = if file_path.is_absolute() {
-                file
-            } else {
-                match path.parent() {
-                    None => file,
-                    Some(file) => file
-                        .to_path_buf()
-                        .join(file)
-                        .as_os_str()
-                        .to_string_lossy()
-                        .to_string(),
-                }
-            };
-            let file_path = VfsPath::new_real_path(file);
-            if let Some(file_id) = find_path_in_project(self, project_id, &file_path) {
-                // Dummy read of file revision to make DB track changes
-                let _ = self.file_revision(file_id);
-            }
-        }
         r
     }
 }
@@ -190,21 +166,4 @@ fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
     let file_text = db.file_text(file_id);
     let source = db.parse(file_id);
     metadata::collect_metadata(&line_index, &file_text, &source)
-}
-
-pub fn files_from_bytes(bytes: &[u8]) -> Vec<String> {
-    let str = String::from_utf8_lossy(bytes);
-    str.split('\n').map(|s| s.to_string()).collect::<Vec<_>>()
-}
-
-fn find_path_in_project(
-    db: &RootDatabase,
-    project_id: ProjectId,
-    path: &VfsPath,
-) -> Option<FileId> {
-    let project = db.project_data(project_id);
-    project
-        .source_roots
-        .iter()
-        .find_map(|&source_root_id| db.source_root(source_root_id).file_for_path(path))
 }

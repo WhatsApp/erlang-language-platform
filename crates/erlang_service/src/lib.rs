@@ -246,7 +246,6 @@ impl Response {
 pub struct ParseResult {
     pub ast: Arc<Vec<u8>>,
     pub stub: Arc<Vec<u8>>,
-    pub files: Arc<Vec<u8>>,
     pub errors: Vec<ParseError>,
     pub warnings: Vec<ParseError>,
 }
@@ -256,7 +255,6 @@ impl ParseResult {
         Self {
             ast: Arc::default(),
             stub: Arc::default(),
-            files: Arc::default(),
             errors: vec![error],
             warnings: Vec::default(),
         }
@@ -377,7 +375,6 @@ impl Connection {
     ) -> Option<ParseResult> {
         let mut ast = vec![];
         let mut stub = vec![];
-        let mut files = vec![];
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut opens = vec![];
@@ -388,7 +385,6 @@ impl Connection {
                 match tag {
                     b"AST" => ast = data,
                     b"STU" => stub = data,
-                    b"FIL" => files = data,
                     b"WAR" => warnings = data,
                     b"ERR" => errors = data,
                     b"OPN" => opens = data,
@@ -400,7 +396,6 @@ impl Connection {
                 Ok(ParseResult {
                     ast: Arc::new(ast),
                     stub: Arc::new(stub),
-                    files: Arc::new(files),
                     warnings: decode_errors(&warnings).context("decoding warnings")?,
                     errors: decode_errors(&errors).context("decoding errors")?,
                 })

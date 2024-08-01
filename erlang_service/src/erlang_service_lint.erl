@@ -45,32 +45,27 @@ run(Id, [FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
                 end,
             case lint_file(Forms3, FileName, Options3, OverrideOptions) of
                 {ok, []} ->
-                    {Stub, AST, FILES} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = unicode:characters_to_binary(FILES),
-                    {ok, [{<<"AST">>, ResultAST}, {<<"STU">>, ResultStub}, {<<"FIL">>, ResultFILES}]};
+                    {ok, [{<<"AST">>, ResultAST}, {<<"STU">>, ResultStub}]};
                 {ok, Warnings} ->
-                    {Stub, AST, FILES} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = unicode:characters_to_binary(FILES),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [{<<"AST">>, ResultAST},
                           {<<"STU">>, ResultStub},
-                          {<<"FIL">>, ResultFILES},
                           {<<"WAR">>, FormattedWarnings}]};
                 {error, Errors, Warnings} ->
-                    {Stub, AST, FILES} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
-                    ResultFILES = unicode:characters_to_binary(FILES),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [
                         {<<"AST">>, ResultAST},
                         {<<"STU">>, ResultStub},
-                        {<<"FIL">>, ResultFILES},
                         {<<"ERR">>, FormattedErrors},
                         {<<"WAR">>, FormattedWarnings}
                     ]}
@@ -160,11 +155,9 @@ vararg_transform(Atomic) ->
     Atomic.
 
 -spec partition_stub([elp_parse:abstract_form()]) ->
-    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()], FILES :: string()}.
+    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
 partition_stub(Forms) -> {[Attr || {attribute, _, _, _} = Attr <- Forms],
-                          Forms,
-                          % eqwalizer:ignore - We know that the Name is a string, from matching the abstract form
-                          string:join([Name || {attribute, _, file, {Name,_}} = _Attr <- Forms],"\n")}.
+                          Forms}.
 
 
 format_errors(Forms, OriginalPath, Warnings) ->
