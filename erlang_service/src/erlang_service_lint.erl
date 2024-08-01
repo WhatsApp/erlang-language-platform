@@ -7,9 +7,9 @@
 %%% % @format
 -module(erlang_service_lint).
 
--export([run/1]).
+-export([run/2]).
 
-run([FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
+run(Id, [FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
     Options1 =
         case Deterministic of
             true ->
@@ -30,7 +30,7 @@ run([FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
             _ ->
                 Options2
         end,
-    case extract_forms(FileName, Options3) of
+    case extract_forms(Id, FileName, Options3) of
         {ok, Forms0} ->
             Transforms0 = proplists:get_value(parse_transforms, Options3, []),
             {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
@@ -249,12 +249,12 @@ inclusion_range(Forms, Path) ->
             {1, 1}
     end.
 
-extract_forms(FileName, Options) ->
+extract_forms(Id, FileName, Options) ->
     case filename:extension(FileName) of
         ".erl" ->
-            elp_epp:parse_file(FileName, Options);
+            elp_epp:parse_file(Id, FileName, Options);
         ".hrl" ->
-            elp_epp:parse_file(FileName, Options);
+            elp_epp:parse_file(Id, FileName, Options);
         ".escript" ->
             Forms = elp_escript:extract(FileName),
             {ok, Forms};

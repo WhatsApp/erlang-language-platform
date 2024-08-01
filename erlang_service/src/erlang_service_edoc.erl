@@ -7,7 +7,7 @@
 %%% % @format
 -module(erlang_service_edoc).
 
--export([run/1]).
+-export([run/2]).
 
 -define(DICT_KEY, edoc_diagnostics).
 
@@ -21,7 +21,7 @@
     {Line :: pos_integer(), Message :: binary(), Severity :: severity()}.
 -type severity() :: warning | error.
 
-run([FileName, DocOrigin]) ->
+run(_Id, [FileName, DocOrigin]) ->
     {ok, serialize_docs(get_docs_for_src_file(FileName, DocOrigin))}.
 
 -spec serialize_docs(docs()) -> [{binary(), binary()}].

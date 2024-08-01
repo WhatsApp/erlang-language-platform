@@ -21,9 +21,9 @@
 
 %% An Erlang code preprocessor.
 
--export([open/1, open/2, open/3, close/1, format_error/1]).
+-export([open/1, open/2, open/3, open/4, close/1, format_error/1]).
 -export([scan_erl_form/1, parse_erl_form/1, macro_defs/1]).
--export([scan_file/1, scan_file/2, parse_file/1, parse_file/2, parse_file/3]).
+-export([scan_file/1, scan_file/3, parse_file/1, parse_file/3, parse_file/4]).
 -export([
     default_encoding/0,
     encoding_to_string/1,
@@ -92,7 +92,9 @@
     pre_opened = false :: boolean(),
     in_prefix = true :: boolean(),
     fname = [] :: function_name_type(),
-    scan_opts = [] :: erl_scan:options()
+    scan_opts = [] :: erl_scan:options(),
+    % Id required for requests to host ELP for file name resolution
+    request_id = none
 }).
 
 %% open(Options)
@@ -108,7 +110,7 @@
 %% parse_file(FileName, IncludePath, PreDefMacros)
 %% macro_defs(Epp)
 
--spec open(FileName, IncludePath) ->
+-spec open(erlang_service_server:id()|none, FileName, IncludePath) ->
     {'ok', Epp} | {'error', ErrorDescriptor}
 when
     FileName :: file:name(),
@@ -116,10 +118,10 @@ when
     Epp :: epp_handle(),
     ErrorDescriptor :: term().
 
-open(Name, Path) ->
-    open(Name, Path, []).
+open(Id, Name, Path) ->
+    open(Id, Name, Path, []).
 
--spec open(FileName, IncludePath, PredefMacros) ->
+-spec open(erlang_service_server:id()|none, FileName, IncludePath, PredefMacros) ->
     {'ok', Epp} | {'error', ErrorDescriptor}
 when
     FileName :: file:name(),
@@ -128,8 +130,9 @@ when
     Epp :: epp_handle(),
     ErrorDescriptor :: term().
 
-open(Name, Path, Pdm) ->
-    open([{name, Name}, {includes, Path}, {macros, Pdm}]).
+open(Id, Name, Path, Pdm) ->
+    open(Id, [{name, Name}, {includes, Path}, {macros, Pdm}]).
+
 
 -spec open(Options) ->
     {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
@@ -147,13 +150,31 @@ when
     Extra :: [{'encoding', source_encoding() | 'none'}],
     ErrorDescriptor :: term().
 
-open(Options) ->
+open(Options) -> open(none, Options).
+
+-spec open(erlang_service_server:id()|none, Options) ->
+    {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
+when
+    Options :: [
+        {'default_encoding', DefEncoding :: source_encoding()}
+        | {'includes', IncludePath :: [DirectoryName :: file:name()]}
+        | {'source_name', SourceName :: file:name()}
+        | {'macros', PredefMacros :: macros()}
+        | {'name', FileName :: file:name()}
+        | {'fd', FileDescriptor :: file:io_device()}
+        | 'extra'
+    ],
+    Epp :: epp_handle(),
+    Extra :: [{'encoding', source_encoding() | 'none'}],
+    ErrorDescriptor :: term().
+
+open(Id, Options) ->
     case proplists:get_value(name, Options) of
         undefined ->
             erlang:error(badarg);
         Name ->
             Self = self(),
-            Epp = spawn(fun() -> server(Self, Name, Options) end),
+            Epp = spawn(fun() -> server(Self, Id, Name, Options) end),
             Extra = proplists:get_bool(extra, Options),
             case epp_request(Epp) of
                 {ok, Pid, Encoding} when Extra ->
@@ -288,7 +309,7 @@ format_error(string_concat) ->
 format_error(E) ->
     file:format_error(E).
 
--spec scan_file(FileName, Options) ->
+-spec scan_file(erlang_service_server:id(), FileName, Options) ->
     {'ok', [Form], Extra} | {error, OpenError}
 when
     FileName :: file:name(),
@@ -304,8 +325,8 @@ when
     Extra :: [{'encoding', source_encoding() | 'none'}],
     OpenError :: file:posix() | badarg | system_limit.
 
-scan_file(Ifile, Options) ->
-    case open([{name, Ifile}, extra | Options]) of
+scan_file(Id, Ifile, Options) ->
+    case open(Id, [{name, Ifile}, extra | Options]) of
         {ok, Epp, Extra} ->
             Forms = scan_file(Epp),
             close(Epp),
@@ -324,7 +345,7 @@ scan_file(Epp) ->
             [{eof, {Offset, Offset}}]
     end.
 
--spec parse_file(FileName, IncludePath, PredefMacros) ->
+-spec parse_file(erlang_service_server:id(), FileName, IncludePath, PredefMacros) ->
     {'ok', [Form]} | {error, OpenError}
 when
     FileName :: file:name(),
@@ -335,10 +356,10 @@ when
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     OpenError :: file:posix() | badarg | system_limit.
 
-parse_file(Ifile, Path, Predefs) ->
-    parse_file(Ifile, [{includes, Path}, {macros, Predefs}]).
+parse_file(Id, Ifile, Path, Predefs) ->
+    parse_file(Id, Ifile, [{includes, Path}, {macros, Predefs}]).
 
--spec parse_file(FileName, Options) ->
+-spec parse_file(erlang_service_server:id(), FileName, Options) ->
     {'ok', [Form]} | {'ok', [Form], Extra} | {error, OpenError}
 when
     FileName :: file:name(),
@@ -358,8 +379,8 @@ when
     Extra :: [{'encoding', source_encoding() | 'none'}],
     OpenError :: file:posix() | badarg | system_limit.
 
-parse_file(Ifile, Options) ->
-    case open([{name, Ifile} | Options]) of
+parse_file(Id,  Ifile, Options) ->
+    case open(Id, [{name, Ifile} | Options]) of
         {ok, Epp} ->
             Forms = parse_file(Epp),
             close(Epp),
@@ -663,14 +684,14 @@ restore_typed_record_fields([
 restore_typed_record_fields([Form | Forms]) ->
     [Form | restore_typed_record_fields(Forms)].
 
-server(Pid, Name, Options) ->
+server(Pid, Id, Name, Options) ->
     process_flag(trap_exit, true),
     St = #epp{},
     case proplists:get_value(fd, Options) of
         undefined ->
             case file:open(Name, [read]) of
                 {ok, File} ->
-                    init_server(Pid, Name, Options, St#epp{file = File});
+                    init_server(Pid, Name, Options, St#epp{file = File, request_id = Id});
                 {error, E} ->
                     epp_reply(Pid, {error, E})
             end;
@@ -837,7 +858,8 @@ enter_file2(NewF, Pname, From, St0) ->
     #epp{
         include_offset = Offset,
         macs = Ms0,
-        default_encoding = DefEncoding
+        default_encoding = DefEncoding,
+        request_id = ReqId
     } = St0,
     enter_file_reply(From, Pname, 0, Offset),
     Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, Pname}]}},
@@ -857,7 +879,8 @@ enter_file2(NewF, Pname, From, St0) ->
         sstk = [St0 | St0#epp.sstk],
         path = Path,
         macs = Ms,
-        default_encoding = DefEncoding
+        default_encoding = DefEncoding,
+        request_id = ReqId
     }.
 
 enter_file_reply(From, Name, AtLine, CurLine) ->

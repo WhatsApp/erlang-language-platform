@@ -7,9 +7,9 @@
 %%% % @format
 -module(erlang_service_ct).
 
--export([run/1]).
+-export([run/2]).
 
-run([Module, Filename, CompileOptions, ShouldRequestGroups]) ->
+run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups]) ->
     {ok, Module, Binary} = compile:file(Filename, [binary | normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
     All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),

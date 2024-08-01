@@ -34,6 +34,8 @@
 %% API
 -export([process/1]).
 
+-export_type([id/0]).
+
 %%==============================================================================
 %% Includes
 %%==============================================================================
@@ -150,7 +152,7 @@ process_request_async(Module, Id, Data, AdditionalParams) ->
         fun() ->
             try
                 Params = binary_to_term(Data),
-                case Module:run(Params ++ AdditionalParams) of
+                case Module:run(Id, Params ++ AdditionalParams) of
                     {ok, Result} ->
                         gen_server:cast(?SERVER, {result, Id, encode_segments(Result)});
                     {error, Error} ->
