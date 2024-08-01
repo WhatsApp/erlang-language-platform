@@ -203,10 +203,10 @@ handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_ct, Id, Data, [], 10_000, State);
 handle_request(<<"OPN", _:64/big, OrigId:64/big, Data/binary>>,
                #{own_requests := OwnRequests} = State) ->
-    Paths = collect_paths(Data),
+    Path = collect_paths(Data),
     case lists:keytake(OrigId, 1, OwnRequests) of
         {value, {OrigId, ReplyFrom}, NewOwnRequests} ->
-            gen_server:reply(ReplyFrom, {value, Paths}),
+            gen_server:reply(ReplyFrom, {value, Path}),
             {noreply, State#{own_requests => NewOwnRequests}};
         _ ->
             {noreply, State}

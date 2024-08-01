@@ -222,6 +222,12 @@ fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {
     SourceFile::parse_text(&text)
 }
 
+pub fn path_for_file(db: &dyn SourceDatabase, file_id: FileId) -> Option<VfsPath> {
+    let source_root_id = db.file_source_root(file_id);
+    let source_root = db.source_root(source_root_id);
+    source_root.path_for_file(&file_id).cloned()
+}
+
 fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
     lazy_static! {
         // We operate a byte level via a regex (as opposed to use .contains)

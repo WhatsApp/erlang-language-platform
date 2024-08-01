@@ -19,6 +19,7 @@ use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::docs::DocDatabase;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
+use elp_ide::elp_ide_db::elp_base_db::path_for_file;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
@@ -869,13 +870,6 @@ impl GleanIndexer {
         files
     }
 
-    fn path_for_file(db: &RootDatabase, file_id: FileId) -> Option<VfsPath> {
-        let source_root_id = db.file_source_root(file_id);
-        let source_root = db.source_root(source_root_id);
-        let path = source_root.path_for_file(&file_id)?;
-        Some(path.clone())
-    }
-
     fn index_file(
         db: &RootDatabase,
         file_id: FileId,
@@ -1426,7 +1420,7 @@ impl GleanIndexer {
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
                         if let Some(file) = db.resolve_include(InFile::new(file_id, idx.clone())) {
-                            if let Some(path) = Self::path_for_file(db, file) {
+                            if let Some(path) = path_for_file(db, file) {
                                 if let Some((name, Some("hrl"))) = path.name_and_extension() {
                                     let target = HeaderTarget {
                                         file_id: file.into(),

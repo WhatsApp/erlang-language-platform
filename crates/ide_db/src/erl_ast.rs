@@ -10,11 +10,13 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use elp_base_db::path_for_file;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
+use elp_base_db::IncludeCtx;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
@@ -33,6 +35,7 @@ pub trait AstLoader {
     fn load_ast(
         &self,
         project_id: ProjectId,
+        file_id: FileId,
         path: &AbsPath,
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
@@ -48,6 +51,7 @@ impl AstLoader for crate::RootDatabase {
     fn load_ast(
         &self,
         project_id: ProjectId,
+        file_id: FileId,
         path: &AbsPath,
         include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
@@ -82,8 +86,9 @@ impl AstLoader for crate::RootDatabase {
             format,
         };
         let erlang_service = self.erlang_service_for(project_id);
-        let r =
-            erlang_service.request_parse(req, || self.unwind_if_cancelled(), &|path| Some(path));
+        let r = erlang_service.request_parse(req, || self.unwind_if_cancelled(), &|path| {
+            resolve_include(self, file_id, &path)
+        });
         let included_files = files_from_bytes(&r.files);
         for file in included_files {
             let file_path = PathBuf::from(file.clone());
@@ -108,6 +113,11 @@ impl AstLoader for crate::RootDatabase {
         }
         r
     }
+}
+
+fn resolve_include(db: &dyn SourceDatabase, file_id: FileId, path: &str) -> Option<String> {
+    let include_file_id = IncludeCtx::new(db, file_id).resolve_include(path)?;
+    path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())
 }
 
 #[salsa::query_group(ErlAstDatabaseStorage)]
@@ -151,6 +161,7 @@ fn module_ast(
     };
     Arc::new(db.load_ast(
         app_data.project_id,
+        file_id,
         path,
         &app_data.include_path,
         &app_data.macros,

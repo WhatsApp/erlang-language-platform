@@ -412,6 +412,13 @@ impl Connection {
                 // Sender None means it won't update the inflight store
                 let request = (b"OPN", buf, None);
                 self.sender.send(request).unwrap();
+            } else {
+                // We must always send a reply, even if empty
+                let mut buf = Vec::new();
+                buf.write_u64::<BigEndian>(id).expect("buf write failed");
+                // Sender None means it won't update the inflight store
+                let request = (b"OPN", buf, None);
+                self.sender.send(request).unwrap();
             }
             None
         }
