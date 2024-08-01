@@ -344,22 +344,12 @@ impl Connection {
     }
 
     fn request_reply(&self, tag: Tag, request: Vec<u8>, unwind: impl Fn()) -> Response {
-        let (sender, receiver) = bounded::<Response>(0);
-        self.sender
-            .send((tag, request, Some(sender)))
-            .expect("failed sending request to parse server");
-
-        // Every 100ms check if the db was cancelled by calling back to db.
-        // If the query was cancelled the `unwind` callback will panic and
-        // we'll abandon the computation. This is important to avoid blocking
-        // the main loop for too long - cancellation is sent when updating the
-        // db on user edits
-        loop {
-            match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(result) => return result,
-                Err(_) => unwind(),
-            }
-        }
+        self.request_reply_handle(tag, request, unwind, |callback| {
+            panic!(
+                "Got unexpected callback processing {:?}: {:?}",
+                tag, callback
+            );
+        })
     }
 
     fn request_reply_handle(
