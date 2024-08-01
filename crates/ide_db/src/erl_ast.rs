@@ -127,6 +127,7 @@ fn resolve_include(
     let include_file_id = match include_type {
         IncludeType::Normal => IncludeCtx::new(db, file_id).resolve_include(path)?,
         IncludeType::Lib => IncludeCtx::new(db, file_id).resolve_include_lib(path)?,
+        IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(&path)?,
     };
     path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())
 }

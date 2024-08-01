@@ -271,11 +271,13 @@ impl ParseResult {
 pub enum IncludeType {
     Normal,
     Lib,
+    Doc, // Search in same dir as file only
 }
 impl From<&str> for IncludeType {
     fn from(value: &str) -> Self {
         match value {
             "L" => IncludeType::Lib,
+            "D" => IncludeType::Doc,
             _ => IncludeType::Normal,
         }
     }
@@ -414,8 +416,6 @@ impl Connection {
         if opens.is_empty() {
             Some(parse_result)
         } else {
-            // We have a request for resolving a file.
-            // Assumption: if this is non-empty, all the others *are* empty.
             let string_val = decode_utf8_or_latin1(opens);
             if let Some(resolved) = Self::do_resolve(&string_val, resolve_include) {
                 let mut buf = Vec::new();

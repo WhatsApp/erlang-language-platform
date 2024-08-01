@@ -242,9 +242,10 @@ encode_segments(Segments) ->
 encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
     [Tag, <<(byte_size(Data)):32/big>> | Data].
 
--spec add_include_type(string(), normal|lib) -> io_lib:chars().
+-spec add_include_type(string(), normal|lib|doc) -> io_lib:chars().
 add_include_type(Path, IncludeType) ->
     case IncludeType of
         normal -> io_lib:format("N:~s", [Path]);
-        lib    -> io_lib:format("L:~s", [Path])
+        lib    -> io_lib:format("L:~s", [Path]);
+        doc    -> io_lib:format("D:~s", [Path])
     end.

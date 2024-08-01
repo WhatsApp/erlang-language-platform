@@ -46,6 +46,10 @@ impl<'a> IncludeCtx<'a> {
             .or_else(|| self.resolve_remote(path))
     }
 
+    pub fn resolve_include_doc(&self, path: &str) -> Option<FileId> {
+        self.resolve_relative(path)
+    }
+
     fn resolve_relative(&self, path: &str) -> Option<FileId> {
         self.source_root.relative_path(self.file_id, path)
     }

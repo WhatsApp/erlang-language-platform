@@ -1082,7 +1082,11 @@ scan_filedoc_content(
 ) ->
     %% The head of the path is the dir where the current file is
     Cwd = hd(St#epp.path),
-    case file:path_open([Cwd], DocFilename, [read, binary]) of
+    case erlang_service_server:path_open(St#epp.request_id, DocFilename, doc) of
+        {value, [ResolvedPath]} -> ResolvedName = ResolvedPath;
+        _ -> ResolvedName = DocFilename
+    end,
+    case file:path_open([Cwd], ResolvedName, [read, binary]) of
         {ok, NewF, Pname} ->
             case file:read_file_info(NewF) of
                 {ok, #file_info{size = Sz}} ->
