@@ -67,7 +67,7 @@ start_link() ->
 process(Data) ->
     gen_server:cast(?SERVER, {process, Data}).
 
--spec path_open(erlang_service:id(), string(), normal|lib)
+-spec path_open(id(), string(), normal|lib)
    -> {value, string()} | {failed, string()}.
 path_open(ReqId, Name, IncludeType) ->
   gen_server:call(?SERVER, {path_open, ReqId, Name, IncludeType}).
@@ -85,13 +85,13 @@ init(noargs) ->
     State = #{io => Port, requests => [], own_requests => []},
     {ok, State}.
 
--spec handle_call(any(), any(), state()) -> {stop|reply, any(), state()}.
+-spec handle_call({path_open, string(), string(), normal|lib|doc}, any(), state())
+   -> {noreply, state()} | {stop|reply, any(), state()}.
 handle_call({path_open, ReqId, Req, IncludeType}, From,
             #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->
     case lists:keytake(ReqId, 2, Requests) of
         {value, {_Pid, Id, _}, _NewRequests} ->
-            request(Id, encode_segments([{<<"OPN">>,
-                    unicode:characters_to_binary(add_include_type(Req, IncludeType))}]), IO),
+            request(Id, [unicode:characters_to_binary(add_include_type(Req, IncludeType))], IO),
             {noreply, State#{own_requests => [{Id, From}|OwnRequests]}};
         _ ->
             {reply, {failed, Req}, State}
@@ -158,8 +158,7 @@ reply_exception(Id, Data, Device) ->
     ok.
 
 request(Id, Data, Device) ->
-    %% We prefix our own requests with a VERB
-    Req = [<<"OPN", Id:64/big, 0>> | Data],
+    Req = [<<Id:64/big, 2>> | Data],
     Device ! {self(), {command, Req}},
     ok.
 

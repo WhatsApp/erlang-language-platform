@@ -218,12 +218,37 @@ type Tag = &'static [u8; 3];
 
 #[derive(Debug)]
 // Second element is the inflight id for responding to callback requests.
-struct Response(Cursor<Vec<u8>>, u64);
+struct Response {
+    payload: Cursor<Vec<u8>>,
+    id: u64,
+    status: ResponseStatus,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ResponseStatus {
+    Ok,       // 0
+    Error,    // 1
+    CallBack, // 2
+}
+
+impl From<u8> for ResponseStatus {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => ResponseStatus::Ok,
+            1 => ResponseStatus::Error,
+            2 => ResponseStatus::CallBack,
+            n => {
+                log::warn!("Got an unexpected ResponseStatus: {n}");
+                ResponseStatus::Error
+            }
+        }
+    }
+}
 
 impl Response {
     fn decode_segments(self, mut f: impl FnMut(&[u8; 3], Vec<u8>) -> Result<()>) -> Result<()> {
-        let mut cursor = self.0;
-        if cursor.read_u8().expect("no status for message") != 0 {
+        let mut cursor = self.payload;
+        if self.status == ResponseStatus::Error {
             let mut buf = String::new();
             cursor
                 .read_to_string(&mut buf)
@@ -234,11 +259,15 @@ impl Response {
             while let Ok(()) = cursor.read_exact(&mut tag) {
                 let size = cursor.read_u32::<BigEndian>().expect("malformed segment");
                 let mut buf = vec![0; size as usize];
-                cursor.read_exact(&mut buf).expect("malfomrmed segment");
+                cursor.read_exact(&mut buf).expect("malformed segment");
                 f(&tag, buf)?
             }
             Ok(())
         }
+    }
+
+    fn is_callback(&self) -> bool {
+        self.status == ResponseStatus::CallBack
     }
 }
 
@@ -333,15 +362,13 @@ impl Connection {
         }
     }
 
-    pub fn request_parse(
+    fn request_reply_handle(
         &self,
-        request: ParseRequest,
+        tag: Tag,
+        request: Vec<u8>,
         unwind: impl Fn(),
-        resolve_include: &impl Fn(IncludeType, &str) -> Option<String>,
-    ) -> ParseResult {
-        let path = request.path.clone();
-        let tag = request.tag();
-        let request = request.encode();
+        handle_callback: impl Fn(Response) -> Result<Vec<u8>>,
+    ) -> Response {
         let (sender, receiver) = bounded::<Response>(0);
         self.sender
             .send((tag, request, Some(sender)))
@@ -353,13 +380,24 @@ impl Connection {
         // the main loop for too long - cancellation is sent when updating the
         // db on user edits
         loop {
-            // TODO: if it is a callback, process it and continue waiting.
             match receiver.recv_timeout(Duration::from_millis(100)) {
                 Ok(result) => {
-                    if let Some(parse) =
-                        self.handle_request_parse_response(&path, result, resolve_include)
-                    {
-                        return parse;
+                    let id = result.id;
+                    if result.is_callback() {
+                        match handle_callback(result) {
+                            Ok(buf) => {
+                                // Sender None means it won't update the inflight store
+                                let request = (b"OPN", buf, None);
+                                self.sender.send(request).unwrap();
+                            }
+                            Err(err) => {
+                                log::warn!("handle_callback gave err: {}, for {}", err, id);
+                                // We must always reply, else the erlang side hangs
+                                self.sender.send((b"OPN", Vec::new(), None)).unwrap();
+                            }
+                        }
+                    } else {
+                        return result;
                     }
                 }
                 Err(_) => unwind(),
@@ -367,27 +405,31 @@ impl Connection {
         }
     }
 
-    fn handle_request_parse_response(
+    pub fn request_parse(
         &self,
-        path: &PathBuf,
-        reply: Response,
-        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
-    ) -> Option<ParseResult> {
+        request: ParseRequest,
+        unwind: impl Fn(),
+        resolve_include: &impl Fn(IncludeType, &str) -> Option<String>,
+    ) -> ParseResult {
+        let path = request.path.clone();
+        let tag = request.tag();
+        let request = request.encode();
+        let reply = self.request_reply_handle(tag, request, unwind, |request| {
+            self.handle_request_parse_callback(request, resolve_include)
+        });
+
         let mut ast = vec![];
         let mut stub = vec![];
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut opens = vec![];
 
-        let id = reply.1;
-        let parse_result = reply
+        reply
             .decode_segments(|tag, data| {
                 match tag {
                     b"AST" => ast = data,
                     b"STU" => stub = data,
                     b"WAR" => warnings = data,
                     b"ERR" => errors = data,
-                    b"OPN" => opens = data,
                     _ => log::error!("unrecognised segment {:?}", tag),
                 };
                 Ok(())
@@ -402,36 +444,39 @@ impl Connection {
             })
             .unwrap_or_else(|error| {
                 ParseResult::error(ParseError {
-                    path: path.clone(),
+                    path,
                     location: None,
                     msg: format!("Could not parse, error: {}", error),
                     code: "L0002".to_string(),
                 })
-            });
-        if opens.is_empty() {
-            Some(parse_result)
-        } else {
-            let string_val = decode_utf8_or_latin1(opens);
+            })
+    }
+
+    fn handle_request_parse_callback(
+        &self,
+        reply: Response,
+        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
+    ) -> Result<Vec<u8>> {
+        let id = reply.id;
+        let payload_buf = &reply.payload.get_ref();
+        let opens = &payload_buf[(reply.payload.position() as usize)..];
+        let mut buf = Vec::new();
+        if !opens.is_empty() {
+            let string_val = decode_utf8_or_latin1(opens.to_vec());
             if let Some(resolved) = Self::do_resolve(&string_val, resolve_include) {
-                let mut buf = Vec::new();
                 buf.write_u64::<BigEndian>(id).expect("buf write failed");
                 buf.write_u32::<BigEndian>(resolved.len() as u32)
                     .expect("buf write failed");
                 buf.write_all(resolved.as_bytes())
                     .expect("buf write failed");
-                // Sender None means it won't update the inflight store
-                let request = (b"OPN", buf, None);
-                self.sender.send(request).unwrap();
             } else {
                 // We must always send a reply, even if empty
-                let mut buf = Vec::new();
                 buf.write_u64::<BigEndian>(id).expect("buf write failed");
-                // Sender None means it won't update the inflight store
-                let request = (b"OPN", buf, None);
-                self.sender.send(request).unwrap();
             }
-            None
+        } else {
+            log::warn!("handle_request_parse_callback: did not get OPN segment");
         }
+        Ok(buf)
     }
 
     pub fn do_resolve(
@@ -606,24 +651,31 @@ fn reader_run(
             log::info!("Reader terminating");
             return Ok(());
         }
-        if &buf[0..3] == b"OPN" {
-            log::info!("File name resolution request received");
-            let buf: Vec<u8> = Vec::from(&buf[3..]);
-            let mut cursor = Cursor::new(buf);
-            let id = cursor.read_u64::<BigEndian>()?;
+        let mut cursor = Cursor::new(buf);
+        let id = cursor.read_u64::<BigEndian>()?;
+        let status = cursor.read_u8()?.into();
+        if status == ResponseStatus::CallBack {
             let inflight = inflight.lock();
+            // Do not remove entry from inflight db
             let sender = inflight.get(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(Response(cursor, id)) {
+            if let Err(err) = sender.send(Response {
+                payload: cursor,
+                id,
+                status,
+            }) {
                 log::info!("Got response {}, but request was canceled: {}", id, err);
             };
         } else {
-            let mut cursor = Cursor::new(buf);
-            let id = cursor.read_u64::<BigEndian>()?;
+            // Finished, remove entry from inflight
             let sender = inflight.lock().remove(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(Response(cursor, id)) {
+            if let Err(err) = sender.send(Response {
+                payload: cursor,
+                id,
+                status,
+            }) {
                 log::info!("Got response {}, but request was canceled: {}", id, err);
             };
-        }
+        };
     }
 }
 
