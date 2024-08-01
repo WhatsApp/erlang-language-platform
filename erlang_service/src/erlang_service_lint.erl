@@ -249,7 +249,7 @@ extract_forms(Id, FileName, Options) ->
         ".hrl" ->
             elp_epp:parse_file(Id, FileName, Options);
         ".escript" ->
-            Forms = elp_escript:extract(FileName),
+            Forms = elp_escript:extract(Id, FileName),
             {ok, Forms};
         _Ext ->
             {error, "Skipping diagnostics due to extension"}

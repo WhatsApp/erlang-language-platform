@@ -21,7 +21,7 @@
 
 %% An Erlang code preprocessor.
 
--export([open/1, open/2, open/3, open/4, close/1, format_error/1]).
+-export([open/2, open/3, open/4, close/1, format_error/1]).
 -export([scan_erl_form/1, parse_erl_form/1, macro_defs/1]).
 -export([scan_file/1, scan_file/3, parse_file/1, parse_file/3, parse_file/4]).
 -export([
@@ -94,7 +94,7 @@
     fname = [] :: function_name_type(),
     scan_opts = [] :: erl_scan:options(),
     % Id required for requests to host ELP for file name resolution
-    request_id = none
+    request_id :: erlang_service_server:id()
 }).
 
 %% open(Options)
@@ -110,7 +110,7 @@
 %% parse_file(FileName, IncludePath, PreDefMacros)
 %% macro_defs(Epp)
 
--spec open(erlang_service_server:id()|none, FileName, IncludePath) ->
+-spec open(erlang_service_server:id(), FileName, IncludePath) ->
     {'ok', Epp} | {'error', ErrorDescriptor}
 when
     FileName :: file:name(),
@@ -121,7 +121,7 @@ when
 open(Id, Name, Path) ->
     open(Id, Name, Path, []).
 
--spec open(erlang_service_server:id()|none, FileName, IncludePath, PredefMacros) ->
+-spec open(erlang_service_server:id(), FileName, IncludePath, PredefMacros) ->
     {'ok', Epp} | {'error', ErrorDescriptor}
 when
     FileName :: file:name(),
@@ -133,26 +133,7 @@ when
 open(Id, Name, Path, Pdm) ->
     open(Id, [{name, Name}, {includes, Path}, {macros, Pdm}]).
 
-
--spec open(Options) ->
-    {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
-when
-    Options :: [
-        {'default_encoding', DefEncoding :: source_encoding()}
-        | {'includes', IncludePath :: [DirectoryName :: file:name()]}
-        | {'source_name', SourceName :: file:name()}
-        | {'macros', PredefMacros :: macros()}
-        | {'name', FileName :: file:name()}
-        | {'fd', FileDescriptor :: file:io_device()}
-        | 'extra'
-    ],
-    Epp :: epp_handle(),
-    Extra :: [{'encoding', source_encoding() | 'none'}],
-    ErrorDescriptor :: term().
-
-open(Options) -> open(none, Options).
-
--spec open(erlang_service_server:id()|none, Options) ->
+-spec open(erlang_service_server:id(), Options) ->
     {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
 when
     Options :: [
@@ -686,12 +667,12 @@ restore_typed_record_fields([Form | Forms]) ->
 
 server(Pid, Id, Name, Options) ->
     process_flag(trap_exit, true),
-    St = #epp{},
+    St = #epp{ request_id = Id},
     case proplists:get_value(fd, Options) of
         undefined ->
             case file:open(Name, [read]) of
                 {ok, File} ->
-                    init_server(Pid, Name, Options, St#epp{file = File, request_id = Id});
+                    init_server(Pid, Name, Options, St#epp{file = File });
                 {error, E} ->
                     epp_reply(Pid, {error, E})
             end;

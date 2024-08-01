@@ -28,7 +28,7 @@
 
 -module(elp_escript).
 
--export([extract/1]).
+-export([extract/2]).
 
 -record(state, {
     file :: file:filename(),
@@ -43,18 +43,18 @@
 -record(sections, {shebang :: shebang() | 'undefined'}).
 -type sections() :: #sections{}.
 
--spec extract(file:filename()) -> any().
-extract(File) ->
+-spec extract(erlang_service_server:id(), file:filename()) -> any().
+extract(Id, File) ->
     {HeaderSz, Fd, _Sections} = parse_header(File),
-    Forms = do_parse_file(File, Fd, HeaderSz),
+    Forms = do_parse_file(Id, File, Fd, HeaderSz),
     ok = file:close(Fd),
     Forms.
 
--spec do_parse_file(any(), any(), any()) ->
+-spec do_parse_file(erlang_service_server:id(), any(), any(), any()) ->
     [any()].
-do_parse_file(File, Fd, HeaderSz) ->
+do_parse_file(Id, File, Fd, HeaderSz) ->
     S = initial_state(File),
-    #state{forms_or_bin = FormsOrBin} = parse_source(S, File, Fd, HeaderSz),
+    #state{forms_or_bin = FormsOrBin} = parse_source(Id, S, File, Fd, HeaderSz),
     FormsOrBin.
 
 -spec initial_state(_) -> state().
@@ -126,8 +126,8 @@ get_line(P) ->
             Line
     end.
 
--spec parse_source(state(), _, _, _) -> state().
-parse_source(S, File, Fd, HeaderSz) ->
+-spec parse_source(erlang_service_server:id(), state(), _, _, _) -> state().
+parse_source(Id, S, File, Fd, HeaderSz) ->
     {PreDefMacros, DefModule} = pre_def_macros(File),
     IncludePath = [],
     %% Read the encoding on the second line, if there is any:
@@ -135,7 +135,7 @@ parse_source(S, File, Fd, HeaderSz) ->
     _ = io:get_line(Fd, ''),
     Encoding = elp_epp:set_encoding(Fd),
     {ok, _} = file:position(Fd, HeaderSz),
-    {ok, Epp} = epp_open(File, Fd, HeaderSz, IncludePath, PreDefMacros),
+    {ok, Epp} = epp_open(Id, File, Fd, HeaderSz, IncludePath, PreDefMacros),
     _ = [io:setopts(Fd, [{encoding, Encoding}]) || Encoding =/= none],
     {ok, FileForm} = elp_epp:parse_erl_form(Epp),
     OptModRes = elp_epp:parse_erl_form(Epp),
@@ -165,9 +165,9 @@ parse_source(S, File, Fd, HeaderSz) ->
     ok = file:close(Fd),
     check_source(S2).
 
--spec epp_open(_, _, pos_integer(), _, _) -> {ok, term()}.
-epp_open(File, Fd, HeaderSz, IncludePath, PreDefMacros) ->
-    elp_epp:open([
+-spec epp_open(erlang_service_server:id(), _, _, pos_integer(), _, _) -> {ok, term()}.
+epp_open(Id, File, Fd, HeaderSz, IncludePath, PreDefMacros) ->
+    elp_epp:open(Id, [
         {fd, Fd},
         {name, File},
         {offset, HeaderSz},
