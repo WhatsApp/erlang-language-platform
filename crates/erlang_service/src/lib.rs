@@ -217,7 +217,8 @@ type Request = (Tag, Vec<u8>, Option<Sender<Response>>);
 type Tag = &'static [u8; 3];
 
 #[derive(Debug)]
-struct Response(Cursor<Vec<u8>>);
+// Second element is the inflight id for responding to callback requests.
+struct Response(Cursor<Vec<u8>>, u64);
 
 impl Response {
     fn decode_segments(self, mut f: impl FnMut(&[u8; 3], Vec<u8>) -> Result<()>) -> Result<()> {
@@ -364,6 +365,7 @@ impl Connection {
         let mut errors = vec![];
         let mut opens = vec![];
 
+        let id = reply.1;
         let parse_result = reply
             .decode_segments(|tag, data| {
                 match tag {
@@ -400,7 +402,17 @@ impl Connection {
             // We have a request for resolving a file.
             // Assumption: if this is non-empty, all the others *are* empty.
             let path = decode_utf8_or_latin1(opens);
-            let _resolved = resolve_include(path);
+            if let Some(resolved) = resolve_include(path) {
+                let mut buf = Vec::new();
+                buf.write_u64::<BigEndian>(id).expect("buf write failed");
+                buf.write_u32::<BigEndian>(resolved.len() as u32)
+                    .expect("buf write failed");
+                buf.write_all(resolved.as_bytes())
+                    .expect("buf write failed");
+                // Sender None means it won't update the inflight store
+                let request = (b"OPN", buf, None);
+                self.sender.send(request).unwrap();
+            }
             None
         }
     }
@@ -576,14 +588,14 @@ fn reader_run(
             let id = cursor.read_u64::<BigEndian>()?;
             let inflight = inflight.lock();
             let sender = inflight.get(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(Response(cursor)) {
+            if let Err(err) = sender.send(Response(cursor, id)) {
                 log::info!("Got response {}, but request was canceled: {}", id, err);
             };
         } else {
             let mut cursor = Cursor::new(buf);
             let id = cursor.read_u64::<BigEndian>()?;
             let sender = inflight.lock().remove(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(Response(cursor)) {
+            if let Err(err) = sender.send(Response(cursor, id)) {
                 log::info!("Got response {}, but request was canceled: {}", id, err);
             };
         }

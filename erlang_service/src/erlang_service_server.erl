@@ -48,8 +48,9 @@
 %%==============================================================================
 %% Type Definitions
 %%==============================================================================
--type state() :: #{io := port(), requests := [request_entry()]}.
+-type state() :: #{io := port(), requests := [request_entry()], own_requests := [own_request_entry()]}.
 -type request_entry() :: {pid(), id(), reference() | infinity}.
+-type own_request_entry() :: {id(), gen_server:from()}.
 -type result() :: {result, id(), [segment()]}.
 -type exception() :: {exception, id(), any()}.
 -type id() :: integer().
@@ -79,18 +80,19 @@ init(noargs) ->
     %% which is very significant for raw binary data, mostly because it's prepared
     %% to work with unicode input and does multiple encoding/decoding rounds for raw bytes
     Port = open_port({fd, 0, 1}, [eof, binary, {packet, 4}]),
-    State = #{io => Port, requests => []},
+    State = #{io => Port, requests => [], own_requests => []},
     {ok, State}.
 
 -spec handle_call(any(), any(), state()) -> {stop|reply, any(), state()}.
-handle_call({path_open, ReqId, Req}, _From, #{io := IO, requests := Requests} = State) ->
+handle_call({path_open, ReqId, Req}, From,
+            #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->
     case lists:keytake(ReqId, 2, Requests) of
         {value, {_Pid, Id, _}, _NewRequests} ->
-            request(Id, encode_segments([{<<"OPN">>, unicode:characters_to_binary(Req)}]), IO);
+            request(Id, encode_segments([{<<"OPN">>, unicode:characters_to_binary(Req)}]), IO),
+            {noreply, State#{own_requests => [{Id, From}|OwnRequests]}};
         _ ->
-            logger:warning(":handle_call:path_open:id not found [~p]", [ReqId])
-    end,
-    {reply, Req, State};
+            {reply, {failed, Req}, State}
+    end;
 handle_call(Req, _From, State) ->
     {stop, {unexpected_request, Req}, State}.
 
@@ -153,6 +155,7 @@ reply_exception(Id, Data, Device) ->
     ok.
 
 request(Id, Data, Device) ->
+    %% We prefix our own requests with a VERB
     Req = [<<"OPN", Id:64/big, 0>> | Data],
     Device ! {self(), {command, Req}},
     ok.
@@ -197,7 +200,17 @@ handle_request(<<"DCE", Id:64/big, Data/binary>>, State) ->
 handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_edoc, Id, Data, [eep48], infinity, State);
 handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
-    request(erlang_service_ct, Id, Data, [], 10_000, State).
+    request(erlang_service_ct, Id, Data, [], 10_000, State);
+handle_request(<<"OPN", _:64/big, OrigId:64/big, Data/binary>>,
+               #{own_requests := OwnRequests} = State) ->
+    Paths = collect_paths(Data),
+    case lists:keytake(OrigId, 1, OwnRequests) of
+        {value, {OrigId, ReplyFrom}, NewOwnRequests} ->
+            gen_server:reply(ReplyFrom, {value, Paths}),
+            {noreply, State#{own_requests => NewOwnRequests}};
+        _ ->
+            {noreply, State}
+    end.
 
 
 -spec request(module(), id(), binary(), [any()], timeout(), state()) -> {noreply, state()}.
