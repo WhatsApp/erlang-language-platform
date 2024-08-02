@@ -68,9 +68,15 @@ process(Data) ->
     gen_server:cast(?SERVER, {process, Data}).
 
 -spec path_open(id(), string(), normal|lib)
-   -> {value, string()} | {failed, string()}.
+   -> {value, [string()]} | failed.
 path_open(ReqId, Name, IncludeType) ->
-  gen_server:call(?SERVER, {path_open, ReqId, Name, IncludeType}).
+  case gen_server:call(?SERVER, {request, ReqId,
+             [unicode:characters_to_binary(add_include_type(Name, IncludeType))]}) of
+    {value, Data} ->
+          Paths = collect_paths(Data),
+          {value, Paths};
+     X -> X
+  end.
 
 %%==============================================================================
 %% gen_server callbacks
@@ -87,14 +93,14 @@ init(noargs) ->
 
 -spec handle_call({path_open, string(), string(), normal|lib|doc}, any(), state())
    -> {noreply, state()} | {stop|reply, any(), state()}.
-handle_call({path_open, ReqId, Req, IncludeType}, From,
+handle_call({request, ReqId, Data}, From,
             #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->
     case lists:keytake(ReqId, 2, Requests) of
         {value, {_Pid, Id, _}, _NewRequests} ->
-            request(Id, [unicode:characters_to_binary(add_include_type(Req, IncludeType))], IO),
+            request(Id, Data, IO),
             {noreply, State#{own_requests => [{Id, From}|OwnRequests]}};
         _ ->
-            {reply, {failed, Req}, State}
+            {reply, failed, State}
     end;
 handle_call(Req, _From, State) ->
     {stop, {unexpected_request, Req}, State}.
@@ -206,10 +212,9 @@ handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
 %% Start of callback responses
 handle_request(<<"REP", OrigId:64/big, Data/binary>>,
                #{own_requests := OwnRequests} = State) ->
-    Path = collect_paths(Data),
     case lists:keytake(OrigId, 1, OwnRequests) of
         {value, {OrigId, ReplyFrom}, NewOwnRequests} ->
-            gen_server:reply(ReplyFrom, {value, Path}),
+            gen_server:reply(ReplyFrom, {value, Data}),
             {noreply, State#{own_requests => NewOwnRequests}};
         _ ->
             {noreply, State}
