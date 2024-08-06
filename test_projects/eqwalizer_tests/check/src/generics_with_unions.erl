@@ -342,3 +342,11 @@ perform(Opts) ->
 -spec perform_impl(Config, perform_opts(Config, R)) ->
     perform_opts(Config, R).
 perform_impl(_, F) -> F.
+
+-type myjob(A) :: abc | fun((...) -> A).
+
+-spec f(myjob(A)) -> A | {error, timeout}.
+f(MyJob) -> g(MyJob).
+
+-spec g(myjob(A)) -> A | {error, timeout}.
+g(MyJob) -> throw(stub).

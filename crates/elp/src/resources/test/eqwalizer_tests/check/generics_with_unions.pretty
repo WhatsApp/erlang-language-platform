@@ -157,4 +157,25 @@ Expression has type perform_opts('ok', R) which matches multiple generic types i
 
 See https://fb.me/eqwalizer_errors#ambiguous_union
 
-13 ERRORS
+error: incompatible_types
+    ┌─ check/src/generics_with_unions.erl:349:15
+    │
+349 │ f(MyJob) -> g(MyJob).
+    │               ^^^^^
+    │               │
+    │               MyJob.
+Expression has type:   myjob(A)
+Context expected type: myjob(A)
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │               
+
+  myjob(A) is not compatible with myjob(A)
+  because
+  'abc' | fun((...) -> A) is not compatible with myjob(A)
+  because
+  'abc' | fun((...) -> A) is not compatible with 'abc' | fun((...) -> A)
+  because
+  fun((...) -> A) is not compatible with 'abc' | fun((...) -> A)
+
+14 ERRORS
