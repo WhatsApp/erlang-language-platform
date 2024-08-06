@@ -100,25 +100,6 @@ Context expected type: boolean()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:161:19
-    │
-161 │ apply_f4_id(F) -> f4_id_T(F).
-    │                   ^^^^^^^^^^
-    │                   │
-    │                   f4_id_T(F).
-Expression has type:   f4('a')
-Context expected type: f4('a' | 'b')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │                   
-
-  f4('a') is not compatible with f4('a' | 'b')
-  because
-  fun((...) -> 'a') is not compatible with f4('a' | 'b')
-  because
-  fun((...) -> 'a') is not compatible with fun((...) -> 'a' | 'b')
-
-error: incompatible_types
     ┌─ check_gradual/src/dynamic_fun.erl:170:22
     │
 170 │ fun3_to_f4_neg(F) -> F.
@@ -160,4 +141,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'b' is not compatible with 'a'
 
-12 ERRORS
+11 ERRORS
