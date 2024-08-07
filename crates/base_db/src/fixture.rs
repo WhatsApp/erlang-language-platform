@@ -1126,7 +1126,6 @@ bar() -> ?FOO.
                                 "/",
                             ),
                             deps_ebins: [],
-                            build_info_path: None,
                             otp_project_id: Some(
                                 ProjectId(
                                     1,
@@ -1175,7 +1174,6 @@ bar() -> ?FOO.
                                 "/opt/lib",
                             ),
                             deps_ebins: [],
-                            build_info_path: None,
                             otp_project_id: Some(
                                 ProjectId(
                                     1,
@@ -1287,7 +1285,6 @@ foo() -> ?BAR.
                                 "/",
                             ),
                             deps_ebins: [],
-                            build_info_path: None,
                             otp_project_id: Some(
                                 ProjectId(
                                     1,
@@ -1316,7 +1313,6 @@ foo() -> ?BAR.
                                 "/",
                             ),
                             deps_ebins: [],
-                            build_info_path: None,
                             otp_project_id: Some(
                                 ProjectId(
                                     1,
