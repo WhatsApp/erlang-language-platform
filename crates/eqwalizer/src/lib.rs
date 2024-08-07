@@ -16,7 +16,6 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::os::unix::prelude::PermissionsExt;
-use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -248,7 +247,6 @@ impl Eqwalizer {
 
     pub fn typecheck(
         &self,
-        build_info_path: &Path,
         db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
         modules: Vec<&str>,
@@ -258,7 +256,6 @@ impl Eqwalizer {
         cmd.arg("ipc");
         cmd.args(modules);
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
-        add_env(&mut cmd, build_info_path, None);
 
         match do_typecheck(cmd, db, project_id) {
             Ok(diags) => diags,
@@ -444,13 +441,6 @@ fn get_module_diagnostics(
                 )
             }
         }
-    }
-}
-
-fn add_env(cmd: &mut Command, build_info_path: &Path, elp_ast_dir: Option<&Path>) {
-    cmd.env("EQWALIZER_BUILD_INFO", build_info_path);
-    if let Some(elp_ast_dir) = elp_ast_dir {
-        cmd.env("EQWALIZER_ELP_AST_DIR", elp_ast_dir);
     }
 }
 

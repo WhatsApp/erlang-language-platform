@@ -10,7 +10,6 @@
 use std::sync::Arc;
 
 use elp_base_db::salsa;
-use elp_base_db::AbsPath;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::FileSource;
@@ -39,21 +38,11 @@ use crate::ErlAstDatabase;
 use crate::LineCol;
 
 pub trait EqwalizerLoader {
-    fn typecheck(
-        &self,
-        project_id: ProjectId,
-        build_info_path: &AbsPath,
-        modules: Vec<FileId>,
-    ) -> EqwalizerDiagnostics;
+    fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics;
 }
 
 impl EqwalizerLoader for crate::RootDatabase {
-    fn typecheck(
-        &self,
-        project_id: ProjectId,
-        build_info_path: &AbsPath,
-        modules: Vec<FileId>,
-    ) -> EqwalizerDiagnostics {
+    fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics {
         let module_index = self.module_index(project_id);
         let mut module_names = vec![];
         for module in modules {
@@ -70,8 +59,7 @@ impl EqwalizerLoader for crate::RootDatabase {
                 }
             };
         }
-        self.eqwalizer
-            .typecheck(build_info_path.as_ref(), self, project_id, module_names)
+        self.eqwalizer.typecheck(self, project_id, module_names)
     }
 }
 
@@ -109,15 +97,7 @@ pub fn eqwalizer_diagnostics_by_project(
     project_id: ProjectId,
     file_ids: Vec<FileId>,
 ) -> Arc<EqwalizerDiagnostics> {
-    let project = db.project_data(project_id);
-    if let Some(build_info_path) = &project.build_info_path {
-        Arc::new(db.typecheck(project_id, build_info_path, file_ids))
-    } else {
-        log::error!("EqWAlizing in a fixture project");
-        Arc::new(EqwalizerDiagnostics::Error(
-            "EqWAlizing in a fixture project".to_string(),
-        ))
-    }
+    Arc::new(db.typecheck(project_id, file_ids))
 }
 
 fn eqwalizer_stats(
