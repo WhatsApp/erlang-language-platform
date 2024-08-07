@@ -36,14 +36,9 @@ use paths::RelPathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::make_build_info;
 use crate::otp::Otp;
-use crate::path_to_binary;
-use crate::save_build_info;
-use crate::str_to_binary;
 use crate::AppName;
 use crate::AppType;
-use crate::BuildInfoFile;
 use crate::CommandProxy;
 use crate::ElpConfig;
 use crate::ProjectAppData;
@@ -166,17 +161,15 @@ impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
-    ) -> Result<(BuckProject, Vec<ProjectAppData>, BuildInfoFile, PathBuf), anyhow::Error> {
+    ) -> Result<(BuckProject, Vec<ProjectAppData>, PathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf, query_config)?;
         let otp_root = Otp::find_otp()?;
         let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
-        let build_info_term = build_info(buck_conf, &project_app_data, &otp_root);
-        let build_info = save_build_info(build_info_term)?;
         let project = BuckProject {
             target_info,
             buck_conf: buck_conf.clone(),
         };
-        Ok((project, project_app_data, build_info, otp_root))
+        Ok((project, project_app_data, otp_root))
     }
 
     pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
@@ -527,79 +520,6 @@ fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
     } else {
         Ok(root.join(target))
     }
-}
-
-/// creates erlang term for an app in a format required by eqwalizer
-pub fn build_info_app(project_data: &ProjectAppData, ebin: impl AsRef<Path>) -> Term {
-    let dir = path_to_binary(&project_data.dir);
-    let ebin = path_to_binary(ebin);
-
-    let extra_src_dirs = Term::List(
-        project_data
-            .extra_src_dirs
-            .iter()
-            .map(|s| str_to_binary(s.as_ref()))
-            .collect::<Vec<Term>>()
-            .into(),
-    );
-
-    let include_dirs = Term::List(
-        project_data
-            .include_dirs
-            .iter()
-            .map(path_to_binary)
-            .collect::<Vec<Term>>()
-            .into(),
-    );
-
-    let macros = Term::List(project_data.macros.clone().into());
-    let name = str_to_binary(&project_data.name.0);
-    let parse_transforms = Term::List(project_data.parse_transforms.clone().into());
-
-    let src_dirs = Term::List(
-        project_data
-            .abs_src_dirs
-            .iter()
-            .filter_map(|src| src.strip_prefix(project_data.dir.as_ref()))
-            .map(|path| path_to_binary(path.as_ref()))
-            .collect::<Vec<Term>>()
-            .into(),
-    );
-
-    Term::Map(
-        [
-            (Atom("dir".into()), dir),
-            (Atom("ebin".into()), ebin),
-            (Atom("extra_src_dirs".into()), extra_src_dirs),
-            (Atom("include_dirs".into()), include_dirs),
-            (Atom("macros".into()), macros),
-            (Atom("name".into()), name),
-            (Atom("parse_transforms".into()), parse_transforms),
-            (Atom("src_dirs".into()), src_dirs),
-        ]
-        .into(),
-    )
-}
-
-pub fn build_info(config: &BuckConfig, project_apps: &[ProjectAppData], otp_root: &Path) -> Term {
-    let mut apps = vec![];
-    let mut deps = vec![];
-    let default_ebin = config.buck_root().join("buck-out/ebins");
-    for project in project_apps {
-        let ebin = match &project.ebin {
-            None => default_ebin.as_path(),
-            Some(ebin) => ebin.as_path(),
-        };
-
-        match project.app_type {
-            AppType::App => apps.push(build_info_app(project, ebin)),
-            AppType::Dep if !config.build_deps => apps.push(build_info_app(project, ebin)),
-            AppType::Dep => deps.push(build_info_app(project, ebin)),
-            _ => {}
-        };
-    }
-    let path = &config.source_root();
-    make_build_info(apps, deps, otp_root, path.as_ref())
 }
 
 /// convert call//path/target:tgt_name into abs path ~/buckroot/path/target

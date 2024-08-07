@@ -182,7 +182,9 @@ pub struct BuildInfo {
     /// Path to a directory where to dump wa.build_info
     #[bpaf(argument("TO"))]
     pub to: PathBuf,
-    /// Generate JSON output rather than Erlang terms
+    /// Generate JSON output rather than Erlang terms.
+    ///   DEPRECATED: we now always generate JSON output
+    #[allow(unused)]
     pub json: bool,
 }
 

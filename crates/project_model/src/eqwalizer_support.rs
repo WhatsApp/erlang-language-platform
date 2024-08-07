@@ -12,13 +12,11 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use dirs;
-use eetf::Term;
 use include_dir::Dir;
 use lazy_static::lazy_static;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 
-use crate::buck;
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
@@ -30,7 +28,7 @@ lazy_static! {
         .join("eqwalizer_support");
 }
 
-pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> (ProjectAppData, Term) {
+pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
     let eqwalizer_support = AbsPathBuf::assert(EQWALIZER_SUPPORT.to_path_buf());
     let eqwalizer_support_app = ProjectAppData {
         name: AppName("eqwalizer_support".to_string()),
@@ -45,8 +43,7 @@ pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> (ProjectAppData, Te
         include_path: vec![otp_root.to_path_buf()],
     };
 
-    let eqwalizer_support_term = buck::build_info_app(&eqwalizer_support_app, &eqwalizer_support);
-    (eqwalizer_support_app, eqwalizer_support_term)
+    eqwalizer_support_app
 }
 
 pub fn setup_eqwalizer_support(project_dir: &Dir) -> Result<()> {

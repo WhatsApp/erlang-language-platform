@@ -25,7 +25,6 @@ use paths::AbsPathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::buck;
 use crate::eqwalizer_support;
 use crate::AppName;
 use crate::AppType;
@@ -182,13 +181,7 @@ impl JsonConfig {
 pub(crate) fn gen_app_data(
     config: &JsonConfig,
     otp_root: &AbsPath,
-) -> (
-    Vec<ProjectAppData>,
-    Vec<ProjectAppData>,
-    Vec<Term>,
-    Vec<Term>,
-) {
-    let mut terms = vec![];
+) -> (Vec<ProjectAppData>, Vec<ProjectAppData>) {
     let mut global_includes = indexset![otp_root.to_path_buf()];
     let path = config.config_path().parent().unwrap();
 
@@ -196,7 +189,6 @@ pub(crate) fn gen_app_data(
         path: &AbsPath,
         data: &[JsonProjectAppData],
         is_dep: bool,
-        terms: &mut Vec<Term>,
         global_includes: &mut IndexSet<AbsPathBuf>,
     ) -> Vec<ProjectAppData> {
         let mut result = vec![];
@@ -208,9 +200,6 @@ pub(crate) fn gen_app_data(
                     continue;
                 }
             };
-            let ebin = app.ebin.clone().unwrap_or(app.dir.join("ebin"));
-            let term = buck::build_info_app(&app, ebin);
-            terms.push(term);
             let parent = app.dir.parent().map(|path| path.to_path_buf());
             if let Some(path) = parent {
                 global_includes.insert(path);
@@ -220,19 +209,18 @@ pub(crate) fn gen_app_data(
         result
     }
 
-    let mut apps = make_app_data(path, &config.apps, false, &mut terms, &mut global_includes);
-    let mut deps = make_app_data(path, &config.deps, true, &mut terms, &mut global_includes);
+    let mut apps = make_app_data(path, &config.apps, false, &mut global_includes);
+    let mut deps = make_app_data(path, &config.deps, true, &mut global_includes);
 
     for app in &mut apps {
         let mut include_path = global_includes.clone();
         include_path.extend(app.include_dirs());
         app.include_path = include_path.into_iter().collect();
     }
-    let (eqwalizer_support_app, eqwalizer_support_term) =
-        eqwalizer_support::eqwalizer_suppport_data(otp_root);
+    let eqwalizer_support_app = eqwalizer_support::eqwalizer_suppport_data(otp_root);
     deps.push(eqwalizer_support_app);
 
-    (apps, deps, terms, vec![eqwalizer_support_term])
+    (apps, deps)
 }
 
 fn canonicalize(path: impl AsRef<Path>) -> Result<AbsPathBuf> {

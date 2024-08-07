@@ -9,11 +9,9 @@
 
 use std::fs;
 
-use eetf::Term;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 
-use crate::buck;
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
@@ -56,7 +54,7 @@ impl NoManifestConfig {
         &self.config_path
     }
 
-    pub fn to_project_app_data(&self, otp_root: &AbsPath) -> (Vec<ProjectAppData>, Vec<Term>) {
+    pub fn to_project_app_data(&self, otp_root: &AbsPath) -> Vec<ProjectAppData> {
         let mut data = ProjectAppData {
             name: self.name.clone(),
             dir: self.root_path.clone(),
@@ -73,7 +71,6 @@ impl NoManifestConfig {
         if let Some(path) = self.root_path.parent() {
             data.include_path.push(path.to_path_buf());
         }
-        let term = buck::build_info_app(&data, &self.root_path);
-        (vec![data], vec![term])
+        vec![data]
     }
 }

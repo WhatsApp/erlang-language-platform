@@ -28,8 +28,6 @@ use anyhow::Context;
 use anyhow::Result;
 use buck::BuckConfig;
 use buck::BuckQueryConfig;
-use eetf::Term;
-use eetf::Term::Atom;
 use elp_log::timeit;
 use fxhash::FxHashMap;
 use glob::glob;
@@ -619,7 +617,6 @@ fn app_data_from_path(path: &PathBuf) -> Option<JsonProjectAppData> {
 /// server, and CLI invocations to set up ELP for use.
 #[derive(Clone)]
 pub struct Project {
-    pub build_info_file: Option<BuildInfoFile>,
     pub otp: Otp,
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
@@ -652,7 +649,6 @@ impl PartialEq for Project {
 impl Project {
     pub fn otp(otp: Otp, project_apps: Vec<ProjectAppData>) -> Self {
         Self {
-            build_info_file: None,
             otp,
             project_build_data: ProjectBuildData::Otp,
             project_apps,
@@ -662,7 +658,6 @@ impl Project {
 
     pub fn empty(otp: Otp) -> Self {
         Self {
-            build_info_file: None,
             otp,
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
@@ -716,12 +711,6 @@ impl Project {
         root.file_name()
             .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(move || root.as_os_str().to_string_lossy().to_string())
-    }
-
-    pub fn build_info_file(&self) -> Option<AbsPathBuf> {
-        self.build_info_file
-            .as_ref()
-            .map(|info| info.build_info_file())
     }
 
     pub fn deps_ebins(&self) -> Vec<AbsPathBuf> {
@@ -919,7 +908,7 @@ impl Project {
         eqwalizer_config: EqwalizerConfig,
         query_config: &BuckQueryConfig,
     ) -> Result<Project> {
-        let (project_build_info, mut project_apps, build_info, otp_root) = match manifest {
+        let (project_build_info, mut project_apps, otp_root) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
@@ -946,69 +935,37 @@ impl Project {
                                 manifest
                             )
                         })?;
-                (
-                    ProjectBuildData::Rebar(rebar_project),
-                    apps,
-                    Some(BuildInfoFile::TempPath(Arc::new(loaded))),
-                    otp_root,
-                )
+                (ProjectBuildData::Rebar(rebar_project), apps, otp_root)
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, apps, build_info, otp_root) =
-                    BuckProject::load_from_config(buck, query_config)?;
-                (
-                    ProjectBuildData::Buck(project),
-                    apps,
-                    Some(build_info),
-                    otp_root,
-                )
+                let (project, apps, otp_root) = BuckProject::load_from_config(buck, query_config)?;
+                (ProjectBuildData::Buck(project), apps, otp_root)
             }
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
-                let (mut apps, deps, terms, deps_terms) =
-                    json::gen_app_data(config, AbsPath::assert(&otp_root));
-                let build_info_term = make_build_info(terms, deps_terms, &otp_root, &config_path);
-                let build_info = save_build_info(build_info_term)?;
+                let (mut apps, deps) = json::gen_app_data(config, AbsPath::assert(&otp_root));
                 let project = StaticProject { config_path };
                 apps.extend(deps);
-                (
-                    ProjectBuildData::Static(project),
-                    apps,
-                    Some(build_info),
-                    otp_root,
-                )
+                (ProjectBuildData::Static(project), apps, otp_root)
             }
             ProjectManifest::NoManifest(config) => {
                 let otp_root = Otp::find_otp()?;
                 let abs_otp_root = AbsPath::assert(&otp_root);
                 let config_path = config.config_path().to_path_buf();
-                let (mut apps, terms) = config.to_project_app_data(abs_otp_root);
-                let (eqwalizer_support_app, eqwalizer_support_term) =
+                let mut apps = config.to_project_app_data(abs_otp_root);
+                let eqwalizer_support_app =
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
-                let build_info_term = make_build_info(
-                    terms,
-                    vec![eqwalizer_support_term],
-                    abs_otp_root,
-                    &config_path,
-                );
-                let build_info = save_build_info(build_info_term)?;
                 let project = StaticProject { config_path };
                 apps.push(eqwalizer_support_app);
-                (
-                    ProjectBuildData::Static(project),
-                    apps,
-                    Some(build_info),
-                    otp_root,
-                )
+                (ProjectBuildData::Static(project), apps, otp_root)
             }
         };
 
         let (otp, otp_project_apps) = Otp::discover(otp_root);
         project_apps.extend(otp_project_apps);
         Ok(Project {
-            build_info_file: build_info,
             otp,
             project_build_data: project_build_info,
             project_apps,
@@ -1047,42 +1004,6 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
         }
     }
     Ok(stdout.trim().to_string())
-}
-
-pub fn make_build_info(
-    apps: Vec<Term>,
-    deps: Vec<Term>,
-    otp_root: impl AsRef<Path>,
-    source_root: impl AsRef<Path>,
-) -> Term {
-    let apps = Term::List(apps.into());
-    let deps = Term::List(deps.into());
-    let otp_lib_dir = path_to_binary(otp_root);
-    let source_root = path_to_binary(source_root);
-    Term::Map(
-        [
-            (Atom("apps".into()), apps),
-            (Atom("deps".into()), deps),
-            (Atom("otp_lib_dir".into()), otp_lib_dir),
-            (Atom("source_root".into()), source_root),
-        ]
-        .into(),
-    )
-}
-
-fn str_to_binary(s: &str) -> Term {
-    Term::Binary(s.as_bytes().into())
-}
-
-fn path_to_binary(path: impl AsRef<Path>) -> Term {
-    str_to_binary(path.as_ref().as_os_str().to_str().unwrap())
-}
-
-pub fn save_build_info(term: Term) -> Result<BuildInfoFile> {
-    let mut out_file = NamedTempFile::new()?;
-    term.encode(&mut out_file)?;
-    let build_info_path = out_file.into_temp_path();
-    Ok(BuildInfoFile::TempPath(Arc::new(build_info_path)))
 }
 
 #[cfg(test)]

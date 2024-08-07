@@ -11,7 +11,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 
-use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -33,19 +32,10 @@ pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -
     let root = AbsPathBuf::assert(root);
     let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
     let project = Project::load(&manifest, EqwalizerConfig::default(), query_config)?;
-    if args.json {
-        let mut writer = File::create(&args.to)?;
-        let json_str = serde_json::to_string_pretty::<JsonConfig>(&project.as_json(root))?;
-        writer.write_all(json_str.as_bytes())?;
-        Ok(())
-    } else {
-        if let Some(build_info_file) = project.build_info_file() {
-            std::fs::copy(build_info_file, args.to)?;
-            Ok(())
-        } else {
-            bail!("Loaded project does not have build info generated")
-        }
-    }
+    let mut writer = File::create(&args.to)?;
+    let json_str = serde_json::to_string_pretty::<JsonConfig>(&project.as_json(root))?;
+    writer.write_all(json_str.as_bytes())?;
+    Ok(())
 }
 
 pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfig) -> Result<()> {
