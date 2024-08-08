@@ -59,6 +59,7 @@ pub struct TransitiveChecker<'d> {
     module: SmolStr,
     in_progress: FxHashSet<Ref>,
     invalid_refs: FxHashMap<Ref, FxHashSet<Ref>>,
+    maybe_invalid_refs: FxHashMap<Ref, FxHashSet<Ref>>,
 }
 
 impl TransitiveChecker<'_> {
@@ -73,6 +74,7 @@ impl TransitiveChecker<'_> {
             module,
             in_progress: FxHashSet::default(),
             invalid_refs: FxHashMap::default(),
+            maybe_invalid_refs: FxHashMap::default(),
         }
     }
 
@@ -167,6 +169,7 @@ impl TransitiveChecker<'_> {
             &mut invalids,
             &self.module.clone(),
             &Type::FunType(spec.ty.to_owned()),
+            None,
         )?;
         if !invalids.is_empty() {
             let references = invalids.iter().map(|rref| self.show(rref)).collect();
@@ -221,6 +224,7 @@ impl TransitiveChecker<'_> {
                 &mut invalids,
                 &self.module.clone(),
                 &Type::FunType(ty.to_owned()),
+                None,
             )?;
         }
         if !invalids.is_empty() {
@@ -253,6 +257,7 @@ impl TransitiveChecker<'_> {
                 &mut invalids,
                 &self.module.clone(),
                 &Type::FunType(ty.to_owned()),
+                None,
             )?;
             if invalids.is_empty() {
                 filtered_tys.push(ty.clone())
@@ -268,7 +273,35 @@ impl TransitiveChecker<'_> {
     }
 
     fn is_valid(&mut self, rref: &Ref) -> Result<bool, TransitiveCheckError> {
+        let maybe_valid = self.is_maybe_valid(rref, None)?;
+        let mut resolved_invalids = FxHashSet::default();
+        if let Some(maybe_invalids) = self.maybe_invalid_refs.remove(rref) {
+            for maybe_invalid in maybe_invalids.iter() {
+                if !self.is_valid(maybe_invalid)? {
+                    resolved_invalids.insert(maybe_invalid.clone());
+                }
+            }
+        }
+        let has_no_resolved_invalids = resolved_invalids.is_empty();
+        self.invalid_refs
+            .entry(rref.clone())
+            .or_default()
+            .extend(resolved_invalids);
+        Ok(maybe_valid && has_no_resolved_invalids)
+    }
+
+    fn is_maybe_valid(
+        &mut self,
+        rref: &Ref,
+        parent_ref: Option<&Ref>,
+    ) -> Result<bool, TransitiveCheckError> {
         if self.in_progress.contains(rref) {
+            if let Some(pref) = parent_ref {
+                self.maybe_invalid_refs
+                    .entry(pref.clone())
+                    .or_default()
+                    .insert(rref.clone());
+            }
             return Ok(true);
         }
         if let Some(invs) = self.invalid_refs.get(rref) {
@@ -291,12 +324,14 @@ impl TransitiveChecker<'_> {
                             &mut invalids,
                             &rid.module,
                             &tdecl.body,
+                            Some(rref),
                         )?,
                         None => match stub.private_opaques.get(&id) {
                             Some(tdecl) => self.collect_invalid_references(
                                 &mut invalids,
                                 &rid.module,
                                 &tdecl.body,
+                                Some(rref),
                             )?,
                             None => {
                                 invalids.insert(rref.clone());
@@ -308,7 +343,12 @@ impl TransitiveChecker<'_> {
                     Some(rdecl) => {
                         for field in rdecl.fields.iter() {
                             if let Some(ty) = &field.tp {
-                                self.collect_invalid_references(&mut invalids, module, ty)?;
+                                self.collect_invalid_references(
+                                    &mut invalids,
+                                    module,
+                                    ty,
+                                    Some(rref),
+                                )?;
                             }
                         }
                     }
@@ -321,10 +361,10 @@ impl TransitiveChecker<'_> {
                 invalids.insert(rref.clone());
             }
         };
-        let has_invalids = invalids.is_empty();
+        let no_invalids = invalids.is_empty();
         self.in_progress.remove(rref);
         self.invalid_refs.insert(rref.clone(), invalids);
-        Ok(has_invalids)
+        Ok(no_invalids)
     }
 
     fn collect_invalid_references(
@@ -332,14 +372,15 @@ impl TransitiveChecker<'_> {
         refs: &mut FxHashSet<Ref>,
         module: &SmolStr,
         ty: &Type,
+        parent_ref: Option<&Ref>,
     ) -> Result<(), TransitiveCheckError> {
         match ty {
             Type::RemoteType(rt) => {
                 for arg in rt.arg_tys.iter() {
-                    self.collect_invalid_references(refs, module, arg)?;
+                    self.collect_invalid_references(refs, module, arg, parent_ref)?;
                 }
                 let rref = Ref::RidRef(rt.id.clone());
-                if !self.is_valid(&rref)? {
+                if !self.is_maybe_valid(&rref, parent_ref)? {
                     refs.insert(rref);
                 }
             }
@@ -348,20 +389,22 @@ impl TransitiveChecker<'_> {
             }
             Type::RecordType(rt) => {
                 let rref = Ref::RecRef(module.clone(), rt.name.clone());
-                if !self.is_valid(&rref)? {
+                if !self.is_maybe_valid(&rref, parent_ref)? {
                     refs.insert(rref);
                 }
             }
             Type::RefinedRecordType(rt) => {
                 let rref = Ref::RecRef(module.clone(), rt.rec_type.name.clone());
                 for (_, ty) in rt.fields.iter() {
-                    self.collect_invalid_references(refs, module, ty)?;
+                    self.collect_invalid_references(refs, module, ty, parent_ref)?;
                 }
-                if !self.is_valid(&rref)? {
+                if !self.is_maybe_valid(&rref, parent_ref)? {
                     refs.insert(rref);
                 }
             }
-            ty => ty.walk(&mut |ty| self.collect_invalid_references(refs, module, ty))?,
+            ty => {
+                ty.walk(&mut |ty| self.collect_invalid_references(refs, module, ty, parent_ref))?
+            }
         }
         Ok(())
     }
