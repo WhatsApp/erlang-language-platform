@@ -9,7 +9,6 @@
 
 use std::io::BufReader;
 use std::io::BufWriter;
-use std::io::Cursor;
 use std::io::Read;
 use std::io::Write;
 use std::mem;
@@ -232,62 +231,39 @@ enum Response {
 }
 
 impl Response {
-    fn from_buf(buf: &[u8]) -> Result<(Id, Response)> {
-        let mut cursor = Cursor::new(buf);
-        let id = cursor.read_u64::<BigEndian>()?;
-        let status = cursor.read_u8()?;
-
-        let payload_buf = &cursor.get_ref();
-        let payload = payload_buf[(cursor.position() as usize)..].to_vec();
+    fn new(status: u8, id: Id, payload: Vec<u8>) -> Result<Response> {
         match status {
-            0 => Ok((id, Response::Ok(payload))),
-            1 => Ok((id, Response::Err(payload))),
-            2 => Ok((id, Response::Callback(payload, id))),
-            n => {
-                log::warn!("Got an unexpected response status: {n}");
-                Ok((id, Response::Err(payload)))
-            }
-        }
-    }
-
-    fn payload(&self) -> &Payload {
-        match &self {
-            Response::Callback(payload, _) => payload,
-            Response::Ok(payload) => payload,
-            Response::Err(payload) => payload,
+            0 => Ok(Response::Ok(payload)),
+            1 => Ok(Response::Err(payload)),
+            2 => Ok(Response::Callback(payload, id)),
+            n => Err(anyhow!("Got an unexpected response status: {n}")),
         }
     }
 
     fn decode_segments(self, mut f: impl FnMut(&[u8; 3], Vec<u8>) -> Result<()>) -> Result<()> {
-        let mut cursor = Cursor::new(self.payload());
-        if self.is_error() {
-            let mut buf = String::new();
-            cursor
-                .read_to_string(&mut buf)
-                .expect("malformed error message");
-            Err(anyhow!("erlang service failed with: {}", buf))
-        } else {
-            let mut tag = [0; 3];
-            while let Ok(()) = cursor.read_exact(&mut tag) {
-                let size = cursor.read_u32::<BigEndian>().expect("malformed segment");
-                let mut buf = vec![0; size as usize];
-                cursor.read_exact(&mut buf).expect("malformed segment");
-                f(&tag, buf)?
+        match self {
+            Response::Ok(payload) => {
+                let mut payload = &*payload;
+                let mut tag = [0; 3];
+                while let Ok(()) = payload.read_exact(&mut tag) {
+                    let size = payload.read_u32::<BigEndian>().expect("malformed segment");
+                    let mut buf = vec![0; size as usize];
+                    payload.read_exact(&mut buf).expect("malformed segment");
+                    f(&tag, buf)?
+                }
+                Ok(())
             }
-            Ok(())
+            Response::Err(payload) => {
+                let err = String::from_utf8_lossy(&payload);
+                Err(anyhow!("erlang service failed with: {}", err))
+            }
+            Response::Callback(_, _) => panic!("unhandled callback response: {:?}", &self),
         }
     }
 
     fn is_callback(&self) -> bool {
         match &self {
             Response::Callback(_, _) => true,
-            _ => false,
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        match &self {
-            Response::Err(_) => true,
             _ => false,
         }
     }
@@ -379,7 +355,7 @@ impl Connection {
         tag: Tag,
         request: Vec<u8>,
         unwind: impl Fn(),
-        handle_callback: impl Fn(&Response) -> Result<Vec<u8>>,
+        handle_callback: impl Fn(Payload) -> Result<Vec<u8>>,
     ) -> Response {
         let (sender, receiver) = bounded::<Response>(0);
         self.sender
@@ -393,10 +369,9 @@ impl Connection {
         // db on user edits
         loop {
             match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(ref result @ Response::Callback(_, id)) => {
-                    match handle_callback(&result) {
+                Ok(Response::Callback(payload, id)) => {
+                    match handle_callback(payload) {
                         Ok(buf) => {
-                            // Sender None means it won't update the inflight store
                             let request = (b"REP", buf, RequestType::CallbackReply(id));
                             self.sender.send(request).unwrap();
                         }
@@ -466,13 +441,12 @@ impl Connection {
 
     fn handle_request_parse_callback(
         &self,
-        reply: &Response,
+        request: Payload,
         resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
     ) -> Result<Vec<u8>> {
-        let opens = &reply.payload();
         let mut buf = Vec::new();
-        if !opens.is_empty() {
-            let string_val = decode_utf8_or_latin1(opens.to_vec());
+        if !request.is_empty() {
+            let string_val = decode_utf8_or_latin1(request);
             if let Some(resolved) = Self::do_resolve(&string_val, resolve_include) {
                 buf.write_u32::<BigEndian>(resolved.len() as u32)
                     .expect("buf write failed");
@@ -480,7 +454,7 @@ impl Connection {
                     .expect("buf write failed");
             }
         } else {
-            log::warn!("handle_request_parse_callback: did not get OPN segment");
+            log::warn!("handle_request_parse_callback: empty server request");
         }
         Ok(buf)
     }
@@ -651,26 +625,24 @@ fn reader_run(
 ) -> Result<()> {
     loop {
         let size = outstream.read_u32::<BigEndian>()? as usize;
-        let mut buf = vec![0; size];
-        outstream.read_exact(&mut buf)?;
-        if buf == b"EXT" {
+        let id = outstream.read_u64::<BigEndian>()?;
+        let status = outstream.read_u8()?;
+        let mut payload = vec![0; size - mem::size_of::<u64>() - mem::size_of::<u8>()];
+        outstream.read_exact(&mut payload)?;
+        if payload == b"EXT" {
             log::info!("Reader terminating");
             return Ok(());
         }
-        let (id, response) = Response::from_buf(&buf)?;
-        if response.is_callback() {
-            let inflight = inflight.lock();
+        let response = Response::new(status, id, payload)?;
+        let sender = if response.is_callback() {
             // Do not remove entry from inflight db
-            let sender = inflight.get(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(response) {
-                log::info!("Got response {}, but request was canceled: {}", id, err);
-            };
+            inflight.lock().get(&id).cloned()
         } else {
             // Finished, remove entry from inflight
-            let sender = inflight.lock().remove(&id).expect("unexpected response id");
-            if let Err(err) = sender.send(response) {
-                log::info!("Got response {}, but request was canceled: {}", id, err);
-            };
+            inflight.lock().remove(&id)
+        };
+        if let Err(err) = sender.expect("unexpected callback id").send(response) {
+            log::info!("Got response {}, but request was canceled: {}", id, err);
         };
     }
 }

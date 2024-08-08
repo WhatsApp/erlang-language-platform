@@ -136,8 +136,7 @@ handle_info({IO, {data, Data}}, #{io := IO} = State) when is_binary(Data) ->
     handle_request(Data, State);
 handle_info({IO, eof}, #{io := IO} = State) ->
     %% stdin closed, we're done
-    %% use port_command to make this a synchronous write
-    port_command(IO, <<"EXT">>),
+    reply(-1, <<"EXT">>, IO),
     erlang:halt(0),
     {noreply, State};
 handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
