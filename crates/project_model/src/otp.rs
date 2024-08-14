@@ -52,7 +52,8 @@ impl Otp {
         }
         let path = String::from_utf8(output.stdout)?;
         let result: Utf8PathBuf = format!("{}/lib", path).into();
-        Ok(result)
+        let result = fs::canonicalize(result)?;
+        Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
     }
 
     pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {
@@ -73,8 +74,9 @@ impl Otp {
                 .filter_map(|entry| {
                     let entry = entry.ok()?;
                     let name = entry.file_name();
+                    let path = fs::canonicalize(entry.path()).expect("Could not canonicalize path");
                     let dir = AbsPathBuf::assert(
-                        Utf8PathBuf::from_path_buf(entry.path()).expect("Could not decode UTF8"),
+                        Utf8PathBuf::from_path_buf(path).expect("Could not convert to Utf8PathBuf"),
                     );
                     Some(ProjectAppData::otp_app_data(name.to_str()?, &dir))
                 })

@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use std::convert::TryInto;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -249,10 +248,18 @@ fn into_string(term: eetf::Term) -> Result<String> {
 }
 
 fn into_abs_path(term: eetf::Term) -> Result<AbsPathBuf> {
-    match PathBuf::from(into_string(term)?).try_into() {
-        Ok(abs_path) => Ok(abs_path),
-        Err(path_buf) => bail!("expected absolute path, got: {:?}", path_buf),
-    }
+    let path_buf = PathBuf::from(into_string(term)?);
+    let path = if fs::metadata(&path_buf).is_ok() {
+        match fs::canonicalize::<PathBuf>(path_buf) {
+            Ok(path) => path,
+            Err(err) => bail!("expected absolute path, got: {:?}", err),
+        }
+    } else {
+        path_buf
+    };
+    Ok(AbsPathBuf::assert(
+        Utf8PathBuf::from_path_buf(path).expect("Could not convert to Utf8PathBuf"),
+    ))
 }
 
 fn into_vec(term: eetf::Term) -> Result<Vec<eetf::Term>> {
