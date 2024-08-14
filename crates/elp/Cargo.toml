@@ -68,4 +68,4 @@ expect-test.workspace = true
 test-case.workspace = true
 
 [build-dependencies]
-time = { version = "0.3.20", features = ["formatting"] }
+time = { version = "0.3.36", features = ["formatting"] }

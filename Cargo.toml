@@ -28,81 +28,81 @@ erl_ast = { path = "./crates/erl_ast" }
 
 # External crates
 always-assert = "0.1.3"
-anyhow = "1.0.70"
+anyhow = "1.0.86"
 bpaf = { version = "=0.7.9", features = ["derive", "autocomplete", "batteries"] }
 byteorder = "1.5.0"
 codespan-reporting = "0.11.1"
-cov-mark = "2.0.0-pre.1"
+cov-mark = "2.0.0"
 criterion = "0.3.6"
-crossbeam-channel = "0.5.8"
+crossbeam-channel = "0.5.13"
 dirs = "5.0"
-dissimilar = "1.0.6"
+dissimilar = "1.0.9"
 triple_accel = "0.4.0"
 eetf = "0.9.0"
-either = "1.8.1"
-env_logger = "0.10.0"
-expect-test = "1.4.1"
+either = "1.13.0"
+env_logger = "0.10.2"
+expect-test = "1.5.0"
 fs_extra = "1.3.0"
 fxhash = "0.2.1"
 glob = "0.3.1"
-include_dir = "0.7.3"
-imara-diff = "0.1.5"
-indexmap = "2.1.0"
-indicatif = { version = "0.17.3", features = ["rayon"] }
+include_dir = "0.7.4"
+imara-diff = "0.1.7"
+indexmap = "2.3.0"
+indicatif = { version = "0.17.8", features = ["rayon"] }
 itertools = "0.10.5"
-jemallocator = { version = "0.5.0", package = "tikv-jemallocator" }
+jemallocator = { version = "0.5.4", package = "tikv-jemallocator" }
 jod-thread = "0.1.2"
 krates = "0.12.6"
 la-arena = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-lazy_static = "1.4.0"
-log = "0.4.17"
-lsp-server = "0.7.0"
+lazy_static = "1.5.0"
+log = "0.4.22"
+lsp-server = "0.7.6"
 lsp-types = { version = "0.93.2", features = ["proposed"] }
-memchr = "2.5.0"
+memchr = "2.7.4"
 mio = "0.8.11"
 num-derive = "0.3.3"
-num-traits = "0.2.15"
-once_cell = "1.17.1"
-parking_lot = "0.12.1"
+num-traits = "0.2.19"
+once_cell = "1.19.0"
+parking_lot = "0.12.3"
 paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 pico-args = "0.5.0"
-proc-macro2 = "1.0.60"
+proc-macro2 = "1.0.86"
 profile = { features = [
     "jemalloc",
 ], git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-quote = "1.0.26"
+quote = "1.0.36"
 range-set = "0.0.10"
-rayon = "1.7.0"
-regex = "1.7.3"
-rowan = "0.15.11"
+rayon = "1.10.0"
+regex = "1.10.6"
+rowan = "0.15.15"
 rust-ini = "0.18"
 rustc-hash = "1.1.0"
 rustyline = "11.0.0"
 salsa = "0.17.0-pre.2"
-serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
-serde_path_to_error = "0.1.11"
-serde_with = "1.6.0"
-smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }
+serde = { version = "1.0.206", features = ["derive"] }
+serde_json = "1.0.124"
+serde_path_to_error = "0.1.16"
+serde_with = "1.14.0"
+smallvec = { version = "1.13.2", features = ["const_new", "union", "const_generics"] }
 smol_str = "0.1.24"
 stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 strsim = { version = "0.10.0" }
 strum = "0.25.0"
-strum_macros = "0.25.0"
-tempfile = "3.8.0"
+strum_macros = "0.25.3"
+tempfile = "3.12.0"
 test-case = "2.2.2"
 text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-text-size = "1.1.0"
+text-size = "1.1.1"
 thiserror = "1.0"
 tracing = "0.1.40"
 threadpool = "1.8.1"
 timeout-readwrite = "0.3.3"
 toml = "0.5"
-tree-sitter = "0.22.5"
+tree-sitter = "0.22.6"
 # @fb-only: tree-sitter-erlang = { path = "./tree-sitter-erlang" }
 tree-sitter-erlang = "0.7.0" # @oss-only
-url = "2.4.1"
+url = "2.5.2"
 vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-walkdir = "2.3.3"
-xshell = "0.2.3"
+walkdir = "2.5.0"
+xshell = "0.2.6"
