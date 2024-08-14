@@ -23,6 +23,7 @@ use log::warn;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
+use paths::Utf8PathBuf;
 
 use crate::AppName;
 use crate::AppType;
@@ -116,14 +117,14 @@ impl RebarProject {
     pub fn from_rebar_build_info(
         path: impl AsRef<Path>,
         rebar_config: RebarConfig,
-    ) -> Result<(RebarProject, PathBuf, Vec<ProjectAppData>)> {
+    ) -> Result<(RebarProject, Utf8PathBuf, Vec<ProjectAppData>)> {
         Self::_from_rebar_build_info(path.as_ref(), rebar_config)
     }
 
     fn _from_rebar_build_info(
         path: &Path,
         rebar_config: RebarConfig,
-    ) -> Result<(RebarProject, PathBuf, Vec<ProjectAppData>)> {
+    ) -> Result<(RebarProject, Utf8PathBuf, Vec<ProjectAppData>)> {
         let data = fs::read(path)?;
         let mut build_info = eetf::Term::decode(&*data)?;
         let otp_root = into_abs_path(map_pop(&mut build_info, "otp_lib_dir")?)?;

@@ -182,7 +182,7 @@ fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {
         Some(path) => Ok(path),
         None => {
             let cwd = env::current_dir()?;
-            Ok(AbsPathBuf::assert(cwd))
+            Ok(AbsPathBuf::assert_utf8(cwd))
         }
     }
 }

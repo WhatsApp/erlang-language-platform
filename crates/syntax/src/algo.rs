@@ -160,7 +160,7 @@ pub struct TreeDiff {
 
 impl TreeDiff {
     pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
-        let _p = profile::span("into_text_edit");
+        let _p = tracing::info_span!("into_text_edit").entered();
 
         for (anchor, to) in self.insertions.iter() {
             let offset = match anchor {
@@ -190,7 +190,7 @@ impl TreeDiff {
 ///
 /// This function tries to find a fine-grained diff.
 pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
-    let _p = profile::span("diff");
+    let _p = tracing::info_span!("diff").entered();
 
     let mut diff = TreeDiff {
         replacements: FxHashMap::default(),
@@ -385,7 +385,7 @@ fn with_children(
     parent: &SyntaxNode,
     new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
 ) -> SyntaxNode {
-    let _p = profile::span("with_children");
+    let _p = tracing::info_span!("with_children").entered();
 
     let new_green = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
     with_green(parent, new_green)

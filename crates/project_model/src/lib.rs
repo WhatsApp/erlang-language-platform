@@ -37,6 +37,8 @@ use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::RelPath;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 use tempfile::NamedTempFile;
@@ -188,7 +190,7 @@ impl ProjectManifest {
                 .iter()
                 .map(|file| path.join(file))
                 .filter(|file| file.exists())
-                .map(AbsPathBuf::assert)
+                .map(AbsPathBuf::assert_utf8)
         })
     }
 
@@ -255,7 +257,6 @@ impl ProjectManifest {
         let name = AppName(
             root_path
                 .file_name()
-                .and_then(|name| name.to_str())
                 .map(|name| name.to_string())
                 .unwrap_or_else(|| "generic".to_string()),
         );
@@ -269,7 +270,7 @@ impl ProjectManifest {
     pub fn discover(path: &AbsPath) -> Result<(ElpConfig, ProjectManifest)> {
         let _timer = timeit!("discover all projects");
         // First check for a json config file as the path.
-        if let Some("json") = path.extension().and_then(|e| e.to_str()) {
+        if let Some("json") = path.extension() {
             let json = json::JsonConfig::try_parse(path)?;
             return Ok((ElpConfig::default(), ProjectManifest::Json(json)));
         }
@@ -479,7 +480,7 @@ impl ElpConfig {
         }
     }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
-        let p = Path::new(ELP_CONFIG_FILE);
+        let p = Utf8Path::new(ELP_CONFIG_FILE);
         let path = if !path.ends_with(RelPath::new_unchecked(p)) {
             path.join(p)
         } else {
@@ -539,6 +540,8 @@ impl ElpConfig {
     pub fn build_info_path(&self) -> Option<AbsPathBuf> {
         let build_info = self.build_info.clone()?;
         let build_info_file = build_info.file?;
+        let build_info_file = Utf8PathBuf::from_path_buf(build_info_file.to_path_buf())
+            .expect("UTF8 conversion failed");
         let absolute_path = if build_info_file.is_absolute() {
             AbsPathBuf::assert(build_info_file)
         } else {
@@ -632,7 +635,9 @@ pub enum BuildInfoFile {
 impl BuildInfoFile {
     pub fn build_info_file(&self) -> AbsPathBuf {
         match &self {
-            BuildInfoFile::TempPath(loaded) => AbsPathBuf::assert(loaded.to_path_buf()),
+            BuildInfoFile::TempPath(loaded) => AbsPathBuf::assert(
+                Utf8PathBuf::from_path_buf(loaded.to_path_buf()).expect("could not decode UTF8"),
+            ),
             BuildInfoFile::Path(path) => path.clone(),
         }
     }
@@ -701,7 +706,7 @@ impl Project {
             ProjectBuildData::Buck(buck) => buck.buck_conf.source_root(),
             ProjectBuildData::Static(stat) => match stat.config_path.parent() {
                 Some(parent) => Cow::Owned(parent.to_path_buf()),
-                None => Cow::Owned(AbsPathBuf::assert(PathBuf::from("/"))),
+                None => Cow::Owned(AbsPathBuf::assert(Utf8PathBuf::from("/"))),
             },
         }
     }
@@ -709,7 +714,7 @@ impl Project {
     pub fn name(&self) -> String {
         let root = self.root();
         root.file_name()
-            .map(|name| name.to_string_lossy().to_string())
+            .map(|name| name.to_string())
             .unwrap_or_else(move || root.as_os_str().to_string_lossy().to_string())
     }
 
@@ -719,7 +724,7 @@ impl Project {
 
     pub fn as_json(&self, root: AbsPathBuf) -> JsonConfig {
         let project_app_data = self.non_otp_apps().cloned().collect::<Vec<_>>();
-        let root_without_file = if root.as_path().as_ref().is_file() {
+        let root_without_file = if <AbsPath as AsRef<Utf8Path>>::as_ref(&root).is_file() {
             root.parent().unwrap_or(&root).to_path_buf()
         } else {
             root
@@ -828,12 +833,12 @@ impl ProjectAppData {
         }
     }
 
-    pub fn otp_app_data(versioned_name: &str, dir: AbsPathBuf) -> Self {
+    pub fn otp_app_data(versioned_name: &str, dir: &AbsPathBuf) -> Self {
         let name = versioned_name
             .split_once('-')
             .map_or(versioned_name, |(base, _version)| base);
         let parent = dir.parent().unwrap_or(dir.as_path()).to_path_buf();
-        let src = dir.join(PathBuf::from("src"));
+        let src = dir.join(Utf8PathBuf::from("src"));
         let include = dir.join("include");
         let abs_src_dir = dir.join("src");
         Self {
@@ -842,7 +847,7 @@ impl ProjectAppData {
             extra_src_dirs: vec![],
             // This makes sure files in ./include are loaded into VFS
             include_dirs: vec![include.clone()],
-            dir,
+            dir: dir.clone(),
             macros: vec![],
             parse_transforms: vec![],
             app_type: AppType::Otp,
@@ -912,7 +917,7 @@ impl Project {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
-                    rebar_setting.config_file.display()
+                    rebar_setting.config_file
                 );
                 let rebar_version = {
                     let mut cmd = Command::new("rebar3");
@@ -923,8 +928,7 @@ impl Project {
                 let loaded = Project::load_rebar_build_info(rebar_setting).with_context(|| {
                     format!(
                         "Failed to read rebar build info for config file {}, {}",
-                        rebar_setting.config_file.display(),
-                        rebar_version
+                        rebar_setting.config_file, rebar_version
                     )
                 })?;
                 let (rebar_project, otp_root, apps) =
@@ -1006,6 +1010,11 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
     Ok(stdout.trim().to_string())
 }
 
+pub fn to_abs_path_buf(path: &PathBuf) -> Result<AbsPathBuf> {
+    let path = Utf8PathBuf::from_path_buf(path.to_path_buf()).expect("UTF8 conversion failed");
+    Ok(AbsPathBuf::assert(path))
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -1045,8 +1054,9 @@ mod tests {
         %% comment
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
 
         expect![[r#"
             Ok(
@@ -1109,7 +1119,7 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = AbsPathBuf::assert(dir.path().to_path_buf());
+        let dir_path = to_abs_path_buf(&dir.path().to_path_buf()).unwrap();
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         expect![[r#"
             Ok(
@@ -1215,7 +1225,7 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        let dir_path = AbsPathBuf::assert_utf8(fs::canonicalize(dir.path()).unwrap());
         if let Ok((elp_config, ProjectManifest::Json(mut manifest))) =
             ProjectManifest::discover(&dir_path.join("build_info.json"))
         {
@@ -1318,7 +1328,7 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = AbsPathBuf::assert(fs::canonicalize(dir.path()).unwrap());
+        let dir_path = to_abs_path_buf(&fs::canonicalize(dir.path()).unwrap()).unwrap();
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         expect![[r#"
             Err(
@@ -1341,9 +1351,9 @@ mod tests {
             -module(app).
             "#;
             let dir = FixtureWithProjectMeta::gen_project(spec);
-            let manifest = ProjectManifest::discover(&AbsPathBuf::assert(
-                dir.path().join("app_a/src/app.erl"),
-            ));
+            let manifest = ProjectManifest::discover(
+                &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+            );
             match manifest
                 .expect_err("Must be err")
                 .downcast_ref::<ProjectModelError>()
@@ -1369,8 +1379,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
         match manifest
             .expect_err("Must be err")
             .downcast_ref::<ProjectModelError>()
@@ -1393,8 +1404,9 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_b/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_b/src/app.erl")).unwrap(),
+        );
 
         expect![[r#"
             Ok(
@@ -1456,9 +1468,9 @@ mod tests {
         -module(app).
         "#;
             let dir = FixtureWithProjectMeta::gen_project(spec);
-            let discovered = ProjectManifest::discover(&AbsPathBuf::assert(
-                dir.path().join("root/app_a/src/app.erl"),
-            ));
+            let discovered = ProjectManifest::discover(
+                &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
+            );
             expect![[r#"
                 Ok(
                     (
@@ -1514,8 +1526,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
 
         expect![[r#"
             Err(
@@ -1537,8 +1550,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
         if let Err(err) = manifest {
             let res = normalise_temp_dir_in_err(dir, err);
             expect![[r#"
@@ -1571,8 +1585,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")));
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
         if let Err(err) = manifest {
             let res = normalise_temp_dir_in_err(dir, err);
             expect![[r#"
@@ -1604,9 +1619,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        if let Ok((_elp_config, ProjectManifest::Json(mut json_config))) =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")))
-        {
+        if let Ok((_elp_config, ProjectManifest::Json(mut json_config))) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        ) {
             json_config.config_path = Some(AbsPathBuf::assert("/tmp/dummy".into()));
             expect![[r#"
                 JsonConfig {
@@ -1647,9 +1662,9 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        if let Ok((elp_config, ProjectManifest::NoManifest(_))) =
-            ProjectManifest::discover(&AbsPathBuf::assert(dir.path().join("app_a/src/app.erl")))
-        {
+        if let Ok((elp_config, ProjectManifest::NoManifest(_))) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        ) {
             expect![[r#"
                 ElpConfig {
                     config_path: Some(
@@ -1803,7 +1818,7 @@ mod tests {
 
     #[test]
     fn test_discover() {
-        let root = AbsPathBuf::assert(Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures"));
+        let root = AbsPathBuf::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures"));
         let manifest =
             ProjectManifest::discover_rebar(&root.join("nested"), None, IncludeParentDirs::Yes);
         match manifest {

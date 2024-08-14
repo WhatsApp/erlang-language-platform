@@ -67,7 +67,7 @@ pub(crate) fn handle_code_action(
     snap: Snapshot,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<Vec<lsp_types::CodeActionOrCommand>>> {
-    let _p = profile::span("handle_code_action");
+    let _p = tracing::info_span!("handle_code_action").entered();
 
     if !snap.config.code_action_literals() {
         // We intentionally don't support command-based actions, as those either
@@ -125,7 +125,7 @@ pub(crate) fn handle_code_action_resolve(
     snap: Snapshot,
     mut code_action: lsp_types::CodeAction,
 ) -> Result<lsp_types::CodeAction> {
-    let _p = profile::span("handle_code_action_resolve");
+    let _p = tracing::info_span!("handle_code_action_resolve").entered();
     let params_raw = match code_action.data.take() {
         Some(it) => it,
         None => bail!("can't resolve code action without data"),
@@ -227,7 +227,7 @@ pub(crate) fn handle_expand_macro(
     snap: Snapshot,
     params: lsp_ext::ExpandMacroParams,
 ) -> Result<Option<lsp_ext::ExpandedMacro>> {
-    let _p = profile::span("handle_expand_macro");
+    let _p = tracing::info_span!("handle_expand_macro").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     let mut offset = from_proto::offset(&line_index, params.position);
@@ -256,7 +256,7 @@ pub(crate) fn handle_selection_range(
     snap: Snapshot,
     params: lsp_types::SelectionRangeParams,
 ) -> Result<Option<Vec<lsp_types::SelectionRange>>> {
-    let _p = profile::span("handle_selection_range");
+    let _p = tracing::info_span!("handle_selection_range").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     let res: Result<Vec<lsp_types::SelectionRange>> = params
@@ -300,7 +300,7 @@ pub(crate) fn handle_goto_definition(
     snap: Snapshot,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    let _p = profile::span("handle_goto_definition");
+    let _p = tracing::info_span!("handle_goto_definition").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
@@ -325,7 +325,7 @@ pub(crate) fn handle_goto_type_definition(
     if !snap.config.types_on_hover() {
         return Ok(None);
     }
-    let _p = profile::span("handle_goto_type_definition");
+    let _p = tracing::info_span!("handle_goto_type_definition").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
@@ -346,7 +346,7 @@ pub(crate) fn handle_references(
     snap: Snapshot,
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
-    let _p = profile::span("handle_references");
+    let _p = tracing::info_span!("handle_references").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     position.offset = snap
         .analysis
@@ -381,7 +381,7 @@ pub(crate) fn handle_completion(
     snap: Snapshot,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
-    let _p = profile::span("handle_completion");
+    let _p = tracing::info_span!("handle_completion").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     position.offset = snap
         .analysis
@@ -439,7 +439,7 @@ pub(crate) fn handle_completion_resolve(
     snap: Snapshot,
     mut original_completion: CompletionItem,
 ) -> Result<CompletionItem> {
-    let _p = profile::span("handle_completion_resolve");
+    let _p = tracing::info_span!("handle_completion_resolve").entered();
 
     if let Some(data) = original_completion.clone().data {
         let data: lsp_ext::CompletionData = serde_json::from_value(data)?;
@@ -465,7 +465,7 @@ pub(crate) fn handle_document_symbol(
     snap: Snapshot,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
-    let _p = profile::span("handle_document_symbol");
+    let _p = tracing::info_span!("handle_document_symbol").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
 
@@ -482,7 +482,7 @@ pub(crate) fn handle_workspace_symbol(
     snap: Snapshot,
     params: lsp_types::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
-    let _p = profile::span("handle_workspace_symbol");
+    let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
     let mut res = Vec::new();
     for (project_id, _project) in snap.projects.iter().enumerate() {
@@ -505,7 +505,7 @@ pub(crate) fn handle_workspace_symbol(
 }
 
 pub(crate) fn handle_rename(snap: Snapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-    let _p = profile::span("handle_rename");
+    let _p = tracing::info_span!("handle_rename").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     position.offset = snap
         .analysis
@@ -531,7 +531,7 @@ fn to_assist_context_diagnostics(
 }
 
 pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option<lsp_ext::Hover>> {
-    let _p = profile::span("handle_hover");
+    let _p = tracing::info_span!("handle_hover").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
@@ -629,7 +629,7 @@ pub(crate) fn handle_folding_range(
     snap: Snapshot,
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
-    let _p = profile::span("handle_folding_range");
+    let _p = tracing::info_span!("handle_folding_range").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let folds = snap.analysis.folding_ranges(file_id)?;
     let line_index = snap.analysis.line_index(file_id)?;
@@ -644,7 +644,7 @@ pub(crate) fn handle_document_highlight(
     snap: Snapshot,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
-    let _p = profile::span("handle_document_highlight");
+    let _p = tracing::info_span!("handle_document_highlight").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
@@ -672,7 +672,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     snap: Snapshot,
     params: CallHierarchyPrepareParams,
 ) -> Result<Option<Vec<CallHierarchyItem>>> {
-    let _p = profile::span("handle_call_hierarchy_prepare");
+    let _p = tracing::info_span!("handle_call_hierarchy_prepare").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
@@ -700,7 +700,7 @@ pub(crate) fn handle_call_hierarchy_incoming(
     snap: Snapshot,
     params: CallHierarchyIncomingCallsParams,
 ) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
-    let _p = profile::span("handle_call_hierarchy_incoming");
+    let _p = tracing::info_span!("handle_call_hierarchy_incoming").entered();
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
@@ -740,7 +740,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     snap: Snapshot,
     params: CallHierarchyOutgoingCallsParams,
 ) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
-    let _p = profile::span("handle_call_hierarchy_outgoing");
+    let _p = tracing::info_span!("handle_call_hierarchy_outgoing").entered();
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
@@ -779,7 +779,7 @@ pub(crate) fn handle_signature_help(
     snap: Snapshot,
     params: lsp_types::SignatureHelpParams,
 ) -> Result<Option<lsp_types::SignatureHelp>> {
-    let _p = profile::span("handle_signature_help");
+    let _p = tracing::info_span!("handle_signature_help").entered();
 
     if !snap.config.signature_help() {
         // early return before any db query!
@@ -805,7 +805,7 @@ pub(crate) fn handle_semantic_tokens_full(
     snap: Snapshot,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
-    let _p = profile::span("handle_semantic_tokens_full");
+    let _p = tracing::info_span!("handle_semantic_tokens_full").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
@@ -826,7 +826,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     snap: Snapshot,
     params: SemanticTokensDeltaParams,
 ) -> Result<Option<SemanticTokensFullDeltaResult>> {
-    let _p = profile::span("handle_semantic_tokens_full_delta");
+    let _p = tracing::info_span!("handle_semantic_tokens_full_delta").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
@@ -855,7 +855,7 @@ pub(crate) fn handle_semantic_tokens_range(
     snap: Snapshot,
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
-    let _p = profile::span("handle_semantic_tokens_range");
+    let _p = tracing::info_span!("handle_semantic_tokens_range").entered();
 
     let mut frange = from_proto::file_range(&snap, params.text_document, params.range)?;
     frange.range = snap.analysis.clamp_range(frange.file_id, frange.range)?;
@@ -871,7 +871,7 @@ pub(crate) fn handle_code_lens(
     snap: Snapshot,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
-    let _p = profile::span("handle_code_lens");
+    let _p = tracing::info_span!("handle_code_lens").entered();
 
     let mut res = Vec::new();
     let lens_config = snap.config.lens();
@@ -907,7 +907,7 @@ pub(crate) fn handle_external_docs(
     snap: Snapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<Vec<lsp_types::Url>>> {
-    let _p = profile::span("handle_external_docs");
+    let _p = tracing::info_span!("handle_external_docs").entered();
 
     let mut position = from_proto::file_position(&snap, params)?;
     position.offset = snap
@@ -927,7 +927,7 @@ pub(crate) fn handle_inlay_hints(
     snap: Snapshot,
     params: lsp_types::InlayHintParams,
 ) -> Result<Option<Vec<lsp_types::InlayHint>>> {
-    let _p = profile::span("handle_inlay_hints");
+    let _p = tracing::info_span!("handle_inlay_hints").entered();
     let document_uri = &params.text_document.uri;
     let mut frange = from_proto::file_range(
         &snap,
@@ -950,7 +950,7 @@ pub(crate) fn handle_inlay_hints_resolve(
     _snap: Snapshot,
     hint: lsp_types::InlayHint,
 ) -> Result<lsp_types::InlayHint> {
-    let _p = profile::span("handle_inlay_hints_resolve");
+    let _p = tracing::info_span!("handle_inlay_hints_resolve").entered();
     Ok(hint)
 }
 

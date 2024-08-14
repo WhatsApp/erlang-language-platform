@@ -252,7 +252,7 @@ impl<'a> FindUsages<'a> {
     }
 
     fn search(&self, sink: &mut dyn FnMut(FileId, NameLike) -> ControlFlow<(), ()>) {
-        let _p = profile::span("FindUsages:search");
+        let _p = tracing::info_span!("FindUsages:search").entered();
         let sema = self.sema;
 
         let search_scope = match self.scope {

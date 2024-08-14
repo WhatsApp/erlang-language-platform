@@ -31,6 +31,7 @@ strsim.workspace = true
 tempfile.workspace = true
 text-edit.workspace = true
 toml.workspace = true
+tracing.workspace = true
 triple_accel.workspace = true
 url.workspace = true
 

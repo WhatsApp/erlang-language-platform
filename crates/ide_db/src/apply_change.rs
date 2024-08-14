@@ -15,7 +15,7 @@ use crate::RootDatabase;
 
 impl RootDatabase {
     pub fn apply_change(&mut self, change: Change) {
-        let _p = profile::span("RootDatabase::apply_change");
+        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         self.request_cancellation();
         log::info!("apply_change {:?}", change);
         change.apply(self);

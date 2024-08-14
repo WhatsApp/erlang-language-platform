@@ -8,7 +8,6 @@
  */
 
 use std::fs;
-use std::path::PathBuf;
 
 use anyhow::Result;
 use dirs;
@@ -16,14 +15,17 @@ use include_dir::Dir;
 use lazy_static::lazy_static;
 use paths::AbsPath;
 use paths::AbsPathBuf;
+use paths::Utf8PathBuf;
 
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
 
 lazy_static! {
-    pub static ref EQWALIZER_SUPPORT: PathBuf = dirs::cache_dir()
+    pub static ref EQWALIZER_SUPPORT: Utf8PathBuf = dirs::cache_dir()
+        .map(|d| Utf8PathBuf::from_path_buf(d).ok())
         .unwrap()
+        .expect("Could not get cache dir")
         .join("elp")
         .join("eqwalizer_support");
 }

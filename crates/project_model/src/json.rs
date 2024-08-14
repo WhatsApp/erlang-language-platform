@@ -10,7 +10,6 @@
 extern crate serde;
 
 use std::fs;
-use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -22,6 +21,8 @@ use indexmap::indexset;
 use indexmap::IndexSet;
 use paths::AbsPath;
 use paths::AbsPathBuf;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -142,7 +143,7 @@ fn convert_macro(mac: &eetf::Term) -> (String, String) {
 
 fn abs_path_buf_to_relative_string(abs_path: &AbsPathBuf, base: &AbsPathBuf) -> String {
     if let Some(relative) = abs_path.strip_prefix(base) {
-        relative.as_ref().as_os_str().to_string_lossy().to_string()
+        relative.as_str().to_string()
     } else {
         let str = abs_path.as_os_str().to_string_lossy().to_string();
         if let Some(stripped) = str.strip_prefix('/') {
@@ -223,7 +224,9 @@ pub(crate) fn gen_app_data(
     (apps, deps)
 }
 
-fn canonicalize(path: impl AsRef<Path>) -> Result<AbsPathBuf> {
-    let abs = fs::canonicalize(path)?;
-    Ok(AbsPathBuf::assert(abs))
+fn canonicalize(path: impl AsRef<Utf8Path>) -> Result<AbsPathBuf> {
+    let abs = fs::canonicalize(path.as_ref())?;
+    Ok(AbsPathBuf::assert(
+        Utf8PathBuf::from_path_buf(abs).expect("Could not convert to UTF8"),
+    ))
 }

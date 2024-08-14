@@ -50,7 +50,7 @@ pub(crate) fn find_all_refs(
     sema: &Semantic<'_>,
     position: FilePosition,
 ) -> Option<Vec<ReferenceSearchResult>> {
-    let _p = profile::span("find_all_refs");
+    let _p = tracing::info_span!("find_all_refs").entered();
     let search = move |def: SymbolDefinition| {
         let declaration = def.to_nav(sema.db);
         let usages = match def {

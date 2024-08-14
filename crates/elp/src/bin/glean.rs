@@ -90,13 +90,13 @@ struct IndexConfig {
 
 impl Into<FileId> for GleanFileId {
     fn into(self) -> FileId {
-        FileId(self.0 - 1)
+        FileId::from_raw(self.0 - 1)
     }
 }
 
 impl From<FileId> for GleanFileId {
     fn from(value: FileId) -> Self {
-        GleanFileId(value.0 + 1)
+        GleanFileId(value.index() + 1)
     }
 }
 
@@ -989,7 +989,7 @@ impl GleanIndexer {
         let file_path = file_path.strip_prefix(root)?;
         let file_path = match prefix {
             Some(prefix) => Path::new(&prefix).join(file_path).to_str()?.into(),
-            None => file_path.as_ref().to_str()?.into(),
+            None => file_path.as_str().to_string(),
         };
         Some(FileFact::new(file_id, file_path))
     }
@@ -1748,7 +1748,7 @@ mod tests {
     #[test]
     fn serialization_test_v1() {
         let mut cli = Fake::default();
-        let file_id = FileId(10071);
+        let file_id = FileId::from_raw(10071);
         let location = Location {
             start: 0,
             length: 10,

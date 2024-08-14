@@ -19,7 +19,6 @@ use fxhash::FxHashMap;
 use la_arena::Idx;
 use la_arena::IdxRange;
 use la_arena::RawIdx;
-use profile::Count;
 
 use super::form_id::FormIdMap;
 use super::DocAttribute;
@@ -128,7 +127,6 @@ impl<'a> Ctx<'a> {
 
         self.data.shrink_to_fit();
         FormList {
-            _c: Count::default(),
             data: self.data,
             forms,
             diagnostics: self.diagnostics,

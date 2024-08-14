@@ -20,7 +20,6 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
-use elp::document::Document;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
 use elp_eqwalizer::Mode;
@@ -56,6 +55,7 @@ use hir::FormIdx;
 use hir::InFile;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
+use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use text_edit::TextSize;
@@ -213,17 +213,16 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                             if args.is_format_normal() {
                                 writeln!(cli, "file specified: {}", file_name)?;
                             }
-                            let path_buf = fs::canonicalize(file_name).unwrap();
+                            let path_buf =
+                                Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+                                    .expect("UTF8 conversion failed");
                             let path = AbsPath::assert(&path_buf);
                             let path = path.as_os_str().to_str().unwrap();
                             (
                                 loaded
                                     .vfs
                                     .file_id(&VfsPath::new_real_path(path.to_string())),
-                                path_buf
-                                    .as_path()
-                                    .file_name()
-                                    .map(|n| ModuleName::new(n.to_str().unwrap())),
+                                path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
                             )
                         }
                         None => (None, None),
@@ -494,10 +493,6 @@ impl<'a> Lints<'a> {
                      }|
                      -> Result<Option<(String, FileId, DiagnosticCollection)>> {
                         self.changed_files.insert((file_id, name.clone()));
-                        let path = self.vfs.file_path(file_id);
-                        self.vfs
-                            .set_file_contents(path, Some(source.clone().into_bytes()));
-
                         self.analysis_host.apply_change(Change {
                             roots: None,
                             files_changed: vec![(file_id, Some(Arc::from(source)))],
@@ -550,9 +545,7 @@ impl<'a> Lints<'a> {
             }
         }
         self.changed_files.iter().for_each(|(file_id, name)| {
-            let bytes = self.vfs.file_contents(*file_id);
-            let document = Document::from_bytes(bytes.to_vec());
-            self.write_fix_result(*file_id, name, &document.content);
+            self.write_fix_result(*file_id, name);
         });
         Ok(())
     }
@@ -739,16 +732,17 @@ impl<'a> Lints<'a> {
         })
     }
 
-    fn write_fix_result(&self, file_id: FileId, name: &String, actual: &String) -> Option<()> {
+    fn write_fix_result(&self, file_id: FileId, name: &String) -> Option<()> {
+        let file_text = self.analysis_host.analysis().file_text(file_id).ok()?;
         if self.args.in_place {
             let file_path = self.vfs.file_path(file_id);
             let to_path = file_path.as_path()?;
             let mut output = File::create(to_path).ok()?;
-            write!(output, "{actual}").ok()?;
+            write!(output, "{file_text}").ok()?;
         } else if let Some(to) = &self.args.to {
             let to_path = to.join(format!("{}.erl", name));
             let mut output = File::create(to_path).ok()?;
-            write!(output, "{actual}").ok()?;
+            write!(output, "{file_text}").ok()?;
         } else {
             return None;
         };

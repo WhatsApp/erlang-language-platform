@@ -20,6 +20,7 @@ rowan.workspace = true
 smol_str.workspace = true
 stdx.workspace = true
 text-edit.workspace = true
+tracing.workspace = true
 tree-sitter.workspace = true
 tree-sitter-erlang.workspace = true
 

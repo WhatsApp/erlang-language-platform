@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use std::path;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -29,6 +28,8 @@ use elp_ide::TextSize;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;
+use paths::Utf8Component;
+use paths::Utf8Prefix;
 
 use crate::arc_types;
 use crate::from_proto;
@@ -37,7 +38,7 @@ pub fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
     let path = url
         .to_file_path()
         .map_err(|()| anyhow!("url '{}' is not a file", url))?;
-    Ok(AbsPathBuf::assert(path))
+    Ok(AbsPathBuf::assert_utf8(path))
 }
 
 pub fn vfs_path(url: &lsp_types::Url) -> Result<VfsPath> {
@@ -184,11 +185,11 @@ fn from_related(
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
 pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
     let url = lsp_types::Url::from_file_path(path).unwrap();
-    match path.as_ref().components().next() {
-        Some(path::Component::Prefix(prefix))
+    match path.components().next() {
+        Some(Utf8Component::Prefix(prefix))
             if matches!(
                 prefix.kind(),
-                path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)
+                Utf8Prefix::Disk(_) | Utf8Prefix::VerbatimDisk(_)
             ) =>
         {
             // Need to lowercase driver letter

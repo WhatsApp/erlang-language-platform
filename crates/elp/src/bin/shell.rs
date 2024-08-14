@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use core::str;
 use std::fmt;
 use std::fs;
 use std::path::Path;
@@ -22,7 +23,6 @@ use elp::document::Document;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
@@ -31,6 +31,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::DiscoverConfig;
+use paths::Utf8PathBuf;
 use rustyline::error::ReadlineError;
 use serde::Deserialize;
 
@@ -243,16 +244,19 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
 
     let raw_database = loaded.analysis_host.raw_database_mut();
 
-    for file in &changed_files {
-        if file.exists() {
-            let bytes = loaded.vfs.file_contents(file.file_id).to_vec();
-            let (text, line_ending) = Document::vfs_to_salsa(&bytes);
-            raw_database.set_file_text(file.file_id, Arc::from(text));
-            loaded.line_ending_map.insert(file.file_id, line_ending);
-        } else {
-            raw_database.set_file_text(file.file_id, Arc::from(""));
-        };
-        if file.change_kind == ChangeKind::Create {
+    for (_, file) in &changed_files {
+        let file_exists = loaded.vfs.exists(file.file_id);
+        if &file.change != &vfs::Change::Delete && file_exists {
+            if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
+                let document = Document::from_bytes(&v);
+                let (text, line_ending) = document.vfs_to_salsa();
+                raw_database.set_file_text(file.file_id, Arc::from(text));
+                loaded.line_ending_map.insert(file.file_id, line_ending);
+            } else {
+                raw_database.set_file_text(file.file_id, Arc::from(""));
+            };
+        }
+        if let &vfs::Change::Create(_, _) = &file.change {
             raw_database.set_file_revision(file.file_id, 0);
         } else {
             bump_file_revision(file.file_id, raw_database);
@@ -260,7 +264,7 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
     }
 
     if changed_files
-        .iter()
+        .into_values()
         .any(|file| file.is_created_or_deleted())
     {
         let sets = loaded.file_set_config.partition(&loaded.vfs);
@@ -314,7 +318,9 @@ fn update_changes(
     let file_changes = watchman.get_changes(last_read, vec!["**/*.hrl", "**/*.erl"])?;
     file_changes.files.into_iter().for_each(|file| {
         let path = watchman.watch.join(file.name);
-        let vfs_path = VfsPath::from(AbsPathBuf::assert(path.clone()));
+        let vfs_path = VfsPath::from(AbsPathBuf::assert(
+            Utf8PathBuf::from_path_buf(path.clone()).expect("UTF8 conversion failed"),
+        ));
         if !file.exists {
             vfs.set_file_contents(vfs_path, None);
         } else {

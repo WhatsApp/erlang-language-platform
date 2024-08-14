@@ -29,7 +29,7 @@ use crate::args::ProjectInfo;
 
 pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert(root);
+    let root = AbsPathBuf::assert_utf8(root);
     let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
     let project = Project::load(&manifest, EqwalizerConfig::default(), query_config)?;
     let mut writer = File::create(&args.to)?;
@@ -50,7 +50,7 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
         None => Box::new(std::io::stdout()),
     };
     let root = fs::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert(root);
+    let root = AbsPathBuf::assert_utf8(root);
     let (manifest, project) = match load_project(&root, query_config) {
         Ok(res) => res,
         Err(err) => {

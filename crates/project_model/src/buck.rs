@@ -13,7 +13,6 @@ extern crate serde_json;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
-use std::ffi::OsStr;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
@@ -33,6 +32,8 @@ use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::RelPathBuf;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -53,17 +54,8 @@ lazy_static! {
         .collect();
 }
 
-lazy_static! {
-    static ref ERL_EXT: &'static OsStr = OsStr::new("erl");
-}
-
-lazy_static! {
-    static ref SRC_EXT: &'static OsStr = OsStr::new("src");
-}
-
-lazy_static! {
-    static ref TEST_EXT: &'static OsStr = OsStr::new("test");
-}
+const ERL_EXT: &str = "erl";
+const TEST_EXT: &str = "test";
 
 #[derive(
     Debug,
@@ -113,7 +105,9 @@ impl BuckConfig {
         let buck_root = self.buck_root();
         match self.source_root {
             None => Cow::Borrowed(buck_root),
-            Some(ref dir) => Cow::Owned(buck_root.join(dir)),
+            Some(ref dir) => Cow::Owned(buck_root.join(
+                Utf8PathBuf::from_path_buf(dir.to_path_buf()).expect("UTF8 conversion failed"),
+            )),
         }
     }
 
@@ -161,7 +155,7 @@ impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
-    ) -> Result<(BuckProject, Vec<ProjectAppData>, PathBuf), anyhow::Error> {
+    ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf, query_config)?;
         let otp_root = Otp::find_otp()?;
         let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
@@ -249,7 +243,7 @@ pub fn load_buck_targets(
                 let mut src_files = vec![];
                 for src in &target.srcs {
                     let src = buck_path_to_abs_path(root, src).unwrap();
-                    if Some(OsStr::new("hrl")) == src.extension() {
+                    if Some("hrl") == src.extension() {
                         private_header = true;
                     }
                     src_files.push(src);
@@ -263,7 +257,7 @@ pub fn load_buck_targets(
                 let ebin = match target_type {
                     TargetType::ThirdParty if buck_config.build_deps => dep_path
                         .remove(&name)
-                        .map(|dir| dir.join(PathBuf::from("ebin"))),
+                        .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
                     TargetType::ThirdParty => Some(dir.clone()),
                     _ => None,
                 };
@@ -325,7 +319,7 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let path = String::from_utf8(output.stdout)?;
     match AbsPathBuf::try_from(path.trim()) {
         Ok(path) => Ok(path),
-        Err(path) => bail!("expected absolute path, got {}", path.display()),
+        Err(path) => bail!("expected absolute path, got {}", path),
     }
 }
 
@@ -585,7 +579,7 @@ fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsP
 
 pub fn targets_to_project_data(
     targets: &FxHashMap<TargetFullName, Target>,
-    otp_root: &Path,
+    otp_root: &Utf8Path,
 ) -> Vec<ProjectAppData> {
     let it = targets
         .values()
@@ -686,10 +680,7 @@ impl ProjectAppDataAcc {
     }
 
     fn set_name(&mut self, target: &Target) {
-        let dir_name = target
-            .dir
-            .file_name()
-            .map(|f| AppName(f.to_string_lossy().to_string()));
+        let dir_name = target.dir.file_name().map(|f| AppName(f.to_string()));
         let target_name = Some(AppName(target.app_name.clone()));
         if dir_name == target_name {
             self.name = target_name;
@@ -738,7 +729,7 @@ impl ProjectAppDataAcc {
                 let extra_src_dirs: Vec<String> = abs_extra_dirs
                     .iter()
                     .filter_map(|dir| dir.strip_prefix(app_dir))
-                    .map(|dir| dir.as_ref().as_os_str().to_string_lossy().to_string())
+                    .map(|dir| dir.as_str().to_string())
                     .collect();
 
                 for abs_extra in &abs_extra_dirs {
@@ -769,7 +760,7 @@ impl ProjectAppDataAcc {
 
     fn add_include_if_not_exist(&mut self, path: &AbsPath) {
         // The bxl query returns directories already, do not parent unless it is a file
-        let include_dir = if path.as_ref().is_file() {
+        let include_dir = if <AbsPath as AsRef<Utf8Path>>::as_ref(path).is_file() {
             path.parent()
         } else {
             Some(path)
@@ -802,7 +793,7 @@ impl ProjectAppDataAcc {
             //the folder as test folder
             .filter(|inc| !self.abs_extra_src_dirs.contains(*inc))
             .filter_map(|inc| inc.strip_prefix(&target.dir))
-            .map(|inc| inc.as_ref().to_string_lossy().to_string());
+            .map(|inc| inc.as_str().to_string());
 
         self.include_dirs.extend(it);
     }
@@ -868,11 +859,13 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
 
 #[cfg(test)]
 mod tests {
+
     use expect_test::expect;
     use expect_test::Expect;
 
     use super::*;
     use crate::test_fixture::FixtureWithProjectMeta;
+    use crate::to_abs_path_buf;
 
     #[test]
     fn test_find_app_root_src() {
@@ -881,7 +874,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -892,7 +885,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a").to_path_buf()).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -903,7 +896,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -914,7 +907,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -925,7 +918,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -936,7 +929,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -948,7 +941,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -962,7 +955,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -974,7 +967,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -985,7 +978,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -997,7 +990,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(dir.path());
+        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1008,7 +1001,7 @@ mod tests {
         };
 
         let actual = find_app_root(root, &target_name, &target);
-        let expected = Some(AbsPathBuf::assert(dir.path().join("app_a")));
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -1019,7 +1012,7 @@ mod tests {
     #[track_caller]
     fn check_buck_bxl_query(deps_includes: bool, expect: Expect) {
         if BUCK_TESTS_ENABLED {
-            let buck_root = AbsPathBuf::assert(std::env::current_dir().unwrap());
+            let buck_root = to_abs_path_buf(&std::env::current_dir().unwrap()).unwrap();
             let buck_config = BuckConfig {
                 config_path: None,
                 buck_root: Some(buck_root),
@@ -1102,7 +1095,7 @@ mod tests {
 
     #[test]
     fn test_buck_path_to_abs_path() {
-        let root = AbsPath::assert(Path::new("/blah"));
+        let root = AbsPath::assert(Utf8Path::new("/blah"));
         expect![[r#"
             Ok(
                 AbsPathBuf(

@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use core::str;
 use std::ops::Range;
 
 use elp_ide::elp_ide_db::LineIndex;
@@ -20,21 +21,18 @@ pub struct Document {
 }
 
 impl Document {
-    pub fn vfs_to_salsa(vfs_bytes: &[u8]) -> (String, LineEndings) {
-        let bytes = vfs_bytes.to_vec();
-        let document = Document::from_bytes(bytes);
-        LineEndings::normalize(document.content)
+    pub fn vfs_to_salsa(self) -> (String, LineEndings) {
+        LineEndings::normalize(self.content)
     }
 
-    pub fn from_bytes(bytes: Vec<u8>) -> Document {
-        let content = match String::from_utf8(bytes) {
-            Ok(text) => text,
-            Err(err) => {
+    pub fn from_bytes(bytes: &[u8]) -> Document {
+        let content = match str::from_utf8(bytes) {
+            Ok(text) => text.to_string(),
+            Err(_err) => {
                 // Fall back to lossy latin1 loading of files.
                 // This should only affect files from yaws, and
                 // possibly OTP that are latin1 encoded.
-                let contents = err.into_bytes();
-                contents.into_iter().map(|byte| byte as char).collect()
+                bytes.into_iter().map(|byte| (*byte) as char).collect()
             }
         };
         Document { content }

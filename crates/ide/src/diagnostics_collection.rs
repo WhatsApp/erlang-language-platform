@@ -447,7 +447,7 @@ mod tests {
             labeled_undefined_errors: FxHashMap::default(),
         };
 
-        let file_id = FileId(0);
+        let file_id = FileId::from_raw(0);
         assert_eq!(
             are_all_labeled_diagnostics_equal(
                 &FxHashMap::from_iter(once((file_id, diags_one))),

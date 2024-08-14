@@ -42,6 +42,7 @@ use lsp_types::TextDocumentIdentifier;
 use lsp_types::TextDocumentItem;
 use lsp_types::Url;
 use lsp_types::WorkDoneProgressParams;
+use paths::Utf8PathBuf;
 use serde::Serialize;
 use serde_json::json;
 use serde_json::Value;
@@ -107,10 +108,11 @@ impl Project {
                 .parse_env("ELP_LOG")
                 .try_init()
                 .unwrap();
-            profile::init_from(crate::PROFILE);
         });
 
-        let tmp_dir_path = AbsPathBuf::assert(self.tmp_dir.path().to_path_buf());
+        let tmp_dir_path = AbsPathBuf::assert(
+            Utf8PathBuf::from_path_buf(self.tmp_dir.path().to_path_buf()).unwrap(),
+        );
 
         // Simpler version of elp::run_server //////////////////////////////////////
         // * Not handling sub-server
@@ -169,7 +171,7 @@ impl Project {
             let mock = TestServer::new(client, self.tmp_dir);
 
             let document = workspace_root.join(module);
-            let id = mock.doc_id(&document.as_path().display().to_string());
+            let id = mock.doc_id(&document.as_path().to_string());
 
             // Indicate the document was opened.
             // - It mimicks what the IDE would do.

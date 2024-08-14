@@ -63,7 +63,7 @@ impl Change {
     }
 
     pub fn apply(self, db: &mut dyn SourceDatabaseExt) -> Vec<FileId> {
-        let _p = profile::span("RootDatabase::apply_change");
+        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         if let Some(roots) = self.roots {
             for (idx, root) in roots.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);

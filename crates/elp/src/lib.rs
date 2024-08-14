@@ -34,6 +34,7 @@ mod from_proto;
 mod handlers;
 pub mod line_endings;
 pub mod lsp_ext;
+mod mem_docs;
 // @fb-only: mod meta_only;
 mod op_queue;
 mod project_loader;

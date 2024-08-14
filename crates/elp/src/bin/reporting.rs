@@ -11,6 +11,7 @@ use std::ops::Range;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Context;
@@ -83,7 +84,10 @@ impl<'a> PrettyReporter<'a> {
         }
     }
 
-    fn get_reporting_data(&self, file_id: FileId) -> Result<(SimpleFiles<String, &'a str>, usize)> {
+    fn get_reporting_data(
+        &self,
+        file_id: FileId,
+    ) -> Result<(SimpleFiles<String, Arc<str>>, usize)> {
         let file_path = &self.loaded.vfs.file_path(file_id);
         let root_path = &self
             .analysis
@@ -91,8 +95,8 @@ impl<'a> PrettyReporter<'a> {
             .with_context(|| "could not find project data")?
             .root_dir;
         let relative_path = get_relative_path(root_path, file_path);
-        let content = str::from_utf8(self.loaded.vfs.file_contents(file_id)).unwrap();
-        let mut files: SimpleFiles<String, &str> = SimpleFiles::new();
+        let content = self.analysis.file_text(file_id)?;
+        let mut files: SimpleFiles<String, Arc<str>> = SimpleFiles::new();
         let id = files.add(relative_path.display().to_string(), content);
         Ok((files, id))
     }

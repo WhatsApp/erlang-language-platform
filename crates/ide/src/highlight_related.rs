@@ -36,7 +36,7 @@ pub(crate) fn highlight_related(
     sema: &Semantic,
     position: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let _p = profile::span("highlight_related");
+    let _p = tracing::info_span!("highlight_related").entered();
     find_local_refs(sema, position)
 }
 
@@ -44,7 +44,7 @@ pub(crate) fn highlight_related(
 /// its search to the current file, does not request direct only, and
 /// returns highlight results
 fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<HighlightedRange>> {
-    let _p = profile::span("find_local_refs");
+    let _p = tracing::info_span!("find_local_refs").entered();
     let search = move |def: SymbolDefinition| -> Vec<HighlightedRange> {
         let declaration = def.to_nav(sema.db);
         let (ref_category, decl_category) = match def {

@@ -83,11 +83,12 @@
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 use std::path::PathBuf;
 
 use paths::AbsPath;
 use paths::AbsPathBuf;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 pub use stdx::trim_indent;
 use tempfile::tempdir;
 
@@ -328,13 +329,13 @@ impl FixtureWithProjectMeta {
             match key {
                 "app" => app_name = Some(AppName(value.to_string())),
                 "include_path" => include_dirs
-                    .push(AbsPath::assert(&PathBuf::from(value.to_string())).normalize()),
+                    .push(AbsPath::assert(&Utf8PathBuf::from(value.to_string())).normalize()),
                 "otp_app" => {
                     // We have an app directory, the OTP lib dir is its parent
-                    let path = AbsPathBuf::assert(PathBuf::from(value.to_string()));
+                    let path = AbsPathBuf::assert(Utf8PathBuf::from(value.to_string()));
                     let lib_dir = path.parent().unwrap().normalize();
-                    let versioned_name = path.file_name().unwrap().to_str().unwrap().to_string();
-                    let app = ProjectAppData::otp_app_data(&versioned_name, path);
+                    let versioned_name = path.file_name().unwrap();
+                    let app = ProjectAppData::otp_app_data(&versioned_name, &path);
 
                     otp = Some((Otp { lib_dir }, app));
                 }
@@ -360,10 +361,10 @@ impl FixtureWithProjectMeta {
             (Some(otp), app)
         } else {
             // Try inferring dir - parent once to get to ./src, parent twice to get to app root
-            let dir = AbsPath::assert(Path::new(&path)).parent().unwrap();
+            let dir = AbsPath::assert(Utf8Path::new(&path)).parent().unwrap();
             let dir = dir.parent().unwrap_or(dir).normalize();
             let app_name = app_name.unwrap_or(AppName("test-fixture".to_string()));
-            let abs_path = AbsPathBuf::assert(PathBuf::from(path.clone()));
+            let abs_path = AbsPathBuf::assert(Utf8PathBuf::from(path.clone()));
             let mut src_dirs = vec![];
             if let Some(ext) = abs_path.extension() {
                 if ext == "erl" {
@@ -393,10 +394,10 @@ impl FixtureWithProjectMeta {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
 
     use expect_test::expect;
     use paths::AbsPath;
+    use paths::Utf8PathBuf;
 
     use super::FixtureWithProjectMeta;
 
@@ -505,7 +506,7 @@ bar() -> ok.
 
         let app_data = &parsed[0].app_data;
         assert_eq!(
-            vec![AbsPath::assert(&PathBuf::from("/include")).normalize()],
+            vec![AbsPath::assert(&Utf8PathBuf::from("/include")).normalize()],
             app_data.include_dirs
         );
         let meta0 = &parsed[0];

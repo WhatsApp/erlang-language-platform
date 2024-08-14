@@ -8,8 +8,6 @@
  */
 
 use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
 
@@ -18,6 +16,8 @@ use anyhow::Result;
 use elp_log::timeit;
 use lazy_static::lazy_static;
 use paths::AbsPathBuf;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 
 use crate::ProjectAppData;
 
@@ -31,7 +31,7 @@ lazy_static! {
 }
 
 impl Otp {
-    pub fn find_otp() -> Result<PathBuf> {
+    pub fn find_otp() -> Result<Utf8PathBuf> {
         let _timer = timeit!("find otp");
         let erl = ERL.read().unwrap();
         let output = Command::new(&*erl)
@@ -51,11 +51,11 @@ impl Otp {
             );
         }
         let path = String::from_utf8(output.stdout)?;
-        let result: PathBuf = format!("{}/lib", path).into();
+        let result: Utf8PathBuf = format!("{}/lib", path).into();
         Ok(result)
     }
 
-    pub fn discover(path: PathBuf) -> (Otp, Vec<ProjectAppData>) {
+    pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {
         let apps = Self::discover_otp_apps(&path);
         (
             Otp {
@@ -65,7 +65,7 @@ impl Otp {
         )
     }
 
-    fn discover_otp_apps(path: &Path) -> Vec<ProjectAppData> {
+    fn discover_otp_apps(path: &Utf8Path) -> Vec<ProjectAppData> {
         log::info!("Loading OTP apps from {:?}", path);
         if let Ok(entries) = fs::read_dir(path) {
             entries
@@ -73,8 +73,10 @@ impl Otp {
                 .filter_map(|entry| {
                     let entry = entry.ok()?;
                     let name = entry.file_name();
-                    let dir = AbsPathBuf::assert(entry.path());
-                    Some(ProjectAppData::otp_app_data(name.to_str()?, dir))
+                    let dir = AbsPathBuf::assert(
+                        Utf8PathBuf::from_path_buf(entry.path()).expect("Could not decode UTF8"),
+                    );
+                    Some(ProjectAppData::otp_app_data(name.to_str()?, &dir))
                 })
                 .collect()
         } else {

@@ -70,7 +70,7 @@ impl ProjectFolders {
             .filter_map(|(project_id, root)| {
                 if Some(*project_id) != project_apps.otp_project_id {
                     Some(lsp_types::FileSystemWatcher {
-                        glob_pattern: format!("{}/**/*.{{e,h}}rl", root.display()),
+                        glob_pattern: format!("{}/**/*.{{e,h}}rl", root),
                         kind: None,
                     })
                 } else {
@@ -87,23 +87,23 @@ impl ProjectFolders {
             let kind = None;
             watch.extend(vec![
                 lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/BUCK", root.display()),
+                    glob_pattern: format!("{}/**/BUCK", root),
                     kind,
                 },
                 lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/TARGETS", root.display()),
+                    glob_pattern: format!("{}/**/TARGETS", root),
                     kind,
                 },
                 lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/TARGETS.v2", root.display()),
+                    glob_pattern: format!("{}/**/TARGETS.v2", root),
                     kind,
                 },
                 lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/.elp.toml", root.display()),
+                    glob_pattern: format!("{}/.elp.toml", root),
                     kind,
                 },
                 lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/.elp_lint.toml", root.display()),
+                    glob_pattern: format!("{}/.elp_lint.toml", root),
                     kind,
                 },
             ]);

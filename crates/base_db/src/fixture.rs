@@ -40,6 +40,8 @@ use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use paths::AbsPathBuf;
+use paths::Utf8Path;
+use paths::Utf8PathBuf;
 use regex::Regex;
 use vfs::file_set::FileSet;
 use vfs::FileId;
@@ -149,8 +151,10 @@ impl Builder {
         }
     }
 
-    fn project_dir(&self) -> Option<&Path> {
-        self.project_dir.as_ref().and_then(|d| Some(d.path()))
+    fn project_dir(&self) -> Option<&Utf8Path> {
+        self.project_dir
+            .as_ref()
+            .and_then(|d| Utf8Path::from_path(d.path()))
     }
 }
 
@@ -168,7 +172,7 @@ impl ChangeFixture {
 
         let mut files = Vec::new();
         let source_root_prefix = "/".to_string();
-        let mut file_id = FileId(0);
+        let mut file_id = FileId::from_raw(0);
 
         let mut file_position = None;
         let mut app_map = AppMap::default();
@@ -211,7 +215,7 @@ impl ChangeFixture {
             app_files.insert(app_name, file_id, path);
             files.push(file_id);
 
-            file_id.0 += 1;
+            inc_file_id(&mut file_id);
         }
         if let Some(_project_dir) = builder.project_dir() {
             // We need to add the erlang module to the file contents too.
@@ -226,7 +230,7 @@ impl ChangeFixture {
             // We bump the file_id in case we decide to add another
             // file later, but do not push the current one to files,
             // as it is not part of the as-written test fixture.
-            file_id.0 += 1;
+            inc_file_id(&mut file_id);
         }
 
         let otp = otp.unwrap_or_else(|| Otp {
@@ -247,7 +251,8 @@ impl ChangeFixture {
             let files: Vec<(String, String)> = fixture
                 .iter()
                 .map(|entry| {
-                    let (text, _file_pos) = Self::get_text_and_pos(&entry.text, FileId(0));
+                    let (text, _file_pos) =
+                        Self::get_text_and_pos(&entry.text, FileId::from_raw(0));
                     (entry.path.clone(), text)
                 })
                 .collect();
@@ -358,7 +363,7 @@ impl ChangeFixture {
         if let Some((file_id, _range_or_offset)) = self.file_position {
             file_id
         } else {
-            FileId(0)
+            FileId::from_raw(0)
         }
     }
 
@@ -393,8 +398,12 @@ impl ChangeFixture {
     }
 }
 
+fn inc_file_id(file_id: &mut FileId) {
+    *file_id = FileId::from_raw(file_id.index() + 1);
+}
+
 lazy_static! {
-    pub static ref OTP_ROOT: PathBuf =
+    pub static ref OTP_ROOT: Utf8PathBuf =
         Otp::find_otp().expect("tests should always be able to find OTP");
     pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
     pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();

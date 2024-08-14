@@ -22,23 +22,20 @@
 mod buck_tests;
 mod support;
 
-use std::path::Path;
-
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use expect_test::expect;
 use lsp_types::Position;
 use lsp_types::Range;
+use paths::Utf8Path;
 
 use crate::support::code_action_project;
 use crate::support::diagnostic_project;
-
-const PROFILE: &str = "";
 
 #[test]
 fn test_run_mock_lsp() {
     if cfg!(feature = "buck") {
         let workspace_root = AbsPathBuf::assert(
-            Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/end_to_end"),
+            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/end_to_end"),
         );
 
         // Sanity check
@@ -51,137 +48,124 @@ fn test_run_mock_lsp() {
             r#"assist_examples/src/head_mismatch.erl"#,
             Range::new(Position::new(3, 0), Position::new(5, 10)),
             expect![[r#"
-            [
-              {
-                "edit": {
-                  "documentChanges": [
-                    {
-                      "edits": [
+                [
+                  {
+                    "edit": {
+                      "documentChanges": [
                         {
-                          "newText": "bar",
-                          "range": {
-                            "end": {
-                              "character": 0,
-                              "line": 5
-                            },
-                            "start": {
-                              "character": 0,
-                              "line": 5
+                          "edits": [
+                            {
+                              "newText": "bar",
+                              "range": {
+                                "end": {
+                                  "character": 3,
+                                  "line": 5
+                                },
+                                "start": {
+                                  "character": 0,
+                                  "line": 5
+                                }
+                              }
                             }
-                          }
-                        },
-                        {
-                          "newText": "",
-                          "range": {
-                            "end": {
-                              "character": 3,
-                              "line": 5
-                            },
-                            "start": {
-                              "character": 0,
-                              "line": 5
-                            }
+                          ],
+                          "textDocument": {
+                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "version": 0
                           }
                         }
-                      ],
-                      "textDocument": {
-                        "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
-                        "version": 0
-                      }
-                    }
-                  ]
-                },
-                "kind": "quickfix",
-                "title": "Fix head mismatch"
-              },
-              {
-                "edit": {
-                  "documentChanges": [
-                    {
-                      "edits": [
+                      ]
+                    },
+                    "kind": "quickfix",
+                    "title": "Fix head mismatch"
+                  },
+                  {
+                    "edit": {
+                      "documentChanges": [
                         {
-                          "newText": "%% @doc {@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}\n%% @param Arg1 Argument description\n%% @returns Return description\n",
-                          "range": {
-                            "end": {
-                              "character": 0,
-                              "line": 3
-                            },
-                            "start": {
-                              "character": 0,
-                              "line": 3
+                          "edits": [
+                            {
+                              "newText": "%% @doc {@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}\n%% @param Arg1 Argument description\n%% @returns Return description\n",
+                              "range": {
+                                "end": {
+                                  "character": 0,
+                                  "line": 3
+                                },
+                                "start": {
+                                  "character": 0,
+                                  "line": 3
+                                }
+                              }
                             }
+                          ],
+                          "textDocument": {
+                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "version": 0
                           }
                         }
-                      ],
-                      "textDocument": {
-                        "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
-                        "version": 0
-                      }
-                    }
-                  ]
-                },
-                "kind": "",
-                "title": "Add edoc comment"
-              },
-              {
-                "edit": {
-                  "documentChanges": [
-                    {
-                      "edits": [
+                      ]
+                    },
+                    "kind": "",
+                    "title": "Add edoc comment"
+                  },
+                  {
+                    "edit": {
+                      "documentChanges": [
                         {
-                          "newText": "-spec bar(type1()) -> return_type().\n",
-                          "range": {
-                            "end": {
-                              "character": 0,
-                              "line": 3
-                            },
-                            "start": {
-                              "character": 0,
-                              "line": 3
+                          "edits": [
+                            {
+                              "newText": "-spec bar(type1()) -> return_type().\n",
+                              "range": {
+                                "end": {
+                                  "character": 0,
+                                  "line": 3
+                                },
+                                "start": {
+                                  "character": 0,
+                                  "line": 3
+                                }
+                              }
                             }
+                          ],
+                          "textDocument": {
+                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "version": 0
                           }
                         }
-                      ],
-                      "textDocument": {
-                        "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
-                        "version": 0
-                      }
-                    }
-                  ]
-                },
-                "kind": "",
-                "title": "Add spec stub"
-              },
-              {
-                "edit": {
-                  "documentChanges": [
-                    {
-                      "edits": [
+                      ]
+                    },
+                    "kind": "",
+                    "title": "Add spec stub"
+                  },
+                  {
+                    "edit": {
+                      "documentChanges": [
                         {
-                          "newText": "\n-export([bar/1]).\n",
-                          "range": {
-                            "end": {
-                              "character": 0,
-                              "line": 1
-                            },
-                            "start": {
-                              "character": 0,
-                              "line": 1
+                          "edits": [
+                            {
+                              "newText": "\n-export([bar/1]).\n",
+                              "range": {
+                                "end": {
+                                  "character": 0,
+                                  "line": 1
+                                },
+                                "start": {
+                                  "character": 0,
+                                  "line": 1
+                                }
+                              }
                             }
+                          ],
+                          "textDocument": {
+                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "version": 0
                           }
                         }
-                      ],
-                      "textDocument": {
-                        "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
-                        "version": 0
-                      }
-                    }
-                  ]
-                },
-                "kind": "quickfix",
-                "title": "Export the function `bar/1`"
-              }
-            ]"#]],
+                      ]
+                    },
+                    "kind": "quickfix",
+                    "title": "Export the function `bar/1`"
+                  }
+                ]"#]],
         );
     }
 }
@@ -190,7 +174,7 @@ fn test_run_mock_lsp() {
 fn test_e2e_eqwalizer_module() {
     if cfg!(feature = "buck") {
         let workspace_root = AbsPathBuf::assert(
-            Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"),
+            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"),
         );
 
         // Sanity check

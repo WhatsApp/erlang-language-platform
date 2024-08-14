@@ -72,7 +72,7 @@ pub fn do_parse_all(
     module: &Option<String>,
     buck: bool,
 ) -> Result<Vec<ParseDiagnostic>> {
-    let file_cnt = loaded.vfs.len();
+    let file_cnt = loaded.vfs.iter().count();
     let _timer = timeit!("parse {} files", file_cnt);
 
     let pb = cli.progress(file_cnt as u64, "Parsing modules");

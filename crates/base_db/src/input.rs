@@ -19,6 +19,7 @@ use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use fxhash::FxHashMap;
 use paths::RelPath;
+use paths::Utf8Path;
 use vfs::file_set::FileSet;
 use vfs::AbsPathBuf;
 use vfs::FileId;
@@ -133,7 +134,7 @@ impl AppData {
             return self
                 .src_path
                 .iter()
-                .any(|src_dir| path.as_ref().starts_with(src_dir));
+                .any(|src_dir| path.starts_with(src_dir));
         }
         false
     }
@@ -141,7 +142,8 @@ impl AppData {
     pub(crate) fn is_extra_src_file(&self, path: &VfsPath) -> bool {
         if let Some(path) = self.local_file_path(path) {
             // extra_src_dirs are not recursive, check parent dir is one
-            if let Some(parent) = path.as_ref().parent() {
+            let path: &Utf8Path = path.as_ref();
+            if let Some(parent) = path.parent() {
                 return self
                     .extra_src_dirs
                     .iter()
@@ -153,7 +155,8 @@ impl AppData {
 
     fn is_eqwalizer_marker(&self, path: &VfsPath) -> bool {
         if let Some(path) = self.local_file_path(path) {
-            return path.as_ref() == Path::new(".eqwalizer");
+            let path: &Utf8Path = path.as_ref();
+            return path == Utf8Path::new(".eqwalizer");
         }
         false
     }

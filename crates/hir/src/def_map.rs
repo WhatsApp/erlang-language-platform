@@ -27,7 +27,6 @@ use elp_syntax::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
-use profile::Count;
 
 use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
@@ -55,7 +54,6 @@ use crate::TypeAliasDef;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DefMap {
-    _c: Count<Self>,
     included: FxHashSet<FileId>,
 
     function_clauses: FxHashMap<FunctionClauseId, FunctionClauseDef>,
@@ -757,7 +755,6 @@ impl DefMap {
     fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Self {
-            _c: _,
             included,
             function_clauses,
             functions,

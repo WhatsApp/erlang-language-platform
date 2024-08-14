@@ -28,7 +28,6 @@ use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
-use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -47,8 +46,10 @@ use indicatif::ParallelProgressIterator;
 use indicatif::ProgressIterator;
 use lsp_types::DiagnosticSeverity;
 use lsp_types::NumberOrString;
+use paths::Utf8PathBuf;
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
+use vfs::AbsPath;
 
 use crate::args::ParseAllElp;
 use crate::reporting;
@@ -97,17 +98,15 @@ pub fn parse_all(
                 if args.is_format_normal() {
                     writeln!(cli, "file specified: {}", file_name)?;
                 }
-                let path_buf = fs::canonicalize(file_name).unwrap();
+                let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+                    .expect("UTF8 conversion failed");
                 let path = AbsPath::assert(&path_buf);
                 let path = path.as_os_str().to_str().unwrap();
                 (
                     loaded
                         .vfs
                         .file_id(&VfsPath::new_real_path(path.to_string())),
-                    path_buf
-                        .as_path()
-                        .file_name()
-                        .map(|n| ModuleName::new(n.to_str().unwrap())),
+                    path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
                 )
             }
             None => (None, None),

@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use core::str;
 use std::fmt;
 use std::mem;
 use std::path::Path;
@@ -31,7 +32,6 @@ use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::ChangedFile;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
@@ -59,6 +59,7 @@ use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashSet;
+use indexmap::map::Entry;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Notification;
@@ -77,6 +78,7 @@ use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
+use vfs::Change;
 
 use self::dispatch::RequestDispatcher;
 use self::progress::ProgressBar;
@@ -90,6 +92,8 @@ use crate::document::Document;
 use crate::handlers;
 use crate::line_endings::LineEndings;
 use crate::lsp_ext;
+use crate::mem_docs::DocumentData;
+use crate::mem_docs::MemDocs;
 use crate::project_loader::ProjectLoader;
 use crate::read_lint_config_file;
 use crate::reload::ProjectFolders;
@@ -211,7 +215,7 @@ pub struct Server {
     diagnostics: Arc<DiagnosticCollection>,
     req_queue: ReqQueue,
     progress: ProgressManager,
-    open_document_versions: SharedMap<VfsPath, i32>,
+    mem_docs: Arc<RwLock<MemDocs>>,
     newly_opened_documents: Vec<ChangedFile>,
     vfs: Arc<RwLock<Vfs>>,
     file_set_config: FileSetConfig,
@@ -263,7 +267,7 @@ impl Server {
             eqwalizer_pool,
             diagnostics: Arc::new(DiagnosticCollection::default()),
             req_queue: ReqQueue::default(),
-            open_document_versions: SharedMap::default(),
+            mem_docs: Arc::new(RwLock::new(MemDocs::default())),
             newly_opened_documents: Vec::default(),
             vfs: Arc::new(RwLock::new(Vfs::default())),
             file_set_config: FileSetConfig::default(),
@@ -302,7 +306,7 @@ impl Server {
             self.analysis_host.analysis(),
             Arc::clone(&self.diagnostics),
             Arc::clone(&self.vfs),
-            Arc::clone(&self.open_document_versions),
+            Arc::clone(&self.mem_docs),
             Arc::clone(&self.line_ending_map),
             Arc::clone(&self.projects),
             Arc::clone(&self.ai_completion),
@@ -421,10 +425,12 @@ impl Server {
             Event::Vfs(mut msg) => loop {
                 match msg {
                     loader::Message::Loaded { files } => self.on_loader_loaded(files),
+                    loader::Message::Changed { files } => self.on_loader_loaded(files),
                     loader::Message::Progress {
                         n_total,
                         n_done,
                         config_version,
+                        dir: _,
                     } => self.on_loader_progress(n_total, n_done, config_version),
                 }
 
@@ -519,8 +525,9 @@ impl Server {
                     .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
                     .collect();
                 let version = convert::vfs_path(&url)
-                    .map(|path| self.open_document_versions.read().get(&path).cloned())
-                    .unwrap_or_default();
+                    .map(|path| self.mem_docs.read().get(&path).cloned())
+                    .unwrap_or_default()
+                    .map(|doc_info| doc_info.version);
 
                 self.send_notification::<notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
@@ -624,20 +631,25 @@ impl Server {
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     this.fetch_projects_if_needed(&path);
                     let path = VfsPath::from(path);
-                    if this
-                        .open_document_versions
+                    let already_exists = this
+                        .mem_docs
                         .write()
-                        .insert(path.clone(), params.text_document.version)
-                        .is_some()
-                    {
+                        .insert(
+                            path.clone(),
+                            DocumentData::new(
+                                params.text_document.version,
+                                params.text_document.text.clone().into_bytes(),
+                            ),
+                        )
+                        .is_err();
+                    if already_exists {
+                        tracing::error!("duplicate DidOpenTextDocument: {}", path);
                         log::error!("duplicate DidOpenTextDocument: {}", path);
                     }
 
                     let mut vfs = this.vfs.write();
-                    vfs.set_file_contents(
-                        path.clone(),
-                        Some(params.text_document.text.into_bytes()),
-                    );
+                    let bytes = params.text_document.text.into_bytes();
+                    vfs.set_file_contents(path.clone(), Some(bytes.clone()));
 
                     // Until we bring over the full rust-analyzer
                     // style change processing, make a list of files
@@ -647,7 +659,7 @@ impl Server {
                     let file_id = vfs.file_id(&path).unwrap();
                     this.newly_opened_documents.push(ChangedFile {
                         file_id,
-                        change_kind: ChangeKind::Modify,
+                        change: Change::Modify(bytes, params.text_document.version as u64),
                     });
                 } else {
                     log::error!(
@@ -660,28 +672,24 @@ impl Server {
             })?
             .on::<notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = convert::vfs_path(&params.text_document.uri) {
-                    match this.open_document_versions.write().get_mut(&path) {
-                        Some(doc) => {
-                            // The version passed in DidChangeTextDocument is the version after all edits are applied
-                            // so we should apply it before the vfs is notified.
-                            *doc = params.text_document.version;
-                        }
-                        None => {
-                            log::error!("unexpected DidChangeTextDocument: {}", path);
-                            return Ok(());
-                        }
+                    let mut mem_docs = this.mem_docs.write();
+                    let Some(DocumentData { version, data }) = mem_docs.get_mut(&path) else {
+                        tracing::error!(?path, "unexpected DidChangeTextDocument");
+                        return Ok(());
                     };
-                    let mut vfs = this.vfs.write();
-                    let file_id = vfs.file_id(&path).unwrap();
-                    // Temporary for T183487471
-                    let _pctx = stdx::panic_context::enter(format!(
-                        "\nserver::DidChangeTextDocument:{:?}:{}\n",
-                        &file_id, &path
-                    ));
-                    let mut document = Document::from_bytes(vfs.file_contents(file_id).to_vec());
-                    document.apply_changes(params.content_changes);
+                    // The version passed in DidChangeTextDocument is
+                    // the version after all edits are applied so we
+                    // should apply it before the vfs is notified.
+                    *version = params.text_document.version;
 
-                    vfs.set_file_contents(path, Some(document.into_bytes()));
+                    let mut document = Document::from_bytes(data);
+                    document.apply_changes(params.content_changes);
+                    let new_contents = document.into_bytes();
+
+                    if *data != new_contents {
+                        data.clone_from(&new_contents);
+                        this.vfs.write().set_file_contents(path, Some(new_contents));
+                    }
                 }
                 Ok(())
             })?
@@ -690,9 +698,15 @@ impl Server {
                 let analysis = this.snapshot().analysis;
                 let mut diagnostics = Vec::new();
                 if let Ok(path) = convert::vfs_path(&url) {
-                    if this.open_document_versions.write().remove(&path).is_none() {
+                    if this.mem_docs.write().remove(&path).is_err() {
+                        tracing::error!("orphan DidCloseTextDocument: {}", path);
                         log::error!("unexpected DidCloseTextDocument: {}", path);
                     }
+
+                    if let Some(path) = path.as_path() {
+                        this.vfs_loader.handle.invalidate(path.to_path_buf());
+                    }
+
                     // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
                     if this.config.eqwalizer().all {
                         let vfs = this.vfs.read();
@@ -754,8 +768,8 @@ impl Server {
 
     fn should_reload_project_for_path(&self, path: &AbsPath, change: &FileEvent) -> bool {
         let path_ref: &Path = path.as_ref();
-        let file_name = path.file_stem().and_then(|name| name.to_str());
-        let ext = path.extension().and_then(|ext| ext.to_str());
+        let file_name = path.file_stem();
+        let ext = path.extension();
         let result = match (file_name, ext) {
             (Some("BUCK"), None) => true,
             (Some("TARGETS"), None) => true,
@@ -775,8 +789,8 @@ impl Server {
 
     fn should_reload_config_for_path(&self, path: &AbsPath) -> bool {
         let path_ref: &Path = path.as_ref();
-        let file_name = path.file_stem().and_then(|name| name.to_str());
-        let ext = path.extension().and_then(|ext| ext.to_str());
+        let file_name = path.file_stem();
+        let ext = path.extension();
         let result = match (file_name, ext) {
             (Some(".elp_lint"), Some("toml")) => true,
             _ => false,
@@ -784,29 +798,31 @@ impl Server {
         result && path_ref.is_file()
     }
 
-    fn on_loader_progress(&mut self, n_total: usize, n_done: usize, config_version: u32) {
+    fn on_loader_progress(&mut self, n_total: usize, n_done: Option<usize>, config_version: u32) {
         // report progress
         always!(config_version <= self.vfs_config_version);
-
-        if n_total == 0 {
-            self.transition(Status::Invalid);
-        } else if n_done == 0 {
-            let pb = self
-                .progress
-                .begin_bar("Applications loaded".into(), Some(n_total));
-            self.transition(Status::Loading(pb));
-        } else if n_done < n_total {
-            if let Status::Loading(pb) = &self.status {
-                pb.report(n_done, n_total);
+        // n_done is `None` for a response to a config change
+        if let Some(n_done) = n_done {
+            if n_total == 0 {
+                self.transition(Status::Invalid);
+            } else if n_done == 0 {
+                let pb = self
+                    .progress
+                    .begin_bar("Applications loaded".into(), Some(n_total));
+                self.transition(Status::Loading(pb));
+            } else if n_done < n_total {
+                if let Status::Loading(pb) = &self.status {
+                    pb.report(n_done, n_total);
+                }
+            } else {
+                assert_eq!(n_done, n_total);
+                self.transition(Status::Running);
+                self.schedule_compile_deps();
+                self.schedule_cache();
+                // Not all clients send config in the `initialize` message, request it
+                self.refresh_config();
+                self.refresh_lens();
             }
-        } else {
-            assert_eq!(n_done, n_total);
-            self.transition(Status::Running);
-            self.schedule_compile_deps();
-            self.schedule_cache();
-            // Not all clients send config in the `initialize` message, request it
-            self.refresh_config();
-            self.refresh_lens();
         }
     }
 
@@ -814,7 +830,7 @@ impl Server {
         let mut vfs = self.vfs.write();
         for (path, contents) in files {
             let path = VfsPath::from(path);
-            if !self.open_document_versions.read().contains_key(&path) {
+            if !self.mem_docs.read().contains(&path) {
                 // This call will add the file to the changed_files, picked
                 // up in `process_changes`.
                 vfs.set_file_contents(path, contents);
@@ -840,8 +856,15 @@ impl Server {
 
         let mut guard = self.vfs.write();
         let mut changed_files = guard.take_changes();
-        // Note: the append operations clears out self.newly_opened_documents too
-        changed_files.append(&mut self.newly_opened_documents);
+        let docs = mem::take(&mut self.newly_opened_documents);
+        for change in docs {
+            match changed_files.entry(change.file_id) {
+                Entry::Occupied(_) => {}
+                Entry::Vacant(v) => {
+                    v.insert(change);
+                }
+            }
+        }
 
         if changed_files.is_empty() && !self.reset_source_roots {
             return false;
@@ -858,26 +881,23 @@ impl Server {
         // sure all calculations see a consistent view of the
         // database.
 
-        for file in &changed_files {
-            let file_exists = file_id_to_path(&vfs, file.file_id)
-                .ok()
-                // This strange call is to check that the contents is
-                // valid. see docs for `vfs.file_id()`
-                .map(|p| vfs.file_id(&VfsPath::from(p)).is_some())
-                .unwrap_or(false);
+        for (_, file) in &changed_files {
+            let file_exists = vfs.exists(file.file_id);
 
-            if file.change_kind != ChangeKind::Delete && file_exists {
+            if &file.change != &vfs::Change::Delete && file_exists {
                 // Temporary for T183487471
                 let _pctx = stdx::panic_context::enter(format!(
                     "\nserver::process_changes_to_vfs_store:{:?}:{:?}",
-                    &file.file_id, &file.change_kind
+                    &file.file_id, &file.change
                 ));
-                let bytes = vfs.file_contents(file.file_id).to_vec();
-                let (text, line_ending) = Document::vfs_to_salsa(&bytes);
-                raw_database.set_file_text(file.file_id, Arc::from(text));
-                self.line_ending_map
-                    .write()
-                    .insert(file.file_id, line_ending);
+                if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
+                    let document = Document::from_bytes(&v);
+                    let (text, line_endings) = document.vfs_to_salsa();
+                    raw_database.set_file_text(file.file_id, Arc::from(text));
+                    self.line_ending_map
+                        .write()
+                        .insert(file.file_id, line_endings);
+                }
 
                 // causes us to remove stale squiggles from the UI
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
@@ -885,7 +905,7 @@ impl Server {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
-            if file.change_kind == ChangeKind::Create {
+            if let &vfs::Change::Create(_, _) = &file.change {
                 raw_database.set_file_revision(file.file_id, 0);
             } else {
                 bump_file_revision(file.file_id, raw_database);
@@ -894,7 +914,7 @@ impl Server {
 
         if self.reset_source_roots
             || changed_files
-                .iter()
+                .into_values()
                 .any(|file| file.is_created_or_deleted())
         {
             let sets = self.file_set_config.partition(&vfs);
@@ -914,9 +934,9 @@ impl Server {
 
     fn opened_documents(&self) -> Vec<FileId> {
         let vfs = self.vfs.read();
-        self.open_document_versions
+        self.mem_docs
             .read()
-            .keys()
+            .iter()
             .map(|path| vfs.file_id(path).unwrap())
             .collect()
     }
@@ -1211,7 +1231,7 @@ impl Server {
     }
 
     fn update_configuration(&mut self, config: Config) {
-        let _p = profile::span("Server::update_configuration");
+        let _p = tracing::info_span!("Server::update_configuration").entered();
         let _old_config = mem::replace(&mut self.config, Arc::new(config));
 
         self.logger
@@ -1650,7 +1670,7 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
                 refresh_config = true;
             }
             let opened = convert::vfs_path(&change.uri)
-                .map(|vfs_path| this.open_document_versions.read().contains_key(&vfs_path))
+                .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                 .unwrap_or(false);
             if opened {
                 // Bump the file revision so that the salsa cache

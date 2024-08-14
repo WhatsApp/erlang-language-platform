@@ -15,10 +15,10 @@ mod tests {
     use elp::build::load;
     use elp::cli::Fake;
     use elp_ide::elp_ide_db::elp_base_db::AbsPath;
-    use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
     use elp_ide::erlang_service::Format;
     use elp_project_model::buck::BuckQueryConfig;
+    use elp_project_model::to_abs_path_buf;
     use elp_project_model::AppType;
     use elp_project_model::DiscoverConfig;
     use elp_project_model::Project;
@@ -87,7 +87,7 @@ mod tests {
         let path: PathBuf = path_str.into();
 
         let (elp_config, buck_config) =
-            ProjectManifest::discover(AbsPathBuf::assert(path).as_path()).unwrap();
+            ProjectManifest::discover(&to_abs_path_buf(&path).unwrap()).unwrap();
 
         let project =
             Project::load(&buck_config, elp_config.eqwalizer, &BUCK_QUERY_CONFIG).unwrap();

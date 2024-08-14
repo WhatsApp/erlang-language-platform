@@ -10,7 +10,6 @@
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::panic::RefUnwindSafe;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -43,6 +42,7 @@ use hir::Semantic;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockUpgradableReadGuard;
+use paths::Utf8PathBuf;
 use salsa::Database;
 use serde::Deserialize;
 use serde::Serialize;
@@ -180,7 +180,7 @@ impl salsa::ParallelDatabase for RootDatabase {
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
-        let _p = profile::span("RootDatabase::request_cancellation");
+        let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
         self.salsa_runtime_mut()
             .synthetic_write(salsa::Durability::LOW);
     }
@@ -256,7 +256,7 @@ impl RootDatabase {
                 let range = include.form_id().get(&source_file).syntax().text_range();
                 let line_col = line_index.line_col(range.start());
                 if let Some(p) = Includes::app_file_path(self, resolved, root_abs) {
-                    let target_path = path_as_string(&p);
+                    let target_path = p.to_string();
                     Some(Include {
                         line: line_col.line as u64 + 1,
                         target_path,
@@ -271,15 +271,11 @@ impl RootDatabase {
             None
         } else {
             Includes::app_file_path(self, file_id, root_abs).map(|file| Includes {
-                file: path_as_string(&file),
+                file: file.to_string(),
                 includes,
             })
         }
     }
-}
-
-fn path_as_string(p: &Path) -> String {
-    p.to_str().map_or("not found", |it| it).to_string()
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
@@ -311,7 +307,11 @@ impl Includes {
     /// eqwalizer-produced includes.json file.
     /// In particular, prefix otp paths with `/otp`, and make sure the
     /// paths are relative to the workspace root.
-    fn app_file_path(db: &RootDatabase, file_id: FileId, root_abs: &AbsPathBuf) -> Option<PathBuf> {
+    fn app_file_path(
+        db: &RootDatabase,
+        file_id: FileId,
+        root_abs: &AbsPathBuf,
+    ) -> Option<Utf8PathBuf> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\napp_file_path: {:?}", file_id));
         let root_id = db.file_source_root(file_id);
@@ -322,9 +322,9 @@ impl Includes {
         let path = path.as_path()?;
         if path.starts_with(root_abs) {
             path.strip_prefix(root_abs)
-                .map(|rel| -> PathBuf { rel.as_ref().to_path_buf() })
+                .map(|rel| -> Utf8PathBuf { rel.as_utf8_path().to_path_buf() })
         } else {
-            let otp_root = PathBuf::from("/otp");
+            let otp_root = Utf8PathBuf::from("/otp");
             let parent_dir = app_data.dir.parent()?;
             let otp_root = otp_root.join(path.strip_prefix(parent_dir)?);
             Some(otp_root)
@@ -350,7 +350,7 @@ pub enum SymbolKind {
 // ---------------------------------------------------------------------
 
 pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<InFile<SyntaxToken>> {
-    let _p = profile::span("find_best_token");
+    let _p = tracing::info_span!("find_best_token").entered();
     let syntax = sema
         .parse(position.file_id)
         .map(|file| file.syntax().clone());

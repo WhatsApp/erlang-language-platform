@@ -26,7 +26,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
-use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
@@ -43,6 +42,7 @@ use serde::Serialize;
 use crate::config::Config;
 use crate::convert;
 use crate::line_endings::LineEndings;
+use crate::mem_docs::MemDocs;
 use crate::server::file_id_to_path;
 use crate::server::file_id_to_url;
 
@@ -105,7 +105,7 @@ pub struct Snapshot {
     pub(crate) diagnostics: Arc<DiagnosticCollection>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<Vfs>>,
-    open_document_versions: SharedMap<VfsPath, i32>,
+    pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
     line_ending_map: SharedMap<FileId, LineEndings>,
     pub(crate) projects: Arc<Vec<Project>>,
     ai_completion: Arc<Mutex<AiCompletion>>,
@@ -118,7 +118,7 @@ impl Snapshot {
         analysis: Analysis,
         diagnostics: Arc<DiagnosticCollection>,
         vfs: Arc<RwLock<Vfs>>,
-        open_document_versions: Arc<RwLock<FxHashMap<VfsPath, i32>>>,
+        mem_docs: Arc<RwLock<MemDocs>>,
         line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
         projects: Arc<Vec<Project>>,
         ai_completion: Arc<Mutex<AiCompletion>>,
@@ -130,7 +130,7 @@ impl Snapshot {
             diagnostics,
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs,
-            open_document_versions,
+            mem_docs,
             line_ending_map,
             projects,
             ai_completion,
@@ -156,7 +156,7 @@ impl Snapshot {
 
     pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
         let path = convert::vfs_path(url).ok()?;
-        Some(*self.open_document_versions.read().get(&path)?)
+        self.mem_docs.read().get(&path).map(|v| v.version)
     }
 
     pub(crate) fn line_endings(&self, id: FileId) -> LineEndings {

@@ -196,7 +196,7 @@ pub(crate) fn inlay_hints(
     range_limit: Option<TextRange>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
-    let _p = profile::span("inlay_hints");
+    let _p = tracing::info_span!("inlay_hints").entered();
     let sema = Semantic::new(db);
 
     let mut acc = Vec::new();

@@ -55,7 +55,7 @@ pub fn load_project_at(
     query_config: &BuckQueryConfig,
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
-    let root = AbsPathBuf::assert(root);
+    let root = AbsPathBuf::assert_utf8(root);
     let (elp_config, manifest): (ElpConfig, Option<ProjectManifest>) = match conf.rebar {
         true => (
             ElpConfig::default(),
@@ -153,12 +153,14 @@ fn load_database(
                 n_done, n_total, ..
             } => {
                 pb.set_length(n_total as u64);
-                pb.set_position(n_done as u64);
-                if n_done == n_total {
+                if let Some(n_done) = n_done {
+                    pb.set_position(n_done as u64);
+                }
+                if n_done == Some(n_total) {
                     break;
                 }
             }
-            loader::Message::Loaded { files } => {
+            loader::Message::Loaded { files } | loader::Message::Changed { files } => {
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }
@@ -184,13 +186,15 @@ fn load_database(
     project_apps.app_structure().apply(db);
 
     let changes = vfs.take_changes();
-    for file in changes {
+    for (_file_id, file) in changes {
         if file.exists() {
-            let bytes = vfs.file_contents(file.file_id).to_vec();
-            let (text, line_ending) = Document::vfs_to_salsa(&bytes);
-            db.set_file_text(file.file_id, Arc::from(text));
-            line_ending_map.insert(file.file_id, line_ending);
-            bump_file_revision(file.file_id, db);
+            if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
+                let document = Document::from_bytes(&v);
+                let (text, line_ending) = document.vfs_to_salsa();
+                db.set_file_text(file.file_id, Arc::from(text));
+                line_ending_map.insert(file.file_id, line_ending);
+                bump_file_revision(file.file_id, db);
+            }
         }
     }
 

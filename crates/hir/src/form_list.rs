@@ -61,7 +61,6 @@ use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::Idx;
 use la_arena::IdxRange;
-use profile::Count;
 
 use crate::db::DefDatabase;
 use crate::Diagnostic;
@@ -79,7 +78,6 @@ pub use form_id::FormId;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FormList {
-    _c: Count<Self>,
     data: Box<FormListData>,
     forms: Vec<FormIdx>,
     diagnostics: Vec<Diagnostic>,
@@ -90,7 +88,7 @@ pub struct FormList {
 
 impl FormList {
     pub(crate) fn file_form_list_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<FormList> {
-        let _p = profile::span("file_form_list_query").detail(|| format!("{:?}", file_id));
+        let _p = tracing::info_span!("form_list_query").entered();
         let syntax = db.parse(file_id).tree();
         let ctx = lower::Ctx::new(db, &syntax);
         Arc::new(ctx.lower_forms())
