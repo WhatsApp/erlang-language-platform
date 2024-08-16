@@ -6,7 +6,7 @@ xtask = "run --package xtask --"
 
 [profile.release]
 lto = "thin"
-strip = true
+debug = "line-tables-only"
 
 # Workaround to easily locate workspace root
 # See https://github.com/rust-lang/cargo/issues/3946
