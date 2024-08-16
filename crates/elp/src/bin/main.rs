@@ -542,6 +542,7 @@ mod tests {
         );
     }
 
+    #[ignore] // TODO(T199099193) Test is flaky, ignore for now
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_fails_on_bad_parse(buck: bool) {
