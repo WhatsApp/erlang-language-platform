@@ -7,10 +7,10 @@ sidebar_position: 6
 ![screenshot](/img/helix.png)
 
 The ELP project can be used as a [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/)
-in Helix with it's native LSP support.
+in Helix via its native LSP support.
 
-To configure the LSP server, navigate to a [language configuration file](https://docs.helix-editor.com/languages.html)
-(i.e. `~/.config/helix/languages.toml`) and add it's configuration to the Erlang language.
+To configure it, simply add or modify the Erlang [language-specific settings](https://docs.helix-editor.com/languages.html)
+via your `~/.config/helix/languages.toml` file or equivalent, as follows:
 
 ```
 [language-server.elp]
