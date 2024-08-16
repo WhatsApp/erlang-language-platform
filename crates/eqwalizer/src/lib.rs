@@ -259,7 +259,7 @@ impl Eqwalizer {
 
         match do_typecheck(cmd, db, project_id) {
             Ok(diags) => diags,
-            Err(err) => EqwalizerDiagnostics::Error(format!("{}", err)),
+            Err(err) => EqwalizerDiagnostics::Error(format!("{:?}", err)),
         }
     }
 }
