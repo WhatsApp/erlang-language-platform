@@ -91,6 +91,10 @@ impl BuckConfig {
         static BUCK_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
         let guard = BUCK_GLOBAL_LOCK.lock();
         let mut cmd = Command::new("buck2");
+        // buck2 doesn't handle the RUST_BACKTRACE option well and can become extremely
+        // slow. Until that is fixed ensure the option is not propagated to buck2.
+        cmd.env_remove("RUST_BACKTRACE")
+            .env_remove("RUST_LIB_BACKTRACE");
         cmd.arg("--isolation-dir");
         cmd.arg("lsp");
         cmd.current_dir(self.buck_root());
