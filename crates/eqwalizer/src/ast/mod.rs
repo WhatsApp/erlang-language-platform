@@ -31,6 +31,7 @@ pub mod convert;
 pub mod convert_types;
 pub mod db;
 pub mod expand;
+pub mod preprocess;
 pub mod stub;
 pub mod subst;
 pub mod trans_valid;
@@ -205,7 +206,8 @@ pub fn from_bytes(bytes: &Vec<u8>) -> Result<AST, Error> {
     if let Term::Tuple(res) = term {
         if let [Term::Atom(ok), forms, _] = &res.elements[..] {
             if ok.name == "ok" {
-                return Ok(convert::convert_forms(forms, false, false)?);
+                let converted_forms = convert::convert_forms(forms, false, false)?;
+                return Ok(preprocess::preprocess(converted_forms));
             }
         }
     }
