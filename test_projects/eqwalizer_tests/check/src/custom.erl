@@ -2456,3 +2456,45 @@ maps_fold_no_merge(M1, M2, B) ->
         #{}
     ),
     Res.
+
+-spec lists_partition_rid
+    (L :: [atom() | number()])
+    -> {[atom()], [number()]}.
+lists_partition_rid(L) ->
+    lists:partition(fun is_atom/1, L).
+
+-spec lists_partition_rid_neg
+    (L :: [atom() | number()])
+    -> {[atom()], [number()]}.
+lists_partition_rid_neg(L) ->
+    lists:partition(fun is_number/1, L).
+
+-spec lists_partition_pred
+    (L :: [{term(), atom() | number()}])
+    -> {[{term(), atom()}], [{term(), number()}]}.
+lists_partition_pred(L) ->
+    lists:partition(fun({_Term, V}) -> is_atom(V) end, L).
+
+-spec lists_partition_pred_neg
+    (L :: [{term(), atom() | number()}])
+    -> {[{term(), atom()}], [{term(), number()}]}.
+lists_partition_pred_neg(L) ->
+    lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+
+-spec lists_partition_no_match
+    (L :: [atom() | number()])
+    -> {[none()], [atom() | number()]}.
+lists_partition_no_match(L) ->
+    lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+
+-spec lists_partition_eq
+    (L :: [{atom(), term()}])
+    -> {[{a, term()}], [{atom(), term()}]}.
+lists_partition_eq(L) ->
+    lists:partition(fun({A, _Term}) -> A =:= a end, L).
+
+-spec lists_partition_result
+    (L :: [{ok, atom()} | {error, term()}])
+    -> {[{ok, atom()}], [{error, term()}]}.
+lists_partition_result(L) ->
+    lists:partition(fun({ok, _}) -> true; (_) -> false end, L).

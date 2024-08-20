@@ -2219,4 +2219,160 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'something' is not compatible with 'iodata' | 'list' | 'binary'
 
-156 ERRORS
+error: incompatible_types
+     ┌─ check/src/custom.erl:2464:5
+     │
+2464 │     lists:partition(fun is_atom/1, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(erlang:is_atom/1, L).
+Expression has type:   {[atom() | number()], [atom() | number()]}
+Context expected type: {[atom()], [number()]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[atom() | number()], [atom() | number()]} is not compatible with {[atom()], [number()]}
+  because
+  [atom() | number()] is not compatible with [atom()]
+  because
+  atom() | number() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2470:5
+     │
+2470 │     lists:partition(fun is_number/1, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(erlang:is_number/1, L).
+Expression has type:   {[atom() | number()], [atom() | number()]}
+Context expected type: {[atom()], [number()]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[atom() | number()], [atom() | number()]} is not compatible with {[atom()], [number()]}
+  because
+  [atom() | number()] is not compatible with [atom()]
+  because
+  atom() | number() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2476:5
+     │
+2476 │     lists:partition(fun({_Term, V}) -> is_atom(V) end, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(fun, L).
+Expression has type:   {[{term(), atom() | number()}], [{term(), atom() | number()}]}
+Context expected type: {[{term(), atom()}], [{term(), number()}]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[{term(), atom() | number()}], [{term(), atom() | number()}]} is not compatible with {[{term(), atom()}], [{term(), number()}]}
+  because
+  [{term(), atom() | number()}] is not compatible with [{term(), atom()}]
+  because
+  at tuple index 2:
+  {term(), atom() | number()} is not compatible with {term(), atom()}
+  because
+  atom() | number() is not compatible with atom()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2482:5
+     │
+2482 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(fun, L).
+Expression has type:   {[{term(), atom() | number()}], [{term(), atom() | number()}]}
+Context expected type: {[{term(), atom()}], [{term(), number()}]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[{term(), atom() | number()}], [{term(), atom() | number()}]} is not compatible with {[{term(), atom()}], [{term(), number()}]}
+  because
+  [{term(), atom() | number()}] is not compatible with [{term(), atom()}]
+  because
+  at tuple index 2:
+  {term(), atom() | number()} is not compatible with {term(), atom()}
+  because
+  atom() | number() is not compatible with atom()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2488:5
+     │
+2488 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(fun, L).
+Expression has type:   {[atom() | number()], [atom() | number()]}
+Context expected type: {[none()], [atom() | number()]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[atom() | number()], [atom() | number()]} is not compatible with {[none()], [atom() | number()]}
+  because
+  [atom() | number()] is not compatible with [none()]
+  because
+  atom() | number() is not compatible with none()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2494:5
+     │
+2494 │     lists:partition(fun({A, _Term}) -> A =:= a end, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(fun, L).
+Expression has type:   {[{atom(), term()}], [{atom(), term()}]}
+Context expected type: {[{'a', term()}], [{atom(), term()}]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[{atom(), term()}], [{atom(), term()}]} is not compatible with {[{'a', term()}], [{atom(), term()}]}
+  because
+  [{atom(), term()}] is not compatible with [{'a', term()}]
+  because
+  at tuple index 1:
+  {atom(), term()} is not compatible with {'a', term()}
+  because
+  atom() is not compatible with 'a'
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2500:5
+     │
+2500 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:partition(fun, L).
+Expression has type:   {[{'ok', atom()} | {'error', term()}], [{'ok', atom()} | {'error', term()}]}
+Context expected type: {[{'ok', atom()}], [{'error', term()}]}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  at tuple index 1:
+  {[{'ok', atom()} | {'error', term()}], [{'ok', atom()} | {'error', term()}]} is not compatible with {[{'ok', atom()}], [{'error', term()}]}
+  because
+  [{'ok', atom()} | {'error', term()}] is not compatible with [{'ok', atom()}]
+  because
+  {'ok', atom()} | {'error', term()} is not compatible with {'ok', atom()}
+  because
+  at tuple index 1:
+  {'error', term()} is not compatible with {'ok', atom()}
+
+163 ERRORS
