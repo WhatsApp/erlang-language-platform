@@ -39,6 +39,12 @@ pub enum Test {
     TestBinaryLit(TestBinaryLit),
 }
 
+impl Test {
+    pub fn test_var(location: eqwalizer::Pos, v: SmolStr) -> Self {
+        Test::TestVar(TestVar { location, v })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestVar {
     pub location: eqwalizer::Pos,

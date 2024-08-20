@@ -2225,7 +2225,7 @@ error: incompatible_types
 2464 │     lists:partition(fun is_atom/1, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
-     │     lists:partition(erlang:is_atom/1, L).
+     │     lists:partition(fun, L).
 Expression has type:   {[atom() | number()], [atom() | number()]}
 Context expected type: {[atom()], [number()]}
 
@@ -2247,7 +2247,7 @@ error: incompatible_types
 2470 │     lists:partition(fun is_number/1, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
-     │     lists:partition(erlang:is_number/1, L).
+     │     lists:partition(fun, L).
 Expression has type:   {[atom() | number()], [atom() | number()]}
 Context expected type: {[atom()], [number()]}
 

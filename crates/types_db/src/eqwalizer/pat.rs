@@ -36,6 +36,12 @@ pub enum Pat {
     PatMap(PatMap),
 }
 
+impl Pat {
+    pub fn pat_var(location: eqwalizer::Pos, n: SmolStr) -> Self {
+        Pat::PatVar(PatVar { location, n })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatWild {
     pub location: eqwalizer::Pos,

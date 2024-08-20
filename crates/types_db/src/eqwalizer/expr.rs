@@ -15,6 +15,7 @@ use crate::eqwalizer;
 use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::guard;
 use crate::eqwalizer::pat;
+use crate::eqwalizer::Pos;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -60,32 +61,48 @@ pub enum Expr {
     MaybeMatch(MaybeMatch),
 }
 
+impl Expr {
+    pub fn atom_true(location: Pos) -> Self {
+        Expr::AtomLit(AtomLit {
+            location,
+            s: SmolStr::new_inline("true"),
+        })
+    }
+
+    pub fn atom_false(location: Pos) -> Self {
+        Expr::AtomLit(AtomLit {
+            location,
+            s: SmolStr::new_inline("false"),
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Var {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLit {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub s: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IntLit {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub value: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FloatLit {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub body: Body,
 }
 
@@ -97,39 +114,39 @@ pub struct Body {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Match {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub pat: pat::Pat,
     pub expr: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tuple {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub elems: Vec<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct StringLit {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub empty: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NilLit {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Cons {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub h: Box<Expr>,
     pub t: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Case {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub expr: Box<Expr>,
     #[serde(default)]
     pub clauses: Vec<Clause>,
@@ -137,14 +154,14 @@ pub struct Case {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct If {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub clauses: Vec<Clause>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalCall {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
     pub args: Vec<Expr>,
@@ -152,7 +169,7 @@ pub struct LocalCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DynCall {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub f: Box<Expr>,
     #[serde(default)]
     pub args: Vec<Expr>,
@@ -160,7 +177,7 @@ pub struct DynCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteCall {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub id: eqwalizer::RemoteId,
     #[serde(default)]
     pub args: Vec<Expr>,
@@ -168,26 +185,26 @@ pub struct RemoteCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LocalFun {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub id: eqwalizer::Id,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteFun {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub id: eqwalizer::RemoteId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DynRemoteFun {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub module: Box<Expr>,
     pub name: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DynRemoteFunArity {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub module: Box<Expr>,
     pub name: Box<Expr>,
     pub arity: Box<Expr>,
@@ -195,7 +212,7 @@ pub struct DynRemoteFunArity {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Lambda {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub clauses: Vec<Clause>,
     pub name: Option<SmolStr>,
@@ -203,14 +220,14 @@ pub struct Lambda {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnOp {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub op: SmolStr,
     pub arg: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BinOp {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub op: SmolStr,
     pub arg_1: Box<Expr>,
     pub arg_2: Box<Expr>,
@@ -218,7 +235,7 @@ pub struct BinOp {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LComprehension {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub template: Box<Expr>,
     #[serde(default)]
     pub qualifiers: Vec<Qualifier>,
@@ -226,7 +243,7 @@ pub struct LComprehension {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BComprehension {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub template: Box<Expr>,
     #[serde(default)]
     pub qualifiers: Vec<Qualifier>,
@@ -234,7 +251,7 @@ pub struct BComprehension {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MComprehension {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub k_template: Box<Expr>,
     pub v_template: Box<Expr>,
     #[serde(default)]
@@ -243,20 +260,20 @@ pub struct MComprehension {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Binary {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub elems: Vec<BinaryElem>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Catch {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub expr: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TryCatchExpr {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub try_body: Body,
     #[serde(default)]
     pub catch_clauses: Vec<Clause>,
@@ -265,7 +282,7 @@ pub struct TryCatchExpr {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TryOfCatchExpr {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub try_body: Body,
     #[serde(default)]
     pub try_clauses: Vec<Clause>,
@@ -276,14 +293,14 @@ pub struct TryOfCatchExpr {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Receive {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub clauses: Vec<Clause>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReceiveWithTimeout {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub clauses: Vec<Clause>,
     pub timeout: Box<Expr>,
@@ -292,7 +309,7 @@ pub struct ReceiveWithTimeout {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordCreate {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<RecordField>,
@@ -300,7 +317,7 @@ pub struct RecordCreate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordUpdate {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub expr: Box<Expr>,
     pub rec_name: SmolStr,
     #[serde(default)]
@@ -309,7 +326,7 @@ pub struct RecordUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordSelect {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub expr: Box<Expr>,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
@@ -317,21 +334,21 @@ pub struct RecordSelect {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordIndex {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MapCreate {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub kvs: Vec<(Expr, Expr)>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MapUpdate {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub map: Box<Expr>,
     #[serde(default)]
     pub kvs: Vec<(Expr, Expr)>,
@@ -339,7 +356,7 @@ pub struct MapUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Clause {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     #[serde(default)]
     pub pats: Vec<pat::Pat>,
     #[serde(default)]
@@ -349,7 +366,7 @@ pub struct Clause {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BinaryElem {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub expr: Expr,
     pub size: Option<Expr>,
     pub specifier: binary_specifier::Specifier,
@@ -406,13 +423,13 @@ pub struct Filter {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Maybe {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub body: Body,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MaybeElse {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub body: Body,
     #[serde(default)]
     pub else_clauses: Vec<Clause>,
@@ -420,7 +437,7 @@ pub struct MaybeElse {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MaybeMatch {
-    pub location: eqwalizer::Pos,
+    pub location: Pos,
     pub pat: pat::Pat,
     pub arg: Box<Expr>,
 }
