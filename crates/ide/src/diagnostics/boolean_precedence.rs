@@ -18,6 +18,7 @@ use std::fmt;
 use std::fmt::Display;
 
 use elp_ide_assists::helpers::expr_needs_parens;
+use elp_ide_assists::helpers::include_preceding_whitespace;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::DiagnosticCode;
@@ -67,7 +68,13 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
         .fold_function(Strategy::VisibleMacros, (), &mut |_acc, clause_id, ctx| {
             let op = match &ctx.item {
                 AnyExpr::Expr(Expr::BinaryOp { lhs, rhs, op }) => match op {
-                    BinaryOp::LogicOp(LogicOp::And { lazy: false }) => Some((Op::And, *lhs, *rhs)),
+                    BinaryOp::LogicOp(LogicOp::And { lazy: false }) => {
+                        if ctx.in_guard() {
+                            Some((Op::AndInGuard, *lhs, *rhs))
+                        } else {
+                            Some((Op::And, *lhs, *rhs))
+                        }
+                    }
                     BinaryOp::LogicOp(LogicOp::Or { lazy: false }) => Some((Op::Or, *lhs, *rhs)),
                     _ => None,
                 },
@@ -128,7 +135,9 @@ fn report(
     {
         let (_op, token) = binop.op()?;
         let range = token.text_range();
-        let mut d = make_diagnostic(file_id, range, op).with_ignore_fix(sema, def_fb.file_id());
+        let preceding_ws_range = include_preceding_whitespace(&token);
+        let mut d = make_diagnostic(file_id, range, preceding_ws_range, op)
+            .with_ignore_fix(sema, def_fb.file_id());
         if lhs_complex {
             add_parens_fix(file_id, &range, &lhs_expr, "LHS", &mut d);
         }
@@ -171,6 +180,7 @@ fn add_parens_fix(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Op {
     And,
+    AndInGuard,
     Or,
 }
 
@@ -178,6 +188,7 @@ impl Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Op::And => write!(f, "and"),
+            Op::AndInGuard => write!(f, "and"),
             Op::Or => write!(f, "or"),
         }
     }
@@ -187,19 +198,37 @@ impl Op {
     fn preferred(&self) -> &str {
         match self {
             Op::And => "andalso",
+            Op::AndInGuard => ",",
             Op::Or => "orelse",
+        }
+    }
+
+    /// Return either the bare token range, or the one including
+    /// preceding whitespace, depending on what the preferred replacement is.
+    fn range(&self, range: TextRange, preceding_ws_range: TextRange) -> TextRange {
+        match self {
+            Op::AndInGuard => preceding_ws_range,
+            _ => range,
         }
     }
 }
 
-fn make_diagnostic(file_id: FileId, range: TextRange, op: Op) -> Diagnostic {
+fn make_diagnostic(
+    file_id: FileId,
+    range: TextRange,
+    preceding_ws_range: TextRange,
+    op: Op,
+) -> Diagnostic {
     let message = format!(
         "Consider using the short-circuit expression '{}' instead of '{}'.\nOr add parentheses to avoid potential ambiguity.",
         op.preferred(),
         op,
     );
     let assist_message = format!("Replace '{}' with '{}'", op, op.preferred());
-    let edit = TextEdit::replace(range, op.preferred().to_string());
+    let edit = TextEdit::replace(
+        op.range(range, preceding_ws_range),
+        op.preferred().to_string(),
+    );
     Diagnostic::new(DiagnosticCode::BooleanPrecedence, message, range)
         .with_severity(Severity::Warning)
         .with_fixes(Some(vec![fix(
@@ -314,6 +343,25 @@ mod tests {
                     F.
 
                   my_is_integer(_X) -> true."#]],
+        )
+    }
+
+    #[test]
+    fn replace_and_in_guard() {
+        check_specific_fix(
+            "Replace 'and' with ','",
+            r#"
+            -module(main).
+            foo(X) when X < 10 a~nd X > 0 ->
+               X + 1.
+            %%                 ^^^ 💡 warning: Consider using the short-circuit expression ',' instead of 'and'.
+            %%                   | Or add parentheses to avoid potential ambiguity.
+            "#,
+            expect![[r#"
+                -module(main).
+                foo(X) when X < 10, X > 0 ->
+                   X + 1.
+            "#]],
         )
     }
 

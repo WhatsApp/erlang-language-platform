@@ -17,15 +17,18 @@ use elp_ide_db::ReferenceClass;
 use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
+use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
+use elp_syntax::Direction;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
+use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use fxhash::FxHashSet;
 use hir::known;
@@ -153,6 +156,16 @@ pub(crate) fn skip_trailing_newline(node: &SyntaxNode) -> Option<TextRange> {
         }
     }
     None
+}
+
+/// Extend the token `TextRange` to include preceding whitespace
+pub fn include_preceding_whitespace(token: &SyntaxToken) -> TextRange {
+    if let Some(prev) = token.prev_token() {
+        if let Some(prev) = algo::skip_whitespace_token(prev, Direction::Prev) {
+            return TextRange::new(prev.text_range().end(), token.text_range().end());
+        }
+    }
+    token.text_range()
 }
 
 pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRange, bool)> {
