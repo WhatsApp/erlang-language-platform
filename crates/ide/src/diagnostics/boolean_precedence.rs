@@ -24,6 +24,7 @@ use elp_ide_db::DiagnosticCode;
 use elp_syntax::ast;
 use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::LogicOp;
+use elp_syntax::AstNode;
 use hir::fold::AnyCallBackCtx;
 use hir::AnyExpr;
 use hir::ClauseId;
@@ -115,8 +116,8 @@ fn report(
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<()> {
     let (op, lhs, rhs) = binop;
-    let (_lhs_expr, lhs_complex) = is_complex(sema, def_fb, file_id, clause_id, lhs)?;
-    let (_rhs_expr, rhs_complex) = is_complex(sema, def_fb, file_id, clause_id, rhs)?;
+    let (lhs_expr, lhs_complex) = is_complex(sema, def_fb, file_id, clause_id, lhs)?;
+    let (rhs_expr, rhs_complex) = is_complex(sema, def_fb, file_id, clause_id, rhs)?;
     if !lhs_complex && !rhs_complex {
         return None;
     }
@@ -127,10 +128,44 @@ fn report(
     {
         let (_op, token) = binop.op()?;
         let range = token.text_range();
-        let d = make_diagnostic(file_id, range, op).with_ignore_fix(sema, def_fb.file_id());
+        let mut d = make_diagnostic(file_id, range, op).with_ignore_fix(sema, def_fb.file_id());
+        if lhs_complex {
+            add_parens_fix(file_id, &range, &lhs_expr, "LHS", &mut d);
+        }
+        if rhs_complex {
+            add_parens_fix(file_id, &range, &rhs_expr, "RHS", &mut d);
+        }
         diagnostics.push(d)
     }
     Some(())
+}
+
+fn add_parens_fix(
+    file_id: FileId,
+    range: &TextRange,
+    expr: &ast::Expr,
+    where_str: &str,
+    diag: &mut Diagnostic,
+) {
+    // We have a complex expression. Add parens, if the parent does not already have them.
+    if let Some(parent) = expr.syntax().parent() {
+        if let Some(ast::Expr::ExprMax(ast::ExprMax::ParenExpr(_))) = ast::Expr::cast(parent) {
+            // Already has parens, do nothing.
+        } else {
+            let expr_range = expr.syntax().text_range();
+            let assist_message = format!("Add parens to {}", where_str);
+            let mut builder = TextEdit::builder();
+            builder.insert(expr_range.start(), "(".to_string());
+            builder.insert(expr_range.end(), ")".to_string());
+            let edit = builder.finish();
+            diag.add_fix(fix(
+                "replace_boolean_operator_add_parens",
+                &assist_message,
+                SourceChange::from_text_edit(file_id, edit.clone()),
+                range.clone(),
+            ));
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -276,6 +311,56 @@ mod tests {
                   foo() ->
                     F = fun(X) ->
                       my_is_integer(X) andalso X > 0 end,
+                    F.
+
+                  my_is_integer(_X) -> true."#]],
+        )
+    }
+
+    #[test]
+    fn add_parens_and_rhs() {
+        check_specific_fix(
+            "Add parens to RHS",
+            r#"
+            -module(main).
+            foo() ->
+              F = fun(X) ->
+                my_is_integer(X) a~nd X > 0 end,
+            %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'andalso' instead of 'and'.
+            %%                     | Or add parentheses to avoid potential ambiguity.
+              F.
+
+            my_is_integer(_X) -> true."#,
+            expect![[r#"
+                  -module(main).
+                  foo() ->
+                    F = fun(X) ->
+                      my_is_integer(X) and (X > 0) end,
+                    F.
+
+                  my_is_integer(_X) -> true."#]],
+        )
+    }
+
+    #[test]
+    fn add_parens_or_lhs() {
+        check_specific_fix(
+            "Add parens to LHS",
+            r#"
+            -module(main).
+            foo() ->
+              F = fun(X) ->
+                X < 0 o~r X > 10 end,
+            %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+            %%                     | Or add parentheses to avoid potential ambiguity.
+              F.
+
+            my_is_integer(_X) -> true."#,
+            expect![[r#"
+                  -module(main).
+                  foo() ->
+                    F = fun(X) ->
+                      (X < 0) or X > 10 end,
                     F.
 
                   my_is_integer(_X) -> true."#]],
