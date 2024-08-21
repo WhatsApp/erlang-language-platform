@@ -15,6 +15,7 @@ use std::fmt::Write as _;
 use std::str;
 
 use crate::db::InternDatabase;
+use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::AnyAttribute;
 use crate::AttributeBody;
@@ -1015,7 +1016,7 @@ impl<'a> Printer<'a> {
         });
     }
 
-    fn print_guards(&mut self, guards: &[Vec<ExprId>]) {
+    fn print_guards(&mut self, guards: &Guards) {
         if !guards.is_empty() {
             for guard_clause in guards {
                 self.print_labelled("guard", false, &mut |this| {

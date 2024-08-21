@@ -31,6 +31,7 @@ use super::InFileAstPtr;
 use super::TopLevelMacro;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
+use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::StringVariant;
 use crate::known;
@@ -1617,7 +1618,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_guards(&mut self, guards: Option<ast::Guard>) -> Vec<Vec<ExprId>> {
+    fn lower_guards(&mut self, guards: Option<ast::Guard>) -> Guards {
         guards
             .iter()
             .flat_map(|guard| guard.clauses())

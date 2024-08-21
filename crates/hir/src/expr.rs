@@ -379,23 +379,25 @@ impl AstClauseId {
     }
 }
 
+pub type Guards = Vec<Vec<ExprId>>;
+
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct Clause {
     pub pats: Vec<PatId>,
-    pub guards: Vec<Vec<ExprId>>,
+    pub guards: Guards,
     pub exprs: Vec<ExprId>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CRClause {
     pub pat: PatId,
-    pub guards: Vec<Vec<ExprId>>,
+    pub guards: Guards,
     pub exprs: Vec<ExprId>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IfClause {
-    pub guards: Vec<Vec<ExprId>>,
+    pub guards: Guards,
     pub exprs: Vec<ExprId>,
 }
 
@@ -404,7 +406,7 @@ pub struct CatchClause {
     pub class: Option<PatId>,
     pub reason: PatId,
     pub stack: Option<PatId>,
-    pub guards: Vec<Vec<ExprId>>,
+    pub guards: Guards,
     pub exprs: Vec<ExprId>,
 }
 

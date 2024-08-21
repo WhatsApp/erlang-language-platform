@@ -13,6 +13,7 @@ use std::str;
 
 use super::SpecOrCallback;
 use crate::db::InternDatabase;
+use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::StringVariant;
 use crate::AnyAttribute;
@@ -304,7 +305,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_guards(&mut self, guards: &[Vec<ExprId>], when_nested: bool) -> fmt::Result {
+    fn print_guards(&mut self, guards: &Guards, when_nested: bool) -> fmt::Result {
         if !guards.is_empty() {
             if when_nested {
                 self.indent_level += 1;
