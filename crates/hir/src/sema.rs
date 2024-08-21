@@ -47,8 +47,10 @@ use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
+use crate::fold::Constructor;
 use crate::fold::Fold;
 use crate::fold::FoldCtx;
+use crate::fold::ParentId;
 use crate::fold::Strategy;
 pub use crate::intern::InternDatabase;
 pub use crate::intern::InternDatabaseStorage;
@@ -1032,10 +1034,11 @@ fn fold_function_clause_body<'a, T>(
             let initial = function_clause_body.clause.guards.iter().flatten().fold(
                 initial,
                 |acc_inner, expr_id| {
-                    FoldCtx::fold_expr(
+                    FoldCtx::fold_expr_with_parents(
                         strategy,
                         &function_clause_body.body,
                         *expr_id,
+                        vec![ParentId::Constructor(Constructor::Guard)],
                         acc_inner,
                         callback,
                     )

@@ -352,6 +352,16 @@ impl<'a> AnyCallBackCtx<'a> {
             } => None,
         }
     }
+
+    pub fn in_guard(&self) -> bool {
+        self.parents.iter().any(|parent_idx| {
+            if let ParentId::Constructor(Constructor::Guard) = parent_idx {
+                true
+            } else {
+                false
+            }
+        })
+    }
 }
 
 pub type AnyCallBack<'a, T> = &'a mut dyn FnMut(T, AnyCallBackCtx) -> T;
@@ -399,6 +409,23 @@ impl<'a, T> FoldCtx<'a, T> {
         }
     }
 
+    fn new_with_parents(
+        strategy: Strategy,
+        body: &'a FoldBody<'a>,
+        body_origin: BodyOrigin,
+        parents: Vec<ParentId>,
+        callback: AnyCallBack<'a, T>,
+    ) -> FoldCtx<'a, T> {
+        FoldCtx {
+            body_origin,
+            body,
+            strategy,
+            macro_stack: Vec::default(),
+            parents,
+            callback,
+        }
+    }
+
     pub fn fold_expr(
         strategy: Strategy,
         body: &'a Body,
@@ -408,6 +435,24 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
             .do_fold_expr(expr_id, initial)
+    }
+
+    pub fn fold_expr_with_parents(
+        strategy: Strategy,
+        body: &'a Body,
+        expr_id: ExprId,
+        parents: Vec<ParentId>,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx::new_with_parents(
+            strategy,
+            &fold_body(strategy, body),
+            body.origin,
+            parents,
+            callback,
+        )
+        .do_fold_expr(expr_id, initial)
     }
 
     pub fn fold_exprs(
@@ -628,11 +673,13 @@ impl<'a, T> FoldCtx<'a, T> {
                 .iter()
                 .fold(acc, |acc, expr_id| self.do_fold_expr(*expr_id, acc)),
             crate::Expr::If { clauses } => clauses.iter().fold(acc, |acc, clause| {
+                self.parents.push(ParentId::Constructor(Constructor::Guard));
                 let r = clause.guards.iter().fold(acc, |acc, exprs| {
                     exprs
                         .iter()
                         .fold(acc, |acc, expr| self.do_fold_expr(*expr, acc))
                 });
+                self.parents.pop();
                 clause
                     .exprs
                     .iter()
@@ -670,10 +717,12 @@ impl<'a, T> FoldCtx<'a, T> {
                         r = self.do_fold_pat(pat_id, r);
                     }
 
+                    self.parents.push(ParentId::Constructor(Constructor::Guard));
                     r = clause
                         .guards
                         .iter()
                         .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
+                    self.parents.pop();
                     clause
                         .exprs
                         .iter()
@@ -704,9 +753,11 @@ impl<'a, T> FoldCtx<'a, T> {
                     let mut r = pats
                         .iter()
                         .fold(acc, |acc, pat_id| self.do_fold_pat(*pat_id, acc));
+                    self.parents.push(ParentId::Constructor(Constructor::Guard));
                     r = guards
                         .iter()
                         .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
+                    self.parents.pop();
                     self.do_fold_exprs(exprs, r)
                 },
             ),
@@ -805,11 +856,14 @@ impl<'a, T> FoldCtx<'a, T> {
     fn fold_cr_clause(&mut self, clauses: &[CRClause], initial: T) -> T {
         clauses.iter().fold(initial, |acc, clause| {
             let mut r = self.do_fold_pat(clause.pat, acc);
+
+            self.parents.push(ParentId::Constructor(Constructor::Guard));
             r = clause.guards.iter().fold(r, |acc, exprs| {
                 exprs
                     .iter()
                     .fold(acc, |acc, expr| self.do_fold_expr(*expr, acc))
             });
+            self.parents.pop();
             clause
                 .exprs
                 .iter()
