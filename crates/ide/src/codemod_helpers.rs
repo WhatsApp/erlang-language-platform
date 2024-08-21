@@ -16,6 +16,7 @@ use elp_syntax::TextRange;
 use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use hir::db::InternDatabase;
+use hir::fold::ParentId;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::Body;
@@ -23,7 +24,6 @@ use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
-use hir::HirIdx;
 use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
@@ -438,7 +438,7 @@ impl TryFrom<&str> for MFA {
 pub struct CheckCallCtx<'a, T> {
     #[allow(unused)]
     pub mfa: &'a FunctionMatch,
-    pub parents: &'a Vec<HirIdx>,
+    pub parents: &'a Vec<ParentId>,
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
     pub args: &'a [ExprId],

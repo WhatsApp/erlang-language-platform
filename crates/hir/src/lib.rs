@@ -203,7 +203,7 @@ impl<T> InFile<Option<T>> {
 
 /// HIR index.  Uniquely identifies any specific HIR item in a file
 /// file. Use globally as `InFile<HirIdx>`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct HirIdx {
     pub body_origin: BodyOrigin,
     pub idx: AnyExprId,

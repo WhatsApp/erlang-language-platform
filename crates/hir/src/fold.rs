@@ -295,10 +295,21 @@ pub enum On {
     Exit,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Constructor {
+    Guard,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ParentId {
+    HirIdx(HirIdx),
+    Constructor(Constructor),
+}
+
 #[derive(Debug)]
 pub struct AnyCallBackCtx<'a> {
     pub in_macro: Option<HirIdx>,
-    pub parents: &'a Vec<HirIdx>,
+    pub parents: &'a Vec<ParentId>,
     pub item_id: AnyExprId,
     pub item: AnyExpr,
     pub body_origin: BodyOrigin,
@@ -350,7 +361,7 @@ pub struct FoldCtx<'a, T> {
     body: &'a FoldBody<'a>,
     strategy: Strategy,
     macro_stack: Vec<HirIdx>,
-    parents: Vec<HirIdx>,
+    parents: Vec<ParentId>,
     callback: AnyCallBack<'a, T>,
 }
 
@@ -504,10 +515,10 @@ impl<'a, T> FoldCtx<'a, T> {
     // -----------------------------------------------------------------
 
     fn do_fold_expr(&mut self, expr_id: ExprId, initial: T) -> T {
-        self.parents.push(HirIdx {
+        self.parents.push(ParentId::HirIdx(HirIdx {
             body_origin: self.body_origin,
             idx: AnyExprId::Expr(expr_id),
-        });
+        }));
         let expr = &self.body[expr_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -718,10 +729,10 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     fn do_fold_pat(&mut self, pat_id: PatId, initial: T) -> T {
-        self.parents.push(HirIdx {
+        self.parents.push(ParentId::HirIdx(HirIdx {
             body_origin: self.body_origin,
             idx: AnyExprId::Pat(pat_id),
-        });
+        }));
         let pat = &self.body[pat_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -829,10 +840,10 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     pub fn do_fold_term(&mut self, term_id: TermId, initial: T) -> T {
-        self.parents.push(HirIdx {
+        self.parents.push(ParentId::HirIdx(HirIdx {
             body_origin: self.body_origin,
             idx: AnyExprId::Term(term_id),
-        });
+        }));
         let term = &self.body[term_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -884,10 +895,10 @@ impl<'a, T> FoldCtx<'a, T> {
     }
 
     pub fn do_fold_type_expr(&mut self, type_expr_id: TypeExprId, initial: T) -> T {
-        self.parents.push(HirIdx {
+        self.parents.push(ParentId::HirIdx(HirIdx {
             body_origin: self.body_origin,
             idx: AnyExprId::TypeExpr(type_expr_id),
-        });
+        }));
         let type_expr = &self.body[type_expr_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -1040,6 +1051,7 @@ mod tests {
     use crate::db::InternDatabase;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
+    use crate::fold::ParentId;
     use crate::fold::Strategy;
     use crate::form_list::Form;
     use crate::test_db::TestDB;
@@ -2024,12 +2036,15 @@ bar() ->
                         let (body, _) = sema
                             .get_body_and_map(file_id, ctx.form_id().unwrap())
                             .unwrap();
-                        ctx.parents.iter().any(|hir_idx| match hir_idx.idx {
-                            AnyExprId::Expr(idx) => match body[idx] {
-                                Expr::Closure { .. } => true,
+                        ctx.parents.iter().any(|parent_id| match parent_id {
+                            ParentId::HirIdx(hir_idx) => match hir_idx.idx {
+                                AnyExprId::Expr(idx) => match body[idx] {
+                                    Expr::Closure { .. } => true,
+                                    _ => false,
+                                },
                                 _ => false,
                             },
-                            _ => false,
+                            ParentId::Constructor(_) => false,
                         })
                     } else {
                         acc

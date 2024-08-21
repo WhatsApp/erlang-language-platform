@@ -9,11 +9,11 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use hir::fold::ParentId;
 use hir::known;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::FunctionDef;
-use hir::HirIdx;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
@@ -45,13 +45,16 @@ pub fn missing_no_link_in_init_per_suite(
         });
 }
 
-fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &[HirIdx]) -> bool {
-    parents.iter().any(|hir_idx| match hir_idx.idx {
-        AnyExprId::Expr(idx) => match def_fb[idx] {
-            Expr::Closure { .. } => true,
+fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &[ParentId]) -> bool {
+    parents.iter().any(|parent_id| match parent_id {
+        ParentId::HirIdx(hir_idx) => match hir_idx.idx {
+            AnyExprId::Expr(idx) => match def_fb[idx] {
+                Expr::Closure { .. } => true,
+                _ => false,
+            },
             _ => false,
         },
-        _ => false,
+        ParentId::Constructor(_) => false,
     })
 }
 
