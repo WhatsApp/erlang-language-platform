@@ -78,6 +78,7 @@ use crate::SourceDatabase;
 
 mod application_env;
 mod atoms_exhaustion;
+mod boolean_precedence;
 mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
@@ -766,6 +767,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &missing_separator::DESCRIPTOR,
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
+        &boolean_precedence::DESCRIPTOR,
     ]
 }
 

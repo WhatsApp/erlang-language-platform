@@ -55,6 +55,7 @@ pub enum DiagnosticCode {
     MeckMissingNoLinkInInitPerSuite,
     AtomsExhaustion,
     SlowFunction,
+    BooleanPrecedence,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -122,6 +123,7 @@ impl DiagnosticCode {
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => "W0022".to_string(),
             DiagnosticCode::AtomsExhaustion => "W0023".to_string(),
             DiagnosticCode::SlowFunction => "W0024".to_string(),
+            DiagnosticCode::BooleanPrecedence => "W0025".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -153,6 +155,7 @@ impl DiagnosticCode {
             }
             DiagnosticCode::AtomsExhaustion => "atoms_exhaustion".to_string(),
             DiagnosticCode::SlowFunction => "slow_function".to_string(),
+            DiagnosticCode::BooleanPrecedence => "boolean_precedence".to_string(),
             DiagnosticCode::MissingCompileWarnMissingSpec => {
                 // Match the name in the original
                 "compile-warn-missing-spec".to_string()
@@ -275,6 +278,7 @@ impl DiagnosticCode {
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
             DiagnosticCode::AtomsExhaustion => false,
             DiagnosticCode::SlowFunction => false,
+            DiagnosticCode::BooleanPrecedence => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,

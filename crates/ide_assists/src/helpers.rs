@@ -156,7 +156,30 @@ pub(crate) fn skip_trailing_newline(node: &SyntaxNode) -> Option<TextRange> {
 }
 
 pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRange, bool)> {
-    let rhs_not_needed = matches!(
+    let rhs_not_needed = !expr_needs_parens(expr);
+
+    let parent = var.syntax().parent()?;
+    let parent_not_needed = match_ast! {
+        match parent {
+            ast::ExprArgs(_) => true,
+            ast::Pipe(_) => true,
+            ast::ClauseBody(_) => true,
+            ast::CatchExpr(_) => true,
+            ast::MatchExpr(_) => true,
+            ast::BlockExpr(_) => true,
+            ast::CrClause(_) => true,
+            _ => false
+        }
+    };
+
+    Some((
+        var.syntax().text_range(),
+        !(rhs_not_needed || parent_not_needed),
+    ))
+}
+
+pub fn expr_needs_parens(expr: &ast::Expr) -> bool {
+    let not_needed = matches!(
         expr,
         ast::Expr::ExprMax(ast::ExprMax::Atom(_))
             | ast::Expr::ExprMax(ast::ExprMax::Binary(_))
@@ -185,25 +208,7 @@ pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRan
             | ast::Expr::RecordIndexExpr(_)
             | ast::Expr::RecordUpdateExpr(_),
     );
-
-    let parent = var.syntax().parent()?;
-    let parent_not_needed = match_ast! {
-        match parent {
-            ast::ExprArgs(_) => true,
-            ast::Pipe(_) => true,
-            ast::ClauseBody(_) => true,
-            ast::CatchExpr(_) => true,
-            ast::MatchExpr(_) => true,
-            ast::BlockExpr(_) => true,
-            ast::CrClause(_) => true,
-            _ => false
-        }
-    };
-
-    Some((
-        var.syntax().text_range(),
-        !(rhs_not_needed || parent_not_needed),
-    ))
+    !not_needed
 }
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {
