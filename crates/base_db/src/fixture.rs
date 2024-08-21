@@ -780,7 +780,7 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+) +💡?.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+| +\|) +💡?.*$").unwrap();
     }
     RE.is_match(line)
 }
@@ -863,6 +863,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
 mod tests {
     use expect_test::expect;
 
+    use super::contains_annotation;
     use super::ChangeFixture;
     use crate::fixture::extract_annotations;
     use crate::fixture::remove_annotations;
@@ -1488,5 +1489,15 @@ meaning_of_life() ->
             ]
         "#]]
         .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn test_contains_annotation() {
+        assert!(contains_annotation("  %% ^^ blah"));
+        assert!(contains_annotation(
+            "  %%                | Rather use 'orelse'."
+        ));
+        assert!(contains_annotation("%%  ^^ 💡 warning: blah"));
+        assert!(!contains_annotation("%%  an ordinary comment"));
     }
 }
