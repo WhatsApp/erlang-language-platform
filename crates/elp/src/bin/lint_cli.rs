@@ -362,6 +362,11 @@ fn filter_diagnostics<'a>(
     diags: &'a [(String, FileId, DiagnosticCollection)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
+    // The initial set of diagnostics is filtered with a `Some` value
+    // for allowed_diagnostics. Thereafter, during the simplification
+    // stage, it is called with `None`.  This means
+    // `Category::SimplificationRule` is always enabled for that
+    // usage.
     Ok(diags
         .to_owned()
         .into_iter()
