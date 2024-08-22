@@ -154,6 +154,9 @@ fn is_eqwalizer_enabled(
     file_id: FileId,
     include_generated: bool,
 ) -> bool {
+    if !otp_supported_by_eqwalizer(db) {
+        return false;
+    }
     if !include_generated && db.is_generated(file_id) {
         return false;
     }
@@ -176,6 +179,12 @@ fn is_eqwalizer_enabled(
     let opt_in = (app_or_global_opt_in && is_src) || db.has_eqwalizer_module_marker(file_id);
     let ignored = db.has_eqwalizer_ignore_marker(file_id);
     opt_in && !ignored
+}
+
+fn otp_supported_by_eqwalizer(db: &dyn EqwalizerDatabase) -> bool {
+    db.otp_version()
+        .and_then(|v| Some(v.as_str() > "25"))
+        .unwrap_or(true)
 }
 
 fn has_eqwalizer_app_marker(db: &dyn EqwalizerDatabase, source_root_id: SourceRootId) -> bool {

@@ -12,6 +12,7 @@ use std::hash::Hash;
 use std::path::Path;
 use std::sync::Arc;
 
+use elp_project_model::otp::Otp;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::EqwalizerConfig;
@@ -194,6 +195,8 @@ impl AppStructure {
             db.set_project_data(project_id, Arc::new(project_data));
         }
         db.set_catch_all_source_root(self.catch_all_source_root);
+
+        db.set_otp_version(Otp::otp_version().ok());
     }
 }
 

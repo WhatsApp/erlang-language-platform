@@ -55,6 +55,28 @@ impl Otp {
         let result = fs::canonicalize(result)?;
         Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
     }
+    pub fn otp_version() -> Result<String> {
+        let _timer = timeit!("otp_version");
+        let erl = ERL.read().unwrap();
+        let output = Command::new(&*erl)
+            .arg("-noshell")
+            .arg("-eval")
+            .arg("io:format('~s', [erlang:system_info(otp_release)])")
+            .arg("-s")
+            .arg("erlang")
+            .arg("halt")
+            .output()?;
+
+        if !output.status.success() {
+            bail!(
+                "Failed to get OTP version, error code: {:?}, stderr: {:?}",
+                output.status.code(),
+                String::from_utf8(output.stderr)
+            );
+        }
+        let val = String::from_utf8(output.stdout)?;
+        Ok(val)
+    }
 
     pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {
         let apps = Self::discover_otp_apps(&path);
