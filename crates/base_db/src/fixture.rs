@@ -19,12 +19,13 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::Otp;
+use elp_project_model::otp::OTP_ERLANG_APP;
+use elp_project_model::otp::OTP_ERLANG_MODULE;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
@@ -41,7 +42,6 @@ use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
-use paths::Utf8PathBuf;
 use regex::Regex;
 use vfs::file_set::FileSet;
 use vfs::FileId;
@@ -400,36 +400,6 @@ impl ChangeFixture {
 
 fn inc_file_id(file_id: &mut FileId) {
     *file_id = FileId::from_raw(file_id.index() + 1);
-}
-
-lazy_static! {
-    pub static ref OTP_ROOT: Utf8PathBuf =
-        Otp::find_otp().expect("tests should always be able to find OTP");
-    pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
-    pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
-    pub static ref OTP_ERLANG_APP: ProjectAppData = ProjectAppData::fixture_app_data(
-        AppName("erts".to_string()),
-        OTP_ERTS_DIR.clone(),
-        Vec::default(),
-        vec![OTP_ERTS_DIR.join("src")],
-        Vec::default(),
-    );
-}
-
-fn get_erts_dir() -> AbsPathBuf {
-    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
-    for app in apps {
-        if app.name == AppName("erts".to_string()) {
-            return app.dir;
-        }
-    }
-    panic!()
-}
-
-fn get_erlang_module() -> (PathBuf, String) {
-    let erlang_path = OTP_ERTS_DIR.join("src/erlang.erl");
-    let contents = std::fs::read_to_string(&erlang_path).unwrap();
-    (erlang_path.into(), contents)
 }
 
 #[derive(Debug, Clone, Default)]

@@ -8,6 +8,7 @@
  */
 
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
 
@@ -19,6 +20,7 @@ use paths::AbsPathBuf;
 use paths::Utf8Path;
 use paths::Utf8PathBuf;
 
+use crate::AppName;
 use crate::ProjectAppData;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +30,37 @@ pub struct Otp {
 
 lazy_static! {
     pub static ref ERL: RwLock<String> = RwLock::new("erl".to_string());
+}
+
+lazy_static! {
+    pub static ref OTP_ROOT: Utf8PathBuf =
+        Otp::find_otp().expect("tests should always be able to find OTP");
+    pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
+    pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
+    pub static ref OTP_ERLANG_APP: ProjectAppData = ProjectAppData::fixture_app_data(
+        AppName("erts".to_string()),
+        OTP_ERTS_DIR.clone(),
+        Vec::default(),
+        vec![OTP_ERTS_DIR.join("src")],
+        Vec::default(),
+    );
+    pub static ref OTP_VERSION: Option<String> = Otp::otp_version().ok();
+}
+
+fn get_erts_dir() -> AbsPathBuf {
+    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
+    for app in apps {
+        if app.name == AppName("erts".to_string()) {
+            return app.dir;
+        }
+    }
+    panic!()
+}
+
+fn get_erlang_module() -> (PathBuf, String) {
+    let erlang_path = OTP_ERTS_DIR.join("src/erlang.erl");
+    let contents = std::fs::read_to_string(&erlang_path).unwrap();
+    (erlang_path.into(), contents)
 }
 
 impl Otp {
@@ -54,6 +87,28 @@ impl Otp {
         let result: Utf8PathBuf = format!("{}/lib", path).into();
         let result = fs::canonicalize(result)?;
         Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
+    }
+    pub fn otp_version() -> Result<String> {
+        let _timer = timeit!("otp_version");
+        let erl = ERL.read().unwrap();
+        let output = Command::new(&*erl)
+            .arg("-noshell")
+            .arg("-eval")
+            .arg("io:format('~s', [erlang:system_info(otp_release)])")
+            .arg("-s")
+            .arg("erlang")
+            .arg("halt")
+            .output()?;
+
+        if !output.status.success() {
+            bail!(
+                "Failed to get OTP version, error code: {:?}, stderr: {:?}",
+                output.status.code(),
+                String::from_utf8(output.stderr)
+            );
+        }
+        let val = String::from_utf8(output.stdout)?;
+        Ok(val)
     }
 
     pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {

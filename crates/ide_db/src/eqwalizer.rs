@@ -28,6 +28,7 @@ use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
+use elp_project_model::otp::OTP_VERSION;
 use elp_syntax::ast;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
@@ -154,6 +155,9 @@ fn is_eqwalizer_enabled(
     file_id: FileId,
     include_generated: bool,
 ) -> bool {
+    if !otp_supported_by_eqwalizer() {
+        return false;
+    }
     if !include_generated && db.is_generated(file_id) {
         return false;
     }
@@ -176,6 +180,13 @@ fn is_eqwalizer_enabled(
     let opt_in = (app_or_global_opt_in && is_src) || db.has_eqwalizer_module_marker(file_id);
     let ignored = db.has_eqwalizer_ignore_marker(file_id);
     opt_in && !ignored
+}
+
+fn otp_supported_by_eqwalizer() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .and_then(|v| Some(v.as_str() > "25"))
+        .unwrap_or(true)
 }
 
 fn has_eqwalizer_app_marker(db: &dyn EqwalizerDatabase, source_root_id: SourceRootId) -> bool {
