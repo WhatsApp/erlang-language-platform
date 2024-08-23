@@ -1739,6 +1739,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
     use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
+    use elp_ide::elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
     use elp_ide::AnalysisHost;
     use elp_project_model::test_fixture::DiagnosticsEnabled;
     use expect_test::expect_file;
@@ -1939,7 +1940,8 @@ mod tests {
 
     #[test]
     fn declaration_v2_types_test() {
-        let spec = r#"
+        if otp_supported_by_eqwalizer() {
+            let spec = r#"
         //- eqwalizer
         //- erlang_service
         //- /app_glean/src/glean_module5.erl app:app_glean
@@ -1957,7 +1959,8 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
-        decl_v2_check(&spec);
+            decl_v2_check(&spec);
+        }
     }
 
     #[test]

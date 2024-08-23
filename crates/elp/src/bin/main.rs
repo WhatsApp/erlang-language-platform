@@ -207,6 +207,7 @@ mod tests {
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_ide::elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
@@ -469,49 +470,57 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-all", "--format", "json"],
-            "standard",
-            expect_file!("../resources/test/standard/eqwalize_all_diagnostics.jsonl"),
-            buck,
-            None,
-        );
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-all", "--format", "json"],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_all_diagnostics.jsonl"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl_gen(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-all", "--format", "json", "--include-generated"],
-            "standard",
-            expect_file!("../resources/test/standard/eqwalize_all_diagnostics_gen.jsonl"),
-            buck,
-            None,
-        );
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-all", "--format", "json", "--include-generated"],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_all_diagnostics_gen.jsonl"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_pretty(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-all"],
-            "standard",
-            expect_file!("../resources/test/standard/eqwalize_all_diagnostics.pretty"),
-            buck,
-            None,
-        );
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-all"],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_all_diagnostics.pretty"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-app", "app_a",],
-            "standard",
-            expect_file!("../resources/test/standard/eqwalize_app_diagnostics.pretty"),
-            buck,
-            None,
-        );
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-app", "app_a",],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_app_diagnostics.pretty"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[test]
@@ -533,13 +542,15 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty_gen(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-app", "app_a", "--include-generated",],
-            "standard",
-            expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty"),
-            buck,
-            None,
-        );
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-app", "app_a", "--include-generated",],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[ignore] // TODO(T199099193) Test is flaky, ignore for now

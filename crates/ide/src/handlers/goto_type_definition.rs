@@ -52,6 +52,8 @@ fn classify(sema: &Semantic, range: FileRange) -> Option<SymbolClass> {
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
+
     use crate::fixture;
     use crate::tests::check_navs;
     use crate::tests::check_no_parse_errors;
@@ -83,8 +85,9 @@ mod tests {
 
     #[test]
     fn local_type_alias() {
-        check(
-            r#"
+        if otp_supported_by_eqwalizer() {
+            check(
+                r#"
 //- eqwalizer
 //- /src/goto_type_def.erl
 -module(goto_type_def).
@@ -108,13 +111,15 @@ bar() ->
     _ -> error
   end.
 "#,
-        );
+            );
+        }
     }
 
     #[test]
     fn multiple_type_aliases() {
-        check(
-            r#"
+        if otp_supported_by_eqwalizer() {
+            check(
+                r#"
 //- eqwalizer
 //- /src/goto_type_def_one.erl
 -module(goto_type_def_one).
@@ -143,6 +148,7 @@ bar() ->
 %%    ^^^^^^^^^^^^^^^^^^
 -export_type([my_other_integer/0]).
 "#,
-        );
+            );
+        }
     }
 }

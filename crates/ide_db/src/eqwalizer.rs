@@ -182,7 +182,7 @@ fn is_eqwalizer_enabled(
     opt_in && !ignored
 }
 
-fn otp_supported_by_eqwalizer() -> bool {
+pub fn otp_supported_by_eqwalizer() -> bool {
     OTP_VERSION
         .as_ref()
         .and_then(|v| Some(v.as_str() > "25"))

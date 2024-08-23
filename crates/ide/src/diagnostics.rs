@@ -1675,6 +1675,7 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
     use expect_test::expect;
 
     use super::*;
@@ -2191,8 +2192,9 @@ baz(1)->4.
 
     #[test]
     fn test_eqwalizer_diagnostics() {
-        check_diagnostics(
-            r#"
+        if otp_supported_by_eqwalizer() {
+            check_diagnostics(
+                r#"
             //- eqwalizer
             //- /play/src/bar1e.erl app:play
                 -module(bar1e).
@@ -2201,7 +2203,8 @@ baz(1)->4.
                 baz() -> something_else.
                 %%       ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
             "#,
-        );
+            );
+        }
     }
 
     #[test]
