@@ -93,6 +93,8 @@ jobs:
         run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
       - name: Verify rebar3 version
         run: rebar3 version
+      - name: Verify Erlang version (double check)
+        run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
       - name: Assemble eqwalizer.jar
         working-directory: eqwalizer/eqwalizer
         run: "sbt assembly"
