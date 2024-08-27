@@ -157,4 +157,40 @@ Expression has type perform_opts('ok', R) which matches multiple generic types i
 
 See https://fb.me/eqwalizer_errors#ambiguous_union
 
-13 ERRORS
+error: ambiguous_union
+    ┌─ check/src/generics_with_unions.erl:373:28
+    │
+373 │     Q2 = where1({a, atom}, Q),
+    │                            ^ Q.
+Expression has type query() which matches multiple generic types in fun(({K, V}) -> 'ok')
+
+See https://fb.me/eqwalizer_errors#ambiguous_union
+
+error: ambiguous_union
+    ┌─ check/src/generics_with_unions.erl:379:28
+    │
+379 │     Q2 = where1({i, atom}, Q),
+    │                            ^ Q.
+Expression has type query() which matches multiple generic types in fun(({K, V}) -> 'ok')
+
+See https://fb.me/eqwalizer_errors#ambiguous_union
+
+error: ambiguous_union
+    ┌─ check/src/generics_with_unions.erl:386:17
+    │
+386 │     Q2 = where2(Q, {a, atom}),
+    │                 ^ Q.
+Expression has type query() which matches multiple generic types in fun(({K, V}) -> 'ok')
+
+See https://fb.me/eqwalizer_errors#ambiguous_union
+
+error: ambiguous_union
+    ┌─ check/src/generics_with_unions.erl:392:17
+    │
+392 │     Q2 = where2(Q, {a, 123}),
+    │                 ^ Q.
+Expression has type query() which matches multiple generic types in fun(({K, V}) -> 'ok')
+
+See https://fb.me/eqwalizer_errors#ambiguous_union
+
+17 ERRORS

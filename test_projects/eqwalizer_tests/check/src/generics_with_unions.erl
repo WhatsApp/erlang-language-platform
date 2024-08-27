@@ -350,3 +350,44 @@ f(MyJob) -> g(MyJob).
 
 -spec g(myjob(A)) -> A | {error, timeout}.
 g(MyJob) -> throw(stub).
+
+-spec where1({K, V}, fun(({K, V}) -> ok)) -> ok.
+where1({K, V}, F) -> F({K, V}).
+
+-spec where2(fun(({K, V}) -> ok), {K, V}) -> ok.
+where2(F, {K, V}) -> F({K, V}).
+
+-type query() :: fun(({a, atom()} | {b, binary()} | {i, integer()}) -> ok).
+
+-spec query({a, atom()} | {b, binary()} | {i, integer()}) -> ok.
+query({a, A}) when is_atom(A) -> ok;
+query({b, B}) when is_binary(B) -> ok;
+query({i, I}) when is_integer(I) -> ok.
+
+-spec mk_query() -> query().
+mk_query() -> fun query/1.
+
+-spec use_query1() -> ok.
+use_query1() ->
+    Q = mk_query(),
+    Q2 = where1({a, atom}, Q),
+    Q2.
+
+-spec use_query1_neg() -> ok.
+use_query1_neg() ->
+    Q = mk_query(),
+    Q2 = where1({i, atom}, Q),
+    Q2.
+
+
+-spec use_query2() -> ok.
+use_query2() ->
+    Q = mk_query(),
+    Q2 = where2(Q, {a, atom}),
+    Q2.
+
+-spec use_query2_neg() -> ok.
+use_query2_neg() ->
+    Q = mk_query(),
+    Q2 = where2(Q, {a, 123}),
+    Q2.
