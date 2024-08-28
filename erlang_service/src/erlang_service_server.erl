@@ -32,8 +32,6 @@
 ]).
 
 %% API
--export([process/1]).
-
 -export_type([id/0]).
 
 %%==============================================================================
@@ -62,10 +60,6 @@
 -spec start_link() -> {ok, pid()}.
 start_link() ->
     {ok, _Pid} = gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
-
--spec process(binary()) -> ok.
-process(Data) ->
-    gen_server:cast(?SERVER, {process, Data}).
 
 -spec path_open(id(), string(), normal|lib)
    -> {value, [string()]} | failed.
