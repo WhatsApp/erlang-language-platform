@@ -61,11 +61,14 @@
 start_link() ->
     {ok, _Pid} = gen_server:start_link({local, ?SERVER}, ?MODULE, noargs, []).
 
+-define(RECURSIVE_CALLBACK_TIMEOUT, infinity).
+
 -spec path_open(id(), string(), normal|lib)
    -> {value, [string()]} | failed.
 path_open(ReqId, Name, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
-             [unicode:characters_to_binary(add_include_type(Name, IncludeType))]}) of
+             [unicode:characters_to_binary(add_include_type(Name, IncludeType))]},
+              ?RECURSIVE_CALLBACK_TIMEOUT) of
     {value, Data} ->
           Paths = collect_paths(Data),
           {value, Paths};
