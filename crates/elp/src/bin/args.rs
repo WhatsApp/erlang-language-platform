@@ -255,6 +255,8 @@ pub struct Lint {
     /// Apply to all matching diagnostic occurrences at once, rather
     /// than one at a time.
     pub one_shot: bool,
+    /// Optional prefix to prepend to each fact. Only used when --format=json is set
+    pub prefix: Option<String>,
     /// Ignore the specified diagnostic, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,

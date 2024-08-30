@@ -11,6 +11,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 
@@ -273,11 +274,12 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                                     .root_dir;
                                 let relative_path =
                                     reporting::get_relative_path(root_path, &vfs_path);
+                                let prefix = args.prefix.as_ref();
                                 print_diagnostic_json(
                                     diag,
                                     &analysis,
                                     *file_id,
-                                    relative_path,
+                                    with_prefix(relative_path, prefix).as_path(),
                                     cli,
                                 )?;
                             }
@@ -777,6 +779,13 @@ fn get_form_id_at_offset(
         .ok()??;
     let form_id = form_list.find_form(&form)?;
     Some(form_id)
+}
+
+fn with_prefix(path: &Path, prefix: Option<&String>) -> PathBuf {
+    match prefix {
+        Some(prefix) => Path::new(prefix).join(path),
+        None => path.into(),
+    }
 }
 
 #[cfg(test)]

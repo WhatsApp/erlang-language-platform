@@ -1,0 +1,1 @@
+{"path":"app_a/src/lints.erl","line":5,"char":1,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":null,"replacement":null,"description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: /erlang-error-index/p/P1700"}
