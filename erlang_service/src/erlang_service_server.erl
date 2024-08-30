@@ -84,7 +84,17 @@ init(noargs) ->
     %% We do this to avoid the overhead of the normal Erlang stdout/in stack
     %% which is very significant for raw binary data, mostly because it's prepared
     %% to work with unicode input and does multiple encoding/decoding rounds for raw bytes
-    Port = open_port({fd, 0, 1}, [eof, binary, {packet, 4}]),
+    Port = open_port({fd, 0, 1}, [
+        eof,
+        binary,
+        {packet, 4},
+        %% Disable busy limits.
+        %% Experience shows that if they are enabled they can cause
+        %% the entire process to hang, on the send to the device, when
+        %%  the machine is under load.
+        {busy_limits_port, disabled},
+        {busy_limits_msgq, disabled}
+    ]),
     State = #{io => Port, requests => [], own_requests => []},
     {ok, State}.
 
