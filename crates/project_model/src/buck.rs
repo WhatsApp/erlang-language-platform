@@ -10,6 +10,7 @@
 extern crate serde;
 extern crate serde_json;
 
+use core::str;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -546,22 +547,38 @@ fn find_app_root(
         if let Ok(path) = buck_path_to_abs_path(root, path) {
             let parent = path.parent();
             if let Some(parent) = parent {
-                if !set.contains(parent) {
-                    set.insert(parent.to_path_buf());
-                }
+                set.insert(parent.to_path_buf());
             }
         }
     }
 
-    for path in set {
-        if let Some(path) = examine_path(&path, dir_based_on_buck_file.as_path()) {
-            // We found an src/, test/, or include/ directory before the BUCK file,
-            // so we just return the parent of this directory.
-            return Some(path);
+    if set.len() > 1 {
+        // Find the common prefix for all the src directory paths.
+        // We will always get a `Some` result, due to the length check
+        set.into_iter().reduce(|a, b| common_prefix(&a, &b))
+    } else {
+        for path in set {
+            if let Some(path) = examine_path(&path, dir_based_on_buck_file.as_path()) {
+                // We found an src/, test/, or include/ directory before the BUCK file,
+                // so we just return the parent of this directory.
+                return Some(path);
+            }
         }
+        // Otherwise, we just return the directory containing the BUCK file,
+        Some(dir_based_on_buck_file)
     }
-    // Otherwise, we just return the directory containing the BUCK file,
-    Some(dir_based_on_buck_file)
+}
+
+/// Find the common prefix between the two paths
+fn common_prefix(a: &AbsPathBuf, b: &AbsPathBuf) -> AbsPathBuf {
+    let mut common = Utf8PathBuf::new();
+    for (c1, c2) in a.components().zip(b.components()) {
+        if c1 != c2 {
+            break;
+        }
+        common.push(c1);
+    }
+    AbsPathBuf::assert(common)
 }
 
 fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsPathBuf> {
