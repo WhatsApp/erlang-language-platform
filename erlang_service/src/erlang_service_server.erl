@@ -63,7 +63,7 @@ start_link() ->
 
 -define(RECURSIVE_CALLBACK_TIMEOUT, infinity).
 
--spec path_open(id(), string(), normal|lib)
+-spec path_open(id(), string(), normal | lib | doc)
    -> {value, [string()]} | failed.
 path_open(ReqId, Name, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
@@ -98,7 +98,7 @@ init(noargs) ->
     State = #{io => Port, requests => [], own_requests => []},
     {ok, State}.
 
--spec handle_call({path_open, string(), string(), normal|lib|doc}, any(), state())
+-spec handle_call({request, id(), any()}, any(), state())
    -> {noreply, state()} | {stop|reply, any(), state()}.
 handle_call({request, ReqId, Data}, From,
             #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->

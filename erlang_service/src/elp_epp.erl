@@ -110,32 +110,37 @@
 %% parse_file(FileName, IncludePath, PreDefMacros)
 %% macro_defs(Epp)
 
--spec open(erlang_service_server:id(), FileName, IncludePath) ->
-    {'ok', Epp} | {'error', ErrorDescriptor}
+-spec open(Id, FileName, IncludePath) ->
+    {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
 when
+    Id :: erlang_service_server:id(),
     FileName :: file:name(),
     IncludePath :: [DirectoryName :: file:name()],
     Epp :: epp_handle(),
+    Extra :: [{'encoding', source_encoding() | 'none'}],
     ErrorDescriptor :: term().
 
 open(Id, Name, Path) ->
     open(Id, Name, Path, []).
 
--spec open(erlang_service_server:id(), FileName, IncludePath, PredefMacros) ->
-    {'ok', Epp} | {'error', ErrorDescriptor}
+-spec open(Id, FileName, IncludePath, PredefMacros) ->
+    {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
 when
+    Id :: erlang_service_server:id(),
     FileName :: file:name(),
     IncludePath :: [DirectoryName :: file:name()],
     PredefMacros :: macros(),
     Epp :: epp_handle(),
+    Extra :: [{'encoding', source_encoding() | 'none'}],
     ErrorDescriptor :: term().
 
 open(Id, Name, Path, Pdm) ->
     open(Id, [{name, Name}, {includes, Path}, {macros, Pdm}]).
 
--spec open(erlang_service_server:id(), Options) ->
+-spec open(Id, Options) ->
     {'ok', Epp} | {'ok', Epp, Extra} | {'error', ErrorDescriptor}
 when
+    Id :: erlang_service_server:id(),
     Options :: [
         {'default_encoding', DefEncoding :: source_encoding()}
         | {'includes', IncludePath :: [DirectoryName :: file:name()]}
@@ -290,9 +295,10 @@ format_error(string_concat) ->
 format_error(E) ->
     file:format_error(E).
 
--spec scan_file(erlang_service_server:id(), FileName, Options) ->
+-spec scan_file(Id, FileName, Options) ->
     {'ok', [Form], Extra} | {error, OpenError}
 when
+    Id :: erlang_service_server:id(),
     FileName :: file:name(),
     Options :: [
         {'includes', IncludePath :: [DirectoryName :: file:name()]}
@@ -304,7 +310,7 @@ when
     Loc :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info(),
     Extra :: [{'encoding', source_encoding() | 'none'}],
-    OpenError :: file:posix() | badarg | system_limit.
+    OpenError :: term().
 
 scan_file(Id, Ifile, Options) ->
     case open(Id, [{name, Ifile}, extra | Options]) of
@@ -326,23 +332,26 @@ scan_file(Epp) ->
             [{eof, {Offset, Offset}}]
     end.
 
--spec parse_file(erlang_service_server:id(), FileName, IncludePath, PredefMacros) ->
-    {'ok', [Form]} | {error, OpenError}
+-spec parse_file(Id, FileName, IncludePath, PredefMacros) ->
+    {'ok', [Form]} | {'ok', [Form], Extra} | {error, OpenError}
 when
+    Id :: erlang_service_server:id(),
     FileName :: file:name(),
     IncludePath :: [DirectoryName :: file:name()],
-    Form :: elp_parse:abstract_form() | {'error', ErrorInfo} | {'eof', Location},
     PredefMacros :: macros(),
+    Form :: elp_parse:abstract_form() | {'error', ErrorInfo} | {'eof', Location},
+    Extra :: [{'encoding', source_encoding() | 'none'}],
     Location :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
-    OpenError :: file:posix() | badarg | system_limit.
+    OpenError :: term().
 
 parse_file(Id, Ifile, Path, Predefs) ->
     parse_file(Id, Ifile, [{includes, Path}, {macros, Predefs}]).
 
--spec parse_file(erlang_service_server:id(), FileName, Options) ->
+-spec parse_file(Id, FileName, Options) ->
     {'ok', [Form]} | {'ok', [Form], Extra} | {error, OpenError}
 when
+    Id :: erlang_service_server:id(),
     FileName :: file:name(),
     Options :: [
         {'includes', IncludePath :: [DirectoryName :: file:name()]}
@@ -358,7 +367,7 @@ when
     Location :: elp_scan:location(),
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     Extra :: [{'encoding', source_encoding() | 'none'}],
-    OpenError :: file:posix() | badarg | system_limit.
+    OpenError :: term().
 
 parse_file(Id,  Ifile, Options) ->
     case open(Id, [{name, Ifile} | Options]) of
