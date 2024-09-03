@@ -1230,11 +1230,11 @@ scan_feature(
     From,
     St
 ) when not St#epp.in_prefix ->
-    epp_reply(From, {error, {loc(Feature), epp, ftr_after_prefix}}),
+    epp_reply(From, {error, {loc(Feature), elp_epp, ftr_after_prefix}}),
     wait_req_scan(St);
 scan_feature(Toks, {atom, _, Tag} = Token, From, St) ->
     T = no_match(Toks, Token),
-    epp_reply(From, {error, {loc(T), epp, {bad, Tag}}}),
+    epp_reply(From, {error, {loc(T), elp_epp, {bad, Tag}}}),
     wait_req_scan(St).
 
 %% This is just a stub. We don't update any feature in the ELP fork.
