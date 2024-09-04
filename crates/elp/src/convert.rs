@@ -221,7 +221,7 @@ fn ide_to_arc_severity(severity: Severity) -> arc_types::Severity {
     match severity {
         Severity::Error => arc_types::Severity::Error,
         Severity::Warning => arc_types::Severity::Warning,
-        Severity::WeakWarning => arc_types::Severity::Advice,
+        Severity::WeakWarning => arc_types::Severity::Disabled,
         Severity::Information => arc_types::Severity::Advice,
     }
 }
