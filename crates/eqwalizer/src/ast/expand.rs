@@ -68,7 +68,6 @@ use crate::ast;
 
 struct Expander<'d> {
     module: SmolStr,
-    approximate: bool,
     project_id: ProjectId,
     db: &'d dyn EqwalizerASTDatabase,
 }
@@ -342,7 +341,7 @@ impl Expander<'_> {
                 tys: self.expand_types(ty.tys)?,
             })),
             ExtType::MapExtType(ty) => {
-                if self.approximate && ty.props.iter().any(|prop| !prop.is_ok()) {
+                if ty.props.iter().any(|prop| !prop.is_ok()) {
                     Ok(ExtType::MapExtType(MapExtType {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -480,7 +479,7 @@ impl Expander<'_> {
                 tys: self.expand_all_constraints(ty.tys, sub, stack)?,
             })),
             ExtType::MapExtType(ty) => {
-                if self.approximate && ty.props.iter().any(|prop| !prop.is_ok()) {
+                if ty.props.iter().any(|prop| !prop.is_ok()) {
                     Ok(ExtType::MapExtType(MapExtType {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -599,13 +598,11 @@ impl StubExpander<'_> {
     pub fn new<'d>(
         db: &'d dyn EqwalizerASTDatabase,
         project_id: ProjectId,
-        approximate: bool,
         module: SmolStr,
         ast: &AST,
     ) -> StubExpander<'d> {
         let expander = Expander {
             module: module.clone(),
-            approximate,
             db,
             project_id,
         };

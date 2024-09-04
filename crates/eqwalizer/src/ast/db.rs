@@ -198,7 +198,7 @@ fn expanded_stub(
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
     let stub = db.converted_stub(project_id, module.clone())?;
-    let mut expander = StubExpander::new(db, project_id, true, module.as_str().into(), &stub);
+    let mut expander = StubExpander::new(db, project_id, module.as_str().into(), &stub);
     expander
         .expand(stub.to_vec())
         .map(|()| Arc::new(expander.stub))
