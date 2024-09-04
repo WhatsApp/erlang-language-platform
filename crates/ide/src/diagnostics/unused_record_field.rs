@@ -149,4 +149,18 @@ main(#a{a1 = #b{b2 = B2}} = A) ->
         "#,
         );
     }
+
+    #[test]
+    fn test_unused_record_macro_name() {
+        // https://github.com/WhatsApp/erlang-language-platform/issues/51
+        check_diagnostics(
+            r#"
+-module(main).
+-export([ test/0 ]).
+-record(?MODULE, {queue :: term()}).
+               %% ^^^^^^^^^^^^^^^ warning: Unused record field ([missing name].queue)
+test() -> #?MODULE{queue = ok}.
+            "#,
+        );
+    }
 }
