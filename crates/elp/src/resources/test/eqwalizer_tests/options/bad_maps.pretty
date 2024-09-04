@@ -1,0 +1,33 @@
+error: bad_map_key
+   ┌─ options/src/bad_maps.erl:10:24
+   │
+10 │ -type bad_map_1() :: #{atom() := integer()}.
+   │                        ^^^^^^^^^^^^^^^^^ Required map key should always be a singular atom. Map type will be approximated to #{dynamic() => dynamic()}.
+
+See https://fb.me/eqwalizer_errors#bad_map_key
+
+error: bad_map_key
+   ┌─ options/src/bad_maps.erl:12:32
+   │
+12 │ -type bad_map_2() :: #{a => b, atom() => integer()}.
+   │                                ^^^^^^^^^^^^^^^^^ With multiple assocations, all keys should be singular atoms. Map type will be approximated to #{dynamic() => dynamic()}.
+
+See https://fb.me/eqwalizer_errors#bad_map_key
+
+error: bad_map_key
+   ┌─ options/src/bad_maps.erl:14:32
+   │
+14 │ -type bad_map_3() :: #{a => b, atom() := integer()}.
+   │                                ^^^^^^^^^^^^^^^^^ Required map key should always be a singular atom. Map type will be approximated to #{dynamic() => dynamic()}.
+
+See https://fb.me/eqwalizer_errors#bad_map_key
+
+error: bad_map_key
+   ┌─ options/src/bad_maps.erl:16:30
+   │
+16 │ -spec bad_map_spec(#{a => b, atom() => integer()}) -> ok.
+   │                              ^^^^^^^^^^^^^^^^^ With multiple assocations, all keys should be singular atoms. Map type will be approximated to #{dynamic() => dynamic()}.
+
+See https://fb.me/eqwalizer_errors#bad_map_key
+
+4 ERRORS

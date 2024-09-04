@@ -1755,6 +1755,7 @@ mod tests {
             buck,
             EqwalizerConfig {
                 clause_coverage: Some(true),
+                report_bad_maps: Some(true),
                 ..EqwalizerConfig::default_test()
             },
         );
