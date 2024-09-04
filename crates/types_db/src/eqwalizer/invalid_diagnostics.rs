@@ -97,4 +97,5 @@ pub struct AliasWithNonCovariantParam {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BadMapKey {
     pub location: eqwalizer::Pos,
+    pub required: bool,
 }

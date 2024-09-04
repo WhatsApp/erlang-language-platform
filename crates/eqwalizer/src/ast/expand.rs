@@ -42,6 +42,7 @@ use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
 use elp_types_db::eqwalizer::form::InvalidForm;
 use elp_types_db::eqwalizer::form::InvalidFunSpec;
+use elp_types_db::eqwalizer::form::InvalidMapType;
 use elp_types_db::eqwalizer::form::InvalidRecDecl;
 use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -69,12 +70,13 @@ use crate::ast;
 struct Expander<'d> {
     module: SmolStr,
     project_id: ProjectId,
+    invalids: Vec<InvalidForm>,
     db: &'d dyn EqwalizerASTDatabase,
 }
 
 impl Expander<'_> {
     fn expand_fun_spec(
-        &self,
+        &mut self,
         fun_spec: ExternalFunSpec,
     ) -> Result<ExternalFunSpec, InvalidFunSpec> {
         match self.expand_cfts(fun_spec.types) {
@@ -88,13 +90,13 @@ impl Expander<'_> {
     }
 
     fn expand_cfts(
-        &self,
+        &mut self,
         cfts: Vec<ConstrainedFunType>,
     ) -> Result<Vec<ConstrainedFunType>, Invalid> {
         cfts.into_iter().map(|cft| self.expand_cft(cft)).collect()
     }
 
-    fn expand_cft(&self, cft: ConstrainedFunType) -> Result<ConstrainedFunType, Invalid> {
+    fn expand_cft(&mut self, cft: ConstrainedFunType) -> Result<ConstrainedFunType, Invalid> {
         let ft = {
             if cft.constraints.is_empty() {
                 cft.ty
@@ -134,7 +136,10 @@ impl Expander<'_> {
         })
     }
 
-    fn expand_callback(&self, cb: ExternalCallback) -> Result<ExternalCallback, InvalidFunSpec> {
+    fn expand_callback(
+        &mut self,
+        cb: ExternalCallback,
+    ) -> Result<ExternalCallback, InvalidFunSpec> {
         match self.expand_cfts(cb.types) {
             Ok(types) => Ok(ExternalCallback { types, ..cb }),
             Err(te) => Err(InvalidFunSpec {
@@ -146,7 +151,7 @@ impl Expander<'_> {
     }
 
     fn expand_type_decl(
-        &self,
+        &mut self,
         decl: ExternalTypeDecl,
     ) -> Result<ExternalTypeDecl, InvalidTypeDecl> {
         let result = self
@@ -163,7 +168,7 @@ impl Expander<'_> {
     }
 
     fn expand_opaque_decl(
-        &self,
+        &mut self,
         decl: ExternalOpaqueDecl,
     ) -> Result<ExternalOpaqueDecl, InvalidTypeDecl> {
         let result = self
@@ -180,7 +185,7 @@ impl Expander<'_> {
     }
 
     fn validate_type_vars(
-        &self,
+        &mut self,
         pos: &ast::Pos,
         body: &ExtType,
         params: &Vec<SmolStr>,
@@ -194,7 +199,7 @@ impl Expander<'_> {
     }
 
     fn check_repeated_type_param(
-        &self,
+        &mut self,
         pos: &ast::Pos,
         params: &Vec<SmolStr>,
     ) -> Result<(), Invalid> {
@@ -211,7 +216,10 @@ impl Expander<'_> {
         Ok(())
     }
 
-    fn check_multiply_constrained_type_var(&self, cft: &ConstrainedFunType) -> Result<(), Invalid> {
+    fn check_multiply_constrained_type_var(
+        &mut self,
+        cft: &ConstrainedFunType,
+    ) -> Result<(), Invalid> {
         let mut names = FxHashSet::default();
         let vars: Vec<&SmolStr> = cft.constraints.iter().map(|c| &c.t_var).collect();
         for name in vars {
@@ -229,7 +237,7 @@ impl Expander<'_> {
     }
 
     fn check_unbound_type_var(
-        &self,
+        &mut self,
         pos: &ast::Pos,
         params: &[SmolStr],
         ty_var: &VarExtType,
@@ -244,7 +252,10 @@ impl Expander<'_> {
         }
     }
 
-    fn expand_rec_decl(&self, decl: ExternalRecDecl) -> Result<ExternalRecDecl, InvalidRecDecl> {
+    fn expand_rec_decl(
+        &mut self,
+        decl: ExternalRecDecl,
+    ) -> Result<ExternalRecDecl, InvalidRecDecl> {
         let fields = decl
             .fields
             .into_iter()
@@ -260,11 +271,11 @@ impl Expander<'_> {
         }
     }
 
-    fn expand_types(&self, ts: Vec<ExtType>) -> Result<Vec<ExtType>, Invalid> {
+    fn expand_types(&mut self, ts: Vec<ExtType>) -> Result<Vec<ExtType>, Invalid> {
         ts.into_iter().map(|t| self.expand_type(t)).collect()
     }
 
-    fn expand_type(&self, t: ExtType) -> Result<ExtType, Invalid> {
+    fn expand_type(&mut self, t: ExtType) -> Result<ExtType, Invalid> {
         match t {
             ExtType::LocalExtType(ty) => {
                 let id = RemoteId {
@@ -341,7 +352,16 @@ impl Expander<'_> {
                 tys: self.expand_types(ty.tys)?,
             })),
             ExtType::MapExtType(ty) => {
-                if ty.props.iter().any(|prop| !prop.is_ok()) {
+                if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
+                    let location = invalid_prop.location().clone();
+                    let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
+                        location: location.clone(),
+                        te: Invalid::BadMapKey(BadMapKey {
+                            location,
+                            required: invalid_prop.required(),
+                        }),
+                    });
+                    self.invalids.push(invalid_form);
                     Ok(ExtType::MapExtType(MapExtType {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -391,28 +411,29 @@ impl Expander<'_> {
         }
     }
 
-    fn expand_prop(&self, prop: ExtProp) -> Result<ExtProp, Invalid> {
+    fn expand_prop(&mut self, prop: ExtProp) -> Result<ExtProp, Invalid> {
         match prop {
             ExtProp::ReqExtProp(prop) => Ok(ExtProp::ReqExtProp(ReqExtProp {
                 location: prop.location,
                 key: self.expand_type(prop.key)?,
                 tp: self.expand_type(prop.tp)?,
             })),
-            ExtProp::ReqBadExtProp(prop) => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location,
-            })),
             ExtProp::OptExtProp(prop) => Ok(ExtProp::OptExtProp(OptExtProp {
                 location: prop.location,
                 key: self.expand_type(prop.key)?,
                 tp: self.expand_type(prop.tp)?,
             })),
-            ExtProp::OptBadExtProp(prop) => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location,
+            prop => Err(Invalid::BadMapKey(BadMapKey {
+                location: prop.location().clone(),
+                required: prop.required(),
             })),
         }
     }
 
-    fn expand_refined_record_field(&self, field: RefinedField) -> Result<RefinedField, Invalid> {
+    fn expand_refined_record_field(
+        &mut self,
+        field: RefinedField,
+    ) -> Result<RefinedField, Invalid> {
         Ok(RefinedField {
             label: field.label,
             ty: self.expand_type(field.ty)?,
@@ -420,7 +441,7 @@ impl Expander<'_> {
     }
 
     fn expand_all_constraints(
-        &self,
+        &mut self,
         ts: Vec<ExtType>,
         sub: &FxHashMap<SmolStr, ExtType>,
         stack: &FxHashSet<SmolStr>,
@@ -431,7 +452,7 @@ impl Expander<'_> {
     }
 
     fn expand_constraints(
-        &self,
+        &mut self,
         t: ExtType,
         sub: &FxHashMap<SmolStr, ExtType>,
         stack: &FxHashSet<SmolStr>,
@@ -479,7 +500,16 @@ impl Expander<'_> {
                 tys: self.expand_all_constraints(ty.tys, sub, stack)?,
             })),
             ExtType::MapExtType(ty) => {
-                if ty.props.iter().any(|prop| !prop.is_ok()) {
+                if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
+                    let location = invalid_prop.location().clone();
+                    let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
+                        location: location.clone(),
+                        te: Invalid::BadMapKey(BadMapKey {
+                            location,
+                            required: invalid_prop.required(),
+                        }),
+                    });
+                    self.invalids.push(invalid_form);
                     Ok(ExtType::MapExtType(MapExtType {
                         location: ty.location.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -537,7 +567,7 @@ impl Expander<'_> {
     }
 
     fn expand_prop_constraint(
-        &self,
+        &mut self,
         prop: ExtProp,
         sub: &FxHashMap<SmolStr, ExtType>,
         stack: &FxHashSet<SmolStr>,
@@ -548,22 +578,20 @@ impl Expander<'_> {
                 key: self.expand_constraints(prop.key, sub, stack)?,
                 tp: self.expand_constraints(prop.tp, sub, stack)?,
             })),
-            ExtProp::ReqBadExtProp(prop) => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location,
-            })),
             ExtProp::OptExtProp(prop) => Ok(ExtProp::OptExtProp(OptExtProp {
                 location: prop.location,
                 key: self.expand_constraints(prop.key, sub, stack)?,
                 tp: self.expand_constraints(prop.tp, sub, stack)?,
             })),
-            ExtProp::OptBadExtProp(prop) => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location,
+            prop => Err(Invalid::BadMapKey(BadMapKey {
+                location: prop.location().clone(),
+                required: prop.required(),
             })),
         }
     }
 
     fn expand_refined_record_field_constraint(
-        &self,
+        &mut self,
         field: RefinedField,
         sub: &FxHashMap<SmolStr, ExtType>,
         stack: &FxHashSet<SmolStr>,
@@ -574,7 +602,7 @@ impl Expander<'_> {
         })
     }
 
-    fn expand_rec_field(&self, field: ExternalRecField) -> Result<ExternalRecField, Invalid> {
+    fn expand_rec_field(&mut self, field: ExternalRecField) -> Result<ExternalRecField, Invalid> {
         let tp = {
             if let Some(tp) = field.tp {
                 Some(self.expand_type(tp)?)
@@ -603,6 +631,7 @@ impl StubExpander<'_> {
     ) -> StubExpander<'d> {
         let expander = Expander {
             module: module.clone(),
+            invalids: vec![],
             db,
             project_id,
         };
@@ -801,6 +830,7 @@ impl StubExpander<'_> {
             | ExternalForm::TypingAttribute(_) => Ok(()),
         })?;
         self.add_extra_types();
+        self.stub.invalid_forms.append(&mut self.expander.invalids);
         Ok(())
     }
 }

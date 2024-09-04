@@ -66,6 +66,7 @@ pub struct EqwalizerConfig {
     pub fault_tolerance: Option<bool>,
     pub occurrence_typing: Option<bool>,
     pub clause_coverage: Option<bool>,
+    pub report_bad_maps: Option<bool>,
 }
 impl EqwalizerConfig {
     fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
@@ -75,6 +76,8 @@ impl EqwalizerConfig {
             .map(|cfg| cmd.env("EQWALIZER_EQWATER", cfg.to_string()));
         self.clause_coverage
             .map(|cfg| cmd.env("EQWALIZER_CLAUSE_COVERAGE", cfg.to_string()));
+        self.report_bad_maps
+            .map(|cfg| cmd.env("EQWALIZER_REPORT_BAD_MAPS", cfg.to_string()));
     }
 
     pub fn default_test() -> EqwalizerConfig {
@@ -82,6 +85,7 @@ impl EqwalizerConfig {
             fault_tolerance: Some(false),
             occurrence_typing: Some(true),
             clause_coverage: Some(false),
+            report_bad_maps: Some(false),
         }
     }
 }

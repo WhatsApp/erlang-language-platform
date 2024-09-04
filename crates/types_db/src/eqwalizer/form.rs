@@ -48,6 +48,7 @@ pub enum InvalidForm {
     InvalidFunSpec(InvalidFunSpec),
     InvalidRecDecl(InvalidRecDecl),
     InvalidConvertTypeInRecDecl(InvalidConvertTypeInRecDecl),
+    InvalidMapType(InvalidMapType),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -279,5 +280,11 @@ pub struct InvalidRecDecl {
 pub struct InvalidConvertTypeInRecDecl {
     pub location: eqwalizer::Pos,
     pub name: SmolStr,
+    pub te: Invalid,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct InvalidMapType {
+    pub location: eqwalizer::Pos,
     pub te: Invalid,
 }

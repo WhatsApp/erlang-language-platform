@@ -291,6 +291,22 @@ impl ExtProp {
             ExtProp::ReqBadExtProp(_) | ExtProp::OptBadExtProp(_) => false,
         }
     }
+
+    pub fn location(&self) -> &eqwalizer::Pos {
+        match self {
+            ExtProp::ReqExtProp(p) => &p.location,
+            ExtProp::ReqBadExtProp(p) => &p.location,
+            ExtProp::OptExtProp(p) => &p.location,
+            ExtProp::OptBadExtProp(p) => &p.location,
+        }
+    }
+
+    pub fn required(&self) -> bool {
+        match self {
+            ExtProp::ReqExtProp(_) | ExtProp::ReqBadExtProp(_) => true,
+            ExtProp::OptExtProp(_) | ExtProp::OptBadExtProp(_) => false,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
