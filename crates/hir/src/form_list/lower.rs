@@ -666,7 +666,7 @@ impl<'a> Ctx<'a> {
                 let exp_ctx = MacroExpCtx::new(&self.data, self.db);
                 exp_ctx
                     .expand_atom(macro_call, self.source_file)
-                    .map_or(Name::MISSING, |atom| atom.as_name())
+                    .unwrap_or(Name::MISSING)
             }
         }
     }

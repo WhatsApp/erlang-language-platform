@@ -158,7 +158,6 @@ main(#a{a1 = #b{b2 = B2}} = A) ->
 -module(main).
 -export([ test/0 ]).
 -record(?MODULE, {queue :: term()}).
-               %% ^^^^^^^^^^^^^^^ warning: Unused record field ([missing name].queue)
 test() -> #?MODULE{queue = ok}.
             "#,
         );

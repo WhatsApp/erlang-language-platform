@@ -215,7 +215,7 @@ impl FormList {
 pub(crate) struct FormListData {
     // Even though only one is allowed, in the syntax we might
     // have many due to errors or conditional compilation
-    module_attribute: Arena<ModuleAttribute>,
+    pub module_attribute: Arena<ModuleAttribute>,
     includes: Arena<IncludeAttribute>,
     function_clauses: Arena<FunctionClause>,
     pub defines: Arena<Define>,

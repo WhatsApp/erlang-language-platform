@@ -18,6 +18,8 @@ use crate::Define;
 use crate::DefineId;
 use crate::InFile;
 use crate::MacroName;
+use crate::ModuleAttribute;
+use crate::Name;
 use crate::PPDirective;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -183,10 +185,14 @@ impl<'a> MacroExpCtx<'a> {
         &self,
         macro_call: &ast::MacroCallExpr,
         source_file: &ast::SourceFile,
-    ) -> Option<ast::Atom> {
+    ) -> Option<Name> {
+        if let Some(built_in) = self.expand_built_in(macro_call) {
+            return Some(built_in);
+        }
+
         match self.find_replacement(macro_call, source_file)? {
             ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::Atom(atom))) => {
-                Some(atom)
+                Some(atom.as_name())
             }
             ast::MacroDefReplacement::Expr(_) => None,
             ast::MacroDefReplacement::ReplacementCrClauses(_) => None,
@@ -196,6 +202,22 @@ impl<'a> MacroExpCtx<'a> {
             ast::MacroDefReplacement::ReplacementExprGuard(_) => None,
             ast::MacroDefReplacement::ReplacementParens(_) => None,
         }
+    }
+
+    pub fn expand_built_in(&self, macro_call: &ast::MacroCallExpr) -> Option<Name> {
+        let macro_name = macro_name(macro_call)?;
+        match resolve_built_in(&macro_name) {
+            Some(Some(BuiltInMacro::MODULE)) => {
+                let module = self.find_module_attribute()?;
+                Some(module.name.clone())
+            }
+            _ => None,
+        }
+    }
+
+    pub fn find_module_attribute(&self) -> Option<&ModuleAttribute> {
+        let (_idx, module) = self.form_list.module_attribute.iter().next()?;
+        Some(module)
     }
 
     pub fn find_define(&self, macro_call: &ast::MacroCallExpr) -> Option<&Define> {
