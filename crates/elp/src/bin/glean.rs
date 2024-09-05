@@ -1904,7 +1904,8 @@ mod tests {
 
     #[test]
     fn declaration_v2_test() {
-        let spec = r#"
+        if otp_supported_by_eqwalizer() {
+            let spec = r#"
         //- /app_glean/src/glean_module5.erl app:app_glean
             -module(glean_module5).
             -export([foo/0, doc_foo/1, depr_foo/1]).
@@ -1939,7 +1940,8 @@ mod tests {
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
         "#;
-        decl_v2_check(&spec);
+            decl_v2_check(&spec);
+        }
     }
 
     #[test]
