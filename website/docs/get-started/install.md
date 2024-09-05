@@ -102,6 +102,6 @@ The produced executable will be available in: `target/release/elp`, so ensure it
 
 ```
 mkdir -p ~/bin
-mv target/releases/elp ~/bin
+mv target/release/elp ~/bin
 export PATH=$PATH:~/bin
 ```
