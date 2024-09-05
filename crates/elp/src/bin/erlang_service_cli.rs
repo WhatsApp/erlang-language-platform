@@ -43,7 +43,7 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
         cli,
         &args.project,
         config,
-        IncludeOtp::No,
+        IncludeOtp::Yes,
         Mode::Cli,
         query_config,
     )?;
@@ -93,6 +93,9 @@ pub fn do_parse_all(
                     _ => {}
                 }
                 if !buck && db.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
+                    return empty;
+                }
+                if db.is_otp(file_id).ok() == Some(Some(true)) {
                     return empty;
                 }
 
