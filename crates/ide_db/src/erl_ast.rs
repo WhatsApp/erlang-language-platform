@@ -89,7 +89,7 @@ impl AstLoader for crate::RootDatabase {
         let r = erlang_service.request_parse(
             req,
             || self.unwind_if_cancelled(),
-            &move |include_type, path| resolve_include(self, file_id, include_type, &path),
+            &move |file_id, include_type, path| resolve_include(self, file_id, include_type, &path),
         );
         r
     }

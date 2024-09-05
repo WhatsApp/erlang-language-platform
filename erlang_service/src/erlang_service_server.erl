@@ -10,7 +10,7 @@
 %%==============================================================================
 -module(erlang_service_server).
 
--export([path_open/3]).
+-export([path_open/4]).
 
 %%==============================================================================
 %% Behaviours
@@ -53,6 +53,7 @@
 -type exception() :: {exception, id(), any()}.
 -type id() :: integer().
 -type file_id() :: integer().
+-type include_type() :: normal | lib | doc.
 -type segment() :: {string(), binary()}.
 
 %%==============================================================================
@@ -64,11 +65,11 @@ start_link() ->
 
 -define(RECURSIVE_CALLBACK_TIMEOUT, infinity).
 
--spec path_open(id(), string(), normal | lib | doc)
+-spec path_open(id(), string(), file_id(), include_type())
    -> {value, [string()]} | failed.
-path_open(ReqId, Name, IncludeType) ->
+path_open(ReqId, Name, FileId, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
-             [unicode:characters_to_binary(add_include_type(Name, IncludeType))]},
+             [unicode:characters_to_binary(add_include_type(Name, FileId, IncludeType))]},
               ?RECURSIVE_CALLBACK_TIMEOUT) of
     {value, Data} ->
           Paths = collect_paths(Data),
@@ -254,10 +255,10 @@ encode_segments(Segments) ->
 encode_segment({Tag, Data}) when byte_size(Tag) =:= 3 ->
     [Tag, <<(byte_size(Data)):32/big>> | Data].
 
--spec add_include_type(string(), normal|lib|doc) -> io_lib:chars().
-add_include_type(Path, IncludeType) ->
+-spec add_include_type(string(), file_id(), include_type()) -> io_lib:chars().
+add_include_type(Path, FileId, IncludeType) ->
     case IncludeType of
-        normal -> io_lib:format("N:~s", [Path]);
-        lib    -> io_lib:format("L:~s", [Path]);
-        doc    -> io_lib:format("D:~s", [Path])
+        normal -> io_lib:format("~p:N:~s", [FileId, Path]);
+        lib    -> io_lib:format("~p:L:~s", [FileId, Path]);
+        doc    -> io_lib:format("~p:D:~s", [FileId, Path])
     end.

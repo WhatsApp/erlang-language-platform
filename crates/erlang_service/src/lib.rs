@@ -398,7 +398,7 @@ impl Connection {
         &self,
         request: ParseRequest,
         unwind: impl Fn(),
-        resolve_include: &impl Fn(IncludeType, &str) -> Option<String>,
+        resolve_include: &impl Fn(FileId, IncludeType, &str) -> Option<String>,
     ) -> ParseResult {
         let path = request.path.clone();
         let tag = request.tag();
@@ -444,7 +444,7 @@ impl Connection {
     fn handle_request_parse_callback(
         &self,
         request: Payload,
-        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
+        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<String>,
     ) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         if !request.is_empty() {
@@ -463,10 +463,21 @@ impl Connection {
 
     pub fn do_resolve(
         string_val: &str,
-        resolve_include: impl Fn(IncludeType, &str) -> Option<String>,
+        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<String>,
     ) -> Option<String> {
-        let (normal_or_lib, path) = string_val.split_once(":")?;
-        resolve_include(normal_or_lib.into(), path)
+        lazy_static! {
+            static ref RE: Regex = Regex::new("([^:]+):([^:]+):(.+)").unwrap();
+        }
+        let captures = RE.captures(string_val)?;
+        if captures.len() > 3 {
+            let file_id_str = &captures[1];
+            let normal_or_lib = &captures[2];
+            let path = &captures[3];
+            let file_id = FileId::from_raw(file_id_str.parse::<u32>().ok()?);
+            resolve_include(file_id, normal_or_lib.into(), path)
+        } else {
+            None
+        }
     }
 
     pub fn request_doc(&self, request: DocRequest, unwind: impl Fn()) -> Result<DocResult, String> {
@@ -995,7 +1006,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || (), &|_, _| None);
+        let response = CONN.request_parse(request, || (), &|_, _, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let actual = format!(
@@ -1020,7 +1031,7 @@ mod tests {
             path,
             format: Format::Text,
         };
-        let response = CONN.request_parse(request, || (), &|_, _| None);
+        let response = CONN.request_parse(request, || (), &|_, _, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
         let stub = str::from_utf8(&response.stub).unwrap();
         let errors = &response
