@@ -72,9 +72,9 @@ path_open(ReqId, Name, FileId, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
              [unicode:characters_to_binary(add_include_type(Name, FileId, IncludeType))]},
               ?RECURSIVE_CALLBACK_TIMEOUT) of
-    {ok, <<SzPath:32, Paths:SzPath/binary-unit:8,
+    {ok, <<SzPath:32, Paths:SzPath/binary,
            NewFileId:32,
-           Sz:32, FileText:Sz/binary-unit:8>>} ->
+           Sz:32, FileText:Sz/binary>>} ->
         Pid = elp_io_string:new(FileText),
         {ok, Pid, binary_to_list(Paths), NewFileId};
      X -> X
@@ -205,10 +205,10 @@ handle_request(<<"ACP", _:64/big, Data/binary>>, State) ->
     Paths = collect_paths(Data),
     code:add_pathsa(Paths),
     {noreply, State};
-handle_request(<<"COM", Id:64/big, Sz:32, FileText:Sz/binary-unit:8, Data/binary>>, State) ->
+handle_request(<<"COM", Id:64/big, Sz:32, FileText:Sz/binary, Data/binary>>, State) ->
     PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
     request(erlang_service_lint, Id, Data, [FileText, PostProcess, false], infinity, State);
-handle_request(<<"TXT", Id:64/big, Sz:32, FileText:Sz/binary-unit:8, Data/binary>>, State) ->
+handle_request(<<"TXT", Id:64/big, Sz:32, FileText:Sz/binary, Data/binary>>, State) ->
     PostProcess =
         fun(Forms, _) ->
             unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
