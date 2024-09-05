@@ -405,6 +405,48 @@ fn specs() {
 }
 
 #[test]
+fn spec_with_matched_module() {
+    check(
+        r#"
+-module(foo).
+-spec foo:bar() -> ok.
+"#,
+        expect![[r#"
+            -module(foo). %% cond: None
+
+            -spec bar() -> .... %% cond: None
+        "#]],
+    )
+}
+
+#[test]
+fn spec_with_default_module() {
+    check(
+        r#"
+-spec main:bar() -> ok.
+"#,
+        expect![[r#"
+            -spec bar() -> .... %% cond: None
+        "#]],
+    )
+}
+
+#[test]
+fn spec_with_mismatched_module() {
+    check(
+        r#"
+-module(main).
+-spec other:bar() -> ok.
+"#,
+        expect![[r#"
+            -module(main). %% cond: None
+
+            -spec bar() -> .... %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn callbacks() {
     check(
         r#"

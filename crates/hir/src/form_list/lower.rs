@@ -545,9 +545,8 @@ impl<'a> Ctx<'a> {
 
     fn lower_spec(&mut self, spec: &ast::Spec) -> Option<FormIdx> {
         let cond = self.conditions.last().copied();
-        if spec.module().is_some() {
-            return None;
-        }
+        // We do not check the spec module name (if present), as any
+        // issues are reported by the erlang service.
         let name = self.resolve_name(&spec.fun()?);
         let args = spec.sigs().find_map(|sig| sig.args())?;
         let arity = args.args().count().try_into().ok()?;
