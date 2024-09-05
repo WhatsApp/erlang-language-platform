@@ -16,6 +16,7 @@ use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
+use elp_base_db::FileLoader;
 use elp_base_db::IncludeCtx;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
@@ -78,12 +79,14 @@ impl AstLoader for crate::RootDatabase {
             override_options.push(option.clone());
         }
         let path: PathBuf = path.to_path_buf().into();
+        let file_text = self.file_text(file_id);
         let req = ParseRequest {
             options,
             override_options,
             file_id,
             path: path.clone(),
             format,
+            file_text,
         };
         let erlang_service = self.erlang_service_for(project_id);
         let r = erlang_service.request_parse(

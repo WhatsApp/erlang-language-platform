@@ -1931,6 +1931,10 @@ mod tests {
             doc_foo(Bar) -> [Bar].
         %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported
         %%  ^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer()) -> [integer()].
+        %%          ^^^ var/Bar :: number()
+        %%          ^^^ doc/Bar :: number()
+        %%                   ^^^ var/Bar :: number()
+        %%                   ^^^ doc/Bar :: number()
 
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported

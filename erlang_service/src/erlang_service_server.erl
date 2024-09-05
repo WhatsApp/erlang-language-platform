@@ -32,7 +32,7 @@
 ]).
 
 %% API
--export_type([id/0, file_id/0]).
+-export_type([id/0, file_id/0, file_text/0]).
 
 %%==============================================================================
 %% Includes
@@ -53,6 +53,7 @@
 -type exception() :: {exception, id(), any()}.
 -type id() :: integer().
 -type file_id() :: integer().
+-type file_text() :: string().
 -type include_type() :: normal | lib | doc.
 -type segment() :: {string(), binary()}.
 
@@ -202,15 +203,15 @@ handle_request(<<"ACP", _:64/big, Data/binary>>, State) ->
     Paths = collect_paths(Data),
     code:add_pathsa(Paths),
     {noreply, State};
-handle_request(<<"COM", Id:64/big, Data/binary>>, State) ->
+handle_request(<<"COM", Id:64/big, Sz:32, FileText:Sz/binary-unit:8, Data/binary>>, State) ->
     PostProcess = fun(Forms, _FileName) -> term_to_binary({ok, Forms, []}) end,
-    request(erlang_service_lint, Id, Data, [PostProcess, false], infinity, State);
-handle_request(<<"TXT", Id:64/big, Data/binary>>, State) ->
+    request(erlang_service_lint, Id, Data, [FileText, PostProcess, false], infinity, State);
+handle_request(<<"TXT", Id:64/big, Sz:32, FileText:Sz/binary-unit:8, Data/binary>>, State) ->
     PostProcess =
         fun(Forms, _) ->
             unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
         end,
-    request(erlang_service_lint, Id, Data, [PostProcess, false], infinity, State);
+    request(erlang_service_lint, Id, Data, [FileText, PostProcess, false], infinity, State);
 handle_request(<<"DCE", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_edoc, Id, Data, [edoc], infinity, State);
 handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->

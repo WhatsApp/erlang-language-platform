@@ -23,7 +23,7 @@
 
 -export([open/3, open/4, open/5, close/1, format_error/1]).
 -export([scan_erl_form/1, parse_erl_form/1, macro_defs/1]).
--export([scan_file/1, scan_file/4, parse_file/1, parse_file/4, parse_file/5]).
+-export([scan_file/1, scan_file/4, parse_file/1, parse_file/5, parse_file/6]).
 -export([
     default_encoding/0,
     encoding_to_string/1,
@@ -338,12 +338,13 @@ scan_file(Epp) ->
             [{eof, {Offset, Offset}}]
     end.
 
--spec parse_file(Id, FileName, FileId, IncludePath, PredefMacros) ->
+-spec parse_file(Id, FileName, FileId, FileText, IncludePath, PredefMacros) ->
     {'ok', [Form]} | {'ok', [Form], Extra} | {error, OpenError}
 when
     Id :: erlang_service_server:id(),
     FileName :: file:name(),
     FileId :: erlang_service_server:id(),
+    FileText :: erlang_service_server:file_text(),
     IncludePath :: [DirectoryName :: file:name()],
     PredefMacros :: macros(),
     Form :: elp_parse:abstract_form() | {'error', ErrorInfo} | {'eof', Location},
@@ -352,15 +353,16 @@ when
     ErrorInfo :: elp_scan:error_info() | elp_parse:error_info(),
     OpenError :: term().
 
-parse_file(Id, Ifile, FileId, Path, Predefs) ->
-    parse_file(Id, Ifile, FileId, [{includes, Path}, {macros, Predefs}]).
+parse_file(Id, Ifile, FileId, FileText, Path, Predefs) ->
+    parse_file(Id, Ifile, FileId, FileText, [{includes, Path}, {macros, Predefs}]).
 
--spec parse_file(Id, FileName, FileId, Options) ->
+-spec parse_file(Id, FileName, FileId, FileText, Options) ->
     {'ok', [Form]} | {'ok', [Form], Extra} | {error, OpenError}
 when
     Id :: erlang_service_server:id(),
     FileName :: file:name(),
     FileId :: erlang_service_server:id(),
+    FileText :: erlang_service_server:file_text(),
     Options :: [
         {'includes', IncludePath :: [DirectoryName :: file:name()]}
         | {'source_name', SourceName :: file:name()}
@@ -377,8 +379,9 @@ when
     Extra :: [{'encoding', source_encoding() | 'none'}],
     OpenError :: term().
 
-parse_file(Id,  Ifile, FileId, Options) ->
-    case open(Id, FileId, [{name, Ifile} | Options]) of
+parse_file(Id,  Ifile, FileId, FileText, Options) ->
+    Pid = elp_io_string:new(FileText),
+    case open(Id, FileId, [{name, Ifile}, {fd, Pid} | Options]) of
         {ok, Epp} ->
             Forms = parse_file(Epp),
             close(Epp),
@@ -694,7 +697,9 @@ server(Pid, Id, Name, FileId, Options) ->
                     epp_reply(Pid, {error, E})
             end;
         Fd ->
-            init_server(Pid, Name, Options, St#epp{file = Fd, file_id = FileId, pre_opened = true})
+            %% We do not flag the file as pre_opened as we want to be
+            %% able to close the in-memory instance when done
+            init_server(Pid, Name, Options, St#epp{file = Fd, file_id = FileId })
     end.
 
 init_server(Pid, FileName, Options0, St0) ->

@@ -2360,4 +2360,22 @@ baz(1)->4.
             "#,
         );
     }
+
+    #[test]
+    fn erlang_service_file_open_encoding() {
+        check_diagnostics(
+            // Note: \~ gets replaced by ~ in the fixture parsing
+            r#"
+               //- erlang_service
+               //- /src/main.erl
+                   -module(main).
+                   -export([foo/0]).
+
+                   foo() ->
+                     \~"\"\\µA\"" = \~/"\\µA"/
+                     X = 3.
+                  %% ^ error: syntax error before: X
+            "#,
+        );
+    }
 }

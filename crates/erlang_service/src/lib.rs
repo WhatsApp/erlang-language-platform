@@ -140,6 +140,7 @@ pub struct ParseRequest {
     pub file_id: FileId,
     pub path: PathBuf,
     pub format: Format,
+    pub file_text: Arc<str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -808,6 +809,11 @@ impl ParseRequest {
             eetf::List::from(override_options).into(),
         ]);
         let mut buf = Vec::new();
+        // We first pass a length-preceded text buffer, then the options.
+        buf.write_u32::<BigEndian>(self.file_text.len() as u32)
+            .expect("buf write failed");
+        buf.write_all(self.file_text.as_bytes())
+            .expect("buf write failed");
         eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
@@ -866,6 +872,7 @@ fn path_into_list(path: PathBuf) -> eetf::ByteList {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::str;
 
     use expect_test::expect_file;
@@ -1025,11 +1032,15 @@ mod tests {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
+        let file_text = Arc::from(
+            fs::read_to_string(path.clone()).expect("Should have been able to read the file"),
+        );
         let request = ParseRequest {
             options: vec![],
             override_options,
             file_id: FileId::from_raw(0),
             path,
+            file_text,
             format: Format::Text,
         };
         let response = CONN.request_parse(request, || (), &|_, _, _| None);
@@ -1050,11 +1061,15 @@ mod tests {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
+        let file_text = Arc::from(
+            fs::read_to_string(path.clone()).expect("Should have been able to read the file"),
+        );
         let request = ParseRequest {
             options: vec![],
             override_options,
             file_id: FileId::from_raw(0),
             path,
+            file_text,
             format: Format::Text,
         };
         let response = CONN.request_parse(request, || (), &|_, _, _| None);

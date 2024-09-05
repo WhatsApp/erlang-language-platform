@@ -28,7 +28,7 @@
 
 -module(elp_escript).
 
--export([extract/3]).
+-export([extract/4]).
 
 -record(state, {
     file :: file:filename(),
@@ -44,9 +44,10 @@
 -record(sections, {shebang :: shebang() | 'undefined'}).
 -type sections() :: #sections{}.
 
--spec extract(erlang_service_server:id(), file:filename(), erlang_service_server:file_id()) -> any().
-extract(Id, File, FileId) ->
-    {HeaderSz, Fd, _Sections} = parse_header(File),
+-spec extract(erlang_service_server:id(), file:filename(), erlang_service_server:file_id(), erlang_service_server:file_text()) -> any().
+extract(Id, File, FileId, FileText) ->
+    Pid = elp_io_string:new(FileText),
+    {HeaderSz, Fd, _Sections} = parse_header(Pid),
     Forms = do_parse_file(Id, File, FileId, Fd, HeaderSz),
     ok = file:close(Fd),
     Forms.
@@ -67,9 +68,8 @@ initial_state(File, FileId) ->
     }.
 
 %% Skip header and make a heuristic guess about the script type
--spec parse_header(file:filename()) -> {any(), any(), sections()}.
-parse_header(File) ->
-    {ok, Fd} = file:open(File, [read]),
+-spec parse_header(file:io_device()) -> {any(), any(), sections()}.
+parse_header(Fd) ->
 
     %% Skip shebang on first line
     Line1 = get_line(Fd),
