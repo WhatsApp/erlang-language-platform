@@ -491,6 +491,7 @@ dependencies = [
  "byteorder",
  "crossbeam-channel",
  "eetf",
+ "elp_base_db",
  "elp_syntax",
  "env_logger",
  "expect-test",

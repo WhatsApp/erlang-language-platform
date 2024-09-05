@@ -81,6 +81,7 @@ impl AstLoader for crate::RootDatabase {
         let req = ParseRequest {
             options,
             override_options,
+            file_id,
             path: path.clone(),
             format,
         };

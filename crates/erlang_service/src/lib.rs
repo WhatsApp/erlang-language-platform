@@ -36,6 +36,7 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use eetf::pattern;
 use eetf::Term;
+use elp_base_db::FileId;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -135,6 +136,7 @@ pub enum Format {
 pub struct ParseRequest {
     pub options: Vec<CompileOption>,
     pub override_options: Vec<CompileOption>,
+    pub file_id: FileId,
     pub path: PathBuf,
     pub format: Format,
 }
@@ -762,6 +764,9 @@ impl ParseRequest {
             .collect::<Vec<eetf::Term>>();
         let list = eetf::List::from(vec![
             path_into_list(self.path).into(),
+            eetf::Term::FixInteger(eetf::FixInteger {
+                value: self.file_id.index() as i32,
+            }),
             eetf::List::from(options).into(),
             eetf::List::from(override_options).into(),
         ]);
@@ -986,6 +991,7 @@ mod tests {
         let request = ParseRequest {
             options: vec![],
             override_options,
+            file_id: FileId::from_raw(0),
             path,
             format: Format::Text,
         };
@@ -1010,6 +1016,7 @@ mod tests {
         let request = ParseRequest {
             options: vec![],
             override_options,
+            file_id: FileId::from_raw(0),
             path,
             format: Format::Text,
         };

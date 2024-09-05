@@ -32,7 +32,7 @@
 ]).
 
 %% API
--export_type([id/0]).
+-export_type([id/0, file_id/0]).
 
 %%==============================================================================
 %% Includes
@@ -52,6 +52,7 @@
 -type result() :: {result, id(), [segment()]}.
 -type exception() :: {exception, id(), any()}.
 -type id() :: integer().
+-type file_id() :: integer().
 -type segment() :: {string(), binary()}.
 
 %%==============================================================================

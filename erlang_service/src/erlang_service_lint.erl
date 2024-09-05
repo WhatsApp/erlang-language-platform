@@ -9,7 +9,7 @@
 
 -export([run/2]).
 
-run(Id, [FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
+run(Id, [FileName, FileId, Options0, OverrideOptions, PostProcess, Deterministic]) ->
     Options1 =
         case Deterministic of
             true ->
@@ -30,7 +30,7 @@ run(Id, [FileName, Options0, OverrideOptions, PostProcess, Deterministic]) ->
             _ ->
                 Options2
         end,
-    case extract_forms(Id, FileName, Options3) of
+    case extract_forms(Id, FileName, FileId, Options3) of
         {ok, Forms0} ->
             Transforms0 = proplists:get_value(parse_transforms, Options3, []),
             {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
@@ -242,14 +242,14 @@ inclusion_range(Forms, Path) ->
             {1, 1}
     end.
 
-extract_forms(Id, FileName, Options) ->
+extract_forms(Id, FileName, FileId, Options) ->
     case filename:extension(FileName) of
         ".erl" ->
-            elp_epp:parse_file(Id, FileName, Options);
+            elp_epp:parse_file(Id, FileName, FileId, Options);
         ".hrl" ->
-            elp_epp:parse_file(Id, FileName, Options);
+            elp_epp:parse_file(Id, FileName, FileId, Options);
         ".escript" ->
-            Forms = elp_escript:extract(Id, FileName),
+            Forms = elp_escript:extract(Id, FileName, FileId),
             {ok, Forms};
         _Ext ->
             {error, "Skipping diagnostics due to extension"}

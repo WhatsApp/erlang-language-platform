@@ -4,6 +4,7 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+elp_base_db.workspace = true
 elp_syntax.workspace = true
 
 anyhow.workspace = true

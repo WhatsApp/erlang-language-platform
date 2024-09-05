@@ -28,10 +28,11 @@
 
 -module(elp_escript).
 
--export([extract/2]).
+-export([extract/3]).
 
 -record(state, {
     file :: file:filename(),
+    file_id :: erlang_service_server:file_id(),
     module :: module(),
     forms_or_bin,
     exports_main :: boolean()
@@ -43,24 +44,25 @@
 -record(sections, {shebang :: shebang() | 'undefined'}).
 -type sections() :: #sections{}.
 
--spec extract(erlang_service_server:id(), file:filename()) -> any().
-extract(Id, File) ->
+-spec extract(erlang_service_server:id(), file:filename(), erlang_service_server:file_id()) -> any().
+extract(Id, File, FileId) ->
     {HeaderSz, Fd, _Sections} = parse_header(File),
-    Forms = do_parse_file(Id, File, Fd, HeaderSz),
+    Forms = do_parse_file(Id, File, FileId, Fd, HeaderSz),
     ok = file:close(Fd),
     Forms.
 
--spec do_parse_file(erlang_service_server:id(), any(), any(), any()) ->
+-spec do_parse_file(erlang_service_server:id(), any(), erlang_service_server:file_id(), any(), any()) ->
     [any()].
-do_parse_file(Id, File, Fd, HeaderSz) ->
-    S = initial_state(File),
+do_parse_file(Id, File, FileId, Fd, HeaderSz) ->
+    S = initial_state(File, FileId),
     #state{forms_or_bin = FormsOrBin} = parse_source(Id, S, File, Fd, HeaderSz),
     FormsOrBin.
 
--spec initial_state(_) -> state().
-initial_state(File) ->
+-spec initial_state(_,_) -> state().
+initial_state(File, FileId) ->
     #state{
         file = File,
+        file_id = FileId,
         exports_main = false
     }.
 
@@ -135,7 +137,7 @@ parse_source(Id, S, File, Fd, HeaderSz) ->
     _ = io:get_line(Fd, ''),
     Encoding = elp_epp:set_encoding(Fd),
     {ok, _} = file:position(Fd, HeaderSz),
-    {ok, Epp} = epp_open(Id, File, Fd, HeaderSz, IncludePath, PreDefMacros),
+    {ok, Epp} = epp_open(Id, File, S#state.file_id, Fd, HeaderSz, IncludePath, PreDefMacros),
     _ = [io:setopts(Fd, [{encoding, Encoding}]) || Encoding =/= none],
     {ok, FileForm} = elp_epp:parse_erl_form(Epp),
     OptModRes = elp_epp:parse_erl_form(Epp),
@@ -165,9 +167,9 @@ parse_source(Id, S, File, Fd, HeaderSz) ->
     ok = file:close(Fd),
     check_source(S2).
 
--spec epp_open(erlang_service_server:id(), _, _, pos_integer(), _, _) -> {ok, term()}.
-epp_open(Id, File, Fd, HeaderSz, IncludePath, PreDefMacros) ->
-    elp_epp:open(Id, [
+-spec epp_open(erlang_service_server:id(), _, erlang_service_server:file_id(), _, pos_integer(), _, _) -> {ok, term()}.
+epp_open(Id, File, FileId, Fd, HeaderSz, IncludePath, PreDefMacros) ->
+    elp_epp:open(Id, FileId, [
         {fd, Fd},
         {name, File},
         {offset, HeaderSz},
