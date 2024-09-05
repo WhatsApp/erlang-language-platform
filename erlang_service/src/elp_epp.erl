@@ -841,7 +841,7 @@ enter_file(_NewName, Inc, From, St) when
     wait_req_scan(St);
 enter_file(NewName, Inc, From, St) ->
     case erlang_service_server:path_open(St#epp.request_id, NewName, St#epp.file_id, normal) of
-        {value, [ResolvedPath]} -> ResolvedName = ResolvedPath;
+        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
         _ -> ResolvedName = NewName
     end,
     case file:path_open(St#epp.path, ResolvedName, [read]) of
@@ -1081,7 +1081,7 @@ scan_filedoc_content(
     %% The head of the path is the dir where the current file is
     Cwd = hd(St#epp.path),
     case erlang_service_server:path_open(St#epp.request_id, DocFilename, St#epp.file_id, doc) of
-        {value, [ResolvedPath]} -> ResolvedName = ResolvedPath;
+        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
         _ -> ResolvedName = DocFilename
     end,
     case file:path_open([Cwd], ResolvedName, [read, binary]) of
@@ -1456,7 +1456,7 @@ scan_include_lib1(
 ) ->
     NewName = expand_var(NewName0),
     case erlang_service_server:path_open(St#epp.request_id, NewName, St#epp.file_id, lib) of
-        {value, [ResolvedPath]} -> ResolvedName = ResolvedPath;
+        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
         _ -> ResolvedName = NewName
     end,
     case file:path_open(St#epp.path, ResolvedName, [read]) of

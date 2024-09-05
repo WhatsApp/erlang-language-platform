@@ -71,9 +71,9 @@ path_open(ReqId, Name, FileId, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
              [unicode:characters_to_binary(add_include_type(Name, FileId, IncludeType))]},
               ?RECURSIVE_CALLBACK_TIMEOUT) of
-    {value, Data} ->
+    {ok, Data} ->
           Paths = collect_paths(Data),
-          {value, Paths};
+          {ok, Paths};
      X -> X
   end.
 
@@ -218,11 +218,14 @@ handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
 handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_ct, Id, Data, [], 10_000, State);
 %% Start of callback responses
-handle_request(<<"REP", OrigId:64/big, Data/binary>>,
+handle_request(<<"REP", OrigId:64/big, Status:8, Data/binary>>,
                #{own_requests := OwnRequests} = State) ->
     case lists:keytake(OrigId, 1, OwnRequests) of
         {value, {OrigId, ReplyFrom}, NewOwnRequests} ->
-            gen_server:reply(ReplyFrom, {value, Data}),
+            case Status of
+                0 -> gen_server:reply(ReplyFrom, {ok, Data});
+                _ -> gen_server:reply(ReplyFrom, {error, Data})
+            end,
             {noreply, State#{own_requests => NewOwnRequests}};
         _ ->
             {noreply, State}

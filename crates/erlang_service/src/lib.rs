@@ -23,6 +23,7 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use byteorder::BigEndian;
@@ -217,8 +218,22 @@ type Request = (Tag, Vec<u8>, RequestType);
 
 enum RequestType {
     Sender(Sender<Response>),
-    CallbackReply(u64), // Original Id
+    CallbackReply(Id, ReplyStatus), // Original Id
     NoReply,
+}
+
+enum ReplyStatus {
+    Ok,
+    Err,
+}
+
+impl From<ReplyStatus> for u8 {
+    fn from(value: ReplyStatus) -> Self {
+        match value {
+            ReplyStatus::Ok => 0,
+            ReplyStatus::Err => 1,
+        }
+    }
 }
 
 type Tag = &'static [u8; 3];
@@ -374,14 +389,19 @@ impl Connection {
                 Ok(Response::Callback(payload, id)) => {
                     match handle_callback(payload) {
                         Ok(buf) => {
-                            let request = (b"REP", buf, RequestType::CallbackReply(id));
+                            let request =
+                                (b"REP", buf, RequestType::CallbackReply(id, ReplyStatus::Ok));
                             self.sender.send(request).unwrap();
                         }
                         Err(err) => {
                             log::warn!("handle_callback gave err: {}, for {}", err, id);
                             // We must always reply, else the erlang side hangs
                             self.sender
-                                .send((b"REP", Vec::new(), RequestType::CallbackReply(id)))
+                                .send((
+                                    b"REP",
+                                    Vec::new(),
+                                    RequestType::CallbackReply(id, ReplyStatus::Err),
+                                ))
                                 .unwrap();
                         }
                     }
@@ -454,11 +474,13 @@ impl Connection {
                     .expect("buf write failed");
                 buf.write_all(resolved.as_bytes())
                     .expect("buf write failed");
+                Ok(buf)
+            } else {
+                bail!("handle_request_parse_callback:did not resolve file")
             }
         } else {
-            log::warn!("handle_request_parse_callback: empty server request");
+            bail!("handle_request_parse_callback: empty server request")
         }
-        Ok(buf)
     }
 
     pub fn do_resolve(
@@ -634,7 +656,7 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
 
 fn reader_run(
     outstream: &mut BufReader<ChildStdout>,
-    inflight: Arc<Mutex<FxHashMap<u64, Sender<Response>>>>,
+    inflight: Arc<Mutex<FxHashMap<Id, Sender<Response>>>>,
 ) -> Result<()> {
     loop {
         let size = outstream.read_u32::<BigEndian>()? as usize;
@@ -663,25 +685,29 @@ fn reader_run(
 fn writer_run(
     receiver: Receiver<Request>,
     mut instream: BufWriter<ChildStdin>,
-    inflight: Arc<Mutex<FxHashMap<u64, Sender<Response>>>>,
+    inflight: Arc<Mutex<FxHashMap<Id, Sender<Response>>>>,
 ) -> Result<()> {
     let mut counter = 0;
     receiver
         .into_iter()
         .try_for_each(|(tag, request, sender)| {
-            let id = match sender {
+            let (id, reply_status) = match sender {
                 RequestType::Sender(sender) => {
                     counter += 1;
                     inflight.lock().insert(counter, sender);
-                    counter
+                    (counter, None)
                 }
-                RequestType::CallbackReply(original_id) => original_id,
-                RequestType::NoReply => counter,
+                RequestType::CallbackReply(original_id, status) => (original_id, Some(status)),
+                RequestType::NoReply => (counter, None),
             };
-            let len = tag.len() + mem::size_of::<u64>() + request.len();
+            let status_len = if reply_status.is_some() { 1 } else { 0 };
+            let len = tag.len() + mem::size_of::<u64>() + status_len + request.len();
             instream.write_u32::<BigEndian>(len.try_into().expect("message too large"))?;
             instream.write_all(tag)?;
             instream.write_u64::<BigEndian>(id)?;
+            if let Some(status) = reply_status {
+                instream.write_u8(status.into())?;
+            }
             instream.write_all(&request)?;
             instream.flush()
         })?;
