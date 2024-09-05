@@ -103,13 +103,14 @@ fn resolve_include(
     file_id: FileId,
     include_type: IncludeType,
     path: &str,
-) -> Option<String> {
+) -> Option<(String, FileId, Arc<str>)> {
     let include_file_id = match include_type {
         IncludeType::Normal => IncludeCtx::new(db, file_id).resolve_include(path)?,
         IncludeType::Lib => IncludeCtx::new(db, file_id).resolve_include_lib(path)?,
         IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(&path)?,
     };
-    path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())
+    let path = path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())?;
+    Some((path, include_file_id, db.file_text(include_file_id)))
 }
 
 #[salsa::query_group(ErlAstDatabaseStorage)]

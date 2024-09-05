@@ -32,6 +32,8 @@
 
 }.
 
+-include_lib("kernel/include/file.hrl").
+
 %%------------------------------------------------------------------------------
 %% API
 %%------------------------------------------------------------------------------
@@ -51,7 +53,7 @@ new(Str) ->
 
 -spec start_link(string()) -> pid().
 start_link(Str) ->
-    spawn_link(?MODULE, init, [Str]).
+    spawn(?MODULE, init, [Str]).
 
 -spec init(string()) -> ok.
 init(Str) ->
@@ -71,6 +73,10 @@ loop(State) ->
             {Reply, NewState} = file_position(Pos, State),
             file_reply(From, Ref, Reply),
             ?MODULE:loop(NewState);
+        {file_request, From, Ref, {read_handle_info, Opts}} ->
+            {Reply, NewState} = file_info(Opts, State),
+            file_reply(From, Ref, Reply),
+            ?MODULE:loop(NewState);
         _Unknown ->
             logger:warning("elp_io_string:_Unkown: [~p]", [_Unknown]),
             ?MODULE:loop(State)
@@ -84,6 +90,11 @@ reply(From, ReplyAs, Reply) ->
 file_reply(From, ReplyAs, Reply) ->
     From ! {file_reply, ReplyAs, Reply},
     ok.
+
+-spec file_info([any()], state()) -> {{ok, any()}, state()}.
+file_info(_Opts, #{original := Original} = State) ->
+    Sz = length(Original),
+    {{ok, #file_info{size = Sz}}, State}.
 
 -spec file_position(integer()|cur, state()) -> {{ok, number() | none()}, state()}.
 file_position(cur, #{original := Original, buffer := Buffer} = State) ->

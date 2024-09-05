@@ -67,14 +67,16 @@ start_link() ->
 -define(RECURSIVE_CALLBACK_TIMEOUT, infinity).
 
 -spec path_open(id(), string(), file_id(), include_type())
-   -> {value, [string()]} | failed.
+   -> {ok, pid(), string(), file_id()} | {error, any()}.
 path_open(ReqId, Name, FileId, IncludeType) ->
   case gen_server:call(?SERVER, {request, ReqId,
              [unicode:characters_to_binary(add_include_type(Name, FileId, IncludeType))]},
               ?RECURSIVE_CALLBACK_TIMEOUT) of
-    {ok, Data} ->
-          Paths = collect_paths(Data),
-          {ok, Paths};
+    {ok, <<SzPath:32, Paths:SzPath/binary-unit:8,
+           NewFileId:32,
+           Sz:32, FileText:Sz/binary-unit:8>>} ->
+        Pid = elp_io_string:new(FileText),
+        {ok, Pid, binary_to_list(Paths), NewFileId};
      X -> X
   end.
 

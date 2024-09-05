@@ -846,12 +846,8 @@ enter_file(_NewName, Inc, From, St) when
     wait_req_scan(St);
 enter_file(NewName, Inc, From, St) ->
     case erlang_service_server:path_open(St#epp.request_id, NewName, St#epp.file_id, normal) of
-        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
-        _ -> ResolvedName = NewName
-    end,
-    case file:path_open(St#epp.path, ResolvedName, [read]) of
-        {ok, NewF, Pname} ->
-            wait_req_scan(enter_file2(NewF, Pname, From, St));
+        {ok, NewF, Pname, FileId} ->
+            wait_req_scan(enter_file2(NewF, Pname, FileId, From, St));
         {error, _E} ->
             epp_reply(From, {error, {loc(Inc), elp_epp, {include, file, NewName}}}),
             wait_req_scan(St)
@@ -860,7 +856,7 @@ enter_file(NewName, Inc, From, St) ->
 %% enter_file2(File, FullName, From, EppState, AtLocation) -> EppState.
 %%  Set epp to use this file and "enter" it.
 
-enter_file2(NewF, Pname, From, St0) ->
+enter_file2(NewF, Pname, FileId, From, St0) ->
     #epp{
         include_offset = Offset,
         macs = Ms0,
@@ -882,6 +878,7 @@ enter_file2(NewF, Pname, From, St0) ->
         offset = 0,
         name = Pname,
         name2 = Pname,
+        file_id = FileId,
         sstk = [St0 | St0#epp.sstk],
         path = Path,
         macs = Ms,
@@ -1084,13 +1081,8 @@ scan_filedoc_content(
     #epp{name = CurrentFilename} = St
 ) ->
     %% The head of the path is the dir where the current file is
-    Cwd = hd(St#epp.path),
     case erlang_service_server:path_open(St#epp.request_id, DocFilename, St#epp.file_id, doc) of
-        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
-        _ -> ResolvedName = DocFilename
-    end,
-    case file:path_open([Cwd], ResolvedName, [read, binary]) of
-        {ok, NewF, Pname} ->
+        {ok, NewF, Pname, _FileId} ->
             case file:read_file_info(NewF) of
                 {ok, #file_info{size = Sz}} ->
                     {ok, Bin} = file:read(NewF, Sz),
@@ -1461,29 +1453,11 @@ scan_include_lib1(
 ) ->
     NewName = expand_var(NewName0),
     case erlang_service_server:path_open(St#epp.request_id, NewName, St#epp.file_id, lib) of
-        {ok, [ResolvedPath]} -> ResolvedName = ResolvedPath;
-        _ -> ResolvedName = NewName
-    end,
-    case file:path_open(St#epp.path, ResolvedName, [read]) of
-        {ok, NewF, Pname} ->
-            wait_req_scan(enter_file2(NewF, Pname, From, St));
+        {ok, NewF, Pname, FileId} ->
+            wait_req_scan(enter_file2(NewF, Pname, FileId, From, St));
         {error, _E1} ->
-            case expand_lib_dir(NewName, St#epp.path) of
-                {ok, Header} ->
-                    case file:open(Header, [read]) of
-                        {ok, NewF} ->
-                            wait_req_scan(enter_file2(NewF, Header, From, St));
-                        {error, _E2} ->
-                            epp_reply(
-                                From,
-                                {error, {loc(N), elp_epp, {include, lib, NewName}}}
-                            ),
-                            wait_req_scan(St)
-                    end;
-                error ->
-                    epp_reply(From, {error, {loc(N), elp_epp, {include, lib, NewName}}}),
-                    wait_req_scan(St)
-            end
+            epp_reply(From, {error, {loc(N), elp_epp, {include, lib, NewName}}}),
+            wait_req_scan(St)
     end;
 scan_include_lib1(Toks, Inc, From, St) ->
     T = find_mismatch(['(', string, ')', dot], Toks, Inc),

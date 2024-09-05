@@ -419,7 +419,7 @@ impl Connection {
         &self,
         request: ParseRequest,
         unwind: impl Fn(),
-        resolve_include: &impl Fn(FileId, IncludeType, &str) -> Option<String>,
+        resolve_include: &impl Fn(FileId, IncludeType, &str) -> Option<(String, FileId, Arc<str>)>,
     ) -> ParseResult {
         let path = request.path.clone();
         let tag = request.tag();
@@ -465,19 +465,22 @@ impl Connection {
     fn handle_request_parse_callback(
         &self,
         request: Payload,
-        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<String>,
+        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<(String, FileId, Arc<str>)>,
     ) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         if !request.is_empty() {
             let string_val = decode_utf8_or_latin1(request);
-            if let Some(resolved) = Self::do_resolve(&string_val, resolve_include) {
-                buf.write_u32::<BigEndian>(resolved.len() as u32)
-                    .expect("buf write failed");
-                buf.write_all(resolved.as_bytes())
-                    .expect("buf write failed");
+            if let Some((resolved, file_id, contents)) =
+                Self::do_resolve(&string_val, resolve_include)
+            {
+                buf.write_u32::<BigEndian>(resolved.len() as u32)?;
+                buf.write_all(resolved.as_bytes())?;
+                buf.write_u32::<BigEndian>(file_id.index() as u32)?;
+                buf.write_u32::<BigEndian>(contents.len() as u32)?;
+                buf.write_all(contents.as_bytes())?;
                 Ok(buf)
             } else {
-                bail!("handle_request_parse_callback:did not resolve file")
+                bail!("handle_request_parse_callback: no file resolved")
             }
         } else {
             bail!("handle_request_parse_callback: empty server request")
@@ -486,8 +489,8 @@ impl Connection {
 
     pub fn do_resolve(
         string_val: &str,
-        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<String>,
-    ) -> Option<String> {
+        resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<(String, FileId, Arc<str>)>,
+    ) -> Option<(String, FileId, Arc<str>)> {
         lazy_static! {
             static ref RE: Regex = Regex::new("([^:]+):([^:]+):(.+)").unwrap();
         }
