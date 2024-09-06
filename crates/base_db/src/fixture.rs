@@ -116,7 +116,7 @@ struct Builder {
 
 impl Builder {
     fn new(diagnostics_enabled: DiagnosticsEnabled) -> Builder {
-        let project_dir = if diagnostics_enabled.needs_erlang_service() {
+        let project_dir = if diagnostics_enabled.needs_fixture_on_disk() {
             let tmp_dir = TempDir::new().keep();
             let tmp_dir_path: &Path = tmp_dir.path();
 
@@ -202,7 +202,7 @@ impl ChangeFixture {
 
             change.change_file(file_id, Some(Arc::from(text)));
 
-            let path = if diagnostics_enabled.needs_erlang_service()
+            let path = if diagnostics_enabled.needs_fixture_on_disk()
                 && entry.path.char_indices().nth(0) == Some((0, '/'))
             {
                 let mut path = entry.path.clone();
@@ -295,7 +295,7 @@ impl ChangeFixture {
 
         let projects = [project];
 
-        let project_apps = if diagnostics_enabled.needs_erlang_service() {
+        let project_apps = if diagnostics_enabled.needs_fixture_on_disk() {
             // The static manifest already includes OTP
             let mut project_apps = ProjectApps::new(&projects, IncludeOtp::No);
 

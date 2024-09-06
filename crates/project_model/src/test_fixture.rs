@@ -125,7 +125,7 @@ pub struct DiagnosticsEnabled {
 }
 
 impl DiagnosticsEnabled {
-    pub fn needs_erlang_service(&self) -> bool {
+    pub fn needs_fixture_on_disk(&self) -> bool {
         let DiagnosticsEnabled {
             use_native: _,
             use_erlang_service,
