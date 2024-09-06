@@ -128,13 +128,13 @@ impl DiagnosticsEnabled {
     pub fn needs_fixture_on_disk(&self) -> bool {
         let DiagnosticsEnabled {
             use_native: _,
-            use_erlang_service,
+            use_erlang_service: _,
             use_eqwalizer,
             use_ct,
             use_edoc,
             tmp_dir: _,
         } = self;
-        *use_erlang_service || *use_ct || *use_eqwalizer || *use_edoc
+        *use_ct || *use_eqwalizer || *use_edoc
     }
 
     #[track_caller]
