@@ -28,7 +28,6 @@ use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
-use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -905,11 +904,6 @@ impl Server {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
-            if let &vfs::Change::Create(_, _) = &file.change {
-                raw_database.set_file_revision(file.file_id, 0);
-            } else {
-                bump_file_revision(file.file_id, raw_database);
-            }
         }
 
         if self.reset_source_roots
@@ -1672,16 +1666,7 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
             let opened = convert::vfs_path(&change.uri)
                 .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                 .unwrap_or(false);
-            if opened {
-                // Bump the file revision so that the salsa cache
-                // is invalidated for processes reading the
-                // on-disk version
-                let vfs = this.vfs.read();
-                let vfs_path = VfsPath::from(path);
-                if let Some(file_id) = vfs.file_id(&vfs_path) {
-                    bump_file_revision(file_id, this.analysis_host.raw_database_mut());
-                }
-            } else {
+            if !opened {
                 this.vfs_loader.handle.invalidate(path);
             }
         }

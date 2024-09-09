@@ -148,21 +148,6 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
-    /// A revision number that is bumped when the file state changes.
-    /// Crucially, we update it in server mode when the unsaved file
-    /// contents are changed in VFS, but also when we receive a
-    /// DidSave indication. So long as it is read to trigger a salsa
-    /// dependency any process such as the erlang_service which
-    /// accesses the on-disk file state, salsa should call it
-    /// appropriately, rather than using the cached unsaved version.
-    #[salsa::input]
-    fn file_revision(&self, file_id: FileId) -> u64;
-    // housekeeping notes:
-    // - we initialise it when a file is initialised,
-    //   so all the places set_file_source_root is called
-    // - we bump it in all the places set_file_text is called
-    // - we also bump in on DidSaveTextDocument
-
     /// Returns a map from module name to FileId of the containing file.
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
 
@@ -381,16 +366,6 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn file_text(&self, file_id: FileId) -> Arc<str> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
-}
-
-pub fn bump_file_revision(file_id: FileId, db: &mut dyn SourceDatabaseExt) {
-    db.set_file_revision(file_id, db.file_revision(file_id) + 1);
-}
-
-/// Read the file revision to register a salsa dependency on the
-/// on-disk version
-pub fn read_file_revision(file_id: FileId, db: &dyn SourceDatabaseExt) {
-    let _ = db.file_revision(file_id);
 }
 
 /// If the `input` string represents an atom, and needs quoting, quote

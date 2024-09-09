@@ -15,7 +15,6 @@ use std::sync::Arc;
 
 use vfs::FileId;
 
-use crate::bump_file_revision;
 use crate::input::AppStructure;
 use crate::SourceDatabaseExt;
 use crate::SourceRoot;
@@ -69,7 +68,6 @@ impl Change {
                 let root_id = SourceRootId(idx as u32);
                 for file_id in root.iter() {
                     db.set_file_source_root(file_id, root_id);
-                    db.set_file_revision(file_id, 0);
                 }
                 db.set_source_root(root_id, Arc::new(root));
             }
@@ -83,7 +81,6 @@ impl Change {
         for (file_id, text) in self.files_changed {
             // XXX: can't actually remove the file, just reset the text
 
-            bump_file_revision(file_id, db);
             let text = text.unwrap_or_else(|| Arc::from(""));
             db.set_file_text(file_id, text);
             res.push(file_id);

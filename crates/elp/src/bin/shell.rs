@@ -21,7 +21,6 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::document::Document;
 use elp_eqwalizer::Mode;
-use elp_ide::elp_ide_db::elp_base_db::bump_file_revision;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
@@ -256,11 +255,6 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
         }
-        if let &vfs::Change::Create(_, _) = &file.change {
-            raw_database.set_file_revision(file.file_id, 0);
-        } else {
-            bump_file_revision(file.file_id, raw_database);
-        }
     }
 
     if changed_files
@@ -272,7 +266,6 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
             let root_id = SourceRootId(idx as u32);
             for file_id in set.iter() {
                 raw_database.set_file_source_root(file_id, root_id);
-                raw_database.set_file_revision(file_id, 0);
             }
             let root = SourceRoot::new(set);
             raw_database.set_source_root(root_id, Arc::new(root));

@@ -132,10 +132,6 @@ fn module_ast(
     compile_options: Vec<CompileOption>,
     override_compile_options: Vec<CompileOption>,
 ) -> Arc<ParseResult> {
-    // Dummy read of file revision make DB track changes.
-    // Note that include file tracking tackes place in db.load_ast().
-    let _ = db.file_revision(file_id);
-
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
