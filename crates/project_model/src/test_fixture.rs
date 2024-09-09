@@ -129,12 +129,12 @@ impl DiagnosticsEnabled {
         let DiagnosticsEnabled {
             use_native: _,
             use_erlang_service: _,
-            use_eqwalizer,
+            use_eqwalizer: _,
             use_ct,
             use_edoc,
             tmp_dir: _,
         } = self;
-        *use_ct || *use_eqwalizer || *use_edoc
+        *use_ct || *use_edoc
     }
 
     #[track_caller]

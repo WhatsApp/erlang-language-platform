@@ -112,6 +112,7 @@ pub struct ChangeFixture {
 
 struct Builder {
     project_dir: Option<TempDir>,
+    diagnostics_enabled: DiagnosticsEnabled,
 }
 
 impl Builder {
@@ -139,7 +140,10 @@ impl Builder {
             None
         };
 
-        Builder { project_dir }
+        Builder {
+            project_dir,
+            diagnostics_enabled,
+        }
     }
 
     fn absolute_path(&self, path: String) -> String {
@@ -155,6 +159,10 @@ impl Builder {
         self.project_dir
             .as_ref()
             .and_then(|d| Utf8Path::from_path(d.path()))
+    }
+
+    fn needs_otp(&self) -> bool {
+        self.project_dir().is_some() || self.diagnostics_enabled.use_eqwalizer
     }
 }
 
@@ -217,7 +225,7 @@ impl ChangeFixture {
 
             inc_file_id(&mut file_id);
         }
-        if let Some(_project_dir) = builder.project_dir() {
+        if builder.needs_otp() {
             // We need to add the erlang module to the file contents too.
             let erts_app: ProjectAppData = OTP_ERLANG_APP.clone();
             app_map.combine(erts_app.clone());

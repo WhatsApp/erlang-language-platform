@@ -1743,6 +1743,7 @@ mod tests {
     use elp_ide::AnalysisHost;
     use elp_project_model::test_fixture::DiagnosticsEnabled;
     use expect_test::expect_file;
+    use fxhash::FxHashSet;
 
     use super::*;
 
@@ -2596,20 +2597,25 @@ mod tests {
 
     fn decl_v2_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d, _) = facts_with_annotations(spec);
+        let hash_map = &expected_by_file.clone();
+        let fixture_files = FxHashSet::from_iter(hash_map.keys());
         for file_decl in facts.file_declarations {
-            let mut annotations = expected_by_file
-                .remove(&file_decl.file_id)
-                .expect("Annotations shold be present");
-            for decl in file_decl.declarations {
-                let range: TextRange = decl.span().clone().into();
-                let label = decl.to_string();
-                let tuple = (range, label);
-                let idx = annotations.iter().position(|a| a == &tuple).expect(
-                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
-                );
-                annotations.remove(idx);
+            // Skip files not in the fixture, from OTP
+            if fixture_files.contains(&file_decl.file_id) {
+                let mut annotations = expected_by_file
+                    .remove(&file_decl.file_id)
+                    .expect("Annotations shold be present");
+                for decl in file_decl.declarations {
+                    let range: TextRange = decl.span().clone().into();
+                    let label = decl.to_string();
+                    let tuple = (range, label);
+                    let idx = annotations.iter().position(|a| a == &tuple).expect(
+                        format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
+                    );
+                    annotations.remove(idx);
+                }
+                assert_eq!(annotations, vec![], "Expected no more annotations");
             }
-            assert_eq!(annotations, vec![], "Expected no more annotations");
         }
 
         assert_eq!(
