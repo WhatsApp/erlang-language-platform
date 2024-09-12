@@ -1676,7 +1676,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_ct_include_tests(buck: bool) {
-        simple_snapshot(
+        simple_snapshot_expect_error(
             args_vec![
                 "lint",
                 "--include-ct-diagnostics",

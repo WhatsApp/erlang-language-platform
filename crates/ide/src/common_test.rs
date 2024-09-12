@@ -84,7 +84,7 @@ pub fn unreachable_test(
                     format!("Unreachable test ({name})"),
                     range,
                 )
-                .with_severity(Severity::Warning)
+                .with_severity(Severity::Error)
                 .with_ignore_fix(sema, file_id);
                 res.push(d);
             }
@@ -342,7 +342,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 warning: Unreachable test (b/1)
+%% ^ 💡 error: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -364,7 +364,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 warning: Unreachable test (b/1)
+%% ^ 💡 error: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -387,7 +387,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 warning: Unreachable test (b/1)
+%% ^ 💡 error: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -409,7 +409,7 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 warning: Unreachable test (c/1)
+%% ^ 💡 error: Unreachable test (c/1)
      ok.
             "#,
         );
@@ -430,7 +430,7 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 warning: Unreachable test (c/1)
+%% ^ 💡 error: Unreachable test (c/1)
      ok.
             "#,
         );
@@ -449,10 +449,10 @@ mod tests {
     a(_Config) ->
       ok.
     b(_Config) ->
- %% ^ 💡 warning: Unreachable test (b/1)
+ %% ^ 💡 error: Unreachable test (b/1)
       ok.
     c(_Config) ->
- %% ^ 💡 warning: Unreachable test (c/1)
+ %% ^ 💡 error: Unreachable test (c/1)
       ok.
      "#,
         );
@@ -546,7 +546,7 @@ c(_Config) ->
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 warning: Unreachable test (b/1)
+%% ^ 💡 error: Unreachable test (b/1)
      ok.
 //- /my_app/src/my_behaviour.erl
 -module(my_behaviour).
