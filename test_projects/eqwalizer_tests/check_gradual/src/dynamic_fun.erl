@@ -189,3 +189,9 @@ map_f4(F, Ts) -> lists:map(F, Ts).
 
 -spec map_f5(fun((term()) -> atom()), [term()]) -> [atom()].
 map_f5(F, Ts) -> map_f4(F, Ts).
+
+-spec union_funs(eqwalizer:dynamic(fun((atom()) -> ok) | foo)) -> ok.
+union_funs(F) ->
+    case F of
+        Fun when is_function(Fun, 1) -> F(abc)
+    end.
