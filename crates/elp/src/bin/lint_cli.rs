@@ -310,10 +310,14 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         &mut changed_files,
                         diags,
                     );
+                    // We handle the fix application result here, so
+                    // the overall status of whether error-severity
+                    // diagnostics is still returned as usual, in the
+                    // next statement.
                     match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
                         Ok(_) => {}
                         Err(err) => {
-                            writeln!(cli, "Apply fix failed: {:?}", err).ok();
+                            writeln!(cli, "Apply fix failed: {:#}", err).ok();
                         }
                     };
                 }
