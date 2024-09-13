@@ -200,7 +200,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
 
             // Declare outside the block so it has the right lifetime for filter_diagnostics
             let res;
-            let mut diags = {
+            let mut initial_diags = {
                 // We put this in its own block so they analysis is
                 // freed before we apply lints. To apply lints
                 // recursively, we need to update the underlying
@@ -259,15 +259,15 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                     &FxHashSet::default(),
                 )?
             };
-            if diags.is_empty() {
+            if initial_diags.is_empty() {
                 if args.is_format_normal() {
                     writeln!(cli, "No diagnostics reported")?;
                 }
             } else {
-                diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+                initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
                 let mut err_in_diag = false;
                 if args.is_format_json() {
-                    for (_name, file_id, diags) in &diags {
+                    for (_name, file_id, diags) in &initial_diags {
                         if args.print_diags {
                             for diag in diags {
                                 // We use JSON output for CI, and want to see warnings too.
@@ -294,9 +294,13 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         }
                     }
                 } else {
-                    writeln!(cli, "Diagnostics reported in {} modules:", diags.len())?;
+                    writeln!(
+                        cli,
+                        "Diagnostics reported in {} modules:",
+                        initial_diags.len()
+                    )?;
 
-                    for (name, file_id, diags) in &diags {
+                    for (name, file_id, diags) in &initial_diags {
                         writeln!(cli, "  {}: {}", name, diags.len())?;
                         if args.print_diags {
                             for diag in diags {
@@ -316,7 +320,7 @@ pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Re
                         &mut loaded.vfs,
                         &args,
                         &mut changed_files,
-                        diags,
+                        initial_diags,
                     );
                     // We handle the fix application result here, so
                     // the overall status of whether error-severity
