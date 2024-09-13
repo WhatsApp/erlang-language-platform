@@ -256,6 +256,8 @@ pub struct Lint {
     pub in_place: bool,
     /// After applying a fix step, check that the diagnostics are clear, else roll back
     pub with_check: bool,
+    /// After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
+    pub check_eqwalize_all: bool,
     /// Apply to all matching diagnostic occurrences at once, rather
     /// than one at a time.
     pub one_shot: bool,

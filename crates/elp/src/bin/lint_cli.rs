@@ -156,6 +156,25 @@ fn do_parse_one(
         diagnostics.set_edoc(file_id, edoc_diagnostics);
     }
     if args.include_eqwalizer_diagnostics {
+        if args.check_eqwalize_all {
+            let project_id = db.project_id(file_id).unwrap().unwrap();
+            let max_tasks = elp_project_model::EqwalizerConfig::default().max_tasks;
+            if let Some(diags) = db
+                .eqwalizer_diagnostics_by_project(project_id, vec![file_id], max_tasks)
+                .unwrap()
+            {
+                diagnostics.set_eqwalizer_project(diags);
+            }
+        } else {
+            if let Some(diags) = db
+                .eqwalizer_diagnostics_for_file(file_id, args.include_generated)
+                .unwrap()
+            {
+                diagnostics.set_eqwalizer(file_id, diags);
+            }
+        }
+    }
+    if args.include_eqwalizer_diagnostics {
         if let Some(diags) = db
             .eqwalizer_diagnostics_for_file(file_id, args.include_generated)
             .unwrap()
@@ -525,6 +544,9 @@ impl<'a> Lints<'a> {
                             files_changed: vec![(file_id, Some(Arc::from(source)))],
                             app_structure: None,
                         });
+                        if self.args.check_eqwalize_all {
+                            writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
+                        }
                         let diags = do_parse_one(
                             &self.analysis_host.analysis(),
                             self.cfg,
@@ -538,7 +560,7 @@ impl<'a> Lints<'a> {
                                 .into_iter()
                                 .any(|diag| diagnostics::Severity::Error == diag.severity)
                         });
-                        if self.args.with_check && err_in_diags {
+                        if (self.args.with_check || self.args.check_eqwalize_all) && err_in_diags {
                             bail!("Applying change introduces an error diagnostic");
                         } else {
                             self.changed_files.insert((file_id, name.clone()));
