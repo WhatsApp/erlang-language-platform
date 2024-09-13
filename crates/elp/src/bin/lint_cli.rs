@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::collections::hash_map::Entry;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -51,6 +52,7 @@ use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::FormIdx;
 use hir::InFile;
@@ -443,7 +445,7 @@ struct Lints<'a> {
     vfs: &'a mut Vfs,
     args: &'a Lint,
     changed_files: &'a mut FxHashSet<(FileId, String)>,
-    diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
+    diags: FxHashMap<FileId, (String, Vec<diagnostics::Diagnostic>)>,
     changed_forms: FxHashSet<InFile<FormIdx>>,
 }
 
@@ -468,6 +470,7 @@ impl<'a> Lints<'a> {
         changed_files: &'a mut FxHashSet<(FileId, String)>,
         diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
     ) -> Lints<'a> {
+        let diags_by_file_id = diagnostics_by_file_id(&diags);
         let mut changed_forms = FxHashSet::default();
         for (_name, file_id, diags) in &diags {
             for diag in diags {
@@ -484,7 +487,7 @@ impl<'a> Lints<'a> {
             vfs,
             args,
             changed_files,
-            diags,
+            diags: diags_by_file_id,
             changed_forms,
         }
     }
@@ -546,17 +549,17 @@ impl<'a> Lints<'a> {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>();
-            self.diags = filter_diagnostics(
+            self.diags = diagnostics_by_file_id(&filter_diagnostics(
                 &self.analysis_host.analysis(),
                 &None,
                 None,
                 &new_diags,
                 &self.changed_forms,
-            )?;
+            )?);
             if !self.diags.is_empty() {
                 writeln!(cli, "---------------------------------------------\n")?;
                 writeln!(cli, "New filtered diagnostics")?;
-                for (name, file_id, diags) in &self.diags {
+                for (file_id, (name, diags)) in &self.diags {
                     writeln!(cli, "  {}: {}", name, diags.len())?;
                     for diag in diags.iter() {
                         print_diagnostic(diag, &self.analysis_host.analysis(), *file_id, cli)?;
@@ -580,7 +583,7 @@ impl<'a> Lints<'a> {
     ) -> Result<Vec<FixResult>> {
         let mut changes: Vec<FixResult> = Vec::default();
         if self.args.one_shot {
-            self.diags.iter().for_each(|(m, file_id, ds)| {
+            self.diags.iter().for_each(|(file_id, (m, ds))| {
                 if let Ok(fs) = self.apply_all_fixes(m, ds, *file_id, format_normal, cli) {
                     changes.extend(fs.into_iter());
                 }
@@ -591,7 +594,7 @@ impl<'a> Lints<'a> {
             changes = self
                 .diags
                 .iter()
-                .flat_map(|(m, file_id, ds)| {
+                .flat_map(|(file_id, (m, ds))| {
                     ds.iter().next().map_or(Ok(vec![]), |d| {
                         self.apply_fixes(m, d, *file_id, format_normal, cli)
                     })
@@ -771,6 +774,29 @@ impl<'a> Lints<'a> {
         };
         Some(())
     }
+}
+
+fn diagnostics_by_file_id(
+    diags: &Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
+) -> std::collections::HashMap<
+    FileId,
+    (String, Vec<diagnostics::Diagnostic>),
+    std::hash::BuildHasherDefault<fxhash::FxHasher>,
+> {
+    let mut diags_by_file_id: FxHashMap<FileId, (String, Vec<diagnostics::Diagnostic>)> =
+        FxHashMap::default();
+    for (name, file_id, diags) in diags {
+        match diags_by_file_id.entry(*file_id) {
+            Entry::Occupied(mut occupied) => {
+                let v = occupied.get_mut();
+                v.1.extend(diags.iter().cloned())
+            }
+            Entry::Vacant(vacant) => {
+                vacant.insert((name.clone(), diags.clone()));
+            }
+        };
+    }
+    diags_by_file_id
 }
 
 /// Take the diff location, find the FormIdx of the enclosing form of its start position
