@@ -240,6 +240,8 @@ pub struct Lint {
     pub include_ct_diagnostics: bool,
     /// Include EDoc diagnostics
     pub include_edoc_diagnostics: bool,
+    /// Include Eqwalizer diagnostics
+    pub include_eqwalizer_diagnostics: bool,
     /// Include Suppressed diagnostics (e.g. elp:fixme)
     pub include_suppressed: bool,
     /// Also generate diagnostics for test files

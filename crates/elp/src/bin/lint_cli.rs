@@ -153,6 +153,14 @@ fn do_parse_one(
             .collect_vec();
         diagnostics.set_edoc(file_id, edoc_diagnostics);
     }
+    if args.include_eqwalizer_diagnostics {
+        if let Some(diags) = db
+            .eqwalizer_diagnostics_for_file(file_id, args.include_generated)
+            .unwrap()
+        {
+            diagnostics.set_eqwalizer(file_id, diags);
+        }
+    }
 
     if !diagnostics.is_empty() {
         let res = (name.to_string(), file_id, diagnostics);
