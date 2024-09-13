@@ -230,15 +230,15 @@ unbox2(B) ->
 -spec test_unbox2() -> ok.
 test_unbox2() ->
     unbox2(#any_box{inner = ok}).
-    
+
 -spec test_unbox2_gen() -> ok.
 test_unbox2_gen() ->
     unbox2(#any_box{_ = ok}).
-    
+
 -spec test_unbox2_undef() -> undefined.
 test_unbox2_undef() ->
     unbox2(#any_box{}).
-    
+
 -type box2_tuple(T) ::
     #any_box{inner :: T}.
 
@@ -248,7 +248,7 @@ unbox2_tuple({_, I}) -> I.
 -spec test_unbox2_tuple() -> ok.
 test_unbox2_tuple() ->
     unbox2_tuple(#any_box{inner = ok}).
-    
+
 -spec test_tuple_unbox2() -> ok.
 test_tuple_unbox2() ->
     unbox2({any_box, ok}).
@@ -261,7 +261,7 @@ test_tuple_unbox2() ->
 
 -type only_int_box() ::
     #int_bool_box{inner :: integer()}.
-    
+
 -type only_bool_box() ::
     #int_bool_box{inner :: boolean()}.
 
@@ -285,7 +285,7 @@ test_int_bool_box_neg() ->
     -> only_atom_box().
 test_int_bool_box_gen_neg() ->
     #int_bool_box{_ = a}.
-    
+
 -spec test_int_bool_box_default_neg()
     -> only_int_box().
 test_int_bool_box_default_neg() ->
@@ -295,24 +295,24 @@ test_int_bool_box_default_neg() ->
     -> only_bool_box().
 test_int_bool_box_default() ->
     #int_bool_box{}.
-    
+
 -spec test_rec_update(only_bool_box())
     -> only_int_box().
 test_rec_update(B) ->
     B#int_bool_box{inner = 3}.
-    
+
 -spec test_rec_update_neg
     (only_bool_box())
     -> only_atom_box().
 test_rec_update_neg(B) ->
     B#int_bool_box{inner = a}.
-    
+
 -spec test_rec_update_02_neg
     (only_bool_box())
     -> only_bool_box().
 test_rec_update_02_neg(B) ->
     B#int_bool_box{inner = 4}.
-    
+
 -spec select_bad_neg(only_int_box())
     -> integer().
 select_bad_neg(R) ->
@@ -322,7 +322,7 @@ select_bad_neg(R) ->
     -> boolean().
 test_select_neg(R) ->
     R#int_bool_box.inner.
-    
+
 -spec test_tuple_record_neg()
     -> #int_bool_box{}.
 test_tuple_record_neg() ->
@@ -350,7 +350,7 @@ test_select_union(R) ->
     -> true.
 test_select_union_neg(R) ->
     R#int_bool_box.inner.
-    
+
 -record(bad_default, {
     inner = true :: integer()
 }).
@@ -370,7 +370,7 @@ test_rec_to_refined_neg() ->
     -> integer().
 test_tuple_select_neg(R) ->
     R#bad_default.inner.
-    
+
 -record(refined_two_fields, {
     inner :: eqwalizer:refinable(term()),
     other :: integer()
@@ -486,7 +486,7 @@ rec_unsound(X) ->
 
 -spec fields_equal(#two_fields{})
   -> boolean().
-fields_equal(X) 
+fields_equal(X)
   when X =:= #two_fields{_ = id} ->
   true;
 fields_equal(_) ->
@@ -509,7 +509,7 @@ narrow2(F, A) ->
     F1 = F#two_ref{a = A},
     F2 = F1#two_ref{b = A},
     F2.
-    
+
 -type two_ref2() :: #two_ref{a :: integer(), b :: integer()}.
 -type two_ref3() :: #two_ref{b :: boolean()}.
 
@@ -549,3 +549,9 @@ un_two_ref2() ->
     Rec = mk_two_ref(),
     #two_ref{a = A} = Rec,
     A.
+
+-record(map_record, {info :: map() | ok }).
+
+-spec check_rec(dynamic()) -> ok.
+check_rec(#map_record{info = I}) ->
+    I#{a => b}.
