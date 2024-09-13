@@ -492,6 +492,8 @@ impl<'a> Lints<'a> {
         }
     }
 
+    // For now we assume that the surrounding codemod environment is
+    // invoking this one file at a time.
     fn apply_relevant_fixes(&mut self, format_normal: bool, cli: &mut dyn Cli) -> Result<()> {
         let mut recursion_limit = LINT_APPLICATION_RECURSION_LIMIT;
         loop {
@@ -518,44 +520,56 @@ impl<'a> Lints<'a> {
                          diff: _,
                      }|
                      -> Result<Option<(String, FileId, DiagnosticCollection)>> {
-                        self.changed_files.insert((file_id, name.clone()));
                         self.analysis_host.apply_change(Change {
                             roots: None,
                             files_changed: vec![(file_id, Some(Arc::from(source)))],
                             app_structure: None,
                         });
-
-                        let changes = changes
-                            .iter()
-                            .filter_map(|d| {
-                                form_from_diff(&self.analysis_host.analysis(), file_id, d)
-                            })
-                            .collect::<Vec<_>>();
-
-                        for form_id in &changes {
-                            self.changed_forms.insert(InFile::new(file_id, *form_id));
-                        }
-
-                        do_parse_one(
+                        let diags = do_parse_one(
                             &self.analysis_host.analysis(),
                             self.cfg,
                             file_id,
                             &name,
                             self.args,
-                        )
+                        )?;
+                        let err_in_diags = diags.iter().any(|(_, file_id, diags)| {
+                            let diags = diags.diagnostics_for(*file_id);
+                            diags
+                                .into_iter()
+                                .any(|diag| diagnostics::Severity::Error == diag.severity)
+                        });
+                        if self.args.with_check && err_in_diags {
+                            bail!("Applying change introduces an error diagnostic");
+                        } else {
+                            self.changed_files.insert((file_id, name.clone()));
+                            let changes = changes
+                                .iter()
+                                .filter_map(|d| {
+                                    form_from_diff(&self.analysis_host.analysis(), file_id, d)
+                                })
+                                .collect::<Vec<_>>();
+
+                            for form_id in &changes {
+                                self.changed_forms.insert(InFile::new(file_id, *form_id));
+                            }
+
+                            Ok(diags)
+                        }
                     },
                 )
                 .collect::<Result<Vec<Option<_>>>>()?
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>();
-            self.diags = diagnostics_by_file_id(&filter_diagnostics(
+
+            let new_diagnostics = filter_diagnostics(
                 &self.analysis_host.analysis(),
                 &None,
                 None,
                 &new_diags,
                 &self.changed_forms,
-            )?);
+            )?;
+            self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {
                 writeln!(cli, "---------------------------------------------\n")?;
                 writeln!(cli, "New filtered diagnostics")?;
@@ -740,14 +754,14 @@ impl<'a> Lints<'a> {
             .file_text(file_id)
             .ok()?
             .to_string();
-        let original = actual.clone();
+        let original_source = actual.clone();
 
         for edit in source_change.source_file_edits.values() {
             // The invariant for a `TextEdit` requires that they
             // disjoint and sorted by `delete`
             edit.apply(&mut actual);
         }
-        let (diff, unified) = diff_from_textedit(&original, &actual);
+        let (diff, unified) = diff_from_textedit(&original_source, &actual);
 
         Some(FixResult {
             file_id,

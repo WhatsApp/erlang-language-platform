@@ -254,6 +254,8 @@ pub struct Lint {
     pub recursive: bool,
     /// When applying a fix, modify the original file.
     pub in_place: bool,
+    /// After applying a fix step, check that the diagnostics are clear, else roll back
+    pub with_check: bool,
     /// Apply to all matching diagnostic occurrences at once, rather
     /// than one at a time.
     pub one_shot: bool,

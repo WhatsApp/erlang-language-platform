@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--one-shot] [--prefix ARG] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--with-check] [--one-shot] [--prefix ARG] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -25,6 +25,7 @@ Available options:
                                          prior fixes recursively. Limited in scope to the clause of the
                                          prior change.
         --in-place                       When applying a fix, modify the original file.
+        --with-check                     After applying a fix step, check that the diagnostics are clear, else roll back
         --one-shot                       Apply to all matching diagnostic occurrences at once, rather
                                          than one at a time.
         --prefix <ARG>                   Optional prefix to prepend to each fact. Only used when --format=json is set
