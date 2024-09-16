@@ -36,6 +36,7 @@ pub enum TypeError {
     RedundantGuard(RedundantGuard),
     AmbiguousUnion(AmbiguousUnion),
     ClauseNotCovered(ClauseNotCovered),
+    IgnoredOverloadedSpec(IgnoredOverloadedSpec),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -62,6 +63,11 @@ pub struct NoSpecialType {
     pub location: eqwalizer::Pos,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct IgnoredOverloadedSpec {
+    pub location: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
