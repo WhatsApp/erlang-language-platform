@@ -248,7 +248,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::env;
     use std::io::Read;
 
     use tempfile::NamedTempFile;
@@ -271,14 +270,8 @@ mod tests {
 
         let mut buf = String::new();
         file.read_to_string(&mut buf).unwrap();
-        // When executing this test via buck2 the crate name is changed as part
-        // of the unittest rule generated.  This ensures we are compatible with
-        // both buck2 and cargo.
-        let name = if env::var_os("BUCK2_DAEMON_UUID").is_some() {
-            "elp_log_unittest"
-        } else {
-            "elp_log"
-        };
+
+        let name = "elp_log";
         assert_eq!(format!("[ERROR {name}::tests] This will be logged!\n"), buf);
     }
 }
