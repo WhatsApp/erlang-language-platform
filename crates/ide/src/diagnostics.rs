@@ -422,10 +422,52 @@ pub struct DiagnosticDescriptor<'a> {
 // ---------------------------------------------------------------------
 
 #[derive(Default, Clone)]
+pub struct EnabledDiagnostics {
+    enable_all: bool,
+    enabled: FxHashSet<DiagnosticCode>,
+}
+
+impl EnabledDiagnostics {
+    pub fn new() -> EnabledDiagnostics {
+        EnabledDiagnostics {
+            enable_all: false,
+            enabled: FxHashSet::default(),
+        }
+    }
+    pub fn from_set(enabled: FxHashSet<DiagnosticCode>) -> EnabledDiagnostics {
+        EnabledDiagnostics {
+            enable_all: false,
+            enabled,
+        }
+    }
+
+    pub fn enable(&mut self, code: DiagnosticCode) -> &EnabledDiagnostics {
+        self.enabled.insert(code);
+        self
+    }
+
+    pub fn intersects(&self, other: &FxHashSet<DiagnosticCode>) -> bool {
+        if self.enable_all {
+            true
+        } else {
+            self.enabled.intersection(other).next().is_some()
+        }
+    }
+
+    pub fn contains(&self, code: &DiagnosticCode) -> bool {
+        if self.enable_all {
+            true
+        } else {
+            self.enabled.contains(code)
+        }
+    }
+}
+
+#[derive(Default, Clone)]
 pub struct DiagnosticsConfig<'a> {
     pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
-    pub enabled: FxHashSet<DiagnosticCode>,
+    pub enabled: EnabledDiagnostics,
     pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: LintsFromConfig,
     pub include_generated: bool,
@@ -479,7 +521,7 @@ impl<'a> DiagnosticsConfig<'a> {
             bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
         }
         self.disabled = disabled_diagnostics;
-        self.enabled = allowed_diagnostics;
+        self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
         self.lints_from_config = lint_config.ad_hoc_lints.clone();
         self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
@@ -519,7 +561,7 @@ impl<'a> DiagnosticsConfig<'a> {
     }
 
     pub fn enable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
-        self.enabled.insert(code);
+        self.enabled.enable(code);
         self
     }
 
@@ -543,10 +585,7 @@ impl<'a> DiagnosticsConfig<'a> {
             static ref NEEDS_ERLANG_SERVICE: FxHashSet<DiagnosticCode> =
                 FxHashSet::from_iter(vec![DiagnosticCode::ErlangService("L1318".to_string())]);
         }
-        self.enabled
-            .intersection(&NEEDS_ERLANG_SERVICE)
-            .next()
-            .is_some()
+        self.enabled.intersects(&NEEDS_ERLANG_SERVICE)
     }
 }
 

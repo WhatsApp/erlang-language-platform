@@ -26,8 +26,8 @@ use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
-use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::EnabledDiagnostics;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
@@ -402,7 +402,7 @@ fn print_diagnostic_json(
 fn filter_diagnostics<'a>(
     db: &Analysis,
     module: &'a Option<String>,
-    allowed_diagnostics: Option<&FxHashSet<DiagnosticCode>>,
+    allowed_diagnostics: Option<&EnabledDiagnostics>,
     diags: &'a [(String, FileId, DiagnosticCollection)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
@@ -441,9 +441,9 @@ fn filter_diagnostics<'a>(
 
 fn diagnostic_is_allowed(
     d: &diagnostics::Diagnostic,
-    diagnostic_code: Option<&FxHashSet<DiagnosticCode>>,
+    allowed_diagnostics: Option<&EnabledDiagnostics>,
 ) -> bool {
-    if let Some(allowed_codes) = diagnostic_code {
+    if let Some(allowed_codes) = allowed_diagnostics {
         allowed_codes.contains(&d.code)
     } else {
         d.has_category(diagnostics::Category::SimplificationRule)
