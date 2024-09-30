@@ -67,22 +67,28 @@ use crate::args::Lint;
 use crate::reporting;
 
 pub fn lint_all(args: &Lint, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+    if let Some(to) = &args.to {
+        fs::create_dir_all(to)?
+    };
+
+    do_codemod(cli, args, query_config)
+}
+
+fn load_project(
+    args: &Lint,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<LoadResult> {
     log::info!("Loading project at: {:?}", args.project);
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let mut loaded = load::load_project_at(
+    load::load_project_at(
         cli,
         &args.project,
         config,
         IncludeOtp::Yes,
         Mode::Server,
         query_config,
-    )?;
-
-    if let Some(to) = &args.to {
-        fs::create_dir_all(to)?
-    };
-
-    do_codemod(cli, &mut loaded, args)
+    )
 }
 
 fn do_parse_all(
@@ -193,8 +199,12 @@ fn do_parse_one(
 
 // ---------------------------------------------------------------------
 
-pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Result<()> {
+pub fn do_codemod(cli: &mut dyn Cli, args: &Lint, query_config: &BuckQueryConfig) -> Result<()> {
     let diagnostics_config = get_diagnostics_config(args)?;
+
+    // We load the project after loading config, in case it bails with
+    // errors. No point wasting time if the config is wrong.
+    let mut loaded = load_project(args, cli, query_config)?;
 
     // Declare outside the block so it has the right lifetime for filter_diagnostics
     let res;
