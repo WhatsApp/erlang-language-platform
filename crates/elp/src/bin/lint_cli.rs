@@ -91,12 +91,12 @@ fn do_parse_all(
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
     args: &Lint,
-    ignore_apps: &[String],
 ) -> Result<Vec<(String, FileId, DiagnosticCollection)>> {
     let module_index = analysis.module_index(*project_id).unwrap();
     let module_iter = module_index.iter_own();
 
-    let ignored_apps: FxHashSet<Option<Option<AppName>>> = ignore_apps
+    let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
+        .ignore_apps
         .iter()
         .map(|name| Some(Some(AppName(name.to_string()))))
         .collect();
@@ -194,173 +194,168 @@ fn do_parse_one(
 // ---------------------------------------------------------------------
 
 pub fn do_codemod(cli: &mut dyn Cli, loaded: &mut LoadResult, args: &Lint) -> Result<()> {
-    // First check if we are doing a codemod. We need to have a whole
-    // bunch of args set
-    match args {
-        Lint {
-            diagnostic_ignore,
-            diagnostic_filter,
-            ignore_apps,
-            read_config,
-            config_file,
-            project,
-            ..
-        } => {
-            let cfg_from_file = if *read_config || config_file.is_some() {
-                read_lint_config_file(project, config_file)?
-            } else {
-                LintConfig::default()
-            };
-            let cfg = DiagnosticsConfig::default()
-                .configure_diagnostics(&cfg_from_file, diagnostic_filter, diagnostic_ignore)?
-                .set_include_generated(args.include_generated)
-                .set_experimental(args.experimental_diags)
-                .set_include_suppressed(args.include_suppressed);
+    let diagnostics_config = get_diagnostics_config(args)?;
 
-            let allowed_diagnostics = cfg.enabled.clone();
-
-            // Declare outside the block so it has the right lifetime for filter_diagnostics
-            let res;
-            let mut initial_diags = {
-                // We put this in its own block so they analysis is
-                // freed before we apply lints. To apply lints
-                // recursively, we need to update the underlying
-                // ananalysis_host, which will deadlock if there is
-                // still an active analysis().
-                let analysis = loaded.analysis();
-                let (file_id, name) = match &args.module {
-                    Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
-                        Some(file_id) => {
-                            if args.is_format_normal() {
-                                writeln!(cli, "module specified: {}", module)?;
-                            }
-                            (Some(file_id), analysis.module_name(file_id)?)
-                        }
-                        None => panic!("Module not found: {module}"),
-                    },
-                    None => match &args.file {
-                        Some(file_name) => {
-                            if args.is_format_normal() {
-                                writeln!(cli, "file specified: {}", file_name)?;
-                            }
-                            let path_buf =
-                                Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
-                                    .expect("UTF8 conversion failed");
-                            let path = AbsPath::assert(&path_buf);
-                            let path = path.as_os_str().to_str().unwrap();
-                            (
-                                loaded
-                                    .vfs
-                                    .file_id(&VfsPath::new_real_path(path.to_string())),
-                                path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
-                            )
-                        }
-                        None => (None, None),
-                    },
-                };
-
-                res = match (file_id, name) {
-                    (None, _) => {
-                        do_parse_all(cli, &analysis, &loaded.project_id, &cfg, args, ignore_apps)?
+    // Declare outside the block so it has the right lifetime for filter_diagnostics
+    let res;
+    let mut initial_diags = {
+        // We put this in its own block so that analysis is
+        // freed before we apply lints. To apply lints
+        // recursively, we need to update the underlying
+        // ananalysis_host, which will deadlock if there is
+        // still an active analysis().
+        let analysis = loaded.analysis();
+        let (file_id, name) = match &args.module {
+            Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
+                Some(file_id) => {
+                    if args.is_format_normal() {
+                        writeln!(cli, "module specified: {}", module)?;
                     }
-                    (Some(file_id), Some(name)) => {
-                        do_parse_one(&analysis, &cfg, file_id, &name, args)?
-                            .map_or(vec![], |x| vec![x])
-                    }
-                    (Some(file_id), _) => {
-                        panic!("Could not get name from file_id for {:?}", file_id)
-                    }
-                };
-
-                filter_diagnostics(
-                    &analysis,
-                    &args.module,
-                    Some(&allowed_diagnostics),
-                    &res,
-                    &FxHashSet::default(),
-                )?
-            };
-            if initial_diags.is_empty() {
-                if args.is_format_normal() {
-                    writeln!(cli, "No diagnostics reported")?;
+                    (Some(file_id), analysis.module_name(file_id)?)
                 }
-            } else {
-                initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-                let mut err_in_diag = false;
-                if args.is_format_json() {
-                    for (_name, file_id, diags) in &initial_diags {
-                        if args.print_diags {
-                            for diag in diags {
-                                // We use JSON output for CI, and want to see warnings too.
-                                // So do not filter on errors only
-                                err_in_diag = true;
-                                let vfs_path = loaded.vfs.file_path(*file_id);
-                                let analysis = loaded.analysis();
-                                let root_path = &analysis
-                                    .project_data(*file_id)
-                                    .unwrap_or_else(|_err| panic!("could not find project data"))
-                                    .unwrap_or_else(|| panic!("could not find project data"))
-                                    .root_dir;
-                                let relative_path =
-                                    reporting::get_relative_path(root_path, &vfs_path);
-                                let prefix = args.prefix.as_ref();
-                                print_diagnostic_json(
-                                    diag,
-                                    &analysis,
-                                    *file_id,
-                                    with_prefix(relative_path, prefix).as_path(),
-                                    cli,
-                                )?;
-                            }
-                        }
+                None => panic!("Module not found: {module}"),
+            },
+            None => match &args.file {
+                Some(file_name) => {
+                    if args.is_format_normal() {
+                        writeln!(cli, "file specified: {}", file_name)?;
                     }
-                } else {
-                    writeln!(
-                        cli,
-                        "Diagnostics reported in {} modules:",
-                        initial_diags.len()
-                    )?;
+                    let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+                        .expect("UTF8 conversion failed");
+                    let path = AbsPath::assert(&path_buf);
+                    let path = path.as_os_str().to_str().unwrap();
+                    (
+                        loaded
+                            .vfs
+                            .file_id(&VfsPath::new_real_path(path.to_string())),
+                        path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
+                    )
+                }
+                None => (None, None),
+            },
+        };
 
-                    for (name, file_id, diags) in &initial_diags {
-                        writeln!(cli, "  {}: {}", name, diags.len())?;
-                        if args.print_diags {
-                            for diag in diags {
-                                if let diagnostics::Severity::Error = diag.severity {
-                                    err_in_diag = true;
-                                };
-                                print_diagnostic(diag, &loaded.analysis(), *file_id, cli)?;
-                            }
-                        }
+        res = match (file_id, name) {
+            (None, _) => do_parse_all(
+                cli,
+                &analysis,
+                &loaded.project_id,
+                &diagnostics_config,
+                args,
+            )?,
+            (Some(file_id), Some(name)) => {
+                do_parse_one(&analysis, &diagnostics_config, file_id, &name, args)?
+                    .map_or(vec![], |x| vec![x])
+            }
+            (Some(file_id), _) => {
+                panic!("Could not get name from file_id for {:?}", file_id)
+            }
+        };
+
+        filter_diagnostics(
+            &analysis,
+            &args.module,
+            Some(&diagnostics_config.enabled),
+            &res,
+            &FxHashSet::default(),
+        )?
+    };
+    if initial_diags.is_empty() {
+        if args.is_format_normal() {
+            writeln!(cli, "No diagnostics reported")?;
+        }
+    } else {
+        initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+        let mut err_in_diag = false;
+        if args.is_format_json() {
+            for (_name, file_id, diags) in &initial_diags {
+                if args.print_diags {
+                    for diag in diags {
+                        // We use JSON output for CI, and want to see warnings too.
+                        // So do not filter on errors only
+                        err_in_diag = true;
+                        let vfs_path = loaded.vfs.file_path(*file_id);
+                        let analysis = loaded.analysis();
+                        let root_path = &analysis
+                            .project_data(*file_id)
+                            .unwrap_or_else(|_err| panic!("could not find project data"))
+                            .unwrap_or_else(|| panic!("could not find project data"))
+                            .root_dir;
+                        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+                        let prefix = args.prefix.as_ref();
+                        print_diagnostic_json(
+                            diag,
+                            &analysis,
+                            *file_id,
+                            with_prefix(relative_path, prefix).as_path(),
+                            cli,
+                        )?;
                     }
-                }
-                if args.apply_fix {
-                    let mut changed_files = FxHashSet::default();
-                    let mut lints = Lints::new(
-                        &mut loaded.analysis_host,
-                        &cfg,
-                        &mut loaded.vfs,
-                        &args,
-                        &mut changed_files,
-                        initial_diags,
-                    );
-                    // We handle the fix application result here, so
-                    // the overall status of whether error-severity
-                    // diagnostics is still returned as usual, in the
-                    // next statement.
-                    match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            writeln!(cli, "Apply fix failed: {:#}", err).ok();
-                        }
-                    };
-                }
-                if err_in_diag {
-                    bail!("Errors found")
                 }
             }
-            Ok(())
+        } else {
+            writeln!(
+                cli,
+                "Diagnostics reported in {} modules:",
+                initial_diags.len()
+            )?;
+
+            for (name, file_id, diags) in &initial_diags {
+                writeln!(cli, "  {}: {}", name, diags.len())?;
+                if args.print_diags {
+                    for diag in diags {
+                        if let diagnostics::Severity::Error = diag.severity {
+                            err_in_diag = true;
+                        };
+                        print_diagnostic(diag, &loaded.analysis(), *file_id, cli)?;
+                    }
+                }
+            }
+        }
+        if args.apply_fix {
+            let mut changed_files = FxHashSet::default();
+            let mut lints = Lints::new(
+                &mut loaded.analysis_host,
+                &diagnostics_config,
+                &mut loaded.vfs,
+                &args,
+                &mut changed_files,
+                initial_diags,
+            );
+            // We handle the fix application result here, so
+            // the overall status of whether error-severity
+            // diagnostics is still returned as usual, in the
+            // next statement.
+            match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
+                Ok(_) => {}
+                Err(err) => {
+                    writeln!(cli, "Apply fix failed: {:#}", err).ok();
+                }
+            };
+        }
+        if err_in_diag {
+            bail!("Errors found")
         }
     }
+    Ok(())
+}
+
+fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
+    let cfg_from_file = if args.read_config || args.config_file.is_some() {
+        read_lint_config_file(&args.project, &args.config_file)?
+    } else {
+        LintConfig::default()
+    };
+    let cfg = DiagnosticsConfig::default()
+        .configure_diagnostics(
+            &cfg_from_file,
+            &args.diagnostic_filter,
+            &args.diagnostic_ignore,
+        )?
+        .set_include_generated(args.include_generated)
+        .set_experimental(args.experimental_diags)
+        .set_include_suppressed(args.include_suppressed);
+    Ok(cfg)
 }
 
 fn print_diagnostic(
