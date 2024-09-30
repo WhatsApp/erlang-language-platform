@@ -28,6 +28,7 @@ use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::EnabledDiagnostics;
+use elp_ide::diagnostics::FallBackToAll;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
@@ -201,6 +202,9 @@ fn do_parse_one(
 
 pub fn do_codemod(cli: &mut dyn Cli, args: &Lint, query_config: &BuckQueryConfig) -> Result<()> {
     let diagnostics_config = get_diagnostics_config(args)?;
+    if diagnostics_config.enabled.all_enabled() && args.is_format_normal() {
+        writeln!(cli, "Reporting all diagnostics codes")?;
+    }
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
@@ -322,7 +326,12 @@ pub fn do_codemod(cli: &mut dyn Cli, args: &Lint, query_config: &BuckQueryConfig
                 }
             }
         }
-        if args.apply_fix {
+        if args.apply_fix && diagnostics_config.enabled.all_enabled() {
+            bail!(
+                "We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter"
+            );
+        }
+        if args.apply_fix && !diagnostics_config.enabled.all_enabled() {
             let mut changed_files = FxHashSet::default();
             let mut lints = Lints::new(
                 &mut loaded.analysis_host,
@@ -361,6 +370,7 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
             &cfg_from_file,
             &args.diagnostic_filter,
             &args.diagnostic_ignore,
+            FallBackToAll::Yes,
         )?
         .set_include_generated(args.include_generated)
         .set_experimental(args.experimental_diags)

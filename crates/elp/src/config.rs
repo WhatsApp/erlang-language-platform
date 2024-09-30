@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
+use elp_ide::diagnostics::FallBackToAll;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -227,7 +228,7 @@ impl Config {
 
     pub fn diagnostics_config(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
         let mut config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &None, &None)
+            .configure_diagnostics(&lint_config, &None, &None, FallBackToAll::No)
             .unwrap_or(DiagnosticsConfig::default())
             .set_experimental(self.data.diagnostics_enableExperimental)
             .set_include_otp(self.data.diagnostics_enableOtp);

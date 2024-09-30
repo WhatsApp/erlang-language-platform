@@ -1365,14 +1365,44 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_no_diagnostics_enabled(buck: bool) {
+    fn lint_no_diagnostics_filter_all_enabled(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        simple_snapshot_expect_error(
+            args_vec!["lint",],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_no_lint_specified_output.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_no_diagnostics_filter_all_enabled_json(buck: bool) {
+        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_path = tmp_dir.path();
+        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        simple_snapshot_expect_error(
+            args_vec!["lint", "--format", "json"],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_no_lint_specified_json_output.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_apply_fix_no_diagnostics_enabled(buck: bool) {
         let tmp_dir = TempDir::new().expect("Could not create temporary directory");
         let tmp_path = tmp_dir.path();
         fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         simple_snapshot_expect_stderror(
-            args_vec!["lint", "--experimental",],
+            args_vec!["lint", "--apply-fix",],
             "linter",
-            expect_file!("../resources/test/linter/parse_elp_no_lint_output.stdout"),
+            expect_file!("../resources/test/linter/parse_elp_apply_fix_no_lint_output.stdout"),
             buck,
             None,
         );

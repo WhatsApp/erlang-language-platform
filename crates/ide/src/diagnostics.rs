@@ -421,7 +421,7 @@ pub struct DiagnosticDescriptor<'a> {
 
 // ---------------------------------------------------------------------
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct EnabledDiagnostics {
     enable_all: bool,
     enabled: FxHashSet<DiagnosticCode>,
@@ -438,6 +438,12 @@ impl EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: false,
             enabled,
+        }
+    }
+    pub fn enable_all() -> EnabledDiagnostics {
+        EnabledDiagnostics {
+            enable_all: true,
+            enabled: FxHashSet::default(),
         }
     }
 
@@ -461,6 +467,16 @@ impl EnabledDiagnostics {
             self.enabled.contains(code)
         }
     }
+
+    pub fn all_enabled(&self) -> bool {
+        self.enable_all
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FallBackToAll {
+    Yes,
+    No,
 }
 
 #[derive(Default, Clone)]
@@ -486,6 +502,7 @@ impl<'a> DiagnosticsConfig<'a> {
         lint_config: &LintConfig,
         diagnostic_filter: &Option<String>,
         diagnostic_ignore: &Option<String>,
+        fall_back_to_all: FallBackToAll,
     ) -> Result<DiagnosticsConfig<'a>> {
         let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = lint_config
             .enabled_lints
@@ -517,11 +534,16 @@ impl<'a> DiagnosticsConfig<'a> {
         // Make sure the enabled ones win out over disabled if a lint appears in both
         disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
 
-        if allowed_diagnostics.is_empty() {
+        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::No {
             bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
         }
+
         self.disabled = disabled_diagnostics;
-        self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
+        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::Yes {
+            self.enabled = EnabledDiagnostics::enable_all();
+        } else {
+            self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
+        }
         self.lints_from_config = lint_config.ad_hoc_lints.clone();
         self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
