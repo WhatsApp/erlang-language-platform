@@ -1530,6 +1530,16 @@ fn parse_error_to_diagnostic_info(
                     )),
                     None => Some(default_range),
                 },
+                "L1308" => match spec_name_range(db, file_id, range) {
+                    Some(name_range) => Some((
+                        file_id,
+                        name_range.start(),
+                        name_range.end(),
+                        parse_error.code.clone(),
+                        parse_error.msg.clone(),
+                    )),
+                    None => Some(default_range),
+                },
                 "L1260" => match record_name_range(db, file_id, range) {
                     Some(name_range) => Some((
                         file_id,
@@ -1593,6 +1603,13 @@ fn record_name_range(db: &RootDatabase, file_id: FileId, range: TextRange) -> Op
     let record =
         algo::find_node_at_offset::<ast::RecordDecl>(source_file.value.syntax(), range.start())?;
     Some(record.name()?.syntax().text_range())
+}
+
+fn spec_name_range(db: &RootDatabase, file_id: FileId, range: TextRange) -> Option<TextRange> {
+    let sema = Semantic::new(db);
+    let source_file = sema.parse(file_id);
+    let spec = algo::find_node_at_offset::<ast::Spec>(source_file.value.syntax(), range.start())?;
+    Some(spec.fun()?.syntax().text_range())
 }
 
 /// For an error in an included file, find the include directive, work
@@ -2298,6 +2315,20 @@ baz(1)->4.
   -export([foo/0, bar/0]).
 %%                ^^^^^  error: function bar/0 undefined
   foo() -> ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn restricted_range_for_spec_for_undefined_function_diagnostic() {
+        check_diagnostics(
+            r#"
+//- erlang_service
+    -module(main).
+    -export([foo/0]).
+    -spec bar() -> ok.
+%%        ^^^  error: spec for undefined function bar/0
+    foo() -> ok.
 "#,
         );
     }
