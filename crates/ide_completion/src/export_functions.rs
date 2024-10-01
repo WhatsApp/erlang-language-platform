@@ -50,9 +50,14 @@ pub(crate) fn add_completions(
     };
 
     let def_map = sema.def_map(file_position.file_id);
-    let completions = def_map
-        .get_functions()
-        .filter_map(|(na, _)| helpers::name_slash_arity_completion(na, prefix, Kind::Function));
+    let exported_functions = def_map.get_exported_functions();
+    let completions = def_map.get_functions().filter_map(|(na, _)| {
+        if exported_functions.contains(na) {
+            None
+        } else {
+            helpers::name_slash_arity_completion(na, prefix, Kind::Function)
+        }
+    });
 
     acc.extend(completions);
 }
@@ -91,6 +96,27 @@ mod test {
                 {label:foo/0, kind:Function, contents:SameAsLabel, position:None}
                 {label:foo/1, kind:Function, contents:SameAsLabel, position:None}
                 {label:foon/0, kind:Function, contents:SameAsLabel, position:None}"#]],
+        );
+    }
+
+    #[test]
+    fn test_exclude_already_exported_functions() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+
+        check(
+            r#"
+        -module(sample).
+        -export([
+            function_a/0,
+            fun~
+        ]).
+        function_a() -> ok.
+        function_b(X) -> X.
+        my_function() -> ok.
+        "#,
+            None,
+            expect![[r#"
+                {label:function_b/1, kind:Function, contents:SameAsLabel, position:None}"#]],
         );
     }
 }
