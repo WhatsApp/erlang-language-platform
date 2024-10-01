@@ -128,6 +128,9 @@ impl SymbolClass {
                         Some(FaDef::FuzzyFunction(def)) => {
                             reference_fuzzy(Some(def))
                         },
+                        Some(FaDef::FuzzyType(def)) => {
+                            reference_fuzzy(Some(def))
+                        },
                         def => {
                             reference_other(def)
                         }
@@ -209,6 +212,7 @@ impl SymbolClass {
                 ast::Remote(remote) => {
                     match sema.to_def(token.with_value(&remote)) {
                         Some(CallDef::FuzzyFunction(remote)) => reference_fuzzy(Some(remote)),
+                        Some(CallDef::FuzzyType(remote)) => reference_fuzzy(Some(remote)),
                         Some(call) => reference_direct(Some(call)),
                         _ => classify_var(sema, token.file_id, wrapper)
                     }
@@ -216,6 +220,7 @@ impl SymbolClass {
                 ast::Call(call) => {
                     match sema.to_def(token.with_value(&call)) {
                         Some(CallDef::FuzzyFunction(call)) => reference_fuzzy(Some(call)),
+                        Some(CallDef::FuzzyType(call)) => reference_fuzzy(Some(call)),
                         Some(call) => reference_direct(Some(call)),
                         _ => classify_var(sema, token.file_id, wrapper)
                     }
@@ -351,7 +356,7 @@ impl From<FaDef> for SymbolDefinition {
     fn from(it: FaDef) -> Self {
         match it {
             FaDef::Function(function) | FaDef::FuzzyFunction(function) => function.into(),
-            FaDef::Type(alias) => alias.into(),
+            FaDef::Type(alias) | FaDef::FuzzyType(alias) => alias.into(),
             FaDef::Callback(cb) => cb.into(),
         }
     }
@@ -370,7 +375,7 @@ impl From<CallDef> for SymbolDefinition {
     fn from(it: CallDef) -> Self {
         match it {
             CallDef::Function(function) | CallDef::FuzzyFunction(function) => function.into(),
-            CallDef::Type(alias) => alias.into(),
+            CallDef::Type(alias) | CallDef::FuzzyType(alias) => alias.into(),
         }
     }
 }

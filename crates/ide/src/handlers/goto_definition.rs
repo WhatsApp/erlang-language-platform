@@ -579,6 +579,39 @@ foo() ->
     }
 
     #[test]
+    fn local_type_alias_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-type my_type(X, Y) :: [{X, Y}].
+%%    ^^^^^^^^^^^^^
+
+-spec foo() -> my_ty~pe().
+foo() ->
+    ok.
+"#,
+        )
+    }
+
+    #[test]
+    fn local_type_alias_fuzzy_alternative() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+-type my_type() :: number().
+%%    ^^^^^^^^^
+-type my_type(X, Y) :: [{X, Y}].
+
+-spec foo() -> my_ty~pe().
+foo() ->
+    ok.
+"#,
+        )
+    }
+
+    #[test]
     fn local_type_to_header() {
         check(
             r#"
@@ -648,6 +681,24 @@ foo() ->
 -opaque bar() :: #{atom() => mod1:f~oo()}.
 "#,
         );
+    }
+
+    #[test]
+    fn remote_type_alias_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-spec foo() -> dep:my_ty~pe().
+foo() ->
+    ok.
+//- /src/dep.erl
+-module(dep).
+-type my_type(X, Y) :: [{X, Y}].
+%%    ^^^^^^^^^^^^^
+"#,
+        )
     }
 
     #[test]
@@ -1495,6 +1546,21 @@ foo(?F~OO()) -> ok.
 %%      ^^^^^^
 
 -type foo() :: ?F~OO(integer()).
+"#,
+        );
+    }
+
+    #[test]
+    fn export_type_entry_fuzzy() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-export_type([f~oo/1]).
+
+-type foo() :: ok.
+%%    ^^^^^
 "#,
         );
     }

@@ -1616,7 +1616,7 @@ impl GleanIndexer {
         ctx: &AnyCallBackCtx,
     ) -> Option<XRefFactVal> {
         let (body, range) = ctx.find_range(sema)?;
-        let def = resolve_type_target(sema, target, arity, file_id, &body)?;
+        let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(
             &module,
@@ -1635,7 +1635,7 @@ impl GleanIndexer {
         ctx: &AnyCallBackCtx,
     ) -> Option<XRef> {
         let (body, range) = ctx.find_range(sema)?;
-        let def = resolve_type_target(sema, target, arity, file_id, &body)?;
+        let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
         Some(XRef {
             source: range.into(),
             target: XRefTarget::Type(

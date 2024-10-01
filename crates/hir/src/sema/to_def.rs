@@ -128,6 +128,7 @@ pub enum CallDef {
     Function(FunctionDef),
     FuzzyFunction(FunctionDef),
     Type(TypeAliasDef),
+    FuzzyType(TypeAliasDef),
 }
 
 impl ToDef for ast::Remote {
@@ -159,7 +160,12 @@ impl ToDef for ast::Call {
             }
             AnyExprRef::TypeExpr(TypeExpr::Call { target, args }) => {
                 let arity = args.len().try_into().ok()?;
-                resolve_type_target(sema, target, arity, file_id, &body).map(CallDef::Type)
+                resolve_type_target(sema, target, Some(arity), file_id, &body)
+                    .map(CallDef::Type)
+                    .or_else(|| {
+                        resolve_type_target(sema, target, None, file_id, &body)
+                            .map(CallDef::FuzzyType)
+                    })
             }
             _ => None,
         }?;
@@ -374,6 +380,7 @@ pub enum FaDef {
     Function(FunctionDef),
     FuzzyFunction(FunctionDef),
     Type(TypeAliasDef),
+    FuzzyType(TypeAliasDef),
     Callback(CallbackDef),
 }
 
@@ -439,6 +446,13 @@ impl ToDef for ast::Fa {
                         .get(&form_list[entry].name)
                         .cloned()
                         .map(FaDef::Type)
+                        .or_else(|| {
+                            sema.db
+                                .def_map(ast.file_id)
+                                .get_type_any_arity(&form_list[entry].name.name())
+                                .cloned()
+                                .map(FaDef::FuzzyType)
+                        })
                 },
                 ast::OptionalCallbacksAttribute(attr) => {
                     let optional_callbacks = sema.find_form(ast.with_value(&attr))?;
@@ -578,7 +592,7 @@ pub fn resolve_call_target(
 pub fn resolve_type_target(
     sema: &Semantic<'_>,
     target: &CallTarget<TypeExprId>,
-    arity: u32,
+    arity: Option<u32>,
     file_id: FileId,
     body: &Body,
 ) -> Option<TypeAliasDef> {
@@ -594,8 +608,17 @@ pub fn resolve_type_target(
     };
 
     let name = sema.db.lookup_atom(body[type_expr].as_atom()?);
-    let name = NameArity::new(name, arity);
-    sema.db.def_map(file_id).get_types().get(&name).cloned()
+    match arity {
+        None => sema.db.def_map(file_id).get_type_any_arity(&name).cloned(),
+        Some(arity) => {
+            let name_arity = NameArity::new(name, arity);
+            sema.db
+                .def_map(file_id)
+                .get_types()
+                .get(&name_arity)
+                .cloned()
+        }
+    }
 }
 
 fn resolve_capture(sema: &Semantic<'_>, fun: InFile<ast::Expr>) -> Option<FunctionDef> {

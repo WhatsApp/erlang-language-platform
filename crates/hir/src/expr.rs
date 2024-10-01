@@ -437,7 +437,7 @@ impl CallTarget<TypeExprId> {
         file_id: FileId,
         body: &Body,
     ) -> Option<TypeAliasDef> {
-        sema::to_def::resolve_type_target(sema, self, arity, file_id, body)
+        sema::to_def::resolve_type_target(sema, self, Some(arity), file_id, body)
     }
 
     pub fn label(&self, arity: u32, sema: &Semantic, body: &Body) -> Option<SmolStr> {

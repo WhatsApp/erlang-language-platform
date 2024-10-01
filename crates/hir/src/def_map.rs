@@ -457,6 +457,16 @@ impl DefMap {
         self.types.get(name)
     }
 
+    pub fn get_type_any_arity(&self, name: &Name) -> Option<&TypeAliasDef> {
+        self.types.iter().find_map(|(name_arity, type_def)| {
+            if name_arity.name() == name {
+                Some(type_def)
+            } else {
+                None
+            }
+        })
+    }
+
     // TODO: tweak API T127375780
     pub fn get_exported_types(&self) -> &FxHashSet<NameArity> {
         &self.exported_types

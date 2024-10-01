@@ -88,7 +88,7 @@ impl ToDoc for InFile<&ast::Fa> {
         let fa_def = docs.sema.to_def(ast)?;
         let name = match fa_def {
             hir::FaDef::Function(f) | hir::FaDef::FuzzyFunction(f) => Some(f.name),
-            hir::FaDef::Type(_) => None,
+            hir::FaDef::Type(_) | hir::FaDef::FuzzyType(_) => None,
             hir::FaDef::Callback(c) => Some(c.callback.name),
         }?;
         docs.function_doc(ast.file_id, name)
@@ -126,7 +126,7 @@ impl ToDoc for InFile<&ast::Remote> {
                     let name_arity = fun_def.name;
                     docs.function_doc(file_id, name_arity)
                 }
-                CallDef::Type(_) => None,
+                CallDef::Type(_) | CallDef::FuzzyType(_) => None,
             }
         } else {
             None
@@ -141,7 +141,7 @@ impl ToDoc for InFile<&ast::Call> {
                 CallDef::Function(fun_def) | CallDef::FuzzyFunction(fun_def) => {
                     docs.function_doc(fun_def.file.file_id, fun_def.name)
                 }
-                CallDef::Type(_) => None,
+                CallDef::Type(_) | CallDef::FuzzyType(_) => None,
             }
         } else {
             None
