@@ -302,4 +302,16 @@ mod tests {
                 "#,
         );
     }
+
+    #[test]
+    fn usage_only_in_pattern_is_ok() {
+        check_diagnostics(
+            r#"
+               -module(main).
+               foo(X, _Y = [_Z = {X, _, _} | _]) -> bar;
+               foo(X, _Y) -> pub.
+               %%  ^ 💡 warning: this variable is unused
+            "#,
+        );
+    }
 }
