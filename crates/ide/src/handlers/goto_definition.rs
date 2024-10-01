@@ -925,6 +925,24 @@ foo() -> a~nother:bar().
     }
 
     #[test]
+    fn remote_call_module_macro() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+%%<<^^^^^^^^^^
+
+-export([bar/0]).
+
+foo() -> ?MOD~ULE:bar().
+
+bar() -> ok.
+
+"#,
+        )
+    }
+
+    #[test]
     fn behaviour_attribute() {
         check(
             r#"

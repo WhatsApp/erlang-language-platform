@@ -66,6 +66,7 @@ impl<Definition, Reference> DefinitionOrReference<Definition, Reference> {
 
 // ---------------------------------------------------------------------
 
+#[derive(Clone, Debug)]
 pub enum AtomDef {
     Module(Module),
     Function(FunctionDef),
@@ -87,10 +88,14 @@ impl ToDef for ast::Atom {
             _ => return None,
         };
         let name = sema.db.lookup_atom(*atom);
-        resolve_testcase(sema, file_id, &name)
-            .map(AtomDef::Function)
-            .or_else(|| resolve_module_name(sema, file_id, &name).map(AtomDef::Module))
+        resolve_atom(sema, &name, file_id)
     }
+}
+
+fn resolve_atom(sema: &Semantic<'_>, name: &Name, file_id: FileId) -> Option<AtomDef> {
+    resolve_testcase(sema, file_id, &name)
+        .map(AtomDef::Function)
+        .or_else(|| resolve_module_name(sema, file_id, &name).map(AtomDef::Module))
 }
 
 // ---------------------------------------------------------------------
@@ -269,6 +274,7 @@ impl ToDef for ast::RecordField {
 pub enum MacroCallDef {
     Macro(DefineDef),
     Call(CallDef),
+    Atom(AtomDef),
 }
 
 impl ToDef for ast::MacroCallExpr {
@@ -304,6 +310,13 @@ impl ToDef for ast::MacroCallExpr {
                 } else {
                     return None;
                 }
+            }
+            Some(ResolvedMacro::BuiltIn(BuiltInMacro::MODULE)) => {
+                let form_list = sema.db.file_form_list(ast.file_id);
+                let module_name = form_list.module_attribute().map(|attr| attr.name.clone());
+                return module_name
+                    .map(|name| resolve_atom(sema, &name, ast.file_id))
+                    .and_then(|def| def.map(MacroCallDef::Atom));
             }
             Some(ResolvedMacro::BuiltIn(_)) => {
                 return None;

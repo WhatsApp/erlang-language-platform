@@ -380,6 +380,7 @@ impl From<MacroCallDef> for SymbolDefinition {
         match it {
             MacroCallDef::Macro(m) => m.into(),
             MacroCallDef::Call(c) => c.into(),
+            MacroCallDef::Atom(c) => c.into(),
         }
     }
 }
