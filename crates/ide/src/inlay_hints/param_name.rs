@@ -83,7 +83,9 @@ fn should_hint(db: &dyn InternDatabase, param_name: &ParamName, expr: &Expr) -> 
     match param_name {
         ParamName::Name(name) => {
             if let Some(var) = expr.as_var() {
-                var.as_string(db) != name.as_str()
+                let var_name = &var.as_string(db);
+                let normalized_name = name.as_str().trim_start_matches('_');
+                var_name != normalized_name
             } else {
                 true
             }
@@ -155,6 +157,41 @@ main() ->
   sum(A,
       X
    %% ^B
+     ).
+"#,
+        );
+    }
+
+    #[test]
+    fn param_hints_variables_underscore_same_name() {
+        check_params(
+            r#"
+-module(main).~
+-compile(export_all).
+sum(A, _X) -> A.
+main() ->
+  A = 1,
+  X = 2,
+  sum(A,
+      X
+     ).
+"#,
+        );
+    }
+
+    #[test]
+    fn param_hints_variables_underscore_different_name() {
+        check_params(
+            r#"
+-module(main).~
+-compile(export_all).
+sum(A, _B) -> A.
+main() ->
+  A = 1,
+  X = 2,
+  sum(A,
+      X
+   %% ^_B
      ).
 "#,
         );
