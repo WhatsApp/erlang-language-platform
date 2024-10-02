@@ -16,8 +16,6 @@ use anyhow::Result;
 use elp_ide::elp_ide_assists::AssistKind;
 use elp_ide::elp_ide_assists::AssistResolveStrategy;
 use elp_ide::elp_ide_assists::SingleResolve;
-use elp_ide::elp_ide_completion::Completion;
-use elp_ide::elp_ide_completion::Kind;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide::elp_ide_db::docs::Doc;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
@@ -391,46 +389,9 @@ pub(crate) fn handle_completion(
         .and_then(|ctx| ctx.trigger_character)
         .and_then(|s| s.chars().next());
 
-    let ai_receiver =
-        if completion_trigger_character.is_none() || completion_trigger_character != Some(':') {
-            elp_ai::always(None)
-        } else {
-            snap.ai_completion(position)?
-        };
-
-    let mut completions = snap
+    let completions = snap
         .analysis
         .completions(position, completion_trigger_character)?;
-
-    let ai_result = if let Ok(Some(ai_result)) = ai_receiver.recv() {
-        ai_result
-    } else {
-        return Ok(Some(to_proto::completion_response(snap, completions)));
-    };
-
-    if completions.is_empty() {
-        completions.push(Completion {
-            label: ai_result,
-            kind: Kind::AiAssist,
-            contents: elp_ide::elp_ide_completion::Contents::SameAsLabel,
-            position: None,
-            sort_text: Some("\0".to_string()),
-            deprecated: false,
-        });
-    } else {
-        for c in completions.iter_mut() {
-            let split_char = '/';
-            let parts: Vec<&str> = c.label.splitn(2, split_char).collect();
-            let fname = parts[0];
-            if fname == ai_result {
-                c.sort_text = Some("\0".to_string());
-                c.kind = Kind::AiAssist;
-            } else if fname.starts_with(&ai_result) {
-                c.sort_text = Some("\x01".to_string());
-                c.kind = Kind::AiAssist;
-            }
-        }
-    }
 
     Ok(Some(to_proto::completion_response(snap, completions)))
 }

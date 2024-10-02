@@ -378,7 +378,6 @@ dependencies = [
  "bpaf",
  "codespan-reporting",
  "crossbeam-channel",
- "elp_ai",
  "elp_eqwalizer",
  "elp_ide",
  "elp_log",
@@ -422,18 +421,6 @@ dependencies = [
  "tracing",
  "vfs",
  "vfs-notify",
-]
-
-[[package]]
-name = "elp_ai"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "jod-thread",
- "log",
- "stdx",
- "tempfile",
 ]
 
 [[package]]

@@ -12,7 +12,6 @@ use std::env;
 
 use anyhow::Context;
 use anyhow::Result;
-use elp_ai::AiCompletion;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::timeit_with_telemetry;
@@ -119,8 +118,6 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
     let cache_pool = set_up_single_thread_pool();
     let eqwalizer_pool = set_up_eqwalizer_pool();
     let project_pool = set_up_single_thread_pool();
-    let ai_completion = set_up_ai_completion(&config);
-
     log::debug!("initial state: {:#?}", config);
 
     Ok(Server::new(
@@ -132,7 +129,6 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
         eqwalizer_pool,
         logger,
         config,
-        ai_completion,
     ))
 }
 
@@ -161,15 +157,6 @@ fn set_up_single_thread_pool() -> TaskHandle {
     let pool = ThreadPool::new(1);
     let handle = TaskPool::new_with_pool(sender, pool);
     Handle { handle, receiver }
-}
-
-fn set_up_ai_completion(config: &Config) -> AiCompletion {
-    if config.ai_enabled() {
-        AiCompletion::disabled() // @oss-only
-        // @fb-only: AiCompletion::startup()
-    } else {
-        AiCompletion::disabled()
-    }
 }
 
 fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {

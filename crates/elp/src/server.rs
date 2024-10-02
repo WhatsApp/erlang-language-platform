@@ -22,7 +22,6 @@ use crossbeam_channel::select;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use dispatch::NotificationDispatcher;
-use elp_ai::AiCompletion;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -235,7 +234,6 @@ pub struct Server {
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
     eqwalize_all_completed: bool,
     logger: Logger,
-    ai_completion: Arc<Mutex<AiCompletion>>,
     include_generated: bool,
     compile_options: Vec<CompileOption>,
 
@@ -254,7 +252,6 @@ impl Server {
         eqwalizer_pool: TaskHandle,
         logger: Logger,
         config: Config,
-        ai_completion: AiCompletion,
     ) -> Server {
         let mut this = Server {
             connection,
@@ -287,7 +284,6 @@ impl Server {
             eqwalize_all_scheduled: FxHashSet::default(),
             eqwalize_all_completed: false,
             logger,
-            ai_completion: Arc::new(Mutex::new(ai_completion)),
             vfs_config_version: 0,
             include_generated: true,
             compile_options: vec![],
@@ -308,7 +304,6 @@ impl Server {
             Arc::clone(&self.mem_docs),
             Arc::clone(&self.line_ending_map),
             Arc::clone(&self.projects),
-            Arc::clone(&self.ai_completion),
         )
     }
 

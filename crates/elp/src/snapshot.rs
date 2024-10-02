@@ -12,8 +12,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
-use elp_ai::AiCompletion;
-use elp_ai::CompletionReceiver;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -23,7 +21,6 @@ use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
-use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::erlang_service;
@@ -108,7 +105,6 @@ pub struct Snapshot {
     pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
     line_ending_map: SharedMap<FileId, LineEndings>,
     pub(crate) projects: Arc<Vec<Project>>,
-    ai_completion: Arc<Mutex<AiCompletion>>,
 }
 
 impl Snapshot {
@@ -121,7 +117,6 @@ impl Snapshot {
         mem_docs: Arc<RwLock<MemDocs>>,
         line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
         projects: Arc<Vec<Project>>,
-        ai_completion: Arc<Mutex<AiCompletion>>,
     ) -> Self {
         Snapshot {
             config,
@@ -133,7 +128,6 @@ impl Snapshot {
             mem_docs,
             line_ending_map,
             projects,
-            ai_completion,
         }
     }
 
@@ -161,14 +155,6 @@ impl Snapshot {
 
     pub(crate) fn line_endings(&self, id: FileId) -> LineEndings {
         self.line_ending_map.read()[&id]
-    }
-
-    pub(crate) fn ai_completion(&self, position: FilePosition) -> Result<CompletionReceiver> {
-        let mut ai_completion = self.ai_completion.lock();
-        let code = self.analysis.file_text(position.file_id)?;
-        let offset = u32::from(position.offset) as usize;
-        let prefix = &code[..offset];
-        Ok(ai_completion.complete(prefix.to_string()))
     }
 
     pub fn update_cache_for_file(

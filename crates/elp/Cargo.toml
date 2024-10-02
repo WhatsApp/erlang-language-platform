@@ -13,7 +13,6 @@ name = "elp"
 path = "src/bin/main.rs"
 
 [dependencies]
-elp_ai.workspace = true
 elp_eqwalizer.workspace = true
 elp_ide.workspace = true
 elp_log.workspace = true

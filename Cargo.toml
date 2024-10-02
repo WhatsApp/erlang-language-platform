@@ -9,7 +9,6 @@ version = "1.1.0"
 
 [workspace.dependencies]
 # own local crates
-elp_ai = { path = "./crates/ai" }
 elp_base_db = { path = "./crates/base_db" }
 elp_eqwalizer = { path = "./crates/eqwalizer" }
 elp_erlang_service = { path = "./crates/erlang_service" }
