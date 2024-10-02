@@ -251,9 +251,15 @@ fn find_path_in_project(
     path: &VfsPath,
 ) -> Option<FileId> {
     let project = db.project_data(project_id);
-    project
-        .source_roots
+    let source_roots = &project.source_roots;
+    let mut otp_source_roots = Vec::new();
+    if let Some(otp_project_id) = project.otp_project_id {
+        let otp_project = db.project_data(otp_project_id);
+        otp_source_roots = otp_project.source_roots.clone();
+    }
+    source_roots
         .iter()
+        .chain(&otp_source_roots)
         .find_map(|&source_root_id| db.source_root(source_root_id).file_for_path(path))
 }
 
@@ -262,7 +268,6 @@ fn decl_location(
     project_id: ProjectId,
     module: ModuleName,
     pos: &Pos,
-    file: SmolStr,
 ) -> Option<FileRange> {
     let module_index = db.module_index(project_id);
     let module_file_id = module_index.file_for_module(&module)?;
@@ -270,9 +275,7 @@ fn decl_location(
     let _ = stdx::panic_context::enter(format!("\ndecl_location: {:?}", module_file_id));
     let source_root_id = db.file_source_root(module_file_id);
     let source_root = db.source_root(source_root_id);
-    let decl_file_path = &source_root
-        .path_for_file(&module_file_id)?
-        .join(file.as_str())?;
+    let decl_file_path = &source_root.path_for_file(&module_file_id)?;
     let file_id = find_path_in_project(db, project_id, decl_file_path)?;
     let range: elp_syntax::TextRange = {
         match pos {
@@ -299,7 +302,7 @@ fn id_name_and_location(
     let module = ModuleName::new(type_id.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.types.get(&type_id.to_owned().into())?;
-    let loc = decl_location(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    let loc = decl_location(db, project_id, module, &decl.location)?;
     Some((type_id.to_string().into(), loc))
 }
 
@@ -311,7 +314,7 @@ fn record_name_and_location(
     let module = ModuleName::new(record.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.records.get(&record.name)?;
-    let loc = decl_location(db, project_id, module, &decl.location, decl.file.clone()?)?;
+    let loc = decl_location(db, project_id, module, &decl.location)?;
     Some((format!("#{}:{}", record.module, record.name).into(), loc))
 }
 
