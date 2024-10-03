@@ -1,4 +1,0 @@
-module specified: lints
-Diagnostics reported in 1 modules:
-  lints: 1
-      4:0-4:13::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'

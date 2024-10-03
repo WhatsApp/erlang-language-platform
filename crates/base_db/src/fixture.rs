@@ -168,7 +168,13 @@ impl Builder {
 
 impl ChangeFixture {
     #[track_caller]
-    fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
+    pub fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
+        let (fixture, change, _) = ChangeFixture::parse_detail(test_fixture);
+        (fixture, change)
+    }
+
+    #[track_caller]
+    pub fn parse_detail(test_fixture: &str) -> (ChangeFixture, Change, Project) {
         let fixture_with_meta = FixtureWithProjectMeta::parse(test_fixture);
         let FixtureWithProjectMeta {
             fixture,
@@ -301,7 +307,7 @@ impl ChangeFixture {
             project = loaded_project;
         }
 
-        let projects = [project];
+        let projects = [project.clone()];
 
         let project_apps = if diagnostics_enabled.needs_fixture_on_disk() {
             // The static manifest already includes OTP
@@ -341,6 +347,7 @@ impl ChangeFixture {
                 diagnostics_enabled,
             },
             change,
+            project,
         )
     }
 

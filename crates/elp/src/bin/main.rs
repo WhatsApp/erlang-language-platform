@@ -119,7 +119,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         }
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
-        args::Command::Lint(args) => lint_cli::lint_all(&args, cli, &query_config)?,
+        args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
             writeln!(cli, "#Please run this:\n{}", instructions)?
@@ -1042,18 +1042,6 @@ mod tests {
                 }"#]]
             .assert_eq(content.as_str());
         }
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
-    fn lint_1(buck: bool) {
-        simple_snapshot_expect_error(
-            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "P1700",],
-            "diagnostics",
-            expect_file!("../resources/test/diagnostics/parse_elp_lint1.stdout"),
-            buck,
-            None,
-        );
     }
 
     #[test]

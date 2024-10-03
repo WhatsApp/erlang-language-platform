@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+pub mod fixture;
 pub mod load;
 pub mod types;
 

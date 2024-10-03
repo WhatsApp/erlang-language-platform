@@ -67,12 +67,33 @@ use text_edit::TextSize;
 use crate::args::Lint;
 use crate::reporting;
 
-pub fn lint_all(args: &Lint, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+pub fn run_lint_command(
+    args: &Lint,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
     };
 
-    do_codemod(cli, args, query_config)
+    let diagnostics_config = get_and_report_diagnostics_config(args, cli)?;
+
+    // We load the project after loading config, in case it bails with
+    // errors. No point wasting time if the config is wrong.
+    let mut loaded = load_project(args, cli, query_config)?;
+
+    do_codemod(cli, &mut loaded, &diagnostics_config, args)
+}
+
+fn get_and_report_diagnostics_config<'a>(
+    args: &'a Lint,
+    cli: &mut dyn Cli,
+) -> Result<DiagnosticsConfig<'a>> {
+    let diagnostics_config = get_diagnostics_config(args)?;
+    if diagnostics_config.enabled.all_enabled() && args.is_format_normal() {
+        writeln!(cli, "Reporting all diagnostics codes")?;
+    }
+    Ok(diagnostics_config)
 }
 
 fn load_project(
@@ -200,16 +221,12 @@ fn do_parse_one(
 
 // ---------------------------------------------------------------------
 
-pub fn do_codemod(cli: &mut dyn Cli, args: &Lint, query_config: &BuckQueryConfig) -> Result<()> {
-    let diagnostics_config = get_diagnostics_config(args)?;
-    if diagnostics_config.enabled.all_enabled() && args.is_format_normal() {
-        writeln!(cli, "Reporting all diagnostics codes")?;
-    }
-
-    // We load the project after loading config, in case it bails with
-    // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(args, cli, query_config)?;
-
+pub fn do_codemod(
+    cli: &mut dyn Cli,
+    loaded: &mut LoadResult,
+    diagnostics_config: &DiagnosticsConfig,
+    args: &Lint,
+) -> Result<()> {
     // Declare outside the block so it has the right lifetime for filter_diagnostics
     let res;
     let mut initial_diags = {
@@ -883,6 +900,10 @@ fn with_prefix(path: &Path, prefix: Option<&String>) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsString;
+
+    use elp::build::fixture;
+    use elp::cli::Fake;
     use elp_ide::diagnostics::DiagnosticCode;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
@@ -891,8 +912,19 @@ mod tests {
     use elp_ide::diagnostics::Replacement;
     use elp_ide::FunctionMatch;
     use expect_test::expect;
+    use expect_test::Expect;
 
+    use super::do_codemod;
+    use super::get_and_report_diagnostics_config;
     use super::LintConfig;
+    use crate::args;
+    use crate::args::Command;
+
+    macro_rules! args_vec {
+        ($($e:expr$(,)?)+) => {
+            vec![$(OsString::from($e),)+]
+        }
+    }
 
     #[test]
     fn serde_serialize_lint_config() {
@@ -948,5 +980,54 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&lint_config);
+    }
+
+    // ---------------------------------
+
+    #[track_caller]
+    fn run_lint_command(
+        args_vec: Vec<OsString>,
+        fixture: &str,
+        exp_stdout: Expect,
+        exp_stderr: Expect,
+    ) {
+        let mut loaded = fixture::load_result(fixture);
+
+        let args = bpaf::Args::from(args_vec.as_slice());
+        let args = args::args().run_inner(args).unwrap();
+        let mut cli = Fake::default();
+
+        if let Command::Lint(lint) = args.command {
+            let diagnostics_config = get_and_report_diagnostics_config(&lint, &mut cli).unwrap();
+
+            do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).ok();
+            let (stdout, stderr) = cli.to_strings();
+            exp_stdout.assert_eq(&stdout);
+            exp_stderr.assert_eq(&stderr);
+        } else {
+            panic!("expecting lint command");
+        }
+    }
+
+    #[test]
+    fn lint_from_fixture() {
+        run_lint_command(
+            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "P1700",],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+          "#,
+            expect![[r#"
+            module specified: lints
+            Diagnostics reported in 1 modules:
+              lints: 1
+                  4:2-4:15::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+        "#]],
+            expect![""],
+        );
     }
 }
