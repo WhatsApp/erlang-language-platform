@@ -1,7 +1,9 @@
 Diagnostics reported in 3 modules:
   app_a: 1
       8:5-8:6::[Warning] [W0010] this variable is unused
-  app_a_unused_param: 1
+  app_a_unused_param: 2
       4:4-4:5::[Warning] [W0010] this variable is unused
-  app_b_unused_param: 1
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused
+  app_b_unused_param: 2
       4:4-4:5::[Warning] [W0010] this variable is unused
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused

@@ -1,5 +1,9 @@
-Diagnostics reported in 2 modules:
+Diagnostics reported in 4 modules:
   app_a: 1
       4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
+  app_a_unused_param: 1
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused
   app_b: 1
       4:4-4:34::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
+  app_b_unused_param: 1
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused

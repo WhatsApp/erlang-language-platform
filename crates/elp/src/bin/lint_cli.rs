@@ -1030,4 +1030,24 @@ mod tests {
             expect![""],
         );
     }
+
+    #[test]
+    fn choose_source_from_diag() {
+        run_lint_command(
+            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "L1230",],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+
+              foo() -> unknown:f().
+          "#,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported in 1 modules:
+                  lints: 1
+                      2:2-2:5::[Warning] [L1230] function foo/0 is unused
+            "#]],
+            expect![""],
+        );
+    }
 }

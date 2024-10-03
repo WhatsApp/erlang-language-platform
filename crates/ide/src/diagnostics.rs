@@ -603,11 +603,11 @@ impl<'a> DiagnosticsConfig<'a> {
     /// If any diagnostics are enabled that are produced by the erlang
     /// service, tell `elp lint` to request diagnostics from that source.
     fn request_erlang_service_diagnostics(&self) -> bool {
-        lazy_static! {
-            static ref NEEDS_ERLANG_SERVICE: FxHashSet<DiagnosticCode> =
-                FxHashSet::from_iter(vec![DiagnosticCode::ErlangService("L1318".to_string())]);
-        }
-        self.enabled.intersects(&NEEDS_ERLANG_SERVICE)
+        self.enabled.enable_all
+            || self.enabled.enabled.iter().any(|code| match code {
+                DiagnosticCode::ErlangService(_) => true,
+                _ => false,
+            })
     }
 }
 

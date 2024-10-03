@@ -4,12 +4,14 @@ Diagnostics reported in 6 modules:
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
   app_a_edoc: 1
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-  app_a_unused_param: 1
+  app_a_unused_param: 2
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused
   app_b: 2
       4:4-4:34::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-  app_b_unused_param: 1
+  app_b_unused_param: 2
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+      4:4-4:5::[Warning] [L1268] variable 'X' is unused
   spelling: 1
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
