@@ -241,6 +241,10 @@ mod tests {
         (stdout, stderr, code)
     }
 
+    fn make_tmp_dir() -> TempDir {
+        TempDir::new().expect("Could not create temporary directory")
+    }
+
     #[test]
     fn etf_files_from_dummy_project_are_generated() {
         // Create tmp dir for output, typically /tmp/elp_xxxxxx on unix.
@@ -812,10 +816,8 @@ mod tests {
 
     #[test]
     fn build_info_json_not_buck() {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-        let tmp_path = tmp_dir.path();
-        let tmp_file = tmp_path.join("test_build_info.json");
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+        let tmp_dir = make_tmp_dir();
+        let tmp_file = tmp_dir.path().join("test_build_info.json");
         let project = "diagnostics";
         let path_str = format!("{}/test_build_info.json", project_path(project));
         let args = args_vec![
@@ -870,10 +872,8 @@ mod tests {
     #[test]
     fn build_info_json_buck() {
         if cfg!(feature = "buck") {
-            let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-            let tmp_path = tmp_dir.path();
-            let tmp_file = tmp_path.join("test_build_info.json");
-            fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+            let tmp_dir = make_tmp_dir();
+            let tmp_file = tmp_dir.path().join("test_build_info.json");
             let project = "diagnostics";
             let path_str = project_path(project);
             let args = args_vec![
@@ -928,10 +928,8 @@ mod tests {
     #[test]
     fn build_info_json_buck_bxl() {
         if cfg!(feature = "buck") {
-            let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-            let tmp_path = tmp_dir.path();
-            let tmp_file = tmp_path.join("test_build_info.json");
-            fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+            let tmp_dir = make_tmp_dir();
+            let tmp_file = tmp_dir.path().join("test_build_info.json");
             let project = "diagnostics";
             let path_str = project_path(project);
             let args = args_vec![
@@ -987,10 +985,8 @@ mod tests {
     #[test]
     fn build_info_json_buck_bxl_includes() {
         if cfg!(feature = "buck") {
-            let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-            let tmp_path = tmp_dir.path();
-            let tmp_file = tmp_path.join("test_build_info.json");
-            fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
+            let tmp_dir = make_tmp_dir();
+            let tmp_file = tmp_dir.path().join("test_build_info.json");
             let project = "diagnostics";
             let path_str = project_path(project);
             let args = args_vec![
@@ -1090,9 +1086,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_recursive(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1122,9 +1117,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_ignore_apps_a(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1150,9 +1144,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_ignore_apps_b(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1179,9 +1172,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_config_file_used(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1206,9 +1198,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_custom_config_file_invalid(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix_stderr(
             args_vec![
                 "lint",
@@ -1235,9 +1226,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_custom_config_file_used(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1261,9 +1251,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_custom_ad_hoc_lints(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1330,9 +1319,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_config_file_parse_error(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix_stderr(
             args_vec!["lint", "--experimental", "--read-config"],
             "linter_bad_config",
@@ -1354,9 +1342,6 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-        let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         simple_snapshot_expect_error(
             args_vec!["lint",],
             "linter",
@@ -1369,9 +1354,6 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled_json(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-        let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         simple_snapshot_expect_error(
             args_vec!["lint", "--format", "json"],
             "linter",
@@ -1384,9 +1366,6 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_apply_fix_no_diagnostics_enabled(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-        let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         simple_snapshot_expect_stderror(
             args_vec!["lint", "--apply-fix",],
             "linter",
@@ -1399,9 +1378,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_explicit_enable_diagnostic(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1424,9 +1402,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_json_output(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1452,9 +1429,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_json_output_prefix(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1482,9 +1458,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_applies_fix_using_to_dir(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1512,9 +1487,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_applies_fix_using_to_dir_json_output(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1583,9 +1557,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_applies_ignore_fix_if_requested(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1614,9 +1587,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_applies_code_action_fixme_if_requested(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
+        let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         check_lint_fix(
             args_vec![
                 "lint",
@@ -1645,9 +1617,6 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_errors_on_deprecated_l1500(buck: bool) {
-        let tmp_dir = TempDir::new().expect("Could not create temporary directory");
-        let tmp_path = tmp_dir.path();
-        fs::create_dir_all(tmp_path).expect("Could not create temporary directory path");
         simple_snapshot_expect_stderror(
             args_vec!["lint", "--module", "app_a", "--diagnostic-filter", "L1500",],
             "diagnostics",
