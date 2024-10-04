@@ -4281,7 +4281,7 @@ format_function(DefAnno, M, F, As, St) ->
         true ?= is_format_function(M, F),
         Lev = St#lint.warn_format,
         true ?= Lev > 0,
-        case check_format_1(As) of
+        case check_format_1(format_args(M, F, As)) of
             {warn,Level,Fmt,Fas} when Level =< Lev ->
                 add_warning(DefAnno, {format_error,{Fmt,Fas}}, St);
             {warn,Level,Anno,Fmt,Fas} when Level =< Lev ->
@@ -4296,9 +4296,16 @@ is_format_function(io, fwrite) -> true;
 is_format_function(io, format) -> true;
 is_format_function(io_lib, fwrite) -> true;
 is_format_function(io_lib, format) -> true;
+% @fb-only
+% @fb-only
 is_format_function(M, F) when is_atom(M), is_atom(F) -> false.
 
 %% check_format_1([Arg]) -> ok | {warn,Level,Format,[Arg]}.
+
+% @fb-only
+% @fb-only
+format_args(_M, _F, As) ->
+    As.
 
 check_format_1([Fmt]) ->
     check_format_1([Fmt,no_argument_list]);
