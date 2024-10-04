@@ -30,7 +30,7 @@ use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::EqwalizerDatabase;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::RootDatabase;
-// @fb-only: use elp_ide::meta_only::ods_links::build_ods_url;
+// @fb-only
 use elp_ide::Analysis;
 use elp_ide::TextRange;
 use elp_project_model::buck::BuckQueryConfig;
@@ -1585,8 +1585,8 @@ impl GleanIndexer {
             expansion,
             ods_url: None,
         };
-        // @fb-only: target.ods_url =
-            // @fb-only: build_ods_url(&name, args, source_file, &source_map).and_then(|url| url.url());
+        // @fb-only
+            // @fb-only
         Some(XRef {
             source: range.into(),
             target: XRefTarget::Macro(target.into()),
@@ -2402,7 +2402,7 @@ mod tests {
         %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/70/has_ods/'atom'
 
         "#;
-        // @fb-only: xref_v2_check(&spec);
+        // @fb-only
     }
 
     #[test]

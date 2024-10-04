@@ -98,7 +98,7 @@ threadpool = "1.8.1"
 timeout-readwrite = "0.3.3"
 toml = "0.5"
 tree-sitter = "0.22.6"
-# @fb-only: tree-sitter-erlang = { path = "./tree-sitter-erlang" }
+# @fb-only
 tree-sitter-erlang = "0.7.0" # @oss-only
 url = "2.5.2"
 vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }

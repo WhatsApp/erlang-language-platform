@@ -16,7 +16,7 @@ use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
-// @fb-only: use crate::meta_only;
+// @fb-only
 use crate::runnables::runnables;
 use crate::runnables::Runnable;
 
@@ -46,7 +46,7 @@ pub struct Link {
 
 pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation> {
     let mut annotations = Vec::default();
-    // @fb-only: meta_only::annotations(db, file_id, &mut annotations);
+    // @fb-only
     annotations
 }
 
