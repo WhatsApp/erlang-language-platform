@@ -27,7 +27,7 @@ mod module_index;
 // Public API
 
 pub mod fixture;
-// @fb-only: mod meta_only;
+// @fb-only
 pub mod test_utils;
 pub use change::Change;
 pub use elp_project_model::AppType;
@@ -287,7 +287,7 @@ lazy_static! {
 static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![
         //ignore sources goes here
-        // @fb-only: meta_only::ignored_sources_regexes()
+        // @fb-only
     ];
     regexes.into_iter().flatten().collect::<Vec<Regex>>()
    };

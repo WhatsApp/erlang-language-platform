@@ -19,9 +19,9 @@ use serde::Deserializer;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-// @fb-only: use crate::meta_only::MetaOnlyDiagnosticCode;
+// @fb-only
 
-// @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
+// @fb-only
 pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
@@ -63,7 +63,7 @@ pub enum DiagnosticCode {
     Eqwalizer(String),
     // Used for ad-hoc diagnostics via lints/codemods
     AdHoc(String),
-    // @fb-only: MetaOnly(MetaOnlyDiagnosticCode),
+    // @fb-only
 }
 
 impl<'de> Deserialize<'de> for DiagnosticCode {
@@ -127,7 +127,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
-            // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
+            // @fb-only
         }
     }
 
@@ -171,7 +171,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
-            // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
+            // @fb-only
         }
     }
 
@@ -182,7 +182,7 @@ impl DiagnosticCode {
     pub fn maybe_from_string(s: &str) -> Option<DiagnosticCode> {
         DIAGNOSTIC_CODE_LOOKUPS
             .get(s).cloned()
-            // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(DiagnosticCode::MetaOnly))
+            // @fb-only
             .or_else( ||
                 // Look for ErlangService and AdHoc
                 if let Some(code) = Self::is_adhoc(s) {
@@ -202,7 +202,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::DefaultCodeForEnumIter => None,
             DiagnosticCode::AdHoc(_) => None,
-            // @fb-only: DiagnosticCode::MetaOnly(_) => None,
+            // @fb-only
             DiagnosticCode::ErlangService(code) => Self::namespace(code),
             _ => Self::namespace(&self.as_code()),
         }
@@ -282,7 +282,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
-            // @fb-only: DiagnosticCode::MetaOnly(code) => code.allows_fixme_comment(),
+            // @fb-only
         }
     }
 }

@@ -38,7 +38,7 @@ use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
-// @fb-only: use crate::diagnostics;
+// @fb-only
 use crate::fix;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
@@ -85,7 +85,7 @@ fn deprecated_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_
     lazy_static! {
         static ref DEPRECATED_FUNCTIONS: Vec<(FunctionMatch, DeprecationDetails)> = {
             let matches: Vec<Vec<(FunctionMatch, DeprecationDetails)>>  = vec![
-                // @fb-only: diagnostics::meta_only::deprecated_function_matches(),
+                // @fb-only
             ];
             matches.into_iter()
         .flatten()

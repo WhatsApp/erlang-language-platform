@@ -1,8 +1,8 @@
 [alias]
 xtask = "run --package xtask --"
 
-# @fb-only: [build]
-# @fb-only: target-dir = "../../../buck-out/elp"
+# @fb-only
+# @fb-only
 
 [profile.release]
 lto = "thin"

@@ -22,7 +22,7 @@ use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MakeDiagCtx;
-// @fb-only: use crate::diagnostics;
+// @fb-only
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
@@ -58,7 +58,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
             FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
             FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]).into_iter().map(|fm| (fm,None)).collect(),
             FunctionMatch::mfas("sys", "install", vec![2, 3]).into_iter().map(|fm| (fm,None)).collect(),
-            // @fb-only: diagnostics::meta_only::cross_node_eval_bad_matches(),
+            // @fb-only
         ]
         .into_iter()
         .flatten()
