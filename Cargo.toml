@@ -64,7 +64,6 @@ num-traits = "0.2.19"
 once_cell = "1.19.0"
 parking_lot = "0.12.3"
 paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-pico-args = "0.5.0"
 proc-macro2 = "1.0.86"
 profile = { features = [
     "jemalloc",

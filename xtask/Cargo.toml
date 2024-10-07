@@ -5,8 +5,8 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bpaf.workspace = true
 krates.workspace = true
-pico-args.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 serde.workspace = true

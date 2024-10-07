@@ -17,6 +17,9 @@ use std::path::PathBuf;
 
 use anyhow::bail;
 use anyhow::Result;
+use bpaf::construct;
+use bpaf::Bpaf;
+use bpaf::Parser;
 use krates::cm;
 use krates::petgraph;
 use krates::petgraph::dot::Config;
@@ -26,37 +29,37 @@ use krates::DepKind;
 use krates::Krates;
 use krates::Node;
 use krates::Scope;
-use pico_args::Arguments;
 use xshell::cmd;
 use xshell::Shell;
+
+use crate::Command::Help;
 
 mod codegen;
 
 fn main() -> Result<()> {
-    let mut args = Arguments::from_env();
-    let subcommand = args.subcommand()?.unwrap_or_default();
-
-    match subcommand.as_str() {
-        "codegen" => {
-            finish_args(args)?;
+    let args = args().run();
+    match args.command {
+        Command::CodeGen(_) => {
             let mode = codegen::Mode::Overwrite;
             codegen::CodegenCmd { mode }.run()
         }
-        "graph" => match make_crate_graph() {
-            Ok(contents) => {
-                let sh = Shell::new()?;
-                let dot_file = project_root().join("docs/crate_graph.dot");
-                let png_file = project_root().join("docs/crate_graph.png");
-                sh.write_file(dot_file.clone(), contents)?;
-                // Convert to png by
-                // dot -Tpng crate_graph.dot -ocrate_graph.png
+        Command::Graph(_) => {
+            match make_crate_graph() {
+                Ok(contents) => {
+                    let sh = Shell::new()?;
+                    let dot_file = project_root().join("docs/crate_graph.dot");
+                    let png_file = project_root().join("docs/crate_graph.png");
+                    sh.write_file(dot_file.clone(), contents)?;
+                    // Convert to png by
+                    // dot -Tpng crate_graph.dot -ocrate_graph.png
 
-                cmd!(sh, "dot -Tpng {dot_file} -o{png_file}").output()?;
-                Ok(())
+                    cmd!(sh, "dot -Tpng {dot_file} -o{png_file}").output()?;
+                    Ok(())
+                }
+                Err(err) => Err(anyhow::anyhow!("{}", err)),
             }
-            Err(err) => Err(anyhow::anyhow!("{}", err)),
-        },
-        _ => {
+        }
+        Help() => {
             eprintln!(
                 "\
 cargo xtask
@@ -66,12 +69,49 @@ USAGE:
     cargo xtask <SUBCOMMAND>
 
 SUBCOMMANDS:
-    codegen"
+    codegen
+    graph"
             );
             Ok(())
         }
     }
 }
+
+#[derive(Debug, Clone, Bpaf)]
+#[bpaf(options)]
+struct Args {
+    #[bpaf(external(command))]
+    command: Command,
+}
+
+#[derive(Clone, Debug)]
+enum Command {
+    CodeGen(CodeGen),
+    Graph(Graph),
+    Help(),
+}
+
+fn command() -> impl Parser<Command> {
+    let code_gen = code_gen()
+        .map(Command::CodeGen)
+        .to_options()
+        .command("codegen")
+        .help("Generate ast from tree-sitter grammar");
+
+    let graph = graph()
+        .map(Command::Graph)
+        .to_options()
+        .command("graph")
+        .help("Generate crate graph");
+
+    construct!([code_gen, graph]).fallback(Help())
+}
+
+#[derive(Clone, Debug, Bpaf)]
+struct CodeGen {}
+
+#[derive(Clone, Debug, Bpaf)]
+struct Graph {}
 
 pub fn project_root() -> PathBuf {
     Path::new(
@@ -102,14 +142,6 @@ fn ensure_rustfmt(sh: &Shell) -> Result<()> {
             "Failed to run rustfmt from toolchain 'stable'. \
              Please run `rustup component add rustfmt --toolchain stable` to install it.",
         )
-    }
-    Ok(())
-}
-
-fn finish_args(args: Arguments) -> Result<()> {
-    let unexpected = args.finish();
-    if !unexpected.is_empty() {
-        bail!("Unexpected arguments: {:?}", unexpected);
     }
     Ok(())
 }
