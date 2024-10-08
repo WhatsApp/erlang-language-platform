@@ -31,9 +31,15 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use fxhash::FxHashSet;
+use hir::fold::fold_body;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::known;
+use hir::Body;
 use hir::CompileOption;
 use hir::CompileOptionId;
+use hir::Expr;
+use hir::ExprId;
 use hir::FormList;
 use hir::FunctionClauseBody;
 use hir::FunctionDef;
@@ -41,6 +47,7 @@ use hir::InFileAstPtr;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
+use hir::Strategy;
 use hir::Var;
 use text_edit::TextSize;
 
@@ -169,7 +176,7 @@ pub fn include_preceding_whitespace(token: &SyntaxToken) -> TextRange {
 }
 
 pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRange, bool)> {
-    let rhs_not_needed = !expr_needs_parens(expr);
+    let rhs_not_needed = !expr_needs_parens_ast(expr);
 
     let parent = var.syntax().parent()?;
     let parent_not_needed = match_ast! {
@@ -191,7 +198,7 @@ pub(crate) fn parens_needed(expr: &ast::Expr, var: &ast::Var) -> Option<(TextRan
     ))
 }
 
-pub fn expr_needs_parens(expr: &ast::Expr) -> bool {
+pub fn expr_needs_parens_ast(expr: &ast::Expr) -> bool {
     let not_needed = matches!(
         expr,
         ast::Expr::ExprMax(ast::ExprMax::Atom(_))
@@ -222,6 +229,56 @@ pub fn expr_needs_parens(expr: &ast::Expr) -> bool {
             | ast::Expr::RecordUpdateExpr(_),
     );
     !not_needed
+}
+
+pub fn expr_needs_parens(body: &Body, expr_id: ExprId) -> bool {
+    let fold_body = fold_body(
+        Strategy {
+            macros: MacroStrategy::InvisibleMacros,
+            parens: ParenStrategy::VisibleParens,
+        },
+        &body,
+    );
+    match &fold_body[expr_id] {
+        Expr::BinaryOp { .. } => true,
+
+        Expr::Call { .. } => false,
+        Expr::Missing => false,
+        Expr::Literal(_) => false,
+        Expr::Var(_) => false,
+        Expr::Match { .. } => false,
+        Expr::Tuple { .. } => false,
+        Expr::List { .. } => false,
+        Expr::Binary { .. } => false,
+        Expr::UnaryOp { .. } => false,
+        Expr::Record { .. } => false,
+        Expr::RecordUpdate { .. } => false,
+        Expr::RecordIndex { .. } => false,
+        Expr::RecordField { .. } => false,
+        Expr::Map { .. } => false,
+        Expr::MapUpdate { .. } => false,
+        Expr::Catch { .. } => false,
+        Expr::MacroCall { .. } => false,
+        Expr::Comprehension { .. } => false,
+        Expr::Block { .. } => false,
+        Expr::If { .. } => false,
+        Expr::Case { .. } => false,
+        Expr::Receive { .. } => false,
+        Expr::Try { .. } => false,
+        Expr::CaptureFun { .. } => false,
+        Expr::Closure { .. } => false,
+        Expr::Maybe { .. } => false,
+        Expr::Paren { .. } => false,
+    }
+}
+
+/// If the `expr` is parens, unwrap them, and repeat until the inner
+/// expression is returned
+pub fn unwrap_parens(expr: &ast::Expr) -> Option<ast::Expr> {
+    match expr {
+        ast::Expr::ExprMax(ast::ExprMax::ParenExpr(expr)) => unwrap_parens(&expr.expr()?),
+        _ => Some(expr.clone()),
+    }
 }
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {

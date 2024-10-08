@@ -62,7 +62,7 @@ use crate::TypeExprId;
 
 /// Choose the appropriate `FoldBody` to ensure macros are visible or
 /// not according to the chosen strategy.
-fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
+pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     match strategy.macros {
         MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => FoldBody {
             body,

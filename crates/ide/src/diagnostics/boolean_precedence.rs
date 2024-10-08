@@ -19,6 +19,7 @@ use std::fmt::Display;
 
 use elp_ide_assists::helpers::expr_needs_parens;
 use elp_ide_assists::helpers::include_preceding_whitespace;
+use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::DiagnosticCode;
@@ -26,10 +27,13 @@ use elp_syntax::ast;
 use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::AstNode;
+use elp_syntax::Parse;
+use elp_syntax::SourceFile;
 use hir::fold::AnyCallBackCtx;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::AnyExpr;
+use hir::BodySourceMap;
 use hir::ClauseId;
 use hir::Expr;
 use hir::ExprId;
@@ -101,25 +105,6 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
     )
 }
 
-fn is_complex(
-    sema: &Semantic,
-    def_fb: &InFunctionBody<&FunctionDef>,
-    file_id: FileId,
-    clause_id: ClauseId,
-    expr: ExprId,
-) -> Option<(ast::Expr, bool)> {
-    // Note: lowering to HIR strips parens.  We may have to check the
-    // parent node for them, when deciding to add or not.
-    let map = def_fb.get_body_map(clause_id);
-    let expr_source = map.expr(expr)?;
-    let source = sema.db.parse(file_id).tree();
-    if let Some(expr) = expr_source.to_node(&InFile::new(file_id, source)) {
-        Some((expr.clone(), expr_needs_parens(&expr)))
-    } else {
-        None
-    }
-}
-
 fn report(
     sema: &Semantic,
     def_fb: &InFunctionBody<&FunctionDef>,
@@ -130,17 +115,22 @@ fn report(
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<()> {
     let (op, lhs, rhs) = binop;
-    let (lhs_expr, lhs_complex) = is_complex(sema, def_fb, file_id, clause_id, lhs)?;
-    let (rhs_expr, rhs_complex) = is_complex(sema, def_fb, file_id, clause_id, rhs)?;
+    let body = def_fb.body(clause_id);
+    let lhs_complex = expr_needs_parens(&body, lhs);
+    let rhs_complex = expr_needs_parens(&body, rhs);
     if !lhs_complex && !rhs_complex {
         return None;
     }
     let map = def_fb.get_body_map(clause_id);
+    let source = sema.db.parse(file_id);
+    let lhs_expr = expr_ast(&source, &map, file_id, lhs)?;
+    let rhs_expr = expr_ast(&source, &map, file_id, rhs)?;
     let expr_source = map.any(ctx.item_id)?;
     let source = sema.db.parse(file_id).tree();
-    if let Some(ast::Expr::BinaryOpExpr(binop)) = expr_source.to_node(&InFile::new(file_id, source))
+    if let Some(ast::Expr::BinaryOpExpr(binop_ast)) =
+        unwrap_parens(&expr_source.to_node(&InFile::new(file_id, source))?)
     {
-        let (_op, token) = binop.op()?;
+        let (_op, token) = binop_ast.op()?;
         let range = token.text_range();
         let preceding_ws_range = include_preceding_whitespace(&token);
         let mut d = make_diagnostic(file_id, range, preceding_ws_range, op)
@@ -151,9 +141,19 @@ fn report(
         if rhs_complex {
             add_parens_fix(file_id, &range, &rhs_expr, "RHS", &mut d);
         }
-        diagnostics.push(d)
+        diagnostics.push(d);
     }
     Some(())
+}
+
+fn expr_ast(
+    source: &Parse<SourceFile>,
+    map: &BodySourceMap,
+    file_id: FileId,
+    expr: ExprId,
+) -> Option<ast::Expr> {
+    let expr_source = map.expr(expr)?;
+    expr_source.to_node(&InFile::new(file_id, source.tree()))
 }
 
 fn add_parens_fix(
@@ -286,6 +286,33 @@ mod tests {
     }
 
     #[test]
+    fn avoid_or_for_unsafe_macro_call() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(MM(X), X > 3).
+            foo(S,P) ->
+                S or ?MM(P).
+          %%      ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%       | Or add parentheses to avoid potential ambiguity.
+
+                      "#,
+        )
+    }
+
+    #[test]
+    fn or_ok_for_safe_macro_call() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(MM(X), (X > 3)).
+            foo(S,P) ->
+                S or ?MM(P).
+                      "#,
+        )
+    }
+
+    #[test]
     fn avoid_or() {
         check_diagnostics(
             r#"
@@ -296,6 +323,34 @@ mod tests {
           %%                | Or add parentheses to avoid potential ambiguity.
 
             predicate(_X) -> false.
+                      "#,
+        )
+    }
+
+    #[test]
+    fn avoid_or_in_parened_expr() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(COND(X), X > 3).
+            foo(S,P) ->
+                (S or ?COND(P)).
+          %%       ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%        | Or add parentheses to avoid potential ambiguity.
+                      "#,
+        )
+    }
+
+    #[test]
+    fn avoid_or_in_parened_expr_2() {
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(COND(X), X > 3).
+            foo(S,P) ->
+                ((S or ?COND(P))).
+          %%        ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%         | Or add parentheses to avoid potential ambiguity.
                       "#,
         )
     }
