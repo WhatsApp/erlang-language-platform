@@ -68,6 +68,7 @@ pub struct EqwalizerConfig {
     pub clause_coverage: Option<bool>,
     pub report_bad_maps: Option<bool>,
     pub overloaded_spec_domain_check: Option<bool>,
+    pub overloaded_spec_dynamic_result: Option<bool>,
 }
 impl EqwalizerConfig {
     fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
@@ -81,6 +82,8 @@ impl EqwalizerConfig {
             .map(|cfg| cmd.env("EQWALIZER_REPORT_BAD_MAPS", cfg.to_string()));
         self.overloaded_spec_domain_check
             .map(|cfg| cmd.env("EQWALIZER_OVERLOADED_SPEC_DOMAIN_CHECK", cfg.to_string()));
+        self.overloaded_spec_domain_check
+            .map(|cfg| cmd.env("EQWALIZER_OVERLOADED_SPEC_DYNAMIC_RESULT", cfg.to_string()));
     }
 
     pub fn default_test() -> EqwalizerConfig {
@@ -90,6 +93,7 @@ impl EqwalizerConfig {
             clause_coverage: Some(false),
             report_bad_maps: Some(false),
             overloaded_spec_domain_check: Some(false),
+            overloaded_spec_dynamic_result: Some(false),
         }
     }
 }
