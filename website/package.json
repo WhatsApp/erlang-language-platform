@@ -50,6 +50,7 @@
   },
   "resolutions": {
     "@babel/traverse": ">=7.23.2",
+    "cookie": ">=0.7.0",
     "got": ">=11.8.5",
     "trim": ">=0.0.3",
     "wait-on": ">=7.2.0",
