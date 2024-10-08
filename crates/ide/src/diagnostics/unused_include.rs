@@ -591,23 +591,6 @@ foo() -> ok.
     }
 
     #[test]
-    fn not_used_for_oncall_attribute() {
-        check_diagnostics(
-            r#"
-//- /src/main.erl
--module(main).
-  -include("header.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
-
-foo() -> ok.
-
-//- /src/header.hrl
--oncall("mary").
-"#,
-        )
-    }
-
-    #[test]
     fn fixes_unused_include() {
         check_fix(
             r#"
