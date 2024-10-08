@@ -580,8 +580,8 @@ mod tests {
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
     use crate::fixture;
-    use crate::tests::check_diagnostics_with_config;
-    use crate::tests::check_fix_with_config;
+    use crate::tests::check_diagnostics_with_config_and_ad_hoc;
+    use crate::tests::check_fix_with_config_and_adhoc;
     use crate::AnalysisHost;
 
     fn check_functions(
@@ -650,26 +650,26 @@ mod tests {
 
     #[track_caller]
     fn check_adhoc_function_match(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
-        check_diagnostics_with_config(
+        check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction)
-                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
-                    check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
-                }]),
+                .disable(DiagnosticCode::UndefinedFunction),
+            &vec![&|acc, sema, file_id, _ext| {
+                check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
+            }],
             fixture,
         );
     }
 
     #[track_caller]
     fn check_adhoc_function_match_range_mf(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
-        check_diagnostics_with_config(
+        check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction)
-                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
-                    check_functions(acc, sema, file_id, match_spec, UseRange::NameOnly)
-                }]),
+                .disable(DiagnosticCode::UndefinedFunction),
+            &vec![&|acc, sema, file_id, _ext| {
+                check_functions(acc, sema, file_id, match_spec, UseRange::NameOnly)
+            }],
             fixture,
         );
     }
@@ -680,13 +680,13 @@ mod tests {
         fixture_before: &str,
         fixture_after: Expect,
     ) {
-        check_fix_with_config(
+        check_fix_with_config_and_adhoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction)
-                .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
-                    check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
-                }]),
+                .disable(DiagnosticCode::UndefinedFunction),
+            &vec![&|acc, sema, file_id, _ext| {
+                check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
+            }],
             fixture_before,
             fixture_after,
         );
@@ -924,6 +924,7 @@ mod tests {
             &analysis,
             position.file_id,
             &DiagnosticsConfig::default(),
+            &vec![],
             &_diagnostics_enabled,
         );
         assert!(diagnostics.is_empty());

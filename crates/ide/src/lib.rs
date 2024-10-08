@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use call_hierarchy::CallItem;
+use diagnostics::AdhocSemanticDiagnostics;
 use diagnostics::Diagnostic;
 use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
@@ -217,9 +218,12 @@ impl Analysis {
     pub fn native_diagnostics(
         &self,
         config: &DiagnosticsConfig,
+        adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
         file_id: FileId,
     ) -> Cancellable<LabeledDiagnostics> {
-        self.with_db(|db| diagnostics::native_diagnostics(db, config, file_id))
+        self.with_db(|db| {
+            diagnostics::native_diagnostics(db, config, adhoc_semantic_diagnostics, file_id)
+        })
     }
 
     pub fn should_eqwalize(&self, file_id: FileId, include_generated: bool) -> Cancellable<bool> {
@@ -452,6 +456,7 @@ impl Analysis {
         &self,
         assist_config: &AssistConfig,
         diagnostics_config: &DiagnosticsConfig,
+        adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
         resolve: AssistResolveStrategy,
         frange: FileRange,
         context_diagnostics: &[AssistContextDiagnostic],
@@ -470,12 +475,17 @@ impl Analysis {
 
         self.with_db(|db| {
             let diagnostic_assists = if include_fixes {
-                diagnostics::native_diagnostics(db, diagnostics_config, frange.file_id)
-                    .iter()
-                    .filter_map(|it| it.fixes.clone())
-                    .flatten()
-                    .filter(|it| it.target.intersect(frange.range).is_some())
-                    .collect()
+                diagnostics::native_diagnostics(
+                    db,
+                    diagnostics_config,
+                    adhoc_semantic_diagnostics,
+                    frange.file_id,
+                )
+                .iter()
+                .filter_map(|it| it.fixes.clone())
+                .flatten()
+                .filter(|it| it.target.intersect(frange.range).is_some())
+                .collect()
             } else {
                 Vec::new()
             };

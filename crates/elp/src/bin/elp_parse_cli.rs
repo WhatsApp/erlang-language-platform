@@ -316,7 +316,7 @@ fn do_parse_one(
     name: &str,
 ) -> Result<Option<ParseResult>> {
     let url = file_id_to_url(vfs, file_id);
-    let native = db.native_diagnostics(config, file_id)?;
+    let native = db.native_diagnostics(config, &vec![], file_id)?;
     let erlang_service_diagnostics =
         db.erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
     let line_index = db.line_index(file_id)?;

@@ -17,6 +17,7 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 
+use crate::diagnostics::AdhocSemanticDiagnostics;
 use crate::diagnostics::DiagnosticsConfig;
 use crate::diagnostics::RemoveElpReported;
 use crate::diagnostics_collection::DiagnosticCollection;
@@ -106,6 +107,7 @@ pub fn diagnostics_for(
     analysis: &Analysis,
     file_id: FileId,
     config: &DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     diagnostics_enabled: &DiagnosticsEnabled,
 ) -> DiagnosticCollection {
     let mut diagnostics = DiagnosticCollection::default();
@@ -120,7 +122,9 @@ pub fn diagnostics_for(
     if *use_native {
         diagnostics.set_native(
             file_id,
-            analysis.native_diagnostics(config, file_id).unwrap(),
+            analysis
+                .native_diagnostics(config, adhoc_semantic_diagnostics, file_id)
+                .unwrap(),
         );
     }
     if *use_erlang_service {

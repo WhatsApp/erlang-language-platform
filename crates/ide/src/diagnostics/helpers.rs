@@ -102,19 +102,18 @@ mod tests {
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
-    use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::FunctionMatch;
 
     #[track_caller]
-    pub(crate) fn check_diagnostics_with_ad_hoc_semantics<'a>(
-        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub(crate) fn check_diagnostics_with_ad_hoc_semantics(
+        ad_hoc_semantic_diagnostics: Vec<&dyn AdhocSemanticDiagnostics>,
         fixture: &str,
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::UndefinedFunction)
-            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
-        check_diagnostics_with_config(config, fixture)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config_and_ad_hoc(config, &ad_hoc_semantic_diagnostics, fixture)
     }
 
     #[test]

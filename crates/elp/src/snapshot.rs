@@ -193,6 +193,7 @@ impl Snapshot {
         self.analysis
             .native_diagnostics(
                 &self.config.diagnostics_config(self.lint_config.clone()),
+                &vec![],
                 file_id,
             )
             .ok()

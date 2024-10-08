@@ -365,8 +365,9 @@ mod tests {
     use crate::diagnostics::Lint;
     use crate::diagnostics::LintsFromConfig;
     use crate::diagnostics::ReplaceCall;
-    use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::tests::check_fix_with_config;
+    use crate::tests::check_fix_with_config_and_adhoc;
     use crate::DiagnosticsConfig;
 
     #[track_caller]
@@ -377,9 +378,13 @@ mod tests {
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::UndefinedFunction)
-            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
-        check_fix_with_config(config, fixture_before, fixture_after)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_fix_with_config_and_adhoc(
+            config,
+            &ad_hoc_semantic_diagnostics,
+            fixture_before,
+            fixture_after,
+        )
     }
 
     #[track_caller]
@@ -402,9 +407,8 @@ mod tests {
     ) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::UndefinedFunction)
-            .set_ad_hoc_semantic_diagnostics(ad_hoc_semantic_diagnostics);
-        check_diagnostics_with_config(config, fixture)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config_and_ad_hoc(config, &ad_hoc_semantic_diagnostics, fixture)
     }
 
     #[test]

@@ -480,11 +480,10 @@ pub enum FallBackToAll {
 }
 
 #[derive(Default, Clone)]
-pub struct DiagnosticsConfig<'a> {
+pub struct DiagnosticsConfig {
     pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
     pub enabled: EnabledDiagnostics,
-    pub adhoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
     pub lints_from_config: LintsFromConfig,
     pub include_generated: bool,
     pub include_suppressed: bool,
@@ -496,14 +495,14 @@ pub struct DiagnosticsConfig<'a> {
     pub request_erlang_service_diagnostics: bool,
 }
 
-impl<'a> DiagnosticsConfig<'a> {
+impl DiagnosticsConfig {
     pub fn configure_diagnostics(
         mut self,
         lint_config: &LintConfig,
         diagnostic_filter: &Option<String>,
         diagnostic_ignore: &Option<String>,
         fall_back_to_all: FallBackToAll,
-    ) -> Result<DiagnosticsConfig<'a>> {
+    ) -> Result<DiagnosticsConfig> {
         let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = lint_config
             .enabled_lints
             .iter()
@@ -549,45 +548,37 @@ impl<'a> DiagnosticsConfig<'a> {
         Ok(self)
     }
 
-    pub fn set_experimental(mut self, value: bool) -> DiagnosticsConfig<'a> {
+    pub fn set_experimental(mut self, value: bool) -> DiagnosticsConfig {
         self.experimental = value;
         self
     }
 
-    pub fn set_include_otp(mut self, value: bool) -> DiagnosticsConfig<'a> {
+    pub fn set_include_otp(mut self, value: bool) -> DiagnosticsConfig {
         self.include_otp = value;
         self
     }
 
-    pub fn set_include_generated(mut self, value: bool) -> DiagnosticsConfig<'a> {
+    pub fn set_include_generated(mut self, value: bool) -> DiagnosticsConfig {
         self.include_generated = value;
         self
     }
 
-    pub fn set_include_suppressed(mut self, value: bool) -> DiagnosticsConfig<'a> {
+    pub fn set_include_suppressed(mut self, value: bool) -> DiagnosticsConfig {
         self.include_suppressed = value;
         self
     }
 
-    pub fn set_compile_options(mut self, options: Vec<CompileOption>) -> DiagnosticsConfig<'a> {
+    pub fn set_compile_options(mut self, options: Vec<CompileOption>) -> DiagnosticsConfig {
         self.compile_options = options;
         self
     }
 
-    pub fn set_ad_hoc_semantic_diagnostics(
-        mut self,
-        diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
-    ) -> DiagnosticsConfig<'a> {
-        self.adhoc_semantic_diagnostics = diagnostics;
-        self
-    }
-
-    pub fn enable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
+    pub fn enable(mut self, code: DiagnosticCode) -> DiagnosticsConfig {
         self.enabled.enable(code);
         self
     }
 
-    pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig<'a> {
+    pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig {
         self.disabled.insert(code);
         self
     }
@@ -595,7 +586,7 @@ impl<'a> DiagnosticsConfig<'a> {
     pub fn set_lints_from_config(
         mut self,
         lints_from_config: &LintsFromConfig,
-    ) -> DiagnosticsConfig<'a> {
+    ) -> DiagnosticsConfig {
         self.lints_from_config = lints_from_config.clone();
         self
     }
@@ -728,6 +719,7 @@ pub fn eqwalizer_to_diagnostic(
 pub fn native_diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     file_id: FileId,
 ) -> LabeledDiagnostics {
     lazy_static! {
@@ -756,8 +748,7 @@ pub fn native_diagnostics(
 
         res.append(&mut form_missing_separator_diagnostics(&parse));
 
-        config
-            .adhoc_semantic_diagnostics
+        adhoc_semantic_diagnostics
             .iter()
             .for_each(|f| f(&mut res, &sema, file_id, file_kind));
         config
@@ -1762,6 +1753,7 @@ mod tests {
     use crate::diagnostics::DiagnosticCode;
     use crate::tests::check_diagnostics;
     use crate::tests::check_diagnostics_with_config;
+    use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::tests::check_diagnostics_with_config_and_extra;
     use crate::tests::check_specific_fix;
 
@@ -1939,8 +1931,13 @@ baz(1)->4.
 
     #[test]
     fn filter_experimental() {
-        let config = DiagnosticsConfig::default()
-            .set_ad_hoc_semantic_diagnostics(vec![&|acc, sema, file_id, _ext| {
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config_and_ad_hoc(
+            DiagnosticsConfig {
+                experimental: true,
+                ..config.clone()
+            },
+            &vec![&|acc, sema, file_id, _ext| {
                 replace_call::replace_call_site(
                     &FunctionMatch::MFA {
                         mfa: MFA {
@@ -1955,13 +1952,7 @@ baz(1)->4.
                     sema,
                     file_id,
                 )
-            }])
-            .disable(DiagnosticCode::UndefinedFunction);
-        check_diagnostics_with_config(
-            DiagnosticsConfig {
-                experimental: true,
-                ..config.clone()
-            },
+            }],
             r#"
             //- /src/main.erl
             -module(main).

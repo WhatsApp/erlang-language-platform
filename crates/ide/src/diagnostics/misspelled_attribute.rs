@@ -184,7 +184,7 @@ mod tests {
         );
         let config = DiagnosticsConfig::default();
         let diags = analysis
-            .native_diagnostics(&config, position.file_id)
+            .native_diagnostics(&config, &vec![], position.file_id)
             .unwrap();
         assert!(
             diags.is_empty(),
@@ -205,7 +205,7 @@ mod tests {
         );
         let config = DiagnosticsConfig::default();
         let diags = analysis
-            .native_diagnostics(&config, position.file_id)
+            .native_diagnostics(&config, &vec![], position.file_id)
             .unwrap();
         assert!(
             diags.is_empty(),

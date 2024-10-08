@@ -85,10 +85,7 @@ pub fn run_lint_command(
     do_codemod(cli, &mut loaded, &diagnostics_config, args)
 }
 
-fn get_and_report_diagnostics_config<'a>(
-    args: &'a Lint,
-    cli: &mut dyn Cli,
-) -> Result<DiagnosticsConfig<'a>> {
+fn get_and_report_diagnostics_config(args: &Lint, cli: &mut dyn Cli) -> Result<DiagnosticsConfig> {
     let diagnostics_config = get_diagnostics_config(args)?;
     if diagnostics_config.enabled.all_enabled() && args.is_format_normal() {
         writeln!(cli, "Reporting all diagnostics codes")?;
@@ -162,7 +159,7 @@ fn do_parse_one(
     }
 
     let mut diagnostics = DiagnosticCollection::default();
-    let native = db.native_diagnostics(config, file_id)?;
+    let native = db.native_diagnostics(config, &vec![], file_id)?;
     diagnostics.set_native(file_id, native);
     if args.include_erlc_diagnostics || config.request_erlang_service_diagnostics {
         let erlang_service =
@@ -492,7 +489,7 @@ fn check_changes(
 
 struct Lints<'a> {
     analysis_host: &'a mut AnalysisHost,
-    cfg: &'a DiagnosticsConfig<'a>,
+    cfg: &'a DiagnosticsConfig,
     vfs: &'a mut Vfs,
     args: &'a Lint,
     changed_files: &'a mut FxHashSet<(FileId, String)>,

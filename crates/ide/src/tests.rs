@@ -25,6 +25,7 @@ use itertools::Itertools;
 use text_edit::TextRange;
 
 use crate::diagnostics;
+use crate::diagnostics::AdhocSemanticDiagnostics;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::LabeledDiagnostics;
@@ -44,6 +45,7 @@ pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {
         fixture_before,
         fixture_after,
         config,
+        &vec![],
         diagnostic_filter,
         assist_filter,
     );
@@ -61,6 +63,7 @@ pub(crate) fn check_filtered_ct_fix(
         fixture_before,
         fixture_after,
         config,
+        &vec![],
         diagnostic_filter,
         assist_filter,
     );
@@ -71,6 +74,7 @@ pub(crate) fn check_filtered_ct_fix_with_config(
     fixture_before: &str,
     fixture_after: &str,
     config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     diagnostic_filter: &dyn Fn(&Diagnostic) -> bool,
     assist_filter: &dyn Fn(&Assist) -> bool,
 ) {
@@ -78,10 +82,15 @@ pub(crate) fn check_filtered_ct_fix_with_config(
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
     diagnostics_enabled.assert_ct_enabled();
 
-    check_no_parse_errors_with_config(&analysis, pos.file_id, &config);
+    check_no_parse_errors_with_config(&analysis, pos.file_id, &config, adhoc_semantic_diagnostics);
 
-    let diagnostics =
-        fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
+    let diagnostics = fixture::diagnostics_for(
+        &analysis,
+        pos.file_id,
+        &config,
+        adhoc_semantic_diagnostics,
+        &diagnostics_enabled,
+    );
     let diagnostic = diagnostics
         .diagnostics_for(pos.file_id)
         .into_iter()
@@ -128,6 +137,7 @@ pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
         fixture_before,
         fixture_after,
         config,
+        &vec![],
         IncludeCodeActionAssists::No,
     );
 }
@@ -139,11 +149,22 @@ pub(crate) fn check_fix_with_config(
     fixture_before: &str,
     fixture_after: Expect,
 ) {
+    check_fix_with_config_and_adhoc(config, &vec![], fixture_before, fixture_after);
+}
+
+#[track_caller]
+pub(crate) fn check_fix_with_config_and_adhoc(
+    config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
+    fixture_before: &str,
+    fixture_after: Expect,
+) {
     check_nth_fix(
         0,
         fixture_before,
         fixture_after,
         config,
+        adhoc_semantic_diagnostics,
         IncludeCodeActionAssists::No,
     );
 }
@@ -162,6 +183,7 @@ pub(crate) fn check_fix_including_assists(fixture_before: &str, fixture_after: E
         fixture_before,
         fixture_after,
         config,
+        &vec![],
         IncludeCodeActionAssists::Yes,
     )
 }
@@ -172,12 +194,18 @@ pub(crate) fn check_nth_fix(
     fixture_before: &str,
     fixture_after: Expect,
     config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     include_assists: IncludeCodeActionAssists,
 ) {
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
 
-    let diagnostics =
-        fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
+    let diagnostics = fixture::diagnostics_for(
+        &analysis,
+        pos.file_id,
+        &config,
+        &adhoc_semantic_diagnostics,
+        &diagnostics_enabled,
+    );
     let diagnostic = diagnostics
         .diagnostics_for(pos.file_id)
         .into_iter()
@@ -227,9 +255,31 @@ pub(crate) fn check_specific_fix_with_config(
     fixture_after: Expect,
     config: DiagnosticsConfig,
 ) {
+    check_specific_fix_with_config_and_adhoc(
+        assist_label,
+        fixture_before,
+        fixture_after,
+        config,
+        &vec![],
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_specific_fix_with_config_and_adhoc(
+    assist_label: Option<&str>,
+    fixture_before: &str,
+    fixture_after: Expect,
+    config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
+) {
     let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
-    let diagnostics =
-        fixture::diagnostics_for(&analysis, pos.file_id, &config, &diagnostics_enabled);
+    let diagnostics = fixture::diagnostics_for(
+        &analysis,
+        pos.file_id,
+        &config,
+        adhoc_semantic_diagnostics,
+        &diagnostics_enabled,
+    );
     let diagnostics = diagnostics.diagnostics_for(pos.file_id);
     let fix: &Assist = if let Some(label) = assist_label {
         if let Some(fix) = diagnostics
@@ -325,7 +375,8 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     diagnostics_enabled.assert_ct_enabled();
     let file_id = pos.file_id;
     let config = DiagnosticsConfig::default();
-    let diagnostics = fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
+    let diagnostics =
+        fixture::diagnostics_for(&analysis, file_id, &config, &vec![], &diagnostics_enabled);
     let diagnostics = diagnostics.diagnostics_for(file_id);
     let expected = extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
@@ -334,12 +385,26 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
 
 #[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixture: &str) {
+    check_diagnostics_with_config_and_ad_hoc(config, &vec![], elp_fixture);
+}
+
+#[track_caller]
+pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
+    config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
+    elp_fixture: &str,
+) {
     let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
-        let diagnostics =
-            fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
+        let diagnostics = fixture::diagnostics_for(
+            &analysis,
+            file_id,
+            &config,
+            adhoc_semantic_diagnostics,
+            &diagnostics_enabled,
+        );
         let diagnostics = diagnostics.diagnostics_for(file_id);
 
         let mut expected = extract_annotations(&analysis.db.file_text(file_id));
@@ -352,12 +417,13 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, elp_fixtu
 #[track_caller]
 pub(crate) fn check_filtered_diagnostics(elp_fixture: &str, filter: &dyn Fn(&Diagnostic) -> bool) {
     let config = DiagnosticsConfig::default();
-    check_filtered_diagnostics_with_config(config, elp_fixture, filter)
+    check_filtered_diagnostics_with_config(config, &vec![], elp_fixture, filter)
 }
 
 #[track_caller]
 pub(crate) fn check_filtered_diagnostics_with_config(
     config: DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     elp_fixture: &str,
     filter: &dyn Fn(&Diagnostic) -> bool,
 ) {
@@ -365,8 +431,13 @@ pub(crate) fn check_filtered_diagnostics_with_config(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
-        let diagnostics =
-            fixture::diagnostics_for(&analysis, file_id, &config, &diagnostics_enabled);
+        let diagnostics = fixture::diagnostics_for(
+            &analysis,
+            file_id,
+            &config,
+            adhoc_semantic_diagnostics,
+            &diagnostics_enabled,
+        );
         let diagnostics = diagnostics
             .diagnostics_for(file_id)
             .into_iter()
@@ -389,7 +460,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in files {
-        let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, file_id);
+        let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, &vec![], file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
 
         let mut expected = extract_annotations(&analysis.db.file_text(file_id));
@@ -402,7 +473,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 #[track_caller]
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
     let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
-    check_no_parse_errors_with_config(analysis, file_id, &config);
+    check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 
 #[track_caller]
@@ -410,8 +481,11 @@ pub fn check_no_parse_errors_with_config(
     analysis: &Analysis,
     file_id: FileId,
     config: &DiagnosticsConfig,
+    adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
 ) {
-    let diags = analysis.native_diagnostics(&config, file_id).unwrap();
+    let diags = analysis
+        .native_diagnostics(config, adhoc_semantic_diagnostics, file_id)
+        .unwrap();
     assert!(
         diags.is_empty(),
         "didn't expect parse errors in files: {:?}",

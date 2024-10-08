@@ -242,9 +242,9 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
 
     #[track_caller]
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+    pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default();
-        check_diagnostics_with_config(config, ra_fixture)
+        check_diagnostics_with_config(config, fixture)
     }
 
     #[test]

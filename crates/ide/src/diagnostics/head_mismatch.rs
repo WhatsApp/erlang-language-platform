@@ -361,11 +361,11 @@ mod tests {
     use crate::tests::IncludeCodeActionAssists;
 
     #[track_caller]
-    fn check_diagnostics(ra_fixture: &str) {
+    fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::Unexpected("unexpected_semi".to_string()))
             .disable(DiagnosticCode::Unexpected("unexpected_dot".to_string()));
-        check_diagnostics_with_config(config, ra_fixture)
+        check_diagnostics_with_config(config, fixture)
     }
 
     #[track_caller]
@@ -378,6 +378,7 @@ mod tests {
             fixture_before,
             fixture_after,
             config,
+            &vec![],
             IncludeCodeActionAssists::No,
         );
     }
