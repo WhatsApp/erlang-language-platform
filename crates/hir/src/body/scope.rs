@@ -37,7 +37,7 @@ use la_arena::Arena;
 use la_arena::ArenaMap;
 use la_arena::Idx;
 
-use super::UnexpandedIndex;
+use super::FoldBody;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::ClauseId;
@@ -367,7 +367,7 @@ fn compute_expr_scopes(
     vt: &mut VarTable,
 ) {
     scopes.set_scope_expr(expr, *scope);
-    match &(UnexpandedIndex {
+    match &(FoldBody {
         body,
         macros: VisibleMacros::Yes,
         parens: ParenStrategy::InvisibleParens,

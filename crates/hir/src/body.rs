@@ -87,7 +87,7 @@ pub struct Body {
 
 /// A wrapper around `Body` that indexes the macro expansion points
 #[derive(Debug, PartialEq, Eq)]
-pub struct UnexpandedIndex<'a> {
+pub struct FoldBody<'a> {
     pub body: &'a Body,
     pub macros: VisibleMacros,
     pub parens: ParenStrategy,
@@ -750,7 +750,7 @@ impl Index<ClauseId> for FunctionBody {
     }
 }
 
-impl<'a> Index<ExprId> for UnexpandedIndex<'a> {
+impl<'a> Index<ExprId> for FoldBody<'a> {
     type Output = Expr;
 
     fn index(&self, index: ExprId) -> &Self::Output {
@@ -781,7 +781,7 @@ impl Index<ExprId> for Body {
     }
 }
 
-impl<'a> Index<PatId> for UnexpandedIndex<'a> {
+impl<'a> Index<PatId> for FoldBody<'a> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
@@ -808,7 +808,7 @@ impl Index<PatId> for Body {
     }
 }
 
-impl<'a> Index<TypeExprId> for UnexpandedIndex<'a> {
+impl<'a> Index<TypeExprId> for FoldBody<'a> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
@@ -839,7 +839,7 @@ impl Index<TypeExprId> for Body {
     }
 }
 
-impl<'a> Index<TermId> for UnexpandedIndex<'a> {
+impl<'a> Index<TermId> for FoldBody<'a> {
     type Output = Term;
 
     fn index(&self, index: TermId) -> &Self::Output {

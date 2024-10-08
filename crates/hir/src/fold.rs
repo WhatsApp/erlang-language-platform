@@ -9,14 +9,13 @@
 
 //! Ability to traverse over the hir ast computing a result
 
-use std::ops::Index;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_syntax::TextRange;
 
 use crate::body::BodyOrigin;
-use crate::body::UnexpandedIndex;
+use crate::body::FoldBody;
 use crate::expr::AnyExpr;
 use crate::expr::MaybeExpr;
 use crate::AnyExprId;
@@ -45,7 +44,6 @@ use crate::HirIdx;
 use crate::InFile;
 use crate::ListType;
 use crate::PPDirective;
-use crate::Pat;
 use crate::PatId;
 use crate::Record;
 use crate::RecordFieldBody;
@@ -54,7 +52,6 @@ use crate::Semantic;
 use crate::Spec;
 use crate::SpecId;
 use crate::SpecSig;
-use crate::Term;
 use crate::TermId;
 use crate::TypeAlias;
 use crate::TypeAliasId;
@@ -67,18 +64,16 @@ use crate::TypeExprId;
 /// not according to the chosen strategy.
 fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     match strategy.macros {
-        MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => {
-            FoldBody::UnexpandedIndex(UnexpandedIndex {
-                body,
-                macros: VisibleMacros::Yes,
-                parens: strategy.parens,
-            })
-        }
-        MacroStrategy::InvisibleMacros => FoldBody::UnexpandedIndex(UnexpandedIndex {
+        MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => FoldBody {
+            body,
+            macros: VisibleMacros::Yes,
+            parens: strategy.parens,
+        },
+        MacroStrategy::InvisibleMacros => FoldBody {
             body,
             macros: VisibleMacros::No,
             parens: strategy.parens,
-        }),
+        },
     }
 }
 
@@ -414,14 +409,8 @@ pub enum VisibleMacros {
     No,
 }
 
-#[derive(Debug)]
-pub enum FoldBody<'a> {
-    Body(&'a Body),
-    UnexpandedIndex(UnexpandedIndex<'a>),
-}
-
 impl<'a> FoldBody<'a> {
-    fn normalise_expr(&self, expr: &Expr, strategy: Strategy) -> Expr {
+    fn normalise_expr(&self, expr: &Expr) -> Expr {
         match expr {
             Expr::Call {
                 target:
@@ -431,32 +420,22 @@ impl<'a> FoldBody<'a> {
                         parens,
                     },
                 args,
-            } => match self {
-                FoldBody::Body(_) => Expr::Call {
+            } => match self.parens {
+                ParenStrategy::VisibleParens => Expr::Call {
+                    target: CallTarget::Remote {
+                        module: module.clone(),
+                        name: name.clone(),
+                        parens: *parens,
+                    },
+                    args: args.clone(),
+                },
+                ParenStrategy::InvisibleParens => Expr::Call {
                     target: CallTarget::Remote {
                         module: module.clone(),
                         name: name.clone(),
                         parens: false,
                     },
                     args: args.clone(),
-                },
-                FoldBody::UnexpandedIndex(_) => match strategy.parens {
-                    ParenStrategy::VisibleParens => Expr::Call {
-                        target: CallTarget::Remote {
-                            module: module.clone(),
-                            name: name.clone(),
-                            parens: *parens,
-                        },
-                        args: args.clone(),
-                    },
-                    ParenStrategy::InvisibleParens => Expr::Call {
-                        target: CallTarget::Remote {
-                            module: module.clone(),
-                            name: name.clone(),
-                            parens: false,
-                        },
-                        args: args.clone(),
-                    },
                 },
             },
             _ => expr.clone(),
@@ -641,7 +620,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::Expr(expr_id),
-            item: AnyExpr::Expr(self.body.normalise_expr(expr, self.strategy)),
+            item: AnyExpr::Expr(self.body.normalise_expr(expr)),
             body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
@@ -1111,53 +1090,6 @@ impl<'a, T> FoldCtx<'a, T> {
         types.iter().fold(initial, |acc, type_expr_id| {
             self.do_fold_type_expr(*type_expr_id, acc)
         })
-    }
-}
-
-// ---------------------------------------------------------------------
-// Index impls FoldBody
-
-impl<'a> Index<ExprId> for FoldBody<'a> {
-    type Output = Expr;
-
-    fn index(&self, index: ExprId) -> &Self::Output {
-        match self {
-            FoldBody::Body(body) => body.index(index),
-            FoldBody::UnexpandedIndex(body) => body.index(index),
-        }
-    }
-}
-
-impl<'a> Index<PatId> for FoldBody<'a> {
-    type Output = Pat;
-
-    fn index(&self, index: PatId) -> &Self::Output {
-        match self {
-            FoldBody::Body(body) => body.index(index),
-            FoldBody::UnexpandedIndex(body) => body.index(index),
-        }
-    }
-}
-
-impl<'a> Index<TypeExprId> for FoldBody<'a> {
-    type Output = TypeExpr;
-
-    fn index(&self, index: TypeExprId) -> &Self::Output {
-        match self {
-            FoldBody::Body(body) => body.index(index),
-            FoldBody::UnexpandedIndex(body) => body.index(index),
-        }
-    }
-}
-
-impl<'a> Index<TermId> for FoldBody<'a> {
-    type Output = Term;
-
-    fn index(&self, index: TermId) -> &Self::Output {
-        match self {
-            FoldBody::Body(body) => body.index(index),
-            FoldBody::UnexpandedIndex(body) => body.index(index),
-        }
     }
 }
 
