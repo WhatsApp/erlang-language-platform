@@ -18,6 +18,7 @@ use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::CallTarget;
 use hir::DefMap;
@@ -118,6 +119,7 @@ fn deprecated_func_highlight(
             sema.fold_function(
                 Strategy {
                     macros: MacroStrategy::InvisibleMacros,
+                    parens: ParenStrategy::InvisibleParens,
                 },
                 function_id,
                 (),

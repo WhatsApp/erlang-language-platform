@@ -21,6 +21,7 @@ use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::known;
 use hir::AnyExpr;
 use hir::CompileOptionId;
@@ -76,6 +77,7 @@ fn missing_compile_warn_missing_spec(
             let is_present = FoldCtx::fold_term(
                 Strategy {
                     macros: MacroStrategy::InvisibleMacros,
+                    parens: ParenStrategy::InvisibleParens,
                 },
                 &co.body,
                 co.value,

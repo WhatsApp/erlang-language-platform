@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BodySourceMap;
@@ -65,6 +66,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
     def_fb.clone().fold_function(
         Strategy {
             macros: MacroStrategy::InvisibleMacros,
+            parens: ParenStrategy::InvisibleParens,
         },
         (),
         &mut |_acc, clause_id, ctx| {

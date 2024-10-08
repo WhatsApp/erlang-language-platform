@@ -47,6 +47,7 @@ use hir::db::DefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
 use hir::AsName;
@@ -1186,6 +1187,7 @@ impl GleanIndexer {
             &sema,
             Strategy {
                 macros: MacroStrategy::SurfaceOnly,
+                parens: ParenStrategy::InvisibleParens,
             },
             file_id,
             vec![],
@@ -1410,6 +1412,7 @@ impl GleanIndexer {
             &sema,
             Strategy {
                 macros: MacroStrategy::SurfaceOnly,
+                parens: ParenStrategy::InvisibleParens,
             },
             file_id,
             vec![],

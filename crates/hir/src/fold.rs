@@ -378,6 +378,7 @@ pub struct FoldCtx<'a, T> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Strategy {
     pub macros: MacroStrategy,
+    pub parens: ParenStrategy,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -387,8 +388,16 @@ pub enum MacroStrategy {
     SurfaceOnly,
     /// Seamlessly expand macros. Similar to abstract forms
     InvisibleMacros,
-    /// macro call expressions will show up in the fold options too
+    /// macro call expressions will show up in the fold `AnyCallBackCtx` too
     VisibleMacros,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ParenStrategy {
+    /// `Expr::Paren` will show up in the fold `AnyCallBackCtx` too
+    VisibleParens,
+    /// Seamlessly expand parens
+    InvisibleParens,
 }
 
 #[derive(Debug)]
@@ -1108,6 +1117,7 @@ mod tests {
 
     use super::fold_file;
     use super::MacroStrategy;
+    use super::ParenStrategy;
     use crate::db::InternDatabase;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
@@ -1194,6 +1204,7 @@ bar() ->
         let r: u32 = FoldCtx::fold_expr(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             &body.body,
             body.clause.exprs[0],
@@ -1256,6 +1267,7 @@ bar() ->
         let r = FoldCtx::fold_term(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             &compiler_options.body,
             compiler_options.value,
@@ -1342,6 +1354,7 @@ bar() ->
         check_macros_expr(
             Strategy {
                 macros: MacroStrategy::VisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1382,6 +1395,7 @@ bar() ->
         check_macros_expr(
             Strategy {
                 macros: MacroStrategy::SurfaceOnly,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1422,6 +1436,7 @@ bar() ->
         check_macros_expr(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1481,6 +1496,7 @@ bar() ->
             FoldCtx::fold_type_expr(
                 Strategy {
                     macros: MacroStrategy::InvisibleMacros,
+                    parens: ParenStrategy::InvisibleParens,
                 },
                 &type_alias.body,
                 type_alias.ty,
@@ -1679,6 +1695,7 @@ bar() ->
         check_macros_type_expr(
             Strategy {
                 macros: MacroStrategy::VisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1708,6 +1725,7 @@ bar() ->
         check_macros_type_expr(
             Strategy {
                 macros: MacroStrategy::SurfaceOnly,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1737,6 +1755,7 @@ bar() ->
         check_macros_type_expr(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             r#"
              -define(AA(X), {X,foo}).
@@ -1769,6 +1788,7 @@ bar() ->
         count_atom_foo_with_strategy(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
             n,
@@ -1977,6 +1997,7 @@ bar() ->
         count_atom_foo_with_strategy(
             Strategy {
                 macros: MacroStrategy::SurfaceOnly,
+                parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
             1,
@@ -1994,6 +2015,7 @@ bar() ->
         count_atom_foo_with_strategy(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
             2,
@@ -2013,6 +2035,7 @@ bar() ->
         count_atom_foo_with_strategy(
             Strategy {
                 macros: MacroStrategy::VisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
             2,
@@ -2031,6 +2054,7 @@ bar() ->
             &sema,
             Strategy {
                 macros: MacroStrategy::VisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             file_id,
             Vec::new(),
@@ -2132,6 +2156,7 @@ bar() ->
             &sema,
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             file_id,
             false,

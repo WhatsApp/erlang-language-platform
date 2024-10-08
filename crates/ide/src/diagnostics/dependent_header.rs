@@ -17,6 +17,7 @@ use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
 use elp_syntax::AstNode;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Name;
@@ -59,6 +60,7 @@ fn dependent_header(
                 body.body.fold_expr(
                     Strategy {
                         macros: MacroStrategy::InvisibleMacros,
+                        parens: ParenStrategy::InvisibleParens,
                     },
                     body.expr,
                     (),

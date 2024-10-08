@@ -28,6 +28,7 @@ use elp_syntax::ast::LogicOp;
 use elp_syntax::AstNode;
 use hir::fold::AnyCallBackCtx;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::ClauseId;
 use hir::Expr;
@@ -67,6 +68,7 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
     def_fb.clone().fold_function(
         Strategy {
             macros: MacroStrategy::VisibleMacros,
+            parens: ParenStrategy::InvisibleParens,
         },
         (),
         &mut |_acc, clause_id, ctx| {

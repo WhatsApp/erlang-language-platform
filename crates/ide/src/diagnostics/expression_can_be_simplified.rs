@@ -14,6 +14,7 @@
 
 use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExprId;
 use hir::ClauseId;
 use hir::FunctionDef;
@@ -58,6 +59,7 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
             def_fb.fold_function(
                 Strategy {
                     macros: MacroStrategy::SurfaceOnly,
+                    parens: ParenStrategy::InvisibleParens,
                 },
                 Some(()),
                 &mut |acc, clause_id, ctx| {

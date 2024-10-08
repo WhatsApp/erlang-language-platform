@@ -22,6 +22,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::AstNode;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionDef;
@@ -114,6 +115,7 @@ fn check_function(
     def_fb.clone().fold_function(
         Strategy {
             macros: MacroStrategy::VisibleMacros,
+            parens: ParenStrategy::InvisibleParens,
         },
         (),
         &mut |acc, clause_id, ctx| {

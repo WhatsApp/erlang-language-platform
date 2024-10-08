@@ -51,6 +51,7 @@ use crate::fold::Constructor;
 use crate::fold::Fold;
 use crate::fold::FoldCtx;
 use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
 use crate::fold::ParentId;
 use crate::fold::Strategy;
 pub use crate::intern::InternDatabase;
@@ -535,6 +536,7 @@ impl<'db> Semantic<'db> {
         let inside_pats = FoldCtx::fold_expr(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             &expr.body.body,
             expr_id_in,
@@ -569,6 +571,7 @@ impl<'db> Semantic<'db> {
         Some(FoldCtx::fold_expr(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             &expr.body.body,
             expr_id_in,
@@ -894,6 +897,7 @@ impl<'db> Semantic<'db> {
                 fold_function_clause_body(
                     Strategy {
                         macros: MacroStrategy::InvisibleMacros,
+                        parens: ParenStrategy::InvisibleParens,
                     },
                     &body,
                     (),
@@ -941,6 +945,7 @@ impl<'db> Semantic<'db> {
         FoldCtx::fold_pat(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             &resolver.body.body,
             *pat_id,

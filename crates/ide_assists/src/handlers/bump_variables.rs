@@ -20,6 +20,7 @@ use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
 use fxhash::FxHashSet;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -68,6 +69,7 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         let vars = ctx.sema.fold_clause(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             infile_function,
             FxHashSet::default(),

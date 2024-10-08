@@ -21,6 +21,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::ExprId;
@@ -59,6 +60,7 @@ fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
         def_fb.fold_function(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             (),
             &mut |_acc, clause_id, ctx| {

@@ -19,6 +19,7 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use hir::fold::Fold;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Semantic;
@@ -76,6 +77,7 @@ pub fn replace_in_spec(
                         sema,
                         Strategy {
                             macros: MacroStrategy::InvisibleMacros,
+                            parens: ParenStrategy::InvisibleParens,
                         },
                         spec_id,
                         (),

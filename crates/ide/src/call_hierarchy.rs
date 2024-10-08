@@ -16,6 +16,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -90,6 +91,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         sema.fold_function(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             function_id,
             (),

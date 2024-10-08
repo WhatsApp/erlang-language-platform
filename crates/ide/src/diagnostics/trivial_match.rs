@@ -20,6 +20,7 @@ use elp_syntax::ast;
 use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BinarySeg;
@@ -78,6 +79,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
     in_clause.fold_clause(
         Strategy {
             macros: MacroStrategy::InvisibleMacros,
+            parens: ParenStrategy::InvisibleParens,
         },
         (),
         &mut |_acc, ctx| {

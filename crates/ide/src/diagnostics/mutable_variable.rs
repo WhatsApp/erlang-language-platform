@@ -29,6 +29,7 @@ use elp_ide_db::elp_base_db::FileId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionClauseId;
@@ -82,6 +83,7 @@ fn mutable_variable_bug(
                     in_clause.fold_clause(
                         Strategy {
                             macros: MacroStrategy::InvisibleMacros,
+                            parens: ParenStrategy::InvisibleParens,
                         },
                         (),
                         &mut |acc, ctx| {

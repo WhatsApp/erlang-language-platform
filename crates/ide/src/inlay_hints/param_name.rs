@@ -11,6 +11,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
 use hir::db::InternDatabase;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -41,6 +42,7 @@ pub(super) fn hints(
             function_body.fold_function(
                 Strategy {
                     macros: MacroStrategy::VisibleMacros,
+                    parens: ParenStrategy::InvisibleParens,
                 },
                 (),
                 &mut |acc, clause_id, ctx| {

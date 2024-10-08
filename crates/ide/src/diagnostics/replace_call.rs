@@ -17,6 +17,7 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::TextRange;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExprId;
 use hir::CallTarget;
 use hir::Expr;
@@ -260,6 +261,7 @@ pub fn remove_fun_ref_from_list(
         def_fb.clone().fold_function(
             Strategy {
                 macros: MacroStrategy::InvisibleMacros,
+                parens: ParenStrategy::InvisibleParens,
             },
             (),
             &mut |_acc, clause_id, ctx| {

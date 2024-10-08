@@ -17,6 +17,7 @@ use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use hir::db::InternDatabase;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::fold::ParentId;
 use hir::AnyExpr;
 use hir::AnyExprId;
@@ -499,6 +500,7 @@ pub(crate) fn find_call_in_function<T, U>(
     def_fb.clone().fold_function(
         Strategy {
             macros: MacroStrategy::VisibleMacros,
+            parens: ParenStrategy::InvisibleParens,
         },
         (),
         &mut |acc, clause_id, ctx| {

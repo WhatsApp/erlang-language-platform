@@ -19,6 +19,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::FunctionClauseDef;
@@ -71,6 +72,7 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
                 in_clause.fold_pat(
                     Strategy {
                         macros: MacroStrategy::InvisibleMacros,
+                        parens: ParenStrategy::InvisibleParens,
                     },
                     *clause_arg_pat_id,
                     (),

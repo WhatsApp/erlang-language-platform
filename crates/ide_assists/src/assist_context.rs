@@ -33,6 +33,7 @@ use elp_syntax::TokenAtOffset;
 use fxhash::FxHashSet;
 use hir::db::DefDatabase;
 use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Body;
 use hir::ClauseId;
@@ -255,6 +256,7 @@ impl<'a> AssistContext<'a> {
                 let vars_and_literals = body.fold_expr(
                     Strategy {
                         macros: MacroStrategy::InvisibleMacros,
+                        parens: ParenStrategy::InvisibleParens,
                     },
                     *arg,
                     Vec::default(),
