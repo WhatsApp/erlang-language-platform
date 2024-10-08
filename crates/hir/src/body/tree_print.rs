@@ -1108,7 +1108,7 @@ impl<'a> Printer<'a> {
                     writeln!(this).ok();
                 });
             }
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 self.print_herald("CallTarget::Remote", &mut |this| {
                     print(this, module);
                     writeln!(this).ok();

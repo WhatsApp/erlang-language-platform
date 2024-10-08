@@ -463,7 +463,7 @@ fn compute_expr_scopes(
                 crate::CallTarget::Local { name } => {
                     compute_expr_scopes(*name, body, scopes, scope, vt);
                 }
-                crate::CallTarget::Remote { module, name } => {
+                crate::CallTarget::Remote { module, name, .. } => {
                     compute_expr_scopes(*module, body, scopes, scope, vt);
                     compute_expr_scopes(*name, body, scopes, scope, vt);
                 }
@@ -606,7 +606,7 @@ fn compute_expr_scopes(
                 crate::CallTarget::Local { name } => {
                     compute_expr_scopes(*name, body, scopes, scope, vt);
                 }
-                crate::CallTarget::Remote { module, name } => {
+                crate::CallTarget::Remote { module, name, .. } => {
                     compute_expr_scopes(*module, body, scopes, scope, vt);
                     compute_expr_scopes(*name, body, scopes, scope, vt);
                 }

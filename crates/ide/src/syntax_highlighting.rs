@@ -144,7 +144,7 @@ fn deprecated_func_highlight(
                                     })
                                 }
                             }
-                            CallTarget::Remote { module, name } => {
+                            CallTarget::Remote { module, name, .. } => {
                                 if let Some(file_id) =
                                     find_remote_module_file_id(sema, file_id, &module, clause_body)
                                 {

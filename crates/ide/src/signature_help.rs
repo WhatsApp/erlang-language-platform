@@ -113,7 +113,7 @@ pub(crate) fn signature_help(
                             active_parameter,
                         )
                     }
-                    CallTarget::Remote { module, name } => {
+                    CallTarget::Remote { module, name, .. } => {
                         let module_atom = &call_expr[*module].as_atom()?;
                         let module_name = sema.db.lookup_atom(*module_atom);
                         let fun_atom = &call_expr[*name].as_atom()?;

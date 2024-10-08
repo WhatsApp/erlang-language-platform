@@ -53,7 +53,7 @@ pub(crate) fn create_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                             let fun_name = ctx.sema.db.lookup_atom(*fun_atom).to_string();
                             (None, fun_name)
                         }
-                        hir::CallTarget::Remote { module, name } => {
+                        hir::CallTarget::Remote { module, name, .. } => {
                             let module = &call_expr[*module].as_atom()?;
                             let fun_atom = &call_expr[*name].as_atom()?;
                             let fun_name = ctx.sema.db.lookup_atom(*fun_atom).to_string();

@@ -481,7 +481,7 @@ pub fn from_is_record(
                 CallTarget::Local { name } => {
                     named_is_record(sema, &body, None, name)?;
                 }
-                CallTarget::Remote { module, name } => {
+                CallTarget::Remote { module, name, .. } => {
                     named_is_record(sema, &body, Some(module), name)?;
                 }
             };

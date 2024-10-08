@@ -433,7 +433,7 @@ pub struct ReceiveAfter {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CallTarget<Id> {
     Local { name: Id },
-    Remote { module: Id, name: Id },
+    Remote { module: Id, name: Id, parens: bool },
 }
 
 impl CallTarget<TypeExprId> {
@@ -453,7 +453,7 @@ impl CallTarget<TypeExprId> {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 Some(SmolStr::new(format!("{name}/{arity}")))
             }
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 let module = sema.db.lookup_atom(body[*module].as_atom()?);
                 Some(SmolStr::new(format!("{module}:{name}/{arity}",)))
@@ -479,7 +479,7 @@ impl CallTarget<ExprId> {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 Some(SmolStr::new(format!("{name}/{arity}")))
             }
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 let module = sema.db.lookup_atom(body[*module].as_atom()?);
                 Some(SmolStr::new(format!("{module}:{name}/{arity}",)))
@@ -493,7 +493,7 @@ impl CallTarget<ExprId> {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 Some(SmolStr::new(format!("{name}")))
             }
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 let name = sema.db.lookup_atom(body[*name].as_atom()?);
                 let module = sema.db.lookup_atom(body[*module].as_atom()?);
                 Some(SmolStr::new(format!("{module}:{name}",)))
@@ -510,7 +510,7 @@ impl CallTarget<ExprId> {
     ) -> bool {
         match self {
             CallTarget::Local { name: _ } => false,
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 sema.is_atom_named(&in_clause[*module], module_name)
                     && sema.is_atom_named(&in_clause[*name], fun_name)
             }
@@ -520,7 +520,7 @@ impl CallTarget<ExprId> {
     pub fn range(&self, in_clause: &InFunctionClauseBody<&FunctionDef>) -> Option<TextRange> {
         match self {
             CallTarget::Local { name } => in_clause.range_for_expr(*name),
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 let name_range = in_clause.range_for_expr(*name)?;
                 if let Some(module_range) = in_clause.range_for_expr(*module) {
                     Some(module_range.cover(name_range))

@@ -567,7 +567,7 @@ pub fn resolve_call_target(
 ) -> Option<FunctionDef> {
     let (file_id, fun_expr) = match target {
         CallTarget::Local { name } => (file_id, *name),
-        CallTarget::Remote { module, name } => (
+        CallTarget::Remote { module, name, .. } => (
             resolve_module_expr(sema, body, file_id, *module)?
                 .file
                 .file_id,
@@ -598,7 +598,7 @@ pub fn resolve_type_target(
 ) -> Option<TypeAliasDef> {
     let (file_id, type_expr) = match target {
         CallTarget::Local { name } => (file_id, *name),
-        CallTarget::Remote { module, name } => {
+        CallTarget::Remote { module, name, .. } => {
             let module = sema.db.lookup_atom(body[*module].as_atom()?);
             (
                 resolve_module_name(sema, file_id, &module)?.file.file_id,
@@ -766,7 +766,7 @@ impl ToDef for ast::ExprArgs {
                 CallTarget::Local { name } => {
                     look_for_apply_call(sema, ast.file_id, None, *name, args, &body)
                 }
-                CallTarget::Remote { module, name } => {
+                CallTarget::Remote { module, name, .. } => {
                     look_for_apply_call(sema, ast.file_id, Some(*module), *name, args, &body)
                 }
             },
@@ -804,6 +804,7 @@ fn look_for_apply_call(
             let apply_target = CallTarget::Remote {
                 module: args[0],
                 name: args[1],
+                parens: false,
             };
             resolve_call_target(sema, &apply_target, Some(arity), file_id, body)
                 .map(CallDef::Function)

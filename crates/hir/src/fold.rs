@@ -420,6 +420,50 @@ pub enum FoldBody<'a> {
     UnexpandedIndex(UnexpandedIndex<'a>),
 }
 
+impl<'a> FoldBody<'a> {
+    fn normalise_expr(&self, expr: &Expr, strategy: Strategy) -> Expr {
+        match expr {
+            Expr::Call {
+                target:
+                    CallTarget::Remote {
+                        module,
+                        name,
+                        parens,
+                    },
+                args,
+            } => match self {
+                FoldBody::Body(_) => Expr::Call {
+                    target: CallTarget::Remote {
+                        module: module.clone(),
+                        name: name.clone(),
+                        parens: false,
+                    },
+                    args: args.clone(),
+                },
+                FoldBody::UnexpandedIndex(_) => match strategy.parens {
+                    ParenStrategy::VisibleParens => Expr::Call {
+                        target: CallTarget::Remote {
+                            module: module.clone(),
+                            name: name.clone(),
+                            parens: *parens,
+                        },
+                        args: args.clone(),
+                    },
+                    ParenStrategy::InvisibleParens => Expr::Call {
+                        target: CallTarget::Remote {
+                            module: module.clone(),
+                            name: name.clone(),
+                            parens: false,
+                        },
+                        args: args.clone(),
+                    },
+                },
+            },
+            _ => expr.clone(),
+        }
+    }
+}
+
 impl<'a, T> FoldCtx<'a, T> {
     fn new(
         strategy: Strategy,
@@ -597,7 +641,7 @@ impl<'a, T> FoldCtx<'a, T> {
             in_macro: self.in_macro(),
             parents: &self.parents,
             item_id: AnyExprId::Expr(expr_id),
-            item: AnyExpr::Expr(expr.clone()),
+            item: AnyExpr::Expr(self.body.normalise_expr(expr, self.strategy)),
             body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
@@ -682,7 +726,7 @@ impl<'a, T> FoldCtx<'a, T> {
             crate::Expr::Call { target, args } => {
                 let r = match target {
                     CallTarget::Local { name } => self.do_fold_expr(*name, acc),
-                    CallTarget::Remote { module, name } => {
+                    CallTarget::Remote { module, name, .. } => {
                         let r = self.do_fold_expr(*module, acc);
                         self.do_fold_expr(*name, r)
                     }
@@ -763,7 +807,7 @@ impl<'a, T> FoldCtx<'a, T> {
             crate::Expr::CaptureFun { target, arity } => {
                 let r = match target {
                     CallTarget::Local { name } => self.do_fold_expr(*name, acc),
-                    CallTarget::Remote { module, name } => {
+                    CallTarget::Remote { module, name, .. } => {
                         let r = self.do_fold_expr(*module, acc);
                         self.do_fold_expr(*name, r)
                     }
@@ -1001,7 +1045,7 @@ impl<'a, T> FoldCtx<'a, T> {
             TypeExpr::Call { target, args } => {
                 let r = match target {
                     CallTarget::Local { name } => self.do_fold_type_expr(*name, acc),
-                    CallTarget::Remote { module, name } => {
+                    CallTarget::Remote { module, name, .. } => {
                         let r = self.do_fold_type_expr(*module, acc);
                         self.do_fold_type_expr(*name, r)
                     }
@@ -1144,6 +1188,7 @@ mod tests {
     use crate::AnyExprId;
     use crate::AnyExprRef;
     use crate::Atom;
+    use crate::CallTarget;
     use crate::Expr;
     use crate::FormIdx;
     use crate::FunctionClauseBody;
@@ -2258,6 +2303,16 @@ bar() ->
             0,
             &mut |acc, ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Paren { .. }) => acc + 1,
+                AnyExpr::Expr(Expr::Call { target, .. }) => match target {
+                    CallTarget::Local { .. } => acc,
+                    CallTarget::Remote { parens, .. } => {
+                        if parens {
+                            acc + 1
+                        } else {
+                            acc
+                        }
+                    }
+                },
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -2299,15 +2354,13 @@ bar() ->
     }
 
     #[test]
-    fn parens_in_call_target_remote_fails() {
-        // This test currently fails.  It is not clear what is the
-        // best way to represent it.
+    fn parens_in_call_target_remote() {
         let fixture_str = r#"
               foo(A) ->
                 Y = (modu:fn)(A),
+                Z = ((modu):((fn)))(A).
              "#;
-        // count_parens(fixture_str, 1);
-        count_parens(fixture_str, 0);
+        count_parens(fixture_str, 5);
     }
 
     // End of testing paren visibility

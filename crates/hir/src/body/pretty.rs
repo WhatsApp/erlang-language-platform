@@ -766,7 +766,7 @@ impl<'a> Printer<'a> {
     ) -> fmt::Result {
         match target {
             CallTarget::Local { name } => print(self, name),
-            CallTarget::Remote { module, name } => {
+            CallTarget::Remote { module, name, .. } => {
                 print(self, module)?;
                 write!(self, ":")?;
                 print(self, name)

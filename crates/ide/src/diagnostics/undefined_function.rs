@@ -69,7 +69,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                }: CheckCallCtx<'_, ()>| {
             let arity = args.len() as u32;
             match target {
-                hir::CallTarget::Remote { module, name } => {
+                hir::CallTarget::Remote { module, name, .. } => {
                     let module = &def_fb[*module];
                     let name = &def_fb[*name];
                     if in_exclusion_list(sema, module, name, arity) {

@@ -260,7 +260,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
             .or_else(|| self.labels_mf.get(&target.label_short(sema, body)).copied())
             .or_else(|| match target {
                 CallTarget::Local { name: _ } => None,
-                CallTarget::Remote { module, name: _ } => {
+                CallTarget::Remote { module, .. } => {
                     let name = sema.db.lookup_atom(body[*module].as_atom()?);
                     let label = Some(SmolStr::new(format!("{name}")));
                     self.labels_m.get(&label).copied()

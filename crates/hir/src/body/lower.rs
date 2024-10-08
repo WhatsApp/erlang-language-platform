@@ -1060,7 +1060,11 @@ impl<'a> Ctx<'a> {
                         CallTarget::Local { name: parened_name }
                     }
                     // The entire remote call is wrapped in parens. How do we capture this?
-                    call @ CallTarget::Remote { module: _, name: _ } => call,
+                    CallTarget::Remote { module, name, .. } => CallTarget::Remote {
+                        module,
+                        name,
+                        parens: true,
+                    },
                 }
             }
             Some(ast::Expr::Remote(remote)) => CallTarget::Remote {
@@ -1071,6 +1075,7 @@ impl<'a> Ctx<'a> {
                         .map(ast::Expr::ExprMax),
                 ),
                 name: self.lower_optional_expr(remote.fun().map(ast::Expr::ExprMax)),
+                parens: false,
             },
             Some(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(call))) => self
                 .resolve_macro(call, |this, source, replacement| match replacement {
@@ -1115,7 +1120,11 @@ impl<'a> Ctx<'a> {
 
     fn disambiguate_call_target(&mut self, name: ExprId, arity: ast::Arity) -> CallTarget<ExprId> {
         if let Some(module) = self.import_or_erlang_bif(name, arity) {
-            CallTarget::Remote { module, name }
+            CallTarget::Remote {
+                module,
+                name,
+                parens: false,
+            }
         } else {
             CallTarget::Local { name }
         }
@@ -1252,6 +1261,7 @@ impl<'a> Ctx<'a> {
                             .map(Into::into),
                     ),
                     name: self.lower_optional_expr(fun.fun().map(Into::into)),
+                    parens: false,
                 };
                 let arity = self.lower_optional_expr(
                     fun.arity().and_then(|arity| arity.value()).map(Into::into),
@@ -1846,6 +1856,7 @@ impl<'a> Ctx<'a> {
                         .map(ast::Expr::ExprMax),
                 ),
                 name: self.lower_optional_type_expr(remote.fun().map(ast::Expr::ExprMax)),
+                parens: false,
             },
             Some(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(call))) => self
                 .resolve_macro(call, |this, source, replacement| match replacement {
@@ -1894,7 +1905,11 @@ impl<'a> Ctx<'a> {
         arity: ast::Arity,
     ) -> CallTarget<TypeExprId> {
         if let Some(module) = self.erlang_bif_type_module(name, arity) {
-            CallTarget::Remote { module, name }
+            CallTarget::Remote {
+                module,
+                name,
+                parens: false,
+            }
         } else {
             CallTarget::Local { name }
         }
