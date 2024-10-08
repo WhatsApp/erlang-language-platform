@@ -219,6 +219,7 @@ pub struct Server {
     file_set_config: FileSetConfig,
     line_ending_map: SharedMap<FileId, LineEndings>,
     config: Arc<Config>,
+    diagnostics_config: Arc<DiagnosticsConfig>,
     lint_config: Arc<LintConfig>,
     analysis_host: AnalysisHost,
     status: Status,
@@ -269,6 +270,9 @@ impl Server {
             file_set_config: FileSetConfig::default(),
             line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
+            diagnostics_config: Arc::new(
+                config.diagnostics_config(Arc::new(LintConfig::default())),
+            ),
             lint_config: Arc::new(LintConfig::default()),
             analysis_host: AnalysisHost::default(),
             status: Status::Initialising,
@@ -297,7 +301,7 @@ impl Server {
     pub fn snapshot(&self) -> Snapshot {
         Snapshot::new(
             Arc::clone(&self.config),
-            Arc::clone(&self.lint_config),
+            Arc::clone(&self.diagnostics_config),
             self.analysis_host.analysis(),
             Arc::clone(&self.diagnostics),
             Arc::clone(&self.vfs),
@@ -1236,6 +1240,8 @@ impl Server {
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                 log::warn!("update_configuration: read lint file: {:?}", lint_config);
                 self.lint_config = Arc::new(lint_config);
+                self.diagnostics_config =
+                    Arc::new(self.config.diagnostics_config(self.lint_config.clone()));
                 // Diagnostic config may have changed, regen native, the
                 // others are requested after this
                 self.native_diagnostics_requested = true;
