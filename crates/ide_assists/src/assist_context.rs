@@ -32,6 +32,7 @@ use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
 use fxhash::FxHashSet;
 use hir::db::DefDatabase;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::Body;
 use hir::ClauseId;
@@ -252,7 +253,9 @@ impl<'a> AssistContext<'a> {
                 // the variables together. So a param
                 // called as `X + 1 + Y` becomes `XNY`.
                 let vars_and_literals = body.fold_expr(
-                    Strategy::InvisibleMacros,
+                    Strategy {
+                        macros: MacroStrategy::InvisibleMacros,
+                    },
                     *arg,
                     Vec::default(),
                     &mut |mut acc, ctx| {

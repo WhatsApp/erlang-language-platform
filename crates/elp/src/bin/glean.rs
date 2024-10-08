@@ -46,6 +46,7 @@ use fxhash::FxHashMap;
 use hir::db::DefDatabase;
 use hir::fold;
 use hir::fold::AnyCallBackCtx;
+use hir::fold::MacroStrategy;
 use hir::sema::to_def::resolve_call_target;
 use hir::sema::to_def::resolve_type_target;
 use hir::AsName;
@@ -1183,7 +1184,9 @@ impl GleanIndexer {
         let source_file = sema.parse(file_id);
         let mut xrefs = fold::fold_file(
             &sema,
-            Strategy::SurfaceOnly,
+            Strategy {
+                macros: MacroStrategy::SurfaceOnly,
+            },
             file_id,
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
@@ -1405,7 +1408,9 @@ impl GleanIndexer {
         let def_map = sema.def_map(file_id);
         let mut xrefs = fold::fold_file(
             &sema,
-            Strategy::SurfaceOnly,
+            Strategy {
+                macros: MacroStrategy::SurfaceOnly,
+            },
             file_id,
             vec![],
             &mut |mut acc, ctx| {

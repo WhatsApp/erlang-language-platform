@@ -17,6 +17,7 @@ use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::CallTarget;
 use hir::DefMap;
@@ -115,7 +116,9 @@ fn deprecated_func_highlight(
             let function_id = InFile::new(file_id, def.function_id);
             let function_body = sema.to_function_body(function_id);
             sema.fold_function(
-                Strategy::InvisibleMacros,
+                Strategy {
+                    macros: MacroStrategy::InvisibleMacros,
+                },
                 function_id,
                 (),
                 &mut |acc, clause_id, ctx| {

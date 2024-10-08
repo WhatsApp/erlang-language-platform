@@ -27,6 +27,7 @@ use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::AstNode;
 use hir::fold::AnyCallBackCtx;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::ClauseId;
 use hir::Expr;
@@ -63,9 +64,12 @@ fn boolean_precedence(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_i
 
 fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let def_fb = def.in_function_body(sema, def);
-    def_fb
-        .clone()
-        .fold_function(Strategy::VisibleMacros, (), &mut |_acc, clause_id, ctx| {
+    def_fb.clone().fold_function(
+        Strategy {
+            macros: MacroStrategy::VisibleMacros,
+        },
+        (),
+        &mut |_acc, clause_id, ctx| {
             let op = match &ctx.item {
                 AnyExpr::Expr(Expr::BinaryOp { lhs, rhs, op }) => match op {
                     BinaryOp::LogicOp(LogicOp::And { lazy: false }) => {
@@ -91,7 +95,8 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
                     diagnostics,
                 );
             }
-        })
+        },
+    )
 }
 
 fn is_complex(

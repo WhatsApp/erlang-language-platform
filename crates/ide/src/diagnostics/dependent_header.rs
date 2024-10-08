@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileKind;
 use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
 use elp_syntax::AstNode;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Name;
@@ -55,8 +56,13 @@ fn dependent_header(
                 .db
                 .define_body_with_source(InFile::new(file_id, define_id))
             {
-                body.body
-                    .fold_expr(Strategy::InvisibleMacros, body.expr, (), &mut |acc, ctx| {
+                body.body.fold_expr(
+                    Strategy {
+                        macros: MacroStrategy::InvisibleMacros,
+                    },
+                    body.expr,
+                    (),
+                    &mut |acc, ctx| {
                         if let Some(name) = match ctx.item {
                             AnyExpr::Expr(expr) => expr.as_record_name().cloned(),
                             _ => None,
@@ -77,7 +83,8 @@ fn dependent_header(
                             }
                         };
                         acc
-                    });
+                    },
+                );
             };
         }
     }

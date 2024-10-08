@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::TextRange;
+use hir::fold::MacroStrategy;
 use hir::AnyExprId;
 use hir::CallTarget;
 use hir::Expr;
@@ -257,7 +258,9 @@ pub fn remove_fun_ref_from_list(
         let def_fb = def.in_function_body(sema, def);
         let source_file = sema.parse(file_id);
         def_fb.clone().fold_function(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             (),
             &mut |_acc, clause_id, ctx| {
                 let body_map = def_fb.get_body_map(clause_id);

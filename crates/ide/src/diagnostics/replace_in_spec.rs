@@ -18,6 +18,7 @@ use elp_ide_db::DiagnosticCode;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use hir::fold::Fold;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Semantic;
@@ -73,7 +74,9 @@ pub fn replace_in_spec(
                     let spec = sema.db.spec_body(spec_id);
                     Spec::fold(
                         sema,
-                        Strategy::InvisibleMacros,
+                        Strategy {
+                            macros: MacroStrategy::InvisibleMacros,
+                        },
                         spec_id,
                         (),
                         &mut |_acc, ctx| {

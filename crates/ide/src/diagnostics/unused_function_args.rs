@@ -18,6 +18,7 @@ use std::collections::HashSet;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::FunctionClauseDef;
@@ -68,7 +69,9 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
 
             for clause_arg_pat_id in pats.iter() {
                 in_clause.fold_pat(
-                    Strategy::InvisibleMacros,
+                    Strategy {
+                        macros: MacroStrategy::InvisibleMacros,
+                    },
                     *clause_arg_pat_id,
                     (),
                     &mut |(), ctx| match ctx.item_id {

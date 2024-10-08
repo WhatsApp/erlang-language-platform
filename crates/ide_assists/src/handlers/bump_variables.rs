@@ -19,6 +19,7 @@ use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
 use fxhash::FxHashSet;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -65,7 +66,9 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         let infile_function = InFile::new(ctx.file_id(), function_clause_id);
         let (_body, body_map) = ctx.db().function_clause_body_with_source(infile_function);
         let vars = ctx.sema.fold_clause(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             infile_function,
             FxHashSet::default(),
             &mut |mut acc, ctx| match ctx.item {

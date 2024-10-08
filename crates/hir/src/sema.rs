@@ -50,6 +50,7 @@ use crate::fold::AnyCallBackCtx;
 use crate::fold::Constructor;
 use crate::fold::Fold;
 use crate::fold::FoldCtx;
+use crate::fold::MacroStrategy;
 use crate::fold::ParentId;
 use crate::fold::Strategy;
 pub use crate::intern::InternDatabase;
@@ -532,7 +533,9 @@ impl<'db> Semantic<'db> {
         let resolver = Resolver::new(clause_scopes);
 
         let inside_pats = FoldCtx::fold_expr(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             &expr.body.body,
             expr_id_in,
             FxHashSet::default(),
@@ -564,7 +567,9 @@ impl<'db> Semantic<'db> {
         };
 
         Some(FoldCtx::fold_expr(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             &expr.body.body,
             expr_id_in,
             ScopeAnalysis::new(),
@@ -886,33 +891,40 @@ impl<'db> Semantic<'db> {
                 let function_id = InFile::new(file_id, *function_id);
                 let body = self.db.function_clause_body(function_id);
 
-                fold_function_clause_body(Strategy::InvisibleMacros, &body, (), &mut |acc, ctx| {
-                    if let Some(mut resolver) = self.clause_resolver(function_id) {
-                        let mut bound_vars =
-                            BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
-                        match ctx.item {
-                            AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
-                                bound_vars.report_any_bound_vars(&lhs)
+                fold_function_clause_body(
+                    Strategy {
+                        macros: MacroStrategy::InvisibleMacros,
+                    },
+                    &body,
+                    (),
+                    &mut |acc, ctx| {
+                        if let Some(mut resolver) = self.clause_resolver(function_id) {
+                            let mut bound_vars =
+                                BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
+                            match ctx.item {
+                                AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
+                                    bound_vars.report_any_bound_vars(&lhs)
+                                }
+                                AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
+                                    bound_vars.cr_clauses(&clauses);
+                                }
+                                AnyExpr::Expr(Expr::Try {
+                                    exprs: _,
+                                    of_clauses,
+                                    catch_clauses,
+                                    after: _,
+                                }) => {
+                                    bound_vars.cr_clauses(&of_clauses);
+                                    catch_clauses.iter().for_each(|clause| {
+                                        bound_vars.report_any_bound_vars(&clause.reason);
+                                    })
+                                }
+                                _ => {}
                             }
-                            AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
-                                bound_vars.cr_clauses(&clauses);
-                            }
-                            AnyExpr::Expr(Expr::Try {
-                                exprs: _,
-                                of_clauses,
-                                catch_clauses,
-                                after: _,
-                            }) => {
-                                bound_vars.cr_clauses(&of_clauses);
-                                catch_clauses.iter().for_each(|clause| {
-                                    bound_vars.report_any_bound_vars(&clause.reason);
-                                })
-                            }
-                            _ => {}
-                        }
-                    };
-                    acc
-                });
+                        };
+                        acc
+                    },
+                );
             }
         }
         res
@@ -927,7 +939,9 @@ impl<'db> Semantic<'db> {
         let parse = self.parse(file_id);
         let body_map = &resolver.get_body_map();
         FoldCtx::fold_pat(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             &resolver.body.body,
             *pat_id,
             FxHashSet::default(),
@@ -1008,7 +1022,7 @@ fn fold_function_clause_body<'a, T>(
     callback: AnyCallBack<'a, T>,
 ) -> T {
     match &function_clause_body.from_macro {
-        Some(from_macro) if strategy == Strategy::SurfaceOnly => FoldCtx::fold_exprs(
+        Some(from_macro) if strategy.macros == MacroStrategy::SurfaceOnly => FoldCtx::fold_exprs(
             strategy,
             &function_clause_body.body,
             &from_macro.args,

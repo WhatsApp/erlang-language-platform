@@ -66,11 +66,11 @@ use crate::TypeExprId;
 /// Choose the appropriate `FoldBody` to ensure macros are visible or
 /// not according to the chosen strategy.
 fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
-    match strategy {
-        Strategy::SurfaceOnly | Strategy::VisibleMacros => {
+    match strategy.macros {
+        MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => {
             FoldBody::UnexpandedIndex(UnexpandedIndex(body))
         }
-        Strategy::InvisibleMacros => FoldBody::Body(body),
+        MacroStrategy::InvisibleMacros => FoldBody::Body(body),
     }
 }
 
@@ -376,7 +376,12 @@ pub struct FoldCtx<'a, T> {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Strategy {
+pub struct Strategy {
+    pub macros: MacroStrategy,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum MacroStrategy {
     /// Fold over HIR, but do not call back for macro expansions, only
     /// their arguments.
     SurfaceOnly,
@@ -638,7 +643,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 args,
                 macro_def: _,
             } => {
-                let r = if self.strategy == Strategy::SurfaceOnly {
+                let r = if self.strategy.macros == MacroStrategy::SurfaceOnly {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -1016,7 +1021,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 args,
                 macro_def: _,
             } => {
-                let r = if self.strategy == Strategy::SurfaceOnly {
+                let r = if self.strategy.macros == MacroStrategy::SurfaceOnly {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -1102,6 +1107,7 @@ mod tests {
     use la_arena::RawIdx;
 
     use super::fold_file;
+    use super::MacroStrategy;
     use crate::db::InternDatabase;
     use crate::expr::AnyExpr;
     use crate::fold::FoldCtx;
@@ -1186,7 +1192,9 @@ bar() ->
             _ => panic!(),
         };
         let r: u32 = FoldCtx::fold_expr(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             &body.body,
             body.clause.exprs[0],
             0,
@@ -1246,7 +1254,9 @@ bar() ->
         let (idx, _) = form_list.compile_attributes().next().unwrap();
         let compiler_options = sema.db.compile_body(InFile::new(file_id, idx));
         let r = FoldCtx::fold_term(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             &compiler_options.body,
             compiler_options.value,
             0,
@@ -1330,7 +1340,9 @@ bar() ->
     #[test]
     fn macro_aware_full_traversal_expr() {
         check_macros_expr(
-            Strategy::VisibleMacros,
+            Strategy {
+                macros: MacroStrategy::VisibleMacros,
+            },
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -1368,7 +1380,9 @@ bar() ->
     #[test]
     fn macro_aware_surface_traversal_expr() {
         check_macros_expr(
-            Strategy::SurfaceOnly,
+            Strategy {
+                macros: MacroStrategy::SurfaceOnly,
+            },
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -1406,7 +1420,9 @@ bar() ->
     #[test]
     fn ignore_macros_expr() {
         check_macros_expr(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             r#"
              -define(AA(X), {X,foo}).
              bar() ->
@@ -1463,7 +1479,9 @@ bar() ->
         let type_alias = sema.db.type_body(InFile::new(file_id, idx));
         let r =
             FoldCtx::fold_type_expr(
-                Strategy::InvisibleMacros,
+                Strategy {
+                    macros: MacroStrategy::InvisibleMacros,
+                },
                 &type_alias.body,
                 type_alias.ty,
                 0,
@@ -1659,7 +1677,9 @@ bar() ->
     #[test]
     fn macro_aware_full_traversal_type_expr() {
         check_macros_type_expr(
-            Strategy::VisibleMacros,
+            Strategy {
+                macros: MacroStrategy::VisibleMacros,
+            },
             r#"
              -define(AA(X), {X,foo}).
              -type baz() :: {fo~o, ?AA(foo)}.
@@ -1686,7 +1706,9 @@ bar() ->
     #[test]
     fn macro_aware_surface_traversal_type_expr() {
         check_macros_type_expr(
-            Strategy::SurfaceOnly,
+            Strategy {
+                macros: MacroStrategy::SurfaceOnly,
+            },
             r#"
              -define(AA(X), {X,foo}).
              -type baz() :: {fo~o, ?AA(foo)}.
@@ -1713,7 +1735,9 @@ bar() ->
     #[test]
     fn ignore_macros_type_expr() {
         check_macros_type_expr(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             r#"
              -define(AA(X), {X,foo}).
              -type baz() :: {fo~o, ?AA(foo)}.
@@ -1742,7 +1766,13 @@ bar() ->
 
     #[track_caller]
     fn count_atom_foo(fixture_str: &str, n: u32) {
-        count_atom_foo_with_strategy(Strategy::InvisibleMacros, fixture_str, n)
+        count_atom_foo_with_strategy(
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
+            fixture_str,
+            n,
+        )
     }
 
     #[track_caller]
@@ -1944,7 +1974,13 @@ bar() ->
                ?FOO([foo()]).
                "#;
         // We do not see the function name (not looking)
-        count_atom_foo_with_strategy(Strategy::SurfaceOnly, fixture_str, 1);
+        count_atom_foo_with_strategy(
+            Strategy {
+                macros: MacroStrategy::SurfaceOnly,
+            },
+            fixture_str,
+            1,
+        );
     }
 
     #[test]
@@ -1955,7 +1991,13 @@ bar() ->
                fo~o() -> 1.
                ?FOO([foo()]).
                "#;
-        count_atom_foo_with_strategy(Strategy::InvisibleMacros, fixture_str, 2);
+        count_atom_foo_with_strategy(
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
+            fixture_str,
+            2,
+        );
     }
 
     #[test]
@@ -1968,7 +2010,13 @@ bar() ->
                "#;
         // We do not see the arguments separately, it is up to us to
         // explicitly look at them if we care.
-        count_atom_foo_with_strategy(Strategy::VisibleMacros, fixture_str, 2);
+        count_atom_foo_with_strategy(
+            Strategy {
+                macros: MacroStrategy::VisibleMacros,
+            },
+            fixture_str,
+            2,
+        );
     }
 
     // -----------------------------------------------------------------
@@ -1981,7 +2029,9 @@ bar() ->
 
         let r: Vec<_> = fold_file(
             &sema,
-            Strategy::VisibleMacros,
+            Strategy {
+                macros: MacroStrategy::VisibleMacros,
+            },
             file_id,
             Vec::new(),
             &mut |mut acc, ctx| match ctx.item {
@@ -2080,7 +2130,9 @@ bar() ->
 
         let r: bool = fold_file(
             &sema,
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             file_id,
             false,
             &mut |acc, ctx| match ctx.item {

@@ -15,6 +15,7 @@ use elp_syntax::ast::{self};
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
@@ -87,7 +88,9 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         let function_id = InFile::new(file_id, function_id_idx);
         let function_body = sema.to_function_body(function_id);
         sema.fold_function(
-            Strategy::InvisibleMacros,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+            },
             function_id,
             (),
             &mut |acc, clause_id, ctx| {

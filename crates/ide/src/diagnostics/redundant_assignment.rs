@@ -15,6 +15,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BodySourceMap;
@@ -62,7 +63,9 @@ fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
 fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
-        Strategy::InvisibleMacros,
+        Strategy {
+            macros: MacroStrategy::InvisibleMacros,
+        },
         (),
         &mut |_acc, clause_id, ctx| {
             let in_clause = def_fb.in_clause(clause_id);

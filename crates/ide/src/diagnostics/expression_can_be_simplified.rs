@@ -13,6 +13,7 @@
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
 
 use elp_ide_db::source_change::SourceChangeBuilder;
+use hir::fold::MacroStrategy;
 use hir::AnyExprId;
 use hir::ClauseId;
 use hir::FunctionDef;
@@ -55,7 +56,9 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
             let def_fb = fun_def.in_function_body(sema, fun_def);
 
             def_fb.fold_function(
-                Strategy::SurfaceOnly,
+                Strategy {
+                    macros: MacroStrategy::SurfaceOnly,
+                },
                 Some(()),
                 &mut |acc, clause_id, ctx| {
                     let simplification = match ctx.item {

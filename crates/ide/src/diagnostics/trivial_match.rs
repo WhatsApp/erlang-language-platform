@@ -19,6 +19,7 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
+use hir::fold::MacroStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BinarySeg;
@@ -74,26 +75,33 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
     let body_map = in_clause.get_body_map();
     let source_file = sema.parse(def.file.file_id);
 
-    in_clause.fold_clause(Strategy::InvisibleMacros, (), &mut |_acc, ctx| {
-        if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
-            let rhs = &rhs.clone();
-            if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
-                let maybe_lhs_range = &in_clause.range_for_any(AnyExprId::Pat(lhs));
-                let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
-                if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range) {
-                    let rhs_ast = body_map
-                        .expr(*rhs)
-                        .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                    diags.push(make_diagnostic(
-                        def.file.file_id,
-                        lhs_range,
-                        full_range,
-                        rhs_ast,
-                    ));
+    in_clause.fold_clause(
+        Strategy {
+            macros: MacroStrategy::InvisibleMacros,
+        },
+        (),
+        &mut |_acc, ctx| {
+            if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+                let rhs = &rhs.clone();
+                if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
+                    let maybe_lhs_range = &in_clause.range_for_any(AnyExprId::Pat(lhs));
+                    let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
+                    if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range)
+                    {
+                        let rhs_ast = body_map
+                            .expr(*rhs)
+                            .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
+                        diags.push(make_diagnostic(
+                            def.file.file_id,
+                            lhs_range,
+                            full_range,
+                            rhs_ast,
+                        ));
+                    }
                 }
             }
-        }
-    });
+        },
+    );
 }
 
 fn matches_trivially(
