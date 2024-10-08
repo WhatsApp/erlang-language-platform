@@ -608,6 +608,7 @@ impl<'a> Printer<'a> {
                 }
                 write!(self, "end")
             }
+            Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
         }
     }
 

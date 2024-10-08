@@ -282,6 +282,13 @@ pub enum Expr {
         exprs: Vec<MaybeExpr>,
         else_clauses: Vec<CRClause>,
     },
+    Paren {
+        // This constructor allows us to analyze the usage of parens
+        // when deciding on assists.
+        // Much like `Expr::MacroCall`, it is normally hidden during a
+        // `fold`, but can be made visible if needed.
+        expr: ExprId,
+    },
 }
 
 impl Expr {

@@ -68,9 +68,17 @@ use crate::TypeExprId;
 fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     match strategy.macros {
         MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => {
-            FoldBody::UnexpandedIndex(UnexpandedIndex(body))
+            FoldBody::UnexpandedIndex(UnexpandedIndex {
+                body,
+                macros: VisibleMacros::Yes,
+                parens: strategy.parens,
+            })
         }
-        MacroStrategy::InvisibleMacros => FoldBody::Body(body),
+        MacroStrategy::InvisibleMacros => FoldBody::UnexpandedIndex(UnexpandedIndex {
+            body,
+            macros: VisibleMacros::No,
+            parens: strategy.parens,
+        }),
     }
 }
 
@@ -398,6 +406,12 @@ pub enum ParenStrategy {
     VisibleParens,
     /// Seamlessly expand parens
     InvisibleParens,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum VisibleMacros {
+    Yes,
+    No,
 }
 
 #[derive(Debug)]
@@ -788,6 +802,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 });
                 self.fold_cr_clause(else_clauses, r)
             }
+            crate::Expr::Paren { expr } => self.do_fold_expr(*expr, acc),
         };
         self.parents.pop();
         r
@@ -1107,6 +1122,7 @@ impl<'a> Index<TermId> for FoldBody<'a> {
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
+    use elp_base_db::FileId;
     use elp_syntax::algo;
     use elp_syntax::ast;
     use elp_syntax::AstNode;
@@ -2214,4 +2230,86 @@ bar() ->
                "#;
         parent_is_anonymous_fun(fixture_str, false);
     }
+
+    // -----------------------------------------------------------------
+    // Start of testing paren visibility
+
+    #[track_caller]
+    fn count_parens(fixture_str: &str, n: u32) {
+        let (db, fixture) = TestDB::with_fixture(fixture_str);
+        let file_id = fixture.files[0];
+        let sema = Semantic::new(&db);
+
+        let r = do_count_parens(&sema, ParenStrategy::InvisibleParens, file_id);
+        assert_eq!(r, 0);
+
+        let r = do_count_parens(&sema, ParenStrategy::VisibleParens, file_id);
+        assert_eq!(r, n);
+    }
+
+    fn do_count_parens(sema: &Semantic, parens: ParenStrategy, file_id: FileId) -> u32 {
+        fold_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::InvisibleMacros,
+                parens,
+            },
+            file_id,
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Paren { .. }) => acc + 1,
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id| acc,
+        )
+    }
+
+    #[test]
+    fn parens_basic() {
+        let fixture_str = r#"
+              foo(A) ->
+                X = (A + (1 * 2)). 
+             "#;
+        count_parens(fixture_str, 2);
+    }
+
+    #[test]
+    fn parens_in_maybe() {
+        let fixture_str = r#"
+              foo(A, B) ->
+                maybe
+                    {ok, A} ?= a(),
+                    true = (A >= 0),
+                    {ok, B} ?= b(),
+                    ((A) + B)
+                end.
+             "#;
+        count_parens(fixture_str, 3);
+    }
+
+    #[test]
+    fn parens_in_call_target_simple() {
+        let fixture_str = r#"
+              foo(A, B) ->
+                X = ((bar))(A),
+                Y = (modu):(fn)(B),
+                X + Y.
+             "#;
+        count_parens(fixture_str, 4);
+    }
+
+    #[test]
+    fn parens_in_call_target_remote_fails() {
+        // This test currently fails.  It is not clear what is the
+        // best way to represent it.
+        let fixture_str = r#"
+              foo(A) ->
+                Y = (modu:fn)(A),
+             "#;
+        // count_parens(fixture_str, 1);
+        count_parens(fixture_str, 0);
+    }
+
+    // End of testing paren visibility
+    // -----------------------------------------------------------------
 }

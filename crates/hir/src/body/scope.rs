@@ -42,6 +42,8 @@ use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
+use crate::fold::ParenStrategy;
+use crate::fold::VisibleMacros;
 use crate::Body;
 use crate::CRClause;
 use crate::ComprehensionBuilder;
@@ -365,7 +367,12 @@ fn compute_expr_scopes(
     vt: &mut VarTable,
 ) {
     scopes.set_scope_expr(expr, *scope);
-    match &UnexpandedIndex(body)[expr] {
+    match &(UnexpandedIndex {
+        body,
+        macros: VisibleMacros::Yes,
+        parens: ParenStrategy::InvisibleParens,
+    })[expr]
+    {
         crate::Expr::Missing => {}
         crate::Expr::Literal(_) => {}
         crate::Expr::Var(_) => {}
@@ -647,6 +654,9 @@ fn compute_expr_scopes(
 
             let clause_scopes = compute_clause_scopes(else_clauses, body, scopes, scope, vt);
             vt.merge(&add_exported_scopes(scopes, scope, &clause_scopes));
+        }
+        crate::Expr::Paren { expr } => {
+            compute_expr_scopes(*expr, body, scopes, scope, vt);
         }
     }
 }

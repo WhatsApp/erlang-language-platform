@@ -1046,7 +1046,22 @@ impl<'a> Ctx<'a> {
     ) -> CallTarget<ExprId> {
         match expr.as_ref() {
             Some(ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren))) => {
-                self.lower_call_target(paren.expr(), arity)
+                let inner_expr_id = self.alloc_expr(Expr::Missing, paren.expr().as_ref());
+                let _ = self.alloc_expr(
+                    Expr::Paren {
+                        expr: inner_expr_id,
+                    },
+                    expr.as_ref(),
+                );
+                match self.lower_call_target(paren.expr(), arity) {
+                    CallTarget::Local { name } => {
+                        let parened_name =
+                            self.alloc_expr(Expr::Paren { expr: name }, expr.as_ref());
+                        CallTarget::Local { name: parened_name }
+                    }
+                    // The entire remote call is wrapped in parens. How do we capture this?
+                    call @ CallTarget::Remote { module: _, name: _ } => call,
+                }
             }
             Some(ast::Expr::Remote(remote)) => CallTarget::Remote {
                 module: self.lower_optional_expr(
@@ -1385,7 +1400,7 @@ impl<'a> Ctx<'a> {
                     let ptr = AstPtr::new(expr);
                     let source = InFileAstPtr::new(self.curr_file_id(), ptr);
                     self.record_expr_source(expr_id, source);
-                    expr_id
+                    self.alloc_expr(Expr::Paren { expr: expr_id }, Some(expr))
                 } else {
                     self.alloc_expr(Expr::Missing, Some(expr))
                 }
@@ -1515,7 +1530,14 @@ impl<'a> Ctx<'a> {
                 }
             }
             ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren)) => match paren.expr() {
-                Some(paren_expr) => self.lower_maybe_expr(&paren_expr),
+                // According to EEP49 the `CondMatchExpr` can only
+                // occur at the top level. So we lower the
+                // paren-wrapped expr as an ordinary one.
+                Some(paren_expr) => {
+                    let expr_id = self.lower_expr(&paren_expr);
+                    let expr_id = self.alloc_expr(Expr::Paren { expr: expr_id }, Some(expr));
+                    MaybeExpr::Expr(expr_id)
+                }
                 None => MaybeExpr::Expr(self.alloc_expr(Expr::Missing, None)),
             },
             e => MaybeExpr::Expr(self.lower_expr(e)),

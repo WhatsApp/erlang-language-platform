@@ -153,6 +153,7 @@ fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) 
             //   - may fail to match
             false
         }
+        Expr::Paren { .. } => false,
     }
 }
 

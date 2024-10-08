@@ -583,6 +583,7 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
+            Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
         }
     }
 
