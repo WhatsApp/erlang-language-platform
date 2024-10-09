@@ -26,6 +26,7 @@ mod module_data;
 mod name;
 pub mod resolver;
 pub mod sema;
+#[cfg(test)]
 mod test_db;
 
 pub use body::AnyAttribute;
