@@ -110,7 +110,7 @@ fn converted_ast(
     module: ModuleName,
 ) -> Result<Arc<AST>, Error> {
     let ast = db.get_erl_ast_bytes(project_id, module)?;
-    super::from_bytes(&ast).map(Arc::new)
+    super::from_bytes(&ast, false).map(Arc::new)
 }
 
 fn converted_ast_bytes(
@@ -154,8 +154,8 @@ fn converted_stub(
             Err(Error::ModuleNotFound(module.as_str().into()))
         }
     } else {
-        let stub = db.get_erl_stub_bytes(project_id, module)?;
-        super::from_bytes(&stub).map(Arc::new)
+        let ast = db.get_erl_ast_bytes(project_id, module)?;
+        super::from_bytes(&ast, true).map(Arc::new)
     }
 }
 

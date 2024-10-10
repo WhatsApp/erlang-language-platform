@@ -201,12 +201,12 @@ impl fmt::Display for TransitiveCheckError {
     }
 }
 
-pub fn from_bytes(bytes: &Vec<u8>) -> Result<AST, Error> {
+pub fn from_bytes(bytes: &Vec<u8>, filter_stub: bool) -> Result<AST, Error> {
     let term = eetf::Term::decode(Cursor::new(bytes))?;
     if let Term::Tuple(res) = term {
         if let [Term::Atom(ok), forms, _] = &res.elements[..] {
             if ok.name == "ok" {
-                let converted_forms = convert::convert_forms(forms, false, false)?;
+                let converted_forms = convert::convert_forms(forms, false, filter_stub)?;
                 return Ok(preprocess::preprocess(converted_forms));
             }
         }
