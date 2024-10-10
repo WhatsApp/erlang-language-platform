@@ -15,7 +15,10 @@
 // Only fully qualified calls are reported by this diagnostic (e.g. `foo:bar/2`), since
 // calls to undefined local functions are already reported by the Erlang linter itself (L1227).
 
+use elp_ide_assists::helpers;
+use elp_ide_assists::helpers::ExportForm;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::known;
 use hir::Expr;
 use hir::FunctionDef;
@@ -31,6 +34,7 @@ use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MakeDiagCtx;
+use crate::fix;
 use crate::FunctionMatch;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
@@ -91,6 +95,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                                     label.to_string(),
                                     "".to_string(),
                                     function_exists && !is_exported,
+                                    maybe_function_def,
                                 )
                             })
                         }
@@ -107,6 +112,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                 ctx.range_mf_only(),
                 &extra.0,
                 extra.2,
+                extra.3.clone(),
             );
             Some(diag)
         },
@@ -131,15 +137,40 @@ fn make_diagnostic(
     range: TextRange,
     function_name: &str,
     is_private: bool,
+    maybe_function_def: Option<FunctionDef>,
 ) -> Diagnostic {
     if is_private {
-        return Diagnostic::new(
+        let maybe_fix = maybe_function_def.map(|function_def| {
+            let mut builder = SourceChangeBuilder::new(function_def.file.file_id);
+            helpers::ExportBuilder::new(
+                sema,
+                function_def.file.file_id,
+                ExportForm::Functions,
+                &[function_def.name],
+                &mut builder,
+            )
+            .finish();
+
+            fix(
+                "export_function",
+                format!("Export the function `{function_name}`").as_str(),
+                builder.finish(),
+                range,
+            )
+        });
+        let mut diagnostic = Diagnostic::new(
             DiagnosticCode::UnexportedFunction,
             format!("Function '{}' is not exported.", function_name),
             range,
         )
         .with_severity(Severity::Warning)
         .with_ignore_fix(sema, file_id);
+
+        maybe_fix.inspect(|fix| {
+            diagnostic.add_fix(fix.clone());
+        });
+
+        return diagnostic;
     } else {
         return Diagnostic::new(
             DiagnosticCode::UndefinedFunction,
@@ -148,7 +179,7 @@ fn make_diagnostic(
         )
         .with_severity(Severity::Warning)
         .with_ignore_fix(sema, file_id);
-    };
+    }
 }
 
 #[cfg(test)]
@@ -158,6 +189,8 @@ mod tests {
 
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
+    use crate::tests::check_nth_fix;
+    use crate::DiagnosticsConfig;
 
     #[test]
     fn test_local() {
@@ -406,6 +439,66 @@ main() ->
 
 exists() -> ok.
 "#]],
+        )
+    }
+
+    #[test]
+    fn test_export_fix_ignore() {
+        check_fix(
+            r#"
+//- /src/main.erl
+-module(main).
+
+main() ->
+  dep:exists(),
+  dep:pr~ivate().
+
+//- /src/dep.erl
+-module(dep).
+-export([exists/0]).
+exists() -> ok.
+private() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+
+main() ->
+  dep:exists(),
+  % elp:ignore W0026 (unexported_function)
+  dep:private().
+
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_export_fix() {
+        check_nth_fix(
+            1,
+            r#"
+//- /src/main.erl
+-module(main).
+
+main() ->
+  dep:exists(),
+  dep:pr~ivate().
+
+exists() -> ok.
+//- /src/dep.erl
+-module(dep).
+-export([exists/0]).
+exists() -> ok.
+private() -> ok.
+"#,
+            expect![[r#"
+-module(dep).
+-export([exists/0, private/0]).
+exists() -> ok.
+private() -> ok.
+"#]],
+            DiagnosticsConfig::default().set_experimental(true),
+            &vec![],
+            crate::tests::IncludeCodeActionAssists::Yes,
         )
     }
 }
