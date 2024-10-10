@@ -6,13 +6,6 @@ AST
 {eof,{32,32}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/unused_record_in_header.hrl",0}}.
-{attribute,{0,30},
-           record,
-           {my_record,[{record_field,{20,28},{atom,{20,28},my_field}}]}}.
-
-
 WARNINGS
 []
 

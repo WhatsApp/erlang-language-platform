@@ -44,11 +44,6 @@ AST
 {eof,{250,250}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/misplaced_comment_error.erl",0}}.
-{attribute,{0,32},module,misplaced_comment_error}.
-
-
 WARNINGS
 [
     ParseError {

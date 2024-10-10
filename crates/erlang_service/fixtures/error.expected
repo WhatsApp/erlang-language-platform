@@ -68,35 +68,6 @@ AST
 {eof,{485,485}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/error.erl",0}}.
-{attribute,{0,14},module,error}.
-{attribute,{17,46},
-           spec,
-           {{unrecognized1,0},
-            [{type,{36,46},
-                   'fun',
-                   [{type,{36,46},product,[]},{atom,{42,46},atom}]}]}}.
-{attribute,{125,154},
-           spec,
-           {{unrecognized2,0},
-            [{type,{144,154},
-                   'fun',
-                   [{type,{144,154},product,[]},{atom,{150,154},atom}]}]}}.
-{attribute,{242,271},
-           spec,
-           {{unrecognized3,0},
-            [{type,{261,271},
-                   'fun',
-                   [{type,{261,271},product,[]},{atom,{267,271},atom}]}]}}.
-{attribute,{377,406},
-           spec,
-           {{unrecognized4,0},
-            [{type,{396,406},
-                   'fun',
-                   [{type,{396,406},product,[]},{atom,{402,406},atom}]}]}}.
-
-
 WARNINGS
 [
     ParseError {

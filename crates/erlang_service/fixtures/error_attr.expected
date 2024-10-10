@@ -7,11 +7,6 @@ AST
 {eof,{87,87}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/error_attr.erl",0}}.
-{attribute,{0,19},module,error_attr}.
-
-
 WARNINGS
 []
 

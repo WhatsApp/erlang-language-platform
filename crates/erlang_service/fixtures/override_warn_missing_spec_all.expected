@@ -20,19 +20,6 @@ AST
 {eof,{166,166}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/override_warn_missing_spec_all.erl",0}}.
-{attribute,{0,39},module,override_warn_missing_spec_all}.
-{attribute,{41,74},compile,nowarn_missing_spec_all}.
-{attribute,{77,94},export,[{main,0}]}.
-{attribute,{97,115},
-           spec,
-           {{main,0},
-            [{type,{107,115},
-                   'fun',
-                   [{type,{107,115},product,[]},{atom,{113,115},ok}]}]}}.
-
-
 WARNINGS
 [
     ParseError {

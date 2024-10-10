@@ -43,32 +43,25 @@ run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Det
                     ElpMetadata ->
                         elp_metadata:insert_metadata(ElpMetadata, Forms2)
                 end,
-            StripDocAttributes = should_strip_doc_attributes(),
+            AST = case should_strip_doc_attributes() of
+                true ->
+                    filter_doc_attributes(Forms3);
+                false ->
+                    Forms3
+                end,
+            ResultAST = PostProcess(AST, FileName),
             case lint_file(Forms3, FileName, Options3, OverrideOptions) of
                 {ok, []} ->
-                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
-                    {ok, [{<<"AST">>, ResultAST}, {<<"STU">>, ResultStub}]};
+                    {ok, [{<<"AST">>, ResultAST}]};
                 {ok, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [
-                        {<<"AST">>, ResultAST},
-                        {<<"STU">>, ResultStub},
-                        {<<"WAR">>, FormattedWarnings}
-                    ]};
+                    {ok, [{<<"AST">>, ResultAST},
+                          {<<"WAR">>, FormattedWarnings}]};
                 {error, Errors, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
-                    ResultStub = PostProcess(Stub, FileName),
-                    ResultAST = PostProcess(AST, FileName),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
                     {ok, [
                         {<<"AST">>, ResultAST},
-                        {<<"STU">>, ResultStub},
                         {<<"ERR">>, FormattedErrors},
                         {<<"WAR">>, FormattedWarnings}
                     ]}
@@ -162,29 +155,15 @@ vararg_transform(List) when is_list(List) ->
 vararg_transform(Atomic) ->
     Atomic.
 
--spec partition_stub([elp_parse:abstract_form()], boolean()) ->
-    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
-partition_stub(Forms, StripDocAttributes) ->
-    partition_stub(Forms, StripDocAttributes, {[], []}).
+-spec filter_doc_attributes([elp_parse:abstract_form()]) -> [elp_parse:abstract_form()].
+filter_doc_attributes(Forms) ->
+    [Form || Form <- Forms, not is_doc_attribute(Form)].
 
--spec partition_stub(
-    [elp_parse:abstract_form()], boolean(), {[elp_parse:abstract_form()], [elp_parse:abstract_form()]}
-) ->
-    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
-partition_stub([], _StripDocAttributes, {Stub, AST}) ->
-    {lists:reverse(Stub), lists:reverse(AST)};
-partition_stub([{attribute, _Anno, Attr, _Meta} | Forms], true, Acc) when
-    Attr =:= doc; Attr =:= moduledoc; Attr =:= docformat
-->
-    % Skip EEP059 doc attributes, to model the behaviour of the Erlang/OTP compiler
-    % https://github.com/erlang/otp/blob/f2f48e329827b1750a39cced3cd4a27183e944af/lib/compiler/src/compile.erl#L816
-    partition_stub(Forms, true, Acc);
-partition_stub([{attribute, _Anno, _Attr, _Meta} = Form | Forms], StripDocAttributes, {Stub, AST}) ->
-    % Found an attribute. Include it in both the STUB and the AST
-    partition_stub(Forms, StripDocAttributes, {[Form | Stub], [Form | AST]});
-partition_stub([Form | Forms], StripDocAttributes, {Stub, AST}) ->
-    % Only attributes are relevant for EqWAlizer (which uses the STUB), so only include other forms in the AST only
-    partition_stub(Forms, StripDocAttributes, {Stub, [Form | AST]}).
+-spec is_doc_attribute(elp_parse:abstract_form()) -> boolean().
+is_doc_attribute({attribute, _Anno, Attr, _Meta}) when Attr =:= doc; Attr =:= moduledoc; Attr =:= docformat ->
+    true;
+is_doc_attribute(_) ->
+    false.
 
 format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =

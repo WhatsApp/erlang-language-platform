@@ -10,11 +10,6 @@ AST
 {eof,{128,128}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/structured_comment.erl",0}}.
-{attribute,{0,27},module,structured_comment}.
-
-
 WARNINGS
 [
     ParseError {

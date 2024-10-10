@@ -389,28 +389,6 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
             Err(Error::ModuleNotFound(module.as_str().into()))
         }
     }
-
-    fn get_erl_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error> {
-        if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
-            let result = self.module_ast(
-                file_id,
-                elp_erlang_service::Format::OffsetEtf,
-                vec![],
-                vec![],
-            );
-            if result.is_ok() {
-                Ok(result.stub.clone())
-            } else {
-                Err(Error::ParseError)
-            }
-        } else {
-            Err(Error::ModuleNotFound(module.as_str().into()))
-        }
-    }
 }
 
 impl elp_eqwalizer::DbApi for crate::RootDatabase {

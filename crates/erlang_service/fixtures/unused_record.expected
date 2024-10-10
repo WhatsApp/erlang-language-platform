@@ -7,14 +7,6 @@ AST
 {eof,{57,57}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/unused_record.erl",0}}.
-{attribute,{0,22},module,unused_record}.
-{attribute,{25,55},
-           record,
-           {my_record,[{record_field,{45,53},{atom,{45,53},my_field}}]}}.
-
-
 WARNINGS
 [
     ParseError {

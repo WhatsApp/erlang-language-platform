@@ -290,7 +290,6 @@ impl Response {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseResult {
     pub ast: Arc<Vec<u8>>,
-    pub stub: Arc<Vec<u8>>,
     pub errors: Vec<ParseError>,
     pub warnings: Vec<ParseError>,
 }
@@ -299,7 +298,6 @@ impl ParseResult {
     pub fn error(error: ParseError) -> Self {
         Self {
             ast: Arc::default(),
-            stub: Arc::default(),
             errors: vec![error],
             warnings: Vec::default(),
         }
@@ -429,7 +427,6 @@ impl Connection {
         });
 
         let mut ast = vec![];
-        let mut stub = vec![];
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -437,7 +434,6 @@ impl Connection {
             .decode_segments(|tag, data| {
                 match tag {
                     b"AST" => ast = data,
-                    b"STU" => stub = data,
                     b"WAR" => warnings = data,
                     b"ERR" => errors = data,
                     _ => log::error!("unrecognised segment {:?}", tag),
@@ -447,7 +443,6 @@ impl Connection {
             .and_then(|()| {
                 Ok(ParseResult {
                     ast: Arc::new(ast),
-                    stub: Arc::new(stub),
                     warnings: decode_errors(&warnings).context("decoding warnings")?,
                     errors: decode_errors(&errors).context("decoding errors")?,
                 })
@@ -1057,10 +1052,9 @@ mod tests {
         };
         let response = CONN.request_parse(request, || (), &|_, _, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
-        let stub = str::from_utf8(&response.stub).unwrap();
         let actual = format!(
-            "AST\n{}\n\nSTUB\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
-            ast, stub, &response.warnings, &response.errors
+            "AST\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
+            ast, &response.warnings, &response.errors
         );
         expected.assert_eq(&actual);
     }
@@ -1086,7 +1080,6 @@ mod tests {
         };
         let response = CONN.request_parse(request, || (), &|_, _, _| None);
         let ast = str::from_utf8(&response.ast).unwrap();
-        let stub = str::from_utf8(&response.stub).unwrap();
         let errors = &response
             .errors
             .iter()
@@ -1097,8 +1090,8 @@ mod tests {
             })
             .collect::<Vec<ParseError>>();
         let actual = format!(
-            "AST\n{}\n\nSTUB\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
-            ast, stub, &response.warnings, &errors
+            "AST\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
+            ast, &response.warnings, &errors
         );
         expected.assert_eq(&actual);
     }

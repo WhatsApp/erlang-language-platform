@@ -12,18 +12,6 @@ AST
 {eof,{294,294}}.
 
 
-STUB
-{attribute,{0,0},file,{"fixtures/doc_attributes_stripped.erl",0}}.
-{attribute,{0,32},module,doc_attributes_stripped}.
-{attribute,{35,52},export,[{main,0}]}.
-{attribute,{256,274},
-           spec,
-           {{main,0},
-            [{type,{266,274},
-                   'fun',
-                   [{type,{266,274},product,[]},{atom,{272,274},ok}]}]}}.
-
-
 WARNINGS
 []
 

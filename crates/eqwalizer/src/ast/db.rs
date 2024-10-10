@@ -32,11 +32,6 @@ pub trait EqwalizerErlASTStorage {
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
-    fn get_erl_stub_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
 }
 
 #[salsa::query_group(EqwalizerASTDatabaseStorage)]
