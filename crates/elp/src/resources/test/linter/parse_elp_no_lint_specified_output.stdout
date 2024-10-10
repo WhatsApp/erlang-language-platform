@@ -1,8 +1,9 @@
 Reporting all diagnostics codes
 Diagnostics reported in 7 modules:
-  app_a: 6
+  app_a: 7
       4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+      12:4-12:13::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
       8:0-8:4::[Error] [P1700] head mismatch 'fooX' vs 'food'
       7:6-7:7::[Warning] [W0018] Unexpected ';'
       11:0-11:3::[Warning] [L1230] function bar/0 is unused

@@ -141,6 +141,7 @@ mod tests {
             }],
             r#"
              -module(main).
+             -export([foo/0]).
              foo() -> main:foo().
              %%       ^^^^^^^^^^ 💡 warning: diagnostic message
 

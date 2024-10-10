@@ -494,6 +494,7 @@ foo(Payload) when is_record(Payload, rec) -> ok.
 
 //- /src/erlang.erl
 -module(erlang).
+-export([is_record/2]).
 is_record(_Term,_RecordTag) -> false.
 "#,
         )
@@ -514,6 +515,7 @@ foo(Payload) when is_record(Payload, rec, 0) -> ok.
 
 //- /src/erlang.erl
 -module(erlang).
+-export([is_record/3]).
 is_record(_Term,_RecordTag, _Size) -> false.
 "#,
         )

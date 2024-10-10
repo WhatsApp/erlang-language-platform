@@ -438,6 +438,7 @@ mod tests {
                 ~foo:fire_bombs(Config).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/1]).
             fire_bombs(Config) ->
                 boom.
             "#,
@@ -478,6 +479,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/2]).
             fire_bombs(FooConfig, MissilesCode) ->
                 boom.
             "#,
@@ -531,6 +533,7 @@ mod tests {
                 foo:fire_bombs(Config, 40).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/2]).
             fire_bombs(A,B) -> {A,B}.
             "#,
         )
@@ -749,6 +752,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/2]).
             fire_bombs(Config, MissilesCode) ->
                 boom.
             "#,
@@ -792,6 +796,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/5]).
             fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
                 boom.
             "#,
@@ -835,6 +840,7 @@ mod tests {
                 transmit(Message).
             //- /src/foo.erl
             -module(foo).
+            -export([fire_bombs/5]).
             fire_bombs(_Config, _MissilesCode, 1, 3, 4) ->
                 boom.
             "#,

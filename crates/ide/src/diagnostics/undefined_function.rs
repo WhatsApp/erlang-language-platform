@@ -19,6 +19,7 @@ use elp_ide_db::elp_base_db::FileId;
 use hir::known;
 use hir::Expr;
 use hir::FunctionDef;
+use hir::NameArity;
 use hir::Semantic;
 use text_edit::TextRange;
 
@@ -75,11 +76,23 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                     if in_exclusion_list(sema, module, name, arity) {
                         None
                     } else {
-                        match target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body()) {
-                            Some(_) => None,
-                            None => target
-                                .label(arity, sema, &def_fb.body())
-                                .map(|label| (label.to_string(), "".to_string())),
+                        let maybe_function_def =
+                            target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body());
+                        let function_exists = maybe_function_def.is_some();
+                        let is_exported = maybe_function_def.clone().is_some_and(|fun_def| {
+                            is_exported_function(fun_def.file.file_id, sema, &fun_def.name)
+                        });
+
+                        if function_exists && (is_exported) {
+                            None
+                        } else {
+                            target.label(arity, sema, &def_fb.body()).map(|label| {
+                                (
+                                    label.to_string(),
+                                    "".to_string(),
+                                    function_exists && !is_exported,
+                                )
+                            })
                         }
                     }
                 }
@@ -88,10 +101,20 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
             }
         },
         &move |ctx @ MakeDiagCtx { sema, extra, .. }| {
-            let diag = make_diagnostic(sema, def.file.file_id, ctx.range_mf_only(), &extra.0);
+            let diag = make_diagnostic(
+                sema,
+                def.file.file_id,
+                ctx.range_mf_only(),
+                &extra.0,
+                extra.2,
+            );
             Some(diag)
         },
     );
+}
+
+fn is_exported_function(file_id: FileId, sema: &Semantic, name: &NameArity) -> bool {
+    sema.def_map(file_id).is_function_exported(name)
 }
 
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
@@ -107,11 +130,25 @@ fn make_diagnostic(
     file_id: FileId,
     range: TextRange,
     function_name: &str,
+    is_private: bool,
 ) -> Diagnostic {
-    let message = format!("Function '{}' is undefined.", function_name);
-    Diagnostic::new(DiagnosticCode::UndefinedFunction, message, range)
+    if is_private {
+        return Diagnostic::new(
+            DiagnosticCode::UnexportedFunction,
+            format!("Function '{}' is not exported.", function_name),
+            range,
+        )
         .with_severity(Severity::Warning)
-        .with_ignore_fix(sema, file_id)
+        .with_ignore_fix(sema, file_id);
+    } else {
+        return Diagnostic::new(
+            DiagnosticCode::UndefinedFunction,
+            format!("Function '{}' is undefined.", function_name),
+            range,
+        )
+        .with_severity(Severity::Warning)
+        .with_ignore_fix(sema, file_id);
+    };
 }
 
 #[cfg(test)]
@@ -193,6 +230,60 @@ mod tests {
   exists() -> ok.
             "#,
         )
+    }
+
+    #[test]
+    fn test_private() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    dependency:exists(),
+    dependency:private().
+%%  ^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:private/0' is not exported.
+  exists() -> ok.
+//- /src/dependency.erl
+  -module(dependency).
+  -export([exists/0]).
+  exists() -> ok.
+  private() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_private_same_module() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    ?MODULE:private(),
+%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
+    main:private().
+%%  ^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
+
+  private() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn remote_call_to_header() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+
+foo() -> main:bar().
+%%       ^^^^^^^^ 💡 warning: Function 'main:bar/0' is not exported.
+
+//- /src/header.hrl
+  bar() -> ok.
+"#,
+        );
     }
 
     #[test]

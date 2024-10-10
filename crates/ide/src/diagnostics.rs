@@ -1963,6 +1963,7 @@ baz(1)->4.
               X.
             //- /src/foo.erl
             -module(foo).
+            -export([bar/0]).
             bar() -> ok.
             "#,
         );

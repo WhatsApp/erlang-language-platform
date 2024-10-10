@@ -343,6 +343,7 @@ foo() ->
 
 //- /src/erlang.erl
   -module(erlang).
+  -export([self/0]).
   self() -> ok.
 %%^^^^
   spawn(F) -> {F}.
@@ -895,6 +896,7 @@ bar() -> ok.
             r#"
 //- /src/main.erl
 -module(main).
+-export([bar/0]).
 
 foo() -> main:b~ar().
 
@@ -912,6 +914,7 @@ foo() -> another:b~ar().
 
 //- /src/another.erl
 -module(another).
+-export([bar/0]).
   bar() -> ok.
 %%^^^
 "#,
@@ -933,6 +936,7 @@ foo() -> Another:b~ar().
             r#"
 //- /src/main.erl
 -module(main).
+-export([bar/0]).
 
 foo() -> main:b~ar(foobar).
 
@@ -953,6 +957,7 @@ foo() -> main:b~ar(foobar).
 foo() -> main:b~ar().
 
 //- /src/header.hrl
+-export([bar/0]).
   bar() -> ok.
 %%^^^
 "#,
@@ -1219,6 +1224,7 @@ foo(Payload) when is_record(Payload, re~c) -> ok.
 
 //- /src/erlang.erl
 -module(erlang).
+-export([is_record/2]).
 is_record(_Term,_RecordTag) -> false.
 "#,
         );
@@ -1257,6 +1263,7 @@ foo(Payload) when is_record(Payload, re~c, 1) -> ok.
 
 //- /src/erlang.erl
 -module(erlang).
+-export([is_record/3]).
 is_record(_Term,_RecordTag, _Size) -> false.
 "#,
         );
@@ -1274,6 +1281,7 @@ baz() -> #rec.bar.
 
 //- /src/erlang.erl
 -module(erlang).
+-export([is_record/3]).
 is_record(_Term,_RecordTag, _Size) -> false.
 "#,
         );
@@ -3007,6 +3015,7 @@ bar(XX) ->
             r#"
 //- /src/main.erl
 -module(main).
+-export([foo/0]).
 
    foo() ->
 %% ^^^
@@ -3025,6 +3034,7 @@ foo() ->
 
 //- /src/another.erl
 -module(another).
+-export([foo/0]).
 
    foo() -> ok.
 %% ^^^
@@ -3698,7 +3708,7 @@ foo() ->
             r#"
    //- /src/main.erl
       -module(main).
-      -export([main/0]).
+      -export([main/0, my_function/0]).
       -define(MY_MACRO(), ?MODULE:my_f~unction()).
       main() -> ?MY_MACRO().
       my_function() -> ok.
@@ -3715,7 +3725,7 @@ foo() ->
    -define(MY_MACRO(), main:my_f~unction()).
    //- /src/main.erl
       -module(main).
-      -export([main/0]).
+      -export([main/0, my_function/0]).
       my_function() -> ok.
    %% ^^^^^^^^^^^
 "#,

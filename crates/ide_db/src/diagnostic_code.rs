@@ -56,6 +56,7 @@ pub enum DiagnosticCode {
     AtomsExhaustion,
     SlowFunction,
     BooleanPrecedence,
+    UnexportedFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -124,6 +125,7 @@ impl DiagnosticCode {
             DiagnosticCode::AtomsExhaustion => "W0023".to_string(),
             DiagnosticCode::SlowFunction => "W0024".to_string(),
             DiagnosticCode::BooleanPrecedence => "W0025".to_string(),
+            DiagnosticCode::UnexportedFunction => "W0026".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -166,6 +168,7 @@ impl DiagnosticCode {
             DiagnosticCode::DependentHeader => "dependent_header".to_string(),
             DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
             DiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
+            DiagnosticCode::UnexportedFunction => "unexported_function".to_string(),
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
             DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
@@ -279,6 +282,7 @@ impl DiagnosticCode {
             DiagnosticCode::AtomsExhaustion => false,
             DiagnosticCode::SlowFunction => false,
             DiagnosticCode::BooleanPrecedence => false,
+            DiagnosticCode::UnexportedFunction => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
