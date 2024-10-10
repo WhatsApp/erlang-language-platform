@@ -43,22 +43,25 @@ run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Det
                     ElpMetadata ->
                         elp_metadata:insert_metadata(ElpMetadata, Forms2)
                 end,
+            StripDocAttributes = should_strip_doc_attributes(),
             case lint_file(Forms3, FileName, Options3, OverrideOptions) of
                 {ok, []} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     {ok, [{<<"AST">>, ResultAST}, {<<"STU">>, ResultStub}]};
                 {ok, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [{<<"AST">>, ResultAST},
-                          {<<"STU">>, ResultStub},
-                          {<<"WAR">>, FormattedWarnings}]};
+                    {ok, [
+                        {<<"AST">>, ResultAST},
+                        {<<"STU">>, ResultStub},
+                        {<<"WAR">>, FormattedWarnings}
+                    ]};
                 {error, Errors, Warnings} ->
-                    {Stub, AST} = partition_stub(Forms3),
+                    {Stub, AST} = partition_stub(Forms3, StripDocAttributes),
                     ResultStub = PostProcess(Stub, FileName),
                     ResultAST = PostProcess(AST, FileName),
                     FormattedErrors = format_errors(Forms3, FileName, Errors),
@@ -76,6 +79,10 @@ run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Det
             ),
             {error, Msg}
     end.
+
+-spec should_strip_doc_attributes() -> boolean().
+should_strip_doc_attributes() ->
+    list_to_integer(erlang:system_info(otp_release)) >= 27.
 
 lint_file(Forms, FileName, Options0, OverrideOptions) ->
     Options =
@@ -126,7 +133,8 @@ transform(ms_transform, Forms, _Options) ->
                 _ ->
                     [First | Rest]
             end;
-        _ -> % In case of errors or warnings, we keep the existing forms
+        % In case of errors or warnings, we keep the existing forms
+        _ ->
             Forms
     end;
 transform(qlc, Forms, _Options) ->
@@ -154,11 +162,29 @@ vararg_transform(List) when is_list(List) ->
 vararg_transform(Atomic) ->
     Atomic.
 
--spec partition_stub([elp_parse:abstract_form()]) ->
+-spec partition_stub([elp_parse:abstract_form()], boolean()) ->
     {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
-partition_stub(Forms) -> {[Attr || {attribute, _, _, _} = Attr <- Forms],
-                          Forms}.
+partition_stub(Forms, StripDocAttributes) ->
+    partition_stub(Forms, StripDocAttributes, {[], []}).
 
+-spec partition_stub(
+    [elp_parse:abstract_form()], boolean(), {[elp_parse:abstract_form()], [elp_parse:abstract_form()]}
+) ->
+    {Stub :: [elp_parse:abstract_form()], AST :: [elp_parse:abstract_form()]}.
+partition_stub([], _StripDocAttributes, {Stub, AST}) ->
+    {lists:reverse(Stub), lists:reverse(AST)};
+partition_stub([{attribute, _Anno, Attr, _Meta} | Forms], true, Acc) when
+    Attr =:= doc; Attr =:= moduledoc; Attr =:= docformat
+->
+    % Skip EEP059 doc attributes, to model the behaviour of the Erlang/OTP compiler
+    % https://github.com/erlang/otp/blob/f2f48e329827b1750a39cced3cd4a27183e944af/lib/compiler/src/compile.erl#L816
+    partition_stub(Forms, true, Acc);
+partition_stub([{attribute, _Anno, _Attr, _Meta} = Form | Forms], StripDocAttributes, {Stub, AST}) ->
+    % Found an attribute. Include it in both the STUB and the AST
+    partition_stub(Forms, StripDocAttributes, {[Form | Stub], [Form | AST]});
+partition_stub([Form | Forms], StripDocAttributes, {Stub, AST}) ->
+    % Only attributes are relevant for EqWAlizer (which uses the STUB), so only include other forms in the AST only
+    partition_stub(Forms, StripDocAttributes, {Stub, [Form | AST]}).
 
 format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =

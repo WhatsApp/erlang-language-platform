@@ -1031,6 +1031,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn doc_attributes_stripped() {
+        expect_module(
+            "fixtures/doc_attributes_stripped.erl".into(),
+            expect_file!["../fixtures/doc_attributes_stripped.expected"],
+            vec![],
+        );
+    }
+
     fn expect_module(path: PathBuf, expected: ExpectFile, override_options: Vec<CompileOption>) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
