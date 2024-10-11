@@ -7,12 +7,9 @@
  * of this source tree.
  */
 
-use std::io::BufRead;
-use std::io::BufReader;
 use std::process::Command;
 use std::process::Stdio;
 
-use anyhow::bail;
 use anyhow::Result;
 use elp::cli::Cli;
 
@@ -22,27 +19,17 @@ pub fn dialyze_all(args: &DialyzeAll, cli: &mut dyn Cli) -> Result<()> {
     do_dialyze_all(args, cli)
 }
 
-pub fn do_dialyze_all(_args: &DialyzeAll, cli: &mut dyn Cli) -> Result<()> {
+pub fn do_dialyze_all(_args: &DialyzeAll, _cli: &mut dyn Cli) -> Result<()> {
     let mut cmd = Command::new("/usr/bin/env");
     cmd.arg("bash")
         .arg("-c")
         .arg("dialyzer-run 2>&1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped());
+        // We let the command act on stdio directly, since we don't need to access it
+        .stdin(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit());
 
     let mut child = cmd.spawn()?;
-    let mut outstream = BufReader::new(child.stdout.take().unwrap());
 
-    let mut line_buf = String::new();
-    loop {
-        match outstream.read_line(&mut line_buf) {
-            Ok(0) => break, // EOF
-            Ok(_n) => {
-                write!(cli, "{}", line_buf)?;
-                line_buf.clear();
-            }
-            Err(err) => bail!("{err}"),
-        }
-    }
     Ok(child.wait().map(|_exit_code| ())?)
 }
