@@ -115,7 +115,6 @@ fn check_function(
 fn make_diagnostic(sema: &Semantic, file_id: FileId, range: TextRange) -> Diagnostic {
     let message = "Risk of atoms exhaustion.".to_string();
     Diagnostic::new(DiagnosticCode::AtomsExhaustion, message, range)
-        .experimental()
         .with_severity(Severity::WeakWarning)
         .with_ignore_fix(sema, file_id)
 }
