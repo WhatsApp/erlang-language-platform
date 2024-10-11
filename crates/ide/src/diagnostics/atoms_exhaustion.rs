@@ -116,7 +116,7 @@ fn make_diagnostic(sema: &Semantic, file_id: FileId, range: TextRange) -> Diagno
     let message = "Risk of atoms exhaustion.".to_string();
     Diagnostic::new(DiagnosticCode::AtomsExhaustion, message, range)
         .experimental()
-        .with_severity(Severity::Error)
+        .with_severity(Severity::WeakWarning)
         .with_ignore_fix(sema, file_id)
 }
 
@@ -134,9 +134,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:list_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Risk of atoms exhaustion.
      list_to_atom(foo).
-%%   ^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^ 💡 weak: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
@@ -155,9 +155,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:binary_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Risk of atoms exhaustion.
      binary_to_atom(foo).
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 error: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^ 💡 weak: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
