@@ -1800,7 +1800,11 @@ impl Converter {
         Err(ConversionError::InvalidFunConstraint)
     }
 
-    fn convert_prop_type(&self, prop: &eetf::Term) -> Result<ExtProp, ConversionError> {
+    fn convert_prop_type(
+        &self,
+        prop: &eetf::Term,
+        allow_dict: bool,
+    ) -> Result<ExtProp, ConversionError> {
         if let Term::Tuple(prop) = prop {
             if let [Term::Atom(ty), pos, Term::Atom(kind), Term::List(kv)] = &prop.elements[..] {
                 if ty.name != "type" {
@@ -1811,38 +1815,32 @@ impl Converter {
                     let key_type = self.convert_type(kt)?;
                     let val_type = self.convert_type(vt)?;
                     if kind.name == "map_field_assoc" {
-                        match key_type {
-                            ExtType::AtomLitExtType(_) => {
-                                return Ok(ExtProp::OptExtProp(OptExtProp {
-                                    location,
-                                    key: key_type,
-                                    tp: val_type,
-                                }));
-                            }
-                            _ => {
-                                return Ok(ExtProp::OptBadExtProp(OptBadExtProp {
-                                    location,
-                                    key: key_type,
-                                    tp: val_type,
-                                }));
-                            }
+                        if key_type.is_key() || allow_dict {
+                            return Ok(ExtProp::OptExtProp(OptExtProp {
+                                location,
+                                key: key_type,
+                                tp: val_type,
+                            }));
+                        } else {
+                            return Ok(ExtProp::OptBadExtProp(OptBadExtProp {
+                                location,
+                                key: key_type,
+                                tp: val_type,
+                            }));
                         }
                     } else if kind.name == "map_field_exact" {
-                        match key_type {
-                            ExtType::AtomLitExtType(_) => {
-                                return Ok(ExtProp::ReqExtProp(ReqExtProp {
-                                    location,
-                                    key: key_type,
-                                    tp: val_type,
-                                }));
-                            }
-                            _ => {
-                                return Ok(ExtProp::ReqBadExtProp(ReqBadExtProp {
-                                    location,
-                                    key: key_type,
-                                    tp: val_type,
-                                }));
-                            }
+                        if key_type.is_key() {
+                            return Ok(ExtProp::ReqExtProp(ReqExtProp {
+                                location,
+                                key: key_type,
+                                tp: val_type,
+                            }));
+                        } else {
+                            return Ok(ExtProp::ReqBadExtProp(ReqBadExtProp {
+                                location,
+                                key: key_type,
+                                tp: val_type,
+                            }));
                         }
                     }
                 }
@@ -1935,51 +1933,18 @@ impl Converter {
                                 location,
                             }));
                         }
-                        Term::List(assoc) if assoc.elements.len() == 1 => {
-                            let hd = assoc.elements.first().unwrap();
-                            if let Term::Tuple(field) = hd {
-                                if let [
-                                    Term::Atom(prop_ty),
-                                    prop_pos,
-                                    Term::Atom(prop_kind),
-                                    Term::List(kv),
-                                ] = &field.elements[..]
-                                {
-                                    if prop_ty.name == "type"
-                                        && prop_kind.name == "map_field_assoc"
-                                        && kv.elements.len() == 2
-                                    {
-                                        let prop_pos = self.convert_pos(prop_pos)?;
-                                        let key_type =
-                                            self.convert_type(kv.elements.get(0).unwrap())?;
-                                        let val_type =
-                                            self.convert_type(kv.elements.get(1).unwrap())?;
-                                        let prop = OptExtProp {
-                                            location: prop_pos,
-                                            key: key_type,
-                                            tp: val_type,
-                                        };
-                                        return Ok(ExtType::MapExtType(MapExtType {
-                                            props: vec![ExtProp::OptExtProp(prop)],
-                                            location,
-                                        }));
-                                    }
-                                }
-                            }
-                            return Ok(ExtType::MapExtType(MapExtType {
-                                props: vec![self.convert_prop_type(hd)?],
-                                location,
-                            }));
-                        }
                         Term::List(assoc) => {
-                            return Ok(ExtType::MapExtType(MapExtType {
-                                props: assoc
-                                    .elements
-                                    .iter()
-                                    .map(|ty| self.convert_prop_type(ty))
-                                    .collect::<Result<Vec<_>, _>>()?,
-                                location,
-                            }));
+                            let mut allow_dict = true;
+                            let mut props = vec![];
+                            for prop in assoc.elements.iter() {
+                                let converted_prop = self.convert_prop_type(prop, allow_dict)?;
+                                if converted_prop.is_ok() && !converted_prop.key().is_key() {
+                                    // We have a default prop, reject the following ones
+                                    allow_dict = false;
+                                }
+                                props.push(converted_prop);
+                            }
+                            return Ok(ExtType::MapExtType(MapExtType { props, location }));
                         }
                         _ => (),
                     },

@@ -37,16 +37,14 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::AliasWithNonCovariantParam;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::types::AnyArityFunType;
-use elp_types_db::eqwalizer::types::DictMap;
 use elp_types_db::eqwalizer::types::FunType;
+use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::ListType;
+use elp_types_db::eqwalizer::types::MapType;
 use elp_types_db::eqwalizer::types::OpaqueType;
-use elp_types_db::eqwalizer::types::OptProp;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
-use elp_types_db::eqwalizer::types::ReqProp;
-use elp_types_db::eqwalizer::types::ShapeMap;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
@@ -132,50 +130,27 @@ impl VarianceChecker<'_> {
         }
     }
 
-    fn find_contravariant_expansion_in_props<I>(
+    fn find_contravariant_expansion_in_props(
         &self,
-        props: &mut I,
+        props: &FxHashMap<Key, Prop>,
         tv: &VarType,
         positive: bool,
         history: &Vec<&RemoteType>,
-    ) -> Result<Vec<Vec<Prop>>, VarianceCheckError>
-    where
-        I: Iterator<Item = Prop>,
-    {
-        if let Some(prop) = props.next() {
-            let expansion = self.find_contravariant_expansion(prop.tp(), tv, positive, history)?;
+    ) -> Result<Vec<FxHashMap<Key, Prop>>, VarianceCheckError> {
+        for (key, prop) in props.iter() {
+            let expansion = self.find_contravariant_expansion(&prop.tp, tv, positive, history)?;
             if !expansion.is_empty() {
-                Ok(expansion
+                return Ok(expansion
                     .into_iter()
                     .map(|tp| {
-                        let new_prop = match &prop {
-                            Prop::OptProp(op) => Prop::OptProp(OptProp {
-                                key: op.key.clone(),
-                                tp,
-                            }),
-                            Prop::ReqProp(rp) => Prop::ReqProp(ReqProp {
-                                key: rp.key.clone(),
-                                tp,
-                            }),
-                        };
-                        let mut props2: Vec<Prop> = props.collect();
-                        props2.insert(0, new_prop);
-                        props2
+                        let mut props_copy = props.clone();
+                        props_copy.insert(key.clone(), Prop { req: prop.req, tp });
+                        props_copy
                     })
-                    .collect())
-            } else {
-                Ok(self
-                    .find_contravariant_expansion_in_props(props, tv, positive, history)?
-                    .into_iter()
-                    .map(|mut exp| {
-                        exp.insert(0, prop.clone());
-                        exp
-                    })
-                    .collect())
+                    .collect());
             }
-        } else {
-            Ok(vec![])
         }
+        Ok(vec![])
     }
 
     fn find_contravariant_expansion(
@@ -316,43 +291,51 @@ impl VarianceChecker<'_> {
                 }
                 Ok(vec![])
             }
-            Type::DictMap(dt) => {
+            Type::MapType(mt) => {
                 let k_exps =
-                    self.find_contravariant_expansion(&dt.k_type, tv, positive, history)?;
+                    self.find_contravariant_expansion(&mt.k_type, tv, positive, history)?;
                 if k_exps.is_empty() {
                     let v_exps =
-                        self.find_contravariant_expansion(&dt.v_type, tv, positive, history)?;
-                    Ok(v_exps
-                        .into_iter()
-                        .map(|v_type| {
-                            Type::DictMap(DictMap {
-                                k_type: dt.k_type.clone(),
-                                v_type: Box::new(v_type),
+                        self.find_contravariant_expansion(&mt.v_type, tv, positive, history)?;
+                    if v_exps.is_empty() {
+                        Ok(self
+                            .find_contravariant_expansion_in_props(
+                                &mt.props, tv, positive, history,
+                            )?
+                            .into_iter()
+                            .map(|props| {
+                                Type::MapType(MapType {
+                                    props,
+                                    k_type: mt.k_type.clone(),
+                                    v_type: mt.v_type.clone(),
+                                })
                             })
-                        })
-                        .collect())
+                            .collect())
+                    } else {
+                        Ok(v_exps
+                            .into_iter()
+                            .map(|v_type| {
+                                Type::MapType(MapType {
+                                    k_type: mt.k_type.clone(),
+                                    v_type: Box::new(v_type),
+                                    props: mt.props.clone(),
+                                })
+                            })
+                            .collect())
+                    }
                 } else {
                     Ok(k_exps
                         .into_iter()
                         .map(|k_type| {
-                            Type::DictMap(DictMap {
+                            Type::MapType(MapType {
                                 k_type: Box::new(k_type),
-                                v_type: dt.v_type.clone(),
+                                v_type: mt.v_type.clone(),
+                                props: mt.props.clone(),
                             })
                         })
                         .collect())
                 }
             }
-            Type::ShapeMap(mt) => Ok(self
-                .find_contravariant_expansion_in_props(
-                    &mut mt.props.clone().into_iter(),
-                    tv,
-                    positive,
-                    history,
-                )?
-                .into_iter()
-                .map(|props| Type::ShapeMap(ShapeMap { props }))
-                .collect()),
             Type::VarType(_)
             | Type::AtomLitType(_)
             | Type::AnyFunType

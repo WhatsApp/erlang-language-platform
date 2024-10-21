@@ -184,145 +184,145 @@ fn test_e2e_eqwalizer_module() {
             &workspace_root,
             r"app_a/src/app_a.erl",
             expect![[r#"
-            {
-              "diagnostics": [
                 {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 7,
-                      "line": 8
+                  "diagnostics": [
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 7,
+                          "line": 8
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 8
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 4,
-                      "line": 8
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 9,
-                      "line": 12
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 9,
+                          "line": 12
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 12
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 4,
-                      "line": 12
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`'an_atom'`.\nExpression has type:   'an_atom'\nContext expected type: number()\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 19,
-                      "line": 16
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`'an_atom'`.\nExpression has type:   'an_atom'\nContext expected type: number()\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 19,
+                          "line": 16
+                        },
+                        "start": {
+                          "character": 12,
+                          "line": 16
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 12,
-                      "line": 16
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "redundant_fixme",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#redundant_fixme"
-                  },
-                  "message": "redundant fixme\n        See https://fb.me/eqwalizer_errors#redundant_fixme",
-                  "range": {
-                    "end": {
-                      "character": 21,
-                      "line": 54
+                    {
+                      "code": "redundant_fixme",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#redundant_fixme"
+                      },
+                      "message": "redundant fixme\n        See https://fb.me/eqwalizer_errors#redundant_fixme",
+                      "range": {
+                        "end": {
+                          "character": 21,
+                          "line": 54
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 54
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 4,
-                      "line": 54
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`X`.\nExpression has type:   #S{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}\nContext expected type: #S{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}\n\nThese associations do not match:\n\n  #S{\n+    k_extra  => ...\n-    k_req1   := ...\n+    k_req1   => ...\n-    k_req2   := ...\n+    k_req2   => ...\n-    k_req3   := ...\n     ...\n  }\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 5,
-                      "line": 76
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`X`.\nExpression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}\nContext expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}\n\nkeys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 5,
+                          "line": 76
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 76
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 4,
-                      "line": 76
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`X`.\nExpression has type:   id(#S{a := 'va', b := #S{c := #S{d => atom()}}})\nContext expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n\n  id(#S{a := 'va', b := #S{c := #S{d => atom()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n  because\n  at shape key 'b':\n  #S{a := 'va', b := #S{c := #S{d => atom()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n  because\n  at shape key 'c':\n  #S{c := #S{d => atom()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}\n  because\n  #S{d => atom()} is not compatible with id(#S{d := atom(), e := atom()})\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 5,
-                      "line": 100
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`X`.\nExpression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})\nContext expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n\n  id(#{a := 'va', b := #{c := #{d => atom()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  at key `b`:\n  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  #{c := #{d => atom()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 5,
+                          "line": 100
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 100
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     },
-                    "start": {
-                      "character": 4,
-                      "line": 100
+                    {
+                      "code": "incompatible_types",
+                      "codeDescription": {
+                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                      },
+                      "message": "`X`.\nExpression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})\nContext expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n\n  id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  at key `b`:\n  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n  because\n  #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "range": {
+                        "end": {
+                          "character": 5,
+                          "line": 123
+                        },
+                        "start": {
+                          "character": 4,
+                          "line": 123
+                        }
+                      },
+                      "severity": 1,
+                      "source": "eqWAlizer"
                     }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                },
-                {
-                  "code": "incompatible_types",
-                  "codeDescription": {
-                    "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                  },
-                  "message": "`X`.\nExpression has type:   id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}})\nContext expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n\n  id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n  because\n  at shape key 'b':\n  #S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}\n  because\n  at shape key 'c':\n  #S{c := #S{d := pid(), e := pid()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}\n  because\n  #S{d := pid(), e := pid()} is not compatible with id(#S{d := atom(), e := atom()})\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                  "range": {
-                    "end": {
-                      "character": 5,
-                      "line": 123
-                    },
-                    "start": {
-                      "character": 4,
-                      "line": 123
-                    }
-                  },
-                  "severity": 1,
-                  "source": "eqWAlizer"
-                }
-              ],
-              "uri": "file:///[..]/test_projects/standard/app_a/src/app_a.erl",
-              "version": 0
-            }"#]],
+                  ],
+                  "uri": "file:///[..]/test_projects/standard/app_a/src/app_a.erl",
+                  "version": 0
+                }"#]],
         );
     }
 }

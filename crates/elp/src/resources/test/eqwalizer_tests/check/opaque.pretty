@@ -33,7 +33,7 @@ error: incompatible_types
    │
 29 │ test2_neg(X=#{a := b}) -> X.
    │                           ^ X.
-Expression has type:   #D{term() => term()}
+Expression has type:   #{a := term(), term() => term()}
 Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types

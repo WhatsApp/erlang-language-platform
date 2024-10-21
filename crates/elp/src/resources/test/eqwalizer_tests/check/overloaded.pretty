@@ -14,7 +14,7 @@ error: incompatible_types
 141 │     Map.
     │     ^^^ Map.
 Expression has type:   maps:iterator(Key, Value)
-Context expected type: #D{Key => Value}
+Context expected type: #{Key => Value}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 

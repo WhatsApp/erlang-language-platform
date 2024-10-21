@@ -4,7 +4,7 @@ error: incompatible_types
 51 │     X.
    │     ^ X.
 Expression has type:   term()
-Context expected type: #D{number() => number()}
+Context expected type: #{number() => number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 

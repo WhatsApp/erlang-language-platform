@@ -13,7 +13,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
   'undefined' is not compatible with complex_map()
   because
-  'undefined' is not compatible with #D{dynamic() => dynamic()}
+  'undefined' is not compatible with #{id := number(), {secret, id} => number(), atom() => term()}
 
 error: reveal_type
    ┌─ check/src/strict_complex_types.erl:29:25
@@ -46,6 +46,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
   complex_map() is not compatible with [T]
   because
-  #D{dynamic() => dynamic()} is not compatible with [T]
+  #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [T]
 
 4 ERRORS

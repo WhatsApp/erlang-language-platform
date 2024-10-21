@@ -30,22 +30,19 @@ use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TypeVarInRecordField;
 use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::AtomLitType;
-use elp_types_db::eqwalizer::types::DictMap;
 use elp_types_db::eqwalizer::types::FunType;
+use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::ListType;
-use elp_types_db::eqwalizer::types::OptProp;
+use elp_types_db::eqwalizer::types::MapType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RecordType;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
-use elp_types_db::eqwalizer::types::ReqProp;
-use elp_types_db::eqwalizer::types::ShapeMap;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
-use itertools::Itertools;
 
 use super::TypeConversionError;
 
@@ -341,46 +338,33 @@ impl TypeConverter {
                     .map(|fields| Type::RefinedRecordType(RefinedRecordType { rec_type, fields })))
             }
             ExtType::MapExtType(ty) => {
-                let is_shape = {
-                    ty.props.iter().all(|prop| {
-                        if let ExtType::AtomLitExtType(_) = prop.key() {
-                            prop.is_ok()
-                        } else {
-                            false
+                let mut props: FxHashMap<Key, Prop> = FxHashMap::default();
+                let mut k_type = Type::NoneType;
+                let mut v_type = Type::NoneType;
+                // .rev() so that the leftmost association takes precedence in the props list
+                for prop in ty.props.into_iter().rev() {
+                    if prop.key().is_key() {
+                        match self.to_shape_prop(sub, prop)? {
+                            Ok((key, tp)) => props.insert(key, tp),
+                            Err(e) => return Ok(Err(e)),
+                        };
+                    } else {
+                        let (k_prop, v_prop) = prop.to_pair();
+                        match self.convert_type(sub, k_prop)? {
+                            Ok(t) => k_type = t,
+                            Err(e) => return Ok(Err(e)),
                         }
-                    })
-                };
-                if is_shape {
-                    let props = ty
-                        .props
-                        .into_iter()
-                        .unique_by(|prop| {
-                            let ExtType::AtomLitExtType(atom_ty) = prop.key() else {
-                                panic!("Illegal state: is_shape implies key is always an atom")
-                            };
-                            atom_ty.atom.clone()
-                        })
-                        .map(|prop| self.to_shape_prop(sub, prop))
-                        .collect::<Result<Result<Vec<_>, _>, _>>()?;
-                    Ok(props.map(|props| Type::ShapeMap(ShapeMap { props })))
-                } else {
-                    let prop = ty
-                        .props
-                        .into_iter()
-                        .next()
-                        .ok_or(TypeConversionError::UnexpectedEmptyMap)?;
-                    let (prop_k, prop_t) = prop.to_pair();
-                    let key = self.convert_type(sub, prop_k)?;
-                    let value = self.convert_type(sub, prop_t)?;
-                    Ok(key.and_then(|k_type| {
-                        value.map(|v_type| {
-                            Type::DictMap(DictMap {
-                                k_type: Box::new(k_type),
-                                v_type: Box::new(v_type),
-                            })
-                        })
-                    }))
+                        match self.convert_type(sub, v_prop)? {
+                            Ok(t) => v_type = t,
+                            Err(e) => return Ok(Err(e)),
+                        }
+                    }
                 }
+                Ok(Ok(Type::MapType(MapType {
+                    props,
+                    k_type: Box::new(k_type),
+                    v_type: Box::new(v_type),
+                })))
             }
             ExtType::BuiltinExtType(ty) => Ok(Ok(Type::builtin_type(ty.name.as_str())
                 .ok_or(TypeConversionError::UnknownBuiltin(ty.name.into(), 0))?)),
@@ -396,25 +380,25 @@ impl TypeConverter {
         &self,
         sub: &FxHashMap<SmolStr, u32>,
         prop: ExtProp,
-    ) -> Result<Result<Prop, Invalid>, TypeConversionError> {
-        match prop {
-            ExtProp::ReqExtProp(p) => {
-                if let ExtType::AtomLitExtType(key) = p.key {
-                    return Ok(self
-                        .convert_type(sub, p.tp)?
-                        .map(|tp| Prop::ReqProp(ReqProp { key: key.atom, tp })));
-                }
-            }
-            ExtProp::OptExtProp(p) => {
-                if let ExtType::AtomLitExtType(key) = p.key {
-                    return Ok(self
-                        .convert_type(sub, p.tp)?
-                        .map(|tp| Prop::OptProp(OptProp { key: key.atom, tp })));
-                }
-            }
-            _ => (),
-        }
-        Err(TypeConversionError::UnexpectedShapeProp)
+    ) -> Result<Result<(Key, Prop), Invalid>, TypeConversionError> {
+        let req = prop.required();
+        let (key, tp) = prop.to_pair();
+        let converted_key = match self.convert_type(sub, key)?.map(|kt| Key::from_type(kt)) {
+            Ok(Some(k)) => k,
+            Ok(None) => return Err(TypeConversionError::UnexpectedShapeProp),
+            Err(invalid) => return Ok(Err(invalid)),
+        };
+        let converted_tp = match self.convert_type(sub, tp)? {
+            Ok(tp) => tp,
+            Err(invalid) => return Ok(Err(invalid)),
+        };
+        Ok(Ok((
+            converted_key,
+            Prop {
+                req,
+                tp: converted_tp,
+            },
+        )))
     }
 
     fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> Vec<SmolStr> {

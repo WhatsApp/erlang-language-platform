@@ -13,6 +13,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
   term() is not compatible with logger:metadata()
   because
-  term() is not compatible with #D{dynamic() => dynamic()}
+  term() is not compatible with #{domain => [atom()], file => file:filename(), gl => pid(), line => number(), mfa => {atom(), atom(), number()}, pid => pid(), report_cb => logger:report_cb(), time => logger:timestamp(), atom() => term()}
 
 1 ERROR

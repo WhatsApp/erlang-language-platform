@@ -43,23 +43,13 @@ error: incompatible_types
    │     ^
    │     │
    │     X.
-Expression has type:   #S{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
-Context expected type: #S{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
+Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
+Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
-These associations do not match:
-
-  #S{
-+    k_extra  => ...
--    k_req1   := ...
-+    k_req1   => ...
--    k_req2   := ...
-+    k_req2   => ...
--    k_req3   := ...
-     ...
-  }
+keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
 
 error: incompatible_types
     ┌─ app_a/src/app_a.erl:101:5
@@ -68,21 +58,20 @@ error: incompatible_types
     │     ^
     │     │
     │     X.
-Expression has type:   id(#S{a := 'va', b := #S{c := #S{d => atom()}}})
-Context expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+Expression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})
+Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
-  id(#S{a := 'va', b := #S{c := #S{d => atom()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  id(#{a := 'va', b := #{c := #{d => atom()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  at shape key 'b':
-  #S{a := 'va', b := #S{c := #S{d => atom()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  at shape key 'c':
-  #S{c := #S{d => atom()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}
+  at key `b`:
+  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  #S{d => atom()} is not compatible with id(#S{d := atom(), e := atom()})
+  #{c := #{d => atom()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types
     ┌─ app_a/src/app_a.erl:124:5
@@ -91,21 +80,20 @@ error: incompatible_types
     │     ^
     │     │
     │     X.
-Expression has type:   id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}})
-Context expected type: #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+Expression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})
+Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
-  id(#S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}}) is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  at shape key 'b':
-  #S{a := 'va', b := #S{c := #S{d := pid(), e := pid()}}} is not compatible with #S{a := 'va', b := #S{c := id(#S{d := atom(), e := atom()})}}
+  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  at shape key 'c':
-  #S{c := #S{d := pid(), e := pid()}} is not compatible with #S{c := id(#S{d := atom(), e := atom()})}
+  at key `b`:
+  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
-  #S{d := pid(), e := pid()} is not compatible with id(#S{d := atom(), e := atom()})
+  #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types
    ┌─ app_a/test/app_a_SUITE.erl:18:5

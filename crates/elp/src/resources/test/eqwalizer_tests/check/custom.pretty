@@ -3,7 +3,7 @@ error: incompatible_types
    │
 26 │     element(4, Tup).
    │     ^^^^^^^^^^^^^^^ erlang:element(4, Tup).
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -23,7 +23,7 @@ error: incompatible_types
 40 │     element(2, Tup).
    │     ^^^^^^^^^^^^^^^ erlang:element(2, Tup).
 Expression has type:   number() | string() | atom()
-Context expected type: #D{dynamic() => dynamic()}
+Context expected type: #{dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -59,7 +59,7 @@ error: incompatible_types
 54 │     element(N, Tup).
    │     ^^^^^^^^^^^^^^^ erlang:element(N, Tup).
 Expression has type:   atom() | number() | string()
-Context expected type: #D{dynamic() => dynamic()}
+Context expected type: #{dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -140,7 +140,7 @@ error: incompatible_types
 154 │     get(a, M).
     │            ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -150,7 +150,7 @@ error: incompatible_types
 160 │     Res = maps:get(a, M),
     │                       ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -160,7 +160,7 @@ error: incompatible_types
 167 │     maps:get(a, M, false).
     │                 ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -170,7 +170,7 @@ error: incompatible_types
 173 │     Res = maps:get(a, M, false),
     │                       ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -272,7 +272,7 @@ error: incompatible_types
     │
 309 │     Res.
     │     ^^^ Res.
-Expression has type:   {'value', #S{}} | 'false'
+Expression has type:   {'value', #{}} | 'false'
 Context expected type: 'nok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -314,15 +314,15 @@ error: incompatible_types
     │                                     ^
     │                                     │
     │                                     X.
-Expression has type:   #D{K => V} | 'a'
-Context expected type: #D{term() => term()}
+Expression has type:   #{K => V} | 'a'
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                                     
 
-  #D{K => V} | 'a' is not compatible with #D{term() => term()}
+  #{K => V} | 'a' is not compatible with #{term() => term()}
   because
-  'a' is not compatible with #D{term() => term()}
+  'a' is not compatible with #{term() => term()}
 
 error: incompatible_types
     ┌─ check/src/custom.erl:425:20
@@ -330,7 +330,7 @@ error: incompatible_types
 425 │     maps:filter(F, non_kv),
     │                    ^^^^^^ 'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -342,13 +342,14 @@ error: incompatible_types
 456 │ │ │         M
 457 │ │ │     ).
     │ ╰─│─────^ maps:map(fun, M).
-Expression has type:   #D{number() => pid()}
-Context expected type: #D{number() => boolean()}
+Expression has type:   #{number() => pid()}
+Context expected type: #{number() => boolean()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │   ╰─────' 
 
-  #D{number() => pid()} is not compatible with #D{number() => boolean()}
+  #{number() => pid()} is not compatible with #{number() => boolean()}
+  the default associations are not compatible
   because
   pid() is not compatible with boolean()
 
@@ -379,14 +380,16 @@ error: incompatible_types
     │     ^^^^^^^^^^^^^^
     │     │
     │     maps:map(F, M).
-Expression has type:   #S{a := boolean(), b := boolean()}
-Context expected type: #S{a => 'a', b => 'b'}
+Expression has type:   #{a := boolean(), b := boolean()}
+Context expected type: #{a => 'a', b => 'b'}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
-  at shape key 'a':
-  #S{a := boolean(), b := boolean()} is not compatible with #S{a => 'a', b => 'b'}
+  #{a := boolean(), b := boolean()} is not compatible with #{a => 'a', b => 'b'}
+  because
+  at key `a`:
+  #{a := boolean(), b := boolean()} is not compatible with #{a => 'a', b => 'b'}
   because
   boolean() is not compatible with 'a'
 
@@ -396,7 +399,7 @@ error: incompatible_types
 503 │     maps:map(F, non_kv),
     │                 ^^^^^^ 'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -434,7 +437,7 @@ error: incompatible_types
 555 │         non_kv
     │         ^^^^^^ 'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -498,7 +501,7 @@ error: incompatible_types
 671 │ maps_to_list_7_neg(Num) -> maps:to_list(Num).
     │                                         ^^^ Num.
 Expression has type:   number()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -506,31 +509,56 @@ error: incompatible_types
     ┌─ check/src/custom.erl:675:25
     │
 675 │ maps_merge_1(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^ maps:merge(M1, M2).
-Expression has type:   dict  map #D{'a' | 'b' | 'c' => string() | number() | atom()}
-Context expected type: shape map #S{a => string(), b => number(), c => atom()}
+    │                         ^^^^^^^^^^^^^^^^^^
+    │                         │
+    │                         maps:merge(M1, M2).
+Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Context expected type: #{a => string(), b => number(), c => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  #{'a' | 'b' | 'c' => string() | number() | atom()} is not compatible with #{a => string(), b => number(), c => atom()}
+  key b is not present in the former map but is incompatible with its default association
+  because
+  string() | number() | atom() is not compatible with number()
+  because
+  string() is not compatible with number()
 
 error: incompatible_types
     ┌─ check/src/custom.erl:679:25
     │
 679 │ maps_merge_2(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^ maps:merge(M1, M2).
-Expression has type:   dict  map #D{'a' | 'b' | 'c' => string() | number() | atom()}
-Context expected type: shape map #S{a => string(), b => number() | boolean(), c => atom()}
+    │                         ^^^^^^^^^^^^^^^^^^
+    │                         │
+    │                         maps:merge(M1, M2).
+Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Context expected type: #{a => string(), b => number() | boolean(), c => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+  #{'a' | 'b' | 'c' => string() | number() | atom()} is not compatible with #{a => string(), b => number() | boolean(), c => atom()}
+  key b is not present in the former map but is incompatible with its default association
+  because
+  string() | number() | atom() is not compatible with number() | boolean()
+  because
+  string() is not compatible with number() | boolean()
 
 error: incompatible_types
     ┌─ check/src/custom.erl:683:25
     │
 683 │ maps_merge_3(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^ maps:merge(M1, M2).
-Expression has type:   dict  map #D{'a' | 'b' | 'c' => string() | number() | atom()}
-Context expected type: shape map #S{a := string(), b := boolean(), c => atom()}
+    │                         ^^^^^^^^^^^^^^^^^^
+    │                         │
+    │                         maps:merge(M1, M2).
+Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Context expected type: #{a := string(), b := boolean(), c => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+    │                         
+
+keys `a`, `b` are declared as required in the latter but not in the former
 
 error: incompatible_types
     ┌─ check/src/custom.erl:697:44
@@ -538,7 +566,7 @@ error: incompatible_types
 697 │ maps_merge_7_neg(M1, M2) -> maps:merge(M1, M2).
     │                                            ^^ M2.
 Expression has type:   number()
-Context expected type: #D{'a' => binary()}
+Context expected type: #{a => binary()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -549,15 +577,16 @@ error: incompatible_types
     │                         ^^^^^^^^^^^^^^^^^^
     │                         │
     │                         maps:merge(M1, M2).
-Expression has type:   #D{'a' | 'b' => atom() | number()}
-Context expected type: #S{a := atom(), b := number()} | #S{a := atom()}
+Expression has type:   #{'a' | 'b' => atom() | number()}
+Context expected type: #{a := atom(), b := number()} | #{a := atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                         
 
-  #D{'a' | 'b' => atom() | number()} is not compatible with #S{a := atom(), b := number()} | #S{a := atom()}
+  #{'a' | 'b' => atom() | number()} is not compatible with #{a := atom(), b := number()} | #{a := atom()}
   because
-  dict  map #D{'a' | 'b' => atom() | number()} is not compatible with shape map #S{a := atom(), b := number()}
+  #{'a' | 'b' => atom() | number()} is not compatible with #{a := atom(), b := number()}
+  keys `a`, `b` are declared as required in the latter but not in the former
 
 error: incompatible_types
     ┌─ check/src/custom.erl:721:9
@@ -1370,7 +1399,7 @@ error: incompatible_types
 1358 │     proplists:from_map(b).
      │                        ^ 'b'.
 Expression has type:   'b'
-Context expected type: #D{K => V}
+Context expected type: #{K => V}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -1662,20 +1691,13 @@ error: incompatible_types
 1764 │ │ │         }
 1765 │ │ │     ).
      │ ╰─│─────^ maps:without(['a', 'c', DOrE], #{..}).
-Expression has type:   #S{a => 'ka', b => atom(), c => pid(), d => 'kd'}
-Context expected type: #S{b => atom()}
+Expression has type:   #{a => 'ka', b => atom(), c => pid(), d => 'kd'}
+Context expected type: #{b => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │   ╰─────' 
 
-These associations do not match:
-
-  #S{
-+    a => ...
-+    c => ...
-+    d => ...
-     ...
-  }
+key `a` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types
      ┌─ check/src/custom.erl:1769:18
@@ -1693,7 +1715,7 @@ error: incompatible_types
 1773 │     maps:without([], non_map).
      │                      ^^^^^^^ 'non_map'.
 Expression has type:   'non_map'
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -1705,19 +1727,13 @@ error: incompatible_types
 1820 │ │ │         #{a => self(), b => self()}
 1821 │ │ │     ).
      │ ╰─│─────^ maps:without(Keys, #{..}).
-Expression has type:   #S{a => pid(), b => pid()}
-Context expected type: #S{b := pid()}
+Expression has type:   #{a => pid(), b => pid()}
+Context expected type: #{b := pid()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │   ╰─────' 
 
-These associations do not match:
-
-  #S{
-+    a => ...
--    b := ...
-+    b => ...
-  }
+key `b` is declared as required in the latter but not in the former
 
 error: incompatible_types
      ┌─ check/src/custom.erl:1827:12
@@ -1737,27 +1753,21 @@ error: incompatible_types
 1839 │ │ │         #{a => ka, b => self()}
 1840 │ │ │     ).
      │ ╰─│─────^ maps:without(Keys, #{..}).
-Expression has type:   #S{a => 'ka', b => pid()}
-Context expected type: #S{b := pid()}
+Expression has type:   #{a => 'ka', b => pid()}
+Context expected type: #{b := pid()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │   ╰─────' 
 
-These associations do not match:
-
-  #S{
-+    a => ...
--    b := ...
-+    b => ...
-  }
+key `b` is declared as required in the latter but not in the former
 
 error: incompatible_types
      ┌─ check/src/custom.erl:1854:5
      │
 1854 │     maps:without([a, b], M).
      │     ^^^^^^^^^^^^^^^^^^^^^^^ maps:without(['a', 'b'], M).
-Expression has type:   #S{c := 'cv', d := 'dv'} | #S{c := 'cv', e => 'ev'}
-Context expected type: #S{c := atom()}
+Expression has type:   #{c := 'cv', d := 'dv'} | #{c := 'cv', e => 'ev'}
+Context expected type: #{c := atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -2000,23 +2010,18 @@ error: incompatible_types
      │     ^^
      │     │
      │     M3.
-Expression has type:   #S{count := number(), module := 'foo'} | #S{module := 'foo'}
+Expression has type:   #{count := number(), module := 'foo'} | #{module := 'foo'}
 Context expected type: state1()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │     
 
-  #S{count := number(), module := 'foo'} | #S{module := 'foo'} is not compatible with state1()
+  #{count := number(), module := 'foo'} | #{module := 'foo'} is not compatible with state1()
   because
-  #S{count := number(), module := 'foo'} | #S{module := 'foo'} is not compatible with #S{count := number(), module := atom()}
+  #{count := number(), module := 'foo'} | #{module := 'foo'} is not compatible with #{count := number(), module := atom()}
   because
-  #S{module := 'foo'} is not compatible with #S{count := number(), module := atom()}
-  These associations do not match:
-
-  #S{
--    count  := ...
-     ...
-  }
+  #{module := 'foo'} is not compatible with #{count := number(), module := atom()}
+  key `count` is declared as required in the latter but not in the former
 
 error: incompatible_types
      ┌─ check/src/custom.erl:2199:13
@@ -2073,18 +2078,13 @@ error: incompatible_types
      │     ^^^^^^^^^^^^^^^^^
      │     │
      │     maps:remove(A, M).
-Expression has type:   #S{a => number()}
-Context expected type: #S{a := number()}
+Expression has type:   #{a => number()}
+Context expected type: #{a := number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │     
 
-These associations do not match:
-
-  #S{
--    a := ...
-+    a => ...
-  }
+key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
      ┌─ check/src/custom.erl:2310:5
@@ -2097,21 +2097,13 @@ error: incompatible_types
 2316 │ │ │         M
 2317 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
-Expression has type:   #S{a => atom() | binary(), b => atom() | binary(), c => atom() | binary()}
-Context expected type: #S{a := atom(), b := binary()}
+Expression has type:   #{a => atom() | binary(), b => atom() | binary(), c => atom() | binary()}
+Context expected type: #{a := atom(), b := binary()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │   ╰─────' 
 
-These associations do not match:
-
-  #S{
--    a := ...
-+    a => ...
--    b := ...
-+    b => ...
-+    c => ...
-  }
+keys `a`, `b` are declared as required in the latter but not in the former
 
 error: incompatible_types
      ┌─ check/src/custom.erl:2332:5
@@ -2123,13 +2115,14 @@ error: incompatible_types
 2336 │ │ │         M
 2337 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
-Expression has type:   #D{atom() => binary()}
-Context expected type: #D{atom() => atom()}
+Expression has type:   #{atom() => binary()}
+Context expected type: #{atom() => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │   ╰─────' 
 
-  #D{atom() => binary()} is not compatible with #D{atom() => atom()}
+  #{atom() => binary()} is not compatible with #{atom() => atom()}
+  the default associations are not compatible
   because
   binary() is not compatible with atom()
 

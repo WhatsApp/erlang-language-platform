@@ -45,10 +45,12 @@ use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
+use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::OpaqueType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
+use itertools::Itertools;
 
 use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
@@ -95,10 +97,10 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         Type::UnionType(ut) => any_he(s, ut.tys.iter()),
         Type::RemoteType(rt) => any_he(s, rt.arg_tys.iter()),
         Type::OpaqueType(ot) => any_he(s, ot.arg_tys.iter()),
-        Type::DictMap(m) => Ok(is_he(s, &m.k_type)? || is_he(s, &m.v_type)?),
-        Type::ShapeMap(m) => {
-            let tys: Vec<Type> = m.props.iter().map(|p| p.tp().to_owned()).collect();
-            any_he(s, tys.iter())
+        Type::MapType(m) => {
+            let tys: Vec<Type> = m.props.iter().map(|(_, p)| p.tp.to_owned()).collect();
+            any_he(s, tys.iter())?;
+            Ok(is_he(s, &m.k_type)? || is_he(s, &m.v_type)?)
         }
         Type::RefinedRecordType(rt) => any_he(s, rt.fields.values()),
         _ => Ok(false),
@@ -133,18 +135,14 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
             all_he(ot1.arg_tys.iter(), ot2.arg_tys.iter())
         }
         (Type::OpaqueType(_), _) => Ok(false),
-        (Type::DictMap(m1), Type::DictMap(m2)) => {
-            Ok(is_he(&m1.k_type, &m2.k_type)? && is_he(&m1.v_type, &m2.v_type)?)
+        (Type::MapType(m1), Type::MapType(m2)) if m1.props.len() == m2.props.len() => {
+            let props1 = m1.props.iter().sorted_by_key(|p| p.0);
+            let props2 = m2.props.iter().sorted_by_key(|p| p.0);
+            Ok(all_he_prop(props1, props2)?
+                && is_he(&m1.k_type, &m2.k_type)?
+                && is_he(&m1.v_type, &m2.v_type)?)
         }
-        (Type::DictMap(_), _) => Ok(false),
-        (Type::ShapeMap(m1), Type::ShapeMap(m2)) if m1.props.len() == m2.props.len() => {
-            let mut props1 = m1.props.clone();
-            let mut props2 = m2.props.clone();
-            props1.sort_by_key(|p| p.key().to_owned());
-            props2.sort_by_key(|p| p.key().to_owned());
-            all_he_prop(props1.iter(), props2.iter())
-        }
-        (Type::ShapeMap(_), _) => Ok(false),
+        (Type::MapType(_), _) => Ok(false),
         (Type::RefinedRecordType(rt1), Type::RefinedRecordType(rt2))
             if rt1.rec_type == rt2.rec_type =>
         {
@@ -170,10 +168,10 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
 
 fn all_he_prop<'a, I>(s: I, t: I) -> Result<bool, ContractivityCheckError>
 where
-    I: Iterator<Item = &'a Prop>,
+    I: Iterator<Item = (&'a Key, &'a Prop)>,
 {
-    for (p1, p2) in s.zip(t) {
-        if !he_prop(p1, p2)? {
+    for ((k1, p1), (k2, p2)) in s.zip(t) {
+        if (k1 != k2) || !he_prop(p1, p2)? {
             return Ok(false);
         }
     }
@@ -181,12 +179,7 @@ where
 }
 
 fn he_prop(s: &Prop, t: &Prop) -> Result<bool, ContractivityCheckError> {
-    match (s, t) {
-        (Prop::ReqProp(p1), Prop::ReqProp(p2)) if p1.key == p2.key => is_he(&p1.tp, &p2.tp),
-        (Prop::ReqProp(_), _) => Ok(false),
-        (Prop::OptProp(p1), Prop::OptProp(p2)) if p1.key == p2.key => is_he(&p1.tp, &p2.tp),
-        (Prop::OptProp(_), _) => Ok(false),
-    }
+    Ok(s.req == t.req && is_he(&s.tp, &t.tp)?)
 }
 
 pub struct StubContractivityChecker<'d> {
@@ -273,11 +266,9 @@ impl StubContractivityChecker<'_> {
             Type::ListType(lt) => Ok(self.is_foldable(&lt.t, &new_history)?),
             Type::UnionType(ut) => Ok(self.all_foldable(ut.tys.iter(), &new_history)?),
             Type::OpaqueType(ot) => Ok(self.all_foldable(ot.arg_tys.iter(), &new_history)?),
-            Type::DictMap(mt) => Ok(self.is_foldable(&mt.k_type, &new_history)?
-                && self.is_foldable(&mt.v_type, &new_history)?),
-            Type::ShapeMap(mt) => {
-                Ok(self.all_foldable(mt.props.iter().map(|p| p.tp()), &new_history)?)
-            }
+            Type::MapType(mt) => Ok(self.is_foldable(&mt.k_type, &new_history)?
+                && self.is_foldable(&mt.v_type, &new_history)?
+                && self.all_foldable(mt.props.iter().map(|(_, prop)| &prop.tp), &new_history)?),
             Type::RefinedRecordType(rt) => Ok(self.all_foldable(rt.fields.values(), &new_history)?),
             Type::RemoteType(rt) => {
                 for &t in history.iter() {
@@ -316,8 +307,7 @@ impl StubContractivityChecker<'_> {
             | Type::TupleType(_)
             | Type::ListType(_)
             | Type::OpaqueType(_)
-            | Type::DictMap(_)
-            | Type::ShapeMap(_)
+            | Type::MapType(_)
             | Type::RefinedRecordType(_)
             | Type::AnyArityFunType(_) => Ok(true),
             Type::RemoteType(_) => Ok(false),

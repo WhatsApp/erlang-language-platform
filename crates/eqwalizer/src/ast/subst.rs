@@ -9,16 +9,13 @@
 
 use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::BoundedDynamicType;
-use elp_types_db::eqwalizer::types::DictMap;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::ListType;
+use elp_types_db::eqwalizer::types::MapType;
 use elp_types_db::eqwalizer::types::OpaqueType;
-use elp_types_db::eqwalizer::types::OptProp;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
-use elp_types_db::eqwalizer::types::ReqProp;
-use elp_types_db::eqwalizer::types::ShapeMap;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
@@ -66,10 +63,20 @@ impl<'a> Subst<'a> {
                     Type::VarType(n)
                 }
             }
-            Type::ShapeMap(m) => Type::ShapeMap(ShapeMap {
-                props: m.props.into_iter().map(|p| self.apply_prop(p)).collect(),
-            }),
-            Type::DictMap(m) => Type::DictMap(DictMap {
+            Type::MapType(m) => Type::MapType(MapType {
+                props: m
+                    .props
+                    .into_iter()
+                    .map(|(k, p)| {
+                        (
+                            k,
+                            Prop {
+                                req: p.req,
+                                tp: self.apply(p.tp),
+                            },
+                        )
+                    })
+                    .collect(),
                 k_type: Box::new(self.apply(*m.k_type)),
                 v_type: Box::new(self.apply(*m.v_type)),
             }),
@@ -90,19 +97,6 @@ impl<'a> Subst<'a> {
 
     fn apply_all(&self, ts: Vec<Type>) -> Vec<Type> {
         ts.into_iter().map(|t| self.apply(t)).collect()
-    }
-
-    fn apply_prop(&self, prop: Prop) -> Prop {
-        match prop {
-            Prop::OptProp(p) => Prop::OptProp(OptProp {
-                key: p.key,
-                tp: self.apply(p.tp),
-            }),
-            Prop::ReqProp(p) => Prop::ReqProp(ReqProp {
-                key: p.key,
-                tp: self.apply(p.tp),
-            }),
-        }
     }
 
     fn subtract(&self, vars: &[u32]) -> Subst {

@@ -111,6 +111,16 @@ impl ExtType {
         f(self)?;
         self.walk(&mut |ty| ty.traverse(f))
     }
+
+    pub fn is_key(&self) -> bool {
+        match self {
+            ExtType::AtomLitExtType(_) => true,
+            ExtType::TupleExtType(TupleExtType { arg_tys, .. }) => {
+                arg_tys.iter().all(|t| t.is_key())
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

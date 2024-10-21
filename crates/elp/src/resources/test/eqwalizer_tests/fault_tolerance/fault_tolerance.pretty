@@ -302,7 +302,7 @@ error: incompatible_types
     │
 108 │     M1,
     │     ^^ M1.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [T]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -312,7 +312,7 @@ error: incompatible_types
     │
 108 │     M1,
     │     ^^ M1.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [dynamic()]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -322,7 +322,7 @@ error: incompatible_types
     │
 109 │     M2
     │     ^^ M2.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [T]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -332,7 +332,7 @@ error: incompatible_types
     │
 109 │     M2
     │     ^^ M2.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [dynamic()]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -343,7 +343,7 @@ error: incompatible_types
 111 │   Res.
     │   ^^^ Res.
 Expression has type:   [dynamic()]
-Context expected type: #D{dynamic() => dynamic()}
+Context expected type: #{dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -353,7 +353,7 @@ error: incompatible_types
 116 │   M1 = M#{
     │        ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -383,7 +383,7 @@ error: incompatible_types
 126 │   M1 = M#{
     │        ^ M.
 Expression has type:   term()
-Context expected type: #D{term() => term()}
+Context expected type: #{term() => term()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -603,7 +603,7 @@ error: incompatible_types
 195 │ │       c => d + 1
 196 │ │     },
     │ ╰─────^ #{..}.
-Expression has type:   #S{a := 'b', c := number()}
+Expression has type:   #{a := 'b', c := number()}
 Context expected type: [term()]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -703,7 +703,7 @@ error: incompatible_types
     │
 224 │   M1 + M2.
     │   ^^ M1.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{id := number(), dynamic() => dynamic()}
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -723,7 +723,7 @@ error: incompatible_types
     │
 224 │   M1 + M2.
     │        ^^ M2.
-Expression has type:   #D{dynamic() => dynamic()}
+Expression has type:   #{id := number(), dynamic() => dynamic()}
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types

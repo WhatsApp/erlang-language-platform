@@ -136,11 +136,11 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
   mChainB() is not compatible with mChainA()
   because
-  'nil' | #S{b := mChainB()} is not compatible with mChainA()
+  'nil' | #{b := mChainB()} is not compatible with mChainA()
   because
-  'nil' | #S{b := mChainB()} is not compatible with 'nil' | #S{a := mChainA()}
+  'nil' | #{b := mChainB()} is not compatible with 'nil' | #{a := mChainA()}
   because
-  #S{b := mChainB()} is not compatible with 'nil' | #S{a := mChainA()}
+  #{b := mChainB()} is not compatible with 'nil' | #{a := mChainA()}
 
 error: expected_fun_type
     ┌─ check/src/recursive_aliases.erl:138:15

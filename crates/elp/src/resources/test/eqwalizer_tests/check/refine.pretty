@@ -31,7 +31,7 @@ error: incompatible_types
    │
 22 │ maps(M, M) -> M.
    │               ^ M.
-Expression has type:   #D{atom() => atom()}
+Expression has type:   #{a := atom()}
 Context expected type: none()
 
 See https://fb.me/eqwalizer_errors#incompatible_types

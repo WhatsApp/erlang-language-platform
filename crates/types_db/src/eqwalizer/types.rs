@@ -13,6 +13,8 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 use crate::eqwalizer::RemoteId;
 
@@ -32,8 +34,7 @@ pub enum Type {
     VarType(VarType),
     RecordType(RecordType),
     RefinedRecordType(RefinedRecordType),
-    DictMap(DictMap),
-    ShapeMap(ShapeMap),
+    MapType(MapType),
     BinaryType,
     AnyType,
     AtomType,
@@ -216,8 +217,9 @@ impl Type {
             Type::UnionType(ty) => ty.tys.iter().try_for_each(f),
             Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::OpaqueType(ty) => ty.arg_tys.iter().try_for_each(f),
-            Type::ShapeMap(ty) => ty.props.iter().try_for_each(|prop| f(prop.tp())),
-            Type::DictMap(ty) => f(&ty.v_type).and_then(|()| f(&ty.k_type)),
+            Type::MapType(ty) => f(&ty.k_type)
+                .and_then(|()| f(&ty.v_type))
+                .and_then(|()| ty.props.iter().try_for_each(|(_, prop)| f(&prop.tp))),
             Type::ListType(ty) => f(&ty.t),
             Type::RefinedRecordType(ty) => ty.fields.iter().try_for_each(|(_, ty)| f(ty)),
             Type::BoundedDynamicType(ty) => f(&ty.bound),
@@ -320,16 +322,29 @@ impl fmt::Display for Type {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Type::ShapeMap(ty) => write!(
+            Type::MapType(ty) if ty.props.is_empty() => {
+                write!(f, "#{{{} => {}}}", ty.k_type, ty.v_type)
+            }
+            Type::MapType(ty) if &*ty.k_type == &Self::NoneType => write!(
                 f,
-                "#S{{{}}}",
+                "#{{{}}}",
                 ty.props
                     .iter()
-                    .map(|p| p.to_string())
+                    .map(|(k, p)| format!("{} {}", k, p))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Type::DictMap(ty) => write!(f, "#D{{{} => {}}}", ty.k_type, ty.v_type),
+            Type::MapType(ty) => write!(
+                f,
+                "#{{{}, {} => {}}}",
+                ty.props
+                    .iter()
+                    .map(|(k, p)| format!("{} {}", k, p))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                ty.k_type,
+                ty.v_type
+            ),
             Type::ListType(ty) => write!(f, "[{}]", ty.t),
             Type::RefinedRecordType(ty) => write!(f, "#{}{{}}", ty.rec_type.name.as_str()),
             Type::BoundedDynamicType(ty) => write!(f, "dynamic({})", ty.bound),
@@ -407,57 +422,124 @@ pub struct RefinedRecordType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct DictMap {
+pub struct MapType {
+    #[serde(default)]
+    pub props: FxHashMap<Key, Prop>,
     pub k_type: Box<Type>,
     pub v_type: Box<Type>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ShapeMap {
-    #[serde(default)]
-    pub props: Vec<Prop>,
+#[derive(
+    SerializeDisplay,
+    DeserializeFromStr,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd
+)]
+pub enum Key {
+    TupleKey(TupleKey),
+    AtomKey(AtomKey),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct TupleKey {
+    pub keys: Vec<Key>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct AtomKey {
+    pub name: SmolStr,
+}
+
+impl std::str::FromStr for Key {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn split(s: &str) -> Vec<&str> {
+            if s.len() == 0 {
+                return vec![];
+            }
+            let mut res = vec![];
+            let mut start = 0;
+            let mut in_parens = 0;
+            for (i, c) in s.chars().enumerate() {
+                match c {
+                    '{' => in_parens += 1,
+                    '}' => in_parens -= 1,
+                    _ => (),
+                }
+                if in_parens == 0 && c == ',' {
+                    res.push(s[start..i].trim());
+                    start = i + 1;
+                }
+            }
+            res.push(s[start..].trim());
+            res
+        }
+        if s.starts_with('{') && s.ends_with('}') {
+            let keys = split(&s[1..s.len() - 1])
+                .iter()
+                .map(|s| Self::from_str(s))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Key::TupleKey(TupleKey { keys }))
+        } else {
+            Ok(Key::AtomKey(AtomKey {
+                name: s.trim().into(),
+            }))
+        }
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Key::TupleKey(ty) => write!(
+                f,
+                "{{{}}}",
+                ty.keys
+                    .iter()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Key::AtomKey(a) => write!(f, "{}", a.name.as_str()),
+        }
+    }
+}
+
+impl Key {
+    pub fn from_type(ty: Type) -> Option<Self> {
+        match ty {
+            Type::TupleType(ty) => ty
+                .arg_tys
+                .into_iter()
+                .map(Key::from_type)
+                .collect::<Option<Vec<_>>>()
+                .map(|keys| Key::TupleKey(TupleKey { keys })),
+            Type::AtomLitType(a) => Some(Key::AtomKey(AtomKey { name: a.atom })),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum Prop {
-    ReqProp(ReqProp),
-    OptProp(OptProp),
-}
-impl Prop {
-    pub fn key(&self) -> &SmolStr {
-        match self {
-            Prop::ReqProp(req) => &req.key,
-            Prop::OptProp(opt) => &opt.key,
-        }
-    }
-
-    pub fn tp(&self) -> &Type {
-        match self {
-            Prop::ReqProp(req) => &req.tp,
-            Prop::OptProp(opt) => &opt.tp,
-        }
-    }
+pub struct Prop {
+    pub req: bool,
+    pub tp: Type,
 }
 
 impl fmt::Display for Prop {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Prop::ReqProp(req) => write!(f, "{} := {}", req.key, req.tp),
-            Prop::OptProp(opt) => write!(f, "{} => {}", opt.key, opt.tp),
+        if self.req {
+            write!(f, ":= {}", self.tp)
+        } else {
+            write!(f, "=> {}", self.tp)
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ReqProp {
-    pub key: SmolStr,
-    pub tp: Type,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct OptProp {
-    pub key: SmolStr,
-    pub tp: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

@@ -33,8 +33,8 @@ error: type_var_in_parameter_position
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Opaque complex_expansion_opaque/1 expands to a type in which X appears in function parameter position
 	complex_expansion_opaque/1 expands to contravariant:complex_expansion_2(X)
 	which expands to {contravariant:complex_expansion_2(X), contravariant:complex_expansion_1(X)} | 'nil'
-	which expands to {contravariant:complex_expansion_2(X), #S{a => contravariant:contravariant(X)}}
-	which expands to {contravariant:complex_expansion_2(X), #S{a => fun((X) -> 'ok')}}
+	which expands to {contravariant:complex_expansion_2(X), #{a => contravariant:contravariant(X)}}
+	which expands to {contravariant:complex_expansion_2(X), #{a => fun((X) -> 'ok')}}
 
 See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
 
@@ -63,8 +63,8 @@ error: type_var_in_parameter_position
    │
 42 │ -opaque contra_in_dict_values(X) :: #{atom() => contravariant(X)}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Opaque contra_in_dict_values/1 expands to a type in which X appears in function parameter position
-	contra_in_dict_values/1 expands to #D{atom() => contravariant:contravariant(X)}
-	which expands to #D{atom() => fun((X) -> 'ok')}
+	contra_in_dict_values/1 expands to #{atom() => contravariant:contravariant(X)}
+	which expands to #{atom() => fun((X) -> 'ok')}
 
 See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
 
@@ -73,8 +73,8 @@ error: type_var_in_parameter_position
    │
 44 │ -opaque contra_in_shape(X) :: #{a => ok, b := ok, c := contravariant(X)}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Opaque contra_in_shape/1 expands to a type in which X appears in function parameter position
-	contra_in_shape/1 expands to #S{a => 'ok', b := 'ok', c := contravariant:contravariant(X)}
-	which expands to #S{a => 'ok', b := 'ok', c := fun((X) -> 'ok')}
+	contra_in_shape/1 expands to #{a => 'ok', b := 'ok', c := contravariant:contravariant(X)}
+	which expands to #{a => 'ok', b := 'ok', c := fun((X) -> 'ok')}
 
 See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
 

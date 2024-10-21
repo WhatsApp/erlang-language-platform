@@ -125,18 +125,13 @@ error: incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #S{a => atom()}
-Context expected type: #S{a := atom()}
+Expression has type:   #{a => atom()}
+Context expected type: #{a := atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
-These associations do not match:
-
-  #S{
--    a := ...
-+    a => ...
-  }
+key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
    ┌─ check/src/subtype_neg.erl:52:13
@@ -145,28 +140,28 @@ error: incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #S{a := atom(), b := atom()}
-Context expected type: #S{a => atom()}
+Expression has type:   #{a := atom(), b := atom()}
+Context expected type: #{a => atom()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
-These associations do not match:
-
-  #S{
-+    b := ...
-     ...
-  }
+key `b` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types
    ┌─ check/src/subtype_neg.erl:60:13
    │
 60 │ map05(M) -> M.
-   │             ^ M.
-Expression has type:   dict  map #D{'a' | 'b' => 'a' | 'b' | 'c'}
-Context expected type: shape map #S{a := 'a' | 'b', b => 'a' | 'b'}
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #{'a' | 'b' => 'a' | 'b' | 'c'}
+Context expected type: #{a := 'a' | 'b', b => 'a' | 'b'}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
    ┌─ check/src/subtype_neg.erl:64:13
@@ -175,13 +170,14 @@ error: incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #D{term() => number()}
-Context expected type: #D{atom() => number()}
+Expression has type:   #{term() => number()}
+Context expected type: #{atom() => number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
-  #D{term() => number()} is not compatible with #D{atom() => number()}
+  #{term() => number()} is not compatible with #{atom() => number()}
+  the default associations are not compatible
   because
   term() is not compatible with atom()
 
@@ -192,13 +188,14 @@ error: incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #D{atom() => term()}
-Context expected type: #D{atom() => number()}
+Expression has type:   #{atom() => term()}
+Context expected type: #{atom() => number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
-  #D{atom() => term()} is not compatible with #D{atom() => number()}
+  #{atom() => term()} is not compatible with #{atom() => number()}
+  the default associations are not compatible
   because
   term() is not compatible with number()
 
@@ -206,11 +203,19 @@ error: incompatible_types
    ┌─ check/src/subtype_neg.erl:72:13
    │
 72 │ map08(M) -> M.
-   │             ^ M.
-Expression has type:   dict  map #D{atom() => term()}
-Context expected type: shape map #S{}
+   │             ^
+   │             │
+   │             M.
+Expression has type:   #{atom() => term()}
+Context expected type: #{}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+   │             
+
+  #{atom() => term()} is not compatible with #{}
+  because
+  #{atom() => term()} is not compatible with #{}
+  the latter map has no default association while the first map has one
 
 error: incompatible_types
    ┌─ check/src/subtype_neg.erl:79:15

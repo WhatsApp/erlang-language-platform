@@ -565,7 +565,7 @@ error: incompatible_types
 644 │ badspec(_) -> ok.
     │               ^^ 'ok'.
 Expression has type:   'ok'
-Context expected type: #D{dynamic() => dynamic()}
+Context expected type: #{dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 

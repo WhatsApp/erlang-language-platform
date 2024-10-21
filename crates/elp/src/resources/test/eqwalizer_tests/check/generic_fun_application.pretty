@@ -103,18 +103,13 @@ error: incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #S{true => pid()}
-Context expected type: #S{a => T}
+Expression has type:   #{true => pid()}
+Context expected type: #{a => dynamic()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
-These associations do not match:
-
-  #S{
-+    true => ...
-     ...
-  }
+key `true` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types
    ┌─ check/src/generic_fun_application.erl:99:13
@@ -122,7 +117,7 @@ error: incompatible_types
 99 │     map_att(3).
    │             ^ 3.
 Expression has type:   number()
-Context expected type: #S{a => T}
+Context expected type: #{a => T}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -153,13 +148,16 @@ error: incompatible_types
     │       ^^^^^
     │       │
     │       Shape.
-Expression has type:   #S{a => number()}
-Context expected type: #D{atom() => T}
+Expression has type:   #{a => number()}
+Context expected type: #{atom() => T}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │       
 
-  #S{a => number()} is not compatible with #D{atom() => T}
+  #{a => number()} is not compatible with #{atom() => T}
+  because
+  #{a => number()} is not compatible with #{atom() => T}
+  key `a` is declared in the former but not in the latter and key `a` isn't compatible with the default association of the latter map
   because
   number() is not compatible with T
 
@@ -378,7 +376,7 @@ error: incompatible_types
     │
 432 │ test_dict1(D) -> num_and_t(D, D).
     │                            ^ D.
-Expression has type:   #D{atom() => pid()}
+Expression has type:   #{atom() => pid()}
 Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -387,11 +385,16 @@ error: incompatible_types
     ┌─ check/src/generic_fun_application.erl:441:16
     │
 441 │     shape_vars(#{T => 3}, 3).
-    │                ^^^^^^^^^ #{..}.
-Expression has type:   dict  map #D{T => number()}
-Context expected type: shape map #S{a := T}
+    │                ^^^^^^^^^
+    │                │
+    │                #{..}.
+Expression has type:   #{T => number()}
+Context expected type: #{a := T}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
+    │                
+
+key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
     ┌─ check/src/generic_fun_application.erl:446:15
@@ -400,13 +403,13 @@ error: incompatible_types
     │               ^
     │               │
     │               F.
-Expression has type:   fun((#S{a => number()}) -> number())
-Context expected type: fun((#D{{T} => T}) -> T)
+Expression has type:   fun((#{a => number()}) -> number())
+Context expected type: fun((#{{T} => T}) -> T)
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │               
 
-  fun((#S{a => number()}) -> number()) is not compatible with fun((#D{{T} => T}) -> T)
+  fun((#{a => number()}) -> number()) is not compatible with fun((#{{T} => T}) -> T)
   because
   number() is not compatible with T
 
@@ -434,17 +437,13 @@ error: incompatible_types
     │                 ^^^
     │                 │
     │                 #{..}.
-Expression has type:   #S{}
-Context expected type: #S{a := T}
+Expression has type:   #{}
+Context expected type: #{a := T}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
-These associations do not match:
-
-  #S{
--    a := ...
-  }
+key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
     ┌─ check/src/generic_fun_application.erl:500:38
@@ -561,18 +560,13 @@ error: incompatible_types
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │         │
     │         #{..}.
-Expression has type:   #S{extra := number(), t := pid(), u := number()}
-Context expected type: #S{t := T, u := U}
+Expression has type:   #{extra := number(), t := pid(), u := number()}
+Context expected type: #{t := pid(), u := number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │         
 
-These associations do not match:
-
-  #S{
-+    extra := ...
-     ...
-  }
+key `extra` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types
     ┌─ check/src/generic_fun_application.erl:721:25
