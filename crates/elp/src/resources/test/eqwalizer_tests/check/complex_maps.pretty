@@ -1,0 +1,248 @@
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:11:21
+   │
+11 │ downcast_neg1(X) -> X.
+   │                     ^
+   │                     │
+   │                     X.
+Expression has type:   #{a => 'b', c => 'd'}
+Context expected type: #{a => 'b'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                     
+
+key `c` is declared in the former but not in the latter and the latter map has no default association
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:17:21
+   │
+17 │ downcast_neg2(X) -> X.
+   │                     ^
+   │                     │
+   │                     X.
+Expression has type:   #{a => 'b', c => 'd'}
+Context expected type: #{a => 'b', atom() => number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                     
+
+  #{a => 'b', c => 'd'} is not compatible with #{a => 'b', atom() => number()}
+  because
+  #{a => 'b', c => 'd'} is not compatible with #{a => 'b', atom() => number()}
+  key `c` is declared in the former but not in the latter and key `c` isn't compatible with the default association of the latter map
+  because
+  'd' is not compatible with number()
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:20:19
+   │
+20 │ upcast_neg1(X) -> X.
+   │                   ^
+   │                   │
+   │                   X.
+Expression has type:   #{a => 'b', atom() => atom()}
+Context expected type: #{a => 'b', c => 'd'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                   
+
+  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b', c => 'd'}
+  key c is not present in the former map but is incompatible with its default association
+  because
+  atom() is not compatible with 'd'
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:23:19
+   │
+23 │ upcast_neg2(X) -> X.
+   │                   ^
+   │                   │
+   │                   X.
+Expression has type:   #{a => 'b', atom() => number()}
+Context expected type: #{a => 'b', c => 'd', atom() => number()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                   
+
+  #{a => 'b', atom() => number()} is not compatible with #{a => 'b', c => 'd', atom() => number()}
+  key c is not present in the former map but is incompatible with its default association
+  because
+  number() is not compatible with 'd'
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:38:21
+   │
+38 │ downcast_neg3(X) -> X.
+   │                     ^
+   │                     │
+   │                     X.
+Expression has type:   #{a => 'b', atom() => atom()}
+Context expected type: #{a => 'b'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                     
+
+  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
+  because
+  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
+  the latter map has no default association while the first map has one
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:44:26
+   │
+44 │ downcast_dyn_neg_1(X) -> X.
+   │                          ^
+   │                          │
+   │                          X.
+Expression has type:   #{a => 'b', dynamic(atom()) => atom()}
+Context expected type: #{a => 'b'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                          
+
+  #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
+  because
+  #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
+  the latter map has no default association while the first map has one
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:47:26
+   │
+47 │ downcast_dyn_neg_2(X) -> X.
+   │                          ^
+   │                          │
+   │                          X.
+Expression has type:   #{a => 'b', atom() => dynamic(atom())}
+Context expected type: #{a => 'b'}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                          
+
+  #{a => 'b', atom() => dynamic(atom())} is not compatible with #{a => 'b'}
+  because
+  #{a => 'b', atom() => dynamic(atom())} is not compatible with #{a => 'b'}
+  the latter map has no default association while the first map has one
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:56:44
+   │
+56 │ tuple_key_get_neg(#{{ok, {a, b}} := V}) -> V.
+   │                                            ^ V.
+Expression has type:   'v'
+Context expected type: 'err'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:62:30
+   │
+62 │ tuple_key_maps_get_neg(M) -> maps:get({ok, {a, b}}, M).
+   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^ maps:get({'ok', {'a', 'b'}}, M).
+Expression has type:   'v'
+Context expected type: 'err'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:71:32
+   │
+71 │ get_default_neg1(#{a := V}) -> V.
+   │                                ^ V.
+Expression has type:   'b'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:74:34
+   │
+74 │ get_default_neg2(#{def := V}) -> V.
+   │                                  ^ V.
+Expression has type:   number()
+Context expected type: 'b'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:77:41
+   │
+77 │ match_required_1_neg(#{b := _V} = M) -> M.
+   │                                         ^ M.
+Expression has type:   #{a := number(), b := dynamic(), atom() => dynamic()}
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:80:28
+   │
+80 │ compat_default_1_neg(X) -> X.
+   │                            ^
+   │                            │
+   │                            X.
+Expression has type:   #{atom() => binary()}
+Context expected type: #{a => binary(), atom() => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                            
+
+  #{atom() => binary()} is not compatible with #{a => binary(), atom() => atom()}
+  the default associations are not compatible
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:83:28
+   │
+83 │ compat_default_2_neg(X) -> X.
+   │                            ^
+   │                            │
+   │                            X.
+Expression has type:   #{a := 'b', atom() => binary()}
+Context expected type: #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                            
+
+  #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
+  the default associations are not compatible
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:86:28
+   │
+86 │ compat_default_3_neg(X) -> X.
+   │                            ^
+   │                            │
+   │                            X.
+Expression has type:   #{a := 'b', atom() => binary()}
+Context expected type: #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                            
+
+  #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
+  the default associations are not compatible
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types
+   ┌─ check/src/complex_maps.erl:89:29
+   │
+89 │ dyn_domain_coerce_neg(X) -> X.
+   │                             ^
+   │                             │
+   │                             X.
+Expression has type:   #{dynamic() => atom()}
+Context expected type: #{dynamic() => binary()}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                             
+
+  #{dynamic() => atom()} is not compatible with #{dynamic() => binary()}
+  the default associations are not compatible
+  because
+  atom() is not compatible with binary()
+
+16 ERRORS
