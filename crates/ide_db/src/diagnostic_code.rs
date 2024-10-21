@@ -57,6 +57,7 @@ pub enum DiagnosticCode {
     SlowFunction,
     BooleanPrecedence,
     UnexportedFunction,
+    RecordTupleMatch,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -126,6 +127,7 @@ impl DiagnosticCode {
             DiagnosticCode::SlowFunction => "W0024".to_string(),
             DiagnosticCode::BooleanPrecedence => "W0025".to_string(),
             DiagnosticCode::UnexportedFunction => "W0026".to_string(),
+            DiagnosticCode::RecordTupleMatch => "W0027".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -171,6 +173,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnexportedFunction => "unexported_function".to_string(),
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
             DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
+            DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -254,6 +257,7 @@ impl DiagnosticCode {
             DiagnosticCode::MisspelledAttribute => true,
             DiagnosticCode::CrossNodeEval => true,
             DiagnosticCode::MissingCompileWarnMissingSpec => true,
+            DiagnosticCode::RecordTupleMatch => true,
             // False list
             DiagnosticCode::DefaultCodeForEnumIter => false,
             DiagnosticCode::HeadMismatch => false,

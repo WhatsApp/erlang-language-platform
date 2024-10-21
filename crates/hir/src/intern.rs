@@ -50,6 +50,10 @@ impl Atom {
     pub fn as_string(&self, db: &dyn InternDatabase) -> String {
         db.lookup_atom(*self).to_string()
     }
+
+    pub fn as_name(&self, db: &dyn InternDatabase) -> Name {
+        Name::from(db.lookup_atom(*self))
+    }
 }
 
 impl Var {

@@ -95,6 +95,7 @@ mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
 mod mutable_variable;
+mod record_tuple_match;
 mod redundant_assignment;
 mod replace_call;
 mod replace_in_spec;
@@ -820,6 +821,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &cross_node_eval::DESCRIPTOR,
         &atoms_exhaustion::DESCRIPTOR,
         &boolean_precedence::DESCRIPTOR,
+        &record_tuple_match::DESCRIPTOR,
     ]
 }
 
