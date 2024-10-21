@@ -96,7 +96,7 @@ tracing = "0.1.40"
 threadpool = "1.8.1"
 timeout-readwrite = "0.3.3"
 toml = "0.5"
-tree-sitter = "0.22.6"
+tree-sitter = "0.23.2"
 # @fb-only
 tree-sitter-erlang = "0.8.0" # @oss-only
 url = "2.5.2"

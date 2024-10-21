@@ -545,7 +545,8 @@ fn read_node_types() -> Result<Vec<NodeType>> {
     let node_types_string = tree_sitter_erlang::NODE_TYPES;
     let node_types: Vec<RawNodeType> = serde_json::from_str(node_types_string)
         .with_context(|| "parsing node types from tree_sitter_erlang::NODE_TYPES".to_string())?;
-    let language = tree_sitter_erlang::language();
+    // let language = tree_sitter_erlang::LANGUAGE.into();
+    let language = tree_sitter::Language::new(tree_sitter_erlang::LANGUAGE);
 
     println!("--------------------------------");
     println!(

@@ -11,5 +11,6 @@ proc-macro2.workspace = true
 quote.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tree-sitter.workspace = true
 tree-sitter-erlang.workspace = true
 xshell.workspace = true

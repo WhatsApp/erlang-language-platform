@@ -8,7 +8,7 @@
  */
 
 pub use tree_sitter::*;
-use tree_sitter_erlang::language;
+use tree_sitter_erlang::LANGUAGE;
 
 pub struct Parser(tree_sitter::Parser);
 
@@ -16,7 +16,7 @@ impl Parser {
     pub fn new() -> Self {
         let mut parser = tree_sitter::Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&LANGUAGE.into())
             .expect("incompatible tree-sitter");
         Parser(parser)
     }
