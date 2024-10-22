@@ -14,6 +14,8 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::str;
 
+use super::SpecBody;
+use super::SpecOrCallback;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
@@ -136,6 +138,64 @@ pub(crate) fn print_type_alias(
     printer.print_type(&printer.body[body.ty]);
     write!(printer, ".").ok();
 
+    printer.to_string()
+}
+
+pub(crate) fn print_spec(
+    db: &dyn InternDatabase,
+    body: &SpecBody,
+    form: &SpecOrCallback,
+) -> String {
+    let mut printer = Printer::new(db, &body.body);
+
+    match form {
+        SpecOrCallback::Spec(spec) => writeln!(printer, "-spec {}", spec.name.name()).unwrap(),
+        SpecOrCallback::Callback(callback) => {
+            writeln!(printer, "-callback {}", callback.name.name()).unwrap()
+        }
+    }
+    printer.indent_level += 1;
+
+    let mut sep = "";
+    body.sigs.iter().for_each(|sig| {
+        write!(printer, "{}", sep).unwrap();
+        sep = ";\n";
+
+        if sig.args.len() == 0 {
+            writeln!(printer, "() ->").unwrap();
+        } else {
+            writeln!(printer, "(").unwrap();
+            printer.indent_level += 1;
+            let mut args_sep = "";
+            for arg in &sig.args {
+                write!(printer, "{}", args_sep).unwrap();
+                args_sep = ",\n";
+                printer.print_type(&printer.body[*arg]);
+            }
+            printer.indent_level -= 1;
+            writeln!(printer, "\n) ->").unwrap();
+        }
+        printer.indent_level += 1;
+        printer.print_type(&printer.body[sig.result]);
+        printer.indent_level -= 1;
+        if sig.guards.len() > 0 {
+            writeln!(printer, "\nwhen").unwrap();
+            printer.indent_level += 1;
+            sig.guards
+                .iter()
+                .enumerate()
+                .for_each(|(idx, (var, guard))| {
+                    if idx > 0 {
+                        write!(printer, ", ").unwrap();
+                    }
+                    writeln!(printer, "{} ::", db.lookup_var(*var)).unwrap();
+                    printer.indent_level += 1;
+                    printer.print_type(&printer.body[*guard]);
+                    printer.indent_level -= 1;
+                });
+        }
+    });
+    write!(printer, ".").unwrap();
     printer.to_string()
 }
 
@@ -818,10 +878,14 @@ impl<'a> Printer<'a> {
                             .print_call_target(target, |this, ty| this.print_type(&this.body[*ty]));
                     });
                     this.print_labelled("args", false, &mut |this| {
-                        args.iter().for_each(|ty| {
-                            this.print_type(&this.body[*ty]);
-                            writeln!(this, ",").ok();
-                        });
+                        if args.len() == 0 {
+                            writeln!(this, "()").ok();
+                        } else {
+                            args.iter().for_each(|ty| {
+                                this.print_type(&this.body[*ty]);
+                                writeln!(this, ",").ok();
+                            });
+                        }
                     });
                 });
             }
@@ -1205,12 +1269,12 @@ mod tests {
                     FormIdx::Spec(spec_id) => {
                         let spec = SpecOrCallback::Spec(form_list[spec_id].clone());
                         let body = db.spec_body(InFile::new(file_id, spec_id));
-                        Some(body.print(&db, spec))
+                        Some(body.tree_print(&db, spec))
                     }
                     FormIdx::Callback(callback_id) => {
                         let spec = SpecOrCallback::Callback(form_list[callback_id].clone());
                         let body = db.callback_body(InFile::new(file_id, callback_id));
-                        Some(body.print(&db, spec))
+                        Some(body.tree_print(&db, spec))
                     }
                     FormIdx::Record(record_id) => {
                         let body = db.record_body(InFile::new(file_id, record_id));
@@ -2486,6 +2550,7 @@ mod tests {
                                         Literal(Atom('integer'))
                                     }
                                 args
+                                    ()
                             },
                         },
                 }.
@@ -2506,6 +2571,7 @@ mod tests {
                                         Literal(Atom('integer'))
                                     }
                                 args
+                                    ()
                             },
                         },
                 }.
@@ -2637,6 +2703,7 @@ mod tests {
                                         Literal(Atom('integer'))
                                     }
                                 args
+                                    ()
                             },
                         Atom('b'):
                             TypeExpr::Var(B),
@@ -2701,8 +2768,149 @@ mod tests {
                                     Literal(Atom('any'))
                                 }
                             args
+                                ()
                         }
                 }.
+            "#]],
+        );
+    }
+
+    // ---------------------------------
+
+    #[test]
+    fn simple_spec() {
+        check(
+            r#"
+             -spec foo() -> ok.
+             "#,
+            expect![[r#"
+                -spec foo
+                    () ->
+                        Literal(Atom('ok')).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn simple_callback() {
+        check(
+            r#"
+             -callback foo() -> ok.
+             "#,
+            expect![[r#"
+                -callback foo
+                    () ->
+                        Literal(Atom('ok')).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn multi_sig_spec() {
+        check(
+            r#"
+            -spec foo(atom()) -> atom();
+                     (integer()) -> integer().
+            "#,
+            expect![[r#"
+                -spec foo
+                    (
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('atom'))
+                                }
+                            args
+                                ()
+                        }
+                    ) ->
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('atom'))
+                                }
+                            args
+                                ()
+                        };
+                    (
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('integer'))
+                                }
+                            args
+                                ()
+                        }
+                    ) ->
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('integer'))
+                                }
+                            args
+                                ()
+                        }.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn ann_var_spec() {
+        check(
+            r#"
+             -spec foo(A :: any()) -> ok.
+            "#,
+            expect![[r#"
+                -spec foo
+                    (
+                        TypeExpr::AnnType {
+                            var
+                                A
+                            ty
+                                TypeExpr::Call {
+                                    target
+                                        CallTarget::Remote {
+                                            Literal(Atom('erlang'))
+                                            Literal(Atom('any'))
+                                        }
+                                    args
+                                        ()
+                                }
+                        }
+                    ) ->
+                        Literal(Atom('ok')).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn guarded_spec() {
+        check(
+            r#"
+             -spec foo(A) -> A
+                 when A :: any().
+            "#,
+            expect![[r#"
+                -spec foo
+                    (
+                        TypeExpr::Var(A)
+                    ) ->
+                        TypeExpr::Var(A)
+                    when
+                        A ::
+                            TypeExpr::Call {
+                                target
+                                    CallTarget::Remote {
+                                        Literal(Atom('erlang'))
+                                        Literal(Atom('any'))
+                                    }
+                                args
+                                    ()
+                            }.
             "#]],
         );
     }

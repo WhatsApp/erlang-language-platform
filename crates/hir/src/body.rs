@@ -660,6 +660,10 @@ impl SpecBody {
     pub fn print(&self, db: &dyn InternDatabase, form: SpecOrCallback) -> String {
         pretty::print_spec(db, self, form)
     }
+
+    pub fn tree_print(&self, db: &dyn InternDatabase, form: SpecOrCallback) -> String {
+        tree_print::print_spec(db, self, &form)
+    }
 }
 
 impl RecordBody {
