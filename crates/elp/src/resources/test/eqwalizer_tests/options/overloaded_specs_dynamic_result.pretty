@@ -1,10 +1,1 @@
-error: not_enough_info_to_branch
-   ┌─ options/src/overloaded_specs_dynamic_result.erl:20:30
-   │
-20 │ use_overloaded1(Foo, Rec) -> overloaded1(Foo, Rec).
-   │                              ^^^^^^^^^^^^^^^^^^^^^ overloaded1(Foo, Rec).
-Not enough info to branch. Arg types: dynamic(), #rec1{}
-
-See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
-
-1 ERROR
+NO ERRORS
