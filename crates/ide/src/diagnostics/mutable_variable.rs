@@ -82,7 +82,7 @@ fn mutable_variable_bug(
                     let in_clause = def.in_clause(sema, def);
                     in_clause.fold_clause(
                         Strategy {
-                            macros: MacroStrategy::InvisibleMacros,
+                            macros: MacroStrategy::Expand,
                             parens: ParenStrategy::InvisibleParens,
                         },
                         (),

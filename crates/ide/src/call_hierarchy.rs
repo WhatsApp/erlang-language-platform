@@ -90,7 +90,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         let function_body = sema.to_function_body(function_id);
         sema.fold_function(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             function_id,

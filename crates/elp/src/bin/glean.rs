@@ -1186,7 +1186,7 @@ impl GleanIndexer {
         let mut xrefs = fold::fold_file(
             &sema,
             Strategy {
-                macros: MacroStrategy::SurfaceOnly,
+                macros: MacroStrategy::DoNotExpand,
                 parens: ParenStrategy::InvisibleParens,
             },
             file_id,
@@ -1411,7 +1411,7 @@ impl GleanIndexer {
         let mut xrefs = fold::fold_file(
             &sema,
             Strategy {
-                macros: MacroStrategy::SurfaceOnly,
+                macros: MacroStrategy::DoNotExpand,
                 parens: ParenStrategy::InvisibleParens,
             },
             file_id,

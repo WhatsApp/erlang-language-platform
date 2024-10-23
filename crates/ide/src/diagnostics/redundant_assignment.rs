@@ -65,7 +65,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy {
-            macros: MacroStrategy::InvisibleMacros,
+            macros: MacroStrategy::Expand,
             parens: ParenStrategy::InvisibleParens,
         },
         (),

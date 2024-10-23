@@ -58,7 +58,7 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
 
             def_fb.fold_function(
                 Strategy {
-                    macros: MacroStrategy::SurfaceOnly,
+                    macros: MacroStrategy::DoNotExpand,
                     parens: ParenStrategy::InvisibleParens,
                 },
                 Some(()),

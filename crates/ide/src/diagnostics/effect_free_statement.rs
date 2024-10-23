@@ -59,7 +59,7 @@ fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
         let def_fb = def.in_function_body(sema, def);
         def_fb.fold_function(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             (),

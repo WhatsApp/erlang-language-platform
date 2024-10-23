@@ -64,12 +64,12 @@ use crate::TypeExprId;
 /// not according to the chosen strategy.
 pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     match strategy.macros {
-        MacroStrategy::SurfaceOnly | MacroStrategy::VisibleMacros => FoldBody {
+        MacroStrategy::DoNotExpand | MacroStrategy::ExpandButIncludeMacroCall => FoldBody {
             body,
             macros: VisibleMacros::Yes,
             parens: strategy.parens,
         },
-        MacroStrategy::InvisibleMacros => FoldBody {
+        MacroStrategy::Expand => FoldBody {
             body,
             macros: VisibleMacros::No,
             parens: strategy.parens,
@@ -387,12 +387,12 @@ pub struct Strategy {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum MacroStrategy {
     /// Fold over HIR, but do not call back for macro expansions, only
-    /// their arguments.
-    SurfaceOnly,
-    /// Seamlessly expand macros. Similar to abstract forms
-    InvisibleMacros,
-    /// macro call expressions will show up in the fold `AnyCallBackCtx` too
-    VisibleMacros,
+    /// the macro call and its arguments. This gives a view of the code as written.
+    DoNotExpand,
+    /// Call back for a macro expansion, but hide the macro call that is expanded.
+    Expand,
+    /// Call back for a macro expansion, and also for the macro call that is expanded.
+    ExpandButIncludeMacroCall,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -689,7 +689,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 args,
                 macro_def: _,
             } => {
-                let r = if self.strategy.macros == MacroStrategy::SurfaceOnly {
+                let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -1068,7 +1068,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 args,
                 macro_def: _,
             } => {
-                let r = if self.strategy.macros == MacroStrategy::SurfaceOnly {
+                let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -1196,7 +1196,7 @@ bar() ->
         };
         let r: u32 = FoldCtx::fold_expr(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             &body.body,
@@ -1259,7 +1259,7 @@ bar() ->
         let compiler_options = sema.db.compile_body(InFile::new(file_id, idx));
         let r = FoldCtx::fold_term(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             &compiler_options.body,
@@ -1346,7 +1346,7 @@ bar() ->
     fn macro_aware_full_traversal_expr() {
         check_macros_expr(
             Strategy {
-                macros: MacroStrategy::VisibleMacros,
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1387,7 +1387,7 @@ bar() ->
     fn macro_aware_surface_traversal_expr() {
         check_macros_expr(
             Strategy {
-                macros: MacroStrategy::SurfaceOnly,
+                macros: MacroStrategy::DoNotExpand,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1428,7 +1428,7 @@ bar() ->
     fn ignore_macros_expr() {
         check_macros_expr(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1488,7 +1488,7 @@ bar() ->
         let r =
             FoldCtx::fold_type_expr(
                 Strategy {
-                    macros: MacroStrategy::InvisibleMacros,
+                    macros: MacroStrategy::Expand,
                     parens: ParenStrategy::InvisibleParens,
                 },
                 &type_alias.body,
@@ -1687,7 +1687,7 @@ bar() ->
     fn macro_aware_full_traversal_type_expr() {
         check_macros_type_expr(
             Strategy {
-                macros: MacroStrategy::VisibleMacros,
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1717,7 +1717,7 @@ bar() ->
     fn macro_aware_surface_traversal_type_expr() {
         check_macros_type_expr(
             Strategy {
-                macros: MacroStrategy::SurfaceOnly,
+                macros: MacroStrategy::DoNotExpand,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1747,7 +1747,7 @@ bar() ->
     fn ignore_macros_type_expr() {
         check_macros_type_expr(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             r#"
@@ -1780,7 +1780,7 @@ bar() ->
     fn count_atom_foo(fixture_str: &str, n: u32) {
         count_atom_foo_with_strategy(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
@@ -1989,7 +1989,7 @@ bar() ->
         // We do not see the function name (not looking)
         count_atom_foo_with_strategy(
             Strategy {
-                macros: MacroStrategy::SurfaceOnly,
+                macros: MacroStrategy::DoNotExpand,
                 parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
@@ -2007,7 +2007,7 @@ bar() ->
                "#;
         count_atom_foo_with_strategy(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
@@ -2027,7 +2027,7 @@ bar() ->
         // explicitly look at them if we care.
         count_atom_foo_with_strategy(
             Strategy {
-                macros: MacroStrategy::VisibleMacros,
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
                 parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
@@ -2046,7 +2046,7 @@ bar() ->
         let r: Vec<_> = fold_file(
             &sema,
             Strategy {
-                macros: MacroStrategy::VisibleMacros,
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
                 parens: ParenStrategy::InvisibleParens,
             },
             file_id,
@@ -2148,7 +2148,7 @@ bar() ->
         let r: bool = fold_file(
             &sema,
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             file_id,
@@ -2228,7 +2228,7 @@ bar() ->
         fold_file(
             &sema,
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens,
             },
             file_id,

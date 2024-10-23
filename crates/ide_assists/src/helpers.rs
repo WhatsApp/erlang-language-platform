@@ -234,7 +234,7 @@ pub fn expr_needs_parens_ast(expr: &ast::Expr) -> bool {
 pub fn expr_needs_parens(body: &Body, expr_id: ExprId) -> bool {
     let fold_body = fold_body(
         Strategy {
-            macros: MacroStrategy::InvisibleMacros,
+            macros: MacroStrategy::Expand,
             parens: ParenStrategy::VisibleParens,
         },
         &body,

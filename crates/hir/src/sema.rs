@@ -535,7 +535,7 @@ impl<'db> Semantic<'db> {
 
         let inside_pats = FoldCtx::fold_expr(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             &expr.body.body,
@@ -570,7 +570,7 @@ impl<'db> Semantic<'db> {
 
         Some(FoldCtx::fold_expr(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             &expr.body.body,
@@ -896,7 +896,7 @@ impl<'db> Semantic<'db> {
 
                 fold_function_clause_body(
                     Strategy {
-                        macros: MacroStrategy::InvisibleMacros,
+                        macros: MacroStrategy::Expand,
                         parens: ParenStrategy::InvisibleParens,
                     },
                     &body,
@@ -944,7 +944,7 @@ impl<'db> Semantic<'db> {
         let body_map = &resolver.get_body_map();
         FoldCtx::fold_pat(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             &resolver.body.body,
@@ -1027,7 +1027,7 @@ fn fold_function_clause_body<'a, T>(
     callback: AnyCallBack<'a, T>,
 ) -> T {
     match &function_clause_body.from_macro {
-        Some(from_macro) if strategy.macros == MacroStrategy::SurfaceOnly => FoldCtx::fold_exprs(
+        Some(from_macro) if strategy.macros == MacroStrategy::DoNotExpand => FoldCtx::fold_exprs(
             strategy,
             &function_clause_body.body,
             &from_macro.args,

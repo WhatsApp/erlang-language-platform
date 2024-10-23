@@ -499,7 +499,7 @@ pub(crate) fn find_call_in_function<T, U>(
     let matcher = FunctionMatcher::new(mfas);
     def_fb.clone().fold_function(
         Strategy {
-            macros: MacroStrategy::VisibleMacros,
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
             parens: ParenStrategy::InvisibleParens,
         },
         (),

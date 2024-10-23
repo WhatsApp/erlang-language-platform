@@ -76,7 +76,7 @@ fn missing_compile_warn_missing_spec(
             let co = sema.db.compile_body(InFile::new(file_id, idx));
             let is_present = FoldCtx::fold_term(
                 Strategy {
-                    macros: MacroStrategy::InvisibleMacros,
+                    macros: MacroStrategy::Expand,
                     parens: ParenStrategy::InvisibleParens,
                 },
                 &co.body,

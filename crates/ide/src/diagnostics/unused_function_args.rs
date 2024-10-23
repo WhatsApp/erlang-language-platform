@@ -71,7 +71,7 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
             for clause_arg_pat_id in pats.iter() {
                 in_clause.fold_pat(
                     Strategy {
-                        macros: MacroStrategy::InvisibleMacros,
+                        macros: MacroStrategy::Expand,
                         parens: ParenStrategy::InvisibleParens,
                     },
                     *clause_arg_pat_id,

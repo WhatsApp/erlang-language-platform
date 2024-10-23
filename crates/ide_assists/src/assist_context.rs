@@ -255,7 +255,7 @@ impl<'a> AssistContext<'a> {
                 // called as `X + 1 + Y` becomes `XNY`.
                 let vars_and_literals = body.fold_expr(
                     Strategy {
-                        macros: MacroStrategy::InvisibleMacros,
+                        macros: MacroStrategy::Expand,
                         parens: ParenStrategy::InvisibleParens,
                     },
                     *arg,

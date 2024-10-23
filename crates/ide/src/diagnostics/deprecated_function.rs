@@ -114,7 +114,7 @@ fn check_function(
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy {
-            macros: MacroStrategy::VisibleMacros,
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
             parens: ParenStrategy::InvisibleParens,
         },
         (),

@@ -76,7 +76,7 @@ pub fn replace_in_spec(
                     Spec::fold(
                         sema,
                         Strategy {
-                            macros: MacroStrategy::InvisibleMacros,
+                            macros: MacroStrategy::Expand,
                             parens: ParenStrategy::InvisibleParens,
                         },
                         spec_id,

@@ -260,7 +260,7 @@ pub fn remove_fun_ref_from_list(
         let source_file = sema.parse(file_id);
         def_fb.clone().fold_function(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             (),

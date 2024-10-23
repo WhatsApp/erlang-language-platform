@@ -49,7 +49,7 @@ fn check_function(acc: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef)
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy {
-            macros: MacroStrategy::VisibleMacros,
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
             parens: ParenStrategy::InvisibleParens,
         },
         (),

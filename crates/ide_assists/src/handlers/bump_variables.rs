@@ -68,7 +68,7 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         let (_body, body_map) = ctx.db().function_clause_body_with_source(infile_function);
         let vars = ctx.sema.fold_clause(
             Strategy {
-                macros: MacroStrategy::InvisibleMacros,
+                macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             infile_function,

@@ -41,7 +41,7 @@ pub(super) fn hints(
             let function_body = sema.to_function_body(function_id);
             function_body.fold_function(
                 Strategy {
-                    macros: MacroStrategy::VisibleMacros,
+                    macros: MacroStrategy::ExpandButIncludeMacroCall,
                     parens: ParenStrategy::InvisibleParens,
                 },
                 (),

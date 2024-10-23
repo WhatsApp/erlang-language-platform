@@ -59,7 +59,7 @@ fn dependent_header(
             {
                 body.body.fold_expr(
                     Strategy {
-                        macros: MacroStrategy::InvisibleMacros,
+                        macros: MacroStrategy::Expand,
                         parens: ParenStrategy::InvisibleParens,
                     },
                     body.expr,

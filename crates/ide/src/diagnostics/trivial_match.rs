@@ -78,7 +78,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
 
     in_clause.fold_clause(
         Strategy {
-            macros: MacroStrategy::InvisibleMacros,
+            macros: MacroStrategy::Expand,
             parens: ParenStrategy::InvisibleParens,
         },
         (),
