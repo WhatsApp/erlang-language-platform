@@ -141,10 +141,8 @@ pub enum ProjectModelError {
     NotInBuckProject,
     #[error("Rebar3 was not found. Try to run rebar3 --help from command line")]
     MissingRebar(#[source] std::io::Error),
-    #[error(
-        "build-info plugin was not installed. Please follow the instructions on https://github.com/WhatsApp/eqwalizer"
-    )]
-    NoBuildInfo,
+    #[error("rebar3 version too old. Minimum required version is 3.24.0.")]
+    NoManifest,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -980,7 +978,10 @@ impl Project {
     fn load_rebar_build_info(build: &RebarConfig) -> Result<TempPath> {
         let out_file = NamedTempFile::new()?.into_temp_path();
         let mut cmd = build.rebar3_command();
-        cmd.arg("build_info");
+        cmd.arg("experimental");
+        cmd.arg("manifest");
+        cmd.arg("--format");
+        cmd.arg("eetf");
         cmd.arg("--to");
         cmd.arg(&out_file);
 
@@ -1365,32 +1366,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_err_on_no_rebar_build_info() {
-        let spec = r#"
-        //- /rebar.config
-            {checkouts_dir, ["."]}.
-            {project_app_dirs, [
-                "app_a"
-            ]}.
-            {erl_opts, [debug_info]}.
-            {deps, []}.
-        //- /app_a/src/app.erl
-        -module(app).
-        "#;
-        let dir = FixtureWithProjectMeta::gen_project(spec);
-        let manifest = ProjectManifest::discover(
-            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
-        );
-        match manifest
-            .expect_err("Must be err")
-            .downcast_ref::<ProjectModelError>()
-        {
-            Some(ProjectModelError::NoBuildInfo) => (),
-            Some(err) => panic!("Wrong err {:?}", err),
-            None => panic!("Wrong error"),
-        };
-    }
     #[test]
     fn test_no_manifesto() {
         let spec = r#"

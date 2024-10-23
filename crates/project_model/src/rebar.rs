@@ -85,7 +85,8 @@ impl RebarConfig {
 fn check_build_info(config: &RebarConfig) -> Result<()> {
     let mut cmd = config.rebar3_command();
     cmd.arg("help");
-    cmd.arg("build_info");
+    cmd.arg("experimental");
+    cmd.arg("manifest");
     match cmd.output() {
         Ok(cmd) => {
             match (
@@ -94,15 +95,15 @@ fn check_build_info(config: &RebarConfig) -> Result<()> {
                 String::from_utf8_lossy(&cmd.stdout),
             ) {
                 (true, _, _) => Ok(()),
-                (_, Some(1), out) if out.contains("Unknown task build_info") => {
-                    bail!(ProjectModelError::NoBuildInfo)
+                (_, Some(1), out) if out.contains("Unknown task manifest") => {
+                    bail!(ProjectModelError::NoManifest)
                 }
-                (_, _, out) => bail!("Failed to run rebar3 help build_info: {:?}", out),
+                (_, _, out) => bail!("Failed to run rebar3 help experimental manifest: {:?}", out),
             }
         }
         Err(error) => {
-            warn!("rebar3 build_info is not available");
-            debug!("rebar3 help build_info: {}", error);
+            warn!("rebar3 manifest is not available");
+            debug!("rebar3 help experimental manifest: {}", error);
             bail!(ProjectModelError::MissingRebar(error))
         }
     }
@@ -169,7 +170,10 @@ impl RebarProject {
                     .map(into_string)
                     .collect::<Result<_>>()?,
                 include_dirs,
-                macros: into_vec(map_pop(&mut term, "macros")?)?,
+                macros: into_vec(map_pop(&mut term, "macros")?)?
+                    .into_iter()
+                    .map(|term: eetf::Term| into_tuple(term))
+                    .collect::<Result<_>>()?,
                 parse_transforms: into_vec(map_pop(&mut term, "parse_transforms")?)?,
                 app_type: is_dep,
                 include_path: vec![],
@@ -245,6 +249,12 @@ fn into_bin(term: eetf::Term) -> Result<Vec<u8>> {
 
 fn into_string(term: eetf::Term) -> Result<String> {
     Ok(String::from_utf8(into_bin(term)?)?)
+}
+
+fn into_tuple(mut term: eetf::Term) -> Result<eetf::Term> {
+    let key = map_pop(&mut term, "key")?;
+    let value = map_pop(&mut term, "value")?;
+    Ok(eetf::Term::Tuple(eetf::Tuple::from(vec![key, value])))
 }
 
 fn into_abs_path(term: eetf::Term) -> Result<AbsPathBuf> {

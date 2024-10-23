@@ -1,3 +1,0 @@
-{application, wa_utils,
-  [{description, "wa_utils"}, {vsn, "inplace"}, {applications, [kernel, stdlib]}]
-}.
