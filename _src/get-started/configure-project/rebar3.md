@@ -4,27 +4,7 @@ sidebar_position: 3
 
 # rebar3
 
-ELP can auto-discover projects which contain a `rebar.config` or `rebar.config.script`. To do so, it requires an additional rebar3 plugin, named the _build_info_ plugin.
-
-:::info
-
-We are in the process of [upstreaming](https://github.com/erlang/rebar3/pull/2859) the plugin to rebar3, so this additional step will hopefully not be necessary with newer versions of rebar3.
-
-:::
-
-## Install the `rebar3` `build-info` plugin
-
-To enable the plugin globally, add the following lines to your `~/.config/rebar3/rebar.config` file:
-
-```erlang
-{project_plugins, [
-  {eqwalizer_rebar3,
-    {git_subdir,
-        "https://github.com/whatsapp/eqwalizer.git",
-        {branch, "main"},
-        "eqwalizer_rebar3"}}
-]}.
-```
+ELP can auto-discover projects which contain a `rebar.config` or `rebar.config.script`. This requires rebar3 `3.24.0` or greater.
 
 ## Eqwalizer Support
 
@@ -49,9 +29,5 @@ If you, instead, prefer to disable eqWAlizer support altogether (you will lose f
 Run the following command in the project root:
 
 ```
-$ rebar3 as test help build_info
+$ rebar3 as test help experimental manifest
 ```
-
-#### build-info plugin was not installed
-
-You need the `build-info` plugin for `rebar3` to be installed. Please refer to the [installation instructions](#install-the-rebar3-build-info-plugin).
