@@ -9,6 +9,7 @@
 
 //! Renaming functionality.
 
+use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::rename::format_err;
 use elp_ide_db::rename::rename_error;
@@ -24,9 +25,18 @@ use elp_ide_db::SymbolDefinition;
 use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
+use elp_syntax::AstPtr;
 use elp_syntax::SyntaxNode;
+use hir::AnyExprId;
+use hir::AnyExprRef;
+use hir::Body;
+use hir::BodySourceMap;
+use hir::Expr;
+use hir::File;
 use hir::InFile;
+use hir::Pat;
 use hir::Semantic;
+use hir::VarDef;
 
 // Feature: Rename
 //
@@ -128,12 +138,53 @@ fn find_definitions(
     }
 }
 
+/// Rename a variable.  Currently only in a function clause body, will
+/// extend in future to other body types.
+#[allow(dead_code)]
+pub fn rename_var(
+    sema: &Semantic,
+    body: &Body,
+    body_map: &BodySourceMap,
+    file_id: FileId,
+    var_to_rename: &AnyExprId,
+    new_name: &String,
+    parens_needed_in_context: &dyn Fn(&ast::Name) -> bool,
+) -> Option<SourceChange> {
+    let var = match &body.get_any(*var_to_rename) {
+        AnyExprRef::Expr(Expr::Var(var)) => Some(var),
+        AnyExprRef::Pat(Pat::Var(var)) => Some(var),
+        _ => None,
+    }?;
+    let var_ast = body_map.any(*var_to_rename)?;
+    let parse = sema.parse(file_id);
+    let var_ast = ast::Var::cast(var_ast.to_node(&parse)?.syntax().clone())?;
+    let var_def = VarDef {
+        file: File { file_id },
+        var: AstPtr::new(&var_ast),
+        hir_var: *var,
+    };
+    let var_symbol = SymbolDefinition::Var(var_def);
+    let source_change = var_symbol
+        .rename(sema, new_name, parens_needed_in_context, SafetyChecks::Yes)
+        .ok()?;
+    Some(source_change)
+}
+
 #[cfg(test)]
 mod tests {
     use elp_ide_db::elp_base_db::assert_eq_text;
+    use elp_ide_db::elp_base_db::fixture::WithFixture as _;
+    use elp_ide_db::RootDatabase;
     use elp_project_model::test_fixture::trim_indent;
+    use elp_syntax::algo;
+    use elp_syntax::ast;
+    use elp_syntax::AstNode;
+    use hir::AnyExprId;
+    use hir::InFile;
+    use hir::Semantic;
     use text_edit::TextEdit;
 
+    use super::rename_var;
     use crate::fixture;
 
     #[track_caller]
@@ -1024,6 +1075,75 @@ mod tests {
             -spec x(?TY) -> ok.
             x(_) -> newFoo().
             newFoo() -> ok.
+             "#,
+        );
+    }
+
+    // ---------------------------------
+
+    #[track_caller]
+    fn check_api_call(new_name: &str, fixture_before: &str, fixture_after_str: &str) {
+        let fixture_after_str = &trim_indent(fixture_after_str);
+        let analysis_after = fixture::multi_file(fixture_after_str);
+
+        let (db, position, _) = RootDatabase::with_position(fixture_before);
+        let sema = Semantic::new(&db);
+
+        let file_id = position.file_id;
+        let source_file = sema.parse(file_id);
+        let syntax = source_file.value.syntax();
+
+        let var_ast = algo::find_node_at_offset::<ast::Var>(syntax, position.offset).unwrap();
+        let expr_ast = ast::Expr::cast(var_ast.syntax().clone()).unwrap();
+        let in_clause = sema
+            .to_expr(InFile::new(position.file_id, &expr_ast))
+            .unwrap();
+        let body_map = in_clause.get_body_map();
+        let body = in_clause.body();
+        let rename_result = rename_var(
+            &sema,
+            &body,
+            &body_map,
+            position.file_id,
+            &AnyExprId::Expr(in_clause.value),
+            &new_name.to_string(),
+            &|_| false,
+        );
+
+        match rename_result {
+            Some(source_change) => {
+                for edit in source_change.source_file_edits {
+                    let mut text_edit_builder = TextEdit::builder();
+                    let file_id = edit.0;
+                    for indel in edit.1.into_iter() {
+                        text_edit_builder.replace(indel.delete, indel.insert);
+                    }
+                    let mut result = sema.db.file_text(file_id).to_string();
+                    let edit = text_edit_builder.finish();
+                    edit.apply(&mut result);
+                    let expected = analysis_after.file_text(file_id).unwrap().to_string();
+                    assert_eq_text!(&*expected, &*result);
+                }
+            }
+            None => {
+                panic!("Rename to '{}' failed", new_name)
+            }
+        };
+    }
+
+    #[test]
+    fn rename_var_api_call() {
+        check_api_call(
+            "NEW",
+            r#"
+            -module(main).
+            a_fun(Arg) ->
+              Ar~g + 1.
+             "#,
+            r#"
+            -module(main).
+            a_fun(NEW) ->
+              NEW + 1.
              "#,
         );
     }

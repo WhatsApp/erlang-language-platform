@@ -468,7 +468,7 @@ pub struct VarDef {
     pub file: File,
     // Restrict access to the crate only, so we can ensure it is
     // reconstituted against the correct source.
-    pub(crate) var: AstPtr<ast::Var>,
+    pub var: AstPtr<ast::Var>,
     pub hir_var: Var,
 }
 
