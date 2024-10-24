@@ -152,7 +152,8 @@ fn try_rename_usages(
             return sym_def
                 .rename(
                     sema,
-                    &|_| new_name.clone(),
+                    &new_name,
+                    &|_| false,
                     elp_ide_db::rename::SafetyChecks::No,
                 )
                 .ok();

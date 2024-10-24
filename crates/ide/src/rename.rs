@@ -47,13 +47,13 @@ pub(crate) fn rename(
     let file_id = position.file_id;
     let source_file = sema.parse(file_id);
     let syntax = source_file.value.syntax();
-    let new_name = new_name.trim();
+    let new_name = new_name.trim().to_string();
 
     let defs = find_definitions(&sema, syntax, position)?;
 
     let ops: RenameResult<Vec<SourceChange>> = defs
         .iter()
-        .map(|def| def.rename(&sema, &|_| new_name.to_string(), SafetyChecks::Yes))
+        .map(|def| def.rename(&sema, &new_name, &|_| false, SafetyChecks::Yes))
         .collect();
 
     ops?.into_iter()

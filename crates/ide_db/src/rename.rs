@@ -54,11 +54,11 @@ pub use _rename_error as rename_error;
 // ---------------------------------------------------------------------
 
 // Delegate checking name validity to the parser
-pub fn is_valid_var_name(new_name: String) -> bool {
+pub fn is_valid_var_name(new_name: &String) -> bool {
     let parse = ast::SourceFile::parse_text(format!("foo() -> {} = 1.", new_name).as_str());
     parse.tree().syntax().descendants().any(|node| {
         if let Some(var) = ast::Var::cast(node) {
-            var.syntax().text().to_string() == new_name
+            var.syntax().text().to_string() == *new_name
         } else {
             false
         }
@@ -66,11 +66,11 @@ pub fn is_valid_var_name(new_name: String) -> bool {
 }
 
 // Delegate checking name validity to the parser
-pub fn is_valid_function_name(new_name: String) -> bool {
+pub fn is_valid_function_name(new_name: &String) -> bool {
     let parse = ast::SourceFile::parse_text(format!("{}() -> ok.", new_name).as_str());
     match parse.tree().forms().next() {
         Some(ast::Form::FunDecl(fun)) => match fun.name() {
-            Some(ast::Name::Atom(atom)) => atom.syntax().text().to_string() == new_name,
+            Some(ast::Name::Atom(atom)) => atom.syntax().text().to_string() == *new_name,
             _ => false,
         },
         _ => false,
@@ -87,7 +87,8 @@ impl SymbolDefinition {
     pub fn rename(
         &self,
         sema: &Semantic,
-        get_name: &dyn Fn(Option<&ast::Name>) -> String,
+        new_name: &String,
+        parens_needed_in_context: &dyn Fn(&ast::Name) -> bool,
         safety_check: SafetyChecks,
     ) -> RenameResult<SourceChange> {
         match self.clone() {
@@ -95,17 +96,17 @@ impl SymbolDefinition {
                 rename_error!("Cannot rename module")
             }
             SymbolDefinition::Function(fun) => {
-                if safety_check == SafetyChecks::Yes && !is_valid_function_name(get_name(None)) {
-                    rename_error!("Invalid new function name: '{}'", get_name(None));
+                if safety_check == SafetyChecks::Yes && !is_valid_function_name(new_name) {
+                    rename_error!("Invalid new function name: '{}'", new_name);
                 }
 
                 let arity = fun.name.arity();
                 if safety_check == SafetyChecks::Yes
-                    && !is_safe_function(sema, fun.file.file_id, &get_name(None), arity)
+                    && !is_safe_function(sema, fun.file.file_id, new_name, arity)
                 {
-                    rename_error!("Function '{}/{}' already in scope", get_name(None), arity);
+                    rename_error!("Function '{}/{}' already in scope", new_name, arity);
                 } else {
-                    self.rename_reference(sema, get_name, safety_check)
+                    self.rename_reference(sema, new_name, parens_needed_in_context, safety_check)
                 }
             }
             SymbolDefinition::Record(_) => {
@@ -127,11 +128,11 @@ impl SymbolDefinition {
                 rename_error!("Cannot rename header")
             }
             SymbolDefinition::Var(_) => {
-                if safety_check == SafetyChecks::Yes && !is_valid_var_name(get_name(None)) {
-                    rename_error!("Invalid new variable name: '{}'", get_name(None));
+                if safety_check == SafetyChecks::Yes && !is_valid_var_name(new_name) {
+                    rename_error!("Invalid new variable name: '{}'", new_name);
                 }
 
-                self.rename_reference(sema, get_name, safety_check)
+                self.rename_reference(sema, new_name, parens_needed_in_context, safety_check)
             }
         }
     }
@@ -156,7 +157,8 @@ impl SymbolDefinition {
     fn rename_reference(
         &self,
         sema: &Semantic,
-        get_name: &dyn Fn(Option<&ast::Name>) -> String,
+        new_name: &String,
+        parens_needed_in_context: &dyn Fn(&ast::Name) -> bool,
         safety_check: SafetyChecks,
     ) -> RenameResult<SourceChange> {
         let file_id = self.file().file_id;
@@ -179,7 +181,7 @@ impl SymbolDefinition {
                     // now.
                     let arity = function.name.arity();
                     let mut problems = usages.iter().filter(|(file_id, _refs)| {
-                        !is_safe_function(sema, *file_id, &get_name(None), arity)
+                        !is_safe_function(sema, *file_id, new_name, arity)
                     });
                     // Report the first one only, an existence proof of problems
                     if let Some((file_id, _)) = problems.next() {
@@ -187,16 +189,12 @@ impl SymbolDefinition {
                             if let Some(module_name) = sema.module_name(file_id) {
                                 rename_error!(
                                     "Function '{}/{}' already in scope in module '{}'",
-                                    get_name(None),
+                                    new_name,
                                     arity,
                                     module_name.as_str()
                                 );
                             } else {
-                                rename_error!(
-                                    "Function '{}/{}' already in scope",
-                                    get_name(None),
-                                    arity
-                                );
+                                rename_error!("Function '{}/{}' already in scope", new_name, arity);
                             }
                         }
                     };
@@ -207,7 +205,12 @@ impl SymbolDefinition {
                     .chain(once((file_id, &def_usages[..])))
                     .collect();
 
-                source_edit_from_usages(&mut source_change, usages, get_name);
+                source_edit_from_usages(
+                    &mut source_change,
+                    usages,
+                    new_name,
+                    parens_needed_in_context,
+                );
                 Ok(source_change)
             }
             SymbolDefinition::Var(var) => {
@@ -224,7 +227,6 @@ impl SymbolDefinition {
                     file_id: var.file.file_id,
                     value: &var.source(sema.db.upcast()),
                 };
-                let new_name = get_name(None);
                 if safety_check == SafetyChecks::Yes {
                     if !is_safe_var_usages(sema, infile_var, &usages, &new_name) {
                         rename_error!("Name '{}' already in scope", new_name);
@@ -235,9 +237,14 @@ impl SymbolDefinition {
                     }
                 }
 
-                let (file_id, edit) = source_edit_from_def(sema, self.clone(), get_name(None))?;
+                let (file_id, edit) = source_edit_from_def(sema, self.clone(), new_name)?;
                 source_change.insert_source_edit(file_id, edit);
-                source_edit_from_usages(&mut source_change, usages, get_name);
+                source_edit_from_usages(
+                    &mut source_change,
+                    usages,
+                    new_name,
+                    parens_needed_in_context,
+                );
                 Ok(source_change)
             }
             // Note: This is basically an internal error, this function is called from
@@ -252,7 +259,8 @@ impl SymbolDefinition {
 fn source_edit_from_usages(
     source_change: &mut SourceChange,
     usages: Vec<(FileId, &[NameLike])>,
-    get_name: &dyn Fn(Option<&ast::Name>) -> String,
+    new_name: &String,
+    parens_needed_in_context: &dyn Fn(&ast::Name) -> bool,
 ) {
     source_change.extend(usages.into_iter().map(|(file_id, references)| {
         (
@@ -265,7 +273,8 @@ fn source_edit_from_usages(
                         NameLike::String(_) => None,
                     })
                     .collect::<Vec<_>>(),
-                get_name,
+                new_name,
+                parens_needed_in_context,
             ),
         )
     }));
@@ -273,12 +282,17 @@ fn source_edit_from_usages(
 
 pub fn source_edit_from_references(
     references: &[ast::Name],
-    get_name: &dyn Fn(Option<&ast::Name>) -> String,
+    new_name: &String,
+    parens_needed_in_context: &dyn Fn(&ast::Name) -> bool,
 ) -> TextEdit {
     let mut edit = TextEdit::builder();
     let mut edited_ranges = Vec::new();
     for name in references {
-        let new_name = get_name(Some(name));
+        let new_name = if parens_needed_in_context(name) {
+            format!("({})", new_name)
+        } else {
+            new_name.clone()
+        };
         let range = name.syntax().text_range();
         edit.replace(range, new_name.to_string());
         edited_ranges.push(range.start());
@@ -290,7 +304,7 @@ pub fn source_edit_from_references(
 fn source_edit_from_def(
     sema: &Semantic,
     def: SymbolDefinition,
-    new_name: String,
+    new_name: &String,
 ) -> RenameResult<(FileId, TextEdit)> {
     let FileRange { file_id, range } = def
         .range_for_rename(sema)
@@ -298,7 +312,7 @@ fn source_edit_from_def(
 
     let mut edit = TextEdit::builder();
     if edit.is_empty() {
-        edit.replace(range, new_name);
+        edit.replace(range, new_name.clone());
     }
     Ok((file_id, edit.finish()))
 }

@@ -128,7 +128,7 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         // assignments/usages
         let rename_ops: RenameResult<Vec<SourceChange>> = var_defs
             .iter()
-            .map(|(def, nv)| def.rename(&ctx.sema, &|_| nv.bumped(), SafetyChecks::No))
+            .map(|(def, nv)| def.rename(&ctx.sema, &nv.bumped(), &|_| false, SafetyChecks::No))
             .collect();
 
         let rename_op = match rename_ops {

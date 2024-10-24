@@ -394,14 +394,11 @@ fn inline_simple_function_clause(
         };
         if let Some(defs) = defs {
             let base_name = val.syntax().text().to_string();
-            let parened_name = format!("({})", base_name);
             for def in defs {
                 match def.rename(
                     sema,
-                    &|mvar| {
-                        param_substitution(mvar, base_name.clone(), parened_name.clone(), &val)
-                            .unwrap_or_else(|| base_name.clone())
-                    },
+                    &base_name,
+                    &|mvar| param_substitution(mvar, &val),
                     SafetyChecks::No,
                 ) {
                     Ok(change) => {
@@ -442,22 +439,13 @@ fn inline_simple_function_clause(
     Some((replacement_range, change_indent(delta_indent, edited_text)))
 }
 
-fn param_substitution(
-    mvar: Option<&ast::Name>,
-    base_name: String,
-    parened_name: String,
-    val: &ast::Expr,
-) -> Option<String> {
-    if let Some(ast::Name::Var(var)) = mvar {
-        let (_, needed) = parens_needed(val, var)?;
-        if needed {
-            Some(parened_name)
-        } else {
-            Some(base_name)
+fn param_substitution(mvar: &ast::Name, val: &ast::Expr) -> bool {
+    if let ast::Name::Var(var) = mvar {
+        if let Some((_, needed)) = parens_needed(val, var) {
+            return needed;
         }
-    } else {
-        Some(base_name)
     }
+    false
 }
 
 fn has_vars_in_clause(sema: &Semantic, file_id: FileId, fun_clause: &ast::FunctionClause) -> bool {
