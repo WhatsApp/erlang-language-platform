@@ -17,18 +17,20 @@ use anyhow::bail;
 use anyhow::Result;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
-use log::debug;
-use log::warn;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8PathBuf;
+use semver::Version;
+use semver::VersionReq;
 
 use crate::AppName;
 use crate::AppType;
 use crate::CommandProxy;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
+
+pub const REQUIRED_REBAR3_VERSION: &str = ">=3.24.0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RebarProject {
@@ -59,7 +61,7 @@ impl RebarConfig {
             profile,
         };
 
-        check_build_info(&config)?;
+        check_version(&config)?;
         Ok(config)
     }
 
@@ -82,29 +84,52 @@ impl RebarConfig {
     }
 }
 
-fn check_build_info(config: &RebarConfig) -> Result<()> {
+fn rebar3_version(config: &RebarConfig) -> Result<String> {
     let mut cmd = config.rebar3_command();
-    cmd.arg("help");
-    cmd.arg("experimental");
-    cmd.arg("manifest");
-    match cmd.output() {
-        Ok(cmd) => {
-            match (
-                cmd.status.success(),
-                cmd.status.code(),
-                String::from_utf8_lossy(&cmd.stdout),
-            ) {
-                (true, _, _) => Ok(()),
-                (_, Some(1), out) if out.contains("Unknown task manifest") => {
-                    bail!(ProjectModelError::NoManifest)
-                }
-                (_, _, out) => bail!("Failed to run rebar3 help experimental manifest: {:?}", out),
-            }
+    cmd.arg("version");
+    let output = cmd.output()?;
+    match (
+        output.status.success(),
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+    ) {
+        (true, Some(0), version) => {
+            // Sometimes the rebar3 output contains information other than the version,
+            // which is guaranteed to be the last line.
+            let version = version
+                .lines()
+                .last()
+                .ok_or(ProjectModelError::RebarVersionError {
+                    error: format!("Cannot extract version line from {}", version.clone()),
+                })?;
+            Ok(version.into())
         }
-        Err(error) => {
-            warn!("rebar3 manifest is not available");
-            debug!("rebar3 help experimental manifest: {}", error);
-            bail!(ProjectModelError::MissingRebar(error))
+        (_, _, out) => {
+            bail!(ProjectModelError::RebarVersionError {
+                error: out.to_string()
+            })
+        }
+    }
+}
+
+fn check_version(config: &RebarConfig) -> Result<bool> {
+    let version = rebar3_version(config)?;
+    let required = VersionReq::parse(&REQUIRED_REBAR3_VERSION)?;
+    let version = Version::parse(&version.split(' ').nth(1).ok_or(
+        ProjectModelError::RebarVersionError {
+            error: format!("Cannot extract version from {}", version.clone()),
+        },
+    )?)
+    .map_err(|err| ProjectModelError::RebarVersionError {
+        error: format!("{} Version: {}", err.to_string(), version.clone()),
+    })?;
+    match required.matches(&version) {
+        true => Ok(true),
+        false => {
+            bail!(ProjectModelError::RebarVersionTooOld {
+                expected: required.to_string(),
+                actual: version.to_string()
+            })
         }
     }
 }

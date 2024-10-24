@@ -139,10 +139,10 @@ pub enum ProjectModelError {
     MissingBuck(#[source] std::io::Error),
     #[error("Not in buck project")]
     NotInBuckProject,
-    #[error("Rebar3 was not found. Try to run rebar3 --help from command line")]
-    MissingRebar(#[source] std::io::Error),
-    #[error("rebar3 version too old. Minimum required version is 3.24.0.")]
-    NoManifest,
+    #[error("Could not extract version information from rebar3. Error: {error:?}")]
+    RebarVersionError { error: String },
+    #[error("rebar3 version too old (expected {expected:?}, actual {actual:?})")]
+    RebarVersionTooOld { expected: String, actual: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

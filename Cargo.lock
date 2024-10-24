@@ -638,6 +638,7 @@ dependencies = [
  "parking_lot 0.12.3",
  "paths",
  "regex",
+ "semver",
  "serde",
  "serde_json",
  "stdx",

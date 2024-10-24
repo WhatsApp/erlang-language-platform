@@ -77,6 +77,7 @@ rust-ini = "0.18"
 rustc-hash = "1.1.0"
 rustyline = "11.0.0"
 salsa = "0.17.0-pre.2"
+semver = "1.0.23"
 serde = { version = "1.0.206", features = ["derive"] }
 serde_json = "1.0.124"
 serde_path_to_error = "0.1.16"
