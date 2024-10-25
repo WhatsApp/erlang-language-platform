@@ -54,7 +54,7 @@ fn in_anonymous_fun(def_fb: &InFunctionClauseBody<&FunctionDef>, parents: &[Pare
             },
             _ => false,
         },
-        ParentId::Constructor(_) => false,
+        _ => false,
     })
 }
 

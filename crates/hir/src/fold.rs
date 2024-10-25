@@ -298,16 +298,17 @@ pub enum On {
     Exit,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Constructor {
     Guard,
     Arg(usize),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ParentId {
     HirIdx(HirIdx),
     Constructor(Constructor),
+    TopLevel,
 }
 
 #[derive(Debug)]
@@ -380,6 +381,10 @@ impl<'a> AnyCallBackCtx<'a> {
                 }
             })
             .copied()
+    }
+
+    pub fn parent(&self) -> ParentId {
+        self.parents.last().copied().unwrap_or(ParentId::TopLevel)
     }
 }
 
@@ -471,7 +476,7 @@ impl<'a, T> FoldCtx<'a, T> {
             body,
             strategy,
             macro_stack: Vec::default(),
-            parents: Vec::default(),
+            parents: vec![ParentId::TopLevel],
             callback,
         }
     }
@@ -2215,7 +2220,7 @@ bar() ->
                                 },
                                 _ => false,
                             },
-                            ParentId::Constructor(_) => false,
+                            _ => false,
                         })
                     } else {
                         acc
