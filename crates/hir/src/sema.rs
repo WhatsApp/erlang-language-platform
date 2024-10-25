@@ -315,7 +315,7 @@ impl<'db> Semantic<'db> {
         let resolver = self.ast_clause_resolver(var_in.with_value(function_clause_id))?;
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(var_in.value.clone()));
         if let Some(expr_id) = resolver.expr_id_ast(var_in.with_value(&expr)) {
-            let scope = resolver.value.scopes.scope_for_expr(expr_id)?;
+            let scope = resolver.value.scope_for_expr(expr_id)?;
             Some((resolver.value, scope))
         } else {
             let pat_id = resolver.pat_id_ast(var_in.with_value(&expr))?;
@@ -1478,6 +1478,10 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
 
     pub fn tree_print_any_expr(&self, expr: AnyExprId) -> String {
         self.body().tree_print_any_expr(self.sema.db.upcast(), expr)
+    }
+
+    pub fn tree_print(&self) -> String {
+        self.body.tree_print(self.sema.db.upcast())
     }
 }
 

@@ -799,7 +799,7 @@ fn call_vars_in_scope(
     let resolver = sema.function_clause_resolver(file_id, call.syntax())?;
     let call_expr_id =
         resolver.expr_id_ast(InFile::new(file_id, &ast::Expr::Call(call.clone())))?;
-    let scope = resolver.value.scopes.scope_for_expr(call_expr_id)?;
+    let scope = resolver.value.scope_for_expr(call_expr_id)?;
     let vars = resolver.value.all_vars_in_scope(scope);
     Some(vars)
 }

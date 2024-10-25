@@ -59,6 +59,10 @@ impl Resolver {
             .find_map(|scope| self.scopes.entries(scope).lookup(var))
     }
 
+    pub fn scope_for_expr(&self, expr_id: ExprId) -> Option<ScopeId> {
+        self.scopes.scope_for_expr(expr_id)
+    }
+
     pub fn all_vars_in_scope(&self, scope: ScopeId) -> FxHashSet<Var> {
         self.scopes
             .scope_chain(Some(scope))

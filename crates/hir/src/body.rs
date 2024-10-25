@@ -11,6 +11,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
@@ -959,6 +960,10 @@ impl<T: AstNode> InFileAstPtr<T> {
         } else {
             None
         }
+    }
+    pub fn to_ast(&self, db: &dyn SourceDatabase) -> T {
+        let parse = db.parse(self.file_id());
+        self.0.value.to_node(parse.tree().syntax())
     }
 
     pub fn range(&self) -> TextRange {
