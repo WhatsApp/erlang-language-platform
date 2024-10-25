@@ -416,6 +416,21 @@ fn extend_function_range_for_delete(orig_range: TextRange, last_syntax: &SyntaxN
     TextRange::new(start, end)
 }
 
+/// When we want to delete an expression, extend the delete range to
+/// remove preceding whitespace and any trailing separator.
+pub fn extend_delete_range(syntax: &SyntaxNode) -> TextRange {
+    let orig_range = syntax.text_range();
+    let start = match skip_ws(syntax.prev_sibling_or_token()) {
+        Some(start) => start.start(),
+        None => orig_range.start(),
+    };
+    let end = match skip_trailing_separator(syntax) {
+        Some(end) => end.end(),
+        None => orig_range.end(),
+    };
+    TextRange::new(start, end)
+}
+
 // ---------------------------------------------------------------------
 
 /// Add an option to the `suite/0` function in a test suite.

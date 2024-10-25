@@ -19,8 +19,7 @@ use hir::Semantic;
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;
 use crate::helpers;
-use crate::helpers::skip_trailing_separator;
-use crate::helpers::skip_ws;
+use crate::helpers::extend_delete_range;
 
 // Assist: inline_local_variable
 //
@@ -64,18 +63,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         target,
         None,
         move |builder| {
-            let delete_range = delete_definition.then(|| {
-                let orig_range = match_expr.syntax().text_range();
-                let start = match skip_ws(match_expr.syntax().prev_sibling_or_token()) {
-                    Some(start) => start.start(),
-                    None => orig_range.start(),
-                };
-                let end = match skip_trailing_separator(match_expr.syntax()) {
-                    Some(end) => end.end(),
-                    None => orig_range.end(),
-                };
-                TextRange::new(start, end)
-            });
+            let delete_range = delete_definition.then(|| extend_delete_range(match_expr.syntax()));
 
             let init_str = rhs.syntax().text().to_string();
             let init_in_paren = format!("({})", &init_str);
