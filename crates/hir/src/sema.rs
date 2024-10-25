@@ -1035,20 +1035,19 @@ fn fold_function_clause_body<'a, T>(
             callback,
         ),
         _ => {
-            let initial =
-                function_clause_body
-                    .clause
-                    .pats
-                    .iter()
-                    .fold(initial, |acc_inner, pat_id| {
-                        FoldCtx::fold_pat(
-                            strategy,
-                            &function_clause_body.body,
-                            *pat_id,
-                            acc_inner,
-                            callback,
-                        )
-                    });
+            let initial = function_clause_body.clause.pats.iter().enumerate().fold(
+                initial,
+                |acc_inner, (idx, pat_id)| {
+                    FoldCtx::fold_pat_as_arg(
+                        strategy,
+                        &function_clause_body.body,
+                        *pat_id,
+                        acc_inner,
+                        idx,
+                        callback,
+                    )
+                },
+            );
 
             let initial = function_clause_body.clause.guards.iter().flatten().fold(
                 initial,

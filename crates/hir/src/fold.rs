@@ -301,6 +301,7 @@ pub enum On {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Constructor {
     Guard,
+    Arg(usize),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -364,6 +365,21 @@ impl<'a> AnyCallBackCtx<'a> {
                 false
             }
         })
+    }
+
+    /// If the current item is part of an argument, return the
+    /// zero-based argument number in a `Some` value.
+    pub fn in_arg(&self) -> Option<usize> {
+        self.parents
+            .iter()
+            .find_map(|parent_idx| {
+                if let ParentId::Constructor(Constructor::Arg(i)) = parent_idx {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .copied()
     }
 }
 
@@ -528,6 +544,19 @@ impl<'a, T> FoldCtx<'a, T> {
             .do_fold_pat(pat_id, initial)
     }
 
+    pub fn fold_pat_as_arg(
+        strategy: Strategy,
+        body: &'a Body,
+        pat_id: PatId,
+        initial: T,
+        arg_id: usize,
+        callback: AnyCallBack<'a, T>,
+    ) -> T {
+        FoldCtx::new(strategy, &fold_body(strategy, body), body.origin, callback)
+            .push_parents(ParentId::Constructor(Constructor::Arg(arg_id)))
+            .do_fold_pat(pat_id, initial)
+    }
+
     fn in_macro(&self) -> Option<HirIdx> {
         self.macro_stack.first().copied()
     }
@@ -574,7 +603,7 @@ impl<'a, T> FoldCtx<'a, T> {
     ) -> T {
         let fold_body = &fold_body(strategy, body);
         let mut ctx = FoldCtx::new(strategy, &fold_body, body.origin, callback);
-        let r = ctx.do_fold_type_exprs(&spec_sig.args, initial);
+        let r = ctx.do_fold_args_type_exprs(&spec_sig.args, initial);
         ctx.macro_stack = Vec::default();
         let r = ctx.do_fold_type_expr(spec_sig.result, r);
 
@@ -1090,6 +1119,24 @@ impl<'a, T> FoldCtx<'a, T> {
         types.iter().fold(initial, |acc, type_expr_id| {
             self.do_fold_type_expr(*type_expr_id, acc)
         })
+    }
+
+    fn do_fold_args_type_exprs(&mut self, types: &[TypeExprId], initial: T) -> T {
+        types
+            .iter()
+            .enumerate()
+            .fold(initial, |acc, (idx, type_expr_id)| {
+                self.parents
+                    .push(ParentId::Constructor(Constructor::Arg(idx)));
+                let r = self.do_fold_type_expr(*type_expr_id, acc);
+                self.parents.pop();
+                r
+            })
+    }
+
+    fn push_parents(mut self, parent: ParentId) -> Self {
+        self.parents.push(parent);
+        self
     }
 }
 
@@ -2209,6 +2256,73 @@ bar() ->
     }
 
     // -----------------------------------------------------------------
+
+    #[track_caller]
+    fn in_function_args(fixture_str: &str, expected: (usize, usize)) {
+        let (db, position, _diagnostics_enabled) = TestDB::with_position(fixture_str);
+        let sema = Semantic::new(&db);
+        let file_id = position.file_id;
+
+        let (in_arg, not_in_arg) = fold_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            (0, 0),
+            &mut |acc @ (in_arg, not_in_arg), ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Var(_)) => {
+                    if ctx.in_arg().is_some() {
+                        (in_arg + 1, not_in_arg)
+                    } else {
+                        (in_arg, not_in_arg + 1)
+                    }
+                }
+                AnyExpr::Pat(Pat::Var(_)) => {
+                    if ctx.in_arg().is_some() {
+                        (in_arg + 1, not_in_arg)
+                    } else {
+                        (in_arg, not_in_arg + 1)
+                    }
+                }
+                AnyExpr::TypeExpr(TypeExpr::Call { .. }) => {
+                    if ctx.in_arg().is_some() {
+                        (in_arg + 1, not_in_arg)
+                    } else {
+                        (in_arg, not_in_arg + 1)
+                    }
+                }
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id| acc,
+        );
+
+        assert_eq!((in_arg, not_in_arg), expected);
+    }
+
+    #[test]
+    fn is_in_function_args() {
+        let fixture_str = r#"
+               -module(a_module).
+               -export([bar/0]).
+               bar(X~X) ->
+                 {XX,XX}.
+               "#;
+        in_function_args(fixture_str, (1, 2));
+    }
+
+    #[test]
+    fn is_in_spec_args() {
+        let fixture_str = r#"
+               -module(a_module).
+               -export([bar/0]).
+               -spec bar(i~nteger(), integer()) -> foo().
+               "#;
+        in_function_args(fixture_str, (2, 1));
+    }
+
+    // -----------------------------------------------------------------
     // Start of testing paren visibility
 
     #[track_caller]
@@ -2255,7 +2369,7 @@ bar() ->
     fn parens_basic() {
         let fixture_str = r#"
               foo(A) ->
-                X = (A + (1 * 2)). 
+                X = (A + (1 * 2)).
              "#;
         count_parens(fixture_str, 2);
     }
