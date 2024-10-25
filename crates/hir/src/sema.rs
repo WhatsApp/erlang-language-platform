@@ -47,12 +47,10 @@ use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
 use crate::fold::AnyCallBackCtx;
-use crate::fold::Constructor;
 use crate::fold::Fold;
 use crate::fold::FoldCtx;
 use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
-use crate::fold::ParentId;
 use crate::fold::Strategy;
 pub use crate::intern::InternDatabase;
 pub use crate::intern::InternDatabaseStorage;
@@ -894,12 +892,11 @@ impl<'db> Semantic<'db> {
                 let function_id = InFile::new(file_id, *function_id);
                 let body = self.db.function_clause_body(function_id);
 
-                fold_function_clause_body(
+                body.fold(
                     Strategy {
                         macros: MacroStrategy::Expand,
                         parens: ParenStrategy::InvisibleParens,
                     },
-                    &body,
                     (),
                     &mut |acc, ctx| {
                         if let Some(mut resolver) = self.clause_resolver(function_id) {
@@ -1014,70 +1011,8 @@ fn fold_function_body<'a, T>(
         .clauses
         .iter()
         .fold(initial, |acc, (clause_id, clause)| {
-            fold_function_clause_body(strategy, clause, acc, &mut |acc, ctx| {
-                callback(acc, clause_id, ctx)
-            })
+            clause.fold(strategy, acc, &mut |acc, ctx| callback(acc, clause_id, ctx))
         })
-}
-
-fn fold_function_clause_body<'a, T>(
-    strategy: Strategy,
-    function_clause_body: &FunctionClauseBody,
-    initial: T,
-    callback: AnyCallBack<'a, T>,
-) -> T {
-    match &function_clause_body.from_macro {
-        Some(from_macro) if strategy.macros == MacroStrategy::DoNotExpand => FoldCtx::fold_exprs(
-            strategy,
-            &function_clause_body.body,
-            &from_macro.args,
-            initial,
-            callback,
-        ),
-        _ => {
-            let initial = function_clause_body.clause.pats.iter().enumerate().fold(
-                initial,
-                |acc_inner, (idx, pat_id)| {
-                    FoldCtx::fold_pat_as_arg(
-                        strategy,
-                        &function_clause_body.body,
-                        *pat_id,
-                        acc_inner,
-                        idx,
-                        callback,
-                    )
-                },
-            );
-
-            let initial = function_clause_body.clause.guards.iter().flatten().fold(
-                initial,
-                |acc_inner, expr_id| {
-                    FoldCtx::fold_expr_with_parents(
-                        strategy,
-                        &function_clause_body.body,
-                        *expr_id,
-                        vec![ParentId::Constructor(Constructor::Guard)],
-                        acc_inner,
-                        callback,
-                    )
-                },
-            );
-
-            function_clause_body
-                .clause
-                .exprs
-                .iter()
-                .fold(initial, |acc_inner, expr_id| {
-                    FoldCtx::fold_expr(
-                        strategy,
-                        &function_clause_body.body,
-                        *expr_id,
-                        acc_inner,
-                        callback,
-                    )
-                })
-        }
-    }
 }
 
 // ---------------------------------------------------------------------
@@ -1425,7 +1360,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         initial: R,
         callback: AnyCallBack<'a, R>,
     ) -> R {
-        fold_function_clause_body(strategy, &self.body, initial, callback)
+        self.body.fold(strategy, initial, callback)
     }
 
     pub fn range(&self) -> TextRange {
@@ -1454,7 +1389,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         Some(self.sema.db.lookup_atom(self[*expr].as_atom()?))
     }
 
-    fn resolver(&self) -> Resolver {
+    pub fn resolver(&self) -> Resolver {
         // Should this be a field in InFunctionClauseBody?
         let clause_scopes = self.sema.db.function_clause_scopes(self.function_clause_id);
         Resolver::new(clause_scopes.clone())

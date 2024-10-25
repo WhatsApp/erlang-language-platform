@@ -27,7 +27,10 @@ use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::AnyCallBack;
+use crate::fold::Constructor;
+use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
+use crate::fold::ParentId;
 use crate::fold::VisibleMacros;
 use crate::AnyExprId;
 use crate::AnyExprRef;
@@ -551,6 +554,47 @@ impl FunctionClauseBody {
 
     pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
         tree_print::print_function_clause(db, self)
+    }
+
+    pub fn fold<'a, T>(&self, strategy: Strategy, initial: T, callback: AnyCallBack<'a, T>) -> T {
+        match &self.from_macro {
+            Some(from_macro) if strategy.macros == MacroStrategy::DoNotExpand => {
+                FoldCtx::fold_exprs(strategy, &self.body, &from_macro.args, initial, callback)
+            }
+            _ => {
+                let initial = self.clause.pats.iter().enumerate().fold(
+                    initial,
+                    |acc_inner, (idx, pat_id)| {
+                        FoldCtx::fold_pat_as_arg(
+                            strategy, &self.body, *pat_id, acc_inner, idx, callback,
+                        )
+                    },
+                );
+
+                let initial =
+                    self.clause
+                        .guards
+                        .iter()
+                        .flatten()
+                        .fold(initial, |acc_inner, expr_id| {
+                            FoldCtx::fold_expr_with_parents(
+                                strategy,
+                                &self.body,
+                                *expr_id,
+                                vec![ParentId::Constructor(Constructor::Guard)],
+                                acc_inner,
+                                callback,
+                            )
+                        });
+
+                self.clause
+                    .exprs
+                    .iter()
+                    .fold(initial, |acc_inner, expr_id| {
+                        FoldCtx::fold_expr(strategy, &self.body, *expr_id, acc_inner, callback)
+                    })
+            }
+        }
     }
 }
 
