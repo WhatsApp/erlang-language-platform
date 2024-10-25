@@ -254,6 +254,7 @@ pub struct SpecDef {
     pub file: File,
     pub spec: Spec,
     pub spec_id: SpecId,
+    pub function: Option<FunctionDefId>,
 }
 
 impl SpecDef {

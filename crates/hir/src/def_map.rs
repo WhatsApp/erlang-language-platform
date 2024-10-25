@@ -254,6 +254,7 @@ impl DefMap {
                             file,
                             spec,
                             spec_id: idx,
+                            function: None,
                         },
                     );
                 }
@@ -653,7 +654,7 @@ impl DefMap {
             .collect::<Vec<_>>();
         let function_id = FunctionDefId(function_clause_ids[0]);
         let spec = self.unowned_specs.remove(&current_na);
-        let fun = FunctionDef {
+        let mut fun = FunctionDef {
             file,
             exported: false,
             deprecated: false,
@@ -666,6 +667,9 @@ impl DefMap {
             spec,
         };
         let function_def_id = FunctionDefId(fun.function_clause_ids[0]);
+        fun.spec
+            .as_mut()
+            .map(|spec| spec.function = Some(function_def_id));
         self.function_by_function_id.extend(
             fun.function_clause_ids
                 .iter()
