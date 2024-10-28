@@ -138,7 +138,7 @@ fn module_ast(
     let root = db.source_root(root_id);
     let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
     let metadata = db.elp_metadata(file_id);
-    let app_data = if let Some(app_data) = db.app_data(root_id) {
+    let app_data = if let Some(app_data) = db.file_app_data(file_id) {
         app_data
     } else {
         return Arc::new(ParseResult::error(ParseError {

@@ -65,7 +65,7 @@ fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> 
             let _ = fs::write(tmp_filename.clone(), String::from(&*text));
             let def_map = db.def_map(file_id);
             if let Some(project_id) = db.file_project_id(file_id) {
-                if let Some(app_data) = db.app_data(root_id) {
+                if let Some(app_data) = db.file_app_data(file_id) {
                     let module_index = db.module_index(project_id);
                     if let Some(module_name) = module_index.module_for_file(file_id) {
                         return Arc::new(db.check(

@@ -245,7 +245,7 @@ impl RootDatabase {
         let source_file = self.parse(file_id).tree();
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolved_includes: {:?}", file_id));
-        let project_id = self.app_data(self.file_source_root(file_id))?.project_id;
+        let project_id = self.file_app_data(file_id)?.project_id;
         let root_abs = &self.project_data(project_id).root_dir;
         let form_list = self.file_form_list(file_id);
         let line_index = self.file_line_index(file_id);
@@ -317,7 +317,7 @@ impl Includes {
         let root_id = db.file_source_root(file_id);
         let root = db.source_root(root_id);
         let path = root.path_for_file(&file_id)?;
-        let app_data = db.app_data(root_id)?;
+        let app_data = db.file_app_data(file_id)?;
 
         let path = path.as_path()?;
         if path.starts_with(root_abs) {
@@ -374,7 +374,7 @@ impl TypedSemantic for RootDatabase {
         include_generated: bool,
     ) -> Option<Vec<EqwalizerDiagnostic>> {
         // Check, if the file is actually a module
-        let app_data = self.app_data(self.file_source_root(file_id))?;
+        let app_data = self.file_app_data(file_id)?;
         let module = self
             .module_index(app_data.project_id)
             .module_for_file(file_id)

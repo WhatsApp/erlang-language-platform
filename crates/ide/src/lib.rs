@@ -371,14 +371,14 @@ impl Analysis {
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nproject_id: {:?}", file_id));
-        self.with_db(|db| Some(db.app_data(db.file_source_root(file_id))?.project_id))
+        self.with_db(|db| Some(db.file_app_data(file_id)?.project_id))
     }
 
     pub fn project_data(&self, file_id: FileId) -> Cancellable<Option<Arc<ProjectData>>> {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nproject_data: {:?}", file_id));
-            Some(db.project_data(db.app_data(db.file_source_root(file_id))?.project_id))
+            Some(db.project_data(db.file_app_data(file_id)?.project_id))
         })
     }
 
@@ -387,7 +387,7 @@ impl Analysis {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nmodule_name: {:?}", file_id));
-            let app_data = db.app_data(db.file_source_root(file_id))?;
+            let app_data = db.file_app_data(file_id)?;
             db.module_index(app_data.project_id)
                 .module_for_file(file_id)
                 .cloned()

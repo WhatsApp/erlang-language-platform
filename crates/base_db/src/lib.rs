@@ -151,6 +151,8 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
+    fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
+
     /// Returns a map from module name to FileId of the containing file.
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
 
@@ -183,6 +185,11 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
 
     #[salsa::invoke(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
+}
+
+fn file_app_data(db: &dyn SourceDatabase, file_id: FileId) -> Option<Arc<AppData>> {
+    let source_root_id = db.file_source_root(file_id);
+    db.app_data(source_root_id)
 }
 
 fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleIndex> {
@@ -305,8 +312,7 @@ fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
 }
 
 fn is_otp(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
-    let root_id = db.file_source_root(file_id);
-    let app_data = db.app_data(root_id)?;
+    let app_data = db.file_app_data(file_id)?;
     let project_id = app_data.project_id;
     Some(db.project_data(project_id).otp_project_id == Some(project_id))
 }
@@ -314,9 +320,9 @@ fn is_otp(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
 fn is_test_suite_or_test_helper(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_test_suite_or_test_helper: {:?}", file_id));
+    let app_data = db.file_app_data(file_id)?;
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
-    let app_data = db.app_data(root_id)?;
     let path = root.path_for_file(&file_id)?;
     if app_data.is_extra_src_file(path) {
         Some(true)
@@ -328,29 +334,28 @@ fn is_test_suite_or_test_helper(db: &dyn SourceDatabase, file_id: FileId) -> Opt
 fn file_app_type(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppType> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_type: {:?}", file_id));
-    let app_data = db.app_data(db.file_source_root(file_id))?;
+    let app_data = db.file_app_data(file_id)?;
     Some(app_data.app_type)
 }
 
 fn file_app_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppName> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_name: {:?}", file_id));
-    let app_data = db.app_data(db.file_source_root(file_id))?;
+    let app_data = db.file_app_data(file_id)?;
     Some(app_data.name.clone())
 }
 
 fn file_project_id(db: &dyn SourceDatabase, file_id: FileId) -> Option<ProjectId> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_project_id: {:?}", file_id));
-    let app_data = db.app_data(db.file_source_root(file_id))?;
+    let app_data = db.file_app_data(file_id)?;
     Some(app_data.project_id)
 }
 
 pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleName> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_name: {:?}", file_id));
-    let source_root_id = db.file_source_root(file_id);
-    let app_data = db.app_data(source_root_id)?;
+    let app_data = db.file_app_data(file_id)?;
     let module_index = db.module_index(app_data.project_id);
     module_index.module_for_file(file_id).cloned()
 }

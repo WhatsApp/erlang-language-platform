@@ -118,8 +118,7 @@ fn type_at_position(
     if !db.is_eqwalizer_enabled(range.file_id, false) {
         return None;
     }
-    let source_root = db.file_source_root(range.file_id);
-    let project_id = db.app_data(source_root)?.project_id;
+    let project_id = db.file_app_data(range.file_id)?.project_id;
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
         &(*eqwalizer_diagnostics_by_project(db, project_id, vec![range.file_id]))
     {
@@ -165,7 +164,7 @@ fn is_eqwalizer_enabled(
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {:?}", file_id));
     let source_root = db.file_source_root(file_id);
-    let app_data = if let Some(app_data) = db.app_data(source_root) {
+    let app_data = if let Some(app_data) = db.file_app_data(file_id) {
         app_data
     } else {
         return false;

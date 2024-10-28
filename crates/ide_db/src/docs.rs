@@ -218,8 +218,7 @@ impl<'db> Documentation<'db> {
 fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {:?}", file_id));
-    let root_id = db.file_source_root(file_id);
-    if let Some(app_data) = db.app_data(root_id) {
+    if let Some(app_data) = db.file_app_data(file_id) {
         let project_id = app_data.project_id;
         Some(db.project_data(project_id).otp_project_id == Some(project_id))
     } else {
@@ -304,7 +303,7 @@ impl DocLoader for crate::RootDatabase {
         let root_id = self.file_source_root(file_id);
         let root = self.source_root(root_id);
         let src_db: &dyn SourceDatabase = self.upcast();
-        let app_data = if let Some(app_data) = src_db.app_data(root_id) {
+        let app_data = if let Some(app_data) = src_db.file_app_data(file_id) {
             app_data
         } else {
             log::error!("No corresponding appdata found for file, so no docs can be loaded");

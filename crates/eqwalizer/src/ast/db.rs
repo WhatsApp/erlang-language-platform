@@ -91,8 +91,7 @@ fn from_beam(db: &dyn EqwalizerASTDatabase, project_id: ProjectId, module: Modul
     if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nfrom_beam: {:?}", file_id));
-        let source_root = db.file_source_root(file_id);
-        if let Some(app) = db.app_data(source_root) {
+        if let Some(app) = db.file_app_data(file_id) {
             return app.app_type == AppType::Otp;
         }
     }
@@ -162,8 +161,7 @@ fn beam_path(
     let file_id = db.module_index(project_id).file_for_module(&module)?;
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nbeam_path: {:?}", file_id));
-    let source_root = db.file_source_root(file_id);
-    let app = db.app_data(source_root)?;
+    let app = db.file_app_data(file_id)?;
     let ebin = app.ebin_path.as_ref()?;
     let filename = format!("{}.beam", module.as_str());
     Some(ebin.join(filename))
