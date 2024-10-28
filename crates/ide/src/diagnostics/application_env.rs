@@ -285,8 +285,6 @@ mod tests {
 
             -compile([export_all, nowarn_export_all]).
 
-            -include_lib("misc/include/my_header.hrl").
-
             get_key_dynamic(App) ->
                 application:get_env(App, key).
 
@@ -302,10 +300,6 @@ mod tests {
             -export([get_env/2, get_env/3]).
             get_env(App,Key) -> {App,Key}.
             get_env(App,Key,Def) -> {App,Key,Def}.
-
-            //- /misc/include/my_header.hrl
-            get_check_key() ->
-                application:get_env(check, key).
             "#,
         )
     }

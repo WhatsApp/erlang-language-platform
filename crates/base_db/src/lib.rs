@@ -16,6 +16,7 @@ use elp_syntax::Parse;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 
 mod change;
@@ -145,11 +146,15 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
 
+    fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
+
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
     /// Returns a map from module name to FileId of the containing file.
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
+
+    fn include_file_index(&self, project_id: ProjectId) -> Arc<IncludeFileIndex>;
 
     /// Parse the file_id to AST
     fn parse(&self, file_id: FileId) -> Parse<SourceFile>;
@@ -207,6 +212,73 @@ fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleInd
         });
 
     builder.build()
+}
+
+/// A map from file path to `FileId` for each `.hrl` file we have
+/// loaded.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct IncludeFileIndex {
+    // TODO: should we map from the file name in the directory to a
+    // set of FileId instead?
+    // Then include file resolution is about finding "blah.hrl" in the
+    // list, getting the paths from the FileId and making sure we have
+    // the earliest match.  Or *a* match? Perhaps using a FileSet
+    // This means we get candidate paths quickly, and just need to validate them.
+    // Perhaps use a pre-cached version of the SourceRoot partition calcs.
+    pub map: FxHashMap<VfsPath, FileId>,
+}
+
+impl IncludeFileIndex {
+    pub fn add(&mut self, path: &VfsPath, file_id: FileId) {
+        self.map.insert(path.clone(), file_id);
+    }
+}
+
+fn include_file_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<IncludeFileIndex> {
+    let mut include_file_index = IncludeFileIndex::default();
+    let project_data = db.project_data(project_id);
+    build_include_file_index(db, &project_data, &mut include_file_index);
+    project_data
+        .otp_project_id
+        .iter()
+        .for_each(|otp_project_id| {
+            if *otp_project_id != project_id {
+                build_include_file_index(
+                    db,
+                    &db.project_data(*otp_project_id),
+                    &mut include_file_index,
+                );
+            }
+        });
+    Arc::new(include_file_index)
+}
+
+fn build_include_file_index(
+    db: &dyn SourceDatabase,
+    project_data: &Arc<ProjectData>,
+    include_file_index: &mut IncludeFileIndex,
+) {
+    for &source_root_id in &project_data.source_roots {
+        let source_root = db.source_root(source_root_id);
+        for file_id in source_root.iter() {
+            if let Some(path) = source_root.path_for_file(&file_id) {
+                if let Some((_name, Some("hrl"))) = path.name_and_extension() {
+                    include_file_index.add(path, file_id);
+                }
+            } else {
+                log::warn!("No file path for {:?}", file_id);
+            }
+        }
+    }
+}
+
+fn include_file_id(
+    db: &dyn SourceDatabase,
+    project_id: ProjectId,
+    path: VfsPath,
+) -> Option<FileId> {
+    let include_file_index = db.include_file_index(project_id);
+    include_file_index.map.get(&path).copied()
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {

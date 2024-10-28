@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use elp_syntax::SmolStr;
 use vfs::FileId;
+use vfs::VfsPath;
 
 use crate::SourceDatabase;
 use crate::SourceRoot;
@@ -63,10 +64,9 @@ impl<'a> IncludeCtx<'a> {
     ) -> Option<FileId> {
         let path: &str = &path;
         let app_data = db.app_data(source_root_id)?;
-        let source_root = db.source_root(source_root_id);
         app_data.include_path.iter().find_map(|include| {
             let name = include.join(path);
-            source_root.file_for_path(&name.into())
+            db.include_file_id(app_data.project_id, VfsPath::from((&name).clone()))
         })
     }
 
@@ -80,9 +80,8 @@ impl<'a> IncludeCtx<'a> {
         let project_data = db.project_data(app_data.project_id);
         let (app_name, path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
-        let source_root = db.source_root(source_root_id);
         let target_app_data = db.app_data(source_root_id)?;
         let path = target_app_data.dir.join(path);
-        source_root.file_for_path(&path.into())
+        db.include_file_id(app_data.project_id, VfsPath::from((&path).clone()))
     }
 }
