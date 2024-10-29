@@ -46,12 +46,4 @@ error: dynamic_lambda
 
 See https://fb.me/eqwalizer_errors#dynamic_lambda
 
-error: dynamic_lambda
-   ┌─ options/src/dynamic_lambdas.erl:44:21
-   │
-44 │     lists:filtermap(fun(X) -> X end, L).
-   │                     ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
-
-See https://fb.me/eqwalizer_errors#dynamic_lambda
-
-7 ERRORS
+6 ERRORS
