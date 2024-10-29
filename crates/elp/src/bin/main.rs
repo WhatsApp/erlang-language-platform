@@ -1745,6 +1745,7 @@ mod tests {
                 clause_coverage: Some(true),
                 report_bad_maps: Some(true),
                 overloaded_spec_domain_check: Some(true),
+                report_dynamic_lambdas: Some(true),
                 ..EqwalizerConfig::default_test()
             },
         );

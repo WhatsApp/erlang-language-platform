@@ -1,0 +1,57 @@
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:11:11
+   │
+11 │     Fun = fun(X) -> X end,
+   │           ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:16:11
+   │
+16 │     Fun = fun(X) -> X end,
+   │           ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:23:9
+   │
+23 │         fun(X) -> X end,
+   │         ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:24:9
+   │
+24 │         fun(#{}=M) -> M#{a => b} end
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:31:14
+   │
+31 │         a => fun(X) -> X end,
+   │              ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:32:14
+   │
+32 │         b => fun(#{}=M) -> M#{a => b} end
+   │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+error: dynamic_lambda
+   ┌─ options/src/dynamic_lambdas.erl:44:21
+   │
+44 │     lists:filtermap(fun(X) -> X end, L).
+   │                     ^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+
+See https://fb.me/eqwalizer_errors#dynamic_lambda
+
+7 ERRORS

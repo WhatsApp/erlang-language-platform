@@ -37,6 +37,7 @@ pub enum TypeError {
     AmbiguousUnion(AmbiguousUnion),
     ClauseNotCovered(ClauseNotCovered),
     IgnoredOverloadedSpec(IgnoredOverloadedSpec),
+    DynamicLambda(DynamicLambda),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -67,6 +68,11 @@ pub struct NoSpecialType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IgnoredOverloadedSpec {
+    pub location: eqwalizer::Pos,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DynamicLambda {
     pub location: eqwalizer::Pos,
 }
 
