@@ -24,4 +24,23 @@ Not enough info to branch. Arg types: atom() | binary() | pid()
 
 See https://fb.me/eqwalizer_errors#not_enough_info_to_branch
 
-2 ERRORS
+error: incompatible_types
+   ┌─ options/src/overloaded_specs_union.erl:19:29
+   │
+19 │ use_over_neg_2(Arg) -> over(Arg).
+   │                             ^^^
+   │                             │
+   │                             Arg.
+Expression has type:   atom() | binary() | pid()
+Context expected type: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                             
+
+  atom() | binary() | pid() is not compatible with atom() | binary()
+  because
+  pid() is not compatible with atom() | binary()
+  because
+  pid() is not compatible with atom()
+
+3 ERRORS
