@@ -765,7 +765,7 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+| +\|) +💡?.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+| <<<| +\|) +💡?.*$").unwrap();
     }
     RE.is_match(line)
 }
@@ -1484,5 +1484,8 @@ meaning_of_life() ->
         ));
         assert!(contains_annotation("%%  ^^ 💡 warning: blah"));
         assert!(!contains_annotation("%%  an ordinary comment"));
+        assert!(contains_annotation(
+            "%% <<< 💡 error: Top of file diagnostic"
+        ));
     }
 }

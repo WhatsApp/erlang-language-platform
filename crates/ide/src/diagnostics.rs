@@ -2229,7 +2229,7 @@ baz(1)->4.
 
              baz()->
                Fo~o = 1.
-             %%^^^^^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: match is redundant
              "#,
             expect![[r#"
              -module(main).

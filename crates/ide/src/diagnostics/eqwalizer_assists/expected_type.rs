@@ -257,7 +257,7 @@ mod tests {
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
-                  %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+              %%     ^^ 💡 error: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar5e).
@@ -281,7 +281,7 @@ mod tests {
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
-                  %% ^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^ 💡 error: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar6e).

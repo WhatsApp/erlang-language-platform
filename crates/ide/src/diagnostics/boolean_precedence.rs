@@ -461,8 +461,8 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 X < 0 o~r X > 10 end,
-            %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
-            %%                     | Or add parentheses to avoid potential ambiguity.
+            %%        ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+            %%         | Or add parentheses to avoid potential ambiguity.
               F.
 
             my_is_integer(_X) -> true."#,

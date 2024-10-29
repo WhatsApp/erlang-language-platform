@@ -516,12 +516,12 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~
+            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            
             -module(main).
 
             "#,
             expect![[r#"
-
                 % elp:ignore W0012 (compile-warn-missing-spec)
                 -module(main).
 
@@ -535,7 +535,8 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~%% a comment at the
+            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            %% a comment at the
             %% top of the file
 
             -module(main).
@@ -558,12 +559,12 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~%% a comment at the
+            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            %% a comment at the
             %% top of the file
 
             "#,
             expect![[r#"
-
                 % elp:ignore W0012 (compile-warn-missing-spec)
                 %% a comment at the
                 %% top of the file

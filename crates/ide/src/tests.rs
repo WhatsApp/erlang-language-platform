@@ -272,7 +272,8 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     config: DiagnosticsConfig,
     adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
 ) {
-    let (analysis, pos, diagnostics_enabled) = fixture::position(fixture_before);
+    let trimmed_fixture_before = trim_indent(fixture_before);
+    let (analysis, pos, diagnostics_enabled) = fixture::position(&trimmed_fixture_before);
     let diagnostics = fixture::diagnostics_for(
         &analysis,
         pos.file_id,
@@ -281,6 +282,11 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
         &diagnostics_enabled,
     );
     let diagnostics = diagnostics.diagnostics_for(pos.file_id);
+
+    let expected = extract_annotations(&analysis.db.file_text(pos.file_id));
+    let actual = convert_diagnostics_to_annotations(diagnostics.clone());
+    assert_eq!(expected, actual);
+
     let fix: &Assist = if let Some(label) = assist_label {
         if let Some(fix) = diagnostics
             .iter()
@@ -323,6 +329,7 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
         actual
     };
     let actual = remove_annotations(None, &actual);
+    let actual = trim_indent(&actual);
     assert!(
         fix.target.contains_inclusive(pos.offset),
         "diagnostic fix range {:?} does not touch cursor position {:?}",
