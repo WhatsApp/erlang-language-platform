@@ -22,6 +22,8 @@ use crossbeam_channel::select;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use dispatch::NotificationDispatcher;
+use elp_eqwalizer::ast::Pos;
+use elp_eqwalizer::types::Type;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -56,6 +58,7 @@ use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::map::Entry;
 use lsp_server::Connection;
@@ -129,7 +132,10 @@ pub enum Task {
     ShowMessage(lsp_types::ShowMessageParams),
     FetchProject(Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
-    EqwalizerDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
+    EqwalizerDiagnostics(
+        Spinner,
+        Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
+    ),
     EqwalizerProjectDiagnostics(
         Spinner,
         Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
@@ -203,6 +209,8 @@ pub struct Handle<H, C> {
 pub type VfsHandle = Handle<Box<dyn loader::Handle>, Receiver<loader::Message>>;
 pub type TaskHandle = Handle<TaskPool<Task>, Receiver<Task>>;
 
+pub type EqwalizerTypes = FxHashMap<FileId, Arc<Vec<(Pos, Type)>>>;
+
 pub struct Server {
     connection: Connection,
     vfs_loader: VfsHandle,
@@ -211,6 +219,7 @@ pub struct Server {
     cache_pool: TaskHandle,
     eqwalizer_pool: TaskHandle,
     diagnostics: Arc<DiagnosticCollection>,
+    eqwalizer_types: Arc<EqwalizerTypes>,
     req_queue: ReqQueue,
     progress: ProgressManager,
     mem_docs: Arc<RwLock<MemDocs>>,
@@ -263,6 +272,7 @@ impl Server {
             cache_pool,
             eqwalizer_pool,
             diagnostics: Arc::new(DiagnosticCollection::default()),
+            eqwalizer_types: Arc::new(FxHashMap::default()),
             req_queue: ReqQueue::default(),
             mem_docs: Arc::new(RwLock::new(MemDocs::default())),
             newly_opened_documents: Vec::default(),
@@ -304,6 +314,7 @@ impl Server {
             Arc::clone(&self.diagnostics_config),
             self.analysis_host.analysis(),
             Arc::clone(&self.diagnostics),
+            Arc::clone(&self.eqwalizer_types),
             Arc::clone(&self.vfs),
             Arc::clone(&self.mem_docs),
             Arc::clone(&self.line_ending_map),
@@ -442,9 +453,9 @@ impl Server {
                 Task::Response(response) => self.send_response(response),
                 Task::FetchProject(projects) => self.fetch_project_completed(projects)?,
                 Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
-                Task::EqwalizerDiagnostics(spinner, diags) => {
+                Task::EqwalizerDiagnostics(spinner, diags_types) => {
                     spinner.end();
-                    self.eqwalizer_diagnostics_completed(diags)
+                    self.eqwalizer_diagnostics_completed(diags_types)
                 }
                 Task::EqwalizerProjectDiagnostics(spinner, diags) => {
                     spinner.end();
@@ -899,6 +910,7 @@ impl Server {
 
                 // causes us to remove stale squiggles from the UI
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
+                Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
             } else {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
@@ -971,17 +983,18 @@ impl Server {
 
         let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
-            let diagnostics = opened_documents
+            let diagnostics_types = opened_documents
                 .into_iter()
                 .filter_map(|file_id| {
                     Some((
                         file_id,
                         snapshot.eqwalizer_diagnostics(file_id, include_otp)?,
+                        snapshot.eqwalizer_types(file_id, include_otp)?,
                     ))
                 })
                 .collect();
 
-            Task::EqwalizerDiagnostics(spinner, diagnostics)
+            Task::EqwalizerDiagnostics(spinner, diagnostics_types)
         });
     }
 
@@ -1065,10 +1078,11 @@ impl Server {
 
     fn eqwalizer_diagnostics_completed(
         &mut self,
-        diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>,
+        diags_types: Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
     ) {
-        for (file_id, diagnostics) in diags {
+        for (file_id, diagnostics, types) in diags_types {
             Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, diagnostics);
+            Arc::make_mut(&mut self.eqwalizer_types).insert(file_id, types);
         }
     }
 

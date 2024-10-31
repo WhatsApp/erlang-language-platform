@@ -12,6 +12,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
+use elp_eqwalizer::ast::Pos;
+use elp_eqwalizer::types::Type;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -41,6 +43,7 @@ use crate::line_endings::LineEndings;
 use crate::mem_docs::MemDocs;
 use crate::server::file_id_to_path;
 use crate::server::file_id_to_url;
+use crate::server::EqwalizerTypes;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelemetryData {
@@ -99,6 +102,8 @@ pub struct Snapshot {
     // any attempt to `set` an input will block.
     pub(crate) analysis: Analysis,
     pub(crate) diagnostics: Arc<DiagnosticCollection>,
+    #[allow(unused)]
+    pub(crate) eqwalizer_types: Arc<EqwalizerTypes>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<Vfs>>,
     pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
@@ -112,6 +117,7 @@ impl Snapshot {
         diagnostics_config: Arc<DiagnosticsConfig>,
         analysis: Analysis,
         diagnostics: Arc<DiagnosticCollection>,
+        eqwalizer_types: Arc<EqwalizerTypes>,
         vfs: Arc<RwLock<Vfs>>,
         mem_docs: Arc<RwLock<MemDocs>>,
         line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
@@ -122,6 +128,7 @@ impl Snapshot {
             diagnostics_config,
             analysis,
             diagnostics,
+            eqwalizer_types,
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs,
             mem_docs,
@@ -244,6 +251,20 @@ impl Snapshot {
         self.analysis
             .eqwalizer_diagnostics_by_project(project_id, file_ids, max_tasks)
             .ok()?
+    }
+
+    pub fn eqwalizer_types(
+        &self,
+        file_id: FileId,
+        include_otp: bool,
+    ) -> Option<Arc<Vec<(Pos, Type)>>> {
+        if !include_otp && self.is_otp(file_id) {
+            return None;
+        }
+
+        let file_url = self.file_id_to_url(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
+        self.analysis.types_for_file(file_id).ok()?
     }
 
     pub fn edoc_diagnostics(
