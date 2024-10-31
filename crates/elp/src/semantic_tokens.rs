@@ -93,6 +93,7 @@ define_semantic_token_modifiers![
         (BOUND, "bound"),
         (EXPORTED_FUNCTION, "exported_function"),
         (DEPRECATED_FUNCTION, "deprecated_function"),
+        (TYPE_DYNAMIC, "type_dynamic"),
     }
 ];
 

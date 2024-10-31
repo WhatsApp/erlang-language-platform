@@ -47,6 +47,8 @@ pub enum HlMod {
     // Local vs exported function name.
     ExportedFunction,
     DeprecatedFunction,
+    // Eqwalizer Dynamic type
+    TypeDynamic,
 }
 
 impl HlTag {
@@ -76,10 +78,11 @@ impl fmt::Display for HlTag {
 }
 
 impl HlMod {
-    const ALL: &'static [HlMod; 3] = &[
+    const ALL: &'static [HlMod; 4] = &[
         HlMod::Bound,
         HlMod::ExportedFunction,
         HlMod::DeprecatedFunction,
+        HlMod::TypeDynamic,
     ];
 
     fn as_str(self) -> &'static str {
@@ -87,6 +90,7 @@ impl HlMod {
             HlMod::Bound => "bound",
             HlMod::ExportedFunction => "exported_function",
             HlMod::DeprecatedFunction => "deprecated_function",
+            HlMod::TypeDynamic => "type_dynamic",
         }
     }
 

@@ -192,6 +192,10 @@
       {
         "id": "deprecated_function",
         "description": "Style for deprecated function declaration names"
+      },
+      {
+        "id": "type_dynamic",
+        "description": "Style for Eqwalizer dynamic() type variables"
       }
     ],
     "semanticTokenScopes": [
@@ -212,6 +216,9 @@
           ],
           "*.deprecated_function": [
             "markup.strikethrough"
+          ],
+          "*.type_dynamic": [
+            "markup.bold"
           ]
         }
       }
