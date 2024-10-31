@@ -32,6 +32,7 @@ use elp_project_model::otp::OTP_VERSION;
 use elp_syntax::ast;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
+use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
@@ -87,6 +88,7 @@ pub trait EqwalizerDatabase:
         &self,
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
+    fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
@@ -145,6 +147,20 @@ fn type_at_position(
             range: text_range.clone().into(),
         };
         return Some(Arc::new((ty.clone(), type_range)));
+    }
+    None
+}
+
+fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
+    if !db.is_eqwalizer_enabled(file_id, false) {
+        return None;
+    }
+    let project_id = db.file_app_data(file_id)?.project_id;
+    if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
+        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![file_id]))
+    {
+        let types = type_info.clone().into_values().next()?;
+        return Some(Arc::new(types));
     }
     None
 }

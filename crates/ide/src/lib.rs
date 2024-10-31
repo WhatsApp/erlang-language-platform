@@ -18,6 +18,7 @@ use diagnostics::DiagnosticsConfig;
 use diagnostics::LabeledDiagnostics;
 use diagnostics::RemoveElpReported;
 use diagnostics_collection::DiagnosticCollection;
+use elp_eqwalizer::ast::Pos;
 use elp_ide_assists::Assist;
 use elp_ide_assists::AssistConfig;
 use elp_ide_assists::AssistId;
@@ -61,6 +62,7 @@ use elp_syntax::label::Label;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
+use elp_types_db::eqwalizer::types::Type;
 use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
@@ -299,6 +301,10 @@ impl Analysis {
         range: FileRange,
     ) -> Cancellable<Option<Arc<(eqwalizer::types::Type, FileRange)>>> {
         self.with_db(|db| db.type_at_position(range))
+    }
+
+    pub fn types_for_file(&self, file_id: FileId) -> Cancellable<Option<Arc<Vec<(Pos, Type)>>>> {
+        self.with_db(|db| db.types_for_file(file_id))
     }
 
     pub fn type_references(
