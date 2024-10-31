@@ -10,13 +10,16 @@
 mod highlights;
 pub(crate) mod tags;
 
+use elp_eqwalizer::ast::Pos;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolKind;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use elp_types_db::eqwalizer::types::Type;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::AnyExpr;
@@ -79,6 +82,7 @@ pub(crate) fn highlight(
     bound_vars_in_pattern_highlight(&sema, file_id, range_to_highlight, &mut hl);
     functions_highlight(&sema, file_id, range_to_highlight, &mut hl);
     deprecated_func_highlight(&sema, file_id, range_to_highlight, &mut hl);
+    dynamic_usages_highlight(db, file_id, range_to_highlight, &mut hl);
     hl.to_vec()
 }
 
@@ -255,6 +259,43 @@ fn functions_highlight(
     }
 }
 
+/// Highlight usages of eqwalizer dynamic() type
+fn dynamic_usages_highlight(
+    db: &RootDatabase,
+    file_id: FileId,
+    range_to_highlight: TextRange,
+    hl: &mut Highlights,
+) {
+    let highlight_dynamic = HlTag::Symbol(SymbolKind::Variable) | HlMod::Bound;
+
+    let types_for_file = db.types_for_file(file_id);
+
+    if let Some(types) = types_for_file {
+        types.iter().for_each(|(r, t)| {
+            if is_dynamic(t) {
+                if let Pos::TextRange(eq_range) = r {
+                    let range: TextRange = (eq_range.clone()).into();
+                    if range_to_highlight.intersect(range).is_some() {
+                        hl.add(HlRange {
+                            range,
+                            highlight: highlight_dynamic,
+                            binding_hash: None,
+                        });
+                    }
+                }
+            }
+        });
+    }
+}
+
+fn is_dynamic(t: &Type) -> bool {
+    match t {
+        Type::DynamicType => true,
+        Type::BoundedDynamicType(_) => true,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
@@ -262,6 +303,7 @@ mod tests {
     use elp_ide_db::elp_base_db::fixture::extract_tags;
     use elp_ide_db::RootDatabase;
     use itertools::Itertools;
+    use stdx::trim_indent;
 
     use crate::syntax_highlighting::highlight;
     use crate::HlTag;
@@ -271,6 +313,7 @@ mod tests {
     // over the RA test mechanism which compares an HTML file.
     #[track_caller]
     fn check_highlights(fixture: &str) {
+        let fixture = trim_indent(fixture);
         let (ranges, fixture) = extract_tags(fixture.trim_start(), "tag");
         let range = if !ranges.is_empty() {
             Some(ranges[0].0)
@@ -364,6 +407,20 @@ mod tests {
            %%   ^^^^bound
               </tag>
               bar(Y) -> ok.
+              "#,
+        )
+    }
+
+    #[test]
+    fn eqwalizer_dynamic_highlight() {
+        check_highlights(
+            r#"
+            //- eqwalizer
+            //- /app_a/src/a_file.erl
+              -module(a_file).  
+              -spec f(dynamic()) -> ok.
+              f(AAA) -> ok.
+            %%  ^^^bound
               "#,
         )
     }
