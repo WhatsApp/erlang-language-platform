@@ -102,7 +102,6 @@ pub struct Snapshot {
     // any attempt to `set` an input will block.
     pub(crate) analysis: Analysis,
     pub(crate) diagnostics: Arc<DiagnosticCollection>,
-    #[allow(unused)]
     pub(crate) eqwalizer_types: Arc<EqwalizerTypes>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<Vfs>>,

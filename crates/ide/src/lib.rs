@@ -682,8 +682,12 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file
-    pub fn highlight(&self, file_id: FileId) -> Cancellable<Vec<HlRange>> {
-        self.with_db(|db| syntax_highlighting::highlight(db, file_id, None))
+    pub fn highlight(
+        &self,
+        file_id: FileId,
+        types: Option<Arc<Vec<(Pos, Type)>>>,
+    ) -> Cancellable<Vec<HlRange>> {
+        self.with_db(|db| syntax_highlighting::highlight(db, file_id, types, None))
     }
 
     /// Computes all ranges to highlight for a given item in a file.
@@ -695,8 +699,14 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file range.
-    pub fn highlight_range(&self, frange: FileRange) -> Cancellable<Vec<HlRange>> {
-        self.with_db(|db| syntax_highlighting::highlight(db, frange.file_id, Some(frange.range)))
+    pub fn highlight_range(
+        &self,
+        types: Option<Arc<Vec<(Pos, Type)>>>,
+        frange: FileRange,
+    ) -> Cancellable<Vec<HlRange>> {
+        self.with_db(|db| {
+            syntax_highlighting::highlight(db, frange.file_id, types, Some(frange.range))
+        })
     }
 
     pub fn annotations(&self, file_id: FileId) -> Cancellable<Vec<Annotation>> {

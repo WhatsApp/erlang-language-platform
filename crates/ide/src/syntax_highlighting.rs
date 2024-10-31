@@ -10,9 +10,10 @@
 mod highlights;
 pub(crate) mod tags;
 
+use std::sync::Arc;
+
 use elp_eqwalizer::ast::Pos;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolKind;
 use elp_syntax::ast;
@@ -57,6 +58,7 @@ pub struct HighlightConfig {}
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
+    types: Option<Arc<Vec<(Pos, Type)>>>,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
     let _p = tracing::info_span!("highlight").entered();
@@ -82,7 +84,7 @@ pub(crate) fn highlight(
     bound_vars_in_pattern_highlight(&sema, file_id, range_to_highlight, &mut hl);
     functions_highlight(&sema, file_id, range_to_highlight, &mut hl);
     deprecated_func_highlight(&sema, file_id, range_to_highlight, &mut hl);
-    dynamic_usages_highlight(db, file_id, range_to_highlight, &mut hl);
+    dynamic_usages_highlight(types, range_to_highlight, &mut hl);
     hl.to_vec()
 }
 
@@ -261,16 +263,13 @@ fn functions_highlight(
 
 /// Highlight usages of eqwalizer dynamic() type
 fn dynamic_usages_highlight(
-    db: &RootDatabase,
-    file_id: FileId,
+    types: Option<Arc<Vec<(Pos, Type)>>>,
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
     let highlight_dynamic = HlTag::Symbol(SymbolKind::Variable) | HlMod::Bound;
 
-    let types_for_file = db.types_for_file(file_id);
-
-    if let Some(types) = types_for_file {
+    if let Some(types) = types {
         types.iter().for_each(|(r, t)| {
             if is_dynamic(t) {
                 if let Pos::TextRange(eq_range) = r {
@@ -301,6 +300,7 @@ mod tests {
     use elp_base_db::fixture::WithFixture;
     use elp_ide_db::elp_base_db;
     use elp_ide_db::elp_base_db::fixture::extract_tags;
+    use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
     use itertools::Itertools;
     use stdx::trim_indent;
@@ -313,6 +313,15 @@ mod tests {
     // over the RA test mechanism which compares an HTML file.
     #[track_caller]
     fn check_highlights(fixture: &str) {
+        do_check_highlights(fixture, false);
+    }
+    #[track_caller]
+    fn check_highlights_eqwalizer(fixture: &str) {
+        do_check_highlights(fixture, true);
+    }
+
+    #[track_caller]
+    fn do_check_highlights(fixture: &str, provide_types: bool) {
         let fixture = trim_indent(fixture);
         let (ranges, fixture) = extract_tags(fixture.trim_start(), "tag");
         let range = if !ranges.is_empty() {
@@ -330,7 +339,12 @@ mod tests {
             .collect();
 
         let file_id = fixture.files[0];
-        let highlights = highlight(&db, file_id, range);
+        let types = if provide_types {
+            db.types_for_file(file_id)
+        } else {
+            None
+        };
+        let highlights = highlight(&db, file_id, types, range);
         let ranges: Vec<_> = highlights
             .iter()
             .filter(|h| h.highlight != HlTag::None.into()) // Means with no modifiers either
@@ -413,7 +427,7 @@ mod tests {
 
     #[test]
     fn eqwalizer_dynamic_highlight() {
-        check_highlights(
+        check_highlights_eqwalizer(
             r#"
             //- eqwalizer
             //- /app_a/src/a_file.erl
