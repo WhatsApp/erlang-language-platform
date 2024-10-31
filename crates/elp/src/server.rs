@@ -1084,6 +1084,7 @@ impl Server {
             Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, diagnostics);
             Arc::make_mut(&mut self.eqwalizer_types).insert(file_id, types);
         }
+        self.refresh_semantic_tokens();
     }
 
     fn eqwalizer_project_diagnostics_completed(
@@ -1200,6 +1201,12 @@ impl Server {
 
     pub fn refresh_lens(&mut self) {
         self.send_request::<request::CodeLensRefresh>((), |_, _| Ok(()));
+    }
+
+    pub fn refresh_semantic_tokens(&mut self) {
+        if self.config.refresh_semantic_tokens() {
+            self.send_request::<request::SemanticTokensRefresh>((), |_, _| Ok(()));
+        }
     }
 
     pub fn refresh_config(&mut self) {

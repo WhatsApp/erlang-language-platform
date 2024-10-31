@@ -211,6 +211,18 @@ impl Config {
         )
     }
 
+    pub fn refresh_semantic_tokens(&self) -> bool {
+        try_or!(
+            self.caps
+                .workspace
+                .as_ref()?
+                .semantic_tokens
+                .as_ref()?
+                .refresh_support?,
+            false
+        )
+    }
+
     fn experimental(&self, index: &'static str) -> bool {
         try_or!(
             self.caps.experimental.as_ref()?.get(index)?.as_bool()?,
