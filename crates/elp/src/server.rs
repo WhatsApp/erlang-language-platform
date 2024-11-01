@@ -1080,11 +1080,16 @@ impl Server {
         &mut self,
         diags_types: Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
     ) {
+        let highlight_dynamic = self.config.highlight_dynamic();
         for (file_id, diagnostics, types) in diags_types {
             Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, diagnostics);
-            Arc::make_mut(&mut self.eqwalizer_types).insert(file_id, types);
+            if highlight_dynamic {
+                Arc::make_mut(&mut self.eqwalizer_types).insert(file_id, types);
+            }
         }
-        self.refresh_semantic_tokens();
+        if highlight_dynamic {
+            self.refresh_semantic_tokens();
+        }
     }
 
     fn eqwalizer_project_diagnostics_completed(

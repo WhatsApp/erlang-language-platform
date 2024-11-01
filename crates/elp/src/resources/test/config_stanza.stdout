@@ -50,6 +50,11 @@
     "minimum": 0,
     "type": "integer"
   },
+  "elp.highlightDynamic.enable": {
+    "default": false,
+    "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
+    "type": "boolean"
+  },
   "elp.hoverActions.docLinks.enable": {
     "default": false,
     "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
