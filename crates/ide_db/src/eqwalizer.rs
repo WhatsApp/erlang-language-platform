@@ -118,7 +118,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     range: FileRange,
 ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(range.file_id, IncludeGenerated::No) {
+    if !db.is_eqwalizer_enabled(range.file_id, IncludeGenerated::Yes) {
         return None;
     }
     let project_id = db.file_app_data(range.file_id)?.project_id;
@@ -153,7 +153,7 @@ fn type_at_position(
 }
 
 fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
-    if !db.is_eqwalizer_enabled(file_id, IncludeGenerated::No) {
+    if !db.is_eqwalizer_enabled(file_id, IncludeGenerated::Yes) {
         return None;
     }
     let project_id = db.file_app_data(file_id)?.project_id;
