@@ -33,6 +33,7 @@ use elp_syntax::ast;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::IncludeGenerated;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
@@ -92,7 +93,7 @@ pub trait EqwalizerDatabase:
     fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
-    fn is_eqwalizer_enabled(&self, file_id: FileId, include_generated: bool) -> bool;
+    fn is_eqwalizer_enabled(&self, file_id: FileId, include_generated: IncludeGenerated) -> bool;
 }
 
 pub fn eqwalizer_diagnostics_by_project(
@@ -117,7 +118,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     range: FileRange,
 ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(range.file_id, false) {
+    if !db.is_eqwalizer_enabled(range.file_id, IncludeGenerated::No) {
         return None;
     }
     let project_id = db.file_app_data(range.file_id)?.project_id;
@@ -152,7 +153,7 @@ fn type_at_position(
 }
 
 fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
-    if !db.is_eqwalizer_enabled(file_id, false) {
+    if !db.is_eqwalizer_enabled(file_id, IncludeGenerated::No) {
         return None;
     }
     let project_id = db.file_app_data(file_id)?.project_id;
@@ -168,12 +169,12 @@ fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec
 fn is_eqwalizer_enabled(
     db: &dyn EqwalizerDatabase,
     file_id: FileId,
-    include_generated: bool,
+    include_generated: IncludeGenerated,
 ) -> bool {
     if !otp_supported_by_eqwalizer() {
         return false;
     }
-    if !include_generated && db.is_generated(file_id) {
+    if include_generated == IncludeGenerated::No && db.is_generated(file_id) {
         return false;
     }
 

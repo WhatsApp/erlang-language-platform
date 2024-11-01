@@ -26,6 +26,7 @@ use elp::arc_types;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp_eqwalizer::IncludeGenerated;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -220,7 +221,10 @@ impl<'a> Reporter for JsonReporter<'a> {
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()> {
         let line_index = self.analysis.line_index(file_id)?;
-        let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id, true).unwrap();
+        let eqwalizer_enabled = self
+            .analysis
+            .is_eqwalizer_enabled(file_id, IncludeGenerated::Yes)
+            .unwrap();
         let file_path = &self.loaded.vfs.file_path(file_id);
         let root_path = &self
             .analysis

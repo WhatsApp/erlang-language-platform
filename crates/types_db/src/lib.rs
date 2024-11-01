@@ -25,11 +25,27 @@ use std::sync::Arc;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IncludeGenerated {
+    Yes,
+    No,
+}
+
+impl From<bool> for IncludeGenerated {
+    fn from(value: bool) -> Self {
+        if value {
+            IncludeGenerated::Yes
+        } else {
+            IncludeGenerated::No
+        }
+    }
+}
+
 pub trait TypedSemantic {
     fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
-        include_generated: bool,
+        include_generated: IncludeGenerated,
     ) -> Option<Vec<eqwalizer::EqwalizerDiagnostic>>;
 
     fn eqwalizer_type_at_position(

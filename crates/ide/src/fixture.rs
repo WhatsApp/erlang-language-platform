@@ -136,7 +136,7 @@ pub fn diagnostics_for(
         }
     }
     if *use_eqwalizer {
-        let include_generated = true;
+        let include_generated = elp_types_db::IncludeGenerated::Yes;
         if let Some(diags) = analysis
             .eqwalizer_diagnostics_for_file(file_id, include_generated)
             .unwrap()

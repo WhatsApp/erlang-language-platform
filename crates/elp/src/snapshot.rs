@@ -14,6 +14,7 @@ use anyhow::Context;
 use anyhow::Result;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
+use elp_eqwalizer::IncludeGenerated;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -165,7 +166,7 @@ impl Snapshot {
     pub fn update_cache_for_file(
         &self,
         file_id: FileId,
-        include_generated: bool,
+        include_generated: IncludeGenerated,
         optimize_for_eqwalizer: bool,
     ) -> Result<()> {
         let _ = self.analysis.def_map(file_id)?;
@@ -212,7 +213,7 @@ impl Snapshot {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
         self.analysis
-            .eqwalizer_diagnostics_for_file(file_id, false)
+            .eqwalizer_diagnostics_for_file(file_id, IncludeGenerated::No)
             .ok()?
     }
 
@@ -226,7 +227,7 @@ impl Snapshot {
         let file_ids: Vec<FileId> = module_index
             .iter_own()
             .filter_map(|(_, _, file_id)| {
-                if let Ok(true) = self.analysis.should_eqwalize(file_id, false) {
+                if let Ok(true) = self.analysis.should_eqwalize(file_id, IncludeGenerated::No) {
                     Some(file_id)
                 } else {
                     None

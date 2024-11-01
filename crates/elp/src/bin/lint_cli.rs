@@ -192,7 +192,7 @@ fn do_parse_one(
             }
         } else {
             if let Some(diags) = db
-                .eqwalizer_diagnostics_for_file(file_id, args.include_generated)
+                .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
                 .unwrap()
             {
                 diagnostics.set_eqwalizer(file_id, diags);
@@ -201,7 +201,7 @@ fn do_parse_one(
     }
     if args.include_eqwalizer_diagnostics {
         if let Some(diags) = db
-            .eqwalizer_diagnostics_for_file(file_id, args.include_generated)
+            .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
             .unwrap()
         {
             diagnostics.set_eqwalizer(file_id, diags);
