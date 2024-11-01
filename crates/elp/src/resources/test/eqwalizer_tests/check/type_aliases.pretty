@@ -180,14 +180,6 @@ error: reference_to_invalid_type
 
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
-error: unbound_record
-   ┌─ check/src/type_aliases.erl:99:9
-   │
-99 │ convert(#rec1{l = L1}, #rec2{l = L2}) ->
-   │         ^^^^^^^^^^^^^ Unbound rec: rec1
-
-See https://fb.me/eqwalizer_errors#unbound_record
-
 error: unknown_id
     ┌─ check/src/type_aliases.erl:104:21
     │
@@ -206,4 +198,4 @@ error: reference_to_invalid_type
 
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
-23 ERRORS
+22 ERRORS

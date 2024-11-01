@@ -24,14 +24,6 @@ error: reference_to_invalid_type
 
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
-error: unbound_record
-   ┌─ check/src/guards.erl:57:19
-   │
-57 │ test06_neg() when #invalid{} =/= 2 -> ok.
-   │                   ^^^^^^^^^^ Unbound rec: invalid
-
-See https://fb.me/eqwalizer_errors#unbound_record
-
 error: incompatible_types
    ┌─ check/src/guards.erl:89:25
    │
@@ -42,4 +34,4 @@ Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-5 ERRORS
+4 ERRORS

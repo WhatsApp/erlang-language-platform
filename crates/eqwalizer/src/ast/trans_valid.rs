@@ -202,7 +202,15 @@ impl TransitiveChecker<'_> {
                 name: t.name.clone(),
                 references: invalids,
             });
-            stub.records.remove(&t.name);
+            // we don't know at this point which fields are invalid,
+            // so replacing all the fields with dynamic type
+            stub.records.get_mut(&t.name).map(|rec_decl| {
+                rec_decl.fields.iter_mut().for_each(|field| {
+                    if field.tp.is_some() {
+                        field.tp = Some(Type::DynamicType)
+                    }
+                })
+            });
             stub.invalid_forms
                 .push(InvalidForm::InvalidRecDecl(InvalidRecDecl {
                     location: t.location.clone(),

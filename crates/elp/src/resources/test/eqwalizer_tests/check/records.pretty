@@ -483,29 +483,25 @@ error: reference_to_invalid_type
 
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
-error: unbound_record
+error: incompatible_types
     ┌─ check/src/records.erl:425:5
     │
 425 │     X#invalid.field.
-    │     ^^^^^^^^^^^^^^^ Unbound rec: invalid
+    │     ^ X.
+Expression has type:   term()
+Context expected type: #invalid{}
 
-See https://fb.me/eqwalizer_errors#unbound_record
+See https://fb.me/eqwalizer_errors#incompatible_types
 
-error: unbound_record
+error: incompatible_types
     ┌─ check/src/records.erl:429:9
     │
 429 │     _ = X#invalid.field,
-    │         ^^^^^^^^^^^^^^^ Unbound rec: invalid
+    │         ^ X.
+Expression has type:   term()
+Context expected type: #invalid{}
 
-See https://fb.me/eqwalizer_errors#unbound_record
-
-error: unbound_record
-    ┌─ check/src/records.erl:434:5
-    │
-434 │     X#invalid{field = 2}.
-    │     ^^^^^^^^^^^^^^^^^^^^ Unbound rec: invalid
-
-See https://fb.me/eqwalizer_errors#unbound_record
+See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: reveal_type
     ┌─ check/src/records.erl:445:27
@@ -593,4 +589,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with atom()
 
-46 ERRORS
+45 ERRORS
