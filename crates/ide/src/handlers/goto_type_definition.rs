@@ -52,7 +52,8 @@ fn classify(sema: &Semantic, range: FileRange) -> Option<SymbolClass> {
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
+
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
 
     use crate::fixture;
     use crate::tests::check_navs;

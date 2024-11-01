@@ -302,6 +302,7 @@ mod tests {
     use elp_ide_db::elp_base_db::fixture::extract_tags;
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
     use itertools::Itertools;
     use stdx::trim_indent;
 
@@ -427,8 +428,9 @@ mod tests {
 
     #[test]
     fn eqwalizer_dynamic_highlight() {
-        check_highlights_eqwalizer(
-            r#"
+        if otp_supported_by_eqwalizer() {
+            check_highlights_eqwalizer(
+                r#"
             //- eqwalizer
             //- /app_a/src/a_file.erl
               -module(a_file).  
@@ -436,6 +438,7 @@ mod tests {
               f(AAA) -> ok.
             %%  ^^^type_dynamic
               "#,
-        )
+            )
+        }
     }
 }

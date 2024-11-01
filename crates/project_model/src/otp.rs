@@ -47,6 +47,13 @@ lazy_static! {
     pub static ref OTP_VERSION: Option<String> = Otp::otp_version().ok();
 }
 
+pub fn otp_supported_by_eqwalizer() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .and_then(|v| Some(v.as_str() > "25"))
+        .unwrap_or(true)
+}
+
 fn get_erts_dir() -> AbsPathBuf {
     let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
     for app in apps {

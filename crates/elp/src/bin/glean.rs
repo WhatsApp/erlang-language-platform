@@ -1747,8 +1747,8 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::fixture::extract_annotations;
     use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
-    use elp_ide::elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
     use elp_ide::AnalysisHost;
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
     use elp_project_model::test_fixture::DiagnosticsEnabled;
     use expect_test::expect_file;
     use fxhash::FxHashSet;

@@ -1746,7 +1746,7 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
     use expect_test::expect;
 
     use super::*;

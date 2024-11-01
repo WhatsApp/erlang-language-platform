@@ -174,7 +174,7 @@ fn get_spec(
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
     use expect_test::expect;
 
     use crate::tests::check_diagnostics;

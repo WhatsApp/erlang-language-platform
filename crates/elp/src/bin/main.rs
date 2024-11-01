@@ -207,8 +207,8 @@ mod tests {
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-    use elp_ide::elp_ide_db::eqwalizer::otp_supported_by_eqwalizer;
     use elp_project_model::buck::BuckQueryConfig;
+    use elp_project_model::otp::otp_supported_by_eqwalizer;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
     use expect_test::expect;
