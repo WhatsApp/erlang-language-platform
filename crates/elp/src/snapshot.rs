@@ -213,7 +213,7 @@ impl Snapshot {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
         self.analysis
-            .eqwalizer_diagnostics_for_file(file_id, IncludeGenerated::No)
+            .eqwalizer_diagnostics_for_file(file_id, IncludeGenerated::Yes)
             .ok()?
     }
 
