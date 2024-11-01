@@ -13,12 +13,17 @@
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
 
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_syntax::ast::LogicOp;
+use elp_syntax::ast::UnaryOp;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
+use hir::known;
 use hir::AnyExprId;
 use hir::ClauseId;
 use hir::FunctionDef;
 use hir::InFunctionBody;
+use hir::Literal;
+use hir::Name;
 use hir::Strategy;
 
 use super::DiagnosticConditions;
@@ -66,6 +71,9 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                     let simplification = match ctx.item {
                         hir::AnyExpr::Expr(hir::Expr::BinaryOp { lhs, rhs, op }) => {
                             simplify_binary_op(op, lhs, rhs, clause_id, sema, &def_fb)
+                        }
+                        hir::AnyExpr::Expr(hir::Expr::UnaryOp { expr, op }) => {
+                            simplify_unary_op(op, expr, clause_id, sema, &def_fb)
                         }
                         _ => None,
                     };
@@ -163,6 +171,50 @@ fn simplify_binary_op(
             to_string(&lhs_id, sema, clause_id, def_fb)
         }
         (_lhs, BinaryOp::ArithOp(ArithOp::Rem), rhs) if is_integer(1, rhs) => Some("0".to_string()),
+        // ==== SHORT CIRCUIT BOOLEAN OPS ====
+
+        // andalso
+        (lhs, BinaryOp::LogicOp(LogicOp::And { lazy: true }), _rhs)
+            if is_literal_atom(sema, lhs, known::true_name) =>
+        {
+            let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
+            Some(format!("{}", rhs_str))
+        }
+
+        // orelse
+        (lhs, BinaryOp::LogicOp(LogicOp::Or { lazy: true }), _rhs)
+            if is_literal_atom(sema, lhs, known::false_name) =>
+        {
+            let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
+            Some(format!("{}", rhs_str))
+        }
+
+        _ => None,
+    }
+}
+
+fn simplify_unary_op(
+    op: UnaryOp,
+    expr_id: hir::ExprId,
+    clause_id: ClauseId,
+    sema: &Semantic,
+    def_fb: &InFunctionBody<&FunctionDef>,
+) -> Option<String> {
+    let body = def_fb.body(clause_id);
+    if body.is_macro(AnyExprId::Expr(expr_id)) {
+        return None;
+    }
+    match (&body[expr_id], op) {
+        // ==== BOOLEAN OPS ====
+
+        // not
+        (expr, UnaryOp::Not) if is_literal_atom(sema, expr, known::true_name) => {
+            Some("false".to_string())
+        }
+        (expr, UnaryOp::Not) if is_literal_atom(sema, expr, known::false_name) => {
+            Some("true".to_string())
+        }
+
         _ => None,
     }
 }
@@ -170,6 +222,13 @@ fn simplify_binary_op(
 fn is_empty_list_expr(expr: &hir::Expr) -> bool {
     match expr {
         hir::Expr::List { exprs, tail } => exprs.is_empty() && tail.is_none(),
+        _ => false,
+    }
+}
+
+fn is_literal_atom(sema: &Semantic, expr: &hir::Expr, name: Name) -> bool {
+    match expr {
+        hir::Expr::Literal(Literal::Atom(atom)) => atom.as_name(sema.db.upcast()) == name,
         _ => false,
     }
 }
@@ -226,6 +285,21 @@ mod tests {
     f(X + 42),
     ok.
 
+  short_circuit_boolean_ops(X) ->
+    f(true andalso X),
+   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+    f(false orelse X),
+   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+    f(not false),
+   %% ^^^^^^^^^ 💡 warning: Can be simplified to `true`.
+    f(not true),
+   %% ^^^^^^^^ 💡 warning: Can be simplified to `false`.
+
+      true andalso X,
+   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+    ok.
+      
+
   f(X) -> X.
             "#,
         )
@@ -253,6 +327,14 @@ mod tests {
 
         check_fix("f(X) -> X div ~1.", expect![["f(X) -> X."]]);
         check_fix("f(X) -> X rem ~1.", expect![["f(X) -> 0."]]);
+    }
+
+    #[test]
+    fn test_fixes_short_circuit_bool_ops() {
+        check_fix("f(X) -> true~ andalso X.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> false~ orelse X.", expect![["f(X) -> X."]]);
+        check_fix("f(X) -> not false~.", expect![["f(X) -> true."]]);
+        check_fix("f(X) -> not true~.", expect![["f(X) -> false."]]);
     }
 
     #[test]

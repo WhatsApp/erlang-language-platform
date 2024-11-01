@@ -278,4 +278,9 @@ pub mod known {
         moduledoc,
         doc,
     );
+
+    #[allow(bad_style)]
+    pub const true_name: super::Name = super::Name::new_inline("true");
+    #[allow(bad_style)]
+    pub const false_name: super::Name = super::Name::new_inline("false");
 }
