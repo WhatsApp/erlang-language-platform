@@ -555,3 +555,10 @@ un_two_ref2() ->
 -spec check_rec(dynamic()) -> ok.
 check_rec(#map_record{info = I}) ->
     I#{a => b}.
+
+-spec invalid_record_occurrence(term()) -> ok.
+invalid_record_occurrence(Rec) ->
+    #invalid{field = Value} = Rec,
+    case Value of
+        V1 -> V1
+    end.
