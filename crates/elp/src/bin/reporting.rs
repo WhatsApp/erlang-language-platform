@@ -223,7 +223,7 @@ impl<'a> Reporter for JsonReporter<'a> {
         let line_index = self.analysis.line_index(file_id)?;
         let eqwalizer_enabled = self
             .analysis
-            .is_eqwalizer_enabled(file_id, EqwalizerIncludes::new().generated())
+            .is_eqwalizer_enabled(file_id, EqwalizerIncludes::none().include_generated())
             .unwrap();
         let file_path = &self.loaded.vfs.file_path(file_id);
         let root_path = &self

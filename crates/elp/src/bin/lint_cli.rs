@@ -195,7 +195,7 @@ fn do_parse_one(
             if let Some(diags) = db
                 .eqwalizer_diagnostics_for_file(
                     file_id,
-                    EqwalizerIncludes::new().set_generated(args.include_generated.into()),
+                    EqwalizerIncludes::none().set_generated(args.include_generated.into()),
                 )
                 .unwrap()
             {
@@ -207,7 +207,7 @@ fn do_parse_one(
         if let Some(diags) = db
             .eqwalizer_diagnostics_for_file(
                 file_id,
-                EqwalizerIncludes::new().set_generated(args.include_generated.into()),
+                EqwalizerIncludes::none().set_generated(args.include_generated.into()),
             )
             .unwrap()
         {

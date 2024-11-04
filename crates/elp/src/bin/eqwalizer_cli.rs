@@ -144,7 +144,7 @@ pub fn do_eqwalize_all(
     set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let eqwalizer_includes = EqwalizerIncludes::none().set_generated(args.include_generated.into());
     let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
     let file_ids: Vec<FileId> = module_index
         .iter_own()
@@ -212,7 +212,7 @@ pub fn do_eqwalize_app(
     set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let eqwalizer_includes = EqwalizerIncludes::none().set_generated(args.include_generated.into());
     let file_ids: Vec<FileId> = module_index
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
@@ -262,7 +262,7 @@ pub fn eqwalize_target(
     let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
     let analysis = &loaded.analysis();
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let eqwalizer_includes = EqwalizerIncludes::none().set_generated(args.include_generated.into());
     let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
     let exact_match = buck_target.contains(':');
@@ -330,7 +330,7 @@ pub fn eqwalize_stats(
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let eqwalizer_includes = EqwalizerIncludes::none().set_generated(args.include_generated.into());
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
     let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = module_index

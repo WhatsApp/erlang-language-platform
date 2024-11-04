@@ -71,7 +71,7 @@ mod tests {
                 .unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analysis
-                .is_eqwalizer_enabled(file_id, EqwalizerIncludes::new())
+                .is_eqwalizer_enabled(file_id, EqwalizerIncludes::none())
                 .expect(&format!(
                     "Failed to check if eqwalizer enabled for {module}"
                 ));

@@ -137,7 +137,7 @@ pub fn diagnostics_for(
         }
     }
     if *use_eqwalizer {
-        let eqwalizer_includes = EqwalizerIncludes::new().generated();
+        let eqwalizer_includes = EqwalizerIncludes::none().include_generated();
         if let Some(diags) = analysis
             .eqwalizer_diagnostics_for_file(file_id, eqwalizer_includes)
             .unwrap()
