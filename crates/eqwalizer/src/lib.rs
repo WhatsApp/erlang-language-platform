@@ -45,7 +45,9 @@ use crate::ipc::EqWAlizerASTFormat;
 pub mod analyses;
 pub mod ast;
 pub use elp_types_db::eqwalizer::types;
+pub use elp_types_db::EqwalizerIncludes;
 pub use elp_types_db::IncludeGenerated;
+pub use elp_types_db::IncludeTests;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Mode {

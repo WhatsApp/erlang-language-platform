@@ -14,7 +14,7 @@ mod tests {
 
     use elp::build::load;
     use elp::cli::Fake;
-    use elp_eqwalizer::IncludeGenerated;
+    use elp_eqwalizer::EqwalizerIncludes;
     use elp_ide::elp_ide_db::elp_base_db::AbsPath;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
     use elp_ide::erlang_service::Format;
@@ -71,7 +71,7 @@ mod tests {
                 .unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analysis
-                .is_eqwalizer_enabled(file_id, IncludeGenerated::No)
+                .is_eqwalizer_enabled(file_id, EqwalizerIncludes::new())
                 .expect(&format!(
                     "Failed to check if eqwalizer enabled for {module}"
                 ));

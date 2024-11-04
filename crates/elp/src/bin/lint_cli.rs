@@ -24,6 +24,7 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
+use elp_eqwalizer::EqwalizerIncludes;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
@@ -192,7 +193,10 @@ fn do_parse_one(
             }
         } else {
             if let Some(diags) = db
-                .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
+                .eqwalizer_diagnostics_for_file(
+                    file_id,
+                    EqwalizerIncludes::new().set_generated(args.include_generated.into()),
+                )
                 .unwrap()
             {
                 diagnostics.set_eqwalizer(file_id, diags);
@@ -201,7 +205,10 @@ fn do_parse_one(
     }
     if args.include_eqwalizer_diagnostics {
         if let Some(diags) = db
-            .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
+            .eqwalizer_diagnostics_for_file(
+                file_id,
+                EqwalizerIncludes::new().set_generated(args.include_generated.into()),
+            )
             .unwrap()
         {
             diagnostics.set_eqwalizer(file_id, diags);
