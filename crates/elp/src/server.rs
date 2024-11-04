@@ -989,8 +989,12 @@ impl Server {
                 .filter_map(|file_id| {
                     Some((
                         file_id,
-                        snapshot.eqwalizer_diagnostics(file_id, include_otp)?,
-                        snapshot.eqwalizer_types(file_id, include_otp)?,
+                        snapshot
+                            .eqwalizer_diagnostics(file_id, include_otp)
+                            .unwrap_or_default(),
+                        snapshot
+                            .eqwalizer_types(file_id, include_otp)
+                            .unwrap_or_default(),
                     ))
                 })
                 .collect();
