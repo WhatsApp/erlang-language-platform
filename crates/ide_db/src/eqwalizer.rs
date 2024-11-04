@@ -11,7 +11,6 @@ use std::sync::Arc;
 
 use elp_base_db::salsa;
 use elp_base_db::FileId;
-use elp_base_db::FileKind;
 use elp_base_db::FileRange;
 use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
@@ -36,7 +35,6 @@ use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::EqwalizerIncludes;
 use elp_types_db::IncludeGenerated;
-use elp_types_db::IncludeTests;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 
@@ -121,12 +119,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     range: FileRange,
 ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(
-        range.file_id,
-        EqwalizerIncludes::none()
-            .include_generated()
-            .include_tests(),
-    ) {
+    if !db.is_eqwalizer_enabled(range.file_id, EqwalizerIncludes::none().include_generated()) {
         return None;
     }
     let project_id = db.file_app_data(range.file_id)?.project_id;
@@ -161,12 +154,7 @@ fn type_at_position(
 }
 
 fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
-    if !db.is_eqwalizer_enabled(
-        file_id,
-        EqwalizerIncludes::none()
-            .include_generated()
-            .include_tests(),
-    ) {
+    if !db.is_eqwalizer_enabled(file_id, EqwalizerIncludes::none().include_generated()) {
         return None;
     }
     let project_id = db.file_app_data(file_id)?.project_id;
@@ -191,9 +179,6 @@ fn is_eqwalizer_enabled(
         return false;
     }
 
-    let is_enabled_test = eqwalizer_includes.include_tests == IncludeTests::Yes
-        && db.file_kind(file_id) == FileKind::TestModule;
-
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {:?}", file_id));
     let source_root = db.file_source_root(file_id);
@@ -209,8 +194,7 @@ fn is_eqwalizer_enabled(
     let is_src = module_index.file_source_for_file(file_id) == Some(FileSource::Src);
     let app_or_global_opt_in =
         eqwalizer_config.enable_all || db.has_eqwalizer_app_marker(source_root);
-    let opt_in = (app_or_global_opt_in && (is_src || is_enabled_test))
-        || db.has_eqwalizer_module_marker(file_id);
+    let opt_in = (app_or_global_opt_in && is_src) || db.has_eqwalizer_module_marker(file_id);
     let ignored = db.has_eqwalizer_ignore_marker(file_id);
     opt_in && !ignored
 }
