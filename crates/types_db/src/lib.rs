@@ -32,14 +32,14 @@ pub struct EqwalizerIncludes {
 }
 
 impl EqwalizerIncludes {
-    pub fn none() -> EqwalizerIncludes {
+    pub fn new() -> EqwalizerIncludes {
         EqwalizerIncludes {
             include_generated: IncludeGenerated::No,
             include_tests: IncludeTests::No,
         }
     }
 
-    pub fn include_generated(mut self) -> EqwalizerIncludes {
+    pub fn generated(mut self) -> EqwalizerIncludes {
         self.include_generated = IncludeGenerated::Yes;
         self
     }
@@ -49,8 +49,8 @@ impl EqwalizerIncludes {
         self
     }
 
-    pub fn include_tests(mut self) -> EqwalizerIncludes {
-        self.include_tests = IncludeTests::Yes;
+    pub fn tests(mut self) -> EqwalizerIncludes {
+        self.include_generated = IncludeGenerated::Yes;
         self
     }
 }

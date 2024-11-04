@@ -1533,7 +1533,7 @@ impl Server {
                 let file_id = files.remove(files.len() - 1);
                 match snapshot.update_cache_for_file(
                     file_id,
-                    EqwalizerIncludes::none(),
+                    EqwalizerIncludes::new(),
                     eqwalize_all,
                 ) {
                     Ok(_) => {}
@@ -1574,7 +1574,7 @@ impl Server {
             for (_, _, file_id) in module_index.iter_own() {
                 match snapshot
                     .analysis
-                    .should_eqwalize(file_id, EqwalizerIncludes::none())
+                    .should_eqwalize(file_id, EqwalizerIncludes::new())
                 {
                     Ok(true) => {
                         files.push(file_id);
