@@ -26,43 +26,7 @@ use elp_base_db::FileId;
 use elp_base_db::FileRange;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct EqwalizerIncludes {
-    pub include_generated: IncludeGenerated,
-    pub include_tests: IncludeTests,
-}
-
-impl EqwalizerIncludes {
-    pub fn new() -> EqwalizerIncludes {
-        EqwalizerIncludes {
-            include_generated: IncludeGenerated::No,
-            include_tests: IncludeTests::No,
-        }
-    }
-
-    pub fn generated(mut self) -> EqwalizerIncludes {
-        self.include_generated = IncludeGenerated::Yes;
-        self
-    }
-
-    pub fn set_generated(mut self, include_generated: IncludeGenerated) -> EqwalizerIncludes {
-        self.include_generated = include_generated;
-        self
-    }
-
-    pub fn tests(mut self) -> EqwalizerIncludes {
-        self.include_generated = IncludeGenerated::Yes;
-        self
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IncludeGenerated {
-    Yes,
-    No,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum IncludeTests {
     Yes,
     No,
 }
@@ -81,7 +45,7 @@ pub trait TypedSemantic {
     fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
-        include_generated: EqwalizerIncludes,
+        include_generated: IncludeGenerated,
     ) -> Option<Vec<eqwalizer::EqwalizerDiagnostic>>;
 
     fn eqwalizer_type_at_position(

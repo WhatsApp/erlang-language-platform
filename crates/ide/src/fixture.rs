@@ -16,7 +16,6 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
-use elp_types_db::EqwalizerIncludes;
 
 use crate::diagnostics::AdhocSemanticDiagnostics;
 use crate::diagnostics::DiagnosticsConfig;
@@ -137,9 +136,9 @@ pub fn diagnostics_for(
         }
     }
     if *use_eqwalizer {
-        let eqwalizer_includes = EqwalizerIncludes::new().generated();
+        let include_generated = elp_types_db::IncludeGenerated::Yes;
         if let Some(diags) = analysis
-            .eqwalizer_diagnostics_for_file(file_id, eqwalizer_includes)
+            .eqwalizer_diagnostics_for_file(file_id, include_generated)
             .unwrap()
         {
             diagnostics.set_eqwalizer(file_id, diags);

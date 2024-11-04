@@ -58,7 +58,7 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
-use elp_types_db::EqwalizerIncludes;
+use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
 use erlang_service::CompileOption;
 use fxhash::FxHashMap;
@@ -1245,9 +1245,9 @@ fn label_erlang_service_diagnostics(
 pub fn eqwalizer_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
-    eqwalizer_includes: EqwalizerIncludes,
+    include_generated: IncludeGenerated,
 ) -> Option<Vec<Diagnostic>> {
-    let eqwalizer_diagnostics = db.eqwalizer_diagnostics(file_id, eqwalizer_includes)?;
+    let eqwalizer_diagnostics = db.eqwalizer_diagnostics(file_id, include_generated)?;
     // Because of the way db.eqwalizer_diagnostics() is implemented,
     // we only get diagnostics if it is enabled.
     let eqwalizer_enabled = true;

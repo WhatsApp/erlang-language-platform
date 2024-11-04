@@ -31,7 +31,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::EqwalizerIncludes;
+use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
 use erlang_service::Connection;
 use fxhash::FxHashMap;
@@ -372,7 +372,7 @@ impl TypedSemantic for RootDatabase {
     fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
-        eqwalizer_includes: EqwalizerIncludes,
+        include_generated: IncludeGenerated,
     ) -> Option<Vec<EqwalizerDiagnostic>> {
         // Check, if the file is actually a module
         let app_data = self.file_app_data(file_id)?;
@@ -383,7 +383,7 @@ impl TypedSemantic for RootDatabase {
 
         let project_id = app_data.project_id;
 
-        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id, eqwalizer_includes);
+        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id, include_generated);
         if !eqwalizer_enabled {
             return Some(vec![]);
         }

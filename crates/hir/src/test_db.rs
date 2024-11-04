@@ -21,7 +21,7 @@ use elp_base_db::FileRange;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_types_db::eqwalizer;
-use elp_types_db::EqwalizerIncludes;
+use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
 
 use crate::db::InternDatabase;
@@ -69,7 +69,7 @@ impl TypedSemantic for TestDB {
     fn eqwalizer_diagnostics(
         &self,
         _file_id: FileId,
-        _eqwalizer_includes: EqwalizerIncludes,
+        _include_generated: IncludeGenerated,
     ) -> Option<Vec<eqwalizer::EqwalizerDiagnostic>> {
         panic!("Eqwalizer data is not available in HIR tests")
     }

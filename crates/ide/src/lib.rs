@@ -63,7 +63,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::EqwalizerIncludes;
+use elp_types_db::IncludeGenerated;
 use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
@@ -232,10 +232,10 @@ impl Analysis {
     pub fn should_eqwalize(
         &self,
         file_id: FileId,
-        eqwalizer_includes: EqwalizerIncludes,
+        include_generated: IncludeGenerated,
     ) -> Cancellable<bool> {
         let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::App));
-        Ok(is_in_app && self.is_eqwalizer_enabled(file_id, eqwalizer_includes)?)
+        Ok(is_in_app && self.is_eqwalizer_enabled(file_id, include_generated)?)
     }
 
     /// Computes the set of eqwalizer diagnostics for the given files,
@@ -243,9 +243,9 @@ impl Analysis {
     pub fn eqwalizer_diagnostics_for_file(
         &self,
         file_id: FileId,
-        eqwalizer_includes: EqwalizerIncludes,
+        include_generated: IncludeGenerated,
     ) -> Cancellable<Option<Vec<Diagnostic>>> {
-        self.with_db(|db| diagnostics::eqwalizer_diagnostics(db, file_id, eqwalizer_includes))
+        self.with_db(|db| diagnostics::eqwalizer_diagnostics(db, file_id, include_generated))
     }
 
     /// Computes the set of eqwalizer diagnostics for the given project and files,
@@ -363,9 +363,9 @@ impl Analysis {
     pub fn is_eqwalizer_enabled(
         &self,
         file_id: FileId,
-        eqwalizer_includes: EqwalizerIncludes,
+        include_generated: IncludeGenerated,
     ) -> Cancellable<bool> {
-        self.with_db(|db| db.is_eqwalizer_enabled(file_id, eqwalizer_includes))
+        self.with_db(|db| db.is_eqwalizer_enabled(file_id, include_generated))
     }
 
     /// ETF for the module's abstract forms

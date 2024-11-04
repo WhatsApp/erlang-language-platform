@@ -22,7 +22,6 @@ use elp::cli::Cli;
 use elp::convert;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
-use elp_eqwalizer::EqwalizerIncludes;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticsConfig;
@@ -144,7 +143,7 @@ pub fn do_eqwalize_all(
     set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let include_generated = args.include_generated.into();
     let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
     let file_ids: Vec<FileId> = module_index
         .iter_own()
@@ -152,7 +151,7 @@ pub fn do_eqwalize_all(
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (_name, _source, file_id)| {
             if analysis
-                .should_eqwalize(file_id, eqwalizer_includes)
+                .should_eqwalize(file_id, include_generated)
                 .unwrap()
             {
                 Some(file_id)
@@ -212,13 +211,13 @@ pub fn do_eqwalize_app(
     set_eqwalizer_config(loaded, args.clause_coverage);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let include_generated = args.include_generated.into();
     let file_ids: Vec<FileId> = module_index
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
             if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
                 && analysis
-                    .should_eqwalize(file_id, eqwalizer_includes)
+                    .should_eqwalize(file_id, include_generated)
                     .unwrap()
             {
                 Some(file_id)
@@ -262,7 +261,7 @@ pub fn eqwalize_target(
     let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
     let analysis = &loaded.analysis();
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let include_generated = args.include_generated.into();
     let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
     let exact_match = buck_target.contains(':');
@@ -279,7 +278,7 @@ pub fn eqwalize_target(
                 if let Some(file_id) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
                     if analysis
-                        .should_eqwalize(file_id, eqwalizer_includes)
+                        .should_eqwalize(file_id, include_generated)
                         .unwrap()
                     {
                         file_ids.push(file_id);
@@ -330,7 +329,7 @@ pub fn eqwalize_stats(
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let eqwalizer_includes = EqwalizerIncludes::new().set_generated(args.include_generated.into());
+    let include_generated = args.include_generated.into();
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
     let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = module_index
@@ -339,7 +338,7 @@ pub fn eqwalize_stats(
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
             if analysis
-                .should_eqwalize(file_id, eqwalizer_includes)
+                .should_eqwalize(file_id, include_generated)
                 .expect("cancelled")
             {
                 analysis
