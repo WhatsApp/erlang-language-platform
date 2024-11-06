@@ -2278,26 +2278,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   at tuple index 1:
   {'ok', atom()} is not compatible with {'error', term()}
 
-error: incompatible_types
-     ┌─ check/src/custom.erl:2519:5
-     │
-2519 │     Res.
-     │     ^^^
-     │     │
-     │     Res.
-Expression has type:   #{method() | 'a1' | 'a2' => #{ttl => number()} | atom()}
-Context expected type: c_map()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │     
-
-  #{method() | 'a1' | 'a2' => #{ttl => number()} | atom()} is not compatible with c_map()
-  because
-  #{method() | 'a1' | 'a2' => #{ttl => number()} | atom()} is not compatible with #{a1 => atom(), a2 => atom(), method() => #{ttl => number()}}
-  key a2 is not present in the former map but is incompatible with its default association
-  because
-  #{ttl => number()} | atom() is not compatible with atom()
-  because
-  #{ttl => number()} is not compatible with atom()
-
-160 ERRORS
+159 ERRORS
