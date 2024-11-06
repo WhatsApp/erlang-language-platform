@@ -93,3 +93,9 @@ dyn_domain_coerce(X) -> X.
 
 -spec gradual_guarantee_1(#{dynamic() => binary()}) -> #{a => binary(), b => binary(), c => atom()}.
 gradual_guarantee_1(X) -> X.
+
+-type counters() :: #{get := integer(), post := integer()}.
+
+-spec update_counters1(counters(), post | get) -> counters().
+update_counters1(Counters, Method) ->
+    Counters#{Method := maps:get(Method, Counters, 0) + 1}.
