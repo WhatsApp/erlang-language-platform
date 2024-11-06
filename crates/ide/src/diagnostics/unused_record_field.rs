@@ -53,7 +53,11 @@ fn unused_record_field(
                         .at_least_one()
                     {
                         let combined_name = format!("{name}.{field_name}");
-                        let range = field_def.source(sema.db.upcast()).syntax().text_range();
+                        let source = field_def.source(sema.db.upcast());
+                        let range = match source.name() {
+                            Some(name) => name.syntax().text_range(),
+                            None => source.syntax().text_range(),
+                        };
                         let d = make_diagnostic(range, &combined_name);
                         acc.push(d);
                     }
@@ -88,6 +92,26 @@ mod tests {
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c, field_d}).
                              %% ^^^^^^^ warning: Unused record field (unused_field.field_d)
+
+main(#used_field{field_a = A, field_b = B}) ->
+    {A, B};
+main(R) ->
+    R#unused_field.field_c.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_record_field_with_type() {
+        check_diagnostics(
+            r#"
+-module(main).
+
+-export([main/1]).
+
+-record(used_field, {field_a, field_b = 42}).
+-record(unused_field, {field_c :: atom(), field_d :: number()}).
+                                       %% ^^^^^^^ warning: Unused record field (unused_field.field_d)
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
