@@ -2498,3 +2498,33 @@ lists_partition_eq(L) ->
     -> {[{ok, atom()}], [{error, term()}]}.
 lists_partition_result(L) ->
     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
+
+-type method() :: get | put | delete.
+
+-type c_map() :: #{
+    a1 => atom(),
+    a2 => atom(),
+    method() => #{ttl => number()}
+}.
+
+-spec maps_put_complex(c_map(), method()) -> c_map().
+maps_put_complex(Map, Method) ->
+    Res = case maps:get(Method, Map, undefined) of
+        undefined ->
+            Map;
+        MethodMap ->
+            NewMethodMap = maps:put(ttl, 0, MethodMap),
+            maps:put(Method, NewMethodMap, Map)
+    end,
+    Res.
+
+-spec maps_update_complex(c_map(), method()) -> c_map().
+maps_update_complex(Map, Method) ->
+    Res = case maps:get(Method, Map, undefined) of
+        undefined ->
+            Map;
+        MethodMap ->
+            NewMethodMap = maps:put(ttl, 0, MethodMap),
+            Map#{Method => NewMethodMap}
+    end,
+    Res.
