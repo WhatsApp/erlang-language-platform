@@ -47,19 +47,26 @@ fn unused_record_field(
             // Only run the check for records defined in the local module,
             // not in the included files.
             if def.file.file_id == file_id {
-                for (field_name, field_def) in def.fields(sema.db) {
-                    if !SymbolDefinition::RecordField(field_def.clone())
-                        .usages(sema)
-                        .at_least_one()
-                    {
-                        let combined_name = format!("{name}.{field_name}");
-                        let source = field_def.source(sema.db.upcast());
-                        let range = match source.name() {
-                            Some(name) => name.syntax().text_range(),
-                            None => source.syntax().text_range(),
-                        };
-                        let d = make_diagnostic(range, &combined_name);
-                        acc.push(d);
+                // If the record itself is unused, there's little point in showing
+                // warnings for each field
+                if SymbolDefinition::Record(def.clone())
+                    .usages(sema)
+                    .at_least_one()
+                {
+                    for (field_name, field_def) in def.fields(sema.db) {
+                        if !SymbolDefinition::RecordField(field_def.clone())
+                            .usages(sema)
+                            .at_least_one()
+                        {
+                            let combined_name = format!("{name}.{field_name}");
+                            let source = field_def.source(sema.db.upcast());
+                            let range = match source.name() {
+                                Some(name) => name.syntax().text_range(),
+                                None => source.syntax().text_range(),
+                            };
+                            let d = make_diagnostic(range, &combined_name);
+                            acc.push(d);
+                        }
                     }
                 }
             }
@@ -117,6 +124,21 @@ main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
 main(R) ->
     R#unused_field.field_c.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_record_whole_record_unused() {
+        check_diagnostics(
+            r#"
+-module(main).
+
+-export([main/1]).
+
+-record(used_field, {field_a, field_b = 42}).
+
+main(_) -> ok.
             "#,
         );
     }

@@ -1991,7 +1991,6 @@ baz(1)->4.
   -module(main).
   -record(person, {(name + XXX)}).
 %%                 ^^^^^^^ error: Syntax Error
-%%                         ^^^ warning: Unused record field (person.[missing name])
 %%                            ^ error: Syntax Error
 "#;
         check_diagnostics(fixture_str);
