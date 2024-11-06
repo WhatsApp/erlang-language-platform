@@ -1,0 +1,28 @@
+MODULE_DOC
+This module includes a header file
+
+
+
+
+
+
+
+FUNCTION_DOCS
+{
+    (
+        "one",
+        0,
+    ): "This is function 1\n\n\n\n\n\n",
+}
+
+EDOC_DIAGNOSTICS
+[
+    DocDiagnostic {
+        code: "O0039",
+        severity: "warning",
+        line: 10,
+        message: "tag @docc not recognized.",
+    },
+]
+
+

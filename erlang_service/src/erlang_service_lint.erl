@@ -10,56 +10,25 @@
 -export([run/2]).
 
 run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Deterministic]) ->
-    Options1 =
-        case Deterministic of
-            true ->
-                % Force determinism.
-                % The added options mirrors https://fburl.com/code/hwv3vzl5
-                [{deterministic, true}, {source_name, filename:basename(FileName)} | Options0];
-            false ->
-                Options0
-        end,
-    %% Match WASERVER/erl/rebar.config.script erl_opts
-    Options2 = [nowarn_underscore_match | Options1],
-    %% TODO workaround to enable parsing third-party deps
-    %% remove it after merge of https://github.com/jlouis/graphql-erlang/pull/225
-    Options3 =
-        case filename:basename(FileName) of
-            "graphql_execute.erl" ->
-                [{no_auto_import, [{alias, 1}]} | Options2];
-            _ ->
-                Options2
-        end,
-    case extract_forms(Id, FileName, FileId, FileText, Options3) of
+    Options = parse_options(FileName, Options0, Deterministic),
+    case extract_forms(Id, FileName, FileId, FileText, Options) of
         {ok, Forms0} ->
-            Transforms0 = proplists:get_value(parse_transforms, Options3, []),
-            {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
-            Transform = fun(Mod, Forms) -> transform(Mod, Forms, Options3) end,
-            Forms2 = lists:foldl(Transform, Forms1, Transforms),
-            Forms3 =
-                case proplists:get_value(elp_metadata, Options3) of
-                    undefined ->
-                        Forms2;
-                    ElpMetadata ->
-                        elp_metadata:insert_metadata(ElpMetadata, Forms2)
-                end,
-            AST = case should_strip_doc_attributes() of
-                true ->
-                    filter_doc_attributes(Forms3);
-                false ->
-                    Forms3
-                end,
+            AST = ast(Forms0, Options),
             ResultAST = PostProcess(AST, FileName),
-            case lint_file(Forms3, FileName, Options3, OverrideOptions) of
+            case lint_file(AST, FileName, Options, OverrideOptions) of
                 {ok, []} ->
-                    {ok, [{<<"AST">>, ResultAST}]};
+                    {ok, [
+                        {<<"AST">>, ResultAST}
+                    ]};
                 {ok, Warnings} ->
-                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
-                    {ok, [{<<"AST">>, ResultAST},
-                          {<<"WAR">>, FormattedWarnings}]};
+                    FormattedWarnings = format_errors(AST, FileName, Warnings),
+                    {ok, [
+                        {<<"AST">>, ResultAST},
+                        {<<"WAR">>, FormattedWarnings}
+                    ]};
                 {error, Errors, Warnings} ->
-                    FormattedErrors = format_errors(Forms3, FileName, Errors),
-                    FormattedWarnings = format_errors(Forms3, FileName, Warnings),
+                    FormattedErrors = format_errors(AST, FileName, Errors),
+                    FormattedWarnings = format_errors(AST, FileName, Warnings),
                     {ok, [
                         {<<"AST">>, ResultAST},
                         {<<"ERR">>, FormattedErrors},
@@ -73,9 +42,41 @@ run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Det
             {error, Msg}
     end.
 
--spec should_strip_doc_attributes() -> boolean().
-should_strip_doc_attributes() ->
-    list_to_integer(erlang:system_info(otp_release)) >= 27.
+-spec parse_options(file:filename(), [term()], boolean()) -> [term()].
+parse_options(FileName, Options0, Deterministic) ->
+    Options1 =
+        case Deterministic of
+            true ->
+                % Force determinism.
+                % The added options mirrors https://fburl.com/code/hwv3vzl5
+                [{deterministic, true}, {source_name, filename:basename(FileName)} | Options0];
+            false ->
+                Options0
+        end,
+    %% Match WASERVER/erl/rebar.config.script erl_opts
+    Options2 = [nowarn_underscore_match | Options1],
+    %% TODO workaround to enable parsing third-party deps
+    %% remove it after merge of https://github.com/jlouis/graphql-erlang/pull/225
+    case filename:basename(FileName) of
+        "graphql_execute.erl" ->
+            [{no_auto_import, [{alias, 1}]} | Options2];
+        _ ->
+            Options2
+    end.
+
+-spec ast([elp_parse:abstract_form()], [{parse_transforms | elp_metadata, term()}]) ->
+    {[elp_parse:abstract_form()], [elp_parse:abstract_form()]}.
+ast(Forms0, Options) ->
+    Transforms0 = proplists:get_value(parse_transforms, Options, []),
+    {Transforms, Forms1} = collect_parse_transforms(Forms0, [], Transforms0),
+    Transform = fun(Mod, Forms) -> transform(Mod, Forms) end,
+    Forms2 = lists:foldl(Transform, Forms1, Transforms),
+    case proplists:get_value(elp_metadata, Options) of
+        undefined ->
+            Forms2;
+        ElpMetadata ->
+            elp_metadata:insert_metadata(ElpMetadata, Forms2)
+    end.
 
 lint_file(Forms, FileName, Options0, OverrideOptions) ->
     Options =
@@ -110,14 +111,15 @@ collect_parse_transforms({parse_transform, Transform}) ->
 collect_parse_transforms(Other) ->
     {keep, [], Other}.
 
+-spec transform(atom(), [elp_parse:abstract_form()]) -> [elp_parse:abstract_form()].
 %% Replicate the way this messes up the AST without actually
 %% having the transform as a dependency
-transform(cth_readable_transform, Forms, _Options) ->
+transform(cth_readable_transform, Forms) ->
     cth_readable_transform(Forms);
 %% MS transform can add a -compile attribute with unexpected line position,
 %% we fix it up to something we can consume.
 %% Setting it to {0, 0} crashes erl_lint, so we set to {0, 1}
-transform(ms_transform, Forms, _Options) ->
+transform(ms_transform, Forms) ->
     case ms_transform:parse_transform(Forms, []) of
         [First | Rest] ->
             case First of
@@ -130,11 +132,11 @@ transform(ms_transform, Forms, _Options) ->
         _ ->
             Forms
     end;
-transform(qlc, Forms, _Options) ->
+transform(qlc, Forms) ->
     Forms;
-transform(vararg, Forms, _Options) ->
+transform(vararg, Forms) ->
     vararg_transform(Forms);
-transform(Other, Forms, _Options) ->
+transform(Other, Forms) ->
     Other:parse_transform(Forms, []).
 
 cth_readable_transform({call, Line, {remote, _, {atom, _, ct}, {atom, _, pal}}, Args}) ->
@@ -154,16 +156,6 @@ vararg_transform(List) when is_list(List) ->
     [vararg_transform(Elem) || Elem <- List];
 vararg_transform(Atomic) ->
     Atomic.
-
--spec filter_doc_attributes([elp_parse:abstract_form()]) -> [elp_parse:abstract_form()].
-filter_doc_attributes(Forms) ->
-    [Form || Form <- Forms, not is_doc_attribute(Form)].
-
--spec is_doc_attribute(elp_parse:abstract_form()) -> boolean().
-is_doc_attribute({attribute, _Anno, Attr, _Meta}) when Attr =:= doc; Attr =:= moduledoc; Attr =:= docformat ->
-    true;
-is_doc_attribute(_) ->
-    false.
 
 format_errors(Forms, OriginalPath, Warnings) ->
     Formatted =

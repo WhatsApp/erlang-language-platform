@@ -20,9 +20,52 @@
 -type diagnostic() ::
     {Line :: pos_integer(), Message :: binary(), Severity :: severity()}.
 -type severity() :: warning | error.
+-type origin() :: eep48 | edoc.
 
-run(_Id, [FileName, DocOrigin]) ->
-    {ok, serialize_docs(get_docs_for_src_file(FileName, DocOrigin))}.
+run(_Id, [FileName, DocOrigin, AST]) ->
+    Docs =
+        case doc_from_eep059_attributes(FileName, DocOrigin, AST, supports_eep059_doc_attributes()) of
+            {ok, D} ->
+                D;
+            {error, _} ->
+                get_docs_for_src_file(FileName, DocOrigin)
+        end,
+    {ok, serialize_docs(Docs)}.
+
+-spec supports_eep059_doc_attributes() -> boolean().
+supports_eep059_doc_attributes() ->
+    list_to_integer(erlang:system_info(otp_release)) >= 27.
+
+-spec doc_from_eep059_attributes(string(), origin(), no_ast | binary(), boolean()) ->
+    {ok, docs()} | {error, not_supported | skipping | no_docs}.
+doc_from_eep059_attributes(_FileName, _DocOrigin, _AST, false) ->
+    {error, not_supported};
+doc_from_eep059_attributes(_FileName, eep48, _AST, _SupportsEEP059DocAttributes) ->
+    {error, skipping};
+doc_from_eep059_attributes(_FileName, _DocOrigin, no_ast, _SupportsEEP059DocAttributes) ->
+    {error, skipping};
+doc_from_eep059_attributes(FileName, edoc, AST0, _SupportsEEP059DocAttributes) ->
+    {ok, AST, []} = binary_to_term(AST0),
+    % T206726412: By default, the beam_doc module generates docs only for exported functions.
+    % While we implement a native solution to handle documentation in ELP,
+    % mark all functions as exported in this context.
+    PatchedAST = [{attribute, 0, compile, export_all} | AST],
+    case
+        beam_doc:main(
+            filename:dirname(FileName),
+            filename:basename(FileName),
+            % eqwalizer:ignore - We can guarantee that the AST is valid
+            PatchedAST,
+            []
+        )
+    of
+        {ok, DocsV1, _Warnings} ->
+            % elp:ignore W0023 (atoms_exhaustion)
+            ModuleName = list_to_atom(filename:basename(FileName, ".erl")),
+            {ok, render_docs_v1(ModuleName, DocsV1, [])};
+        {error, no_docs} ->
+            {error, no_docs}
+    end.
 
 -spec serialize_docs(docs()) -> [{binary(), binary()}].
 serialize_docs(#{
@@ -53,7 +96,7 @@ serialize_edoc_diagnostic({Line, Code, Message, Severity}) ->
         io_lib:format("~ts ~ts ~tp ~ts", [Code, Severity, Line, Message])
     ).
 
--spec get_docs_for_src_file(_FileName, edoc | eep48) -> docs().
+-spec get_docs_for_src_file(file:filename_all(), origin()) -> docs().
 get_docs_for_src_file(FileName, Origin) ->
     put(?DICT_KEY, []),
     case filename:extension(FileName) of
@@ -116,11 +159,15 @@ fetch_diagnostics_from_dict() ->
 % Format used by OTP docs for OTP >= 27
 render_docs_v1(
     _ModuleName,
-    {docs_v1, _Anno, _BeamLang, <<"text/markdown">> = _Format,
-       #{ <<"en">> := ModuleDoc} = _ModuleDoc, _Metadata, FunctionDocs} =
+    {docs_v1, _Anno, _BeamLang, <<"text/markdown">> = _Format, ModuleDoc0, _Metadata, FunctionDocs} =
         _DocsV1,
     Diagnostics = []
 ) ->
+    ModuleDoc =
+        case ModuleDoc0 of
+            #{<<"en">> := En} -> En;
+            _ -> <<>>
+        end,
     #{
         module_doc =>
             ModuleDoc,
@@ -139,12 +186,14 @@ render_docs_v1(
                 begin
                     NA = kna_to_name_arity(KNA),
                     case FDoc of
-                        #{<<"en">> := FDocEn} ->  FDocEn;
+                        #{<<"en">> := FDocEn} ->
+                            FDocEn;
                         _ ->
                             case FMetadata of
                                 #{equiv := Equiv} ->
-                                    FDocEn = << <<"equivalent to `">>/binary, Equiv/binary, <<"`">>/binary>>;
-                                _ -> FDocEn = <<>>
+                                    FDocEn = <<<<"equivalent to `">>/binary, Equiv/binary, <<"`">>/binary>>;
+                                _ ->
+                                    FDocEn = <<>>
                             end
                     end,
                     {NA, FDocEn}

@@ -1,0 +1,19 @@
+MODULE_DOC
+
+
+FUNCTION_DOCS
+{
+    (
+        "one",
+        0,
+    ): "This is function one, with old style docs\n\n\n\n\n\n",
+    (
+        "three",
+        0,
+    ): "This is the old style doc. Since a doc  attribute is present, this should not be displayed\n\n\n\n\n\n",
+}
+
+EDOC_DIAGNOSTICS
+[]
+
+

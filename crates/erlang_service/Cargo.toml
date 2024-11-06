@@ -6,6 +6,7 @@ version.workspace = true
 [dependencies]
 elp_base_db.workspace = true
 elp_syntax.workspace = true
+elp_project_model.workspace = true
 
 anyhow.workspace = true
 byteorder.workspace = true

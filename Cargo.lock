@@ -481,6 +481,7 @@ dependencies = [
  "crossbeam-channel",
  "eetf",
  "elp_base_db",
+ "elp_project_model",
  "elp_syntax",
  "env_logger",
  "expect-test",

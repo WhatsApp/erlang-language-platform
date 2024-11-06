@@ -164,6 +164,7 @@ pub struct DocRequest {
     /// here**. If the origin is EEP-48, erlang_service will resolve it to
     /// the appropriate BEAM file itself.
     pub src_path: PathBuf,
+    pub ast: Option<Arc<Vec<u8>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -828,6 +829,11 @@ impl DocRequest {
     fn encode(self) -> Vec<u8> {
         let list = eetf::List::from(vec![path_into_list(self.src_path).into()]);
         let mut buf = Vec::new();
+        if let Some(ast) = self.ast {
+            buf.write_u32::<BigEndian>(ast.len() as u32)
+                .expect("buf write failed");
+            buf.write_all(&ast).expect("buf write failed");
+        }
         eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
@@ -873,6 +879,7 @@ mod tests {
     use std::fs;
     use std::str;
 
+    use elp_project_model::otp::supports_eep59_doc_attributes;
     use expect_test::expect_file;
     use expect_test::ExpectFile;
     use lazy_static::lazy_static;
@@ -978,6 +985,32 @@ mod tests {
         expect_docs(
             "fixtures/edoc_errors.erl".into(),
             expect_file!["../fixtures/edoc_errors.expected"],
+        );
+    }
+
+    #[test]
+    fn edoc_include() {
+        expect_docs(
+            "fixtures/edoc_include.erl".into(),
+            expect_file!["../fixtures/edoc_include.expected"],
+        );
+    }
+
+    #[test]
+    fn edoc_doc_attribute() {
+        expect_eep59_docs(
+            "fixtures/edoc_doc_attribute.erl".into(),
+            expect_file!["../fixtures/edoc_doc_attribute_eep059.expected"],
+            expect_file!["../fixtures/edoc_doc_attribute.expected"],
+        );
+    }
+
+    #[test]
+    fn edoc_doc_attribute_missing_moduledoc() {
+        expect_eep59_docs(
+            "fixtures/edoc_doc_attribute_missing_moduledoc.erl".into(),
+            expect_file!["../fixtures/edoc_doc_attribute_missing_moduledoc_eep059.expected"],
+            expect_file!["../fixtures/edoc_doc_attribute_missing_moduledoc.expected"],
         );
     }
 
@@ -1096,13 +1129,38 @@ mod tests {
         expected.assert_eq(&actual);
     }
 
+    fn expect_eep59_docs(
+        path: PathBuf,
+        with_eep59_support: ExpectFile,
+        wuthout_eep59_support: ExpectFile,
+    ) {
+        if supports_eep59_doc_attributes() {
+            expect_docs(path, with_eep59_support);
+        } else {
+            expect_docs(path, wuthout_eep59_support);
+        }
+    }
+
     fn expect_docs(path: PathBuf, expected: ExpectFile) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
+        let file_text = Arc::from(
+            fs::read_to_string(path.clone()).expect("Should have been able to read the file"),
+        );
+        let request = ParseRequest {
+            options: vec![],
+            override_options: vec![],
+            file_id: FileId::from_raw(0),
+            path: path.clone(),
+            file_text,
+            format: Format::OffsetEtf,
+        };
+        let parse_response = CONN.request_parse(request, || (), &|_, _, _| None);
         let request = DocRequest {
             doc_origin: DocOrigin::Edoc,
             src_path: path,
+            ast: Some(parse_response.ast),
         };
         let response = CONN.request_doc(request, || ()).unwrap();
         let actual = format!(

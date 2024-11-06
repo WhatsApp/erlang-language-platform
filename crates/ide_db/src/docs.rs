@@ -11,6 +11,7 @@
 
 use std::fmt;
 use std::sync::Arc;
+use std::vec;
 
 use elp_base_db::salsa;
 use elp_base_db::FileId;
@@ -31,6 +32,8 @@ use hir::InFile;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
+
+use crate::ErlAstDatabase;
 
 pub trait DocLoader {
     /// when origin = eep-48:
@@ -317,13 +320,25 @@ impl DocLoader for crate::RootDatabase {
         let project_id = app_data.project_id;
         let erlang_service = self.erlang_service_for(project_id);
         let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
-        let raw_doc = erlang_service.request_doc(
-            DocRequest {
-                src_path: path.to_path_buf().into(),
+        let format = elp_erlang_service::Format::OffsetEtf;
+        let src_path = path.to_path_buf().into();
+        let doc_request = match doc_origin {
+            DocOrigin::Edoc => {
+                let parse_result = self.module_ast(file_id, format, vec![], vec![]);
+                let ast = &parse_result.ast;
+                DocRequest {
+                    src_path,
+                    doc_origin,
+                    ast: Some(ast.clone()),
+                }
+            }
+            DocOrigin::Eep48 => DocRequest {
+                src_path,
                 doc_origin,
+                ast: None,
             },
-            || src_db.unwind_if_cancelled(),
-        );
+        };
+        let raw_doc = erlang_service.request_doc(doc_request, || src_db.unwind_if_cancelled());
         match raw_doc {
             Ok(d) => FileDoc {
                 module_doc: Some(Doc {

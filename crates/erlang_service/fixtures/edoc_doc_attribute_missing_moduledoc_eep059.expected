@@ -1,0 +1,23 @@
+MODULE_DOC
+
+
+FUNCTION_DOCS
+{
+    (
+        "one",
+        0,
+    ): "",
+    (
+        "three",
+        0,
+    ): "This is function three, with both OTP 27 and old style docs",
+    (
+        "two",
+        0,
+    ): "This is function two, with OTP 27 style docs",
+}
+
+EDOC_DIAGNOSTICS
+[]
+
+
