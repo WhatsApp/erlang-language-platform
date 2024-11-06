@@ -245,24 +245,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
-    ┌─ check/src/complex_maps.erl:101:5
-    │
-101 │     Counters#{Method := maps:get(Method, Counters, 0) + 1}.
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{get := number(), post := number(), 'post' | 'get' => number()}
-Context expected type: counters()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │     
-
-  #{get := number(), post := number(), 'post' | 'get' => number()} is not compatible with counters()
-  because
-  #{get := number(), post := number(), 'post' | 'get' => number()} is not compatible with #{get := number(), post := number()}
-  because
-  #{get := number(), post := number(), 'post' | 'get' => number()} is not compatible with #{get := number(), post := number()}
-  the latter map has no default association while the first map has one
-
-17 ERRORS
+16 ERRORS
