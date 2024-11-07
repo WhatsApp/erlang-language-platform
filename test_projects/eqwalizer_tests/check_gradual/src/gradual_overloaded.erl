@@ -121,10 +121,9 @@ rec_each3_neg(Rec) ->
         Rec
     ).
 
-% optimistically assuming dynamic()
--spec rec_each4
+-spec rec_each4_neg
     (#r{} | [#r{}]) -> atom().
-rec_each4(Rec) ->
+rec_each4_neg(Rec) ->
     rec_each(
         fun(I) -> I + 1 end,
         Rec

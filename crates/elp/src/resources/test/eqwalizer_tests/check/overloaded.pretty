@@ -9,6 +9,40 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+    ┌─ check/src/overloaded.erl:117:15
+    │
+117 │     Res = bar(F),
+    │               ^
+    │               │
+    │               F.
+Expression has type:   fun(('a') -> 'z')
+Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │               
+
+  fun(('a') -> 'z') is not compatible with fun(('a') -> 'b') | fun(('a') -> 'c')
+  because
+  fun(('a') -> 'z') is not compatible with fun(('a') -> 'b')
+  because
+  'z' is not compatible with 'b'
+
+error: incompatible_types
+    ┌─ check/src/overloaded.erl:126:15
+    │
+126 │     Res = bar({fun(a) -> a end}),
+    │               ^^^^^^^^^^^^^^^^^
+    │               │
+    │               {fun}.
+Expression has type:   {fun((dynamic()) -> dynamic())}
+Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │               
+
+expected union does not contain any tuple type of size 1
+
+error: incompatible_types
     ┌─ check/src/overloaded.erl:141:5
     │
 141 │     Map.
@@ -83,6 +117,23 @@ error: reference_to_invalid_type
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
 error: incompatible_types
+    ┌─ check/src/overloaded.erl:269:14
+    │
+269 │     _ = swap(""),
+    │              ^^
+    │              │
+    │              string_lit.
+Expression has type:   []
+Context expected type: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+    │              
+
+  [] is not compatible with atom() | binary()
+  because
+  [] is not compatible with atom()
+
+error: incompatible_types
     ┌─ check/src/overloaded.erl:290:5
     │
 290 │     swap(ok).
@@ -102,4 +153,4 @@ Context expected type: 'a'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-10 ERRORS
+13 ERRORS

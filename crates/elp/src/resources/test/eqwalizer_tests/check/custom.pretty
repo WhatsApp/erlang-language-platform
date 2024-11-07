@@ -1772,6 +1772,23 @@ Context expected type: #{c := atom()}
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+     ┌─ check/src/custom.erl:1916:23
+     │
+1916 │     custom_overloaded(X).
+     │                       ^
+     │                       │
+     │                       X.
+Expression has type:   term()
+Context expected type: atom() | binary()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                       
+
+  term() is not compatible with atom() | binary()
+  because
+  term() is not compatible with atom()
+
+error: incompatible_types
      ┌─ check/src/custom.erl:1939:5
      │
 1939 │     {A, N}.
@@ -2278,4 +2295,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   at tuple index 1:
   {'ok', atom()} is not compatible with {'error', term()}
 
-159 ERRORS
+160 ERRORS

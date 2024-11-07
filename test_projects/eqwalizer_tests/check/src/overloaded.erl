@@ -112,8 +112,8 @@ test_bar3(F) ->
     Res = bar(F),
     Res.
 
--spec test_bar4(fun((a) -> z)) -> z.
-test_bar4(F) ->
+-spec test_bar4_neg(fun((a) -> z)) -> z.
+test_bar4_neg(F) ->
     Res = bar(F),
     Res.
 
@@ -121,8 +121,8 @@ test_bar4(F) ->
     ({fun((a) -> c)}) -> c.
 inner_bar(_) -> throw(err).
 
--spec test_inner_bar() -> b.
-test_inner_bar() ->
+-spec test_inner_bar_neg() -> b.
+test_inner_bar_neg() ->
     Res = bar({fun(a) -> a end}),
     Res.
 

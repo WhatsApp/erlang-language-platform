@@ -69,7 +69,6 @@ pub struct EqwalizerConfig {
     pub occurrence_typing: Option<bool>,
     pub clause_coverage: Option<bool>,
     pub report_bad_maps: Option<bool>,
-    pub overloaded_spec_domain_check: Option<bool>,
     pub overloaded_spec_dynamic_result: Option<bool>,
     pub report_dynamic_lambdas: Option<bool>,
 }
@@ -83,8 +82,6 @@ impl EqwalizerConfig {
             .map(|cfg| cmd.env("EQWALIZER_CLAUSE_COVERAGE", cfg.to_string()));
         self.report_bad_maps
             .map(|cfg| cmd.env("EQWALIZER_REPORT_BAD_MAPS", cfg.to_string()));
-        self.overloaded_spec_domain_check
-            .map(|cfg| cmd.env("EQWALIZER_OVERLOADED_SPEC_DOMAIN_CHECK", cfg.to_string()));
         self.overloaded_spec_dynamic_result
             .map(|cfg| cmd.env("EQWALIZER_OVERLOADED_SPEC_DYNAMIC_RESULT", cfg.to_string()));
         self.report_dynamic_lambdas
@@ -97,7 +94,6 @@ impl EqwalizerConfig {
             occurrence_typing: Some(true),
             clause_coverage: Some(false),
             report_bad_maps: Some(false),
-            overloaded_spec_domain_check: Some(false),
             overloaded_spec_dynamic_result: Some(false),
             report_dynamic_lambdas: Some(false),
         }

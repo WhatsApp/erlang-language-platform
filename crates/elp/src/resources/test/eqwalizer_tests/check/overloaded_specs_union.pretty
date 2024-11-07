@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ options/src/overloaded_specs_union.erl:16:29
+   ┌─ check/src/overloaded_specs_union.erl:16:29
    │
 16 │ use_over_neg_1(Arg) -> over(Arg).
    │                             ^^^
@@ -16,7 +16,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   pid() is not compatible with atom()
 
 error: incompatible_types
-   ┌─ options/src/overloaded_specs_union.erl:19:29
+   ┌─ check/src/overloaded_specs_union.erl:19:29
    │
 19 │ use_over_neg_2(Arg) -> over(Arg).
    │                             ^^^

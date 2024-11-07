@@ -49,4 +49,14 @@ Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-5 ERRORS
+error: incompatible_types
+    ┌─ check_gradual/src/gradual_overloaded.erl:128:19
+    │
+128 │         fun(I) -> I + 1 end,
+    │                   ^ I.
+Expression has type:   #r{}
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+6 ERRORS
