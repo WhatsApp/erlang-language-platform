@@ -3,7 +3,7 @@
   "description": "Erlang language server",
   "author": "Meta Platforms, Inc",
   "license": "Apache2",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "icon": "images/elp-logo-color.png",
   "homepage": "https://whatsapp.github.io/erlang-language-platform/",
   "repository": {
