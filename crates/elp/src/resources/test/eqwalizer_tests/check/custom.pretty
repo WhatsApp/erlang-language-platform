@@ -2296,50 +2296,17 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   {'ok', atom()} is not compatible with {'error', term()}
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2535:29
-     │
-2535 │ maps_intersect_1(M1, M2) -> maps:intersect(M1, M2).
-     │                             ^^^^^^^^^^^^^^^^^^^^^^
-     │                             │
-     │                             maps:intersect(M1, M2).
-Expression has type:   #{'a' | 'b' => number()}
-Context expected type: #{a => number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                             
-
-  #{'a' | 'b' => number()} is not compatible with #{a => number()}
-  because
-  #{'a' | 'b' => number()} is not compatible with #{a => number()}
-  the latter map has no default association while the first map has one
-
-error: incompatible_types
      ┌─ check/src/custom.erl:2540:33
      │
 2540 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
-Expression has type:   #{'a' | 'b' => number()}
+Expression has type:   #{a => number()}
 Context expected type: #{a := number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
      │                                 
-
-key `a` is declared as required in the latter but not in the former
-
-error: incompatible_types
-     ┌─ check/src/custom.erl:2545:29
-     │
-2545 │ maps_intersect_3(M1, M2) -> maps:intersect(M1, M2).
-     │                             ^^^^^^^^^^^^^^^^^^^^^^
-     │                             │
-     │                             maps:intersect(M1, M2).
-Expression has type:   #{'a' | 'b' => number()}
-Context expected type: #{a := number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                             
 
 key `a` is declared as required in the latter but not in the former
 
@@ -2364,33 +2331,13 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with 'true'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2555:29
-     │
-2555 │ maps_intersect_5(M1, M2) -> maps:intersect(M1, M2).
-     │                             ^^^^^^^^^^^^^^^^^^^^^^
-     │                             │
-     │                             maps:intersect(M1, M2).
-Expression has type:   #{atom() | binary() => number()}
-Context expected type: #{a => number(), atom() => number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                             
-
-  #{atom() | binary() => number()} is not compatible with #{a => number(), atom() => number()}
-  the default associations are not compatible
-  because
-  atom() | binary() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
-
-error: incompatible_types
      ┌─ check/src/custom.erl:2560:33
      │
 2560 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
-Expression has type:   #{atom() => number()}
+Expression has type:   #{a => number()}
 Context expected type: #{a := number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
@@ -2398,22 +2345,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
-     ┌─ check/src/custom.erl:2565:29
-     │
-2565 │ maps_intersect_7(M1, M2) -> maps:intersect(M1, M2).
-     │                             ^^^^^^^^^^^^^^^^^^^^^^
-     │                             │
-     │                             maps:intersect(M1, M2).
-Expression has type:   #{binary() => binary() | number()}
-Context expected type: #{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                             
-
-  #{binary() => binary() | number()} is not compatible with #{}
-  because
-  #{binary() => binary() | number()} is not compatible with #{}
-  the latter map has no default association while the first map has one
-
-167 ERRORS
+163 ERRORS
