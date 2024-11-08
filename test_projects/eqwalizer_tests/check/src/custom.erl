@@ -2528,3 +2528,38 @@ maps_update_complex(Map, Method) ->
             Map#{Method => NewMethodMap}
     end,
     Res.
+
+-spec maps_intersect_1
+    (#{a => true, b => true}, #{a := number(), c => number()})
+    -> #{a => number()}.
+maps_intersect_1(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_2_neg
+    (#{a => true, b => true}, #{a := number(), c => number()})
+    -> #{a := number()}.
+maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_3
+    (#{a := true, b := true}, #{a := number(), c => number()})
+    -> #{a := number()}.
+maps_intersect_3(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_4_neg
+    (#{a => true}, #{a := number(), b => number()})
+    -> #{a => true}.
+maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_5
+    (#{atom() | binary() => true}, #{a := number(), atom() => number()})
+    -> #{a => number(), atom() => number()}.
+maps_intersect_5(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_6_neg
+    (#{atom() => true}, #{a := number()})
+    -> #{a := number()}.
+maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_intersect_7
+    (#{binary() => true}, #{a := number(), atom() => binary()})
+    -> #{}.
+maps_intersect_7(M1, M2) -> maps:intersect(M1, M2).
