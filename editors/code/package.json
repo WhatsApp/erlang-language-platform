@@ -76,9 +76,9 @@
           "description": "The arguments to invoke the language server with",
           "default": "server"
         },
-        "elp.ai.enable": {
+        "elp.buck.query.useBxl.enable": {
           "default": false,
-          "markdownDescription": "Enable support for AI-based completions.",
+          "markdownDescription": "Use BXL to query for buck project model.",
           "type": "boolean"
         },
         "elp.diagnostics.disabled": {
@@ -116,6 +116,11 @@
           "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
           "minimum": 0,
           "type": "integer"
+        },
+        "elp.highlightDynamic.enable": {
+          "default": false,
+          "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",
+          "type": "boolean"
         },
         "elp.hoverActions.docLinks.enable": {
           "default": false,

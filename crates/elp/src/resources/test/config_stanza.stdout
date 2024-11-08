@@ -1,9 +1,4 @@
 {
-  "elp.ai.enable": {
-    "default": false,
-    "markdownDescription": "Enable support for AI-based completions.",
-    "type": "boolean"
-  },
   "elp.buck.query.useBxl.enable": {
     "default": false,
     "markdownDescription": "Use BXL to query for buck project model.",
