@@ -267,7 +267,7 @@ fn dynamic_usages_highlight(
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
-    let highlight_dynamic = HlTag::None | HlMod::TypeDynamic;
+    let highlight_dynamic = HlTag::Symbol(SymbolKind::Variable) | HlMod::TypeDynamic;
 
     if let Some(types) = types {
         types.iter().for_each(|(r, t)| {
