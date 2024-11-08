@@ -121,8 +121,8 @@ pub use elp_ide_db;
 pub use elp_ide_db::erlang_service;
 pub use elp_syntax::TextRange;
 pub use elp_syntax::TextSize;
-pub use folding_ranges::Fold;
-pub use folding_ranges::FoldKind;
+pub use folding_ranges::FoldingRange;
+pub use folding_ranges::FoldingRangeKind;
 pub use handlers::references::ReferenceSearchResult;
 pub use highlight_related::HighlightedRange;
 pub use hover::HoverAction;
@@ -646,7 +646,7 @@ impl Analysis {
     }
 
     /// Returns the set of folding ranges.
-    pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
+    pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<FoldingRange>> {
         self.with_db(|db| folding_ranges::folding_ranges(db, file_id))
     }
 

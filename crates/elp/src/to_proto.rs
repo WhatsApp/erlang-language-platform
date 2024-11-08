@@ -30,8 +30,8 @@ use elp_ide::elp_ide_db::SymbolKind;
 use elp_ide::AnnotationKind;
 use elp_ide::Cancellable;
 use elp_ide::DocLink;
-use elp_ide::Fold;
-use elp_ide::FoldKind;
+use elp_ide::FoldingRange;
+use elp_ide::FoldingRangeKind;
 use elp_ide::Highlight;
 use elp_ide::HlMod;
 use elp_ide::HlRange;
@@ -87,6 +87,10 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Variable => lsp_types::SymbolKind::VARIABLE,
         SymbolKind::Callback => lsp_types::SymbolKind::FUNCTION,
     }
+}
+
+pub(crate) fn folding_range_kind(_kind: FoldingRangeKind) -> lsp_types::FoldingRangeKind {
+    lsp_types::FoldingRangeKind::Region
 }
 
 pub(crate) fn text_edit(
@@ -430,13 +434,8 @@ fn completion_item_data(snap: &Snapshot, pos: Option<FilePosition>) -> Option<Co
     }
 }
 
-pub(crate) fn folding_range(line_index: &LineIndex, fold: Fold) -> lsp_types::FoldingRange {
-    let kind = match fold.kind {
-        FoldKind::Function | FoldKind::Record | FoldKind::DocAttribute => {
-            Some(lsp_types::FoldingRangeKind::Region)
-        }
-    };
-
+pub(crate) fn folding_range(line_index: &LineIndex, fold: FoldingRange) -> lsp_types::FoldingRange {
+    let kind = folding_range_kind(fold.kind);
     let range = range(line_index, fold.range);
 
     lsp_types::FoldingRange {
@@ -444,7 +443,7 @@ pub(crate) fn folding_range(line_index: &LineIndex, fold: Fold) -> lsp_types::Fo
         start_character: Some(range.start.character),
         end_line: range.end.line,
         end_character: Some(range.end.character),
-        kind,
+        kind: Some(kind),
     }
 }
 

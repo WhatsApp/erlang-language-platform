@@ -324,6 +324,11 @@ impl RecordDef {
         self.record.form_id.get(&source_file)
     }
 
+    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+        let source = self.source(db);
+        source.syntax().text_range()
+    }
+
     pub fn fields(
         &self,
         db: &dyn DefDatabase,

@@ -22,6 +22,7 @@ use elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNodePtr;
+use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 
 use crate::db::DefDatabase;
@@ -73,6 +74,11 @@ impl<N: AstNode> FormId<N> {
     pub fn get_ast(&self, db: &dyn DefDatabase, file_id: FileId) -> N {
         let parsed = db.parse(file_id);
         self.get(&parsed.tree())
+    }
+
+    pub fn range(&self, db: &dyn DefDatabase, file_id: FileId) -> TextRange {
+        let ast = self.get_ast(db, file_id);
+        ast.syntax().text_range()
     }
 }
 
