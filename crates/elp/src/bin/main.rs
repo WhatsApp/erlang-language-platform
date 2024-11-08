@@ -983,64 +983,6 @@ mod tests {
     }
 
     #[test]
-    fn build_info_json_buck_bxl_includes() {
-        if cfg!(feature = "buck") {
-            let tmp_dir = make_tmp_dir();
-            let tmp_file = tmp_dir.path().join("test_build_info.json");
-            let project = "diagnostics";
-            let path_str = project_path(project);
-            let args = args_vec![
-                "build-info",
-                "--buck-bxl",
-                "--buck-deps-includes",
-                "--to",
-                tmp_file.clone(),
-                "--json",
-                "--project",
-                path_str
-            ];
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 0,
-                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-                code, 0, stdout, stderr
-            );
-            assert_eq!(
-                stderr.is_empty(),
-                true,
-                "expected stderr to be empty, got:\n{}",
-                stderr
-            );
-            assert!(PathBuf::from(tmp_file.clone()).exists());
-            let content = fs::read_to_string(tmp_file).unwrap();
-            expect![[r#"
-                {
-                  "apps": [
-                    {
-                      "name": "app_a",
-                      "dir": "app_a",
-                      "src_dirs": [
-                        "src"
-                      ],
-                      "extra_src_dirs": [
-                        "test"
-                      ],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    }
-                  ],
-                  "deps": []
-                }"#]]
-            .assert_eq(content.as_str());
-        }
-    }
-
-    #[test]
     fn parse_elp_custom_build_tool() {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "app_b"],

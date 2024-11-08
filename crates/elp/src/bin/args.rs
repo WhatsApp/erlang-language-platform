@@ -366,8 +366,6 @@ pub struct Args {
 
     /// Use BXL when querying for a buck project model
     pub buck_bxl: bool,
-    /// When using BXL for buck project model, get includes from deps too
-    pub buck_deps_includes: bool,
 
     #[bpaf(external(command))]
     pub command: Command,
@@ -376,11 +374,7 @@ pub struct Args {
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
         if self.buck_bxl {
-            if self.buck_deps_includes {
-                BuckQueryConfig::BxlWithDepsIncludes
-            } else {
-                BuckQueryConfig::BxlOnly
-            }
+            BuckQueryConfig::Bxl
         } else {
             BuckQueryConfig::Original
         }

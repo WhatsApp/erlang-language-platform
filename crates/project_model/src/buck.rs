@@ -331,8 +331,7 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum BuckQueryConfig {
     Original,
-    BxlOnly,
-    BxlWithDepsIncludes,
+    Bxl,
 }
 
 fn query_buck_targets(
@@ -362,8 +361,7 @@ pub fn query_buck_targets_raw(
 ) -> Result<FxHashMap<String, BuckTarget>> {
     match query_config {
         BuckQueryConfig::Original => query_buck_targets_orig(buck_config),
-        BuckQueryConfig::BxlOnly => query_buck_targets_bxl(buck_config, false),
-        BuckQueryConfig::BxlWithDepsIncludes => query_buck_targets_bxl(buck_config, true),
+        BuckQueryConfig::Bxl => query_buck_targets_bxl(buck_config),
     }
 }
 
@@ -427,10 +425,7 @@ pub fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<Str
     Ok(result)
 }
 
-pub fn query_buck_targets_bxl(
-    buck_config: &BuckConfig,
-    deps_includes: bool,
-) -> Result<FxHashMap<String, BuckTarget>> {
+pub fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut targets = Vec::default();
     for target in &buck_config.included_targets {
         targets.push("--included_targets");
@@ -439,10 +434,6 @@ pub fn query_buck_targets_bxl(
     if let Some(deps_target) = &buck_config.deps_target {
         targets.push("--deps_target");
         targets.push(deps_target);
-    }
-    if deps_includes {
-        targets.push("--deps_includes");
-        targets.push("true");
     }
     let output = buck_config
         .buck_command()
@@ -1031,7 +1022,7 @@ mod tests {
     const BUCK_TESTS_ENABLED: bool = false; // @oss-only
 
     #[track_caller]
-    fn check_buck_bxl_query(deps_includes: bool, expect: Expect) {
+    fn check_buck_bxl_query(expect: Expect) {
         if BUCK_TESTS_ENABLED {
             let buck_root = to_abs_path_buf(&std::env::current_dir().unwrap()).unwrap();
             let buck_config = BuckConfig {
@@ -1046,11 +1037,6 @@ mod tests {
                 excluded_targets: vec![],
                 source_root: Some(PathBuf::from("whatsapp/elp/test_projects/buck_tests_2")),
             };
-            let deps_args = if deps_includes {
-                vec!["--deps_includes", "true"]
-            } else {
-                vec![]
-            };
             let output = buck_config
                 .buck_command()
                 .arg("bxl")
@@ -1058,7 +1044,6 @@ mod tests {
                 .arg("--")
                 .arg("--included_targets")
                 .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...")
-                .args(deps_args)
                 .output()
                 .unwrap();
             if !output.status.success() {
@@ -1073,30 +1058,8 @@ mod tests {
     }
 
     #[test]
-    fn build_info_buck_bxl_query_no_deps_includes() {
-        check_buck_bxl_query(
-            false,
-            expect![[r#"
-                {
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
-                    "name": "app_a",
-                    "suite": null,
-                    "srcs": [
-                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
-                    ],
-                    "includes": [],
-                    "labels": []
-                  }
-                }
-            "#]],
-        );
-    }
-
-    #[test]
-    fn build_info_buck_bxl_query_with_deps_includes() {
-        check_buck_bxl_query(
-            true,
-            expect![[r#"
+    fn build_info_buck_bxl_query() {
+        check_buck_bxl_query(expect![[r#"
                 {
                   "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
                     "name": "app_a",
@@ -1110,8 +1073,7 @@ mod tests {
                     "labels": []
                   }
                 }
-            "#]],
-        );
+            "#]]);
     }
 
     #[test]
