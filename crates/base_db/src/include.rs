@@ -40,7 +40,7 @@ impl<'a> IncludeCtx<'a> {
 
     pub fn resolve_include(&self, path: &str) -> Option<FileId> {
         self.resolve_relative(path)
-            .or_else(|| self.db.resolve_local(self.source_root_id, path.into()))
+            .or_else(|| self.db.resolve_local(self.file_id, path.into()))
     }
 
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
@@ -59,11 +59,11 @@ impl<'a> IncludeCtx<'a> {
     /// Called via salsa for inserting in the graph
     pub(crate) fn resolve_local_query(
         db: &dyn SourceDatabase,
-        source_root_id: SourceRootId,
+        file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let path: &str = &path;
-        let app_data = db.app_data(source_root_id)?;
+        let app_data = db.file_app_data(file_id)?;
         app_data.include_path.iter().find_map(|include| {
             let name = include.join(path);
             db.include_file_id(app_data.project_id, VfsPath::from((&name).clone()))

@@ -181,7 +181,7 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
 
     #[salsa::invoke(IncludeCtx::resolve_local_query)]
-    fn resolve_local(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
+    fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 
     #[salsa::invoke(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
