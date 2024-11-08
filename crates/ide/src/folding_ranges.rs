@@ -17,6 +17,7 @@ use hir::Semantic;
 pub enum FoldKind {
     Function,
     Record,
+    DocAttribute,
 }
 
 #[derive(Debug)]
@@ -32,6 +33,7 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<Fold> {
     let mut folds = Vec::new();
     let sema = Semantic::new(db);
     let def_map = sema.def_map(file_id);
+    let form_list = sema.form_list(file_id);
     // Functions
     for (_, def) in def_map.get_functions() {
         if let Some(range) = def.range(db) {
@@ -46,6 +48,22 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<Fold> {
         folds.push(Fold {
             kind: FoldKind::Record,
             range: def.source(db).syntax().text_range(),
+        })
+    }
+    // Module Doc Attributes
+    for (_idx, attribute) in form_list.module_doc_attributes() {
+        let ast = attribute.form_id.get_ast(db, file_id);
+        folds.push(Fold {
+            kind: FoldKind::DocAttribute,
+            range: ast.syntax().text_range(),
+        })
+    }
+    // Doc Attributes
+    for (_idx, attribute) in form_list.doc_attributes() {
+        let ast = attribute.form_id.get_ast(db, file_id);
+        folds.push(Fold {
+            kind: FoldKind::DocAttribute,
+            range: ast.syntax().text_range(),
         })
     }
     folds
@@ -83,7 +101,7 @@ mod tests {
             );
 
             let kind = match fold.kind {
-                FoldKind::Function | FoldKind::Record => "region",
+                FoldKind::Function | FoldKind::Record | FoldKind::DocAttribute => "region",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -125,6 +143,38 @@ mod tests {
 <fold region>two() ->
   ok,
   ok.</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_module_doc_attributes() {
+        check(
+            r#"
+-module(my_module).
+<fold region>-moduledoc """
+This is a module doc
+""".</fold>
+
+-export([one/0]).
+
+<fold region>one() -> 1.</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_doc_attributes() {
+        check(
+            r#"
+-module(my_module).
+
+-export([one/0]).
+
+<fold region>-doc "
+This is one function
+".</fold>
+<fold region>one() -> 1.</fold>
 "#,
         );
     }

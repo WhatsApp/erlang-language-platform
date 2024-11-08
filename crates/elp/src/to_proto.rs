@@ -432,7 +432,9 @@ fn completion_item_data(snap: &Snapshot, pos: Option<FilePosition>) -> Option<Co
 
 pub(crate) fn folding_range(line_index: &LineIndex, fold: Fold) -> lsp_types::FoldingRange {
     let kind = match fold.kind {
-        FoldKind::Function | FoldKind::Record => Some(lsp_types::FoldingRangeKind::Region),
+        FoldKind::Function | FoldKind::Record | FoldKind::DocAttribute => {
+            Some(lsp_types::FoldingRangeKind::Region)
+        }
     };
 
     let range = range(line_index, fold.range);
