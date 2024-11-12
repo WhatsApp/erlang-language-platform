@@ -2457,6 +2457,32 @@ maps_fold_no_merge(M1, M2, B) ->
     ),
     Res.
 
+-spec maps_fold_occ_1
+    (M1 :: #{number() => number() | undefined})
+    -> number().
+maps_fold_occ_1(M1) ->
+    maps:fold(
+        fun
+            (_, undefined, Acc) -> Acc;
+            (_, V, Acc) -> Acc + V
+        end,
+        0,
+        M1
+    ).
+
+-spec maps_fold_occ_2
+    (M1 :: #{number() => number()}, AccInit :: number() | undefined)
+    -> number() | undefined.
+maps_fold_occ_2(M1, AccInit) ->
+    maps:fold(
+        fun
+            (_, V, undefined) -> V;
+            (_, V, Acc) -> Acc + V
+        end,
+        AccInit,
+        M1
+    ).
+
 -spec lists_partition_rid
     (L :: [atom() | number()])
     -> {[atom()], [number()]}.

@@ -2230,9 +2230,43 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'something' is not compatible with 'iodata' | 'list' | 'binary'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2470:5
+     ┌─ check/src/custom.erl:2467:34
      │
-2470 │     lists:partition(fun is_number/1, L).
+2467 │             (_, V, Acc) -> Acc + V
+     │                                  ^
+     │                                  │
+     │                                  V.
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                                  
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2480:28
+     │
+2480 │             (_, V, Acc) -> Acc + V
+     │                            ^^^
+     │                            │
+     │                            Acc.
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                            
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2496:5
+     │
+2496 │     lists:partition(fun is_number/1, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2250,9 +2284,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with atom()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2482:5
+     ┌─ check/src/custom.erl:2508:5
      │
-2482 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+2508 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2273,9 +2307,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with atom()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2500:5
+     ┌─ check/src/custom.erl:2526:5
      │
-2500 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
+2526 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2296,9 +2330,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   {'ok', atom()} is not compatible with {'error', term()}
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2540:33
+     ┌─ check/src/custom.erl:2566:33
      │
-2540 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
+2566 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2311,9 +2345,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2550:33
+     ┌─ check/src/custom.erl:2576:33
      │
-2550 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
+2576 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2331,9 +2365,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with 'true'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2560:33
+     ┌─ check/src/custom.erl:2586:33
      │
-2560 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
+2586 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2345,4 +2379,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-163 ERRORS
+165 ERRORS
