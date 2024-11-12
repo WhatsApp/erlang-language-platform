@@ -2230,40 +2230,6 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'something' is not compatible with 'iodata' | 'list' | 'binary'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2467:34
-     │
-2467 │             (_, V, Acc) -> Acc + V
-     │                                  ^
-     │                                  │
-     │                                  V.
-Expression has type:   number() | 'undefined'
-Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                                  
-
-  number() | 'undefined' is not compatible with number()
-  because
-  'undefined' is not compatible with number()
-
-error: incompatible_types
-     ┌─ check/src/custom.erl:2480:28
-     │
-2480 │             (_, V, Acc) -> Acc + V
-     │                            ^^^
-     │                            │
-     │                            Acc.
-Expression has type:   number() | 'undefined'
-Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │                            
-
-  number() | 'undefined' is not compatible with number()
-  because
-  'undefined' is not compatible with number()
-
-error: incompatible_types
      ┌─ check/src/custom.erl:2496:5
      │
 2496 │     lists:partition(fun is_number/1, L).
@@ -2379,4 +2345,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-165 ERRORS
+163 ERRORS
