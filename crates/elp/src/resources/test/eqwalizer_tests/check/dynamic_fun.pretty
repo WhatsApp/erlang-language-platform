@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_fun.erl:65:3
+   ┌─ check/src/dynamic_fun.erl:65:3
    │
 65 │   fun M:id/1.
    │   ^^^^^^^^^^ M:'id'/1.
@@ -9,7 +9,7 @@ Context expected type: fun(() -> pid())
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_fun.erl:71:3
+   ┌─ check/src/dynamic_fun.erl:71:3
    │
 71 │   Res.
    │   ^^^ Res.
@@ -19,7 +19,7 @@ Context expected type: fun(() -> pid())
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_fun.erl:87:3
+   ┌─ check/src/dynamic_fun.erl:87:3
    │
 87 │   fun M:F/2.
    │   ^^^^^^^^^ M:F/2.
@@ -29,7 +29,7 @@ Context expected type: fun((pid()) -> pid())
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_fun.erl:93:3
+   ┌─ check/src/dynamic_fun.erl:93:3
    │
 93 │   Res.
    │   ^^^ Res.
@@ -39,7 +39,7 @@ Context expected type: fun((pid()) -> pid())
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_fun.erl:98:7
+   ┌─ check/src/dynamic_fun.erl:98:7
    │
 98 │   fun M:F/1.
    │       ^ M.
@@ -49,7 +49,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:103:9
+    ┌─ check/src/dynamic_fun.erl:103:9
     │
 103 │   fun M:F/1.
     │         ^ F.
@@ -59,7 +59,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:109:11
+    ┌─ check/src/dynamic_fun.erl:109:11
     │
 109 │   fun M:F/A.
     │           ^ A.
@@ -69,7 +69,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:146:24
+    ┌─ check/src/dynamic_fun.erl:146:24
     │
 146 │ f5_to_f4_cov_neg(F) -> F.
     │                        ^
@@ -90,7 +90,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'a' | 'b' is not compatible with 'a'
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:155:20
+    ┌─ check/src/dynamic_fun.erl:155:20
     │
 155 │ apply_f4_neg(F) -> F(a).
     │                    ^^^^ F('a').
@@ -100,7 +100,7 @@ Context expected type: boolean()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:170:22
+    ┌─ check/src/dynamic_fun.erl:170:22
     │
 170 │ fun3_to_f4_neg(F) -> F.
     │                      ^
@@ -121,7 +121,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'b' is not compatible with 'a'
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_fun.erl:176:21
+    ┌─ check/src/dynamic_fun.erl:176:21
     │
 176 │ f4_to_fun_neg(F) -> F.
     │                     ^

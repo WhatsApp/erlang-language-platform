@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_complex_types.erl:24:3
+   ┌─ check/src/gradual_complex_types.erl:24:3
    │
 24 │   undefined.
    │   ^^^^^^^^^
@@ -16,7 +16,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'undefined' is not compatible with #{id := number(), {secret, id} => number(), atom() => term()}
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_complex_types.erl:29:25
+   ┌─ check/src/gradual_complex_types.erl:29:25
    │
 29 │   eqwalizer:reveal_type(Map),
    │                         ^^^ complex_map()
@@ -24,7 +24,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_complex_types.erl:35:25
+   ┌─ check/src/gradual_complex_types.erl:35:25
    │
 35 │   eqwalizer:reveal_type(List),
    │                         ^^^^ [complex_map()]
@@ -32,7 +32,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_complex_types.erl:48:16
+   ┌─ check/src/gradual_complex_types.erl:48:16
    │
 48 │   lists:nth(7, Map).
    │                ^^^
@@ -49,7 +49,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [T]
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_complex_types.erl:55:25
+   ┌─ check/src/gradual_complex_types.erl:55:25
    │
 55 │   eqwalizer:reveal_type(M1),
    │                         ^^ dynamic()
@@ -57,7 +57,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_complex_types.erl:63:25
+   ┌─ check/src/gradual_complex_types.erl:63:25
    │
 63 │   eqwalizer:reveal_type(M1),
    │                         ^^ dynamic()
@@ -65,7 +65,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_complex_types.erl:110:3
+    ┌─ check/src/gradual_complex_types.erl:110:3
     │
 110 │   generic(DM, S).
     │   ^^^^^^^^^^^^^^ generic(DM, S).
@@ -75,7 +75,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_complex_types.erl:115:3
+    ┌─ check/src/gradual_complex_types.erl:115:3
     │
 115 │   {DM, ok}.
     │   ^^^^^^^^

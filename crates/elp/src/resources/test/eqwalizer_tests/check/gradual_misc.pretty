@@ -1,5 +1,5 @@
 error: reference_to_invalid_type
-   ┌─ check_gradual/src/gradual_misc.erl:11:1
+   ┌─ check/src/gradual_misc.erl:11:1
    │  
 11 │ ╭ -spec use_invalid_opaque_1(
 12 │ │     opaque:contravariant(a)
@@ -9,7 +9,7 @@ error: reference_to_invalid_type
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
 error: reference_to_invalid_type
-   ┌─ check_gradual/src/gradual_misc.erl:18:1
+   ┌─ check/src/gradual_misc.erl:18:1
    │  
 18 │ ╭ -spec use_invalid_opaque_2(
 19 │ │     opaque:contravariant(a | b)
@@ -19,7 +19,7 @@ error: reference_to_invalid_type
 See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_misc.erl:38:5
+   ┌─ check/src/gradual_misc.erl:38:5
    │
 38 │     <<X || X <- [], (X ++ X) >>.
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ << || >>.
@@ -29,7 +29,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_misc.erl:46:41
+   ┌─ check/src/gradual_misc.erl:46:41
    │
 46 │ refine_tuple_neg(T) when is_tuple(T) -> T;
    │                                         ^

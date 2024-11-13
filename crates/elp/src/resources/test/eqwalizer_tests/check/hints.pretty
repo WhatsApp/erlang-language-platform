@@ -1,5 +1,5 @@
 error: reveal_type
-   ┌─ check_gradual/src/hints.erl:13:27
+   ┌─ check/src/hints.erl:13:27
    │
 13 │     eqwalizer:reveal_type(A),
    │                           ^ atom()
@@ -7,7 +7,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/hints.erl:24:27
+   ┌─ check/src/hints.erl:24:27
    │
 24 │     eqwalizer:reveal_type(_A),
    │                           ^^ atom() | binary()
@@ -15,7 +15,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/hints.erl:32:27
+   ┌─ check/src/hints.erl:32:27
    │
 32 │     eqwalizer:reveal_type(B),
    │                           ^ none() | binary()
@@ -23,7 +23,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/hints.erl:41:27
+   ┌─ check/src/hints.erl:41:27
    │
 41 │     eqwalizer:reveal_type(BT),
    │                           ^^ none() | binary() | tuple()
@@ -31,7 +31,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-   ┌─ check_gradual/src/hints.erl:47:5
+   ┌─ check/src/hints.erl:47:5
    │
 47 │     Key.
    │     ^^^
@@ -48,7 +48,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   term() is not compatible with atom()
 
 error: incompatible_types
-   ┌─ check_gradual/src/hints.erl:52:5
+   ┌─ check/src/hints.erl:52:5
    │
 52 │     Key.
    │     ^^^
@@ -65,7 +65,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   term() is not compatible with atom()
 
 error: reveal_type
-   ┌─ check_gradual/src/hints.erl:56:27
+   ┌─ check/src/hints.erl:56:27
    │
 56 │     eqwalizer:reveal_type(X),
    │                           ^ none()

@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_lambdas.erl:39:17
+   ┌─ check/src/gradual_lambdas.erl:39:17
    │
 39 │         true -> A + 1;
    │                 ^ A.
@@ -9,7 +9,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: expected_fun_type
-   ┌─ check_gradual/src/gradual_lambdas.erl:55:3
+   ┌─ check/src/gradual_lambdas.erl:55:3
    │
 55 │   DoWork().
    │   ^^^^^^ DoWork.
@@ -19,7 +19,7 @@ Got: fun((dynamic()) -> dynamic())
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_lambdas.erl:70:13
+   ┌─ check/src/gradual_lambdas.erl:70:13
    │
 70 │   fun(X) -> X + 1 end.
    │             ^ X.

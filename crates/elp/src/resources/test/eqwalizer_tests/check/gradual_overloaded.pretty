@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_overloaded.erl:38:20
+   ┌─ check/src/gradual_overloaded.erl:38:20
    │
 38 │     binary_to_atom(Y).
    │                    ^ Y.
@@ -9,7 +9,7 @@ Context expected type: binary()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_overloaded.erl:61:5
+   ┌─ check/src/gradual_overloaded.erl:61:5
    │
 61 │     {Y}.
    │     ^^^ {Y}.
@@ -19,7 +19,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_overloaded.erl:90:27
+   ┌─ check/src/gradual_overloaded.erl:90:27
    │
 90 │     eqwalizer:reveal_type(Res),
    │                           ^^^ dynamic()
@@ -27,7 +27,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_overloaded.erl:112:5
+    ┌─ check/src/gradual_overloaded.erl:112:5
     │  
 112 │ ╭     rec_each(
 113 │ │         fun(R) -> R#r{count = 0} end,
@@ -40,7 +40,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_overloaded.erl:120:19
+    ┌─ check/src/gradual_overloaded.erl:120:19
     │
 120 │         fun(I) -> I + 1 end,
     │                   ^ I.
@@ -50,7 +50,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_overloaded.erl:128:19
+    ┌─ check/src/gradual_overloaded.erl:128:19
     │
 128 │         fun(I) -> I + 1 end,
     │                   ^ I.

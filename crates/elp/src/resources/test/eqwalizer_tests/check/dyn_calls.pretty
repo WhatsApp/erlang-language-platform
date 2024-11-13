@@ -1,5 +1,5 @@
 error: fun_arity_mismatch
-   ┌─ check_gradual/src/dyn_calls.erl:49:3
+   ┌─ check/src/dyn_calls.erl:49:3
    │
 49 │   (fun() -> res end)(arg),
    │   ^^^^^^^^^^^^^^^^^^ fun.

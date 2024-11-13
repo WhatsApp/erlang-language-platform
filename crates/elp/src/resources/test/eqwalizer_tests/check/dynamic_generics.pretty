@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:33:3
+   ┌─ check/src/dynamic_generics.erl:33:3
    │
 33 │   lists:map(fun inc/1, Ns).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(inc/1, Ns).
@@ -9,7 +9,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:43:3
+   ┌─ check/src/dynamic_generics.erl:43:3
    │
 43 │   lists:map(fun dyn_fun/1, Ns).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(dyn_fun/1, Ns).
@@ -19,7 +19,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:53:3
+   ┌─ check/src/dynamic_generics.erl:53:3
    │
 53 │   lists:foldl(fun add/2, 0, Ns).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:foldl(add/2, 0, Ns).
@@ -29,7 +29,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:65:3
+   ┌─ check/src/dynamic_generics.erl:65:3
    │
 65 │   lists:foldl(fun add/2, Acc, Ns).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with none()
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:72:3
+   ┌─ check/src/dynamic_generics.erl:72:3
    │
 72 │   {Res}.
    │   ^^^^^ {Res}.
@@ -56,7 +56,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:78:3
+   ┌─ check/src/dynamic_generics.erl:78:3
    │
 78 │   lists:foldl(fun dyn_fun/2, Acc, Ns).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   string() is not compatible with 'ok'
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:87:3
+   ┌─ check/src/dynamic_generics.erl:87:3
    │
 87 │   fapply(fun inc/1, dyn_val()).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fapply(inc/1, dyn_val()).
@@ -83,7 +83,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_generics.erl:92:3
+   ┌─ check/src/dynamic_generics.erl:92:3
    │
 92 │   {Res}.
    │   ^^^^^ {Res}.
@@ -93,7 +93,7 @@ Context expected type: X
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_generics.erl:115:9
+    ┌─ check/src/dynamic_generics.erl:115:9
     │
 115 │         Fib(N - 2) + Fib(N - 1)
     │         ^^^^^^^^^^
@@ -110,7 +110,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'three' is not compatible with number()
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_generics.erl:127:13
+    ┌─ check/src/dynamic_generics.erl:127:13
     │
 127 │         Fib(undefined) + Fib(N - 1)
     │             ^^^^^^^^^ 'undefined'.
@@ -120,7 +120,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: reveal_type
-    ┌─ check_gradual/src/dynamic_generics.erl:171:47
+    ┌─ check/src/dynamic_generics.erl:171:47
     │
 171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
     │                                               ^^^^^^^^^^^^ dynamic() | 'undef'

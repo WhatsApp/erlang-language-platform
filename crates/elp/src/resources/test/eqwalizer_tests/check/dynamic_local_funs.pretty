@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_local_funs.erl:30:3
+   ┌─ check/src/dynamic_local_funs.erl:30:3
    │
 30 │   lists:foldl(F, 0, L).
    │   ^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with atom()
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_local_funs.erl:36:15
+   ┌─ check/src/dynamic_local_funs.erl:36:15
    │
 36 │     N1 + N2 + binary_to_atom(Acc)
    │               ^^^^^^^^^^^^^^^^^^^ erlang:binary_to_atom(Acc).
@@ -26,7 +26,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_local_funs.erl:48:3
+   ┌─ check/src/dynamic_local_funs.erl:48:3
    │
 48 │   X.
    │   ^ X.
@@ -36,7 +36,7 @@ Context expected type: fun(('a') -> 'b')
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/dynamic_local_funs.erl:111:3
+    ┌─ check/src/dynamic_local_funs.erl:111:3
     │
 111 │   ok.
     │   ^^ 'ok'.

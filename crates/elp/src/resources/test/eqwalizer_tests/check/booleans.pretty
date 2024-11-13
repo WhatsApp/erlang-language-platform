@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/booleans.erl:47:3
+   ┌─ check/src/booleans.erl:47:3
    │
 47 │   1 andalso b().
    │   ^ 1.
@@ -9,7 +9,7 @@ Context expected type: boolean()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/booleans.erl:59:3
+   ┌─ check/src/booleans.erl:59:3
    │
 59 │   dyn() andalso only_true().
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^

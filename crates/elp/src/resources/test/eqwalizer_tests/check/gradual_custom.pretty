@@ -1,5 +1,5 @@
 error: reveal_type
-   ┌─ check_gradual/src/gradual_custom.erl:14:27
+   ┌─ check/src/gradual_custom.erl:14:27
    │
 14 │     eqwalizer:reveal_type(element(42, Tup)).
    │                           ^^^^^^^^^^^^^^^^ dynamic()
@@ -7,7 +7,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_custom.erl:18:27
+   ┌─ check/src/gradual_custom.erl:18:27
    │
 18 │     eqwalizer:reveal_type(element(2, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(atom())
@@ -15,7 +15,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_custom.erl:22:27
+   ┌─ check/src/gradual_custom.erl:22:27
    │
 22 │     eqwalizer:reveal_type(element(1, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(number())
@@ -23,7 +23,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_custom.erl:26:27
+   ┌─ check/src/gradual_custom.erl:26:27
    │
 26 │     eqwalizer:reveal_type(element(1, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(none())
@@ -31,7 +31,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-   ┌─ check_gradual/src/gradual_custom.erl:30:27
+   ┌─ check/src/gradual_custom.erl:30:27
    │
 30 │     eqwalizer:reveal_type(element(N, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(number() | atom())
@@ -39,7 +39,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:43:3
+   ┌─ check/src/gradual_custom.erl:43:3
    │
 43 │   application:get_env(app1).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1').
@@ -49,7 +49,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:56:3
+   ┌─ check/src/gradual_custom.erl:56:3
    │
 56 │   application:get_env(app1, key1).
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1', 'key1').
@@ -59,7 +59,7 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:73:3
+   ┌─ check/src/gradual_custom.erl:73:3
    │
 73 │   lists:flatten(In).
    │   ^^^^^^^^^^^^^^^^^ lists:flatten(In).
@@ -69,7 +69,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:85:3
+   ┌─ check/src/gradual_custom.erl:85:3
    │
 85 │   lists:flatten(In, Tail).
    │   ^^^^^^^^^^^^^^^^^^^^^^^ lists:flatten(In, Tail).
@@ -79,7 +79,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:94:3
+   ┌─ check/src/gradual_custom.erl:94:3
    │
 94 │   file:consult(some_file).
    │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
@@ -89,7 +89,7 @@ Context expected type: 'nok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_custom.erl:99:3
+   ┌─ check/src/gradual_custom.erl:99:3
    │
 99 │   abs(dynamic()).
    │   ^^^^^^^^^^^^^^ erlang:abs(dynamic()).
@@ -99,7 +99,7 @@ Context expected type: 'anything'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:108:7
+    ┌─ check/src/gradual_custom.erl:108:7
     │
 108 │   abs(N).
     │       ^
@@ -116,7 +116,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'a' is not compatible with number()
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:120:3
+    ┌─ check/src/gradual_custom.erl:120:3
     │
 120 │   ets:lookup(tab, Any).
     │   ^^^^^^^^^^^^^^^^^^^^ ets:lookup('tab', Any).
@@ -126,7 +126,7 @@ Context expected type: pid()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:124:14
+    ┌─ check/src/gradual_custom.erl:124:14
     │
 124 │   ets:lookup("not atom", Any).
     │              ^^^^^^^^^^ string_lit.
@@ -136,7 +136,7 @@ Context expected type: ets:tab()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:143:16
+    ┌─ check/src/gradual_custom.erl:143:16
     │
 143 │   ets:tab2list("not atom").
     │                ^^^^^^^^^^ string_lit.
@@ -146,7 +146,7 @@ Context expected type: ets:tab()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:158:3
+    ┌─ check/src/gradual_custom.erl:158:3
     │  
 158 │ ╭   maps:without(
 159 │ │     [a],
@@ -159,7 +159,7 @@ Context expected type: 'wrong_ret'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:185:3
+    ┌─ check/src/gradual_custom.erl:185:3
     │  
 185 │ ╭   maps:with(
 186 │ │     [a],
@@ -172,7 +172,7 @@ Context expected type: 'wrong_ret'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: reveal_type
-    ┌─ check_gradual/src/gradual_custom.erl:203:25
+    ┌─ check/src/gradual_custom.erl:203:25
     │
 203 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
@@ -180,7 +180,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-    ┌─ check_gradual/src/gradual_custom.erl:210:25
+    ┌─ check/src/gradual_custom.erl:210:25
     │
 210 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
@@ -188,7 +188,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-    ┌─ check_gradual/src/gradual_custom.erl:217:25
+    ┌─ check/src/gradual_custom.erl:217:25
     │
 217 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
@@ -196,7 +196,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: reveal_type
-    ┌─ check_gradual/src/gradual_custom.erl:224:25
+    ┌─ check/src/gradual_custom.erl:224:25
     │
 224 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
@@ -204,7 +204,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:245:19
+    ┌─ check/src/gradual_custom.erl:245:19
     │
 245 │ min3_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^
@@ -221,7 +221,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'undefined' is not compatible with number()
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:257:19
+    ┌─ check/src/gradual_custom.erl:257:19
     │
 257 │ min5_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^
@@ -238,7 +238,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   atom() is not compatible with number()
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:263:19
+    ┌─ check/src/gradual_custom.erl:263:19
     │
 263 │ min6_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^
@@ -255,7 +255,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   atom() is not compatible with number()
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:269:19
+    ┌─ check/src/gradual_custom.erl:269:19
     │
 269 │ min7_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^
@@ -272,7 +272,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   atom() is not compatible with number()
 
 error: reveal_type
-    ┌─ check_gradual/src/gradual_custom.erl:277:25
+    ┌─ check/src/gradual_custom.erl:277:25
     │
 277 │   eqwalizer:reveal_type(Y),
     │                         ^ dynamic() | {none()}
@@ -280,7 +280,7 @@ error: reveal_type
 See https://fb.me/eqwalizer_errors#reveal_type
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:325:13
+    ┌─ check/src/gradual_custom.erl:325:13
     │
 325 │     true -> Atom;
     │             ^^^^
@@ -299,7 +299,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'undefined' is not compatible with 'foo'
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_custom.erl:343:3
+    ┌─ check/src/gradual_custom.erl:343:3
     │
 343 │   parse_atom(Bin, [foo, bar]).
     │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^

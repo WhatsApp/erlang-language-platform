@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/use_dynamic_gradual.erl:19:3
+   ┌─ check/src/use_dynamic_gradual.erl:19:3
    │
 19 │   {erlang:atom_to_binary(Dyn)}.
    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

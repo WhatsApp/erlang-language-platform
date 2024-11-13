@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_maybe.erl:26:9
+   ┌─ check/src/gradual_maybe.erl:26:9
    │
 26 │         A
    │         ^ A.
@@ -9,7 +9,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_maybe.erl:50:14
+   ┌─ check/src/gradual_maybe.erl:50:14
    │
 50 │         _ -> 3
    │              ^ 3.
@@ -19,7 +19,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_maybe.erl:58:21
+   ┌─ check/src/gradual_maybe.erl:58:21
    │
 58 │         {err, A} ?= T,
    │                     ^ T.
@@ -29,7 +29,7 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_maybe.erl:67:20
+   ┌─ check/src/gradual_maybe.erl:67:20
    │
 67 │         {ok, A} ?= T,
    │                    ^ T.
@@ -39,7 +39,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/gradual_maybe.erl:91:9
+   ┌─ check/src/gradual_maybe.erl:91:9
    │
 91 │         B
    │         ^ B.
@@ -49,7 +49,7 @@ Context expected type: 'err'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_maybe.erl:123:18
+    ┌─ check/src/gradual_maybe.erl:123:18
     │
 123 │         a = A ?= T,
     │                  ^
@@ -68,7 +68,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'a' is not compatible with 'b'
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_maybe.erl:147:14
+    ┌─ check/src/gradual_maybe.erl:147:14
     │
 147 │         c -> err
     │              ^^^ 'err'.
@@ -78,7 +78,7 @@ Context expected type: 'ok'
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-    ┌─ check_gradual/src/gradual_maybe.erl:156:13
+    ┌─ check/src/gradual_maybe.erl:156:13
     │  
 156 │ ╭             maybe
 157 │ │                 B ?= {a, T},

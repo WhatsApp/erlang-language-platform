@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:14:15
+   ┌─ check/src/unspecced.erl:14:15
    │
 14 │   expect_none({Id}).
    │               ^^^^ {Id}.
@@ -9,7 +9,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:20:15
+   ┌─ check/src/unspecced.erl:20:15
    │
 20 │   expect_none(Res).
    │               ^^^ Res.
@@ -19,7 +19,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:24:15
+   ┌─ check/src/unspecced.erl:24:15
    │
 24 │   expect_none({Id}).
    │               ^^^^ {Id}.
@@ -29,7 +29,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:28:15
+   ┌─ check/src/unspecced.erl:28:15
    │
 28 │   expect_none({Res}).
    │               ^^^^^ {Res}.
@@ -39,7 +39,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:32:15
+   ┌─ check/src/unspecced.erl:32:15
    │
 32 │   expect_none(Res).
    │               ^^^ Res.
@@ -49,7 +49,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:36:15
+   ┌─ check/src/unspecced.erl:36:15
    │
 36 │   expect_none(Res).
    │               ^^^ Res.
@@ -59,7 +59,7 @@ Context expected type: none()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-   ┌─ check_gradual/src/unspecced.erl:41:18
+   ┌─ check/src/unspecced.erl:41:18
    │
 41 │   atom_to_binary(Rec#rec.id).
    │                  ^^^^^^^^^^ ...#rec.id.

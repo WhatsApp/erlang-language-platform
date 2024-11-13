@@ -1,5 +1,5 @@
 error: incompatible_types
-   ┌─ check_gradual/src/dynamic_catch.erl:22:16
+   ┌─ check/src/dynamic_catch.erl:22:16
    │
 22 │     {ok, A} -> A;
    │                ^

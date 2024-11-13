@@ -1633,17 +1633,6 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn eqwalizer_tests_check_gradual(buck: bool) {
-        eqwalize_all_snapshots(
-            "eqwalizer_tests",
-            "check_gradual",
-            buck,
-            EqwalizerConfig::default_test(),
-        );
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
     fn eqwalizer_tests_debug(buck: bool) {
         eqwalize_all_snapshots(
             "eqwalizer_tests",
