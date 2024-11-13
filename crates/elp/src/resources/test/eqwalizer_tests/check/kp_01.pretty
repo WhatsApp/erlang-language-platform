@@ -1,0 +1,18 @@
+error: incompatible_types
+   ┌─ check/src/kp_01.erl:27:22
+   │
+27 │     Res = transform1(fun id/1, A),
+   │                      ^^^^^^^^
+   │                      │
+   │                      id/1.
+Expression has type:   fun((X) -> X)
+Context expected type: pure(fun((T1) -> Ret))
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+   │                      
+
+  fun((X) -> X) is not compatible with pure(fun((T1) -> Ret))
+  because
+  fun((X) -> X) with 1 type parameter is not compatible with fun((T1) -> Ret) with 0 type parameters
+
+1 ERROR
