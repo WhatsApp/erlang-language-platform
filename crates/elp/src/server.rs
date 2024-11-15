@@ -909,9 +909,14 @@ impl Server {
                         .insert(file.file_id, line_endings);
                 }
 
-                // causes us to remove stale squiggles from the UI
+                // causes us to remove stale squiggles from the UI.
+                // We remove all that are only updated on save
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
                 Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
+                Arc::make_mut(&mut self.diagnostics)
+                    .set_erlang_service(file.file_id, LabeledDiagnostics::default());
+                Arc::make_mut(&mut self.diagnostics).set_edoc(file.file_id, vec![]);
+                Arc::make_mut(&mut self.diagnostics).set_ct(file.file_id, vec![]);
             } else {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
