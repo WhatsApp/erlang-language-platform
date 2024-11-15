@@ -100,6 +100,11 @@
           "markdownDescription": "Whether to report diagnostics for OTP files.",
           "type": "boolean"
         },
+        "elp.diagnostics.onSave.enable": {
+            "default": false,
+            "markdownDescription": "Update native diagnostics only when the file is saved.",
+            "type": "boolean"
+        },
         "elp.eqwalizer.all": {
           "default": false,
           "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",

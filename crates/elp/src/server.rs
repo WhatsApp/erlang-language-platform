@@ -479,6 +479,7 @@ impl Server {
                         .update_erlang_service_paths();
                     spinner.end();
                     self.eqwalizer_diagnostics_requested = true;
+                    self.native_diagnostics_requested = true;
                 }
                 Task::Progress(progress) => self.report_progress(progress),
                 Task::UpdateCache(files) => self.update_cache(files),
@@ -499,7 +500,9 @@ impl Server {
         let changed = self.process_changes_to_vfs_store();
 
         if self.status == Status::Running {
-            if mem::take(&mut self.native_diagnostics_requested) || changed {
+            if mem::take(&mut self.native_diagnostics_requested)
+                || (!self.config.native_diagnostics_on_save_only() && changed)
+            {
                 self.update_native_diagnostics();
             }
 
@@ -638,6 +641,7 @@ impl Server {
                 }
                 this.edoc_diagnostics_requested = true;
                 this.ct_diagnostics_requested = true;
+                this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     this.fetch_projects_if_needed(&path);
                     let path = VfsPath::from(path);
@@ -1717,6 +1721,7 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
     }
     this.edoc_diagnostics_requested = true;
     this.ct_diagnostics_requested = true;
+    this.native_diagnostics_requested = true;
 }
 
 fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
