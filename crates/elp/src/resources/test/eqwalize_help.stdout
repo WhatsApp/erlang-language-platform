@@ -1,0 +1,12 @@
+Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--clause-coverage] <MODULES>...
+
+Available positional items:
+    <MODULES>  Eqwalize specified modules
+
+Available options:
+        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
+        --as <PROFILE>       Rebar3 profile to pickup (default is test)
+        --format <FORMAT>    Show diagnostics in JSON format
+        --rebar              Run with rebar
+        --clause-coverage    Use experimental clause coverage checker
+    -h, --help               Prints help information

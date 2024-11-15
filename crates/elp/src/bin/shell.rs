@@ -146,6 +146,7 @@ impl ShellCommand {
                         return Ok(Some(ShellCommand::ShellEqwalize(Eqwalize {
                             project,
                             profile,
+                            format: None,
                             rebar,
                             modules: args.iter().map(|s| s.to_string()).collect(),
                             clause_coverage,

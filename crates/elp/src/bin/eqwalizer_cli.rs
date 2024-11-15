@@ -103,7 +103,21 @@ pub fn do_eqwalize_module(
             .with_context(|| context_str)?;
         file_ids.push(file_id);
     }
-    let reporter = &mut reporting::PrettyReporter::new(analysis, loaded, cli);
+
+    let mut json_reporter;
+    let mut pretty_reporter;
+
+    let reporter: &mut dyn Reporter = match args.format {
+        None => {
+            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
+            &mut pretty_reporter
+        }
+        Some(_) => {
+            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
+            &mut json_reporter
+        }
+    };
+
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,

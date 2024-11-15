@@ -284,16 +284,25 @@ mod tests {
     }
 
     fn eqwalize_snapshot(project: &str, module: &str, fast: bool, buck: bool) {
+        eqwalize_snapshot_json(project, module, fast, buck, false);
+    }
+
+    fn eqwalize_snapshot_json(project: &str, module: &str, fast: bool, buck: bool, json: bool) {
         if !buck || cfg!(feature = "buck") {
             let mut args = args_vec!["eqwalize", module];
             if !buck {
                 args.push("--rebar".into());
             }
+            if json {
+                args.push("--format".into());
+                args.push("json".into());
+            }
             let (args, path) = add_project(args, project, None, None);
             let fast_str = if fast { "_fast" } else { "" };
+            let extension = if json { "jsonl" } else { "pretty" };
             let exp_path = expect_file!(format!(
-                "../resources/test/{}/eqwalize_{}{}.pretty",
-                project, module, fast_str
+                "../resources/test/{}/eqwalize_{}{}.{}",
+                project, module, fast_str, extension
             ));
 
             let (stdout, stderr, code) = elp(args);
@@ -438,6 +447,12 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn eqwalize_diagnostics_match_snapshot_app_a(buck: bool) {
         eqwalize_snapshot("standard", "app_a", false, buck);
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalize_diagnostics_match_snapshot_app_a_json(buck: bool) {
+        eqwalize_snapshot_json("standard", "app_a", false, buck, true);
     }
 
     #[test_case(false ; "rebar")]
@@ -1710,6 +1725,16 @@ mod tests {
             .run_inner(Args::from(&["eqwalize-all", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/eqwalize_all_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn eqwalize_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["eqwalize", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/eqwalize_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }
