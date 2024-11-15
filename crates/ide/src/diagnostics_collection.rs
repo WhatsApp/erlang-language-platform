@@ -145,6 +145,10 @@ impl DiagnosticCollection {
         Some(mem::take(&mut self.changes))
     }
 
+    pub fn return_changes(&mut self, changes: FxHashSet<FileId>) {
+        self.changes.extend(changes);
+    }
+
     pub fn is_empty(&self) -> bool {
         // Use a match to ensure we check all fields, future proofing
         let DiagnosticCollection {

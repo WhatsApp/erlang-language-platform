@@ -528,12 +528,22 @@ impl Server {
             log::info!("changed diagnostics: {:?}", diagnostic_changes);
 
             let snapshot = self.snapshot();
-            for file_id in diagnostic_changes {
-                let url = file_id_to_url(&self.vfs.read(), file_id);
-                let line_index = snapshot.analysis.line_index(file_id)?;
+            for file_id in &diagnostic_changes {
+                let url = file_id_to_url(&self.vfs.read(), *file_id);
+                let line_index = match snapshot.analysis.line_index(*file_id) {
+                    Ok(line_index) => line_index,
+                    Err(err) => {
+                        // We have had a cancellation (How?). Restore
+                        // the list of files to be published, and try
+                        // again next time around the loop
+                        log::warn!("Snapshot cancelled while publishing diagnostics: {}", err);
+                        Arc::make_mut(&mut self.diagnostics).return_changes(diagnostic_changes);
+                        break;
+                    }
+                };
                 let diagnostics = self
                     .diagnostics
-                    .diagnostics_for(file_id)
+                    .diagnostics_for(*file_id)
                     .iter()
                     .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
                     .collect();
@@ -916,6 +926,8 @@ impl Server {
                 // causes us to remove stale squiggles from the UI.
                 // We remove all that are only updated on save
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
+                Arc::make_mut(&mut self.diagnostics)
+                    .set_eqwalizer_project(vec![(file.file_id, vec![])]);
                 Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
                 Arc::make_mut(&mut self.diagnostics)
                     .set_erlang_service(file.file_id, LabeledDiagnostics::default());
