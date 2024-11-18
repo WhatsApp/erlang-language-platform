@@ -11,7 +11,6 @@ extern crate serde;
 
 use std::fs;
 
-use anyhow::Context;
 use anyhow::Result;
 use eetf::Atom;
 use eetf::Term;
@@ -21,8 +20,6 @@ use indexmap::indexset;
 use indexmap::IndexSet;
 use paths::AbsPath;
 use paths::AbsPathBuf;
-use paths::Utf8Path;
-use paths::Utf8PathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -63,13 +60,9 @@ fn default_src_dirs() -> Vec<String> {
 
 impl JsonProjectAppData {
     pub fn to_project_app_data(&self, root_path: &AbsPath, is_dep: bool) -> Result<ProjectAppData> {
-        let dir = canonicalize(root_path.join(&self.dir))
-            .with_context(|| format!("Checking dir: {}", &self.dir))?;
+        let dir = root_path.absolutize(&self.dir);
         let ebin = match &self.ebin {
-            Some(ebin) => Some(
-                canonicalize(dir.join(ebin))
-                    .with_context(|| format!("Checking ebin dir: {ebin}"))?,
-            ),
+            Some(ebin) => Some(dir.absolutize(ebin)),
             None => None,
         };
         let include_dirs = self.include_dirs.iter().map(|inc| dir.join(inc)).collect();
@@ -222,11 +215,4 @@ pub(crate) fn gen_app_data(
     deps.push(eqwalizer_support_app);
 
     (apps, deps)
-}
-
-fn canonicalize(path: impl AsRef<Utf8Path>) -> Result<AbsPathBuf> {
-    let abs = fs::canonicalize(path.as_ref())?;
-    Ok(AbsPathBuf::assert(
-        Utf8PathBuf::from_path_buf(abs).expect("Could not convert to UTF8"),
-    ))
 }
