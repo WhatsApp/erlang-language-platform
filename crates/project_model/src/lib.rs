@@ -589,13 +589,18 @@ impl ElpConfig {
 fn app_data_from_path(path: &PathBuf) -> Option<JsonProjectAppData> {
     let name = path.file_name()?.to_string_lossy().to_string();
     let dir = path.to_string_lossy().to_string();
+    let src_dirs = vec!["src".to_string()];
+    // See <https://github.com/erlang/rebar3/blob/9ca36c6a6dbe674d405df959051b46d1bb71e367/apps/rebar/src/rebar_compiler_erl.erl#L28-L37>:
+    let mut include_dirs = vec!["include".to_string()];
+    include_dirs.extend(src_dirs.iter().cloned());
+    include_dirs.push(".".to_string());
     let app_data = JsonProjectAppData {
         name,
         dir,
-        src_dirs: vec!["src".to_string()],
+        src_dirs,
         ebin: None,
         extra_src_dirs: vec!["test".to_string()],
-        include_dirs: vec!["include".to_string()],
+        include_dirs,
         macros: FxHashMap::default(),
     };
     Some(app_data)
