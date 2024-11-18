@@ -7,10 +7,14 @@
  * of this source tree.
  */
 
+use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 
+use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
@@ -23,13 +27,15 @@ use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
+use paths::Utf8PathBuf;
 
 use crate::args::BuildInfo;
 use crate::args::ProjectInfo;
 
 pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -> Result<()> {
-    let root = fs::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert_utf8(root);
+    let project = Utf8PathBuf::from_path_buf(args.project.clone())
+        .expect("expected the project to be valid UTF-8");
+    let root = current_dir()?.absolutize(project);
     let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
     let project = Project::load(&manifest, EqwalizerConfig::default(), query_config)?;
     let mut writer = File::create(&args.to)?;
@@ -95,4 +101,22 @@ fn load_fallback(
     let elp_config = ElpConfig::default();
     let project = Project::load(&manifest, elp_config.eqwalizer, query_config)?;
     Ok((manifest, project))
+}
+
+fn current_dir() -> Result<AbsPathBuf> {
+    let mut cwd = env::current_dir().context("couldn't determine the current working directory")?;
+
+    // Prefer $PWD which is not canonicalized. On Unix `current_dir` uses getcwd(3) which returns
+    // the current directory canonicalized. Instead this behaves like `pwd -L` and leaves symlinks
+    // unresolved.
+    if let Some(pwd) = std::env::var_os("PWD").map(PathBuf::from) {
+        if pwd.canonicalize().ok().is_some_and(|pwd| pwd == cwd) {
+            cwd = pwd;
+        }
+    }
+
+    Ok(AbsPathBuf::assert(
+        Utf8PathBuf::from_path_buf(cwd)
+            .map_err(|_| anyhow!("couldn't convert current working directory to UTF-8"))?,
+    ))
 }
