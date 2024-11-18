@@ -452,7 +452,9 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_diagnostics_match_snapshot_app_a_json(buck: bool) {
-        eqwalize_snapshot_json("standard", "app_a", false, buck, true);
+        if otp_supported_by_eqwalizer() {
+            eqwalize_snapshot_json("standard", "app_a", false, buck, true);
+        }
     }
 
     #[test_case(false ; "rebar")]
