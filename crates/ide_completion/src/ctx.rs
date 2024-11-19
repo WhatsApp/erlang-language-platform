@@ -21,6 +21,7 @@ use elp_syntax::TextSize;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CtxKind {
+    Comment,
     Expr,
     Type,
     Export,
@@ -32,7 +33,9 @@ pub enum CtxKind {
 
 impl CtxKind {
     pub fn new(node: &SyntaxNode, offset: TextSize) -> Self {
-        if Self::is_atom_colon(node, offset) && Self::is_expr(node, offset) {
+        if Self::is_comment(node, offset) {
+            Self::Comment
+        } else if Self::is_atom_colon(node, offset) && Self::is_expr(node, offset) {
             Self::Expr
         } else if Self::is_export(node, offset) {
             Self::Export
@@ -55,6 +58,12 @@ impl CtxKind {
         } else {
             Self::Other
         }
+    }
+    fn is_comment(node: &SyntaxNode, offset: TextSize) -> bool {
+        algo::ancestors_at_offset(node, offset)
+            .into_iter()
+            .flatten()
+            .any(|ancestor| ancestor.kind() == SyntaxKind::COMMENT)
     }
     fn is_atom_colon(node: &SyntaxNode, offset: TextSize) -> bool {
         if let Some(parent) = algo::ancestors_at_offset(node, offset).and_then(|mut ns| ns.next()) {
