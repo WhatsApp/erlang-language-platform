@@ -72,13 +72,12 @@ pub fn do_parse_all(
     module: &Option<String>,
     buck: bool,
 ) -> Result<Vec<ParseDiagnostic>> {
-    let file_cnt = loaded.vfs.iter().count();
+    let module_index = loaded.analysis().module_index(loaded.project_id)?;
+    let file_cnt = module_index.len_own();
     let _timer = timeit!("parse {} files", file_cnt);
 
     let pb = cli.progress(file_cnt as u64, "Parsing modules");
-    let mut result = loaded
-        .analysis()
-        .module_index(loaded.project_id)?
+    let mut result = module_index
         .iter_own()
         .par_bridge()
         .progress_with(pb)
