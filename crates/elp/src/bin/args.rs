@@ -78,6 +78,10 @@ pub struct ParseAll {
     pub module: Option<String>,
     /// Run with buck
     pub buck: bool,
+    /// Print statistics when done
+    pub stats: bool,
+    /// When printing statistics, include the list of modules parsed
+    pub list_modules: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
