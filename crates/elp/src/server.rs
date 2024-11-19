@@ -238,7 +238,7 @@ pub struct Server {
     project_loader: Arc<Mutex<ProjectLoader>>,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
-    eqwalizer_diagnostics_requested: bool,
+    eqwalizer_and_erlang_service_diagnostics_requested: bool,
     eqwalizer_project_diagnostics_requested: bool,
     edoc_diagnostics_requested: bool,
     ct_diagnostics_requested: bool,
@@ -289,7 +289,7 @@ impl Server {
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             reset_source_roots: false,
             native_diagnostics_requested: false,
-            eqwalizer_diagnostics_requested: false,
+            eqwalizer_and_erlang_service_diagnostics_requested: false,
             eqwalizer_project_diagnostics_requested: false,
             edoc_diagnostics_requested: false,
             ct_diagnostics_requested: false,
@@ -475,7 +475,7 @@ impl Server {
                         .raw_database()
                         .update_erlang_service_paths();
                     spinner.end();
-                    self.eqwalizer_diagnostics_requested = true;
+                    self.eqwalizer_and_erlang_service_diagnostics_requested = true;
                     self.native_diagnostics_requested = true;
                 }
                 Task::Progress(progress) => self.report_progress(progress),
@@ -503,7 +503,7 @@ impl Server {
                 self.update_native_diagnostics();
             }
 
-            if mem::take(&mut self.eqwalizer_diagnostics_requested) {
+            if mem::take(&mut self.eqwalizer_and_erlang_service_diagnostics_requested) {
                 self.update_eqwalizer_diagnostics();
                 self.update_erlang_service_diagnostics();
             }
@@ -642,7 +642,7 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidOpenTextDocument>(|this, params| {
-                this.eqwalizer_diagnostics_requested = true;
+                this.eqwalizer_and_erlang_service_diagnostics_requested = true;
                 if this.config.eqwalizer().all {
                     this.eqwalizer_project_diagnostics_requested = true;
                 }
@@ -1285,8 +1285,7 @@ impl Server {
 
                 // Diagnostic config may have changed, regen
                 self.native_diagnostics_requested = true;
-                // Request eqwalizer and erlang_service diagnostics, they work together
-                self.eqwalizer_diagnostics_requested = true;
+                self.eqwalizer_and_erlang_service_diagnostics_requested = true;
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());
@@ -1728,7 +1727,7 @@ fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
     if refresh_config {
         this.refresh_config();
     }
-    this.eqwalizer_diagnostics_requested = true;
+    this.eqwalizer_and_erlang_service_diagnostics_requested = true;
     if this.config.eqwalizer().all {
         this.eqwalizer_project_diagnostics_requested = true;
     }
