@@ -119,6 +119,7 @@ const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
 const SLOW_DURATION: Duration = Duration::from_millis(300);
 /// If the main loop exceeds this time, log the specific request causing the problem
 const TOO_SLOW_DURATION: Duration = Duration::from_millis(3000);
+const INCLUDE_GENERATED: bool = true;
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -245,7 +246,6 @@ pub struct Server {
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
     eqwalize_all_completed: bool,
     logger: Logger,
-    include_generated: bool,
     compile_options: Vec<CompileOption>,
 
     // Progress reporting
@@ -281,9 +281,7 @@ impl Server {
             file_set_config: FileSetConfig::default(),
             line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
-            diagnostics_config: Arc::new(
-                config.diagnostics_config(Arc::new(LintConfig::default())),
-            ),
+            diagnostics_config: Arc::new(DiagnosticsConfig::default()),
             lint_config: Arc::new(LintConfig::default()),
             analysis_host: AnalysisHost::default(),
             status: Status::Initialising,
@@ -300,7 +298,6 @@ impl Server {
             eqwalize_all_completed: false,
             logger,
             vfs_config_version: 0,
-            include_generated: true,
             compile_options: vec![],
         };
 
@@ -1087,7 +1084,7 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("Common Test".to_string());
 
-        let config = DiagnosticsConfig::default();
+        let config = self.diagnostics_config.clone();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
                 .into_iter()
@@ -1148,10 +1145,7 @@ impl Server {
             .into_iter()
             .filter(|file_id| is_supported_by_erlang_service(&snapshot.analysis, *file_id))
             .collect();
-        let diagnostics_config = DiagnosticsConfig::default()
-            .set_include_generated(self.include_generated)
-            .set_include_otp(self.config.enable_otp_diagnostics())
-            .set_compile_options(self.compile_options.clone());
+        let diagnostics_config = self.diagnostics_config.clone();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
                 .into_iter()
@@ -1288,13 +1282,19 @@ impl Server {
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                 log::warn!("update_configuration: read lint file: {:?}", lint_config);
                 self.lint_config = Arc::new(lint_config);
-                self.diagnostics_config =
-                    Arc::new(self.config.diagnostics_config(self.lint_config.clone()));
+
                 // Diagnostic config may have changed, regen native, the
                 // others are requested after this
                 self.native_diagnostics_requested = true;
             }
         }
+        self.diagnostics_config = Arc::new(self.make_diagnostics_config());
+    }
+
+    fn make_diagnostics_config(&self) -> DiagnosticsConfig {
+        self.config
+            .diagnostics_config(self.lint_config.clone(), INCLUDE_GENERATED)
+            .set_compile_options(self.compile_options.clone())
     }
 
     fn transition(&mut self, status: Status) {

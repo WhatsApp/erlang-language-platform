@@ -242,12 +242,17 @@ impl Config {
         self.data.diagnostics_onSave_enable
     }
 
-    pub fn diagnostics_config(&self, lint_config: Arc<LintConfig>) -> DiagnosticsConfig {
+    pub fn diagnostics_config(
+        &self,
+        lint_config: Arc<LintConfig>,
+        include_generated: bool,
+    ) -> DiagnosticsConfig {
         let mut config = DiagnosticsConfig::default()
             .configure_diagnostics(&lint_config, &None, &None, FallBackToAll::No)
             .unwrap_or(DiagnosticsConfig::default())
             .set_experimental(self.data.diagnostics_enableExperimental)
-            .set_include_otp(self.data.diagnostics_enableOtp);
+            .set_include_otp(self.data.diagnostics_enableOtp)
+            .set_include_generated(include_generated);
         for code in self
             .data
             .diagnostics_disabled
