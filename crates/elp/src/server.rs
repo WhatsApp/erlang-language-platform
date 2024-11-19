@@ -1283,9 +1283,10 @@ impl Server {
                 log::warn!("update_configuration: read lint file: {:?}", lint_config);
                 self.lint_config = Arc::new(lint_config);
 
-                // Diagnostic config may have changed, regen native, the
-                // others are requested after this
+                // Diagnostic config may have changed, regen
                 self.native_diagnostics_requested = true;
+                // Request eqwalizer and erlang_service diagnostics, they work together
+                self.eqwalizer_diagnostics_requested = true;
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());

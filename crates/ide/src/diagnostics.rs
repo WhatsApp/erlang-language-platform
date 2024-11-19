@@ -481,7 +481,7 @@ pub enum FallBackToAll {
     No,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct DiagnosticsConfig {
     pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
@@ -1173,7 +1173,9 @@ pub fn erlang_service_diagnostics(
         let metadata = db.elp_metadata(file_id);
         let diags = diags
             .into_iter()
-            .filter(|(_file_id, d)| !d.should_be_suppressed(&metadata, config))
+            .filter(|(_file_id, d)| {
+                !d.should_be_suppressed(&metadata, config) && !config.disabled.contains(&d.code)
+            })
             .collect_vec();
         let diags = if diags.is_empty() {
             // If there are no diagnostics reported, return an empty list
