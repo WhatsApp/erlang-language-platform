@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::BufWriter;
@@ -86,7 +87,12 @@ impl IpcHandle {
             // for debugging purposes
             .stderr(Stdio::inherit());
 
-        let mut child = cmd.spawn()?;
+        let mut child = cmd.spawn().unwrap_or_else(|err| {
+            // Provide extra debugging detail, to track down T198872667
+            let command_str = cmd.get_program();
+            let attr = fs::metadata(command_str);
+            panic!("err: {}, cmd: {:?}, meta_data: {:?}", err, cmd, &attr);
+        });
         let stdin = child
             .stdin
             .take()
