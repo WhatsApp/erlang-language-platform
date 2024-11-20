@@ -160,7 +160,7 @@ impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
-    ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
+    ) -> Result<(BuckProject, Vec<ProjectAppData>, AbsPathBuf), anyhow::Error> {
         let target_info = load_buck_targets(buck_conf, query_config)?;
         let otp_root = Otp::find_otp()?;
         let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
@@ -591,7 +591,7 @@ fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsP
 
 pub fn targets_to_project_data(
     targets: &FxHashMap<TargetFullName, Target>,
-    otp_root: &Utf8Path,
+    otp_root: &AbsPath,
 ) -> Vec<ProjectAppData> {
     let it = targets
         .values()
@@ -634,7 +634,7 @@ pub fn targets_to_project_data(
         .filter(|target| target.target_type != TargetType::ErlangTest)
         .filter_map(|target| target.dir.parent().map(|p| p.to_path_buf()))
         .collect();
-    global_inc.push(AbsPathBuf::assert(otp_root.to_path_buf()));
+    global_inc.push(otp_root.to_path_buf());
     for (_, mut acc) in accs {
         acc.add_global_includes(global_inc.clone());
         result.push(acc.into());

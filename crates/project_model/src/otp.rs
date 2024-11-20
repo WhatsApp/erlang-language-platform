@@ -16,8 +16,8 @@ use anyhow::bail;
 use anyhow::Result;
 use elp_log::timeit;
 use lazy_static::lazy_static;
+use paths::AbsPath;
 use paths::AbsPathBuf;
-use paths::Utf8Path;
 use paths::Utf8PathBuf;
 
 use crate::AppName;
@@ -33,7 +33,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref OTP_ROOT: Utf8PathBuf =
+    pub static ref OTP_ROOT: AbsPathBuf =
         Otp::find_otp().expect("tests should always be able to find OTP");
     pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
     pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
@@ -62,7 +62,7 @@ pub fn supports_eep59_doc_attributes() -> bool {
 }
 
 fn get_erts_dir() -> AbsPathBuf {
-    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
+    let (_otp, apps) = Otp::discover(&OTP_ROOT);
     for app in apps {
         if app.name == AppName("erts".to_string()) {
             return app.dir;
@@ -78,7 +78,7 @@ fn get_erlang_module() -> (PathBuf, String) {
 }
 
 impl Otp {
-    pub fn find_otp() -> Result<Utf8PathBuf> {
+    pub fn find_otp() -> Result<AbsPathBuf> {
         let _timer = timeit!("find otp");
         let erl = ERL.read().unwrap();
         let output = Command::new(&*erl)
@@ -99,8 +99,8 @@ impl Otp {
         }
         let path = String::from_utf8(output.stdout)?;
         let result: Utf8PathBuf = format!("{}/lib", path).into();
-        let result = fs::canonicalize(result)?;
-        Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
+        AbsPathBuf::try_from(result)
+            .map_err(|err| anyhow::anyhow!("expected an absolute path: {}", err))
     }
     pub fn otp_version() -> Result<String> {
         let _timer = timeit!("otp_version");
@@ -125,17 +125,17 @@ impl Otp {
         Ok(val)
     }
 
-    pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {
-        let apps = Self::discover_otp_apps(&path);
+    pub fn discover(path: &AbsPath) -> (Otp, Vec<ProjectAppData>) {
+        let apps = Self::discover_otp_apps(path);
         (
             Otp {
-                lib_dir: AbsPathBuf::assert(path),
+                lib_dir: path.to_path_buf(),
             },
             apps,
         )
     }
 
-    fn discover_otp_apps(path: &Utf8Path) -> Vec<ProjectAppData> {
+    fn discover_otp_apps(path: &AbsPath) -> Vec<ProjectAppData> {
         log::info!("Loading OTP apps from {:?}", path);
         if let Ok(entries) = fs::read_dir(path) {
             entries
@@ -143,9 +143,11 @@ impl Otp {
                 .filter_map(|entry| {
                     let entry = entry.ok()?;
                     let name = entry.file_name();
-                    let path = fs::canonicalize(entry.path()).expect("Could not canonicalize path");
+                    // `DirEntry::path` joins the path passed to `fs::read_dir`, so these paths
+                    // must be absolute.
                     let dir = AbsPathBuf::assert(
-                        Utf8PathBuf::from_path_buf(path).expect("Could not convert to Utf8PathBuf"),
+                        Utf8PathBuf::from_path_buf(entry.path())
+                            .expect("Could not convert to Utf8PathBuf"),
                     );
                     Some(ProjectAppData::otp_app_data(name.to_str()?, &dir))
                 })
