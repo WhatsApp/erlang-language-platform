@@ -14,7 +14,7 @@ will not perform any upward auto-discovery for the structure of a project.
 ## A Sample `.elp.toml` Configuration File
 
 Here is an example of a full `.elp.toml` file. All sections are optional. The
-[build_info](#empty-section) can be used to mark the root of a project (via
+[build_info](#build-info) can be used to mark the root of a project (via
 the `build_info` property). The available configuration sections are described
 below.
 
@@ -35,17 +35,17 @@ profile = "test"
 
 ## Configuration Sections
 
-### \[build\_info\]
+### \[build\_info\] {#build-info}
 
 This section is used to configure project discovery.
 
 | Key        | Type   | Description                                                                                                                                                                                            |
 | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| file | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](#the-build_infojson-format) section. |
+| file | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](custom-project.md#the-build_infojson-format) section. |
 | apps | String | A string pattern used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. E.g. `apps/*`|
 | deps | String | A string pattern used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. E.g. `deps/*`|
 
-### \[eqwalizer\]
+### \[eqwalizer\] {#eqwalizer}
 
 ELP is integrated with the [eqWAlizer](https://github.com/whatsapp/eqwalizer)
 type checker. The integration can be configured via this section.
@@ -66,7 +66,7 @@ This can be overriden per module via the following attributes:
 | enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above |
 | max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI.          |
 
-### \[buck\]
+### \[buck\] {#buck}
 
 Configure the interaction between ELP and the [Buck2](https://buck2.build/)
 build tool. See [this presentation](https://youtu.be/4ALgsBqNBhQ) for details
@@ -83,7 +83,7 @@ change soon, once we tweak the tests.
 
 :::
 
-### \[rebar\]
+### \[rebar\] {#rebar}
 
 Configure ELP for [rebar3](https://rebar3.org/)-based projects.
 

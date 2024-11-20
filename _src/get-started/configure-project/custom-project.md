@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Custom Project
 
-If your project is not using `rebar3` or `buck2` as a build system, you can still [configure ELP to load the project configuration from  a JSON file](./elp-toml.md#empty-section). This section describes the format of such a file.
+If your project is not using `rebar3` or `buck2` as a build system, you can still [configure ELP to load the project configuration from a JSON file](./elp-toml.md#build-info). This section describes the format of such a file.
 
 ### The `build_info.json` format
 
