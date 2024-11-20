@@ -173,7 +173,7 @@ fn do_parse_one(
     }
     if args.include_edoc_diagnostics {
         let edoc_diagnostics = db
-            .edoc_diagnostics(file_id)?
+            .edoc_diagnostics(file_id, config)?
             .into_iter()
             .filter(|(f, _)| *f == file_id)
             .flat_map(|(_, ds)| ds.into_iter().map(|d| d))

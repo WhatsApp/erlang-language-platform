@@ -271,6 +271,7 @@ impl Snapshot {
         &self,
         file_id: FileId,
         include_otp: bool,
+        config: &DiagnosticsConfig,
     ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
         let file_kind = self.analysis.file_kind(file_id).ok()?;
         if file_kind != FileKind::SrcModule && file_kind != FileKind::TestModule {
@@ -286,7 +287,7 @@ impl Snapshot {
             file_url: file_url.clone()
         });
 
-        let diags = &*self.analysis.edoc_diagnostics(file_id).ok()?;
+        let diags = &*self.analysis.edoc_diagnostics(file_id, config).ok()?;
 
         Some(
             diags

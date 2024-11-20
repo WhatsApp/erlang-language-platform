@@ -1060,11 +1060,12 @@ impl Server {
 
         let spinner = self.progress.begin_spinner("EDoc".to_string());
 
+        let config = self.diagnostics_config.clone();
         let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
                 .into_iter()
-                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, include_otp))
+                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, include_otp, &config))
                 .flatten()
                 .collect();
 
@@ -1286,6 +1287,7 @@ impl Server {
                 // Diagnostic config may have changed, regen
                 self.native_diagnostics_requested = true;
                 self.eqwalizer_and_erlang_service_diagnostics_requested = true;
+                self.edoc_diagnostics_requested = true;
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());

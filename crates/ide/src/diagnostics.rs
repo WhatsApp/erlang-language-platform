@@ -1305,7 +1305,11 @@ pub fn eqwalizer_stats(
     )
 }
 
-pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<Diagnostic>)> {
+pub fn edoc_diagnostics(
+    db: &RootDatabase,
+    file_id: FileId,
+    config: &DiagnosticsConfig,
+) -> Vec<(FileId, Vec<Diagnostic>)> {
     // We use a BTreeSet of a tuple because neither ParseError nor
     // Diagnostic nor TextRange has an Ord instance
     let mut error_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
@@ -1354,6 +1358,7 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
         }
     });
 
+    let metadata = db.elp_metadata(file_id);
     let diags: Vec<(FileId, Diagnostic)> = error_info
         .into_iter()
         .map(|(file_id, start, end, code, msg)| {
@@ -1391,12 +1396,17 @@ pub fn edoc_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<(FileId, Vec<
         vec![(file_id, vec![])]
     } else {
         let mut diags_map: FxHashMap<FileId, Vec<Diagnostic>> = FxHashMap::default();
-        diags.into_iter().for_each(|(file_id, diag)| {
-            diags_map
-                .entry(file_id)
-                .and_modify(|existing| existing.push(diag.clone()))
-                .or_insert(vec![diag.clone()]);
-        });
+        diags
+            .into_iter()
+            .filter(|(_file_id, d)| {
+                !d.should_be_suppressed(&metadata, config) && !config.disabled.contains(&d.code)
+            })
+            .for_each(|(file_id, diag)| {
+                diags_map
+                    .entry(file_id)
+                    .and_modify(|existing| existing.push(diag.clone()))
+                    .or_insert(vec![diag.clone()]);
+            });
         diags_map.into_iter().collect()
     }
 }
@@ -2463,6 +2473,25 @@ baz(1)->4.
                      \~"\"\\µA\"" = \~/"\\µA"/
                      X = 3.
                   %% ^ error: syntax error before: X
+            "#,
+        );
+    }
+
+    #[test]
+    fn edoc_generic_diagnostics_suppressed() {
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::ErlangService("O0000".to_string()));
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- edoc
+            //- /src/a_mod.erl app:app_a
+            -module(a_mod).
+            -export([foo/0]).
+
+            % @docc
+            %%<^^^^^ warning: tag @docc not recognized.
+            foo() -> \~"foo".
             "#,
         );
     }

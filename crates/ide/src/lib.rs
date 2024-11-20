@@ -321,8 +321,12 @@ impl Analysis {
     }
 
     /// Computes the set of EDoc diagnostics for the given file.
-    pub fn edoc_diagnostics(&self, file_id: FileId) -> Cancellable<Vec<(FileId, Vec<Diagnostic>)>> {
-        self.with_db(|db| diagnostics::edoc_diagnostics(db, file_id))
+    pub fn edoc_diagnostics(
+        &self,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Cancellable<Vec<(FileId, Vec<Diagnostic>)>> {
+        self.with_db(|db| diagnostics::edoc_diagnostics(db, file_id, config))
     }
 
     /// Computes Common Test info for the given file.
