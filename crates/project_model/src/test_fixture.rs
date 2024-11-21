@@ -544,6 +544,7 @@ bar() -> ok.
                 parse_transforms: [],
                 app_type: App,
                 include_path: [],
+                applicable_files: None,
             }"#]]
         .assert_eq(format!("{:#?}", meta0.app_data).as_str());
     }

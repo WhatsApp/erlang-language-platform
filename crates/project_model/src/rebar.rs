@@ -203,6 +203,7 @@ impl RebarProject {
                 app_type: is_dep,
                 include_path: vec![],
                 abs_src_dirs,
+                applicable_files: None,
             })
         }
     }

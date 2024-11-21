@@ -100,6 +100,7 @@ impl JsonProjectAppData {
             parse_transforms: vec![],
             app_type,
             include_path: vec![],
+            applicable_files: None,
         })
     }
 

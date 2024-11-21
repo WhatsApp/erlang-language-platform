@@ -1053,6 +1053,7 @@ impl From<ProjectAppDataAcc> for ProjectAppData {
                     len1.cmp(&len2)
                 })
                 .collect(),
+            applicable_files: None,
         }
     }
 }

@@ -43,6 +43,7 @@ pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
         macros: vec![],
         parse_transforms: vec![],
         include_path: vec![otp_root.to_path_buf()],
+        applicable_files: None,
     };
 
     eqwalizer_support_app
