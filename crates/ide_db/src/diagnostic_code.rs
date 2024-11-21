@@ -193,6 +193,8 @@ impl DiagnosticCode {
                 // Look for ErlangService and AdHoc
                 if let Some(code) = Self::is_adhoc(s) {
                     Some(DiagnosticCode::AdHoc(code))
+                } else if let Some(code) = Self::is_eqwalizer(s) {
+                    Some(DiagnosticCode::Eqwalizer(code))
                 } else {
                     Self::is_erlang_service(s).map(DiagnosticCode::ErlangService)
                 },
@@ -237,6 +239,15 @@ impl DiagnosticCode {
         // Looing for something like "L0008"
         lazy_static! {
             static ref RE: Regex = Regex::new(r"^([A-Z]+[0-9]{4})$").unwrap();
+        }
+        RE.captures_iter(s).next().map(|c| c[1].to_string())
+    }
+
+    /// Check if the diagnostic label is for an Eqwalizer one.
+    fn is_eqwalizer(s: &str) -> Option<String> {
+        // Looking for something like "eqwalizer: unknown_id"
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^eqwalizer: ([^\s]+)$").unwrap();
         }
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
@@ -403,6 +414,25 @@ mod tests {
                 Some(
                     ErlangService(
                         "L1213",
+                    ),
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&codes);
+    }
+
+    #[test]
+    fn from_string_eqwalizer() {
+        let strings = vec!["eqwalizer: unknown_id"];
+        let codes = strings
+            .iter()
+            .map(|s| DiagnosticCode::maybe_from_string(s))
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                Some(
+                    Eqwalizer(
+                        "unknown_id",
                     ),
                 ),
             ]
