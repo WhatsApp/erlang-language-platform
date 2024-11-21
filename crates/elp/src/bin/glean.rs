@@ -2157,6 +2157,41 @@ mod tests {
     }
 
     #[test]
+    fn xref_parametrized_type_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module_parametrized.erl
+        -type my_type(X) :: X.
+        %%                  ^ glean_module_parametrized/X/20
+        -type my_integer() :: integer().
+
+        -spec my_function(my_type(my_integer())) -> integer().
+        %%                ^^^^^^^^^^^^^^^^^^^^^ glean_module_parametrized/my_type/1
+        %%                        ^^^^^^^^^^^^ glean_module_parametrized/my_integer/0
+        my_function(X) -> X.
+        %%          ^ glean_module_parametrized/X/331
+        %%                ^ glean_module_parametrized/X/337
+        "#;
+
+        xref_check(&spec);
+    }
+
+    #[test]
+    fn xref_parametrized_type_v2_test() {
+        let spec = r#"
+        //- /glean/app_glean/src/glean_module_parametrized.erl
+        -type my_type(X) :: X.
+        -type my_integer() :: integer().
+
+        -spec my_function(my_type(my_integer())) -> integer().
+        %%                ^^^^^^^^^^^^^^^^^^^^^ glean_module_parametrized.erl/type/my_type/1
+        %%                        ^^^^^^^^^^^^ glean_module_parametrized.erl/type/my_integer/0
+        my_function(X) -> X.
+        "#;
+
+        xref_v2_check(&spec);
+    }
+
+    #[test]
     fn xref_types_v2_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
