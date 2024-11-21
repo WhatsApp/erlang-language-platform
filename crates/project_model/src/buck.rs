@@ -161,12 +161,10 @@ impl BuckProject {
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
     ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
-        let target_info = load_buck_targets(buck_conf, query_config)?;
-        let otp_root = Otp::find_otp()?;
-        let project_app_data = targets_to_project_data(&target_info.targets, &otp_root);
-        let project = BuckProject {
-            target_info,
-            buck_conf: buck_conf.clone(),
+        let (otp_root, project_app_data, project) = if query_config == &BuckQueryConfig::Original {
+            load_from_config_orig(buck_conf, query_config)?
+        } else {
+            load_from_config_bxl(buck_conf, query_config)?
         };
         Ok((project, project_app_data, otp_root))
     }
@@ -174,6 +172,34 @@ impl BuckProject {
     pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
         self.target_info.path_to_target_name.get(file_path).cloned()
     }
+}
+
+fn load_from_config_orig(
+    buck_conf: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
+    let target_info = load_buck_targets_orig(buck_conf, query_config)?;
+    let otp_root = Otp::find_otp()?;
+    let project_app_data = targets_to_project_data_orig(&target_info.targets, &otp_root);
+    let project = BuckProject {
+        target_info,
+        buck_conf: buck_conf.clone(),
+    };
+    Ok((otp_root, project_app_data, project))
+}
+
+fn load_from_config_bxl(
+    buck_conf: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
+    let target_info = load_buck_targets_bxl(buck_conf, query_config)?;
+    let otp_root = Otp::find_otp()?;
+    let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
+    let project = BuckProject {
+        target_info,
+        buck_conf: buck_conf.clone(),
+    };
+    Ok((otp_root, project_app_data, project))
 }
 
 #[derive(Deserialize, Debug)]
@@ -212,7 +238,7 @@ pub enum TargetType {
     ErlangTestUtils,
 }
 
-pub fn load_buck_targets(
+fn load_buck_targets_bxl(
     buck_config: &BuckConfig,
     query_config: &BuckQueryConfig,
 ) -> Result<TargetInfo> {
@@ -230,7 +256,7 @@ pub fn load_buck_targets(
     for (name, target) in buck_targets {
         let mut private_header = false;
 
-        let dir = match find_app_root(root, &name, &target) {
+        let dir = match find_app_root_bxl(root, &name, &target) {
             None => continue,
             Some(dir) => dir,
         };
@@ -282,6 +308,78 @@ pub fn load_buck_targets(
     }
     Ok(target_info)
 }
+
+fn load_buck_targets_orig(
+    buck_config: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<TargetInfo> {
+    let _timer = timeit!("loading info from buck");
+    let root = buck_config.buck_root();
+
+    let mut dep_path = if buck_config.build_deps {
+        build_third_party_targets(buck_config)?
+    } else {
+        FxHashMap::default()
+    };
+    let buck_targets = query_buck_targets(buck_config, query_config)?;
+
+    let mut target_info = TargetInfo::default();
+    for (name, target) in buck_targets {
+        let mut private_header = false;
+
+        let dir = match find_app_root_orig(root, &name, &target) {
+            None => continue,
+            Some(dir) => dir,
+        };
+
+        let (src_files, include_files, target_type, private_header, ebin) =
+            if let Some(suite) = target.suite {
+                let src_file = buck_path_to_abs_path(root, &suite)?;
+                let src = vec![src_file.clone()];
+                target_info
+                    .path_to_target_name
+                    .insert(src_file, name.clone());
+                (src, vec![], TargetType::ErlangTest, false, None)
+            } else {
+                let target_type = compute_target_type(&name, &target);
+                let mut src_files = vec![];
+                for src in &target.srcs {
+                    let src = buck_path_to_abs_path(root, src).unwrap();
+                    if Some("hrl") == src.extension() {
+                        private_header = true;
+                    }
+                    src_files.push(src);
+                }
+                let mut include_files = vec![];
+                for include in &target.includes {
+                    let inc = buck_path_to_abs_path(root, include).unwrap();
+                    include_files.push(inc);
+                }
+
+                let ebin = match target_type {
+                    TargetType::ThirdParty if buck_config.build_deps => dep_path
+                        .remove(&name)
+                        .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
+                    TargetType::ThirdParty => Some(dir.clone()),
+                    _ => None,
+                };
+                (src_files, include_files, target_type, private_header, ebin)
+            };
+        let target = Target {
+            name: name.clone(),
+            app_name: target.name,
+            dir,
+            src_files,
+            include_files,
+            ebin,
+            target_type,
+            private_header,
+        };
+        target_info.targets.insert(name, target);
+    }
+    Ok(target_info)
+}
+
 fn compute_target_type(name: &TargetFullName, target: &BuckTarget) -> TargetType {
     if name.contains("//third-party") {
         TargetType::ThirdParty
@@ -355,6 +453,7 @@ fn query_buck_targets(
         .collect();
     Ok(result)
 }
+
 pub fn query_buck_targets_raw(
     buck_config: &BuckConfig,
     query_config: &BuckQueryConfig,
@@ -365,7 +464,7 @@ pub fn query_buck_targets_raw(
     }
 }
 
-pub fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
+fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut kinds = String::new();
     for target in &buck_config.included_targets {
         if kinds.is_empty() {
@@ -425,7 +524,7 @@ pub fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<Str
     Ok(result)
 }
 
-pub fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
+fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut targets = Vec::default();
     for target in &buck_config.included_targets {
         targets.push("--included_targets");
@@ -521,7 +620,46 @@ fn find_buck_file_base_target_dir(
     buck_path_to_abs_path(root, &path)
 }
 
-fn find_app_root(
+fn find_app_root_bxl(
+    root: &AbsPath,
+    target_name: &TargetFullName,
+    target: &BuckTarget,
+) -> Option<AbsPathBuf> {
+    let dir_based_on_buck_file = find_buck_file_base_target_dir(root, target_name).ok()?;
+    let mut set = indexset![];
+    let paths = target
+        .srcs
+        .iter()
+        .chain(target.includes.iter())
+        .chain(target.suite.iter());
+
+    for path in paths {
+        if let Ok(path) = buck_path_to_abs_path(root, path) {
+            let parent = path.parent();
+            if let Some(parent) = parent {
+                set.insert(parent.to_path_buf());
+            }
+        }
+    }
+
+    if set.len() > 1 {
+        // Find the common prefix for all the src directory paths.
+        // We will always get a `Some` result, due to the length check
+        set.into_iter().reduce(|a, b| common_prefix(&a, &b))
+    } else {
+        for path in set {
+            if let Some(path) = examine_path(&path, dir_based_on_buck_file.as_path()) {
+                // We found an src/, test/, or include/ directory before the BUCK file,
+                // so we just return the parent of this directory.
+                return Some(path);
+            }
+        }
+        // Otherwise, we just return the directory containing the BUCK file,
+        Some(dir_based_on_buck_file)
+    }
+}
+
+fn find_app_root_orig(
     root: &AbsPath,
     target_name: &TargetFullName,
     target: &BuckTarget,
@@ -589,7 +727,61 @@ fn examine_path(path: &AbsPath, dir_based_on_buck_file: &AbsPath) -> Option<AbsP
     None
 }
 
-pub fn targets_to_project_data(
+fn targets_to_project_data_orig(
+    targets: &FxHashMap<TargetFullName, Target>,
+    otp_root: &Utf8Path,
+) -> Vec<ProjectAppData> {
+    let it = targets
+        .values()
+        .sorted_by(|a, b| match (a.target_type, b.target_type) {
+            (TargetType::ErlangTest, TargetType::ErlangTest) => Ordering::Equal,
+            (TargetType::ErlangTest, _) => Ordering::Greater,
+            _ => Ordering::Equal,
+        });
+
+    let mut accs: FxHashMap<AbsPathBuf, ProjectAppDataAcc> = Default::default();
+    for target in it {
+        let mut target_dir = target.dir.clone();
+        let acc = accs.remove(&target_dir);
+        let mut acc = match acc {
+            Some(acc) => acc,
+            None => {
+                let search_first = match target.target_type {
+                    TargetType::ErlangApp | TargetType::ThirdParty => false,
+                    _ => true,
+                };
+                let mut result = None;
+                if search_first {
+                    let dir = accs.keys().find(|dir| target.dir.starts_with(dir));
+                    if let Some(dir) = dir {
+                        let dir = dir.clone();
+                        result = accs.remove(&dir);
+                        target_dir = dir;
+                    }
+                }
+                result.unwrap_or_else(ProjectAppDataAcc::new)
+            }
+        };
+
+        acc.add(target);
+        accs.insert(target_dir, acc);
+    }
+    let mut result: Vec<ProjectAppData> = vec![];
+    let mut global_inc: Vec<AbsPathBuf> = targets
+        .values()
+        .filter(|target| target.target_type != TargetType::ErlangTest)
+        .filter_map(|target| target.dir.parent().map(|p| p.to_path_buf()))
+        .collect();
+    global_inc.push(AbsPathBuf::assert(otp_root.to_path_buf()));
+    for (_, mut acc) in accs {
+        acc.add_global_includes(global_inc.clone());
+        result.push(acc.into());
+    }
+
+    result
+}
+
+fn targets_to_project_data_bxl(
     targets: &FxHashMap<TargetFullName, Target>,
     otp_root: &Utf8Path,
 ) -> Vec<ProjectAppData> {
@@ -896,7 +1088,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a").to_path_buf()).unwrap());
         assert_eq!(expected, actual)
     }
@@ -918,7 +1110,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
@@ -940,7 +1132,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
@@ -966,7 +1158,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
@@ -989,7 +1181,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
@@ -1012,7 +1204,7 @@ mod tests {
             labels: FxHashSet::default(),
         };
 
-        let actual = find_app_root(root, &target_name, &target);
+        let actual = find_app_root_bxl(root, &target_name, &target);
         let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
         assert_eq!(expected, actual)
     }
