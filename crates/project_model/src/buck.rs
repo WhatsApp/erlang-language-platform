@@ -162,9 +162,9 @@ impl BuckProject {
         query_config: &BuckQueryConfig,
     ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
         let (otp_root, project_app_data, project) = if query_config == &BuckQueryConfig::Original {
-            load_from_config_orig(buck_conf, query_config)?
+            load_from_config_orig(buck_conf)?
         } else {
-            load_from_config_bxl(buck_conf, query_config)?
+            load_from_config_bxl(buck_conf)?
         };
         Ok((project, project_app_data, otp_root))
     }
@@ -176,9 +176,8 @@ impl BuckProject {
 
 fn load_from_config_orig(
     buck_conf: &BuckConfig,
-    query_config: &BuckQueryConfig,
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
-    let target_info = load_buck_targets_orig(buck_conf, query_config)?;
+    let target_info = load_buck_targets_orig(buck_conf)?;
     let otp_root = Otp::find_otp()?;
     let project_app_data = targets_to_project_data_orig(&target_info.targets, &otp_root);
     let project = BuckProject {
@@ -190,9 +189,8 @@ fn load_from_config_orig(
 
 fn load_from_config_bxl(
     buck_conf: &BuckConfig,
-    query_config: &BuckQueryConfig,
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
-    let target_info = load_buck_targets_bxl(buck_conf, query_config)?;
+    let target_info = load_buck_targets_bxl(buck_conf)?;
     let otp_root = Otp::find_otp()?;
     let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
     let project = BuckProject {
@@ -238,10 +236,7 @@ pub enum TargetType {
     ErlangTestUtils,
 }
 
-fn load_buck_targets_bxl(
-    buck_config: &BuckConfig,
-    query_config: &BuckQueryConfig,
-) -> Result<TargetInfo> {
+fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
     let root = buck_config.buck_root();
 
@@ -250,7 +245,7 @@ fn load_buck_targets_bxl(
     } else {
         FxHashMap::default()
     };
-    let buck_targets = query_buck_targets(buck_config, query_config)?;
+    let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl)?;
 
     let mut target_info = TargetInfo::default();
     for (name, target) in buck_targets {
@@ -309,10 +304,7 @@ fn load_buck_targets_bxl(
     Ok(target_info)
 }
 
-fn load_buck_targets_orig(
-    buck_config: &BuckConfig,
-    query_config: &BuckQueryConfig,
-) -> Result<TargetInfo> {
+fn load_buck_targets_orig(buck_config: &BuckConfig) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
     let root = buck_config.buck_root();
 
@@ -321,7 +313,7 @@ fn load_buck_targets_orig(
     } else {
         FxHashMap::default()
     };
-    let buck_targets = query_buck_targets(buck_config, query_config)?;
+    let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Original)?;
 
     let mut target_info = TargetInfo::default();
     for (name, target) in buck_targets {
