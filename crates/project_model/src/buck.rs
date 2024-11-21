@@ -192,7 +192,7 @@ fn load_from_config_bxl(
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
     let target_info = load_buck_targets_bxl(buck_conf)?;
     let otp_root = Otp::find_otp()?;
-    let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
+    let project_app_data = targets_to_project_data_bxl(&target_info.targets);
     let project = BuckProject {
         target_info,
         buck_conf: buck_conf.clone(),
@@ -773,10 +773,7 @@ fn targets_to_project_data_orig(
     result
 }
 
-fn targets_to_project_data_bxl(
-    targets: &FxHashMap<TargetFullName, Target>,
-    otp_root: &Utf8Path,
-) -> Vec<ProjectAppData> {
+fn targets_to_project_data_bxl(targets: &FxHashMap<TargetFullName, Target>) -> Vec<ProjectAppData> {
     let it = targets
         .values()
         .sorted_by(|a, b| match (a.target_type, b.target_type) {
@@ -813,14 +810,7 @@ fn targets_to_project_data_bxl(
         accs.insert(target_dir, acc);
     }
     let mut result: Vec<ProjectAppData> = vec![];
-    let mut global_inc: Vec<AbsPathBuf> = targets
-        .values()
-        .filter(|target| target.target_type != TargetType::ErlangTest)
-        .filter_map(|target| target.dir.parent().map(|p| p.to_path_buf()))
-        .collect();
-    global_inc.push(AbsPathBuf::assert(otp_root.to_path_buf()));
-    for (_, mut acc) in accs {
-        acc.add_global_includes(global_inc.clone());
+    for (_, acc) in accs {
         result.push(acc.into());
     }
 
