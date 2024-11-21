@@ -211,6 +211,10 @@ pub struct BuckTarget {
     includes: Vec<String>,
     #[serde(default)]
     labels: FxHashSet<String>,
+    #[serde(default)]
+    deps: Vec<TargetFullName>,
+    #[serde(default)]
+    apps: Vec<TargetFullName>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -221,6 +225,8 @@ pub struct Target {
     pub dir: AbsPathBuf,
     pub src_files: Vec<AbsPathBuf>,
     pub include_files: Vec<AbsPathBuf>,
+    pub deps: Vec<TargetFullName>,
+    pub apps: Vec<TargetFullName>,
     pub ebin: Option<AbsPathBuf>,
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
@@ -295,6 +301,8 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
             dir,
             src_files,
             include_files,
+            deps: target.deps,
+            apps: target.apps,
             ebin,
             target_type,
             private_header,
@@ -363,6 +371,8 @@ fn load_buck_targets_orig(buck_config: &BuckConfig) -> Result<TargetInfo> {
             dir,
             src_files,
             include_files,
+            apps: target.apps,
+            deps: target.deps,
             ebin,
             target_type,
             private_header,
@@ -440,7 +450,11 @@ fn query_buck_targets(
                 .any(|excluded| name.starts_with(excluded))
         })
         .filter(|(_, target)| {
-            target.suite.is_some() || !target.srcs.is_empty() || !target.includes.is_empty()
+            target.suite.is_some()
+                || !target.srcs.is_empty()
+                || !target.includes.is_empty()
+                || !target.apps.is_empty()
+                || !target.deps.is_empty()
         })
         .collect();
     Ok(result)
@@ -1068,6 +1082,8 @@ mod tests {
             srcs: vec!["cell//app_a/src/app.erl".to_string()],
             includes: vec![],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1090,6 +1106,8 @@ mod tests {
             srcs: vec![],
             includes: vec!["cell//app_a/include/app.hrl".to_string()],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1112,6 +1130,8 @@ mod tests {
             srcs: vec![],
             includes: vec![],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1138,6 +1158,8 @@ mod tests {
             ],
             includes: vec![],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1161,6 +1183,8 @@ mod tests {
             srcs: vec!["cell//app_a/app.erl".to_string()],
             includes: vec!["cell//app_a/app.hrl".to_string()],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1184,6 +1208,8 @@ mod tests {
             srcs: vec!["cell//app_a/sub/app.erl".to_string()],
             includes: vec!["cell//app_a/sub/app.hrl".to_string()],
             labels: FxHashSet::default(),
+            deps: vec![],
+            apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
