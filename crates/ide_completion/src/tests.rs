@@ -24,3 +24,33 @@ pub(crate) fn get_completions(code: &str, trigger_character: Option<char>) -> Ve
     let (db, position, _) = RootDatabase::with_position(code);
     crate::completions(&db, position, trigger_character)
 }
+
+#[test]
+fn no_completions_in_comments() {
+    assert_eq!(
+        render_completions(get_completions(
+            r#"
+-module(hello).
+-export([hello/0]).
+%% Hello, world! ~
+hello() ->
+    world.
+"#,
+            None
+        )),
+        ""
+    );
+
+    assert_eq!(
+        render_completions(get_completions(
+            r#"
+-module(hello).
+-export([hello/0]).
+hello() ->
+    world. %% Hello, world! ~
+"#,
+            None
+        )),
+        ""
+    );
+}

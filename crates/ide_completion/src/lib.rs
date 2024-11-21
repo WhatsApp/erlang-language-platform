@@ -132,6 +132,7 @@ pub fn completions(
     };
 
     match ctx_kind {
+        CtxKind::Comment => (),
         CtxKind::Expr => {
             let _ = macros::add_completions(&mut acc, ctx)
                 || records::add_completions(&mut acc, ctx)
