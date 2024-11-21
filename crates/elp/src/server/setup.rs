@@ -16,6 +16,7 @@ use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::timeit_with_telemetry;
 use elp_log::Logger;
+use elp_project_model::otp::Otp;
 use lsp_server::Connection;
 use lsp_server::Notification;
 use lsp_types::notification::Notification as _;
@@ -74,7 +75,13 @@ impl ServerSetup {
             .initialize_finish(id, serde_json::to_value(result.clone()).unwrap())
             .with_context(|| format!("during initialization finish: {:?}", result))?;
 
-        let message = format!("ELP version: {}", crate::version());
+        let otp_details =
+            Otp::system_version().unwrap_or_else(|err| format!("Could not find OTP: {}", err));
+        let message = format!(
+            "ELP version: {}, OTP version: {}",
+            crate::version(),
+            otp_details
+        );
         let show_message_params = lsp_types::ShowMessageParams {
             typ: lsp_types::MessageType::INFO,
             message,

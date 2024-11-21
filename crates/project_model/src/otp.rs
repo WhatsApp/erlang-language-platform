@@ -44,7 +44,7 @@ lazy_static! {
         vec![OTP_ERTS_DIR.join("src")],
         Vec::default(),
     );
-    pub static ref OTP_VERSION: Option<String> = Otp::otp_version().ok();
+    pub static ref OTP_VERSION: Option<String> = Otp::otp_release().ok();
 }
 
 pub fn otp_supported_by_eqwalizer() -> bool {
@@ -102,7 +102,8 @@ impl Otp {
         let result = fs::canonicalize(result)?;
         Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
     }
-    pub fn otp_version() -> Result<String> {
+
+    pub fn otp_release() -> Result<String> {
         let _timer = timeit!("otp_version");
         let erl = ERL.read().unwrap();
         let output = Command::new(&*erl)
@@ -116,7 +117,30 @@ impl Otp {
 
         if !output.status.success() {
             bail!(
-                "Failed to get OTP version, error code: {:?}, stderr: {:?}",
+                "Failed to get OTP release, error code: {:?}, stderr: {:?}",
+                output.status.code(),
+                String::from_utf8(output.stderr)
+            );
+        }
+        let val = String::from_utf8(output.stdout)?;
+        Ok(val)
+    }
+
+    pub fn system_version() -> Result<String> {
+        let _timer = timeit!("system_version");
+        let erl = ERL.read().unwrap();
+        let output = Command::new(&*erl)
+            .arg("-noshell")
+            .arg("-eval")
+            .arg("io:format('~s', [erlang:system_info(system_version)])")
+            .arg("-s")
+            .arg("erlang")
+            .arg("halt")
+            .output()?;
+
+        if !output.status.success() {
+            bail!(
+                "Failed to get OTP system version, error code: {:?}, stderr: {:?}",
                 output.status.code(),
                 String::from_utf8(output.stderr)
             );
