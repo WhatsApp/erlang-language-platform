@@ -1225,9 +1225,17 @@ impl GleanIndexer {
                     acc
                 }
                 hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
-                    let arity = args.len() as u32;
-                    if let Some(fact) = Self::resolve_type(&sema, target, arity, file_id, &ctx) {
-                        acc.push(fact);
+                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema) {
+                        if let Some(range) =
+                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
+                        {
+                            let arity = args.len() as u32;
+                            if let Some(fact) =
+                                Self::resolve_type(&sema, target, arity, file_id, &body, range)
+                            {
+                                acc.push(fact);
+                            }
+                        }
                     }
                     acc
                 }
@@ -1355,8 +1363,10 @@ impl GleanIndexer {
                 Self::resolve_macro_v2(&sema, def, args, &source_file, &ctx)
             }
             hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
+                let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
+                let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
                 let arity = args.len() as u32;
-                Self::resolve_type_v2(&sema, target, arity, file_id, &ctx)
+                Self::resolve_type_v2(&sema, target, arity, file_id, &body, range)
             }
             _ => None,
         };
@@ -1622,9 +1632,9 @@ impl GleanIndexer {
         target: &CallTarget<TypeExprId>,
         arity: u32,
         file_id: FileId,
-        ctx: &AnyCallBackCtx,
+        body: &Body,
+        range: TextRange,
     ) -> Option<XRefFactVal> {
-        let (body, range) = ctx.find_range(sema)?;
         let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(
@@ -1641,9 +1651,9 @@ impl GleanIndexer {
         target: &CallTarget<TypeExprId>,
         arity: u32,
         file_id: FileId,
-        ctx: &AnyCallBackCtx,
+        body: &Body,
+        range: TextRange,
     ) -> Option<XRef> {
-        let (body, range) = ctx.find_range(sema)?;
         let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
         Some(XRef {
             source: range.into(),
@@ -1710,7 +1720,10 @@ impl GleanIndexer {
             elp_syntax::ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(expr)) => {
                 expr.name()?.syntax().text_range()
             }
-            elp_syntax::ast::Expr::Call(expr) => expr.expr()?.syntax().text_range(),
+            elp_syntax::ast::Expr::Call(expr) => match expr.expr()? {
+                ast::Expr::ExprMax(expr_max) => expr_max.syntax().text_range(),
+                expr => expr.syntax().text_range(),
+            },
             elp_syntax::ast::Expr::RecordExpr(expr) => expr.name()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordFieldExpr(expr) => expr.name()?.syntax().text_range(),
             elp_syntax::ast::Expr::RecordIndexExpr(expr) => expr.name()?.syntax().text_range(),
@@ -2143,14 +2156,14 @@ mod tests {
         -type huuuge() :: #{non_neg_integer() | infinity}.
         -spec baz(
             A :: huuuge(),
-        %%       ^^^^^^^^ glean_module8/huuuge/0
+        %%       ^^^^^^ glean_module8/huuuge/0
             B :: glean_module81:small()
-        %%       ^^^^^^^^^^^^^^^^^^^^^^ glean_module81/small/0
+        %%       ^^^^^^^^^^^^^^^^^^^^ glean_module81/small/0
         ) -> huuuge().
-        %%   ^^^^^^^^ glean_module8/huuuge/0
+        %%   ^^^^^^ glean_module8/huuuge/0
         baz(A, B) ->
-        %%  ^ glean_module8/A/265
-        %%     ^ glean_module8/B/268
+        %%  ^ glean_module8/A/259
+        %%     ^ glean_module8/B/262
             1 + 2."#;
 
         xref_check(&spec);
@@ -2165,11 +2178,11 @@ mod tests {
         -type my_integer() :: integer().
 
         -spec my_function(my_type(my_integer())) -> integer().
-        %%                ^^^^^^^^^^^^^^^^^^^^^ glean_module_parametrized/my_type/1
-        %%                        ^^^^^^^^^^^^ glean_module_parametrized/my_integer/0
+        %%                ^^^^^^^ glean_module_parametrized/my_type/1
+        %%                        ^^^^^^^^^^ glean_module_parametrized/my_integer/0
         my_function(X) -> X.
-        %%          ^ glean_module_parametrized/X/331
-        %%                ^ glean_module_parametrized/X/337
+        %%          ^ glean_module_parametrized/X/315
+        %%                ^ glean_module_parametrized/X/321
         "#;
 
         xref_check(&spec);
@@ -2183,8 +2196,8 @@ mod tests {
         -type my_integer() :: integer().
 
         -spec my_function(my_type(my_integer())) -> integer().
-        %%                ^^^^^^^^^^^^^^^^^^^^^ glean_module_parametrized.erl/type/my_type/1
-        %%                        ^^^^^^^^^^^^ glean_module_parametrized.erl/type/my_integer/0
+        %%                ^^^^^^^ glean_module_parametrized.erl/type/my_type/1
+        %%                        ^^^^^^^^^^ glean_module_parametrized.erl/type/my_integer/0
         my_function(X) -> X.
         "#;
 
@@ -2201,11 +2214,11 @@ mod tests {
         -type huuuge() :: #{non_neg_integer() | infinity}.
         -spec baz(
             A :: huuuge(),
-        %%       ^^^^^^^^ glean_module8.erl/type/huuuge/0
+        %%       ^^^^^^ glean_module8.erl/type/huuuge/0
             B :: glean_module81:small()
-        %%       ^^^^^^^^^^^^^^^^^^^^^^ glean_module81.erl/type/small/0
+        %%       ^^^^^^^^^^^^^^^^^^^^ glean_module81.erl/type/small/0
         ) -> huuuge().
-        %%   ^^^^^^^^ glean_module8.erl/type/huuuge/0
+        %%   ^^^^^^ glean_module8.erl/type/huuuge/0
         baz(A, B) ->
             A + B."#;
 
