@@ -1760,6 +1760,7 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::supports_eep59_doc_attributes;
     use expect_test::expect;
 
     use super::*;
@@ -2481,18 +2482,34 @@ baz(1)->4.
     fn edoc_generic_diagnostics_suppressed() {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::ErlangService("O0000".to_string()));
-        check_diagnostics_with_config(
-            config,
-            r#"
-            //- edoc
-            //- /src/a_mod.erl app:app_a
-            -module(a_mod).
-            -export([foo/0]).
-
-            % @docc
-            %%<^^^^^ warning: tag @docc not recognized.
-            foo() -> \~"foo".
-            "#,
-        );
+        if supports_eep59_doc_attributes() {
+            check_diagnostics_with_config(
+                config,
+                r#"
+                //- edoc
+                //- /src/a_mod.erl app:app_a
+                -module(a_mod).
+                -export([foo/0]).
+    
+                % @docc
+                %%<^^^^^ warning: tag @docc not recognized.
+                foo() -> \~"foo".
+                "#,
+            );
+        } else {
+            // In previous versions of OTP, the EDoc stops at the first error, so no other diagnostics are reported
+            check_diagnostics_with_config(
+                config,
+                r#"
+                //- edoc
+                //- /src/a_mod.erl app:app_a
+                -module(a_mod).
+                -export([foo/0]).
+    
+                % @docc
+                foo() -> \~"foo".
+                "#,
+            );
+        }
     }
 }
