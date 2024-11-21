@@ -1244,20 +1244,23 @@ mod tests {
     #[test]
     fn build_info_buck_bxl_query() {
         check_buck_bxl_query(expect![[r#"
-                {
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
-                    "name": "app_a",
-                    "suite": null,
-                    "srcs": [
-                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
-                    ],
-                    "includes": [
-                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a"
-                    ],
-                    "labels": []
-                  }
-                }
-            "#]]);
+            {
+              "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a": {
+                "name": "app_a",
+                "suite": null,
+                "srcs": [
+                  "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a"
+                ],
+                "included_apps": []
+              }
+            }
+        "#]]);
     }
 
     #[test]
