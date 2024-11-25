@@ -875,7 +875,7 @@ impl ProjectAppData {
 
     /// Source directories for the application including the extra
     /// sources and includes
-    pub fn all_source_dirs(&self) -> Vec<AbsPathBuf> {
+    pub fn all_source_dirs(&self) -> FxHashSet<AbsPathBuf> {
         self.extra_src_dirs
             .iter()
             .map(|src_dir| self.dir.join(src_dir))

@@ -14,6 +14,7 @@ use elp_ide::elp_ide_db::elp_base_db::AppType;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use fxhash::FxHashSet;
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -30,38 +31,36 @@ impl ProjectFolders {
             .fold(
                 FileSetConfig::builder(),
                 |mut builder, (_project_id, app)| {
-                    let mut file_sets: Vec<VfsPath> = app
+                    let mut file_sets: FxHashSet<VfsPath> = app
                         .abs_src_dirs
                         .iter()
                         .map(|src| VfsPath::from(src.clone()))
                         .collect();
                     let dir = VfsPath::from(app.dir.clone());
-                    file_sets.push(dir);
-                    builder.add_file_set(file_sets);
+                    file_sets.insert(dir);
+                    builder.add_file_set(file_sets.into_iter().collect());
                     builder
                 },
             )
             .build();
 
-        let load = project_apps
-            .all_apps
-            .iter()
-            .flat_map(|(_, app)| {
-                let dirs = loader::Directories {
-                    extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
-                    include: app.all_source_dirs(),
-                    exclude: vec![],
-                };
-                let dir_entry = loader::Entry::Directories(dirs);
-                match app.app_type {
-                    AppType::App => vec![
-                        dir_entry,
-                        loader::Entry::Files(vec![app.dir.join(".eqwalizer")]),
-                    ],
-                    _ => vec![dir_entry],
-                }
-            })
-            .collect();
+        let mut app_dirs = FxHashSet::default();
+        let mut files = FxHashSet::default();
+        project_apps.all_apps.iter().for_each(|(_, app)| {
+            app_dirs.extend(app.all_source_dirs());
+            if app.app_type == AppType::App {
+                files.insert(app.dir.join(".eqwalizer"));
+            }
+        });
+
+        let load = vec![
+            loader::Entry::Directories(loader::Directories {
+                extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
+                include: app_dirs.into_iter().collect(),
+                exclude: vec![],
+            }),
+            loader::Entry::Files(files.into_iter().collect()),
+        ];
 
         let mut watch: Vec<_> = project_apps
             .all_apps
