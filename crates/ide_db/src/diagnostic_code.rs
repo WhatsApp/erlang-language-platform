@@ -68,6 +68,61 @@ pub enum DiagnosticCode {
     // @fb-only
 }
 
+// These namespaces map the error codes returned by the Erlang Service.
+// See erlang_service/src/erlang_service_error_codes.erl
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Namespace {
+    Compiler,
+    Dodger,
+    Linter,
+    Scanner,
+    PreProcessor,
+    QueryListComprehension,
+    Parser,
+    EDoc,
+    WhatsApp,
+}
+
+impl fmt::Display for Namespace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let namespace = match self {
+            Namespace::Compiler => "c",
+            Namespace::Dodger => "d",
+            Namespace::Linter => "l",
+            Namespace::Scanner => "s",
+            Namespace::PreProcessor => "e",
+            Namespace::QueryListComprehension => "q",
+            Namespace::Parser => "p",
+            Namespace::EDoc => "o",
+            Namespace::WhatsApp => "w",
+        };
+        write!(f, "{namespace}")
+    }
+}
+
+impl FromStr for Namespace {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let first = s
+            .to_string()
+            .chars()
+            .next()
+            .ok_or(format!("Cannot extract namespace from: '{s}'"))?;
+        match first.to_lowercase().to_string().as_str() {
+            "c" => Ok(Namespace::Compiler),
+            "d" => Ok(Namespace::Dodger),
+            "l" => Ok(Namespace::Linter),
+            "s" => Ok(Namespace::Scanner),
+            "e" => Ok(Namespace::PreProcessor),
+            "q" => Ok(Namespace::QueryListComprehension),
+            "p" => Ok(Namespace::Parser),
+            "o" => Ok(Namespace::EDoc),
+            "w" => Ok(Namespace::WhatsApp),
+            _ => Err(format!("No namespace found for: '{s}'")),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for DiagnosticCode {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -201,18 +256,13 @@ impl DiagnosticCode {
             )
     }
 
-    pub fn namespace(code: &String) -> Option<String> {
-        let first = code.to_string().chars().next()?;
-        Some(first.to_lowercase().to_string())
-    }
-
-    pub fn as_namespace(&self) -> Option<String> {
+    pub fn as_namespace(&self) -> Option<Namespace> {
         match self {
             DiagnosticCode::DefaultCodeForEnumIter => None,
             DiagnosticCode::AdHoc(_) => None,
             // @fb-only
-            DiagnosticCode::ErlangService(code) => Self::namespace(code),
-            _ => Self::namespace(&self.as_code()),
+            DiagnosticCode::ErlangService(code) => Namespace::from_str(code).ok(),
+            _ => Namespace::from_str(&self.as_code()).ok(),
         }
     }
 

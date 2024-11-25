@@ -24,6 +24,7 @@ use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
+use elp_ide_db::diagnostic_code::Namespace;
 use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
@@ -427,6 +428,7 @@ pub struct DiagnosticDescriptor<'a> {
 pub struct EnabledDiagnostics {
     enable_all: bool,
     enabled: FxHashSet<DiagnosticCode>,
+    edoc: bool,
 }
 
 impl EnabledDiagnostics {
@@ -434,19 +436,27 @@ impl EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: false,
             enabled: FxHashSet::default(),
+            edoc: false,
         }
     }
     pub fn from_set(enabled: FxHashSet<DiagnosticCode>) -> EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: false,
             enabled,
+            edoc: false,
         }
     }
     pub fn enable_all() -> EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: true,
             enabled: FxHashSet::default(),
+            edoc: false,
         }
+    }
+
+    pub fn set_edoc(&mut self, value: bool) -> &EnabledDiagnostics {
+        self.edoc = value;
+        self
     }
 
     pub fn enable(&mut self, code: DiagnosticCode) -> &EnabledDiagnostics {
@@ -454,19 +464,15 @@ impl EnabledDiagnostics {
         self
     }
 
-    pub fn intersects(&self, other: &FxHashSet<DiagnosticCode>) -> bool {
-        if self.enable_all {
-            true
-        } else {
-            self.enabled.intersection(other).next().is_some()
-        }
-    }
-
     pub fn contains(&self, code: &DiagnosticCode) -> bool {
         if self.enable_all {
             true
         } else {
-            self.enabled.contains(code)
+            if code.as_namespace() == Some(Namespace::EDoc) {
+                self.edoc
+            } else {
+                self.enabled.contains(code)
+            }
         }
     }
 
@@ -490,6 +496,7 @@ pub struct DiagnosticsConfig {
     pub include_generated: bool,
     pub include_suppressed: bool,
     pub include_otp: bool,
+    pub include_edoc: bool,
     pub compile_options: Vec<CompileOption>,
     pub override_compile_options: Vec<CompileOption>,
     /// Used in `elp lint` to request erlang service diagnostics if
@@ -567,6 +574,12 @@ impl DiagnosticsConfig {
 
     pub fn set_include_suppressed(mut self, value: bool) -> DiagnosticsConfig {
         self.include_suppressed = value;
+        self
+    }
+
+    pub fn set_include_edoc(mut self, value: bool) -> DiagnosticsConfig {
+        self.include_edoc = value;
+        self.enabled.set_edoc(value);
         self
     }
 
@@ -1310,6 +1323,10 @@ pub fn edoc_diagnostics(
     file_id: FileId,
     config: &DiagnosticsConfig,
 ) -> Vec<(FileId, Vec<Diagnostic>)> {
+    if !config.include_generated && db.is_generated(file_id) {
+        return vec![];
+    }
+
     // We use a BTreeSet of a tuple because neither ParseError nor
     // Diagnostic nor TextRange has an Ord instance
     let mut error_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
