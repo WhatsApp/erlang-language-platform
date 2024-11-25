@@ -52,6 +52,9 @@ impl ProjectFolders {
             if app.app_type == AppType::App {
                 files.insert(app.dir.join(".eqwalizer"));
             }
+            app.applicable_files.as_ref().map(|applicable_files| {
+                files.extend(applicable_files.clone());
+            });
             include_dirs.extend(app.include_dirs.clone());
         });
 
