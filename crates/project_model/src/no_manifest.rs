@@ -67,6 +67,7 @@ impl NoManifestConfig {
             parse_transforms: vec![],
             include_path: vec![otp_root.to_path_buf()],
             applicable_files: None,
+            is_test_target: None,
         };
         data.include_path.extend(data.include_dirs());
         if let Some(path) = self.root_path.parent() {

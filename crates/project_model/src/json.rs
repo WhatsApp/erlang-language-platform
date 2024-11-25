@@ -101,6 +101,7 @@ impl JsonProjectAppData {
             app_type,
             include_path: vec![],
             applicable_files: None,
+            is_test_target: None,
         })
     }
 

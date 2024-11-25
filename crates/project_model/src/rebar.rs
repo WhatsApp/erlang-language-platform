@@ -204,6 +204,7 @@ impl RebarProject {
                 include_path: vec![],
                 abs_src_dirs,
                 applicable_files: None,
+                is_test_target: None,
             })
         }
     }

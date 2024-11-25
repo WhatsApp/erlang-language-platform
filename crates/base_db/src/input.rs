@@ -82,6 +82,9 @@ impl SourceRoot {
                 Some((file_id, FileSource::Src, path))
             } else if app_data.is_extra_src_file(path) {
                 Some((file_id, FileSource::Extra, path))
+            } else if app_data.is_test_target == Some(true) {
+                // buck test target source file. It only has one.
+                Some((file_id, FileSource::Src, path))
             } else {
                 None
             }
@@ -127,6 +130,9 @@ pub struct AppData {
     pub parse_transforms: Vec<eetf::Term>,
     pub app_type: AppType,
     pub ebin_path: Option<AbsPathBuf>,
+    /// When the app is generated from buck, each test module shows
+    /// up as a different own app.
+    pub is_test_target: Option<bool>,
 }
 
 impl AppData {
@@ -361,6 +367,7 @@ impl<'a> ProjectApps<'a> {
                     app_type: app.app_type,
                     src_path: app.abs_src_dirs.clone(),
                     ebin_path: app.ebin.clone(),
+                    is_test_target: app.is_test_target.clone(),
                 };
                 app_structure.add_app_data(root_id, Some(input_data), app.applicable_files.clone());
             }

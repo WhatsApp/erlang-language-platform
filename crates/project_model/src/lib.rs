@@ -816,6 +816,7 @@ pub struct ProjectAppData {
     // Originating from buck2 model, the set of specific files this
     // data applies to.
     pub applicable_files: Option<ApplicableFiles>,
+    pub is_test_target: Option<bool>,
 }
 
 pub type ApplicableFiles = FxHashSet<AbsPathBuf>;
@@ -840,6 +841,7 @@ impl ProjectAppData {
             include_path: vec![],
             abs_src_dirs: src_dirs,
             applicable_files: None,
+            is_test_target: None,
         }
     }
 
@@ -864,6 +866,7 @@ impl ProjectAppData {
             include_path: vec![include, src, parent],
             abs_src_dirs: vec![abs_src_dir],
             applicable_files: None,
+            is_test_target: None,
         }
     }
 
