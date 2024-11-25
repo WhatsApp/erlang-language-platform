@@ -13,6 +13,7 @@
 use std::fmt;
 use std::sync::Arc;
 
+use vfs::AbsPathBuf;
 use vfs::FileId;
 
 use crate::input::AppStructure;
@@ -61,7 +62,11 @@ impl Change {
         self.app_structure = Some(a);
     }
 
-    pub fn apply(self, db: &mut dyn SourceDatabaseExt) -> Vec<FileId> {
+    pub fn apply(
+        self,
+        db: &mut dyn SourceDatabaseExt,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+    ) -> Vec<FileId> {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         if let Some(roots) = self.roots {
             for (idx, root) in roots.into_iter().enumerate() {
@@ -74,7 +79,7 @@ impl Change {
         }
 
         if let Some(set_app_structure) = self.app_structure {
-            set_app_structure.apply(db);
+            set_app_structure.apply(db, resolve_file_id);
         }
 
         let mut res = vec![];

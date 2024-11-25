@@ -569,11 +569,14 @@ impl<'a> Lints<'a> {
                          diff: _,
                      }|
                      -> Result<Option<(String, FileId, DiagnosticCollection)>> {
-                        self.analysis_host.apply_change(Change {
-                            roots: None,
-                            files_changed: vec![(file_id, Some(Arc::from(source)))],
-                            app_structure: None,
-                        });
+                        self.analysis_host.apply_change(
+                            Change {
+                                roots: None,
+                                files_changed: vec![(file_id, Some(Arc::from(source)))],
+                                app_structure: None,
+                            },
+                            &|path| self.vfs.file_id(&VfsPath::from(path.clone())),
+                        );
                         if self.args.check_eqwalize_all {
                             writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
                         }

@@ -26,9 +26,9 @@ use crate::line_endings::LineEndings;
 /// Creates analysis from a multi-file fixture
 #[track_caller]
 pub fn load_result(fixture_str: &str) -> LoadResult {
-    let (_fixture, change, project) = ChangeFixture::parse_detail(fixture_str);
+    let (fixture, change, project) = ChangeFixture::parse_detail(fixture_str);
     let mut db = RootDatabase::default();
-    change.apply(&mut db);
+    change.apply(&mut db, &|path| fixture.resolve_file_id(path));
 
     let analysis_host = AnalysisHost::new(db);
     let (vfs, line_ending_map) = load_info_from_fixture(fixture_str);

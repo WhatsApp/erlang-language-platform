@@ -31,6 +31,7 @@ use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::Doc;
 use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::elp_base_db::salsa::ParallelDatabase;
+use elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide_db::elp_base_db::Change;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
@@ -188,8 +189,12 @@ impl AnalysisHost {
 
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: Change) {
-        self.db.apply_change(change)
+    pub fn apply_change(
+        &mut self,
+        change: Change,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+    ) {
+        self.db.apply_change(change, resolve_file_id)
     }
 
     pub fn new(db: RootDatabase) -> AnalysisHost {

@@ -38,6 +38,7 @@ use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashMap;
+use vfs::VfsPath;
 
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
@@ -181,7 +182,9 @@ fn load_database(
         db.set_source_root(root_id, Arc::new(root));
     }
 
-    project_apps.app_structure().apply(db);
+    project_apps
+        .app_structure()
+        .apply(db, &|path| vfs.file_id(&VfsPath::from(path.clone())));
 
     let changes = vfs.take_changes();
     for (_file_id, file) in changes {

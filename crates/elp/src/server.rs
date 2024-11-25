@@ -1189,7 +1189,9 @@ impl Server {
 
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
         let folders = ProjectFolders::new(&project_apps);
-        project_apps.app_structure().apply(raw_db);
+        // We will set the FileId -> AppData structure when the file
+        // loads
+        project_apps.app_structure().apply(raw_db, &|_path| None);
 
         self.file_set_config = folders.file_set_config;
 

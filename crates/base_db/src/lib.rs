@@ -17,6 +17,7 @@ use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
+use input::AppDataId;
 use lazy_static::lazy_static;
 
 mod change;
@@ -143,8 +144,16 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    #[salsa::input]
+    /// The data for a given application. We can access this either
+    /// from the `FileId` or by `SourceRootId`, so introduce an
+    /// intermediate `AppDataId` to map from the two sources.
     fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
+    #[salsa::input]
+    fn app_data_by_id(&self, id: AppDataId) -> Option<Arc<AppData>>;
+    #[salsa::input]
+    fn app_data_id(&self, id: SourceRootId) -> AppDataId;
+
+    fn app_data_id_by_file(&self, id: FileId) -> Option<AppDataId>;
 
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
 
@@ -157,6 +166,11 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
 
     fn include_file_index(&self, project_id: ProjectId) -> Arc<IncludeFileIndex>;
+
+    /// Returns a map from FileId to the AppDataId of the app the file
+    /// belongs to.
+    #[salsa::input]
+    fn app_index(&self) -> Arc<AppDataIndex>;
 
     /// Parse the file_id to AST
     fn parse(&self, file_id: FileId) -> Parse<SourceFile>;
@@ -187,9 +201,23 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn resolve_remote(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
 }
 
+fn app_data(db: &dyn SourceDatabase, id: SourceRootId) -> Option<Arc<AppData>> {
+    db.app_data_by_id(db.app_data_id(id))
+}
+
 fn file_app_data(db: &dyn SourceDatabase, file_id: FileId) -> Option<Arc<AppData>> {
-    let source_root_id = db.file_source_root(file_id);
-    db.app_data(source_root_id)
+    // The file_id may not be in the AppDataIndex, so fall back
+    let lookup = if let Some(id) = db.app_data_id_by_file(file_id) {
+        db.app_data_by_id(id)
+    } else {
+        None
+    };
+    lookup
+        // TODO: do we need this fallback?
+        .or_else(|| {
+            let source_root_id = db.file_source_root(file_id);
+            db.app_data(source_root_id)
+        })
 }
 
 fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleIndex> {
@@ -286,6 +314,16 @@ fn include_file_id(
 ) -> Option<FileId> {
     let include_file_index = db.include_file_index(project_id);
     include_file_index.map.get(&path).copied()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AppDataIndex {
+    pub map: FxHashMap<FileId, AppDataId>,
+}
+
+fn app_data_id_by_file(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppDataId> {
+    let app_data_index = db.app_index();
+    app_data_index.map.get(&file_id).copied()
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {

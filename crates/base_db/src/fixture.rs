@@ -96,7 +96,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
-        change.apply(&mut db);
+        change.apply(&mut db, &|path| fixture.resolve_file_id(path));
         (db, fixture)
     }
 }
@@ -107,6 +107,7 @@ impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
+    pub files_by_path: FxHashMap<VfsPath, FileId>,
     pub diagnostics_enabled: DiagnosticsEnabled,
 }
 
@@ -192,6 +193,7 @@ impl ChangeFixture {
         let mut app_map = AppMap::default();
         let mut otp: Option<Otp> = None;
         let mut app_files = SourceRootMap::default();
+        let mut files_by_path: FxHashMap<VfsPath, FileId> = FxHashMap::default();
 
         for entry in fixture.clone() {
             let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
@@ -226,7 +228,8 @@ impl ChangeFixture {
             } else {
                 VfsPath::new_real_path(entry.path)
             };
-            app_files.insert(app_name, file_id, path);
+            app_files.insert(app_name, file_id, path.clone());
+            files_by_path.insert(path, file_id);
             files.push(file_id);
 
             inc_file_id(&mut file_id);
@@ -344,6 +347,7 @@ impl ChangeFixture {
             ChangeFixture {
                 file_position,
                 files,
+                files_by_path,
                 diagnostics_enabled,
             },
             change,
@@ -410,6 +414,12 @@ impl ChangeFixture {
         } else {
             (entry_text.to_string(), None)
         }
+    }
+
+    pub fn resolve_file_id(&self, path: &AbsPathBuf) -> Option<FileId> {
+        self.files_by_path
+            .get(&VfsPath::from(path.clone()))
+            .cloned()
     }
 }
 

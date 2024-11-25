@@ -26,6 +26,7 @@ use vfs::AbsPathBuf;
 use vfs::FileId;
 use vfs::VfsPath;
 
+use crate::AppDataIndex;
 use crate::SourceDatabaseExt;
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -196,14 +197,28 @@ impl AppStructure {
     }
 
     /// Set the salsa inputs according to this AppStructure
-    pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
-        for (source_root_id, data) in self.app_map {
-            let arc_data = data.0.map(Arc::new);
-            db.set_app_data(source_root_id, arc_data);
+    pub fn apply(
+        self,
+        db: &mut dyn SourceDatabaseExt,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+    ) {
+        let mut app_index = AppDataIndex::default();
+        let mut app_data_id = AppDataId(0);
+        for (source_root_id, (data, applicable_files)) in self.app_map {
+            let arc_data = data.map(Arc::new);
+            db.set_app_data_by_id(app_data_id, arc_data);
+            db.set_app_data_id(source_root_id, app_data_id);
+            applicable_files.map(|files| {
+                files.iter().for_each(|path| {
+                    resolve_file_id(path).map(|file_id| app_index.map.insert(file_id, app_data_id));
+                })
+            });
+            app_data_id = AppDataId(app_data_id.0 + 1);
         }
         for (project_id, project_data) in self.project_map {
             db.set_project_data(project_id, Arc::new(project_data));
         }
+        db.set_app_index(Arc::new(app_index));
         db.set_catch_all_source_root(self.catch_all_source_root);
     }
 }
