@@ -868,11 +868,24 @@ fn targets_to_project_data_bxl(
             .map(|dir| dir.to_path_buf())
             .filter(|dir| dir.file_name() != Some(&TEST_DIR))
             .collect();
+        let extra_src_dirs: FxHashSet<String> = target
+            .src_files
+            .iter()
+            .filter(|src| src.extension() == Some(&ERL_EXT))
+            .filter_map(|src| src.parent())
+            .map(|dir| dir.to_path_buf())
+            .filter(|dir| dir.file_name() == Some(&TEST_DIR))
+            .filter_map(|d| {
+                d.strip_prefix(&target.dir.to_path_buf())
+                    .map(|r| r.to_path_buf())
+            })
+            .map(|d| d.as_str().to_string())
+            .collect();
         let project_app_data = ProjectAppData {
             name: AppName(target.app_name.clone()),
             dir: target.dir.clone(),
             ebin: None,
-            extra_src_dirs: vec![],
+            extra_src_dirs: extra_src_dirs.into_iter().collect(),
             include_dirs: target.include_files(),
             abs_src_dirs: abs_src_dirs.into_iter().collect(),
             macros,
