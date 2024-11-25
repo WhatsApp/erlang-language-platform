@@ -880,13 +880,21 @@ impl ProjectAppData {
 
     /// Source directories for the application including the extra
     /// sources and includes
-    pub fn all_source_dirs(&self) -> FxHashSet<AbsPathBuf> {
+    pub fn all_source_and_include_dirs(&self) -> FxHashSet<AbsPathBuf> {
         self.extra_src_dirs
             .iter()
             .map(|src_dir| self.dir.join(src_dir))
             .chain(self.abs_src_dirs.iter().cloned())
             .chain(self.include_dirs.iter().cloned())
             .chain(self.include_path.iter().cloned())
+            .collect()
+    }
+    /// Source directories for the application
+    pub fn all_source_dirs(&self) -> FxHashSet<AbsPathBuf> {
+        self.extra_src_dirs
+            .iter()
+            .map(|src_dir| self.dir.join(src_dir))
+            .chain(self.abs_src_dirs.iter().cloned())
             .collect()
     }
 

@@ -45,12 +45,14 @@ impl ProjectFolders {
             .build();
 
         let mut app_dirs = FxHashSet::default();
+        let mut include_dirs = FxHashSet::default();
         let mut files = FxHashSet::default();
         project_apps.all_apps.iter().for_each(|(_, app)| {
             app_dirs.extend(app.all_source_dirs());
             if app.app_type == AppType::App {
                 files.insert(app.dir.join(".eqwalizer"));
             }
+            include_dirs.extend(app.include_dirs.clone());
         });
 
         let load = vec![
@@ -59,13 +61,20 @@ impl ProjectFolders {
                 include: app_dirs.into_iter().collect(),
                 exclude: vec![],
             }),
+            loader::Entry::Directories(loader::Directories {
+                extensions: vec!["hrl".to_string()],
+                include: include_dirs.into_iter().collect(),
+                exclude: vec![],
+            }),
             loader::Entry::Files(files.into_iter().collect()),
         ];
 
         let mut watch: Vec<_> = project_apps
             .all_apps
             .iter()
-            .flat_map(|(project_id, app)| iter::repeat(project_id).zip(app.all_source_dirs()))
+            .flat_map(|(project_id, app)| {
+                iter::repeat(project_id).zip(app.all_source_and_include_dirs())
+            })
             .filter_map(|(project_id, root)| {
                 if Some(*project_id) != project_apps.otp_project_id {
                     Some(lsp_types::FileSystemWatcher {
