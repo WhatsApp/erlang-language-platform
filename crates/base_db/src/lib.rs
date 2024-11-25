@@ -225,11 +225,15 @@ fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleInd
 
     let project_data = db.project_data(project_id);
     for &source_root_id in &project_data.source_roots {
-        if let Some(app_data) = db.app_data(source_root_id) {
-            let source_root = db.source_root(source_root_id);
-            for (file_id, file_source, path) in source_root.iter_app_files(&app_data) {
-                if let Some((name, Some("erl"))) = path.name_and_extension() {
-                    builder.insert(file_id, file_source, ModuleName::new(name));
+        let source_root = db.source_root(source_root_id);
+        for file_id in source_root.iter() {
+            if let Some(app_data) = db.file_app_data(file_id) {
+                if let Some((file_id, file_source, path)) =
+                    source_root.file_info(file_id, &app_data)
+                {
+                    if let Some((name, Some("erl"))) = path.name_and_extension() {
+                        builder.insert(file_id, file_source, ModuleName::new(name));
+                    }
                 }
             }
         }

@@ -76,19 +76,26 @@ impl SourceRoot {
         &'a self,
         app_data: &'a AppData,
     ) -> impl Iterator<Item = (FileId, FileSource, &'a VfsPath)> + 'a {
-        self.iter().flat_map(move |file_id| {
-            let path = self.path_for_file(&file_id)?;
-            if app_data.is_src_file(path) {
-                Some((file_id, FileSource::Src, path))
-            } else if app_data.is_extra_src_file(path) {
-                Some((file_id, FileSource::Extra, path))
-            } else if app_data.is_test_target == Some(true) {
-                // buck test target source file. It only has one.
-                Some((file_id, FileSource::Src, path))
-            } else {
-                None
-            }
-        })
+        self.iter()
+            .flat_map(move |file_id| self.file_info(file_id, app_data))
+    }
+
+    pub fn file_info(
+        &self,
+        file_id: FileId,
+        app_data: &AppData,
+    ) -> Option<(FileId, FileSource, &VfsPath)> {
+        let path = self.path_for_file(&file_id)?;
+        if app_data.is_src_file(path) {
+            Some((file_id, FileSource::Src, path))
+        } else if app_data.is_extra_src_file(path) {
+            Some((file_id, FileSource::Extra, path))
+        } else if app_data.is_test_target == Some(true) {
+            // buck test target source file. It only has one.
+            Some((file_id, FileSource::Src, path))
+        } else {
+            None
+        }
     }
 
     pub fn has_eqwalizer_marker<'a>(&'a self, app_data: &'a AppData) -> bool {
