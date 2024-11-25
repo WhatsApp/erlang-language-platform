@@ -993,7 +993,9 @@ mod tests {
                         "src"
                       ],
                       "extra_src_dirs": [],
-                      "include_dirs": [],
+                      "include_dirs": [
+                        "include"
+                      ],
                       "macros": {
                         "COMMON_TEST": "true",
                         "TEST": "true"

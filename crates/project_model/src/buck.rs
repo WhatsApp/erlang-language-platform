@@ -250,6 +250,18 @@ impl Target {
             TargetType::ThirdParty => AppType::Dep,
         }
     }
+
+    fn include_files(&self) -> Vec<AbsPathBuf> {
+        let mut include_files = self.include_files.clone();
+        if self.private_header {
+            self.src_files.iter().for_each(|path| {
+                if Some("hrl") == path.extension() {
+                    include_files.push(include_path_from_file(path));
+                }
+            });
+        }
+        include_files
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
@@ -861,7 +873,7 @@ fn targets_to_project_data_bxl(
             dir: target.dir.clone(),
             ebin: None,
             extra_src_dirs: vec![],
-            include_dirs: vec![],
+            include_dirs: target.include_files(),
             abs_src_dirs: abs_src_dirs.into_iter().collect(),
             macros,
             parse_transforms: vec![],
