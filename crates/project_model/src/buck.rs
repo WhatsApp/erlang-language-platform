@@ -651,7 +651,7 @@ fn find_app_root_bxl(
         .chain(target.suite.iter());
 
     for path in paths {
-        if let Ok(path) = buck_path_to_abs_path(root, path) {
+        if let Ok(path) = AbsPathBuf::try_from(path.as_str()) {
             let parent = path.parent();
             if let Some(parent) = parent {
                 set.insert(parent.to_path_buf());
@@ -665,11 +665,7 @@ fn find_app_root_bxl(
         set.into_iter().reduce(|a, b| common_prefix(&a, &b))
     } else {
         for path in set {
-            if let Some(path) = examine_path(&path, dir_based_on_buck_file.as_path()) {
-                // We found an src/, test/, or include/ directory before the BUCK file,
-                // so we just return the parent of this directory.
-                return Some(path);
-            }
+            return Some(path);
         }
         // Otherwise, we just return the directory containing the BUCK file,
         Some(dir_based_on_buck_file)
@@ -1137,8 +1133,13 @@ mod tests {
     use expect_test::Expect;
 
     use super::*;
+    use crate::temp_dir::TempDir;
     use crate::test_fixture::FixtureWithProjectMeta;
     use crate::to_abs_path_buf;
+
+    fn as_absolute_string(dir: &TempDir, path: &str) -> String {
+        dir.path().join(path).to_string_lossy().to_string()
+    }
 
     #[test]
     fn test_find_app_root_src() {
@@ -1152,7 +1153,7 @@ mod tests {
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
-            srcs: vec!["cell//app_a/src/app.erl".to_string()],
+            srcs: vec![as_absolute_string(&dir, "app_a/src/app.erl")],
             includes: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
@@ -1160,7 +1161,7 @@ mod tests {
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
-        let expected = Some(to_abs_path_buf(&dir.path().join("app_a").to_path_buf()).unwrap());
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a/src").to_path_buf()).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -1177,14 +1178,14 @@ mod tests {
             name: "app_a".to_string(),
             suite: None,
             srcs: vec![],
-            includes: vec!["cell//app_a/include/app.hrl".to_string()],
+            includes: vec![as_absolute_string(&dir, "app_a/include/app.hrl")],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
-        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a/include")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -1199,7 +1200,7 @@ mod tests {
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
-            suite: Some("cell//app_a/test/app_SUITE.erl".to_string()),
+            suite: Some(as_absolute_string(&dir, "app_a/test/app_SUITE.erl")),
             srcs: vec![],
             includes: vec![],
             labels: FxHashSet::default(),
@@ -1208,7 +1209,7 @@ mod tests {
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
-        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a/test")).unwrap());
         assert_eq!(expected, actual)
     }
 
@@ -1278,15 +1279,15 @@ mod tests {
         let target = BuckTarget {
             name: "app_a".to_string(),
             suite: None,
-            srcs: vec!["cell//app_a/sub/app.erl".to_string()],
-            includes: vec!["cell//app_a/sub/app.hrl".to_string()],
+            srcs: vec![as_absolute_string(&dir, "app_a/sub/app.erl")],
+            includes: vec![as_absolute_string(&dir, "app_a/sub/app.hrl")],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
-        let expected = Some(to_abs_path_buf(&dir.path().join("app_a")).unwrap());
+        let expected = Some(to_abs_path_buf(&dir.path().join("app_a/sub")).unwrap());
         assert_eq!(expected, actual)
     }
 
