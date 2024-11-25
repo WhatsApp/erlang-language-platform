@@ -51,8 +51,9 @@ impl Runnable {
             RunnableKind::Test {
                 suite, case, group, ..
             } => {
-                let group = group.name();
-                format!("{suite} - {group}.{case}")
+                let escaped_group = regex::escape(&group.name());
+                let escaped_case = regex::escape(case);
+                format!("{suite} - {escaped_group}.{escaped_case}")
             }
             RunnableKind::Suite => "".to_string(),
         }
@@ -66,8 +67,9 @@ impl Runnable {
                 group,
                 ..
             } => {
-                let group = group.name();
-                format!("{app_name}:{suite} - {group}.{case}$")
+                let escaped_group = regex::escape(&group.name());
+                let escaped_case = regex::escape(case);
+                format!("{app_name}:{suite} - {escaped_group}.{escaped_case}$")
             }
             RunnableKind::Suite => "".to_string(),
         }
