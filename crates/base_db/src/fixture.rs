@@ -1001,109 +1001,121 @@ bar() -> ?FOO.
                     app_map: {
                         SourceRootId(
                             0,
-                        ): Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "test-fixture",
-                                ),
-                                dir: AbsPathBuf(
-                                    "/",
-                                ),
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/src",
+                        ): (
+                            Some(
+                                AppData {
+                                    project_id: ProjectId(
+                                        0,
                                     ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
+                                    name: AppName(
+                                        "test-fixture",
                                     ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/src",
+                                    dir: AbsPathBuf(
+                                        "/",
                                     ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                            },
+                                    include_path: [
+                                        AbsPathBuf(
+                                            "/src",
+                                        ),
+                                        AbsPathBuf(
+                                            "/opt/lib",
+                                        ),
+                                    ],
+                                    src_path: [
+                                        AbsPathBuf(
+                                            "/src",
+                                        ),
+                                    ],
+                                    extra_src_dirs: [],
+                                    macros: [],
+                                    parse_transforms: [],
+                                    app_type: App,
+                                    ebin_path: None,
+                                },
+                            ),
+                            None,
                         ),
                         SourceRootId(
                             2,
-                        ): Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    1,
-                                ),
-                                name: AppName(
-                                    "comp",
-                                ),
-                                dir: AbsPathBuf(
-                                    "/opt/lib/comp-1.3",
-                                ),
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/include",
+                        ): (
+                            Some(
+                                AppData {
+                                    project_id: ProjectId(
+                                        1,
                                     ),
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/src",
+                                    name: AppName(
+                                        "comp",
                                     ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
+                                    dir: AbsPathBuf(
+                                        "/opt/lib/comp-1.3",
                                     ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/src",
+                                    include_path: [
+                                        AbsPathBuf(
+                                            "/opt/lib/comp-1.3/include",
+                                        ),
+                                        AbsPathBuf(
+                                            "/opt/lib/comp-1.3/src",
+                                        ),
+                                        AbsPathBuf(
+                                            "/opt/lib",
+                                        ),
+                                    ],
+                                    src_path: [
+                                        AbsPathBuf(
+                                            "/opt/lib/comp-1.3/src",
+                                        ),
+                                    ],
+                                    extra_src_dirs: [],
+                                    macros: [],
+                                    parse_transforms: [],
+                                    app_type: Otp,
+                                    ebin_path: Some(
+                                        AbsPathBuf(
+                                            "/opt/lib/comp-1.3/ebin",
+                                        ),
                                     ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: Otp,
-                                ebin_path: Some(
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/ebin",
-                                    ),
-                                ),
-                            },
+                                },
+                            ),
+                            None,
                         ),
                         SourceRootId(
                             1,
-                        ): Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "foo-app",
-                                ),
-                                dir: AbsPathBuf(
-                                    "/",
-                                ),
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/include",
+                        ): (
+                            Some(
+                                AppData {
+                                    project_id: ProjectId(
+                                        0,
                                     ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
+                                    name: AppName(
+                                        "foo-app",
                                     ),
-                                ],
-                                src_path: [],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                            },
+                                    dir: AbsPathBuf(
+                                        "/",
+                                    ),
+                                    include_path: [
+                                        AbsPathBuf(
+                                            "/include",
+                                        ),
+                                        AbsPathBuf(
+                                            "/opt/lib",
+                                        ),
+                                    ],
+                                    src_path: [],
+                                    extra_src_dirs: [],
+                                    macros: [],
+                                    parse_transforms: [],
+                                    app_type: App,
+                                    ebin_path: None,
+                                },
+                            ),
+                            None,
                         ),
                         SourceRootId(
                             3,
-                        ): None,
+                        ): (
+                            None,
+                            None,
+                        ),
                     },
                     project_map: {
                         ProjectId(
@@ -1223,49 +1235,55 @@ foo() -> ?BAR.
                     app_map: {
                         SourceRootId(
                             0,
-                        ): Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "test-fixture",
-                                ),
-                                dir: AbsPathBuf(
-                                    "/extra",
-                                ),
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/",
+                        ): (
+                            Some(
+                                AppData {
+                                    project_id: ProjectId(
+                                        0,
                                     ),
-                                    AbsPathBuf(
-                                        "/extra/include",
+                                    name: AppName(
+                                        "test-fixture",
                                     ),
-                                    AbsPathBuf(
-                                        "/include",
+                                    dir: AbsPathBuf(
+                                        "/extra",
                                     ),
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                    AbsPathBuf(
-                                        "/",
-                                    ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                            },
+                                    include_path: [
+                                        AbsPathBuf(
+                                            "/",
+                                        ),
+                                        AbsPathBuf(
+                                            "/extra/include",
+                                        ),
+                                        AbsPathBuf(
+                                            "/include",
+                                        ),
+                                        AbsPathBuf(
+                                            "/src",
+                                        ),
+                                        AbsPathBuf(
+                                            "/",
+                                        ),
+                                    ],
+                                    src_path: [
+                                        AbsPathBuf(
+                                            "/src",
+                                        ),
+                                    ],
+                                    extra_src_dirs: [],
+                                    macros: [],
+                                    parse_transforms: [],
+                                    app_type: App,
+                                    ebin_path: None,
+                                },
+                            ),
+                            None,
                         ),
                         SourceRootId(
                             1,
-                        ): None,
+                        ): (
+                            None,
+                            None,
+                        ),
                     },
                     project_map: {
                         ProjectId(

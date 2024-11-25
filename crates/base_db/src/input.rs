@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use elp_project_model::AppName;
 use elp_project_model::AppType;
+use elp_project_model::ApplicableFiles;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
@@ -169,14 +170,24 @@ impl AppData {
 /// Note that `AppStructure` is build-system agnostic
 #[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct AppStructure {
-    pub(crate) app_map: FxHashMap<SourceRootId, Option<AppData>>,
+    pub(crate) app_map: FxHashMap<SourceRootId, (Option<AppData>, Option<ApplicableFiles>)>,
     pub(crate) project_map: FxHashMap<ProjectId, ProjectData>,
     pub(crate) catch_all_source_root: SourceRootId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct AppDataId(pub u32);
+
 impl AppStructure {
-    pub fn add_app_data(&mut self, source_root_id: SourceRootId, app_data: Option<AppData>) {
-        let prev = self.app_map.insert(source_root_id, app_data);
+    pub fn add_app_data(
+        &mut self,
+        source_root_id: SourceRootId,
+        app_data: Option<AppData>,
+        applicable_files: Option<ApplicableFiles>,
+    ) {
+        let prev = self
+            .app_map
+            .insert(source_root_id, (app_data, applicable_files));
         assert!(prev.is_none());
     }
     pub fn add_project_data(&mut self, project_id: ProjectId, project_data: ProjectData) {
@@ -187,7 +198,7 @@ impl AppStructure {
     /// Set the salsa inputs according to this AppStructure
     pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
         for (source_root_id, data) in self.app_map {
-            let arc_data = data.map(Arc::new);
+            let arc_data = data.0.map(Arc::new);
             db.set_app_data(source_root_id, arc_data);
         }
         for (project_id, project_data) in self.project_map {
@@ -336,7 +347,7 @@ impl<'a> ProjectApps<'a> {
                     src_path: app.abs_src_dirs.clone(),
                     ebin_path: app.ebin.clone(),
                 };
-                app_structure.add_app_data(root_id, Some(input_data));
+                app_structure.add_app_data(root_id, Some(input_data), app.applicable_files.clone());
             }
 
             let mut app_roots = project_root_map.remove(&project_id).unwrap_or_default();
@@ -358,7 +369,7 @@ impl<'a> ProjectApps<'a> {
 
         // Final SourceRoot for out-of-project files
         log::info!("Final source root: {:?}", SourceRootId(app_idx));
-        app_structure.add_app_data(SourceRootId(app_idx), None);
+        app_structure.add_app_data(SourceRootId(app_idx), None, None);
         app_structure.catch_all_source_root = SourceRootId(app_idx);
         app_structure
     }

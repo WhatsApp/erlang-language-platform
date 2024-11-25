@@ -815,8 +815,10 @@ pub struct ProjectAppData {
     pub include_path: Vec<AbsPathBuf>,
     // Originating from buck2 model, the set of specific files this
     // data applies to.
-    pub applicable_files: Option<FxHashSet<AbsPathBuf>>,
+    pub applicable_files: Option<ApplicableFiles>,
 }
+
+pub type ApplicableFiles = FxHashSet<AbsPathBuf>;
 
 impl ProjectAppData {
     pub fn fixture_app_data(
