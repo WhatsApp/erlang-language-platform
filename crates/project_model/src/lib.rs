@@ -881,6 +881,7 @@ impl ProjectAppData {
             .map(|src_dir| self.dir.join(src_dir))
             .chain(self.abs_src_dirs.iter().cloned())
             .chain(self.include_dirs.iter().cloned())
+            .chain(self.include_path.iter().cloned())
             .collect()
     }
 

@@ -808,12 +808,19 @@ fn targets_to_project_data_bxl(
     let mut includes_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)> =
         FxHashMap::default();
     for (_target_full_name, target) in targets {
-        let includes = FxHashSet::from_iter(
+        let mut includes = FxHashSet::from_iter(
             target
                 .include_files
                 .iter()
                 .map(|inc| include_path_from_file(inc)),
         );
+        if target.private_header {
+            target.src_files.iter().for_each(|path| {
+                if Some("hrl") == path.extension() {
+                    includes.insert(include_path_from_file(path));
+                }
+            });
+        }
         includes_cache.insert(target.name.clone(), (IsCached::No, &target, includes));
     }
     let otp_includes = FxHashSet::from_iter(vec![AbsPathBuf::assert(otp_root.to_path_buf())]);
