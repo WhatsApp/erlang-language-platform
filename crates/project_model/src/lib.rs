@@ -1703,6 +1703,7 @@ mod tests {
                 buck_root: None,
                 enabled: true,
                 deps_target: Some("root//target/deps".to_string()),
+                deps_targets: vec!["root//dep/one".to_string(), "root//dep/two".to_string()],
                 build_deps: false,
                 included_targets: vec![
                     "root//target/one".to_string(),
@@ -1730,6 +1731,7 @@ mod tests {
             [buck]
             enabled = true
             deps_target = "root//target/deps"
+            deps_targets = ["root//dep/one", "root//dep/two"]
             build_deps = false
             included_targets = ["root//target/one", "root//target/two"]
             excluded_targets = ["root//target/three", "root//target/four"]
@@ -1790,6 +1792,7 @@ mod tests {
                         deps_target: Some(
                             "root//target/deps",
                         ),
+                        deps_targets: [],
                         build_deps: false,
                         included_targets: [
                             "root//target/one",

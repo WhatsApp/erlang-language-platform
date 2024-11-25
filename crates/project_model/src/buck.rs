@@ -80,6 +80,8 @@ pub struct BuckConfig {
     pub(crate) buck_root: Option<AbsPathBuf>,
     pub enabled: bool,
     pub deps_target: Option<String>,
+    #[serde(default)]
+    pub deps_targets: Vec<String>,
     pub build_deps: bool,
     pub included_targets: Vec<String>,
     #[serde(default)]
@@ -575,8 +577,8 @@ fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, 
         targets.push("--included_targets");
         targets.push(target);
     }
-    if let Some(deps_target) = &buck_config.deps_target {
-        targets.push("--deps_target");
+    for deps_target in &buck_config.deps_targets {
+        targets.push("--deps_targets");
         targets.push(deps_target);
     }
     let output = buck_config
@@ -1365,6 +1367,7 @@ mod tests {
                 buck_root: Some(buck_root),
                 enabled: true,
                 deps_target: None,
+                deps_targets: vec![],
                 build_deps: false,
                 included_targets: vec![
                     "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...".to_string(),
