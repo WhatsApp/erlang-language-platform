@@ -56,7 +56,7 @@ lazy_static! {
 }
 
 const ERL_EXT: &str = "erl";
-const TEST_EXT: &str = "test";
+const TEST_DIR: &str = "test";
 
 #[derive(
     Debug,
@@ -192,7 +192,7 @@ fn load_from_config_bxl(
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
     let target_info = load_buck_targets_bxl(buck_conf)?;
     let otp_root = Otp::find_otp()?;
-    let project_app_data = targets_to_project_data_bxl(&target_info.targets);
+    let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
     let project = BuckProject {
         target_info,
         buck_conf: buck_conf.clone(),
@@ -203,7 +203,7 @@ fn load_from_config_bxl(
 #[derive(Deserialize, Debug)]
 pub struct BuckTarget {
     name: String,
-    //Some if target is test
+    //Some if target is test, in which case srcs will be empty
     suite: Option<String>,
     #[serde(default)]
     srcs: Vec<String>,
@@ -231,6 +231,17 @@ pub struct Target {
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
     pub private_header: bool,
+}
+
+impl Target {
+    fn app_type(&self) -> AppType {
+        match self.target_type {
+            TargetType::ErlangApp => AppType::App,
+            TargetType::ErlangTest => AppType::App,
+            TargetType::ErlangTestUtils => AppType::App,
+            TargetType::ThirdParty => AppType::Dep,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
@@ -787,62 +798,129 @@ fn targets_to_project_data_orig(
     result
 }
 
-fn targets_to_project_data_bxl(targets: &FxHashMap<TargetFullName, Target>) -> Vec<ProjectAppData> {
-    let it = targets
-        .values()
-        .sorted_by(|a, b| match (a.target_type, b.target_type) {
-            (TargetType::ErlangTest, TargetType::ErlangTest) => Ordering::Equal,
-            (TargetType::ErlangTest, _) => Ordering::Greater,
-            _ => Ordering::Equal,
-        });
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum IsCached {
+    Yes,
+    No,
+}
 
-    let mut accs: FxHashMap<AbsPathBuf, ProjectAppDataAcc> = Default::default();
-    for target in it {
-        let mut target_dir = target.dir.clone();
-        let acc = accs.remove(&target_dir);
-        let mut acc = match acc {
-            Some(acc) => acc,
-            None => {
-                let search_first = match target.target_type {
-                    TargetType::ErlangApp | TargetType::ThirdParty => false,
-                    _ => true,
-                };
-                let mut result = None;
-                if search_first {
-                    let dir = accs.keys().find(|dir| target.dir.starts_with(dir));
-                    if let Some(dir) = dir {
-                        let dir = dir.clone();
-                        result = accs.remove(&dir);
-                        target_dir = dir;
-                    }
-                }
-                result.unwrap_or_else(ProjectAppDataAcc::new)
-            }
-        };
-
-        acc.add(target);
-        accs.insert(target_dir, acc);
-    }
+fn targets_to_project_data_bxl(
+    targets: &FxHashMap<TargetFullName, Target>,
+    otp_root: &Utf8Path,
+) -> Vec<ProjectAppData> {
     let mut result: Vec<ProjectAppData> = vec![];
-    for (_, acc) in accs {
-        result.push(acc.into());
+    let mut includes_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)> =
+        FxHashMap::default();
+    for (_target_full_name, target) in targets {
+        let includes = FxHashSet::from_iter(
+            target
+                .include_files
+                .iter()
+                .map(|inc| include_path_from_file(inc)),
+        );
+        includes_cache.insert(target.name.clone(), (IsCached::No, &target, includes));
+    }
+    let otp_includes = FxHashSet::from_iter(vec![AbsPathBuf::assert(otp_root.to_path_buf())]);
+    for (target_full_name, target) in targets {
+        let includes = apps_and_deps_includes(&mut includes_cache, target_full_name, &otp_includes);
+
+        let macros = if target.target_type != TargetType::ThirdParty {
+            vec![Atom("TEST".into()), Atom("COMMON_TEST".into())]
+        } else {
+            vec![]
+        };
+        let abs_src_dirs: FxHashSet<_> = target
+            .src_files
+            .iter()
+            .filter(|src| src.extension() == Some(&ERL_EXT))
+            .filter_map(|src| src.parent())
+            .map(|dir| dir.to_path_buf())
+            .filter(|dir| dir.file_name() != Some(&TEST_DIR))
+            .collect();
+        let project_app_data = ProjectAppData {
+            name: AppName(target.app_name.clone()),
+            dir: target.dir.clone(),
+            ebin: None,
+            extra_src_dirs: vec![],
+            include_dirs: vec![],
+            abs_src_dirs: abs_src_dirs.into_iter().collect(),
+            macros,
+            parse_transforms: vec![],
+            app_type: target.app_type(),
+            include_path: includes.into_iter().collect(),
+            applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
+        };
+        if target.target_type != TargetType::ErlangTest {
+            result.push(project_app_data);
+        }
     }
 
     result
 }
 
+/// We have a map of the initial direct dependencies of each target,
+/// each with a flag as to whether the extended dependency includes
+/// have been calculated yet.  Look up the full includes for a target,
+/// populating the cache with the recursive closure of its dependent
+/// includes on the way.
+fn apps_and_deps_includes(
+    includes_cache: &mut FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)>,
+    target_name: &TargetFullName,
+    otp_include: &FxHashSet<AbsPathBuf>,
+) -> FxHashSet<AbsPathBuf> {
+    if let Some((is_cached, target, mut includes)) = includes_cache.get(target_name).cloned() {
+        if is_cached == IsCached::Yes {
+            includes.clone()
+        } else {
+            target
+                .apps
+                .iter()
+                .chain(target.deps.iter())
+                .for_each(|sub_target| {
+                    let sub_includes =
+                        apps_and_deps_includes(includes_cache, sub_target, otp_include);
+                    includes.extend(sub_includes.into_iter())
+                });
+            includes_cache.insert(
+                target_name.to_string(),
+                (IsCached::Yes, target, includes.clone()),
+            );
+            includes
+        }
+    } else {
+        otp_include.clone()
+    }
+}
+
+fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
+    // The bxl query returns directories already, do not parent unless it is a file
+    let parent = if <AbsPath as AsRef<Utf8Path>>::as_ref(path).is_file() {
+        path.parent()
+    } else {
+        Some(path)
+    };
+    if let Some(parent) = parent {
+        AbsPathBuf::assert_utf8(parent.into())
+    } else {
+        AbsPathBuf::assert_utf8(path.into())
+    }
+}
+
 #[derive(Debug)]
 struct ProjectAppDataAcc {
+    // Fields directly for `ProjectAppData`
     pub name: Option<AppName>,
     pub dir: Option<AbsPathBuf>,
     pub ebin: Option<AbsPathBuf>,
-    pub abs_src_dirs: FxHashSet<AbsPathBuf>,
     pub extra_src_dirs: FxHashSet<String>,
-    pub abs_extra_src_dirs: FxHashSet<AbsPathBuf>,
     pub include_dirs: FxHashSet<String>,
+    pub abs_src_dirs: FxHashSet<AbsPathBuf>,
     pub macros: Vec<Term>,
     pub app_type: Option<AppType>,
     pub include_path: FxHashSet<AbsPathBuf>,
+
+    // Fields not in `ProjectAppData`
+    pub abs_extra_src_dirs: FxHashSet<AbsPathBuf>,
 }
 
 impl ProjectAppDataAcc {
@@ -869,13 +947,7 @@ impl ProjectAppDataAcc {
 
     fn set_app_type(&mut self, target: &Target) {
         if self.app_type.is_none() {
-            let app_type = match target.target_type {
-                TargetType::ErlangApp => AppType::App,
-                TargetType::ErlangTest => AppType::App,
-                TargetType::ErlangTestUtils => AppType::App,
-                TargetType::ThirdParty => AppType::Dep,
-            };
-            self.app_type = Some(app_type)
+            self.app_type = Some(target.app_type())
         }
     }
 
@@ -912,7 +984,7 @@ impl ProjectAppDataAcc {
                     .filter(|src| src.extension() == Some(&ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
-                    .filter(|dir| dir.file_name() != Some(&TEST_EXT))
+                    .filter(|dir| dir.file_name() != Some(&TEST_DIR))
                     .collect();
 
                 self.abs_src_dirs.extend(abs_src_dirs);
