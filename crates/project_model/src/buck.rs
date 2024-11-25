@@ -215,6 +215,13 @@ pub struct BuckTarget {
     deps: Vec<TargetFullName>,
     #[serde(default)]
     apps: Vec<TargetFullName>,
+    /// A target may require include files from other targets, but
+    /// making the target a direct dependency (app) causes a loop. The
+    /// workaround is to declare it as an `included_application`. They
+    /// are populated here, and used only for populating the include
+    /// path.
+    #[serde(default)]
+    included_apps: Vec<TargetFullName>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -227,6 +234,7 @@ pub struct Target {
     pub include_files: Vec<AbsPathBuf>,
     pub deps: Vec<TargetFullName>,
     pub apps: Vec<TargetFullName>,
+    pub included_apps: Vec<TargetFullName>,
     pub ebin: Option<AbsPathBuf>,
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
@@ -274,7 +282,7 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
         };
 
         let (src_files, include_files, target_type, private_header, ebin) =
-            if let Some(suite) = target.suite {
+            if let Some(ref suite) = target.suite {
                 let src_file = buck_path_to_abs_path(root, &suite)?;
                 let src = vec![src_file.clone()];
                 target_info
@@ -320,6 +328,7 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
             include_files,
             deps: target.deps,
             apps: target.apps,
+            included_apps: target.included_apps,
             ebin,
             target_type,
             private_header,
@@ -390,6 +399,7 @@ fn load_buck_targets_orig(buck_config: &BuckConfig) -> Result<TargetInfo> {
             include_files,
             apps: target.apps,
             deps: target.deps,
+            included_apps: target.included_apps,
             ebin,
             target_type,
             private_header,
@@ -884,6 +894,7 @@ fn apps_and_deps_includes(
                 .apps
                 .iter()
                 .chain(target.deps.iter())
+                .chain(target.included_apps.iter())
                 .for_each(|sub_target| {
                     let sub_includes =
                         apps_and_deps_includes(includes_cache, sub_target, otp_include);
@@ -1171,6 +1182,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1195,6 +1207,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1219,6 +1232,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1247,6 +1261,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1272,6 +1287,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1297,6 +1313,7 @@ mod tests {
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
+            included_apps: vec![],
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
