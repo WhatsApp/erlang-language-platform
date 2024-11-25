@@ -280,7 +280,13 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
                 target_info
                     .path_to_target_name
                     .insert(src_file, name.clone());
-                (src, vec![], TargetType::ErlangTest, false, None)
+                let mut include_files = vec![];
+                for include in &target.includes {
+                    if let Ok(inc) = AbsPathBuf::try_from(include.as_str()) {
+                        include_files.push(inc);
+                    }
+                }
+                (src, include_files, TargetType::ErlangTest, false, None)
             } else {
                 let target_type = compute_target_type(&name, &target);
                 let mut src_files = vec![];
@@ -853,9 +859,7 @@ fn targets_to_project_data_bxl(
             include_path: includes.into_iter().collect(),
             applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
         };
-        if target.target_type != TargetType::ErlangTest {
-            result.push(project_app_data);
-        }
+        result.push(project_app_data);
     }
 
     result

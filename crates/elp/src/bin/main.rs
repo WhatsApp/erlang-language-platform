@@ -976,6 +976,17 @@ mod tests {
                 {
                   "apps": [
                     {
+                      "name": "app_a_SUITE",
+                      "dir": "app_a/test",
+                      "src_dirs": [],
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      }
+                    },
+                    {
                       "name": "diagnostics_app_a",
                       "dir": "app_a",
                       "src_dirs": [
