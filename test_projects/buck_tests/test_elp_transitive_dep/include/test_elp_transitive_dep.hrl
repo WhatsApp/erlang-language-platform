@@ -1,2 +1,2 @@
-%% @oncall whatsapp_developer_tools
+%% @oncall vscode_erlang
 -define(__APP_C_HRL__, 1).
