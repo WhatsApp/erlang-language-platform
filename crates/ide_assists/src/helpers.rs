@@ -416,12 +416,7 @@ pub fn extend_range_to_adjacent_newline(syntax: &SyntaxNode) -> TextRange {
 
 pub fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
     let orig_range = syntax.text_range();
-    let start = orig_range.start();
-    let end = match skip_trailing_newline(syntax) {
-        Some(end) => end.end(),
-        None => orig_range.end(),
-    };
-    TextRange::new(start, end)
+    extend_function_range_for_delete(orig_range, syntax)
 }
 
 fn extend_function_range_for_delete(orig_range: TextRange, last_syntax: &SyntaxNode) -> TextRange {
