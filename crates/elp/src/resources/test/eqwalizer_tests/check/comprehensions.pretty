@@ -270,28 +270,4 @@ Got: fun(() -> atom()) | fun((number()) -> atom())
 
 See https://fb.me/eqwalizer_errors#expected_fun_type
 
-error: incompatible_types
-    ┌─ check/src/comprehensions.erl:396:5
-    │    
-396 │ ╭ ╭     #{
-397 │ │ │         Key => Value#{ttl => TTL}
-398 │ │ │         || Key := Value <- M
-399 │ │ │     }.
-    │ ╰─│─────^ #{ || }.
-Expression has type:   #{'f2' | 'f1' => #{ttl := number(), value => 'b'} | #{ttl := number(), value => 'a'}}
-Context expected type: #{f1 => #{ttl => number(), value => 'a'}, f2 => #{ttl => number(), value => 'b'}}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │   ╰─────' 
-
-  #{'f2' | 'f1' => #{ttl := number(), value => 'b'} | #{ttl := number(), value => 'a'}} is not compatible with #{f1 => #{ttl => number(), value => 'a'}, f2 => #{ttl => number(), value => 'b'}}
-  key f2 is not present in the former map but is incompatible with its default association
-  because
-  #{ttl := number(), value => 'b'} | #{ttl := number(), value => 'a'} is not compatible with #{ttl => number(), value => 'b'}
-  because
-  #{ttl := number(), value => 'a'} is not compatible with #{ttl => number(), value => 'b'}
-  because
-  at key `value`:
-  #{ttl := number(), value => 'a'} is not compatible with #{ttl => number(), value => 'b'}
-
-23 ERRORS
+22 ERRORS
