@@ -397,6 +397,23 @@ pub(crate) fn ranges_for_delete_function(
     })
 }
 
+pub fn adjacent_newline(syntax: &SyntaxNode) -> Option<SyntaxToken> {
+    let token = syntax.last_token()?.next_token()?;
+    if token.kind() == SyntaxKind::WHITESPACE && token.text().starts_with('\n') {
+        Some(token)
+    } else {
+        None
+    }
+}
+
+pub fn extend_range_to_adjacent_newline(syntax: &SyntaxNode) -> TextRange {
+    let range = syntax.text_range();
+    match adjacent_newline(syntax) {
+        Some(_token) => TextRange::new(range.start(), range.end() + TextSize::from(1)),
+        None => range,
+    }
+}
+
 pub fn extend_form_range_for_delete(syntax: &SyntaxNode) -> TextRange {
     let orig_range = syntax.text_range();
     let start = orig_range.start();

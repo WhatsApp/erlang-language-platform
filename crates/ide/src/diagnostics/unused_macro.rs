@@ -11,15 +11,14 @@
 //
 // Return a warning if a macro defined in an .erl file has no references to it
 
+use elp_ide_assists::helpers::extend_range_to_adjacent_newline;
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
-use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
-use elp_syntax::TextSize;
 use hir::Semantic;
 use text_edit::TextEdit;
 
@@ -58,18 +57,7 @@ fn unused_macro(
                     .at_least_one()
             {
                 let source = def.source(sema.db.upcast());
-                let macro_syntax = source.syntax();
-                // If after the macro there's a new line, drop it
-                let next_token = macro_syntax.last_token()?.next_token()?;
-                let macro_range = if next_token.kind() == SyntaxKind::WHITESPACE
-                    && next_token.text().starts_with('\n')
-                {
-                    let start = macro_syntax.text_range().start();
-                    let end = macro_syntax.text_range().end() + TextSize::from(1);
-                    TextRange::new(start, end)
-                } else {
-                    macro_syntax.text_range()
-                };
+                let macro_range = extend_range_to_adjacent_newline(source.syntax());
                 let name_range = source.name()?.syntax().text_range();
                 let d = make_diagnostic(file_id, macro_range, name_range, &name.to_string());
                 acc.push(d);
