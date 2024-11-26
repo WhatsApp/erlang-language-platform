@@ -181,13 +181,13 @@ error: incompatible_types
     │     ^^^^^^^^^^^^^^^^^
     │     │
     │     maps:get(K, M, 0).
-Expression has type:   atom() | number()
+Expression has type:   number() | atom()
 Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
-  atom() | number() is not compatible with atom()
+  number() | atom() is not compatible with atom()
   because
   number() is not compatible with atom()
 
@@ -198,13 +198,13 @@ error: incompatible_types
     │     ^^^
     │     │
     │     Res.
-Expression has type:   atom() | number()
+Expression has type:   number() | atom()
 Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
-  atom() | number() is not compatible with atom()
+  number() | atom() is not compatible with atom()
   because
   number() is not compatible with atom()
 
@@ -216,16 +216,16 @@ error: incompatible_types
 208 │ │ │         maps:get(n, M, undefined)
 209 │ │ │     }.
     │ ╰─│─────^ {maps:get('a', M, 'undefined'), maps:get('n', M, 'undefined')}.
-Expression has type:   {atom(), number() | 'undefined'}
+Expression has type:   {atom(), 'undefined' | number()}
 Context expected type: {atom(), number()}
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │   ╰─────' 
 
   at tuple index 2:
-  {atom(), number() | 'undefined'} is not compatible with {atom(), number()}
+  {atom(), 'undefined' | number()} is not compatible with {atom(), number()}
   because
-  number() | 'undefined' is not compatible with number()
+  'undefined' | number() is not compatible with number()
   because
   'undefined' is not compatible with number()
 
@@ -255,13 +255,13 @@ error: incompatible_types
     │                           ^^^^^^^^^^^^^^^^^^^^^^^^^
     │                           │
     │                           maps:get(V, M, 'undefined').
-Expression has type:   'a_v' | 'c_v' | 'undefined'
+Expression has type:   'undefined' | 'a_v' | 'c_v'
 Context expected type: 'a_v' | 'b_v' | 'undefined'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
-  'a_v' | 'c_v' | 'undefined' is not compatible with 'a_v' | 'b_v' | 'undefined'
+  'undefined' | 'a_v' | 'c_v' is not compatible with 'a_v' | 'b_v' | 'undefined'
   because
   'c_v' is not compatible with 'a_v' | 'b_v' | 'undefined'
   because

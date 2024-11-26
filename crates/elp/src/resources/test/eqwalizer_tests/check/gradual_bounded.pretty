@@ -40,7 +40,7 @@ error: reveal_type
    ┌─ check/src/gradual_bounded.erl:44:27
    │
 44 │     eqwalizer:reveal_type(V).
-   │                           ^ dynamic(#{b => 'c', number() => 'a'})
+   │                           ^ #{b => dynamic('c'), number() => 'a'}
 
 See https://fb.me/eqwalizer_errors#reveal_type
 
@@ -48,7 +48,7 @@ error: reveal_type
    ┌─ check/src/gradual_bounded.erl:51:27
    │
 51 │     eqwalizer:reveal_type(V).
-   │                           ^ dynamic(#{a := 'b', b => 'c'})
+   │                           ^ #{a := 'b', b => dynamic('c')}
 
 See https://fb.me/eqwalizer_errors#reveal_type
 

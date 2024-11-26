@@ -589,4 +589,14 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with atom()
 
-45 ERRORS
+error: incompatible_types
+    ┌─ check/src/records.erl:557:5
+    │
+557 │     I#{a => b}.
+    │     ^^^^^^^^^^ ..#{..}.
+Expression has type:   #{a := 'b', dynamic() => dynamic()}
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+46 ERRORS

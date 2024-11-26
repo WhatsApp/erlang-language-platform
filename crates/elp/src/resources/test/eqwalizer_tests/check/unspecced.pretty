@@ -33,7 +33,7 @@ error: incompatible_types
    │
 28 │   expect_none({Res}).
    │               ^^^^^ {Res}.
-Expression has type:   {dynamic()}
+Expression has type:   {#{id := number(), dynamic() => dynamic()}}
 Context expected type: none()
 
 See https://fb.me/eqwalizer_errors#incompatible_types

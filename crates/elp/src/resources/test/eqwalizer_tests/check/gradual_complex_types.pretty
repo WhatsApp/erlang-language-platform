@@ -52,7 +52,7 @@ error: reveal_type
    ┌─ check/src/gradual_complex_types.erl:55:25
    │
 55 │   eqwalizer:reveal_type(M1),
-   │                         ^^ dynamic()
+   │                         ^^ #{a := number(), dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#reveal_type
 
@@ -60,7 +60,7 @@ error: reveal_type
    ┌─ check/src/gradual_complex_types.erl:63:25
    │
 63 │   eqwalizer:reveal_type(M1),
-   │                         ^^ dynamic()
+   │                         ^^ #{a := number(), dynamic() => dynamic()}
 
 See https://fb.me/eqwalizer_errors#reveal_type
 

@@ -378,6 +378,16 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:120:3
+    │
+120 │   M1.
+    │   ^^ M1.
+Expression has type:   #{dynamic() => dynamic()}
+Context expected type: atom()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
     ┌─ fault_tolerance/src/fault_tolerance.erl:126:8
     │
 126 │   M1 = M#{
@@ -404,6 +414,16 @@ error: incompatible_types
     │       ^ V.
 Expression has type:   atom()
 Context expected type: number()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+    ┌─ fault_tolerance/src/fault_tolerance.erl:130:3
+    │
+130 │   M1.
+    │   ^^ M1.
+Expression has type:   #{dynamic() => dynamic()}
+Context expected type: atom()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
@@ -1123,4 +1143,4 @@ Context expected type: number()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-107 ERRORS
+109 ERRORS
