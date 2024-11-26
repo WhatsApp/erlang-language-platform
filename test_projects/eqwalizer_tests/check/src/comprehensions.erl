@@ -387,3 +387,13 @@ test51_neg(Fs) ->
         is_function(F)
     ],
     Res.
+
+-spec test52(
+    #{f1 => #{ttl => number(), value => a}, f2 => #{ttl => number(), value => b}},
+    number()
+) -> #{f1 => #{ttl => number(), value => a}, f2 => #{ttl => number(), value => b}}.
+test52(M, TTL) ->
+    #{
+        Key => Value#{ttl => TTL}
+        || Key := Value <- M
+    }.
