@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::cmp;
 use std::iter;
 
 use elp_ide::elp_ide_db::elp_base_db::loader;
@@ -15,6 +16,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use fxhash::FxHashSet;
+use vfs::AbsPathBuf;
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -117,18 +119,45 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
         include_dirs.extend(app.include_dirs.clone());
     });
 
-    let load = vec![
-        loader::Entry::Directories(loader::Directories {
-            extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
-            include: app_dirs.into_iter().collect(),
-            exclude: vec![],
-        }),
-        loader::Entry::Directories(loader::Directories {
-            extensions: vec!["hrl".to_string()],
-            include: include_dirs.into_iter().collect(),
-            exclude: vec![],
-        }),
-        loader::Entry::Files(files.into_iter().collect()),
-    ];
+    let app_dirs_vec: Vec<AbsPathBuf> = app_dirs.into_iter().collect();
+    let include_dirs_vec: Vec<AbsPathBuf> = include_dirs.into_iter().collect();
+    // Create chunks so our loader spinner shows progress. And to
+    // interleave loading and storing
+    // There is no particular significance to the numbers chosen, the
+    // intent is to have a reasonable progress bar, so we choose 100
+    // and arbitrarily split it between apps and include dirs.
+    let apps_chunk_size = cmp::max(app_dirs_vec.len() / 80, 1);
+    let include_dirs_chunk_size = cmp::max(include_dirs_vec.len() / 20, 1);
+
+    let mut load: Vec<_> = vec![];
+    load.extend(
+        app_dirs_vec
+            .chunks(apps_chunk_size)
+            .map(|chunk| -> Vec<AbsPathBuf> { chunk.into() })
+            .map(|include| {
+                loader::Entry::Directories(loader::Directories {
+                    extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
+                    include,
+                    exclude: vec![],
+                })
+            }),
+    );
+    load.extend(
+        include_dirs_vec
+            .chunks(include_dirs_chunk_size)
+            .map(|chunk| -> Vec<AbsPathBuf> { chunk.into() })
+            .map(|include| {
+                loader::Entry::Directories(loader::Directories {
+                    extensions: vec!["hrl".to_string()],
+                    include,
+                    exclude: vec![],
+                })
+            }),
+    );
+    // Put the files last to catch anything missed in the prior loads.
+    // TODO: consider removing files that will already be selected
+    // from the directory load entries. This needs a many-many
+    // correlation though.
+    load.push(loader::Entry::Files(files.into_iter().collect()));
     load
 }
