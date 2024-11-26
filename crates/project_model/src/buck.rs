@@ -1188,6 +1188,7 @@ mod tests {
 
     use expect_test::expect;
     use expect_test::Expect;
+    use regex::Regex;
 
     use super::*;
     use crate::temp_dir::TempDir;
@@ -1358,6 +1359,37 @@ mod tests {
     // @fb-only
     const BUCK_TESTS_ENABLED: bool = false; // @oss-only
 
+    fn get_prelude_cell(buck_config: &BuckConfig) -> Result<String> {
+        let output = buck_config
+            .buck_command()
+            .arg("audit")
+            .arg("cell")
+            .arg("prelude")
+            .output()?;
+        if !output.status.success() {
+            let reason = match output.status.code() {
+                Some(code) => format!("Exited with status code: {code}"),
+                None => "Process terminated by signal".to_string(),
+            };
+            let details = match String::from_utf8(output.stderr) {
+                Ok(err) => err,
+                Err(_) => "".to_string(),
+            };
+            bail!("Error evaluating Buck2 query Reason: {reason}. Details: {details}",);
+        }
+        let raw_output = String::from_utf8(output.stdout)?;
+
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^prelude: ([^\s]+)").unwrap();
+        }
+        let string = RE
+            .captures_iter(&raw_output)
+            .next()
+            .map(|c| c[1].to_string())
+            .unwrap();
+        Ok(string)
+    }
+
     #[track_caller]
     fn check_buck_bxl_query(expect: Expect) {
         if BUCK_TESTS_ENABLED {
@@ -1388,6 +1420,8 @@ mod tests {
                 panic!("{:#?}", output);
             }
             let string = String::from_utf8(output.stdout).unwrap();
+            let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
+            let string = string.replace(&prelude_cell, "/[prelude]/");
 
             let to_replace = env!("CARGO_WORKSPACE_DIR");
             let string = string.replace(to_replace, "/[..]/");
@@ -1412,7 +1446,194 @@ mod tests {
                 "apps": [
                   "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a"
                 ],
-                "included_apps": []
+                "included_apps": [],
+                "origin": "app"
+              },
+              "prelude//erlang/common_test/common:common": {
+                "name": "common",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/common/src/artifact_annotations.erl",
+                  "/[prelude]//erlang/common_test/common/src/bounded_buffer.erl",
+                  "/[prelude]//erlang/common_test/common/src/buck_ct_parser.erl",
+                  "/[prelude]//erlang/common_test/common/src/buck_ct_provider.erl",
+                  "/[prelude]//erlang/common_test/common/src/ct_error_printer.erl",
+                  "/[prelude]//erlang/common_test/common/src/io_buffer.erl",
+                  "/[prelude]//erlang/common_test/common/src/test_artifact_directory.erl",
+                  "/[prelude]//erlang/common_test/common/src/test_logger.erl"
+                ],
+                "includes": [
+                  "/[prelude]//erlang/common_test/common/include"
+                ],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/cth_hooks:compiled_suites": {
+                "name": "compiled_suites",
+                "suite": null,
+                "srcs": [],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:stdlib"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/cth_hooks:cth_hooks": {
+                "name": "cth_hooks",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx.erl",
+                  "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_role.erl",
+                  "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_server.erl",
+                  "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_test_tree.erl",
+                  "/[prelude]//erlang/common_test/cth_hooks/src/method_ids.hrl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib",
+                  "prelude//erlang/applications:common_test"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/test_binary:test_binary": {
+                "name": "test_binary",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/test_binary/src/json_interfacer.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/junit_interfacer.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/list_test.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/listing_interfacer.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/test_binary.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/test_info.erl",
+                  "/[prelude]//erlang/common_test/test_binary/src/test_runner.erl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib",
+                  "prelude//erlang/applications:syntax_tools",
+                  "prelude//erlang/applications:xmerl",
+                  "prelude//erlang/common_test/common:common",
+                  "prelude//erlang/common_test/cth_hooks:cth_hooks",
+                  "prelude//erlang/common_test/test_exec:test_exec",
+                  "prelude//erlang/toolchain:toolchain_json"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/test_cli_lib:test_cli_e2e_SUITE_fixtures": {
+                "name": "test_cli_e2e_SUITE_fixtures",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/test_cli_lib/test/test_cli_e2e_SUITE_data/test_list_SUITE.erl"
+                ],
+                "includes": [],
+                "labels": [
+                  "test_application"
+                ],
+                "deps": [],
+                "apps": [],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/test_cli_lib:test_cli_lib": {
+                "name": "test_cli_lib",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/test_cli_lib/src/test.erl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/common_test/test_binary:test_binary"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/common_test/test_exec:test_exec": {
+                "name": "test_exec",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_core.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_hooks.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_logger.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_node.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_printer.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_runner.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_executor.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/ct_runner.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/epmd_manager.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/test_exec.erl",
+                  "/[prelude]//erlang/common_test/test_exec/src/test_exec_sup.erl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib",
+                  "prelude//erlang/applications:debugger",
+                  "prelude//erlang/common_test/common:common",
+                  "prelude//erlang/common_test/cth_hooks:cth_hooks"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
+              },
+              "prelude//erlang/shell:buck2_shell_utils": {
+                "name": "buck2_shell_utils",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/shell/src/shell_buck2_module_search.erl",
+                  "/[prelude]//erlang/shell/src/shell_buck2_utils.erl",
+                  "/[prelude]//erlang/shell/src/user_default.erl"
+                ],
+                "includes": [],
+                "labels": [],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib",
+                  "prelude//erlang/toolchain:toolchain_json"
+                ],
+                "included_apps": [
+                  "prelude//erlang/common_test/test_exec:test_exec"
+                ],
+                "origin": "prelude"
+              },
+              "prelude//erlang/toolchain:toolchain_json": {
+                "name": "toolchain_json",
+                "suite": null,
+                "srcs": [
+                  "/[prelude]//erlang/toolchain/json.erl"
+                ],
+                "includes": [],
+                "labels": [
+                  "otp_compatibility_polyfill_application"
+                ],
+                "deps": [],
+                "apps": [
+                  "prelude//erlang/applications:kernel",
+                  "prelude//erlang/applications:stdlib"
+                ],
+                "included_apps": [],
+                "origin": "prelude"
               }
             }
         "#]]);
