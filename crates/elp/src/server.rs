@@ -31,8 +31,10 @@ use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::loader;
+use elp_ide::elp_ide_db::elp_base_db::set_app_data_id_by_file;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::AppDataId;
 use elp_ide::elp_ide_db::elp_base_db::ChangedFile;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
@@ -236,6 +238,7 @@ pub struct Server {
     status: Status,
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
+    unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
@@ -287,6 +290,7 @@ impl Server {
             status: Status::Initialising,
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
+            unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             reset_source_roots: false,
             native_diagnostics_requested: false,
             eqwalizer_and_erlang_service_diagnostics_requested: false,
@@ -843,6 +847,12 @@ impl Server {
                 // Not all clients send config in the `initialize` message, request it
                 self.refresh_config();
                 self.refresh_lens();
+                if self.unresolved_app_id_paths.len() > 0 {
+                    log::warn!(
+                        "Loading finished with {} unresolved app ID paths",
+                        self.unresolved_app_id_paths.len()
+                    );
+                }
             }
         }
     }
@@ -918,6 +928,17 @@ impl Server {
                     self.line_ending_map
                         .write()
                         .insert(file.file_id, line_endings);
+                }
+                if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                    if let Some(app_data_id) = self.unresolved_app_id_paths.get(&path.to_path_buf())
+                    {
+                        set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
+                        // This is not really necessary, but we do it
+                        // to be able to check that we resolve them
+                        // all eventually
+                        Arc::make_mut(&mut self.unresolved_app_id_paths)
+                            .remove(&path.to_path_buf());
+                    }
                 }
 
                 // causes us to remove stale squiggles from the UI.
@@ -1189,9 +1210,10 @@ impl Server {
 
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
         let folders = ProjectFolders::new(&project_apps);
-        // We will set the FileId -> AppData structure when the file
+        // We will set the FileId -> AppDataIndex structure when the file
         // loads
-        project_apps.app_structure().apply(raw_db, &|_path| None);
+        self.unresolved_app_id_paths =
+            Arc::new(project_apps.app_structure().apply(raw_db, &|_path| None));
 
         self.file_set_config = folders.file_set_config;
 

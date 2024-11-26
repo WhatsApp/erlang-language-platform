@@ -214,16 +214,21 @@ impl AppStructure {
         self,
         db: &mut dyn SourceDatabaseExt,
         resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
-    ) {
+    ) -> FxHashMap<AbsPathBuf, AppDataId> {
         let mut app_index = AppDataIndex::default();
         let mut app_data_id = AppDataId(0);
+        let mut unresolved_paths = FxHashMap::default();
         for (source_root_id, (data, applicable_files)) in self.app_map {
             let arc_data = data.map(Arc::new);
             db.set_app_data_by_id(app_data_id, arc_data);
             db.set_app_data_id(source_root_id, app_data_id);
             applicable_files.map(|files| {
                 files.iter().for_each(|path| {
-                    resolve_file_id(path).map(|file_id| app_index.map.insert(file_id, app_data_id));
+                    if let Some(file_id) = resolve_file_id(path) {
+                        app_index.map.insert(file_id, app_data_id);
+                    } else {
+                        unresolved_paths.insert(path.clone(), app_data_id);
+                    }
                 })
             });
             app_data_id = AppDataId(app_data_id.0 + 1);
@@ -233,6 +238,8 @@ impl AppStructure {
         }
         db.set_app_index(Arc::new(app_index));
         db.set_catch_all_source_root(self.catch_all_source_root);
+
+        unresolved_paths
     }
 }
 

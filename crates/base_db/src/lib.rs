@@ -17,7 +17,6 @@ use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
-use input::AppDataId;
 use lazy_static::lazy_static;
 
 mod change;
@@ -35,6 +34,7 @@ pub use change::Change;
 pub use elp_project_model::AppType;
 pub use include::IncludeCtx;
 pub use input::AppData;
+pub use input::AppDataId;
 pub use input::AppRoots;
 pub use input::AppStructure;
 pub use input::FileSource;
@@ -206,14 +206,14 @@ fn app_data(db: &dyn SourceDatabase, id: SourceRootId) -> Option<Arc<AppData>> {
 }
 
 fn file_app_data(db: &dyn SourceDatabase, file_id: FileId) -> Option<Arc<AppData>> {
-    // The file_id may not be in the AppDataIndex, so fall back
     let lookup = if let Some(id) = db.app_data_id_by_file(file_id) {
         db.app_data_by_id(id)
     } else {
         None
     };
     lookup
-        // TODO: do we need this fallback?
+        // We need this fallback to cope with new files added in IDE
+        // mode, and OTP files
         .or_else(|| {
             let source_root_id = db.file_source_root(file_id);
             db.app_data(source_root_id)
@@ -328,6 +328,13 @@ pub struct AppDataIndex {
 fn app_data_id_by_file(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppDataId> {
     let app_data_index = db.app_index();
     app_data_index.map.get(&file_id).copied()
+}
+
+pub fn set_app_data_id_by_file(db: &dyn SourceDatabase, id: FileId, app_data_id: AppDataId) {
+    let mut app_data_index: Arc<AppDataIndex> = db.app_index();
+    Arc::make_mut(&mut app_data_index)
+        .map
+        .insert(id, app_data_id);
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {
