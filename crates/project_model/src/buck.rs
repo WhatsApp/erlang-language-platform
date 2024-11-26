@@ -202,6 +202,55 @@ fn load_from_config_bxl(
     Ok((otp_root, project_app_data, project))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
+enum BuckTargetOrigin {
+    App,
+    Dep,
+    Prelude,
+}
+
+impl Default for BuckTargetOrigin {
+    fn default() -> Self {
+        BuckTargetOrigin::App
+    }
+}
+
+// Serde serialization via String
+impl Into<String> for BuckTargetOrigin {
+    fn into(self) -> String {
+        match self {
+            BuckTargetOrigin::App => "app".to_string(),
+            BuckTargetOrigin::Dep => "dep".to_string(),
+            BuckTargetOrigin::Prelude => "prelude".to_string(),
+        }
+    }
+}
+
+// Serde serialization via String
+impl TryFrom<String> for BuckTargetOrigin {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        TryFrom::try_from(value.as_str())
+    }
+}
+impl TryFrom<&str> for BuckTargetOrigin {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "app" => Ok(BuckTargetOrigin::App),
+            "dep" => Ok(BuckTargetOrigin::Dep),
+            "prelude" => Ok(BuckTargetOrigin::Prelude),
+            _ => Err(format!(
+                "bad origin value '{}', expected 'app', 'dep', or 'prelude'.",
+                value
+            )),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct BuckTarget {
     name: String,
@@ -224,6 +273,9 @@ pub struct BuckTarget {
     /// path.
     #[serde(default)]
     included_apps: Vec<TargetFullName>,
+    #[allow(unused)] // Until next diff
+    #[serde(default)]
+    origin: BuckTargetOrigin,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -1232,6 +1284,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1257,6 +1310,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1282,6 +1336,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1311,6 +1366,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1337,6 +1393,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1363,6 +1420,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
