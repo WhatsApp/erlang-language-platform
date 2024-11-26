@@ -44,33 +44,7 @@ impl ProjectFolders {
             )
             .build();
 
-        let mut app_dirs = FxHashSet::default();
-        let mut include_dirs = FxHashSet::default();
-        let mut files = FxHashSet::default();
-        project_apps.all_apps.iter().for_each(|(_, app)| {
-            app_dirs.extend(app.all_source_dirs());
-            if app.app_type == AppType::App {
-                files.insert(app.dir.join(".eqwalizer"));
-            }
-            app.applicable_files.as_ref().map(|applicable_files| {
-                files.extend(applicable_files.clone());
-            });
-            include_dirs.extend(app.include_dirs.clone());
-        });
-
-        let load = vec![
-            loader::Entry::Directories(loader::Directories {
-                extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
-                include: app_dirs.into_iter().collect(),
-                exclude: vec![],
-            }),
-            loader::Entry::Directories(loader::Directories {
-                extensions: vec!["hrl".to_string()],
-                include: include_dirs.into_iter().collect(),
-                exclude: vec![],
-            }),
-            loader::Entry::Files(files.into_iter().collect()),
-        ];
+        let load = loader_config(project_apps);
 
         let mut watch: Vec<_> = project_apps
             .all_apps
@@ -126,4 +100,35 @@ impl ProjectFolders {
             file_set_config,
         }
     }
+}
+
+fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
+    let mut app_dirs = FxHashSet::default();
+    let mut include_dirs = FxHashSet::default();
+    let mut files = FxHashSet::default();
+    project_apps.all_apps.iter().for_each(|(_, app)| {
+        app_dirs.extend(app.all_source_dirs());
+        if app.app_type == AppType::App {
+            files.insert(app.dir.join(".eqwalizer"));
+        }
+        app.applicable_files.as_ref().map(|applicable_files| {
+            files.extend(applicable_files.clone());
+        });
+        include_dirs.extend(app.include_dirs.clone());
+    });
+
+    let load = vec![
+        loader::Entry::Directories(loader::Directories {
+            extensions: vec!["erl".to_string(), "hrl".to_string(), "escript".to_string()],
+            include: app_dirs.into_iter().collect(),
+            exclude: vec![],
+        }),
+        loader::Entry::Directories(loader::Directories {
+            extensions: vec!["hrl".to_string()],
+            include: include_dirs.into_iter().collect(),
+            exclude: vec![],
+        }),
+        loader::Entry::Files(files.into_iter().collect()),
+    ];
+    load
 }
