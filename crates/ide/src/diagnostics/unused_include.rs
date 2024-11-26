@@ -42,6 +42,7 @@ pub(crate) fn unused_includes(
 ) {
     let form_list = db.file_form_list(file_id);
     let mut cache = Default::default();
+    let source_file = db.parse(file_id);
     for (include_idx, attr) in form_list.includes() {
         let in_file = InFile::new(file_id, include_idx);
         if let Some(include_file_id) = db.resolve_include(in_file) {
@@ -54,7 +55,6 @@ pub(crate) fn unused_includes(
                 IncludeAttribute::IncludeLib { path, .. } => path,
             };
 
-            let source_file = db.parse(file_id);
             let inc_text_range = attr
                 .form_id()
                 .get(&source_file.tree())
