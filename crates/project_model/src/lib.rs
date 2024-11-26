@@ -891,11 +891,15 @@ impl ProjectAppData {
     }
     /// Source directories for the application
     pub fn all_source_dirs(&self) -> FxHashSet<AbsPathBuf> {
-        self.extra_src_dirs
-            .iter()
-            .map(|src_dir| self.dir.join(src_dir))
-            .chain(self.abs_src_dirs.iter().cloned())
-            .collect()
+        if self.applicable_files.is_some() {
+            self.abs_src_dirs.iter().cloned().collect()
+        } else {
+            self.extra_src_dirs
+                .iter()
+                .map(|src_dir| self.dir.join(src_dir))
+                .chain(self.abs_src_dirs.iter().cloned())
+                .collect()
+        }
     }
 
     /// Combine the info from the other ProjectAppData into this one

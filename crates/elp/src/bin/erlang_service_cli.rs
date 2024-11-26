@@ -31,6 +31,7 @@ use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use indicatif::ParallelProgressIterator;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use rayon::prelude::*;
@@ -73,7 +74,7 @@ fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
     let stats = STATS.lock();
     if list_modules {
         writeln!(cli, "--------------start of modules----------").ok();
-        stats.iter().for_each(|stat| {
+        stats.iter().sorted().for_each(|stat| {
             writeln!(cli, "{}", stat).ok();
         });
     }
