@@ -16,6 +16,7 @@ use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::timeit_with_telemetry;
 use elp_log::Logger;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::otp::Otp;
 use lsp_server::Connection;
 use lsp_server::Notification;
@@ -40,11 +41,20 @@ use crate::task_pool::TaskPool;
 pub struct ServerSetup {
     connection: Connection,
     logger: Logger,
+    query_config: BuckQueryConfig,
 }
 
 impl ServerSetup {
-    pub fn new(connection: Connection, logger: Logger) -> ServerSetup {
-        ServerSetup { connection, logger }
+    pub fn new(
+        connection: Connection,
+        logger: Logger,
+        query_config: BuckQueryConfig,
+    ) -> ServerSetup {
+        ServerSetup {
+            connection,
+            logger,
+            query_config,
+        }
     }
 
     pub fn to_server(self) -> Result<Server> {
@@ -107,6 +117,11 @@ impl ServerSetup {
         let mut config = Config::new(root_path, params.capabilities);
         if let Some(options) = params.initialization_options {
             config.update(options);
+        }
+
+        // Pass the --buck-bxl flag through if set
+        if self.query_config == BuckQueryConfig::Bxl {
+            config.set_buck_query_use_bxl();
         }
 
         Ok(config)

@@ -23,6 +23,7 @@ use elp_ide::erlang_service::ESCRIPT;
 use elp_log::timeit;
 use elp_log::FileLogger;
 use elp_log::Logger;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::eqwalizer_support;
 use elp_project_model::otp::ERL;
 use include_dir::include_dir;
@@ -104,7 +105,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     });
     let query_config = args.query_config();
     match args.command {
-        args::Command::RunServer(_) => run_server(logger)?,
+        args::Command::RunServer(_) => run_server(logger, query_config)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli, &query_config)?,
         args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(&args, cli, &query_config)?,
         args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(&args, cli, &query_config)?,
@@ -171,11 +172,11 @@ fn setup_thread_pool() -> () {
     }
 }
 
-fn run_server(logger: Logger) -> Result<()> {
+fn run_server(logger: Logger, query_config: BuckQueryConfig) -> Result<()> {
     log::info!("server will start, pid: {}", process::id());
     let (connection, io_threads) = Connection::stdio();
 
-    ServerSetup::new(connection, logger)
+    ServerSetup::new(connection, logger, query_config)
         .to_server()?
         .main_loop()?;
 

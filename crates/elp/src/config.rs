@@ -333,6 +333,10 @@ impl Config {
         }
     }
 
+    pub fn set_buck_query_use_bxl(&mut self) {
+        self.data.buck_query_useBxl_enable = true
+    }
+
     pub fn inlay_hints(&self) -> InlayHintsConfig {
         InlayHintsConfig {
             parameter_hints: self.data.inlayHints_parameterHints_enable,
