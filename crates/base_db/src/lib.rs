@@ -198,7 +198,7 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 
     #[salsa::invoke(IncludeCtx::resolve_remote_query)]
-    fn resolve_remote(&self, source_root: SourceRootId, path: SmolStr) -> Option<FileId>;
+    fn resolve_remote(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 }
 
 fn app_data(db: &dyn SourceDatabase, id: SourceRootId) -> Option<Arc<AppData>> {

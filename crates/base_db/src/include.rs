@@ -15,11 +15,9 @@ use vfs::VfsPath;
 
 use crate::SourceDatabase;
 use crate::SourceRoot;
-use crate::SourceRootId;
 
 pub struct IncludeCtx<'a> {
     db: &'a dyn SourceDatabase,
-    source_root_id: SourceRootId,
     source_root: Arc<SourceRoot>,
     pub file_id: FileId,
 }
@@ -33,7 +31,6 @@ impl<'a> IncludeCtx<'a> {
         Self {
             db,
             file_id,
-            source_root_id,
             source_root,
         }
     }
@@ -45,7 +42,7 @@ impl<'a> IncludeCtx<'a> {
 
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
         self.resolve_include(path)
-            .or_else(|| self.db.resolve_remote(self.source_root_id, path.into()))
+            .or_else(|| self.db.resolve_remote(self.file_id, path.into()))
     }
 
     pub fn resolve_include_doc(&self, path: &str) -> Option<FileId> {
@@ -73,10 +70,10 @@ impl<'a> IncludeCtx<'a> {
     /// Called via salsa for inserting in the graph
     pub(crate) fn resolve_remote_query(
         db: &dyn SourceDatabase,
-        source_root_id: SourceRootId,
+        file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
-        let app_data = db.app_data(source_root_id)?;
+        let app_data = db.file_app_data(file_id)?;
         let project_data = db.project_data(app_data.project_id);
         let (app_name, path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
