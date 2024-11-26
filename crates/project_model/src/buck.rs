@@ -273,7 +273,6 @@ pub struct BuckTarget {
     /// path.
     #[serde(default)]
     included_apps: Vec<TargetFullName>,
-    #[allow(unused)] // Until next diff
     #[serde(default)]
     origin: BuckTargetOrigin,
 }
@@ -338,16 +337,44 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
     };
     let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl)?;
     let mut target_info = TargetInfo::default();
+
+    let mut used_deps = FxHashSet::default();
+
     for (name, buck_target) in &buck_targets {
-        if let Ok(target) = make_buck_target(
-            root,
-            &name,
-            buck_target,
-            buck_config.build_deps,
-            &mut dep_path,
-            &mut target_info,
-        ) {
-            target_info.targets.insert(name.clone(), target);
+        if buck_target.origin != BuckTargetOrigin::Prelude {
+            if let Ok(target) = make_buck_target(
+                root,
+                &name,
+                buck_target,
+                buck_config.build_deps,
+                &mut dep_path,
+                &mut target_info,
+            ) {
+                for target_name in &target.apps {
+                    used_deps.insert(target_name.clone());
+                }
+                for target_name in &target.deps {
+                    used_deps.insert(target_name.clone());
+                }
+                target_info.targets.insert(name.clone(), target);
+            }
+        }
+    }
+    // Insert used prelude values too
+    for name in &used_deps {
+        if let Some(buck_target) = &buck_targets.get(name) {
+            if buck_target.origin == BuckTargetOrigin::Prelude {
+                if let Ok(target) = make_buck_target(
+                    root,
+                    &name,
+                    buck_target,
+                    buck_config.build_deps,
+                    &mut dep_path,
+                    &mut target_info,
+                ) {
+                    target_info.targets.insert(name.clone(), target);
+                }
+            }
         }
     }
     Ok(target_info)

@@ -942,7 +942,6 @@ mod tests {
         }
     }
 
-    #[ignore] // Until later in the stack
     #[test]
     fn build_info_json_buck_bxl() {
         if cfg!(feature = "buck") {
