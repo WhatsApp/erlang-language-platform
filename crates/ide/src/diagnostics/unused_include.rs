@@ -55,29 +55,29 @@ pub(crate) fn unused_includes(
             };
 
             let source_file = db.parse(file_id);
-            let inc_text_rage = attr
+            let inc_text_range = attr
                 .form_id()
                 .get(&source_file.tree())
                 .syntax()
                 .text_range();
-            let edit_text_rage =
+            let edit_text_range =
                 extend_form_range_for_delete(attr.form_id().get(&source_file.tree()).syntax());
 
             let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(edit_text_rage);
+            edit_builder.delete(edit_text_range);
             let edit = edit_builder.finish();
 
             let diagnostic = Diagnostic::new(
                 DiagnosticCode::UnusedInclude,
                 format!("Unused file: {}", path),
-                inc_text_rage,
+                inc_text_range,
             )
             .with_severity(Severity::Warning)
             .with_fixes(Some(vec![fix(
                 "remove_unused_include",
                 "Remove unused include",
                 SourceChange::from_text_edit(file_id, edit.clone()),
-                inc_text_rage,
+                inc_text_range,
             )]));
 
             log::debug!("Found unused include {:?}", path);
