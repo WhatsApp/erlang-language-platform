@@ -285,71 +285,86 @@ fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
         FxHashMap::default()
     };
     let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl)?;
-
     let mut target_info = TargetInfo::default();
-    for (name, target) in buck_targets {
-        let mut private_header = false;
-
-        let dir = match find_app_root_bxl(root, &name, &target) {
-            None => continue,
-            Some(dir) => dir,
-        };
-
-        let (src_files, include_files, target_type, private_header, ebin) =
-            if let Some(ref suite) = target.suite {
-                let src_file = buck_path_to_abs_path(root, &suite)?;
-                let src = vec![src_file.clone()];
-                target_info
-                    .path_to_target_name
-                    .insert(src_file, name.clone());
-                let mut include_files = vec![];
-                for include in &target.includes {
-                    if let Ok(inc) = AbsPathBuf::try_from(include.as_str()) {
-                        include_files.push(inc);
-                    }
-                }
-                (src, include_files, TargetType::ErlangTest, false, None)
-            } else {
-                let target_type = compute_target_type(&name, &target);
-                let mut src_files = vec![];
-                for src in &target.srcs {
-                    let src = buck_path_to_abs_path(root, src).unwrap();
-                    if Some("hrl") == src.extension() {
-                        private_header = true;
-                    }
-                    src_files.push(src);
-                }
-                let mut include_files = vec![];
-                for include in &target.includes {
-                    let inc = buck_path_to_abs_path(root, include).unwrap();
-                    include_files.push(inc);
-                }
-
-                let ebin = match target_type {
-                    TargetType::ThirdParty if buck_config.build_deps => dep_path
-                        .remove(&name)
-                        .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
-                    TargetType::ThirdParty => Some(dir.clone()),
-                    _ => None,
-                };
-                (src_files, include_files, target_type, private_header, ebin)
-            };
-        let target = Target {
-            name: name.clone(),
-            app_name: target.name,
-            dir,
-            src_files,
-            include_files,
-            deps: target.deps,
-            apps: target.apps,
-            included_apps: target.included_apps,
-            ebin,
-            target_type,
-            private_header,
-        };
-        target_info.targets.insert(name, target);
+    for (name, buck_target) in &buck_targets {
+        if let Ok(target) = make_buck_target(
+            root,
+            &name,
+            buck_target,
+            buck_config.build_deps,
+            &mut dep_path,
+            &mut target_info,
+        ) {
+            target_info.targets.insert(name.clone(), target);
+        }
     }
     Ok(target_info)
+}
+
+fn make_buck_target(
+    root: &AbsPathBuf,
+    name: &String,
+    target: &BuckTarget,
+    build_deps: bool,
+    dep_path: &mut FxHashMap<String, AbsPathBuf>,
+    target_info: &mut TargetInfo,
+) -> Result<Target> {
+    let mut private_header = false;
+
+    let dir = find_app_root_bxl(root, &name, &target).expect("could not find app root");
+
+    let (src_files, include_files, target_type, private_header, ebin) =
+        if let Some(ref suite) = target.suite {
+            let src_file = buck_path_to_abs_path(root, &suite)?;
+            let src = vec![src_file.clone()];
+            target_info
+                .path_to_target_name
+                .insert(src_file, name.clone());
+            let mut include_files = vec![];
+            for include in &target.includes {
+                if let Ok(inc) = AbsPathBuf::try_from(include.as_str()) {
+                    include_files.push(inc);
+                }
+            }
+            (src, include_files, TargetType::ErlangTest, false, None)
+        } else {
+            let target_type = compute_target_type(&name, &target);
+            let mut src_files = vec![];
+            for src in &target.srcs {
+                let src = buck_path_to_abs_path(root, src).unwrap();
+                if Some("hrl") == src.extension() {
+                    private_header = true;
+                }
+                src_files.push(src);
+            }
+            let mut include_files = vec![];
+            for include in &target.includes {
+                let inc = buck_path_to_abs_path(root, include).unwrap();
+                include_files.push(inc);
+            }
+
+            let ebin = match target_type {
+                TargetType::ThirdParty if build_deps => dep_path
+                    .remove(name)
+                    .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
+                TargetType::ThirdParty => Some(dir.clone()),
+                _ => None,
+            };
+            (src_files, include_files, target_type, private_header, ebin)
+        };
+    Ok(Target {
+        name: name.clone(),
+        app_name: target.name.clone(),
+        dir,
+        src_files,
+        include_files,
+        deps: target.deps.clone(),
+        apps: target.apps.clone(),
+        included_apps: target.included_apps.clone(),
+        ebin,
+        target_type,
+        private_header,
+    })
 }
 
 fn load_buck_targets_orig(buck_config: &BuckConfig) -> Result<TargetInfo> {
