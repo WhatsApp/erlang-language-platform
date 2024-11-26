@@ -406,6 +406,21 @@ pub fn adjacent_newline(syntax: &SyntaxNode) -> Option<SyntaxToken> {
     }
 }
 
+// Extend the range of a syntax element.
+// If the next sibling is a syntax element of the same kind, extend the range to include the whitespace between them.
+// If it is not, only include the first newline (if any).
+// This is useful, for example, when deleting an attribute (macro, header, etc)
+pub fn extend_range(syntax: &SyntaxNode) -> TextRange {
+    if let Some(NodeOrToken::Node(node)) =
+        algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), Direction::Next)
+    {
+        if node.kind() == syntax.kind() {
+            return extend_form_range_for_delete(syntax);
+        }
+    }
+    extend_range_to_adjacent_newline(syntax)
+}
+
 pub fn extend_range_to_adjacent_newline(syntax: &SyntaxNode) -> TextRange {
     let range = syntax.text_range();
     match adjacent_newline(syntax) {

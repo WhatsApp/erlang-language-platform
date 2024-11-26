@@ -11,7 +11,7 @@
 //
 // Return a warning if a macro defined in an .erl file has no references to it
 
-use elp_ide_assists::helpers::extend_range_to_adjacent_newline;
+use elp_ide_assists::helpers::extend_range;
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
@@ -57,7 +57,7 @@ fn unused_macro(
                     .at_least_one()
             {
                 let source = def.source(sema.db.upcast());
-                let macro_range = extend_range_to_adjacent_newline(source.syntax());
+                let macro_range = extend_range(source.syntax());
                 let name_range = source.name()?.syntax().text_range();
                 let d = make_diagnostic(file_id, macro_range, name_range, &name.to_string());
                 acc.push(d);

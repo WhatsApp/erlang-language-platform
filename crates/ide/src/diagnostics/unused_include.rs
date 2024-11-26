@@ -11,7 +11,7 @@
 //
 // Return a warning if nothing is used from an include file
 
-use elp_ide_assists::helpers::extend_form_range_for_delete;
+use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::SearchScope;
@@ -54,30 +54,25 @@ pub(crate) fn unused_includes(
                 IncludeAttribute::Include { path, .. } => path,
                 IncludeAttribute::IncludeLib { path, .. } => path,
             };
-
-            let inc_text_range = attr
-                .form_id()
-                .get(&source_file.tree())
-                .syntax()
-                .text_range();
-            let edit_text_range =
-                extend_form_range_for_delete(attr.form_id().get(&source_file.tree()).syntax());
-
+            let attribute = attr.form_id().get(&source_file.tree());
+            let attribute_syntax = attribute.syntax();
+            let attribute_range = attribute_syntax.text_range();
             let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(edit_text_range);
+            let extended_attribute_range = extend_range(attribute_syntax);
+            edit_builder.delete(extended_attribute_range);
             let edit = edit_builder.finish();
 
             let diagnostic = Diagnostic::new(
                 DiagnosticCode::UnusedInclude,
                 format!("Unused file: {}", path),
-                inc_text_range,
+                attribute_range,
             )
             .with_severity(Severity::Warning)
             .with_fixes(Some(vec![fix(
                 "remove_unused_include",
                 "Remove unused include",
                 SourceChange::from_text_edit(file_id, edit.clone()),
-                inc_text_range,
+                attribute_range,
             )]));
 
             log::debug!("Found unused include {:?}", path);

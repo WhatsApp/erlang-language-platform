@@ -111,6 +111,30 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
     }
 }
 
+/// Finds the first sibling in the given direction which is not a comment
+pub fn non_whitespace_sibling(
+    element: SyntaxElement,
+    direction: Direction,
+) -> Option<SyntaxElement> {
+    return match element {
+        NodeOrToken::Node(node) => node
+            .siblings_with_tokens(direction)
+            .skip(1)
+            .find(not_whitespace),
+        NodeOrToken::Token(token) => token
+            .siblings_with_tokens(direction)
+            .skip(1)
+            .find(not_whitespace),
+    };
+
+    fn not_whitespace(element: &SyntaxElement) -> bool {
+        match element {
+            NodeOrToken::Node(_) => true,
+            NodeOrToken::Token(token) => !(token.kind() == SyntaxKind::WHITESPACE),
+        }
+    }
+}
+
 pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {
     if u == v {
         return Some(u.clone());
