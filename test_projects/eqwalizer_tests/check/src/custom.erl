@@ -1955,7 +1955,7 @@ maps_with_1(Ks, M) ->
 -spec maps_with_2(#{
     a := atom,
     n => number()
-}) -> #{a := atom()}.
+}) -> #{a := atom}.
 maps_with_2(M) ->
     maps:with([a], M).
 
@@ -1975,8 +1975,26 @@ maps_with_4(M) ->
 
 -spec maps_with_5
     (#{a := av, b := bv})
-    -> #{a => av, b => bv}.
+    -> #{a := av}.
 maps_with_5(M) ->
+    maps:with([a, c, d], M).
+
+-spec maps_with_6
+    (#{a := av, b := bv, atom() => string()})
+    -> #{a := av}.
+maps_with_6(M) ->
+    maps:with([a], M).
+
+-spec maps_with_7
+    (#{a := av, b := bv, atom() => string()})
+    -> #{a := av, c => string(), d => string()}.
+maps_with_7(M) ->
+    maps:with([a, c, d], M).
+
+-spec maps_with_8
+    (#{a := av, b := bv, number() => string()})
+    -> #{a := av}.
+maps_with_8(M) ->
     maps:with([a, c, d], M).
 
 -spec lists_flatten_nil_1(
