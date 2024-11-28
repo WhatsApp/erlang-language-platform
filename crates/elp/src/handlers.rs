@@ -11,6 +11,8 @@
 //! Protocol. The majority of requests are fulfilled by calling into the
 //! `ide` crate.
 
+use std::time::SystemTime;
+
 use anyhow::bail;
 use anyhow::Result;
 use elp_ide::elp_ide_assists::AssistKind;
@@ -25,8 +27,10 @@ use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::SymbolKind;
 use elp_ide::Cancellable;
 use elp_ide::HighlightedRange;
+use elp_ide::NavigationTarget;
 use elp_ide::RangeInfo;
 use elp_ide::TextRange;
+use elp_log::telemetry;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::CallHierarchyIncomingCall;
@@ -301,14 +305,22 @@ pub(crate) fn handle_goto_definition(
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = tracing::info_span!("handle_goto_definition").entered();
+    let start = SystemTime::now();
+
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
 
     let nav_info = match snap.analysis.goto_definition(position)? {
-        None => return Ok(None),
-        Some(it) => it,
+        None => {
+            goto_definition_telemetry(&snap, &vec![], start);
+            return Ok(None);
+        }
+        Some(it) => {
+            goto_definition_telemetry(&snap, &it.info, start);
+            it
+        }
     };
     let src = FileRange {
         file_id: position.file_id,
@@ -316,6 +328,32 @@ pub(crate) fn handle_goto_definition(
     };
     let res = to_proto::goto_definition_response(&snap, Some(src), nav_info.info)?;
     Ok(Some(res))
+}
+
+fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], start: SystemTime) {
+    let targets_include_generated = targets
+        .iter()
+        .any(|tgt| snap.analysis.is_generated(tgt.file_id).unwrap_or(false));
+    let target_urls: Vec<_> = targets
+        .iter()
+        .map(|tgt| snap.file_id_to_url(tgt.file_id))
+        .collect();
+
+    #[derive(serde::Serialize)]
+    struct Data {
+        targets_include_generated: bool,
+        target_urls: Vec<Url>,
+    }
+
+    let detail = Data {
+        targets_include_generated,
+        target_urls,
+    };
+    let duration = start.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
+    let data = serde_json::to_value(detail).unwrap_or_else(|err| {
+        serde_json::Value::String(format!("JSON serialization failed: {err}"))
+    });
+    telemetry::send_with_duration("goto_definition".to_string(), data, duration, start);
 }
 
 pub(crate) fn handle_goto_type_definition(
