@@ -833,7 +833,7 @@ impl Server {
             } else if n_done == 0 {
                 let pb = self
                     .progress
-                    .begin_bar("Applications loaded".into(), Some(n_total));
+                    .begin_bar("Loading source files".into(), Some(n_total));
                 self.transition(Status::Loading(pb));
             } else if n_done < n_total {
                 if let Status::Loading(pb) = &self.status {

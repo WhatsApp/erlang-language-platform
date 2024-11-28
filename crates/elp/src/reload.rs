@@ -124,10 +124,14 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     // Create chunks so our loader spinner shows progress. And to
     // interleave loading and storing
     // There is no particular significance to the numbers chosen, the
-    // intent is to have a reasonable progress bar, so we choose 100
-    // and arbitrarily split it between apps and include dirs.
+    // intent is to have a reasonable progress bar, with 100 as the total.
+    // We split the chunks arbitrarily between apps and include dirs, leaving
+    // room for the files too.
+    // For some reason our progress reporter lists this as 100, even
+    // though the total seems to be 80 + 16 + 1 = 97
+
     let apps_chunk_size = cmp::max(app_dirs_vec.len() / 80, 1);
-    let include_dirs_chunk_size = cmp::max(include_dirs_vec.len() / 20, 1);
+    let include_dirs_chunk_size = cmp::max(include_dirs_vec.len() / 16, 1);
 
     let mut load: Vec<_> = vec![];
     load.extend(

@@ -116,7 +116,7 @@ impl ProgressBar {
         let msg = WorkDoneProgressBegin {
             title,
             cancellable: None,
-            message: total.map(|total| format!("0/{}", total)),
+            message: total.map(|_total| format!("0%")),
             percentage: Some(0),
         };
         send_begin(&sender, token.clone(), msg);
@@ -124,7 +124,7 @@ impl ProgressBar {
     }
 
     pub fn report(&self, done: usize, total: usize) {
-        let message = format!("{}/{}", done, total);
+        let message = format!("{}%", done);
         let percent = done as f64 / total.max(1) as f64;
         let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
             cancellable: None,
