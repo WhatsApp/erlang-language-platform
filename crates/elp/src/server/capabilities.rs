@@ -71,7 +71,9 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
         implementation_provider: None,
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
-        document_symbol_provider: Some(OneOf::Left(true)),
+        document_symbol_provider: Some(OneOf::Left(!text_document_symbols_dynamic_registration(
+            client,
+        ))),
         workspace_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(code_action_capabilities(client)),
         // TODO: This will be put behind a GK before shipping
@@ -117,6 +119,20 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
         linked_editing_range_provider: None,
         experimental: None,
     }
+}
+
+pub fn text_document_symbols_dynamic_registration(
+    client_capabilities: &ClientCapabilities,
+) -> bool {
+    let caps = (|| -> _ {
+        client_capabilities
+            .text_document
+            .as_ref()?
+            .document_symbol
+            .clone()
+    })()
+    .unwrap_or_default();
+    caps.dynamic_registration == Some(true)
 }
 
 fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProviderCapability {

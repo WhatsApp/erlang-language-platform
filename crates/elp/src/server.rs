@@ -18,6 +18,7 @@ use std::time::Duration;
 use always_assert::always;
 use anyhow::bail;
 use anyhow::Result;
+use capabilities::text_document_symbols_dynamic_registration;
 use crossbeam_channel::select;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
@@ -574,13 +575,18 @@ impl Server {
             Status::Initialising | Status::Loading(_)
                 if req.method != request::Shutdown::METHOD && !req.method.starts_with("elp/") =>
             {
-                let id = req.id.clone();
-                self.send_response(Response::new_err(
-                    id,
-                    ErrorCode::ContentModified as i32,
-                    "elp is still loading".to_string(),
-                ));
-                return Ok(());
+                // We can process document symbols while loading.
+                if !(self.status != Status::Initialising
+                    && req.method == request::DocumentSymbolRequest::METHOD)
+                {
+                    let id = req.id.clone();
+                    self.send_response(Response::new_err(
+                        id,
+                        ErrorCode::ContentModified as i32,
+                        "elp is still loading".to_string(),
+                    ));
+                    return Ok(());
+                }
             }
             Status::ShuttingDown => {
                 self.send_response(Response::new_err(
@@ -1519,7 +1525,47 @@ impl Server {
             };
             self.show_message(params);
         }
+
+        self.register_dynamic_now_operational();
         Ok(())
+    }
+
+    fn register_dynamic_now_operational(&mut self) {
+        if text_document_symbols_dynamic_registration(&self.config.caps) {
+            let registration_options = lsp_types::GenericRegistrationOptions {
+                text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
+                    document_selector: None,
+                },
+                options: lsp_types::GenericOptions {
+                    work_done_progress_options: lsp_types::WorkDoneProgressOptions {
+                        work_done_progress: None,
+                    },
+                },
+                static_registration_options: lsp_types::StaticRegistrationOptions { id: None },
+            };
+
+            // Note that although the `register_options` are empty, and setting
+            // the field to None works for VS Code, it breaks the haskell elp_tests.
+            // TODO: once they are removed, or the haskell LSP library is updated,
+            //       set it to None instead. T209094420
+            let register_document_symbols = lsp_types::Registration {
+                id: request::DocumentSymbolRequest::METHOD.to_string(),
+                method: request::DocumentSymbolRequest::METHOD.to_string(),
+                register_options: Some(serde_json::to_value(registration_options).unwrap()),
+            };
+
+            self.send_request::<request::RegisterCapability>(
+                lsp_types::RegistrationParams {
+                    registrations: vec![register_document_symbols],
+                },
+                |_, rsp| {
+                    if rsp.error.is_some() {
+                        log::warn!("Dynamic registration failed, got {:?}", rsp);
+                    }
+                    Ok(())
+                },
+            )
+        }
     }
 
     fn schedule_compile_deps(&mut self) {
