@@ -86,6 +86,13 @@ impl ToDoc for InFile<&ast::BehaviourAttribute> {
     }
 }
 
+impl ToDoc for InFile<&ast::TypeName> {
+    fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
+        let alias = docs.sema.to_def(ast)?;
+        docs.type_doc(alias.file.file_id, alias.name().clone())
+    }
+}
+
 impl ToDoc for InFile<&ast::Fa> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         let fa_def = docs.sema.to_def(ast)?;
@@ -170,6 +177,7 @@ impl ToDoc for InFile<&ast::FunctionClause> {
 pub struct FileDoc {
     module_doc: Option<Doc>,
     function_docs: FxHashMap<NameArity, Doc>,
+    type_docs: FxHashMap<NameArity, Doc>,
     pub diagnostics: Vec<DocDiagnostic>,
 }
 
@@ -209,6 +217,11 @@ impl<'db> Documentation<'db> {
         file_docs.function_docs.get(&function).map(|d| d.to_owned())
     }
 
+    fn type_doc(&self, file_id: FileId, ty: NameArity) -> Option<Doc> {
+        let file_docs = self.file_doc(file_id);
+        file_docs.type_docs.get(&ty).map(|d| d.to_owned())
+    }
+
     fn module_doc(&self, file_id: FileId) -> Option<Doc> {
         let file_docs = self.file_doc(file_id);
         file_docs.module_doc.clone()
@@ -244,6 +257,7 @@ fn get_file_docs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
     Arc::new(FileDoc {
         module_doc: descriptions.module_doc,
         function_docs: merge_descriptions_and_specs(descriptions.function_docs, specs),
+        type_docs: merge_type_definitions_and_descriptions(db, file_id, descriptions.type_docs),
         diagnostics: descriptions.diagnostics,
     })
 }
@@ -277,6 +291,26 @@ fn merge_descriptions_and_specs(
             ),
         })
         .collect::<FxHashMap<NameArity, Doc>>()
+}
+
+fn merge_type_definitions_and_descriptions(
+    db: &dyn DocDatabase,
+    file_id: FileId,
+    type_docs: FxHashMap<NameArity, Doc>,
+) -> FxHashMap<NameArity, Doc> {
+    let def_map = db.def_map(file_id);
+    let types = def_map.get_types().iter();
+    types
+        .map(|(na, def)| {
+            let type_def = def.source(db.upcast()).syntax().to_string();
+            let markdown = if let Some(doc) = type_docs.get(na).map(|d| d.markdown_text()) {
+                format!("```erlang\n{}\n```\n\n-----\n\n{}", type_def, doc)
+            } else {
+                format!("```erlang\n{}\n```", type_def)
+            };
+            (na.clone(), Doc::new(markdown))
+        })
+        .collect()
 }
 
 fn get_file_function_specs(def_db: &dyn DefDatabase, file_id: FileId) -> FxHashMap<NameArity, Doc> {
@@ -313,6 +347,7 @@ impl DocLoader for crate::RootDatabase {
             return FileDoc {
                 module_doc: None,
                 function_docs: FxHashMap::default(),
+                type_docs: FxHashMap::default(),
                 diagnostics: vec![],
             };
         };
@@ -354,11 +389,22 @@ impl DocLoader for crate::RootDatabase {
                         )
                     })
                     .collect(),
+                type_docs: d
+                    .type_docs
+                    .into_iter()
+                    .map(|((name, arity), markdown_text)| {
+                        (
+                            NameArity::new(Name::from_erlang_service(&name), arity),
+                            Doc { markdown_text },
+                        )
+                    })
+                    .collect(),
                 diagnostics: d.diagnostics,
             },
             Err(_) => FileDoc {
                 module_doc: None,
                 function_docs: FxHashMap::default(),
+                type_docs: FxHashMap::default(),
                 diagnostics: vec![],
             },
         }
@@ -387,7 +433,8 @@ impl Doc {
                 ast::ImportAttribute(_) => None,
                 ast::Fa(fa) =>
                     docdb.to_doc(token.with_value(&fa)),
-                ast::TypeName(_) => None,
+                ast::TypeName(ty) =>
+                    docdb.to_doc(token.with_value(&ty)),
                 ast::RecordDecl(_) => None,
                 ast::Spec(spec) =>
                     docdb.to_doc(token.with_value(&spec)),

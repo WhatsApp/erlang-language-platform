@@ -15,6 +15,7 @@
     #{
         module_doc := binary(),
         function_docs := [{{FunName :: atom(), FunArity :: arity()}, FunDoc :: binary()}],
+        type_docs := [{{TypeName :: atom(), TypeArity :: arity()}, TypeDoc :: binary()}],
         diagnostics := [diagnostic()]
     }.
 -type diagnostic() ::
@@ -71,6 +72,7 @@ doc_from_eep059_attributes(FileName, edoc, AST0, _SupportsEEP059DocAttributes) -
 serialize_docs(#{
     module_doc := ModuleDoc,
     function_docs := FunctionDocs,
+    type_docs := TypeDocs,
     diagnostics := Diagnostics
 }) when
     is_binary(ModuleDoc), is_list(FunctionDocs)
@@ -78,6 +80,7 @@ serialize_docs(#{
     lists:append([
         [{<<"MDC">>, ModuleDoc}],
         [serialize_function_doc(F) || F = {{_N, _A}, _D} <- FunctionDocs],
+        [serialize_type_doc(T) || T = {{_N, _A}, _D} <- TypeDocs],
         [{<<"EDC">>, serialize_edoc_diagnostic(D)} || D <- lists:keysort(1, Diagnostics)]
     ]).
 
@@ -85,6 +88,14 @@ serialize_function_doc({{Name, Arity}, Doc}) when
     is_atom(Name), is_integer(Arity), is_binary(Doc)
 ->
     {<<"FDC">>,
+        unicode:characters_to_binary(
+            io_lib:format("~ts ~B ~ts", [Name, Arity, Doc])
+        )}.
+
+serialize_type_doc({{Name, Arity}, Doc}) when
+    is_atom(Name), is_integer(Arity), is_binary(Doc)
+->
+    {<<"TDC">>,
         unicode:characters_to_binary(
             io_lib:format("~ts ~B ~ts", [Name, Arity, Doc])
         )}.
@@ -135,6 +146,7 @@ get_docs_for_src_file(FileName, Origin) ->
                     #{
                         module_doc => <<>>,
                         function_docs => [],
+                        type_docs => [],
                         diagnostics => fetch_diagnostics_from_dict()
                     }
             end;
@@ -142,6 +154,7 @@ get_docs_for_src_file(FileName, Origin) ->
             #{
                 module_doc => <<>>,
                 function_docs => [],
+                type_docs => [],
                 diagnostics => []
             }
     end.
@@ -159,7 +172,7 @@ fetch_diagnostics_from_dict() ->
 % Format used by OTP docs for OTP >= 27
 render_docs_v1(
     _ModuleName,
-    {docs_v1, _Anno, _BeamLang, <<"text/markdown">> = _Format, ModuleDoc0, _Metadata, FunctionDocs} =
+    {docs_v1, _Anno, _BeamLang, <<"text/markdown">> = _Format, ModuleDoc0, _Metadata, Docs} =
         _DocsV1,
     Diagnostics = []
 ) ->
@@ -198,7 +211,27 @@ render_docs_v1(
                     end,
                     {NA, FDocEn}
                 end
-             || {KNA, _FAnno, _FSig, FDoc, FMetadata} <- FunctionDocs,
+             || {{function, _N, _A} = KNA, _FAnno, _FSig, FDoc, FMetadata} <- Docs,
+                none =/= kna_to_name_arity(KNA)
+            ],
+        type_docs =>
+            [
+                begin
+                    NA = kna_to_name_arity(KNA),
+                    case FDoc of
+                        #{<<"en">> := FDocEn} ->
+                            FDocEn;
+                        _ ->
+                            case FMetadata of
+                                #{equiv := Equiv} ->
+                                    FDocEn = <<<<"equivalent to `">>/binary, Equiv/binary, <<"`">>/binary>>;
+                                _ ->
+                                    FDocEn = <<>>
+                            end
+                    end,
+                    {NA, FDocEn}
+                end
+             || {{type, _N, _A} = KNA, _FAnno, _FSig, FDoc, FMetadata} <- Docs,
                 none =/= kna_to_name_arity(KNA)
             ],
         diagnostics => Diagnostics
@@ -233,6 +266,8 @@ render_docs_v1(
              || {KNA, _FAnno, _FSig, _FDoc, _FMetadata} <- FunctionDocs,
                 none =/= kna_to_name_arity(KNA)
             ],
+        type_docs =>
+            [], % No support for type docs in OTP 27
         diagnostics => Diagnostics
     };
 % Format used by edoc
@@ -252,6 +287,7 @@ render_docs_v1(
     #{
         module_doc => ModuleDocEn,
         function_docs => [{F, FDoc} || {{_FName, _FArity} = F, FDoc} <- FunctionDocs],
+        type_docs => [], % No support for EDoc type docs
         diagnostics => Diagnostics
     }.
 
@@ -261,7 +297,8 @@ kna_to_name_arity(none) ->
 kna_to_name_arity({Kind, Name, Arity}) ->
     case {Kind, Arity} of
         {function, A} when is_integer(A) ->
-            % TODO Support type docs?
+            {Name, Arity};
+        {type, A} when is_integer(A) ->
             {Name, Arity};
         _ ->
             none

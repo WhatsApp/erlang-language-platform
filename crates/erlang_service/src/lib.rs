@@ -213,6 +213,7 @@ impl CTInfoResult {
 pub struct DocResult {
     pub module_doc: RawMarkdown,
     pub function_docs: FxHashMap<RawNameArity, RawMarkdown>,
+    pub type_docs: FxHashMap<RawNameArity, RawMarkdown>,
     pub diagnostics: Vec<DocDiagnostic>,
 }
 
@@ -506,6 +507,8 @@ impl Connection {
         lazy_static! {
             static ref FUNCTION_DOC_REGEX: Regex =
                 Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
+            static ref TYPE_DOC_REGEX: Regex =
+                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
             static ref DOC_DIAGNOSTIC_REGEX: Regex =
                 Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
                     .unwrap();
@@ -516,6 +519,7 @@ impl Connection {
         let reply = self.request_reply(tag, encoded, unwind);
 
         let mut function_docs = FxHashMap::default();
+        let mut type_docs = FxHashMap::default();
         let mut module_doc = String::new();
         let mut diagnostics = Vec::new();
 
@@ -532,6 +536,17 @@ impl Connection {
                             function_docs.insert((name, arity), doc);
                         } else {
                             log::error!("Could not capture in FUNCTION_DOC: {text}");
+                        }
+                    }
+                    b"TDC" => {
+                        let text = decode_utf8_or_latin1(data);
+                        if let Some(caps) = TYPE_DOC_REGEX.captures(&text) {
+                            let name = caps.name("name").unwrap().as_str().to_string();
+                            let arity = caps.name("arity").unwrap().as_str().parse::<u32>()?;
+                            let doc = caps.name("doc").unwrap().as_str().to_string();
+                            type_docs.insert((name, arity), doc);
+                        } else {
+                            log::error!("Could not capture in TYPE_DOC: {text}");
                         }
                     }
                     b"EDC" => {
@@ -558,6 +573,7 @@ impl Connection {
             .map(|()| DocResult {
                 module_doc,
                 function_docs,
+                type_docs,
                 diagnostics,
             })
             .map_err(|error| {
