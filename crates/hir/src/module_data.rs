@@ -14,6 +14,7 @@ use elp_base_db::FileKind;
 use elp_base_db::ModuleName;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
+use elp_syntax::ast::MapExpr;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
@@ -423,6 +424,17 @@ impl TypeAliasDef {
     pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
         let source = self.source(db);
         Some(source.syntax().text_range())
+    }
+
+    pub fn map_expr(&self, db: &dyn SourceDatabase) -> Option<MapExpr> {
+        let source = self.source(db);
+        match source {
+            TypeAliasSource::Regular(alias) => match alias.ty()? {
+                ast::Expr::MapExpr(expr) => Some(expr),
+                _ => None,
+            },
+            TypeAliasSource::Opaque(_) => None,
+        }
     }
 }
 

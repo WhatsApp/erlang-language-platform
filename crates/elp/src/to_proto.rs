@@ -383,6 +383,7 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
             Operator => K::OPERATOR,
             RecordField => K::FIELD,
             Record => K::STRUCT,
+            Map => K::STRUCT,
             Type => K::INTERFACE,
             Variable => K::VARIABLE,
             AiAssist => K::EVENT,

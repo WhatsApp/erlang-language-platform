@@ -365,6 +365,10 @@ impl DefMap {
         self.deprecated.is_deprecated(name)
     }
 
+    pub fn get_unowned_specs(&self) -> &FxHashMap<NameArity, SpecDef> {
+        &self.unowned_specs
+    }
+
     pub fn get_unowned_spec(&self, name: &NameArity) -> Option<&SpecDef> {
         self.unowned_specs.get(name)
     }
