@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use elp_project_model::AppName;
@@ -496,15 +497,15 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
 
 /// If the `input` string represents an atom, and needs quoting, quote
 /// it.
-pub fn to_quoted_string(input: &str) -> String {
+pub fn to_quoted_string(input: &str) -> Cow<str> {
     fn is_valid_atom(input: &str) -> bool {
         let mut chars = input.chars();
         chars.next().map_or(false, |c| c.is_lowercase())
             && chars.all(|c| char::is_alphanumeric(c) || c == '_' || c == '@')
     }
     if is_valid_atom(input) {
-        input.to_string()
+        Cow::Borrowed(input)
     } else {
-        format!("'{}'", &input)
+        Cow::Owned(format!("'{}'", &input))
     }
 }

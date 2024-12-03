@@ -67,9 +67,9 @@ impl Name {
         &self.0
     }
 
-    pub fn to_quoted_string(&self) -> String {
+    pub fn to_quoted_string(&self) -> Cow<str> {
         if self == &Self::MISSING {
-            self.to_string()
+            Cow::Borrowed(self.as_str())
         } else {
             to_quoted_string(self.as_str())
         }

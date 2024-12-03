@@ -375,8 +375,8 @@ impl MFA {
         let call_module = call_target.module?;
         let na = call_target.name;
         Some(MFA {
-            module: call_module.to_quoted_string(),
-            name: na.name().to_quoted_string(),
+            module: call_module.to_quoted_string().into_owned(),
+            name: na.name().to_quoted_string().into_owned(),
             arity: na.arity(),
         })
     }

@@ -8,6 +8,7 @@
  */
 
 use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -32,7 +33,7 @@ impl ModuleName {
         self
     }
 
-    pub fn to_quoted_string(&self) -> String {
+    pub fn to_quoted_string(&self) -> Cow<str> {
         to_quoted_string(self.as_str())
     }
 }
