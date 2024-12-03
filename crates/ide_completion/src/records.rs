@@ -83,7 +83,7 @@ fn add_token_based_completions(
             .iter()
             .filter(|(name, _)| name.starts_with(name_prefix))
             .map(|(name, _)| Completion {
-                label: name.to_string(),
+                label: name.to_quoted_string().into_owned(),
                 kind: Kind::Record,
                 contents: Contents::SameAsLabel,
                 position: None,
@@ -332,6 +332,23 @@ mod test {
                 {label:another, kind:Record, contents:SameAsLabel, position:None}
                 {label:that_record, kind:Record, contents:SameAsLabel, position:None}
                 {label:this_record, kind:Record, contents:SameAsLabel, position:None}"#]],
+        );
+    }
+
+    #[test]
+    fn test_quoted_record_name() {
+        // Irregular names are quoted.
+        check(
+            r#"
+        -module(sample).
+        -record('this.record', {field1=1, field2=2}).
+        -record('that$record', {}).
+        foo(X) -> #~
+        "#,
+            None,
+            expect![[r#"
+                {label:'that$record', kind:Record, contents:SameAsLabel, position:None}
+                {label:'this.record', kind:Record, contents:SameAsLabel, position:None}"#]],
         );
     }
 

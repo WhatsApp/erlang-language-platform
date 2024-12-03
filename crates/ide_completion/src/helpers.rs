@@ -109,7 +109,7 @@ pub(crate) fn name_arity_to_call_completion(
 
     if na.name().starts_with(prefix) {
         let contents = def.map_or(Some(format_call(na.name(), na.arity())), |def| {
-            function_contents(db, def, na.name(), include_args)
+            function_contents(db, def, &na.name().to_quoted_string(), include_args)
         })?;
         Some(Completion {
             label: na.to_string(),
