@@ -37,6 +37,19 @@ Given the error code `X12345` you can ignore a diagnostic by prepending the offe
 % elp:ignore X12345
 ```
 
+You can also ignore a diagnostic by *alias*. E.g.:
+
+```
+% elp:ignore atoms_exhaustion
+```
+
+To find the human readable alias for a given code you can use the `elp explain` command:
+
+```
+$ elp explain --code W0023
+https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0023/ (atoms_exhaustion)
+```
+
 It is possible to ignore multiple error codes at once:
 
 ```
