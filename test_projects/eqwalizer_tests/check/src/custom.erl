@@ -1997,6 +1997,12 @@ maps_with_7(M) ->
 maps_with_8(M) ->
     maps:with([a, c, d], M).
 
+-spec maps_with_9
+    (#{a := av, b := bv, dynamic() => string()})
+    -> #{a := av, c := string(), d := string()}.
+maps_with_9(M) ->
+    maps:with([a, c, d], M).
+
 -spec lists_flatten_nil_1(
     [[atom()]], [atom()]
 ) -> [atom()].

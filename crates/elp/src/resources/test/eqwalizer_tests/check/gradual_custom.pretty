@@ -166,7 +166,7 @@ error: incompatible_types
 187 │ │     Dyn
 188 │ │   ).
     │ ╰───^ maps:with(['a'], Dyn).
-Expression has type:   #{a => dynamic()}
+Expression has type:   #{a := dynamic()}
 Context expected type: 'wrong_ret'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
