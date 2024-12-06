@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--clause-coverage] <MODULES>...
+Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--clause-coverage] [--bail-on-error] <MODULES>...
 
 Available positional items:
     <MODULES>  Eqwalize specified modules
@@ -9,4 +9,5 @@ Available options:
         --format <FORMAT>    Show diagnostics in JSON format
         --rebar              Run with rebar
         --clause-coverage    Use experimental clause coverage checker
+        --bail-on-error      Exit with a non-zero status code if any errors are found
     -h, --help               Prints help information

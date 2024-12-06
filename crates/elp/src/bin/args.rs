@@ -104,6 +104,8 @@ pub struct Eqwalize {
     pub rebar: bool,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
+    /// Exit with a non-zero status code if any errors are found
+    pub bail_on_error: bool,
     /// Eqwalize specified modules
     #[bpaf(
         positional("MODULES"),
@@ -134,6 +136,8 @@ pub struct EqwalizeAll {
     pub include_generated: bool,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
+    /// Exit with a non-zero status code if any errors are found
+    pub bail_on_error: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -148,6 +152,8 @@ pub struct EqwalizeTarget {
     pub target: String,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
+    /// Exit with a non-zero status code if any errors are found
+    pub bail_on_error: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -167,6 +173,8 @@ pub struct EqwalizeApp {
     pub app: String,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
+    /// Exit with a non-zero status code if any errors are found
+    pub bail_on_error: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

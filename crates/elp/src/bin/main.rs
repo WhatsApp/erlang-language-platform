@@ -1738,6 +1738,20 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalize_all_bail_on_error(buck: bool) {
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot_expect_error(
+                args_vec!["eqwalize-all", "--bail-on-error"],
+                "standard",
+                expect_file!("../resources/test/standard/eqwalize_all_bail_on_error.pretty"),
+                buck,
+                None,
+            );
+        }
+    }
+
     #[test]
     fn help() {
         let args = args::args().run_inner(Args::from(&["--help"])).unwrap_err();

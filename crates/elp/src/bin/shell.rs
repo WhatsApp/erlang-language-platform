@@ -150,6 +150,7 @@ impl ShellCommand {
                             rebar,
                             modules: args.iter().map(|s| s.to_string()).collect(),
                             clause_coverage,
+                            bail_on_error: false,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize".into()));
@@ -177,6 +178,7 @@ impl ShellCommand {
                             app: app.into(),
                             include_generated,
                             clause_coverage,
+                            bail_on_error: false,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize-app".into()));
@@ -203,6 +205,7 @@ impl ShellCommand {
                         format: None,
                         include_generated,
                         clause_coverage,
+                        bail_on_error: false,
                     })));
                 }
                 "exit" | "quit" => return Ok(Some(ShellCommand::Quit)),

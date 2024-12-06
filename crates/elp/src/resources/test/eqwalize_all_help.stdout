@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--clause-coverage]
+Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--clause-coverage] [--bail-on-error]
 
 Available options:
         --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
@@ -7,4 +7,5 @@ Available options:
         --rebar              Run with rebar
         --include-generated  Also eqwalize opted-in generated modules from project
         --clause-coverage    Use experimental clause coverage checker
+        --bail-on-error      Exit with a non-zero status code if any errors are found
     -h, --help               Prints help information

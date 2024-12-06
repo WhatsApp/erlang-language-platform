@@ -61,6 +61,7 @@ struct EqwalizerInternalArgs<'a> {
     loaded: &'a LoadResult,
     file_ids: Vec<FileId>,
     reporter: &'a mut dyn reporting::Reporter,
+    bail_on_error: bool,
 }
 
 pub fn eqwalize_module(
@@ -117,12 +118,14 @@ pub fn do_eqwalize_module(
             &mut json_reporter
         }
     };
+    let bail_on_error = args.bail_on_error;
 
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
         file_ids,
         reporter,
+        bail_on_error,
     })
 }
 
@@ -190,12 +193,14 @@ pub fn do_eqwalize_all(
             &mut json_reporter
         }
     };
+    let bail_on_error = args.bail_on_error;
 
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
         file_ids,
         reporter,
+        bail_on_error,
     })
 }
 
@@ -241,11 +246,14 @@ pub fn do_eqwalize_app(
         })
         .collect();
     let mut reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
+    let bail_on_error = args.bail_on_error;
+
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
         file_ids,
         reporter: &mut reporter,
+        bail_on_error,
     })
 }
 
@@ -318,11 +326,14 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
     };
 
     let mut reporter = reporting::PrettyReporter::new(analysis, &loaded, cli);
+    let bail_on_error = args.bail_on_error;
+
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded: &loaded,
         file_ids,
         reporter: &mut reporter,
+        bail_on_error,
     })
 }
 
@@ -410,6 +421,7 @@ fn eqwalize(
         loaded,
         file_ids,
         reporter,
+        bail_on_error,
     }: EqwalizerInternalArgs,
 ) -> Result<()> {
     if file_ids.is_empty() {
@@ -441,6 +453,7 @@ fn eqwalize(
     });
     let eqwalized = pb.position();
     pb.finish();
+    let mut has_errors = false;
     match output {
         EqwalizerDiagnostics::Diagnostics {
             errors: diagnostics_by_module,
@@ -455,12 +468,17 @@ fn eqwalize(
                     .file_for_module(module.as_str())
                     .with_context(|| format!("module {} not found", module))?;
                 reporter.write_eqwalizer_diagnostics(file_id, &diagnostics)?;
+                has_errors = true;
             }
             if analysis.eqwalizer().mode == Mode::Shell {
                 reporter.write_stats(eqwalized, files_count as u64)?;
             }
             reporter.write_error_count()?;
-            Ok(())
+            if bail_on_error && has_errors {
+                bail!("Eqwalizer errors found.")
+            } else {
+                Ok(())
+            }
         }
         EqwalizerDiagnostics::NoAst { module } => {
             if let Some(file_id) = analysis.module_file_id(loaded.project_id, &module)? {
@@ -496,6 +514,7 @@ fn eqwalize(
                         msg: diag.message,
                         range: Some(diag.range),
                     });
+                    has_errors = true;
                 }
                 // The cached parse errors must be non-empty otherwise we wouldn't have `NoAst`
                 assert!(
@@ -510,7 +529,11 @@ fn eqwalize(
                     })
                     .collect();
                 reporter.write_parse_diagnostics(&parse_diagnostics)?;
-                Ok(())
+                if bail_on_error && has_errors {
+                    bail!("Eqwalizer parse errors found.")
+                } else {
+                    Ok(())
+                }
             } else {
                 bail!(
                     "Could not type-check because module {} was not found",
