@@ -2613,3 +2613,11 @@ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
     (#{binary() => true}, #{a := number(), atom() => binary()})
     -> #{}.
 maps_intersect_7(M1, M2) -> maps:intersect(M1, M2).
+
+-spec maps_get_1(#{a => atom(), (b | c | d) => binary()}) -> none().
+maps_get_1(M) ->
+    maps:get(z, M).
+
+-spec maps_get_2(#{a => atom(), (b | c | d) => binary()}) -> {}.
+maps_get_2(M) ->
+    maps:get(z, M, {}).

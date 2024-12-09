@@ -2345,4 +2345,31 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-163 ERRORS
+error: incompatible_types
+     ┌─ check/src/custom.erl:2619:5
+     │
+2619 │     maps:get(z, M).
+     │     ^^^^^^^^^^^^^^ maps:get('z', M).
+Expression has type:   binary()
+Context expected type: none()
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+
+error: incompatible_types
+     ┌─ check/src/custom.erl:2623:5
+     │
+2623 │     maps:get(z, M, {}).
+     │     ^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:get('z', M, {}).
+Expression has type:   {} | binary()
+Context expected type: {}
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │     
+
+  {} | binary() is not compatible with {}
+  because
+  binary() is not compatible with {}
+
+165 ERRORS
