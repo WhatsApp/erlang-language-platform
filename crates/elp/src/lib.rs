@@ -18,7 +18,6 @@ use anyhow::Result;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::Analysis;
-use elp_project_model::otp::Otp;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
@@ -152,20 +151,6 @@ pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Re
         }
     }
     Ok(LintConfig::default())
-}
-
-/// The erlang service now needs at least OTP 27.
-/// Check that is is present, error otherwise
-pub fn check_otp_on_path_is_valid() -> Result<()> {
-    match Otp::otp_release() {
-        Ok(major) => {
-            if major.as_str() < "27" {
-                bail!("Need 'erl' for at least OTP 27, found {}", major);
-            }
-        }
-        Err(err) => bail!("No 'erl' executable on the path: {}", err),
-    }
-    Ok(())
 }
 
 #[cfg(test)]

@@ -16,7 +16,6 @@ use std::sync::Once;
 
 use anyhow::Result;
 use bpaf::batteries;
-use elp::check_otp_on_path_is_valid;
 use elp::cli;
 use elp::cli::Cli;
 use elp::ServerSetup;
@@ -104,18 +103,6 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         setup_static(&args);
         setup_thread_pool();
     });
-    match args.command {
-        args::Command::ParseAllElp(_)
-        | args::Command::ParseAll(_)
-        | args::Command::Eqwalize(_)
-        | args::Command::EqwalizeAll(_)
-        | args::Command::EqwalizeTarget(_)
-        | args::Command::EqwalizeApp(_)
-        | args::Command::EqwalizeStats(_)
-        | args::Command::Lint(_)
-        | args::Command::Shell(_) => check_otp_on_path_is_valid()?,
-        _ => {}
-    }
     let query_config = args.query_config();
     match args.command {
         args::Command::RunServer(_) => run_server(logger, query_config)?,
