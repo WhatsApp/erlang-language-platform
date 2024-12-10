@@ -2621,3 +2621,10 @@ maps_get_1(M) ->
 -spec maps_get_2(#{a => atom(), (b | c | d) => binary()}) -> {}.
 maps_get_2(M) ->
     maps:get(z, M, {}).
+
+-spec is_char_list(term()) -> string().
+is_char_list(T) ->
+    case io_lib:char_list(T) of
+        true -> T;
+        false -> ""
+    end.
