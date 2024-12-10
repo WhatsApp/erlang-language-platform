@@ -81,7 +81,7 @@
     "type": "boolean"
   },
   "elp.lens.run.coverage.enable": {
-    "default": false,
+    "default": true,
     "markdownDescription": "Display code coverage information when running tests via the\nCode Lenses. Only applies when `#elp.lens.enabled` and\n`#elp.lens.run.enable#` are set.",
     "type": "boolean"
   },
