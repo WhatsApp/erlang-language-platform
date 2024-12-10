@@ -2345,14 +2345,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
-     ┌─ check/src/custom.erl:2628:17
-     │
-2628 │         true -> T;
-     │                 ^ T.
-Expression has type:   term()
-Context expected type: string()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-164 ERRORS
+163 ERRORS
