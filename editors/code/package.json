@@ -248,7 +248,7 @@
     "@typescript-eslint/eslint-plugin": "^5.54.0",
     "@typescript-eslint/parser": "^5.54.0",
     "eslint": "^8.35.0",
-    "mocha": "^9.2.1",
+    "mocha": "^11.0.1",
     "typescript": "^5.0.2"
   }
 }
