@@ -91,6 +91,8 @@ use paths::Utf8Path;
 use paths::Utf8PathBuf;
 pub use stdx::trim_indent;
 use tempfile::tempdir;
+use text_size::TextRange;
+use text_size::TextSize;
 
 use crate::otp::Otp;
 use crate::temp_dir::TempDir;
@@ -105,6 +107,8 @@ pub struct Fixture {
     pub app_data: ProjectAppData,
     pub otp: Option<Otp>,
     pub scratch_buffer: Option<PathBuf>,
+    pub tag: Option<String>,
+    pub tags: Vec<(TextRange, Option<String>)>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -276,6 +280,14 @@ impl FixtureWithProjectMeta {
             }
         }
 
+        for fixture in &mut res {
+            if let Some(tag) = &fixture.tag {
+                let (tags, text) = extract_tags(&fixture.text, tag);
+                fixture.tags = tags;
+                fixture.text = text;
+            }
+        }
+
         FixtureWithProjectMeta {
             fixture: res,
             diagnostics_enabled,
@@ -321,6 +333,7 @@ impl FixtureWithProjectMeta {
         let mut extra_dirs = Vec::new();
         let mut otp = None;
         let mut scratch_buffer = None;
+        let mut tag = None;
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -352,6 +365,9 @@ impl FixtureWithProjectMeta {
                     let tmp_path = tmp_dir.path().join(path.strip_prefix('/').unwrap());
                     path = tmp_path.to_str().unwrap().to_string();
                     scratch_buffer = Some(tmp_path);
+                }
+                "tag" => {
+                    tag = Some(value.to_string());
                 }
                 _ => panic!("bad component: {:?}", component),
             }
@@ -386,8 +402,54 @@ impl FixtureWithProjectMeta {
             app_data,
             otp,
             scratch_buffer,
+            tag,
+            tags: Vec::new(),
         }
     }
+}
+
+/// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
+pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String>)>, String) {
+    let open = format!("<{tag}");
+    let close = format!("</{tag}>");
+    let mut ranges = Vec::new();
+    let mut res = String::new();
+    let mut stack = Vec::new();
+    loop {
+        match text.find('<') {
+            None => {
+                res.push_str(text);
+                break;
+            }
+            Some(i) => {
+                res.push_str(&text[..i]);
+                text = &text[i..];
+                if text.starts_with(&open) {
+                    let close_open = text.find('>').unwrap();
+                    let attr = text[open.len()..close_open].trim();
+                    let attr = if attr.is_empty() {
+                        None
+                    } else {
+                        Some(attr.to_string())
+                    };
+                    text = &text[close_open + '>'.len_utf8()..];
+                    let from = TextSize::of(&res);
+                    stack.push((from, attr));
+                } else if text.starts_with(&close) {
+                    text = &text[close.len()..];
+                    let (from, attr) = stack.pop().unwrap_or_else(|| panic!("unmatched </{tag}>"));
+                    let to = TextSize::of(&res);
+                    ranges.push((TextRange::new(from, to), attr));
+                } else {
+                    res.push('<');
+                    text = &text['<'.len_utf8()..];
+                }
+            }
+        }
+    }
+    assert!(stack.is_empty(), "unmatched <{}>", tag);
+    ranges.sort_by_key(|r| (r.0.start(), r.0.end()));
+    (ranges, res)
 }
 
 // ---------------------------------------------------------------------
@@ -549,4 +611,27 @@ bar() -> ok.
             }"#]]
         .assert_eq(format!("{:#?}", meta0.app_data).as_str());
     }
+}
+
+#[test]
+fn test_extract_tags_1() {
+    let (tags, text) = extract_tags(r#"<tag region>foo() -> ok.</tag>"#, "tag");
+    let actual = tags
+        .into_iter()
+        .map(|(range, attr)| (&text[range], attr))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
+}
+
+#[test]
+fn test_extract_tags_2() {
+    let (tags, text) = extract_tags(
+        r#"bar() -> ok.\n<tag region>foo() -> ok.</tag>\nbaz() -> ok."#,
+        "tag",
+    );
+    let actual = tags
+        .into_iter()
+        .map(|(range, attr)| (&text[range], attr))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
 }

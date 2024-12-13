@@ -299,7 +299,6 @@ fn is_dynamic(t: &Type) -> bool {
 mod tests {
     use elp_base_db::fixture::WithFixture;
     use elp_ide_db::elp_base_db;
-    use elp_ide_db::elp_base_db::fixture::extract_tags;
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
@@ -324,14 +323,13 @@ mod tests {
     #[track_caller]
     fn do_check_highlights(fixture: &str, provide_types: bool) {
         let fixture = trim_indent(fixture);
-        let (ranges, fixture) = extract_tags(fixture.trim_start(), "tag");
+        let (db, fixture) = RootDatabase::with_fixture(&fixture);
+        let ranges = fixture.tags.get(&fixture.file_id()).unwrap();
         let range = if !ranges.is_empty() {
             Some(ranges[0].0)
         } else {
             None
         };
-
-        let (db, fixture) = RootDatabase::with_fixture(&fixture);
         let annotations = fixture.annotations(&db);
         let expected: Vec<_> = annotations
             .into_iter()
@@ -399,7 +397,7 @@ mod tests {
     fn deprecated_highlight() {
         check_highlights(
             r#"
-              //- /src/deprecated_highlight.erl
+           //- /src/deprecated_highlight.erl
               -module(deprecated_highlight).
               -deprecated([{f, 1}]).
               f(1) -> 1.
@@ -413,6 +411,8 @@ mod tests {
     fn highlights_in_range() {
         check_highlights(
             r#"
+           //- /src/highlights_in_range.erl tag:tag
+              -module(highlights_in_range).
               -export([f/1]).
               foo(X) -> ok.
               f(Var1) ->

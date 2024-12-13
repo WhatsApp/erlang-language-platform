@@ -118,15 +118,18 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<FoldingR
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::elp_base_db::fixture::extract_tags;
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
+    use stdx::trim_indent;
 
     use super::*;
-    use crate::fixture;
 
     fn check(fixture: &str) {
-        let (ranges, fixture) = extract_tags(fixture.trim_start(), "fold");
-        let (analysis, file_id) = fixture::single_file(&fixture);
-        let mut folding_ranges = analysis.folding_ranges(file_id).unwrap_or_default();
+        let fixture = trim_indent(fixture);
+        let (db, fixture) = RootDatabase::with_fixture(&fixture);
+        let ranges = fixture.tags.get(&fixture.file_id()).unwrap().clone();
+        let file_id = fixture.file_id();
+
+        let mut folding_ranges = folding_ranges(&db, file_id);
         folding_ranges
             .sort_by_key(|folding_range| (folding_range.range.start(), folding_range.range.end()));
 
@@ -162,6 +165,7 @@ mod tests {
     fn test_function() {
         check(
             r#"
+//- /src/my_module tag:fold
 -module(my_module).
 <fold region>one() ->
   ok.</fold>
@@ -173,6 +177,7 @@ mod tests {
     fn test_record() {
         check(
             r#"
+//- /src/my_module tag:fold
 -module(my_module).
 <fold region>-record(my_record, {a :: integer(), b :: binary()}).</fold>
 "#,
@@ -183,6 +188,7 @@ mod tests {
     fn test_records_and_functions() {
         check(
             r#"
+//- /src/my_module tag:fold
 -module(my_module).
 
 <fold region>-record(my_record, {a :: integer(),
@@ -202,6 +208,7 @@ mod tests {
     fn test_module_doc_attributes() {
         check(
             r#"
+//- /src/my_module tag:fold
 -module(my_module).
 <fold region>-moduledoc """
 This is a module doc
@@ -218,6 +225,7 @@ This is a module doc
     fn test_doc_attributes() {
         check(
             r#"
+//- /src/my_module tag:fold
 -module(my_module).
 
 -export([one/0]).
@@ -226,6 +234,25 @@ This is a module doc
 This is one function
 ".</fold>
 <fold region>one() -> 1.</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_doc_attributes_with_included_file() {
+        check(
+            r#"
+//- /src/my_header.hrl
+-record(my_record, {a :: integer()}).
+//- /src/my_module.erl tag:fold
+<fold region>                                     </fold>
+-module(my_module).
+-export([one/0]).
+-include("my_header.hrl").
+<fold region>-doc "
+This is one function
+".</fold>
+<fold region>one() -> 1.</fold>~
 "#,
         );
     }

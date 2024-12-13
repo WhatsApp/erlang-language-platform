@@ -27,6 +27,7 @@ serde.workspace = true
 serde_json.workspace = true
 stdx.workspace = true
 tempfile.workspace = true
+text-size.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 

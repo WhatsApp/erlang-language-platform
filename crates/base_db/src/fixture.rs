@@ -103,6 +103,7 @@ pub struct ChangeFixture {
     pub files: Vec<FileId>,
     pub files_by_path: FxHashMap<VfsPath, FileId>,
     pub diagnostics_enabled: DiagnosticsEnabled,
+    pub tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>>,
 }
 
 struct Builder {
@@ -188,6 +189,7 @@ impl ChangeFixture {
         let mut otp: Option<Otp> = None;
         let mut app_files = SourceRootMap::default();
         let mut files_by_path: FxHashMap<VfsPath, FileId> = FxHashMap::default();
+        let mut tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>> = FxHashMap::default();
 
         for entry in fixture.clone() {
             let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
@@ -225,6 +227,7 @@ impl ChangeFixture {
             app_files.insert(app_name, file_id, path.clone());
             files_by_path.insert(path, file_id);
             files.push(file_id);
+            tags.insert(file_id, entry.tags);
 
             inc_file_id(&mut file_id);
         }
@@ -343,6 +346,7 @@ impl ChangeFixture {
                 files,
                 files_by_path,
                 diagnostics_enabled,
+                tags,
             },
             change,
             project,
@@ -515,73 +519,6 @@ fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     let (start, text) = try_extract_offset(text)?;
     let (end, text) = try_extract_offset(&text)?;
     Some((TextRange::new(start, end), text))
-}
-
-/// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
-pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String>)>, String) {
-    let open = format!("<{tag}");
-    let close = format!("</{tag}>");
-    let mut ranges = Vec::new();
-    let mut res = String::new();
-    let mut stack = Vec::new();
-    loop {
-        match text.find('<') {
-            None => {
-                res.push_str(text);
-                break;
-            }
-            Some(i) => {
-                res.push_str(&text[..i]);
-                text = &text[i..];
-                if text.starts_with(&open) {
-                    let close_open = text.find('>').unwrap();
-                    let attr = text[open.len()..close_open].trim();
-                    let attr = if attr.is_empty() {
-                        None
-                    } else {
-                        Some(attr.to_string())
-                    };
-                    text = &text[close_open + '>'.len_utf8()..];
-                    let from = TextSize::of(&res);
-                    stack.push((from, attr));
-                } else if text.starts_with(&close) {
-                    text = &text[close.len()..];
-                    let (from, attr) = stack.pop().unwrap_or_else(|| panic!("unmatched </{tag}>"));
-                    let to = TextSize::of(&res);
-                    ranges.push((TextRange::new(from, to), attr));
-                } else {
-                    res.push('<');
-                    text = &text['<'.len_utf8()..];
-                }
-            }
-        }
-    }
-    assert!(stack.is_empty(), "unmatched <{}>", tag);
-    ranges.sort_by_key(|r| (r.0.start(), r.0.end()));
-    (ranges, res)
-}
-
-#[test]
-fn test_extract_tags_1() {
-    let (tags, text) = extract_tags(r#"<tag region>foo() -> ok.</tag>"#, "tag");
-    let actual = tags
-        .into_iter()
-        .map(|(range, attr)| (&text[range], attr))
-        .collect::<Vec<_>>();
-    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
-}
-
-#[test]
-fn test_extract_tags_2() {
-    let (tags, text) = extract_tags(
-        r#"bar() -> ok.\n<tag region>foo() -> ok.</tag>\nbaz() -> ok."#,
-        "tag",
-    );
-    let actual = tags
-        .into_iter()
-        .map(|(range, attr)| (&text[range], attr))
-        .collect::<Vec<_>>();
-    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -655,6 +655,7 @@ dependencies = [
  "serde_json",
  "stdx",
  "tempfile",
+ "text-size",
  "thiserror",
  "toml",
 ]
