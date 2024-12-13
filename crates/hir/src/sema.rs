@@ -132,6 +132,10 @@ impl<'db> Semantic<'db> {
         self.db.def_map(file_id)
     }
 
+    pub fn local_def_map(&self, file_id: FileId) -> Arc<DefMap> {
+        self.db.local_def_map(file_id)
+    }
+
     pub fn form_list(&self, file_id: FileId) -> Arc<FormList> {
         self.db.file_form_list(file_id)
     }

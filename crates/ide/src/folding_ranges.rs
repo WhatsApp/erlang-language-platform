@@ -85,7 +85,7 @@ impl FoldingRangeTrait for InFile<&DocAttribute> {
 pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<FoldingRange> {
     let mut folds = Vec::new();
     let sema = Semantic::new(db);
-    let def_map = sema.def_map(file_id);
+    let def_map = sema.local_def_map(file_id);
     let form_list = sema.form_list(file_id);
     // Functions
     for (_, def) in def_map.get_functions() {
@@ -245,7 +245,6 @@ This is one function
 //- /src/my_header.hrl
 -record(my_record, {a :: integer()}).
 //- /src/my_module.erl tag:fold
-<fold region>                                     </fold>
 -module(my_module).
 -export([one/0]).
 -include("my_header.hrl").
