@@ -184,33 +184,25 @@ impl ToDocumentSymbol for DefineDef {
 // |===
 pub(crate) fn document_symbols(db: &RootDatabase, file_id: FileId) -> Vec<DocumentSymbol> {
     let sema = Semantic::new(db);
-    let def_map = sema.def_map(file_id);
+    let def_map = sema.local_def_map(file_id);
 
     let mut res = Vec::new();
 
     for (name, def) in def_map.get_functions() {
-        if def.file.file_id == file_id {
-            let mut symbol = def.to_document_symbol(db);
-            if def_map.is_deprecated(name) {
-                symbol.deprecated = true;
-            }
-            res.push(symbol);
+        let mut symbol = def.to_document_symbol(db);
+        if def_map.is_deprecated(name) {
+            symbol.deprecated = true;
         }
+        res.push(symbol);
     }
     for def in def_map.get_records().values() {
-        if def.file.file_id == file_id {
-            res.push(def.to_document_symbol(db));
-        }
+        res.push(def.to_document_symbol(db));
     }
     for def in def_map.get_macros().values() {
-        if def.file.file_id == file_id {
-            res.push(def.to_document_symbol(db));
-        }
+        res.push(def.to_document_symbol(db));
     }
     for def in def_map.get_types().values() {
-        if def.file.file_id == file_id {
-            res.push(def.to_document_symbol(db));
-        }
+        res.push(def.to_document_symbol(db));
     }
 
     res.sort_by(|a, b| a.range.start().cmp(&b.range.start()));

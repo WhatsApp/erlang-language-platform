@@ -887,48 +887,46 @@ impl<'db> Semantic<'db> {
         &self,
         file_id: FileId,
     ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
-        let def_map = self.def_map(file_id);
+        let def_map = self.local_def_map(file_id);
         let mut res = FxHashSet::default();
         for (function_id, def) in def_map.get_function_clauses() {
-            if def.file.file_id == file_id {
-                let function_id = InFile::new(file_id, *function_id);
-                let body = self.db.function_clause_body(function_id);
+            let function_id = InFile::new(file_id, *function_id);
+            let body = self.db.function_clause_body(function_id);
 
-                body.fold(
-                    Strategy {
-                        macros: MacroStrategy::Expand,
-                        parens: ParenStrategy::InvisibleParens,
-                    },
-                    (),
-                    &mut |acc, ctx| {
-                        if let Some(mut resolver) = self.clause_resolver(function_id) {
-                            let mut bound_vars =
-                                BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
-                            match ctx.item {
-                                AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
-                                    bound_vars.report_any_bound_vars(&lhs)
-                                }
-                                AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
-                                    bound_vars.cr_clauses(&clauses);
-                                }
-                                AnyExpr::Expr(Expr::Try {
-                                    exprs: _,
-                                    of_clauses,
-                                    catch_clauses,
-                                    after: _,
-                                }) => {
-                                    bound_vars.cr_clauses(&of_clauses);
-                                    catch_clauses.iter().for_each(|clause| {
-                                        bound_vars.report_any_bound_vars(&clause.reason);
-                                    })
-                                }
-                                _ => {}
+            body.fold(
+                Strategy {
+                    macros: MacroStrategy::Expand,
+                    parens: ParenStrategy::InvisibleParens,
+                },
+                (),
+                &mut |acc, ctx| {
+                    if let Some(mut resolver) = self.clause_resolver(function_id) {
+                        let mut bound_vars =
+                            BoundVarsInPat::new(self, &mut resolver, file_id, &mut res);
+                        match ctx.item {
+                            AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) => {
+                                bound_vars.report_any_bound_vars(&lhs)
                             }
-                        };
-                        acc
-                    },
-                );
-            }
+                            AnyExpr::Expr(Expr::Case { expr: _, clauses }) => {
+                                bound_vars.cr_clauses(&clauses);
+                            }
+                            AnyExpr::Expr(Expr::Try {
+                                exprs: _,
+                                of_clauses,
+                                catch_clauses,
+                                after: _,
+                            }) => {
+                                bound_vars.cr_clauses(&of_clauses);
+                                catch_clauses.iter().for_each(|clause| {
+                                    bound_vars.report_any_bound_vars(&clause.reason);
+                                })
+                            }
+                            _ => {}
+                        }
+                    };
+                    acc
+                },
+            )
         }
         res
     }
@@ -993,11 +991,9 @@ impl<'db> Semantic<'db> {
     where
         F: FnMut(&FunctionDef),
     {
-        self.def_map(file_id).get_functions().for_each(|(_, def)| {
-            if def.file.file_id == file_id {
-                f(def)
-            }
-        });
+        self.local_def_map(file_id)
+            .get_functions()
+            .for_each(|(_, def)| f(def));
     }
 }
 

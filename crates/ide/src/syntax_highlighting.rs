@@ -116,25 +116,44 @@ fn deprecated_func_highlight(
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
-    let def_map = sema.def_map(file_id);
+    let def_map = sema.local_def_map(file_id);
     let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::DeprecatedFunction;
     for (_, def) in def_map.get_functions() {
-        if def.file.file_id == file_id {
-            let function_id = InFile::new(file_id, def.function_id);
-            let function_body = sema.to_function_body(function_id);
-            sema.fold_function(
-                Strategy {
-                    macros: MacroStrategy::Expand,
-                    parens: ParenStrategy::InvisibleParens,
-                },
-                function_id,
-                (),
-                &mut |acc, clause_id, ctx| {
-                    let clause_body = function_body.in_clause(clause_id);
-                    if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
-                        let arity = args.len() as u32;
-                        match target {
-                            CallTarget::Local { name } => {
+        let function_id = InFile::new(file_id, def.function_id);
+        let function_body = sema.to_function_body(function_id);
+        sema.fold_function(
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            function_id,
+            (),
+            &mut |acc, clause_id, ctx| {
+                let clause_body = function_body.in_clause(clause_id);
+                if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
+                    let arity = args.len() as u32;
+                    match target {
+                        CallTarget::Local { name } => {
+                            if let Some(range) = find_deprecated_range(
+                                sema,
+                                &def_map,
+                                &name,
+                                arity,
+                                range_to_highlight,
+                                clause_body,
+                            ) {
+                                hl.add(HlRange {
+                                    range,
+                                    highlight,
+                                    binding_hash: None,
+                                })
+                            }
+                        }
+                        CallTarget::Remote { module, name, .. } => {
+                            if let Some(file_id) =
+                                find_remote_module_file_id(sema, file_id, &module, clause_body)
+                            {
+                                let def_map = sema.def_map(file_id);
                                 if let Some(range) = find_deprecated_range(
                                     sema,
                                     &def_map,
@@ -150,33 +169,12 @@ fn deprecated_func_highlight(
                                     })
                                 }
                             }
-                            CallTarget::Remote { module, name, .. } => {
-                                if let Some(file_id) =
-                                    find_remote_module_file_id(sema, file_id, &module, clause_body)
-                                {
-                                    let def_map = sema.def_map(file_id);
-                                    if let Some(range) = find_deprecated_range(
-                                        sema,
-                                        &def_map,
-                                        &name,
-                                        arity,
-                                        range_to_highlight,
-                                        clause_body,
-                                    ) {
-                                        hl.add(HlRange {
-                                            range,
-                                            highlight,
-                                            binding_hash: None,
-                                        })
-                                    }
-                                }
-                            }
                         }
                     }
-                    acc
-                },
-            );
-        }
+                }
+                acc
+            },
+        )
     }
 }
 
@@ -217,9 +215,9 @@ fn functions_highlight(
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
-    let def_map = sema.def_map(file_id);
+    let def_map = sema.local_def_map(file_id);
     for (_, def) in def_map.get_functions() {
-        if def.file.file_id == file_id && (def.exported || def.deprecated) {
+        if def.exported || def.deprecated {
             let fun_decl_ast = def.source(sema.db.upcast());
 
             fun_decl_ast
