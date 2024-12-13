@@ -157,8 +157,8 @@ pub trait DefDatabase:
 
     // Helper query to compute only local data, avoids recomputation of header data,
     // if only local information changed
-    #[salsa::invoke(DefMap::local_def_map_query)]
-    fn local_def_map(&self, file_id: FileId) -> Arc<DefMap>;
+    #[salsa::invoke(DefMap::def_map_local_query)]
+    fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
 }
 
 fn function_body(db: &dyn DefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {

@@ -34,7 +34,7 @@ pub(super) fn hints(
     if !config.parameter_hints {
         return None;
     }
-    let def_map = sema.local_def_map(file_id);
+    let def_map = sema.def_map_local(file_id);
     for (_, def) in def_map.get_functions() {
         let function_id = InFile::new(file_id, def.function_id);
         let function_body = sema.to_function_body(function_id);

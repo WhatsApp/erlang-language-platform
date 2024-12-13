@@ -52,7 +52,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.local_def_map(file_id)
+    sema.def_map_local(file_id)
         .get_functions()
         .for_each(|(_, fun_def)| {
             let def_fb = fun_def.in_function_body(sema, fun_def);

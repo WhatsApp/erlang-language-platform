@@ -111,7 +111,7 @@ fn is_file_used(
             }
         }
 
-        let def_map = db.local_def_map(file_id);
+        let def_map = db.def_map_local(file_id);
         if def_map.parse_transform {
             cache.insert(file_id, true);
             return true;

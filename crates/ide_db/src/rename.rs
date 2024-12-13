@@ -380,7 +380,7 @@ fn is_safe_var_anonymous(var_in: InFile<&ast::Var>) -> bool {
 pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &String, arity: u32) -> bool {
     let scope_ok = sema
         .db
-        .local_def_map(file_id)
+        .def_map_local(file_id)
         .get_functions_in_scope()
         .all(|(name, _)| !(&name.name().to_string() == new_name && name.arity() == arity));
 

@@ -184,7 +184,7 @@ impl ToDocumentSymbol for DefineDef {
 // |===
 pub(crate) fn document_symbols(db: &RootDatabase, file_id: FileId) -> Vec<DocumentSymbol> {
     let sema = Semantic::new(db);
-    let def_map = sema.local_def_map(file_id);
+    let def_map = sema.def_map_local(file_id);
 
     let mut res = Vec::new();
 

@@ -1027,7 +1027,7 @@ impl GleanIndexer {
         file_id: FileId,
         module: &ModuleName,
     ) -> Vec<FunctionDeclarationFact> {
-        let def_map = db.local_def_map(file_id);
+        let def_map = db.def_map_local(file_id);
         let mut result = vec![];
         for (fun, def) in def_map.get_functions() {
             let range = def.range(db);
@@ -1058,7 +1058,7 @@ impl GleanIndexer {
         path: &VfsPath,
     ) -> Option<FileDeclaration> {
         let mut declarations = vec![];
-        let def_map = db.local_def_map(file_id);
+        let def_map = db.def_map_local(file_id);
         // file docs are too slow. Going with specs for now
         // let file_doc = db.file_doc(file_id);
         let specs = db.file_specs(file_id);

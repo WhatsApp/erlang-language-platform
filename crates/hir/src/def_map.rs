@@ -135,7 +135,7 @@ impl Deprecated {
 }
 
 impl DefMap {
-    pub(crate) fn local_def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+    pub(crate) fn def_map_local_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
         let mut def_map = Self::default();
         let file = File { file_id };
         let module = module_name(db.upcast(), file_id);
@@ -315,7 +315,7 @@ impl DefMap {
     }
 
     pub(crate) fn def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
-        let local = db.local_def_map(file_id);
+        let local = db.def_map_local(file_id);
         let form_list = db.file_form_list(file_id);
 
         let mut remote = Self::default();
@@ -350,7 +350,7 @@ impl DefMap {
         _cycle: &[String],
         file_id: &FileId,
     ) -> Arc<DefMap> {
-        db.local_def_map(*file_id)
+        db.def_map_local(*file_id)
     }
 
     pub fn get_by_function_id(&self, function_id: &InFile<FunctionDefId>) -> Option<&FunctionDef> {

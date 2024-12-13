@@ -132,8 +132,8 @@ impl<'db> Semantic<'db> {
         self.db.def_map(file_id)
     }
 
-    pub fn local_def_map(&self, file_id: FileId) -> Arc<DefMap> {
-        self.db.local_def_map(file_id)
+    pub fn def_map_local(&self, file_id: FileId) -> Arc<DefMap> {
+        self.db.def_map_local(file_id)
     }
 
     pub fn form_list(&self, file_id: FileId) -> Arc<FormList> {
@@ -887,7 +887,7 @@ impl<'db> Semantic<'db> {
         &self,
         file_id: FileId,
     ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
-        let def_map = self.local_def_map(file_id);
+        let def_map = self.def_map_local(file_id);
         let mut res = FxHashSet::default();
         for (function_id, def) in def_map.get_function_clauses() {
             let function_id = InFile::new(file_id, *function_id);
@@ -991,7 +991,7 @@ impl<'db> Semantic<'db> {
     where
         F: FnMut(&FunctionDef),
     {
-        self.local_def_map(file_id)
+        self.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| f(def));
     }

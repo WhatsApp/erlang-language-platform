@@ -116,7 +116,7 @@ fn deprecated_func_highlight(
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
-    let def_map = sema.local_def_map(file_id);
+    let def_map = sema.def_map_local(file_id);
     let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::DeprecatedFunction;
     for (_, def) in def_map.get_functions() {
         let function_id = InFile::new(file_id, def.function_id);
@@ -215,7 +215,7 @@ fn functions_highlight(
     range_to_highlight: TextRange,
     hl: &mut Highlights,
 ) {
-    let def_map = sema.local_def_map(file_id);
+    let def_map = sema.def_map_local(file_id);
     for (_, def) in def_map.get_functions() {
         if def.exported || def.deprecated {
             let fun_decl_ast = def.source(sema.db.upcast());
