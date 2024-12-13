@@ -187,6 +187,7 @@ fn make_diagnostic(
     };
     Diagnostic::new(DiagnosticCode::DeprecatedFunction, message, range)
         .with_severity(severity)
+        .deprecated()
         .with_uri(uri)
         .experimental()
 }

@@ -121,11 +121,28 @@ use self::eqwalizer_assists::add_eqwalizer_assists;
 
 pub const DIAGNOSTIC_WHOLE_FILE_RANGE: TextRange = TextRange::empty(TextSize::new(0));
 
+/// A diagnostic may have a tag, which the client is allowed to use
+/// when rendereing the item at its range. e.g. grey for Unused,
+/// strikethough for Deprecated
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiagnosticTag {
+    None,
+    Unused,
+    Deprecated,
+}
+
+impl Default for DiagnosticTag {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
+    pub tag: DiagnosticTag,
     pub categories: FxHashSet<Category>,
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
@@ -141,6 +158,7 @@ impl Diagnostic {
             message,
             range,
             severity: Severity::Error,
+            tag: DiagnosticTag::None,
             categories: FxHashSet::default(),
             fixes: None,
             related_info: None,
@@ -173,6 +191,16 @@ impl Diagnostic {
 
     pub(crate) fn with_severity(mut self, severity: Severity) -> Diagnostic {
         self.severity = severity;
+        self
+    }
+
+    pub(crate) fn unused(mut self) -> Diagnostic {
+        self.tag = DiagnosticTag::Unused;
+        self
+    }
+
+    pub(crate) fn deprecated(mut self) -> Diagnostic {
+        self.tag = DiagnosticTag::Deprecated;
         self
     }
 
@@ -719,6 +747,7 @@ pub fn eqwalizer_to_diagnostic(
     let mut diagnostic = Diagnostic {
         range,
         severity,
+        tag: DiagnosticTag::None,
         code: DiagnosticCode::Eqwalizer(d.code.clone()),
         message,
         categories: FxHashSet::default(),
@@ -1147,12 +1176,14 @@ pub fn erlang_service_diagnostics(
             .map(|(file_id, start, end, code, msg)| {
                 (
                     file_id,
-                    Diagnostic::new(
-                        DiagnosticCode::ErlangService(code),
-                        msg,
-                        TextRange::new(start, end),
-                    )
-                    .with_severity(Severity::Error),
+                    tag_erlang_service_diagnostic(
+                        Diagnostic::new(
+                            DiagnosticCode::ErlangService(code),
+                            msg,
+                            TextRange::new(start, end),
+                        )
+                        .with_severity(Severity::Error),
+                    ),
                 )
             })
             .chain(
@@ -1161,12 +1192,14 @@ pub fn erlang_service_diagnostics(
                     .map(|(file_id, start, end, code, msg)| {
                         (
                             file_id,
-                            Diagnostic::new(
-                                DiagnosticCode::ErlangService(code),
-                                msg,
-                                TextRange::new(start, end),
-                            )
-                            .with_severity(Severity::Warning),
+                            tag_erlang_service_diagnostic(
+                                Diagnostic::new(
+                                    DiagnosticCode::ErlangService(code),
+                                    msg,
+                                    TextRange::new(start, end),
+                                )
+                                .with_severity(Severity::Warning),
+                            ),
                         )
                     }),
             )
@@ -1209,6 +1242,16 @@ pub fn erlang_service_diagnostics(
         label_erlang_service_diagnostics(db, diags)
     } else {
         vec![]
+    }
+}
+
+fn tag_erlang_service_diagnostic(d: Diagnostic) -> Diagnostic {
+    if is_erlang_service_unused_x_diagnostic(&d.code) {
+        d.unused()
+    } else if is_erlang_service_deprecated_diagnostic(&d.code) {
+        d.deprecated()
+    } else {
+        d
     }
 }
 
@@ -1495,6 +1538,36 @@ pub fn is_erlang_service_syntax_error(code: &DiagnosticCode) -> bool {
     match code {
         DiagnosticCode::ErlangService(s) => match s.as_str() {
             "P1711" => true, // Syntax error
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+pub fn is_erlang_service_unused_x_diagnostic(code: &DiagnosticCode) -> bool {
+    match code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "L1226" => true, // Unused import
+            "L1230" => true, // Unused function
+            "L1260" => true, // Unused record
+            "L1268" => true, // Unused var
+            "L1296" => true, // Unused type
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+pub fn is_erlang_service_deprecated_diagnostic(code: &DiagnosticCode) -> bool {
+    match code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "L1235" => true, // Deprecated
+            "L1236" => true, // Deprecated
+            "L1237" => true, // Deprecated type
+            "L1238" => true, // Deprecated type
+            "L1312" => true, // Deprecated builtin type
+            "L1319" => true, // Deprecated callback
+            "L1320" => true, // Deprecated callback
             _ => false,
         },
         _ => false,
@@ -2132,6 +2205,7 @@ baz(1)->4.
                     message: "function foo/0 undefined".to_string(),
                     range: TextRange::new(21.into(), 43.into()),
                     severity: Severity::Error,
+                    tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2142,6 +2216,7 @@ baz(1)->4.
                     message: "function foo/0 undefined".to_string(),
                     range: TextRange::new(74.into(), 79.into()),
                     severity: Severity::Error,
+                    tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2152,6 +2227,7 @@ baz(1)->4.
                     message: "spec for undefined function foo/0".to_string(),
                     range: TextRange::new(82.into(), 99.into()),
                     severity: Severity::Error,
+                    tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2166,6 +2242,7 @@ baz(1)->4.
                 message: "syntax error before: '->'".to_string(),
                 range: TextRange::new(106.into(), 108.into()),
                 severity: Severity::Error,
+                tag: DiagnosticTag::None,
                 categories: FxHashSet::default(),
                 fixes: None,
                 related_info: None,

@@ -184,6 +184,7 @@ fn make_diagnostic(file_id: FileId, range: TextRange, new_name: String) -> Diagn
         range,
     )
     .with_severity(Severity::Warning)
+    .unused()
     .add_categories([
         // Marking as EXPERIMENTAL since it currently conflicts with handlers::ignore_variable https://fburl.com/code/rkm52yfj
         Category::Experimental,

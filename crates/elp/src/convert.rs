@@ -14,6 +14,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticCode;
+use elp_ide::diagnostics::DiagnosticTag;
 use elp_ide::diagnostics::RelatedInformation;
 use elp_ide::diagnostics::Severity;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
@@ -89,8 +90,16 @@ pub fn ide_to_lsp_diagnostic(
         source,
         message: d.message.clone(),
         related_information: from_related(line_index, url, &d.related_info),
-        tags: None,
+        tags: lsp_diagnostic_tags(&d.tag),
         data: None,
+    }
+}
+
+fn lsp_diagnostic_tags(d: &DiagnosticTag) -> Option<Vec<lsp_types::DiagnosticTag>> {
+    match d {
+        DiagnosticTag::None => None,
+        DiagnosticTag::Unused => Some(vec![lsp_types::DiagnosticTag::UNNECESSARY]),
+        DiagnosticTag::Deprecated => Some(vec![lsp_types::DiagnosticTag::DEPRECATED]),
     }
 }
 

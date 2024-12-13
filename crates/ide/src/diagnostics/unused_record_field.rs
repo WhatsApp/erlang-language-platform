@@ -81,6 +81,7 @@ fn make_diagnostic(name_range: TextRange, name: &str) -> Diagnostic {
         name_range,
         format!("Unused record field ({name})"),
     )
+    .unused()
 }
 
 #[cfg(test)]

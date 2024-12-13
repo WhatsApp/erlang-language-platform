@@ -78,6 +78,7 @@ fn make_diagnostic(
         name_range,
         format!("Unused macro ({name})"),
     )
+    .unused()
     .with_fixes(Some(vec![delete_unused_macro(file_id, macro_range, name)]))
 }
 
