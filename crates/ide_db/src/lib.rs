@@ -424,7 +424,8 @@ mod tests {
         let fixture = r#"
              -mod~ule(main).
             "#;
-        let (db, position, _) = RootDatabase::with_position(fixture);
+        let (db, fixture) = RootDatabase::with_fixture(fixture);
+        let position = fixture.position();
 
         debug_assert_eq!(
             db.clamp_range(position.file_id, TextRange::new(2.into(), 2000.into())),
@@ -437,8 +438,8 @@ mod tests {
         let fixture = r#"
              -mod~ule(main).
             "#;
-        let (db, position, _) = RootDatabase::with_position(fixture);
-
+        let (db, fixture) = RootDatabase::with_fixture(fixture);
+        let position = fixture.position();
         debug_assert_eq!(db.clamp_offset(position.file_id, 2000.into()), 15.into())
     }
 }

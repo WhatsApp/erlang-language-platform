@@ -1074,7 +1074,8 @@ mod local_tests {
     use crate::Semantic;
 
     fn check_is_macro_expr(fixture: &str) {
-        let (db, position, _) = TestDB::with_position(fixture);
+        let (db, fixture) = TestDB::with_fixture(fixture);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
 
         let file_syntax = db.parse(position.file_id).syntax_node();
@@ -1088,7 +1089,8 @@ mod local_tests {
     }
 
     fn check_is_macro_pat(fixture: &str) {
-        let (db, position, _) = TestDB::with_position(fixture);
+        let (db, fixture) = TestDB::with_fixture(fixture);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
 
         let file_syntax = db.parse(position.file_id).syntax_node();
@@ -1123,7 +1125,8 @@ mod local_tests {
 
     #[track_caller]
     fn check_map_path_expr(path: &[&str], valid: bool, fixture: &str) {
-        let (db, position, _) = TestDB::with_position(fixture);
+        let (db, fixture) = TestDB::with_fixture(fixture);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
 
         let file_syntax = db.parse(position.file_id).syntax_node();

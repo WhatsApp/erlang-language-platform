@@ -36,7 +36,9 @@ pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
 #[track_caller]
 pub(crate) fn position(fixture: &str) -> (Analysis, FilePosition, DiagnosticsEnabled) {
-    let (db, position, diagnostics_enabled) = RootDatabase::with_position(fixture);
+    let (db, fixture) = RootDatabase::with_fixture(fixture);
+    let position = fixture.position();
+    let diagnostics_enabled = fixture.diagnostics_enabled;
     let host = AnalysisHost { db };
     (host.analysis(), position, diagnostics_enabled)
 }

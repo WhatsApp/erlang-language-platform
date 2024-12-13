@@ -21,7 +21,8 @@ pub(crate) fn render_completions(completions: Vec<Completion>) -> String {
 }
 
 pub(crate) fn get_completions(code: &str, trigger_character: Option<char>) -> Vec<Completion> {
-    let (db, position, _) = RootDatabase::with_position(code);
+    let (db, fixture) = RootDatabase::with_fixture(code);
+    let position = fixture.position();
     crate::completions(&db, position, trigger_character)
 }
 

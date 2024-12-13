@@ -2185,7 +2185,8 @@ bar() ->
 
     #[track_caller]
     fn parent_is_anonymous_fun(fixture_str: &str, expected: bool) {
-        let (db, position, _diagnostics_enabled) = TestDB::with_position(fixture_str);
+        let (db, fixture) = TestDB::with_fixture(fixture_str);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
         let offset = position.offset;
         let file_id = position.file_id;
@@ -2264,7 +2265,8 @@ bar() ->
 
     #[track_caller]
     fn in_function_args(fixture_str: &str, expected: (usize, usize)) {
-        let (db, position, _diagnostics_enabled) = TestDB::with_position(fixture_str);
+        let (db, fixture) = TestDB::with_fixture(fixture_str);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
         let file_id = position.file_id;
 

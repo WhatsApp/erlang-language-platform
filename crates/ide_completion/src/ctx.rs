@@ -268,7 +268,8 @@ mod ctx_tests {
     use crate::CtxKind;
 
     fn ctx(code: &str) -> CtxKind {
-        let (db, FilePosition { file_id, offset }, _) = RootDatabase::with_position(code);
+        let (db, fixture) = RootDatabase::with_fixture(code);
+        let FilePosition { file_id, offset } = fixture.position();
         let sema = Semantic::new(&db);
         let parsed = sema.parse(file_id);
         let node = parsed.value.syntax();

@@ -758,7 +758,8 @@ mod tests {
             buf
         };
 
-        let (db, position, _) = TestDB::with_position(&code);
+        let (db, fixture) = TestDB::with_fixture(&code);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
         let file_id = position.file_id;
         let offset = position.offset;

@@ -1085,7 +1085,8 @@ mod tests {
         let fixture_after_str = &trim_indent(fixture_after_str);
         let analysis_after = fixture::multi_file(fixture_after_str);
 
-        let (db, position, _) = RootDatabase::with_position(fixture_before);
+        let (db, fixture) = RootDatabase::with_fixture(fixture_before);
+        let position = fixture.position();
         let sema = Semantic::new(&db);
 
         let file_id = position.file_id;
