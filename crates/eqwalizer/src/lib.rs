@@ -9,12 +9,8 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fmt;
 use std::fs;
 use std::io::Write;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::ops::DerefMut;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
@@ -73,7 +69,7 @@ pub struct EqwalizerConfig {
     pub report_dynamic_lambdas: Option<bool>,
 }
 impl EqwalizerConfig {
-    fn set_cmd_env(&self, cmd: &mut CommandProxy<'_>) {
+    fn set_cmd_env(&self, cmd: &mut Command) {
         self.fault_tolerance
             .map(|cfg| cmd.env("EQWALIZER_TOLERATE_ERRORS", cfg.to_string()));
         self.occurrence_typing
@@ -257,10 +253,10 @@ impl EqwalizerExe {
     }
 
     // Return a smart pointer to bundle lifetime with the temp file's lifetime
-    pub fn cmd(&self) -> CommandProxy<'_> {
+    pub fn cmd(&self) -> Command {
         let mut cmd = Command::new(&self.cmd);
         cmd.args(&self.args);
-        CommandProxy::new(cmd)
+        cmd
     }
 }
 
@@ -277,7 +273,7 @@ impl Eqwalizer {
     }
 
     // Return a smart pointer to bundle lifetime with the temp file's lifetime
-    pub fn cmd(&self) -> CommandProxy<'_> {
+    pub fn cmd(&self) -> Command {
         self.exe.cmd()
     }
 
@@ -301,7 +297,7 @@ impl Eqwalizer {
 }
 
 fn do_typecheck(
-    mut cmd: CommandProxy,
+    mut cmd: Command,
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
@@ -477,33 +473,5 @@ fn get_module_diagnostics(
                 )
             }
         }
-    }
-}
-
-/// This ensures the enclosed Command struct won't outlive the related temp file
-pub struct CommandProxy<'file>(Command, PhantomData<&'file TempPath>);
-
-impl<'file> CommandProxy<'file> {
-    pub fn new(cmd: Command) -> Self {
-        Self(cmd, PhantomData)
-    }
-}
-
-impl<'file> Deref for CommandProxy<'file> {
-    type Target = Command;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'file> DerefMut for CommandProxy<'file> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl fmt::Debug for CommandProxy<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
     }
 }
