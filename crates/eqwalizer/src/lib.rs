@@ -99,7 +99,6 @@ impl EqwalizerConfig {
 // Bundle file with command to make sure it's not removed too early
 #[derive(Clone)]
 pub struct Eqwalizer {
-    exe: EqwalizerExe,
     pub mode: Mode,
 }
 
@@ -187,7 +186,7 @@ pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
 
 impl Default for Eqwalizer {
     fn default() -> Self {
-        EQWALIZER.to_owned()
+        Self { mode: Mode::Server }
     }
 }
 
@@ -197,7 +196,11 @@ lazy_static! {
     //   process (T182801661)
     // - Speed up tests, since we create a RootDatabase once per test
     //   needing the erlang service
-    static ref EQWALIZER: Eqwalizer = Eqwalizer::ensure_exe();
+    // We wrap it in an Arc to make sure it never goes out of scope,
+    // triggering the Drop handler, until the programme exits.
+    // It has a Mutex so it can be updated if the operating systen deletes the file
+    // for a long-running ELP server.
+    static ref EQWALIZER_EXE: Arc<Mutex<EqwalizerExe>> = Arc::new(Mutex::new(EqwalizerExe::ensure_exe()));
 }
 
 impl EqwalizerExe {
@@ -252,7 +255,6 @@ impl EqwalizerExe {
         }
     }
 
-    // Return a smart pointer to bundle lifetime with the temp file's lifetime
     pub fn cmd(&self) -> Command {
         let mut cmd = Command::new(&self.cmd);
         cmd.args(&self.args);
@@ -261,20 +263,8 @@ impl EqwalizerExe {
 }
 
 impl Eqwalizer {
-    // Identify the required Eqwalizer executable, and ensure it is
-    // available on the file system
-    fn ensure_exe() -> Self {
-        let exe = EqwalizerExe::ensure_exe();
-
-        Self {
-            exe,
-            mode: Mode::Server,
-        }
-    }
-
-    // Return a smart pointer to bundle lifetime with the temp file's lifetime
     pub fn cmd(&self) -> Command {
-        self.exe.cmd()
+        EQWALIZER_EXE.lock().cmd()
     }
 
     pub fn typecheck(
