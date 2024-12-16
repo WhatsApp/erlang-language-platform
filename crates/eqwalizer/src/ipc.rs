@@ -18,6 +18,7 @@ use std::process::Command;
 use std::process::Stdio;
 use std::time::Duration;
 
+use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use elp_types_db::eqwalizer::types::Type;
@@ -87,12 +88,22 @@ impl IpcHandle {
             // for debugging purposes
             .stderr(Stdio::inherit());
 
-        let mut child = cmd.spawn().unwrap_or_else(|err| {
-            // Provide extra debugging detail, to track down T198872667
-            let command_str = cmd.get_program();
-            let attr = fs::metadata(command_str);
-            panic!("err: {}, cmd: {:?}, meta_data: {:?}", err, cmd, &attr);
-        });
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(err) => {
+                // Provide extra debugging detail, to track down T198872667
+                let command_str = cmd.get_program();
+                let attr = fs::metadata(command_str);
+                let error_str = format!(
+                    "err: {}, command_str: {:?}, cmd: {:?}, meta_data: {:?}",
+                    err, command_str, cmd, &attr
+                );
+                // Show up in error log
+                log::error!("{error_str}");
+                // And show up as an eqwalizer error
+                bail!(error_str);
+            }
+        };
         let stdin = child
             .stdin
             .take()
