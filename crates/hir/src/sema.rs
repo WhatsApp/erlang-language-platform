@@ -889,7 +889,7 @@ impl<'db> Semantic<'db> {
     ) -> FxHashSet<(InFile<FunctionClauseId>, PatId, ast::Var)> {
         let def_map = self.def_map_local(file_id);
         let mut res = FxHashSet::default();
-        for (function_id, def) in def_map.get_function_clauses() {
+        for (function_id, _def) in def_map.get_function_clauses() {
             let function_id = InFile::new(file_id, *function_id);
             let body = self.db.function_clause_body(function_id);
 
