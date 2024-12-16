@@ -104,7 +104,7 @@ pub struct Eqwalizer {
 
 #[derive(Clone)]
 pub struct EqwalizerExe {
-    cmd: OsString,
+    cmd: PathBuf,
     args: Vec<OsString>,
     // Used only for the Drop implementation
     _file: Option<Arc<TempPath>>,
@@ -263,8 +263,14 @@ impl EqwalizerExe {
 }
 
 impl Eqwalizer {
-    pub fn cmd(&self) -> Command {
-        EQWALIZER_EXE.lock().cmd()
+    fn cmd(&self) -> Command {
+        let exe = &mut EQWALIZER_EXE.lock();
+        if !exe.cmd.is_file() {
+            log::error!("Eqwalizer exe has disappeared, recreating");
+            // We have a problem with the eqwalizer exe file, recreate it
+            **exe = EqwalizerExe::ensure_exe();
+        }
+        exe.cmd()
     }
 
     pub fn typecheck(
