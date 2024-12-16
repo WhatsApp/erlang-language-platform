@@ -12,23 +12,17 @@
 run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups]) ->
     {ok, Module, Binary} = compile:file(Filename, [binary | normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
-    All = eval(lists:flatten(io_lib:format("~p:all().", [Module]))),
+    All = Module:all(),
     Groups =
         case ShouldRequestGroups of
             true ->
-                eval(lists:flatten(io_lib:format("~p:groups().", [Module])));
+                Module:groups();
             false ->
                 []
         end,
     code:purge(Module),
     code:delete(Module),
     {ok, [{<<"ALL">>, term_to_binary(All)}, {<<"GRP">>, term_to_binary(Groups)}]}.
-
-eval(Expression) ->
-    {ok, Tokens, _} = erl_scan:string(Expression),
-    {ok, Exprs} = erl_parse:parse_exprs(Tokens),
-    {value, Value, _} = erl_eval:exprs(Exprs, []),
-    Value.
 
 normalize_compile_options(CompileOptions) ->
     normalize_compile_options(CompileOptions, []).
