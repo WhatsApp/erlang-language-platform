@@ -12,16 +12,18 @@
 run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups]) ->
     {ok, Module, Binary} = compile:file(Filename, [binary | normalize_compile_options(CompileOptions)]),
     code:load_binary(Module, Filename, Binary),
-    All = Module:all(),
-    Groups =
-        case ShouldRequestGroups of
-            true ->
-                Module:groups();
-            false ->
-                []
+    {All, Groups} =
+        try
+            case ShouldRequestGroups of
+                true ->
+                    {Module:all(), Module:groups()};
+                false ->
+                    {Module:all(), []}
+            end
+        after
+            code:purge(Module),
+            code:delete(Module)
         end,
-    code:purge(Module),
-    code:delete(Module),
     {ok, [{<<"ALL">>, term_to_binary(All)}, {<<"GRP">>, term_to_binary(Groups)}]}.
 
 normalize_compile_options(CompileOptions) ->
