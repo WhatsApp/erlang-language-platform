@@ -103,9 +103,14 @@ impl EqwalizerConfig {
 // Bundle file with command to make sure it's not removed too early
 #[derive(Clone)]
 pub struct Eqwalizer {
+    exe: EqwalizerExe,
+    pub mode: Mode,
+}
+
+#[derive(Clone)]
+pub struct EqwalizerExe {
     cmd: OsString,
     args: Vec<OsString>,
-    pub mode: Mode,
     // Used only for the Drop implementation
     _file: Option<Arc<TempPath>>,
 }
@@ -199,7 +204,7 @@ lazy_static! {
     static ref EQWALIZER: Eqwalizer = Eqwalizer::ensure_exe();
 }
 
-impl Eqwalizer {
+impl EqwalizerExe {
     // Identify the required Eqwalizer executable, and ensure it is
     // available on the file system
     fn ensure_exe() -> Self {
@@ -247,7 +252,6 @@ impl Eqwalizer {
         Self {
             cmd,
             args,
-            mode: Mode::Server,
             _file: temp_file.map(Arc::new),
         }
     }
@@ -257,6 +261,24 @@ impl Eqwalizer {
         let mut cmd = Command::new(&self.cmd);
         cmd.args(&self.args);
         CommandProxy::new(cmd)
+    }
+}
+
+impl Eqwalizer {
+    // Identify the required Eqwalizer executable, and ensure it is
+    // available on the file system
+    fn ensure_exe() -> Self {
+        let exe = EqwalizerExe::ensure_exe();
+
+        Self {
+            exe,
+            mode: Mode::Server,
+        }
+    }
+
+    // Return a smart pointer to bundle lifetime with the temp file's lifetime
+    pub fn cmd(&self) -> CommandProxy<'_> {
+        self.exe.cmd()
     }
 
     pub fn typecheck(
