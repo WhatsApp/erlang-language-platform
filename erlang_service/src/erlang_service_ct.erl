@@ -9,8 +9,14 @@
 
 -export([run/2]).
 
-run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups]) ->
-    {ok, Module, Binary} = compile:file(Filename, [binary | normalize_compile_options(CompileOptions)]),
+run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups, AstBinary]) ->
+    {ok, Forms0, _} = binary_to_term(AstBinary),
+    Forms1 = elp_parse:map_anno(fun(_) -> 0 end, Forms0),
+    {ok, Module, Binary}
+        = case compile:noenv_forms(Forms1, CompileOptions) of
+            {ok, M, B, _} -> {ok, M, B};
+            {ok, M, B} -> {ok, M, B}
+          end,
     code:load_binary(Module, Filename, Binary),
     {All, Groups} =
         try
@@ -25,13 +31,3 @@ run(_Id, [Module, Filename, CompileOptions, ShouldRequestGroups]) ->
             code:delete(Module)
         end,
     {ok, [{<<"ALL">>, term_to_binary(All)}, {<<"GRP">>, term_to_binary(Groups)}]}.
-
-normalize_compile_options(CompileOptions) ->
-    normalize_compile_options(CompileOptions, []).
-
-normalize_compile_options([], Acc) ->
-    Acc;
-normalize_compile_options([{includes, Includes} | Tail], Acc) ->
-    normalize_compile_options(Tail, Acc ++ [{i, Include} || Include <- Includes]);
-normalize_compile_options([Head | Tail], Acc) ->
-    normalize_compile_options(Tail, [Head | Acc]).

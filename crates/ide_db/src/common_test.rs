@@ -22,6 +22,7 @@ use elp_erlang_service::common_test::ConversionError;
 use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::common_test::TestDef;
 use elp_erlang_service::CTInfoRequest;
+use elp_erlang_service::Format;
 use elp_project_model::temp_dir::TempDir;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
@@ -32,6 +33,7 @@ use hir::Name;
 use hir::NameArity;
 
 use crate::erlang_service::CompileOption;
+use crate::ErlAstDatabase;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CommonTestInfo {
@@ -70,6 +72,7 @@ fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> 
                     if let Some(module_name) = module_index.module_for_file(file_id) {
                         return Arc::new(db.check(
                             project_id,
+                            file_id,
                             module_name,
                             &def_map,
                             tmp_filename,
@@ -91,6 +94,7 @@ pub trait CommonTestLoader {
     fn check(
         &self,
         project_id: ProjectId,
+        file_id: FileId,
         module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
@@ -104,6 +108,7 @@ impl CommonTestLoader for crate::RootDatabase {
     fn check(
         &self,
         project_id: ProjectId,
+        file_id: FileId,
         module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
@@ -123,11 +128,15 @@ impl CommonTestLoader for crate::RootDatabase {
         ];
         let should_request_groups =
             def_map.is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
+        let module_ast =
+            self.module_ast(file_id, Format::OffsetEtf, compile_options.clone(), vec![]);
+
         let request = CTInfoRequest {
             module: eetf::Atom::from(module.to_string()),
             src_path,
             compile_options,
             should_request_groups,
+            file_abstract_forms: module_ast.ast.clone(),
         };
         match erlang_service.ct_info(request, || self.unwind_if_cancelled()) {
             Ok(result) => match result.all() {

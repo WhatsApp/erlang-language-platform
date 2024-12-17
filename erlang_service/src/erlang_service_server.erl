@@ -218,8 +218,8 @@ handle_request(<<"DCE", Id:64/big, Sz:32, AST:Sz/binary, Data/binary>>, State) -
     request(erlang_service_edoc, Id, Data, [edoc, AST], infinity, State);
 handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
     request(erlang_service_edoc, Id, Data, [eep48, no_ast], infinity, State);
-handle_request(<<"CTI", Id:64/big, Data/binary>>, State) ->
-    request(erlang_service_ct, Id, Data, [], 10_000, State);
+handle_request(<<"CTI", Id:64/big, Sz:32, AstBinary:Sz/binary, Data/binary>>, State) ->
+    request(erlang_service_ct, Id, Data, [AstBinary], 10_000, State);
 %% Start of callback responses
 handle_request(<<"REP", OrigId:64/big, Status:8, Data/binary>>,
                #{own_requests := OwnRequests} = State) ->

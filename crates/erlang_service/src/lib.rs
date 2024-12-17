@@ -173,6 +173,7 @@ pub struct CTInfoRequest {
     pub src_path: PathBuf,
     pub compile_options: Vec<CompileOption>,
     pub should_request_groups: bool,
+    pub file_abstract_forms: Arc<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -877,6 +878,11 @@ impl CTInfoRequest {
             should_request_groups,
         ]);
         let mut buf = Vec::new();
+        // We first pass the length-preceded abstract forms, then the options.
+        buf.write_u32::<BigEndian>(self.file_abstract_forms.len() as u32)
+            .expect("buf write failed");
+        buf.write_all(&self.file_abstract_forms)
+            .expect("buf write failed");
         eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
@@ -1190,11 +1196,26 @@ mod tests {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
+        let file_id = FileId::from_raw(0);
+        let file_text = Arc::from(
+            fs::read_to_string(path.clone()).expect("Should have been able to read the file"),
+        );
+        let req = ParseRequest {
+            options: vec![],
+            override_options: vec![],
+            file_id,
+            path: path.clone(),
+            format: Format::OffsetEtf,
+            file_text,
+        };
+        let module_ast = CONN.request_parse(req, || (), &|_, _, _| None);
+
         let request = CTInfoRequest {
             module: eetf::Atom::from(module),
             src_path: path,
             compile_options: vec![],
             should_request_groups: true,
+            file_abstract_forms: module_ast.ast.clone(),
         };
         let actual = match CONN.ct_info(request, || ()) {
             Ok(response) => {
