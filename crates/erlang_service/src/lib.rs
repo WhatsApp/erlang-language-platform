@@ -88,7 +88,6 @@ pub struct Connection {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum CompileOption {
-    Includes(Vec<PathBuf>),
     Macros(Vec<eetf::Term>),
     ParseTransforms(Vec<eetf::Term>),
     ElpMetadata(eetf::Term),
@@ -98,15 +97,6 @@ pub enum CompileOption {
 impl From<CompileOption> for eetf::Term {
     fn from(val: CompileOption) -> Self {
         match val {
-            CompileOption::Includes(includes) => {
-                let paths = eetf::List::from(
-                    includes
-                        .into_iter()
-                        .map(|path| path_into_list(path).into())
-                        .collect::<Vec<_>>(),
-                );
-                eetf::Tuple::from(vec![eetf::Atom::from("includes").into(), paths.into()]).into()
-            }
             CompileOption::Macros(macros) => {
                 let macros = eetf::List::from(macros);
                 eetf::Tuple::from(vec![eetf::Atom::from("macros").into(), macros.into()]).into()
