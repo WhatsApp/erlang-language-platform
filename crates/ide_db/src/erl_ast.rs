@@ -14,7 +14,6 @@ use elp_base_db::path_for_file;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
-use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::FileLoader;
 use elp_base_db::IncludeCtx;
@@ -37,7 +36,6 @@ pub trait AstLoader {
         project_id: ProjectId,
         file_id: FileId,
         path: &AbsPath,
-        include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         compile_options: Vec<CompileOption>,
@@ -53,7 +51,6 @@ impl AstLoader for crate::RootDatabase {
         project_id: ProjectId,
         file_id: FileId,
         path: &AbsPath,
-        include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         compile_options: Vec<CompileOption>,
@@ -61,12 +58,7 @@ impl AstLoader for crate::RootDatabase {
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
-        let includes = include_path
-            .iter()
-            .map(|path| path.clone().into())
-            .collect();
         let mut options = vec![
-            CompileOption::Includes(includes),
             CompileOption::Macros(macros.to_vec()),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
@@ -152,7 +144,6 @@ fn module_ast(
         app_data.project_id,
         file_id,
         path,
-        &app_data.include_path,
         &app_data.macros,
         &app_data.parse_transforms,
         compile_options,

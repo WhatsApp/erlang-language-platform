@@ -13,7 +13,6 @@ use std::sync::Arc;
 
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
-use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
@@ -76,7 +75,6 @@ fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> 
                             module_name,
                             &def_map,
                             tmp_filename,
-                            &app_data.include_path,
                             &app_data.macros,
                             &app_data.parse_transforms,
                         ));
@@ -98,7 +96,6 @@ pub trait CommonTestLoader {
         module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
-        include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
     ) -> CommonTestInfo;
@@ -112,17 +109,11 @@ impl CommonTestLoader for crate::RootDatabase {
         module: &ModuleName,
         def_map: &DefMap,
         src_path: PathBuf,
-        include_path: &[AbsPathBuf],
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
     ) -> CommonTestInfo {
         let erlang_service = self.erlang_service_for(project_id);
-        let includes = include_path
-            .iter()
-            .map(|path| path.clone().into())
-            .collect();
         let compile_options = vec![
-            CompileOption::Includes(includes),
             CompileOption::Macros(macros.to_vec()),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
         ];
