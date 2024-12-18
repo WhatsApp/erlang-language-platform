@@ -468,7 +468,9 @@ fn eqwalize(
                     .file_for_module(module.as_str())
                     .with_context(|| format!("module {} not found", module))?;
                 reporter.write_eqwalizer_diagnostics(file_id, &diagnostics)?;
-                has_errors = true;
+                if !diagnostics.is_empty() {
+                    has_errors = true;
+                }
             }
             if analysis.eqwalizer().mode == Mode::Shell {
                 reporter.write_stats(eqwalized, files_count as u64)?;

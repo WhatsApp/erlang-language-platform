@@ -1745,7 +1745,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn eqwalize_all_bail_on_error_success(buck: bool) {
         if otp_supported_by_eqwalizer() {
-            simple_snapshot_expect_error(
+            simple_snapshot(
                 args_vec!["eqwalize", "--bail-on-error", "app_a_no_errors"],
                 "standard",
                 expect_file!(
