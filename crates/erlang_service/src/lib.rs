@@ -49,6 +49,7 @@ use stdx::JodChild;
 use tempfile::Builder;
 use tempfile::TempPath;
 use text_size::TextRange;
+use text_size::TextSize;
 
 pub mod common_test;
 
@@ -770,12 +771,12 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                     path: path.into(),
                     location: match position {
                         pattern::Union3::A((a, b)) => Some(DiagnosticLocation::Normal(
-                            TextRange::new(a.into(), b.into()),
+                            safe_textrange(a.into(), b.into()),
                         )),
                         pattern::Union3::B(((a, b), (c, d))) => {
                             Some(DiagnosticLocation::Included {
-                                directive_location: TextRange::new(a.into(), b.into()),
-                                error_location: TextRange::new(c.into(), d.into()),
+                                directive_location: safe_textrange(a.into(), b.into()),
+                                error_location: safe_textrange(c.into(), d.into()),
                             })
                         }
                         pattern::Union3::C(_) => None,
@@ -785,6 +786,19 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                 })
                 .collect()
         })
+}
+
+fn safe_textrange(start: TextSize, end: TextSize) -> TextRange {
+    if start <= end {
+        TextRange::new(start, end)
+    } else {
+        log::warn!(
+            "Bad diagnostic range from erlang_service: ({:?},{:?})",
+            start,
+            end
+        );
+        TextRange::new(end, start)
+    }
 }
 
 impl ParseRequest {
@@ -892,6 +906,7 @@ mod tests {
     use std::str;
 
     use elp_project_model::otp::supports_eep59_doc_attributes;
+    use expect_test::expect;
     use expect_test::expect_file;
     use expect_test::ExpectFile;
     use lazy_static::lazy_static;
@@ -1217,5 +1232,17 @@ mod tests {
             Err(err) => err.to_string(),
         };
         expected.assert_eq(&actual);
+    }
+
+    #[test]
+    fn test_safe_textrange() {
+        expect![[r#"
+            0..5
+        "#]]
+        .assert_debug_eq(&safe_textrange(0.into(), 5.into()));
+        expect![[r#"
+            2..5
+        "#]]
+        .assert_debug_eq(&safe_textrange(5.into(), 2.into()));
     }
 }
