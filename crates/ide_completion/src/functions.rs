@@ -143,7 +143,7 @@ pub(crate) fn add_completions(
                 .get_functions_in_scope()
                 .filter(|(na, _)| na.name().starts_with(function_prefix.text()))
                 .filter_map(|(na, module)| {
-                    let function_name = na.name();
+                    let function_name = na.name().to_quoted_string();
                     let module_file_id = module
                         .and_then(|module| {
                             Some(
@@ -167,7 +167,7 @@ pub(crate) fn add_completions(
                             let contents = helpers::function_contents(
                                 sema.db.upcast(),
                                 &def,
-                                function_name,
+                                &function_name,
                                 helpers::should_include_args(next_token),
                             )?;
                             Some(Completion {
@@ -933,6 +933,22 @@ foo(X, Y) -> ok.
     "#,
             None,
             expect!["{label:is_internal/1, kind:Function, contents:SameAsLabel, position:None}"],
+        );
+    }
+
+    #[test]
+    fn test_quoted_local_call() {
+        check(
+            r#"
+    -module(sample).
+    test() ->
+        fo~(something).
+    'foo.bar'(X) -> ok.
+            "#,
+            None,
+            expect![[
+                r#"{label:'foo.bar'/1, kind:Function, contents:Snippet("'foo.bar'"), position:Some(FilePosition { file_id: FileId(0), offset: 46 })}"#
+            ]],
         );
     }
 }

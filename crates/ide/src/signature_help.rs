@@ -215,8 +215,13 @@ fn build_signature_help(
         active_parameter,
     };
     match &module_name {
-        Some(m) => format_to!(help.signature, "{m}:{fun_name}("),
-        None => format_to!(help.signature, "{fun_name}("),
+        Some(m) => format_to!(
+            help.signature,
+            "{}:{}(",
+            m.to_quoted_string(),
+            fun_name.to_quoted_string()
+        ),
+        None => format_to!(help.signature, "{}(", fun_name.to_quoted_string()),
     }
     if let Some(parameters) = def.arg_names(db) {
         for parameter in parameters {
@@ -522,6 +527,48 @@ main() ->
                 ------
                 one:add(This, That, Extra)
                         ----  ^^^^  -----
+                ======
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_quoted_remote_two_args() {
+        check(
+            r#"
+//- /Elixir.One.erl
+-module('Elixir.One').
+
+-compile(export_all).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+//- /two.erl
+-module(two).
+
+main() ->
+  'Elixir.One':add(~, That).
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+                ------
+                'Elixir.One':add(This, That)
+                                 ^^^^  ----
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
+                ------
+                'Elixir.One':add(This, That, Extra)
+                                 ^^^^  ----  -----
                 ======
             "#]],
         );
