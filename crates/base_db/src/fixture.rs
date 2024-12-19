@@ -193,9 +193,6 @@ impl ChangeFixture {
 
         for entry in fixture.clone() {
             let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
-            if entry.scratch_buffer.is_some() {
-                panic!("scratch buffers no longer needed/supported");
-            }
             if file_pos.is_some() {
                 assert!(file_position.is_none());
                 file_position = file_pos;

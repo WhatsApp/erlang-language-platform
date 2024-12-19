@@ -83,14 +83,12 @@
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
 
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
 use paths::Utf8PathBuf;
 pub use stdx::trim_indent;
-use tempfile::tempdir;
 use text_size::TextRange;
 use text_size::TextSize;
 
@@ -106,7 +104,6 @@ pub struct Fixture {
     pub text: String,
     pub app_data: ProjectAppData,
     pub otp: Option<Otp>,
-    pub scratch_buffer: Option<PathBuf>,
     pub tag: Option<String>,
     pub tags: Vec<(TextRange, Option<String>)>,
 }
@@ -321,7 +318,7 @@ impl FixtureWithProjectMeta {
         let meta = meta["//-".len()..].trim();
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
-        let mut path = components[0].to_string();
+        let path = components[0].to_string();
         assert!(
             path.starts_with('/'),
             "fixture path does not start with `/`: {:?}",
@@ -332,7 +329,6 @@ impl FixtureWithProjectMeta {
         let mut include_dirs = Vec::new();
         let mut extra_dirs = Vec::new();
         let mut otp = None;
-        let mut scratch_buffer = None;
         let mut tag = None;
 
         for component in components[1..].iter() {
@@ -357,14 +353,6 @@ impl FixtureWithProjectMeta {
                     // It needs to be relative to the app dir.
                     let dir = value.to_string();
                     extra_dirs.push(dir);
-                }
-                "scratch_buffer" => {
-                    // Certain features depending on the Erlang Service
-                    // require a physical copy of the file on the FS
-                    let tmp_dir = tempdir().unwrap();
-                    let tmp_path = tmp_dir.path().join(path.strip_prefix('/').unwrap());
-                    path = tmp_path.to_str().unwrap().to_string();
-                    scratch_buffer = Some(tmp_path);
                 }
                 "tag" => {
                     tag = Some(value.to_string());
@@ -401,7 +389,6 @@ impl FixtureWithProjectMeta {
             text: String::new(),
             app_data,
             otp,
-            scratch_buffer,
             tag,
             tags: Vec::new(),
         }
