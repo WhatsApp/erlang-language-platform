@@ -15,6 +15,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::find_best_token;
+use elp_ide_db::helpers::get_call;
 use elp_ide_db::rename::SafetyChecks;
 use elp_ide_db::ReferenceType;
 use elp_ide_db::SearchScope;
@@ -702,15 +703,6 @@ fn can_inline_function(ctx: &AssistContext) -> Option<InlineData> {
             }
         }
         _ => None,
-    }
-}
-
-// AZ:TODO: use hir::Call instead
-fn get_call(syntax: &SyntaxNode) -> Option<ast::Call> {
-    if let Some(call) = ast::Call::cast(syntax.parent()?) {
-        Some(call)
-    } else {
-        ast::Call::cast(syntax.parent()?.parent()?)
     }
 }
 

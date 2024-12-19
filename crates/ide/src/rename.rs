@@ -950,6 +950,41 @@ mod tests {
     }
 
     #[test]
+    fn rename_export_function_ok_no_local_import() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               -export([foo/0]).
+               foo() -> ok.
+               bar() -> f~oo().
+
+               //- /src/bar.erl
+               -module(bar).
+               another_fun() ->
+                  baz:foo(),
+                  ok.
+               new_name() -> ok.
+            "#,
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               -export([new_name/0]).
+               new_name() -> ok.
+               bar() -> new_name().
+
+               //- /src/bar.erl
+               -module(bar).
+               another_fun() ->
+                  baz:new_name(),
+                  ok.
+               new_name() -> ok.
+           "#,
+        );
+    }
+
+    #[test]
     fn rename_function_in_include() {
         // We do not have functions defined in our header files, but
         // confirm it does the right thing anyway
@@ -957,49 +992,49 @@ mod tests {
             "new_name",
             r#"
              //- /src/main.hrl
-             %% main.hrl
-             -spec bar() -> ok.
-             bar() -> ok.
+               %% main.hrl
+               -spec bar() -> ok.
+               bar() -> ok.
 
              //- /src/main.erl
-             %% main.erl
-             -include("main.hrl").
-             baz() -> ba~r().
+               %% main.erl
+               -include("main.hrl").
+               baz() -> ba~r().
 
              //- /src/another.erl
-             %% another.erl
-             -include("main.hrl").
+               %% another.erl
+               -include("main.hrl").
 
-             foo() -> bar().
+               foo() -> bar().
 
              //- /src/different_bar.erl
-             %% different_bar.erl
-             bar() -> different.
+               %% different_bar.erl
+               bar() -> different.
 
-             should_not_match() -> bar().
+               should_not_match() -> bar().
              "#,
             r#"
              //- /src/main.hrl
-             %% main.hrl
-             -spec new_name() -> ok.
-             new_name() -> ok.
+               %% main.hrl
+               -spec new_name() -> ok.
+               new_name() -> ok.
 
              //- /src/main.erl
-             %% main.erl
-             -include("main.hrl").
-             baz() -> new_name().
+               %% main.erl
+               -include("main.hrl").
+               baz() -> new_name().
 
              //- /src/another.erl
-             %% another.erl
-             -include("main.hrl").
+               %% another.erl
+               -include("main.hrl").
 
-             foo() -> new_name().
+               foo() -> new_name().
 
              //- /src/different_bar.erl
-             %% different_bar.erl
-             bar() -> different.
+               %% different_bar.erl
+               bar() -> different.
 
-             should_not_match() -> bar().
+               should_not_match() -> bar().
              "#,
         );
     }

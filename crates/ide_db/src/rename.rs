@@ -23,6 +23,7 @@ use hir::InFile;
 use hir::Semantic;
 use text_edit::TextEdit;
 
+use crate::helpers::get_call;
 use crate::search::NameLike;
 use crate::source_change::SourceChange;
 use crate::SymbolDefinition;
@@ -180,8 +181,9 @@ impl SymbolDefinition {
                     // its defining file, check remote references
                     // now.
                     let arity = function.name.arity();
-                    let mut problems = usages.iter().filter(|(file_id, _refs)| {
-                        !is_safe_function(sema, *file_id, new_name, arity)
+                    let mut problems = usages.iter().filter(|(file_id, refs)| {
+                        (file_id != &function.file.file_id)
+                            && !is_safe_remote_function(sema, *file_id, new_name, arity, *refs)
                     });
                     // Report the first one only, an existence proof of problems
                     if let Some((file_id, _)) = problems.next() {
@@ -377,7 +379,7 @@ fn is_safe_var_anonymous(var_in: InFile<&ast::Var>) -> bool {
 /// Check that the new function name is not in scope already.  This
 /// includes checking for auto-included functions from the `erlang`
 /// module.
-pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &String, arity: u32) -> bool {
+pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &str, arity: u32) -> bool {
     let scope_ok = sema
         .db
         .def_map_local(file_id)
@@ -385,4 +387,29 @@ pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &String, ari
         .all(|(name, _)| !(&name.name().to_string() == new_name && name.arity() == arity));
 
     scope_ok && !in_erlang_module(new_name, arity as usize)
+}
+
+/// Check that the new function name is not in scope already in the
+/// module via an explicit import.
+pub fn is_safe_remote_function(
+    sema: &Semantic,
+    file_id: FileId,
+    new_name: &str,
+    arity: u32,
+    refs: &[NameLike],
+) -> bool {
+    // Problem occurs if the usage is not qualified with a module name
+    let all_remote = refs.iter().all(|name_like| {
+        if let Some(call) = get_call(&name_like.syntax()) {
+            if let Some(ast::Expr::Remote(_)) = call.expr() {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    });
+
+    all_remote || is_safe_function(sema, file_id, new_name, arity)
 }
