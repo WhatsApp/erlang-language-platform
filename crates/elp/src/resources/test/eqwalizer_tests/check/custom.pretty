@@ -2051,47 +2051,9 @@ Context expected type: number()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2267:5
+     ┌─ check/src/custom.erl:2279:5
      │
-2267 │     Device.
-     │     ^^^^^^
-     │     │
-     │     Device.
-Expression has type:   file:io_device()
-Context expected type: #file_descriptor{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │     
-
-  file:io_device() is not compatible with #file_descriptor{}
-  because
-  pid() | file:fd() is not compatible with #file_descriptor{}
-  because
-  pid() is not compatible with #file_descriptor{}
-
-error: incompatible_types
-     ┌─ check/src/custom.erl:2274:5
-     │
-2274 │     Device.
-     │     ^^^^^^
-     │     │
-     │     Device.
-Expression has type:   file:io_device()
-Context expected type: #file_descriptor{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-     │     
-
-  file:io_device() is not compatible with #file_descriptor{}
-  because
-  pid() | file:fd() is not compatible with #file_descriptor{}
-  because
-  pid() is not compatible with #file_descriptor{}
-
-error: incompatible_types
-     ┌─ check/src/custom.erl:2293:5
-     │
-2293 │     maps:remove(A, M).
+2279 │     maps:remove(A, M).
      │     ^^^^^^^^^^^^^^^^^
      │     │
      │     maps:remove(A, M).
@@ -2104,15 +2066,15 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2334:5
+     ┌─ check/src/custom.erl:2320:5
      │    
-2334 │ ╭ ╭     maps:filtermap(
-2335 │ │ │         fun
-2336 │ │ │             (a, V) -> true;
-2337 │ │ │             (b, V) -> {true, atom_to_binary(V)};
+2320 │ ╭ ╭     maps:filtermap(
+2321 │ │ │         fun
+2322 │ │ │             (a, V) -> true;
+2323 │ │ │             (b, V) -> {true, atom_to_binary(V)};
      · │ │
-2340 │ │ │         M
-2341 │ │ │     ).
+2326 │ │ │         M
+2327 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
 Expression has type:   #{a => atom() | binary(), b => atom() | binary(), c => atom() | binary()}
 Context expected type: #{a := atom(), b := binary()}
@@ -2123,14 +2085,14 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 keys `a`, `b` are declared as required in the latter but not in the former
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2356:5
+     ┌─ check/src/custom.erl:2342:5
      │    
-2356 │ ╭ ╭     maps:filtermap(
-2357 │ │ │         fun (_, V) ->
-2358 │ │ │             {true, atom_to_binary(V)}
-2359 │ │ │         end,
-2360 │ │ │         M
-2361 │ │ │     ).
+2342 │ ╭ ╭     maps:filtermap(
+2343 │ │ │         fun (_, V) ->
+2344 │ │ │             {true, atom_to_binary(V)}
+2345 │ │ │         end,
+2346 │ │ │         M
+2347 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
 Expression has type:   #{atom() => binary()}
 Context expected type: #{atom() => atom()}
@@ -2144,9 +2106,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   binary() is not compatible with atom()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2368:23
+     ┌─ check/src/custom.erl:2354:23
      │
-2368 │         fun (_, _) -> err end,
+2354 │         fun (_, _) -> err end,
      │                       ^^^
      │                       │
      │                       'err'.
@@ -2161,9 +2123,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'err' is not compatible with boolean()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2377:45
+     ┌─ check/src/custom.erl:2363:45
      │
-2377 │         fun (_, V) -> {true, atom_to_binary(V)} end,
+2363 │         fun (_, V) -> {true, atom_to_binary(V)} end,
      │                                             ^ V.
 Expression has type:   binary()
 Context expected type: atom()
@@ -2171,9 +2133,9 @@ Context expected type: atom()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2391:5
+     ┌─ check/src/custom.erl:2377:5
      │
-2391 │     re:replace(Subj, "+", "-", [{return, binary}]).
+2377 │     re:replace(Subj, "+", "-", [{return, binary}]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ re:replace(Subj, string_lit, string_lit, [{'return', 'binary'}]).
 Expression has type:   binary()
 Context expected type: string()
@@ -2181,9 +2143,9 @@ Context expected type: string()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2395:5
+     ┌─ check/src/custom.erl:2381:5
      │
-2395 │     re:replace(Subj, "+", "-", [{return, list}]).
+2381 │     re:replace(Subj, "+", "-", [{return, list}]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ re:replace(Subj, string_lit, string_lit, [{'return', 'list'}]).
 Expression has type:   string()
 Context expected type: binary()
@@ -2191,9 +2153,9 @@ Context expected type: binary()
 See https://fb.me/eqwalizer_errors#incompatible_types
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2399:22
+     ┌─ check/src/custom.erl:2385:22
      │
-2399 │     Res = re:replace(Subj, "+", "-", [{return, list}]),
+2385 │     Res = re:replace(Subj, "+", "-", [{return, list}]),
      │                      ^^^^
      │                      │
      │                      Subj.
@@ -2208,9 +2170,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   atom() is not compatible with iodata()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2404:38
+     ┌─ check/src/custom.erl:2390:38
      │
-2404 │     Res = re:replace(Subj, "+", "-", [{return, something}]),
+2390 │     Res = re:replace(Subj, "+", "-", [{return, something}]),
      │                                      ^^^^^^^^^^^^^^^^^^^^^
      │                                      │
      │                                      [{'return', 'something'}].
@@ -2230,9 +2192,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'something' is not compatible with 'iodata' | 'list' | 'binary'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2520:5
+     ┌─ check/src/custom.erl:2506:5
      │
-2520 │     lists:partition(fun is_number/1, L).
+2506 │     lists:partition(fun is_number/1, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2250,9 +2212,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with atom()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2532:5
+     ┌─ check/src/custom.erl:2518:5
      │
-2532 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+2518 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2273,9 +2235,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with atom()
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2550:5
+     ┌─ check/src/custom.erl:2536:5
      │
-2550 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
+2536 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2296,9 +2258,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   {'ok', atom()} is not compatible with {'error', term()}
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2590:33
+     ┌─ check/src/custom.erl:2576:33
      │
-2590 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
+2576 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2311,9 +2273,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2600:33
+     ┌─ check/src/custom.erl:2586:33
      │
-2600 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
+2586 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2331,9 +2293,9 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   number() is not compatible with 'true'
 
 error: incompatible_types
-     ┌─ check/src/custom.erl:2610:33
+     ┌─ check/src/custom.erl:2596:33
      │
-2610 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
+2596 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2345,4 +2307,4 @@ See https://fb.me/eqwalizer_errors#incompatible_types
 
 key `a` is declared as required in the latter but not in the former
 
-163 ERRORS
+161 ERRORS

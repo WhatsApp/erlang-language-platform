@@ -2259,20 +2259,6 @@ file_open2() ->
         file:open("/file", [read, raw]),
     Device.
 
--spec file_open3_neg
-    ([file:mode()]) -> #file_descriptor{}.
-file_open3_neg(Modes) ->
-    {ok, Device} =
-        file:open("/file", Modes),
-    Device.
-
--spec file_open5_neg
-    (file:mode()) -> #file_descriptor{}.
-file_open5_neg(Mode) ->
-    {ok, Device} =
-        file:open("/file", [Mode]),
-    Device.
-
 -spec maps_remove1(
     #{a := integer()}
 ) -> #{}.
