@@ -21,7 +21,7 @@ jobs:
             brew-otp-version: 26
             vscode-publish: false
           - otp-version: 27.1
-            brew-otp-version: 27
+            brew-otp-version: 27.1
             vscode-publish: false
           - platform-arch: ubuntu-22.04-x64
             platform: ubuntu-22.04
