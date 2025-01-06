@@ -1127,7 +1127,7 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         body: Arc<FunctionBody>,
         function_id: InFile<FunctionDefId>,
         value: T,
-    ) -> InFunctionBody<T> {
+    ) -> InFunctionBody<'a, T> {
         let clause_bodies = body
             .clauses
             .iter()
@@ -1198,7 +1198,7 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         &self.body.clauses[clause_id]
     }
 
-    pub fn in_clause(&'a self, clause_id: ClauseId) -> &'a InFunctionClauseBody<T> {
+    pub fn in_clause(&'a self, clause_id: ClauseId) -> &'a InFunctionClauseBody<'a, T> {
         let idx = Idx::from_raw(clause_id.into_raw());
         &self.clause_bodies[idx]
     }
@@ -1257,7 +1257,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         function_clause_id: InFile<FunctionClauseId>,
         body_map: Option<Arc<BodySourceMap>>,
         value: T,
-    ) -> InFunctionClauseBody<T> {
+    ) -> InFunctionClauseBody<'a, T> {
         InFunctionClauseBody {
             sema,
             body,

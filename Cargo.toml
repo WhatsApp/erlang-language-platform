@@ -59,7 +59,7 @@ lsp-server = "0.7.6"
 lsp-types = { version = "0.93.2", features = ["proposed"] }
 memchr = "2.7.4"
 mio = "0.8.11"
-num-derive = "0.3.3"
+num-derive = "0.4.2"
 num-traits = "0.2.19"
 once_cell = "1.19.0"
 parking_lot = "0.12.3"
