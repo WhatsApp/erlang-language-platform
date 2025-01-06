@@ -43,6 +43,7 @@ use hir::ExprId;
 use hir::FormList;
 use hir::FunctionClauseBody;
 use hir::FunctionDef;
+use hir::InFile;
 use hir::InFileAstPtr;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
@@ -385,9 +386,9 @@ pub(crate) fn ranges_for_delete_function(
         })
         .collect();
 
-    let spec_range = function_def.spec.map(|spec| {
-        let ast_spec = ctx.form_ast(spec.spec.form_id);
-        extend_form_range_for_delete(ast_spec.syntax())
+    let spec_range = function_def.spec.and_then(|spec| {
+        let ast_spec = ctx.form_ast(InFile::new(spec.file.file_id, spec.spec.form_id));
+        ast_spec.map(|ast_spec| extend_form_range_for_delete(ast_spec.syntax()))
     });
 
     Some(FunctionRanges {

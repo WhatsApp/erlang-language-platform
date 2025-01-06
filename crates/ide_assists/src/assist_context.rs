@@ -221,11 +221,15 @@ impl<'a> AssistContext<'a> {
         SymbolClass::classify(&self.sema, InFile::new(self.file_id(), token))
     }
 
-    pub(crate) fn form_ast<T>(&self, form_id: FormId<T>) -> T
+    pub(crate) fn form_ast<T>(&self, form_id: InFile<FormId<T>>) -> Option<T>
     where
         T: AstNode,
     {
-        form_id.get(&self.source_file)
+        if self.file_id() == form_id.file_id {
+            Some(form_id.value.get(&self.source_file))
+        } else {
+            None
+        }
     }
 
     pub(crate) fn ast_ptr_get<T>(&self, ptr: InFileAstPtr<T>) -> Option<T>
