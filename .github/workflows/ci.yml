@@ -175,7 +175,18 @@ jobs:
       - name: Package eqWAlizer binary into VS Code Extension
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
       - name: Package ELP binary into VS Code Extension
-        run: cp target/${{ matrix.target}}/release/elp editors/code/bin
+        run: cp target/${{ matrix.target }}/release/elp editors/code/bin
+      - name: Fetch EDB escript (if available)
+        uses: actions/download-artifact@v4
+        with:
+          name: edb-ubuntu-22.04-otp-${{ matrix.otp-version }}.tar.gz
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: WhatsApp/edb
+          run-id: 12693790504
+      - name: Untar EDB escript
+        run: tar -xvzf edb.tar.gz
+      - name: Package EDB escript into VS Code Extension
+        run: cp edb editors/code/bin
       - name: Ensure binaries are executable
         run: chmod +x editors/code/bin/*
       - name: npm install
