@@ -176,13 +176,14 @@ jobs:
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
       - name: Package ELP binary into VS Code Extension
         run: cp target/${{ matrix.target }}/release/elp editors/code/bin
+
       - name: Fetch EDB escript (if available)
-        uses: actions/download-artifact@v4
+        uses: dsaltares/fetch-gh-release-asset@1.1.2
         with:
-          name: edb-ubuntu-22.04-otp-${{ matrix.otp-version }}.tar.gz
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: WhatsApp/edb
-          run-id: 12693790504
+          repo: WhatsApp/edb
+          version: tags/0.1.0
+          file: edb-ubuntu-22.04-otp-${{ matrix.otp-version }}.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Untar EDB escript
         run: tar -xvzf edb.tar.gz
       - name: Package EDB escript into VS Code Extension
