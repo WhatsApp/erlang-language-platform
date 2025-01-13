@@ -73,17 +73,15 @@
             "request": "launch",
             "launchCommand": {
               "cwd": "${workspaceFolder}",
-              "command": "erl",
+              "command": "rebar3",
               "arguments": [
+                "shell",
                 "-sname",
-                "debuggee",
-                "-setcookie",
-                "edb_cookie"
+                "debuggee"
               ]
             },
             "targetNode": {
-              "name": "debuggee@localhost",
-              "cookie": "edb_cookie"
+              "name": "debuggee@localhost"
             }
           }
         ],
