@@ -53,12 +53,7 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
             command = vscode.Uri.joinPath(this.extensionUri, 'bin', 'edb').toString();
             args = ['dap'];
         }
-        let path = (process.env.PATH || '').split(':');
-        const erlangInstallationPath = dapConfig.get<string>('erlangInstallationPath') || '';
-        if (erlangInstallationPath != "") {
-            path.unshift(erlangInstallationPath);
-        }
-        const options = {env: {PATH: path.join(':')}};
+        const options = { env: { "PATH": withErlangInstallationPath() } };
         executable = new vscode.DebugAdapterExecutable(command, args, options);
         return executable;
     }
@@ -90,6 +85,19 @@ class EDBConfigurationProvider implements vscode.DebugConfigurationProvider {
             }
         }
 
+        config.launchCommand.env = { "PATH": withErlangInstallationPath() };
         return config;
+    }
+}
+
+function withErlangInstallationPath() {
+    const dapConfig = vscode.workspace.getConfiguration(CONFIG);
+    const erlangInstallationPath = dapConfig.get<string>('erlangInstallationPath') || '';
+    if (erlangInstallationPath != "") {
+        const path = (process.env.PATH || '').split(':');
+        path.unshift(erlangInstallationPath);
+        return path.join(':');
+    } else {
+        return process.env.PATH;
     }
 }

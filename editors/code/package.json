@@ -114,6 +114,10 @@
                     "type": "string",
                     "description": "Working directory for the program to start. Defaults to the Workspace Root.",
                     "default": "${workspaceRoot}"
+                  },
+                  "env": {
+                    "type": "object",
+                    "description": "Environment key-value pairs that are added to or removed from the default environment."
                   }
                 }
               },
