@@ -85,6 +85,29 @@
             }
           }
         ],
+        "configurationSnippets": [
+          {
+            "label": "Erlang EDB: Launch Configuration (rebar3)",
+            "description": "A new configuration for launching a rebar3 shell for the debuggee.",
+            "body": {
+              "name": "Erlang EDB",
+              "type": "erlang-edb",
+              "request": "launch",
+              "launchCommand": {
+                "cwd": "${workspaceFolder}",
+                "command": "rebar3",
+                "arguments": [
+                  "shell",
+                  "--sname",
+                  "debuggee"
+                ]
+              },
+              "targetNode": {
+                "name": "debuggee@localhost"
+              }
+            }
+          }
+        ],
         "configurationAttributes": {
           "launch": {
             "required": [
