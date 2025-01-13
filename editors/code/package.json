@@ -150,6 +150,11 @@
         }
       }
     ],
+    "breakpoints": [
+      {
+        "language": "erlang"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Erlang Language Platform",
