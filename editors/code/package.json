@@ -76,7 +76,7 @@
               "command": "rebar3",
               "arguments": [
                 "shell",
-                "-sname",
+                "--sname",
                 "debuggee"
               ]
             },
