@@ -8,7 +8,7 @@
  */
 
 // Based on the Microsoft template code at https://github.com/Microsoft/vscode-extension-samples
-import { workspace, ExtensionContext } from 'vscode';
+import { window, workspace, ExtensionContext, OutputChannel } from 'vscode';
 import { activateDebugger } from './debugger';
 import * as path from 'path';
 
@@ -19,10 +19,13 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
+let log: OutputChannel;
 
 export const ELP = 'elpClient';
 
 export function activate(context: ExtensionContext) {
+
+	log = window.createOutputChannel('Erlang ELP');
 
 	// Options to control the language server
 	const config = workspace.getConfiguration(ELP);
@@ -56,6 +59,7 @@ export function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
+	log.append('Activating debugger');
 	// Activate the DAP Debugger
 	activateDebugger(context);
 
