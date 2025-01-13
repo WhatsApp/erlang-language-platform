@@ -276,6 +276,11 @@
         "erlangDap.command": {
           "type": "string",
           "description": "Custom command to invoke the DAP debugger."
+        },
+        "erlangDap.erlangInstallationPath": {
+          "type": "string",
+          "markdownDescription": "Custom path for Erlang when starting the DAP adapter. It should point to a directory with `erl`, `escript` and other standard erlang executables.",
+          "default": ""
         }
       }
     },

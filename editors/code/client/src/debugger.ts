@@ -53,7 +53,12 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
             command = vscode.Uri.joinPath(this.extensionUri, 'bin', 'edb').toString();
             args = ['dap'];
         }
-        const options = {};
+        let path = (process.env.PATH || '').split(':');
+        const erlangInstallationPath = dapConfig.get<string>('erlangInstallationPath') || '';
+        if (erlangInstallationPath != "") {
+            path.unshift(erlangInstallationPath);
+        }
+        const options = {env: {PATH: path.join(':')}};
         executable = new vscode.DebugAdapterExecutable(command, args, options);
         return executable;
     }
