@@ -9,6 +9,7 @@
 
 // Based on the Microsoft template code at https://github.com/Microsoft/vscode-extension-samples
 import { workspace, ExtensionContext } from 'vscode';
+import { activateDebugger } from './debugger';
 import * as path from 'path';
 
 import {
@@ -54,6 +55,9 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
+	// Activate the DAP Debugger
+	activateDebugger(context);
 
 	// Start the client. This will also launch the server
 	client.start();

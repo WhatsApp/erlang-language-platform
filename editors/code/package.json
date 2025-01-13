@@ -61,6 +61,93 @@
         "path": "./third-party/grammar/Erlang.plist"
       }
     ],
+    "debuggers": [
+      {
+        "type": "erlang-edb",
+        "label": "Erlang EDB",
+        "languages": ["erlang"],
+        "initialConfigurations": [
+          {
+            "name": "Erlang EDB",
+            "type": "erlang-edb",
+            "request": "launch",
+            "launchCommand": {
+              "cwd": "${workspaceFolder}",
+              "command": "erl",
+              "arguments": [
+                "-sname",
+                "debuggee",
+                "-setcookie",
+                "edb_cookie"
+              ]
+            },
+            "targetNode": {
+              "name": "debuggee@localhost",
+              "cookie": "edb_cookie"
+            }
+          }
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "launchCommand",
+              "targetNode"
+            ],
+            "properties": {
+              "launchCommand": {
+                "type": "object",
+                "description": "The command used to launch the debuggee (Erlang node under test).",
+                "required": [
+                  "command"
+                ],
+                "properties": {
+                  "command": {
+                    "type": "string",
+                    "description": "The command to launch an Erlang node via an external terminal"
+                  },
+                  "arguments": {
+                    "type": "array",
+                    "description": "Arguments for the command.",
+                    "default": []
+                  },
+                  "cwd": {
+                    "type": "string",
+                    "description": "Working directory for the program to start. Defaults to the Workspace Root.",
+                    "default": "${workspaceRoot}"
+                  }
+                }
+              },
+              "targetNode": {
+                "type": "object",
+                "description": "Information about the debuggee (Erlang node under test), used by the debugger to connect via Erlang RPC.",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the Erlang node (e.g. my_node@my_host)."
+                  },
+                  "cookie": {
+                    "type": "string",
+                    "description": "The cookie used to connect to the debuggee. If omitted, the default system cookie is used."
+                  }
+                }
+              },
+              "timeout": {
+                "type": "integer",
+                "description": "Timeout for connecting to the project node after starting debugging.",
+                "default": 60
+              },
+              "stripSourcePrefix": {
+                "type": "string",
+                "description": "When specified, the string is stripped from the suffix of the `cwd`. Useful to guarantee that source paths are relative to the repo root, when this does not coincide with the current `cwd`."
+              }
+            }
+          }
+        }
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Erlang Language Platform",
@@ -185,6 +272,10 @@
           "default": false,
           "markdownDescription": "Display types when hovering over expressions.",
           "type": "boolean"
+        },
+        "erlangDap.command": {
+          "type": "string",
+          "description": "Custom command to invoke the DAP debugger."
         }
       }
     },
