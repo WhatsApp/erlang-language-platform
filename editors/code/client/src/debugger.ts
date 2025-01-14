@@ -74,6 +74,8 @@ class EDBConfigurationProvider implements vscode.DebugConfigurationProvider {
                     cwd: "${workspaceFolder}",
                     command: "rebar3",
                     arguments: [
+                        "as",
+                        "test",
                         "shell",
                         "--sname",
                         "debuggee"

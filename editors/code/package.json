@@ -75,6 +75,8 @@
               "cwd": "${workspaceFolder}",
               "command": "rebar3",
               "arguments": [
+                "as",
+                "test",
                 "shell",
                 "--sname",
                 "debuggee"
@@ -97,6 +99,8 @@
                 "cwd": "${workspaceFolder}",
                 "command": "rebar3",
                 "arguments": [
+                  "as",
+                  "test",
                   "shell",
                   "--sname",
                   "debuggee"
