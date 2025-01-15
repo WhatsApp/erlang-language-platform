@@ -77,7 +77,7 @@ error: reveal_type
    ┌─ check/src/approx.erl:79:25
    │
 79 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic()
+   │                         ^^^ dynamic(number())
 
 See https://fb.me/eqwalizer_errors#reveal_type
 
@@ -85,7 +85,7 @@ error: reveal_type
    ┌─ check/src/approx.erl:90:25
    │
 90 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic()
+   │                         ^^^ dynamic(number())
 
 See https://fb.me/eqwalizer_errors#reveal_type
 

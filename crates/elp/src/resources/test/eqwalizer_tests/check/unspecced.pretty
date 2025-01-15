@@ -43,7 +43,7 @@ error: incompatible_types
    │
 32 │   expect_none(Res).
    │               ^^^ Res.
-Expression has type:   {dynamic(), [dynamic()]}
+Expression has type:   {dynamic(), dynamic([term()])}
 Context expected type: none()
 
 See https://fb.me/eqwalizer_errors#incompatible_types
