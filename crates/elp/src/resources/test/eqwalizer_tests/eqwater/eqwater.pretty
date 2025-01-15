@@ -533,4 +533,21 @@ Context expected type: 'ok'
 
 See https://fb.me/eqwalizer_errors#incompatible_types
 
-33 ERRORS
+error: incompatible_types
+     ┌─ eqwater/src/eqwater.erl:1302:41
+     │
+1302 │ refine_dynamic(D, A) when is_atom(D) -> A.
+     │                                         ^
+     │                                         │
+     │                                         A.
+Expression has type:   'ok' | 'err'
+Context expected type: 'ok'
+
+See https://fb.me/eqwalizer_errors#incompatible_types
+     │                                         
+
+  'ok' | 'err' is not compatible with 'ok'
+  because
+  'err' is not compatible with 'ok'
+
+34 ERRORS

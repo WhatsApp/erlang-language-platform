@@ -1295,3 +1295,8 @@ negate_number_neg(_) -> ok.
   (number() | atom()) -> number().
 negate_number(N) when not (N == 1) -> 0;
 negate_number(N) -> N.
+
+-spec refine_dynamic
+  (dynamic(), ok | err) -> ok.
+refine_dynamic(D, A) when is_atom(D) andalso A == err -> ok;
+refine_dynamic(D, A) when is_atom(D) -> A.
