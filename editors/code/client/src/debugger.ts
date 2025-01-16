@@ -10,9 +10,9 @@
 import * as vscode from 'vscode';
 import * as dapConfig from './dapConfig';
 
-const DEBUG_TYPE = 'erlang-edb';
+export const DEBUG_TYPE = 'erlang-edb';
 
-interface EdbDebugConfiguration extends vscode.DebugConfiguration {
+export interface EdbDebugConfiguration extends vscode.DebugConfiguration {
     launchCommand: {
         command: string;
         arguments?: Array<string>;

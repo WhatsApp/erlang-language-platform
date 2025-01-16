@@ -9,6 +9,7 @@
 
 import * as vscode from 'vscode';
 import * as dapConfig from './dapConfig';
+import * as edbDebugger from './debugger';
 
 export type Runnable = {
     label: string;
@@ -36,6 +37,15 @@ export function registerCommands(context: vscode.ExtensionContext) {
             'elp.runSingle',
             async (runnable: Runnable) => {
                 await runSingle(runnable);
+            },
+        ),
+    );
+    // elp.debugSingle
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'elp.debugSingle',
+            async (runnable: Runnable) => {
+                await debugSingle(runnable);
             },
         ),
     );
@@ -89,4 +99,24 @@ export function buildTask(
     const task_source = 'elp';
     const exec = new vscode.ProcessExecution(command, args, definition);
     return new vscode.Task(definition, vscode.TaskScope.Workspace, name, task_source, exec, []);
+}
+
+export async function debugSingle(runnable: Runnable): Promise<void> {
+    const debugConfiguration = {
+        type: edbDebugger.DEBUG_TYPE,
+        name: 'Erlang EDB',
+        request: 'launch',
+        launchCommand: {
+            cwd: "${workspaceFolder}",
+            command: "rebar3",
+            arguments: [
+                "ct",
+                "--sname",
+                "debuggee",
+                runnable.args.args
+            ]
+        },
+        targetNode: 'debuggee'
+    };
+    await vscode.debug.startDebugging(undefined, debugConfiguration);
 }
