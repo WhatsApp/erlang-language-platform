@@ -8,7 +8,7 @@
  */
 
 // Based on the Microsoft template code at https://github.com/Microsoft/vscode-extension-samples
-import { window, workspace, ExtensionContext, OutputChannel } from 'vscode';
+import * as vscode from 'vscode';
 import { activateDebugger } from './debugger';
 import * as path from 'path';
 
@@ -19,16 +19,16 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
-let log: OutputChannel;
+let log: vscode.OutputChannel;
 
 export const ELP = 'elpClient';
 
-export function activate(context: ExtensionContext) {
+export function activate(context: vscode.ExtensionContext) {
 
-	log = window.createOutputChannel('Erlang ELP');
+	log = vscode.window.createOutputChannel('Erlang ELP');
 
 	// Options to control the language server
-	const config = workspace.getConfiguration(ELP);
+	const config = vscode.workspace.getConfiguration(ELP);
 	let serverPath = config.get<string>("serverPath");
 	if (serverPath === "") {
         serverPath = context.asAbsolutePath(
@@ -47,7 +47,7 @@ export function activate(context: ExtensionContext) {
 		documentSelector: [{ scheme: 'file', language: 'erlang' }],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
 		}
 	};
 
