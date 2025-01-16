@@ -737,6 +737,14 @@ pub(crate) fn code_lens(
                             data: None,
                         });
                     }
+                    if lens_config.debug {
+                        let debug_command = command::debug_single(&r, debug_title);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(debug_command),
+                            data: None,
+                        });
+                    }
                 }
                 ProjectBuildData::Static(_) => {}
                 ProjectBuildData::Otp => {}
