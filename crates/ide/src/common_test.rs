@@ -130,7 +130,7 @@ pub fn runnable_names(
             .into_iter()
             .filter_map(|runnable| match runnable.kind {
                 RunnableKind::Test { name, .. } => Some(name),
-                RunnableKind::Suite => None,
+                RunnableKind::Suite { .. } => None,
             })
             .collect()
     })
@@ -299,7 +299,7 @@ fn suite_to_runnable(sema: &Semantic, file_id: FileId) -> Option<Runnable> {
     let nav = module.to_nav(sema.db);
     Some(Runnable {
         nav,
-        kind: RunnableKind::Suite,
+        kind: RunnableKind::Suite { suite },
     })
 }
 

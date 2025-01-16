@@ -19,6 +19,7 @@ use hir::NameArity;
 use hir::Semantic;
 
 use crate::common_test;
+use crate::GroupName;
 use crate::NavigationTarget;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -36,14 +37,16 @@ pub enum RunnableKind {
         case: String,
         group: common_test::GroupName,
     },
-    Suite,
+    Suite {
+        suite: String,
+    },
 }
 
 impl Runnable {
     pub fn label(&self, _target: Option<String>) -> String {
         match &self.kind {
             RunnableKind::Test { .. } => "test".to_string(),
-            RunnableKind::Suite => "test".to_string(),
+            RunnableKind::Suite { .. } => "test".to_string(),
         }
     }
     pub fn id(&self) -> String {
@@ -55,7 +58,7 @@ impl Runnable {
                 let escaped_case = regex::escape(case);
                 format!("{suite} - {escaped_group}.{escaped_case}")
             }
-            RunnableKind::Suite => "".to_string(),
+            RunnableKind::Suite { .. } => "".to_string(),
         }
     }
     pub fn regex(&self) -> String {
@@ -71,9 +74,10 @@ impl Runnable {
                 let escaped_case = regex::escape(case);
                 format!("{app_name}:{suite} - {escaped_group}.{escaped_case}$")
             }
-            RunnableKind::Suite => "".to_string(),
+            RunnableKind::Suite { .. } => "".to_string(),
         }
     }
+
     pub fn buck2_test_args(&self, target: String, coverage_enabled: bool) -> Vec<String> {
         let mut args = Vec::new();
         match &self.kind {
@@ -85,7 +89,7 @@ impl Runnable {
                 args.push("--print-passing-details".to_string());
                 args.push("--run-disabled".to_string());
             }
-            RunnableKind::Suite => {
+            RunnableKind::Suite { .. } => {
                 args.push(target);
                 args.push("--".to_string());
                 args.push("--print-passing-details".to_string());
@@ -101,11 +105,33 @@ impl Runnable {
     pub fn buck2_run_args(&self, target: String) -> Vec<String> {
         let mut args = Vec::new();
         match &self.kind {
-            RunnableKind::Suite => {
+            RunnableKind::Suite { .. } => {
                 args.push(target);
             }
             RunnableKind::Test { .. } => {
                 args.push(self.id());
+            }
+        }
+        args
+    }
+
+    pub fn rebar3_test_args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+        match &self.kind {
+            RunnableKind::Test {
+                suite, case, group, ..
+            } => {
+                args.push("--suite".to_string());
+                args.push(suite.to_string());
+                args.push("--case".to_string());
+                args.push(case.to_string());
+                if let GroupName::Name(group) = group {
+                    args.push(group.to_string());
+                }
+            }
+            RunnableKind::Suite { suite } => {
+                args.push("--suite".to_string());
+                args.push(suite.to_string());
             }
         }
         args
@@ -121,7 +147,7 @@ impl Runnable {
                     format!("▶\u{fe0e} Run in REPL (in {})", name)
                 }
             },
-            RunnableKind::Suite => "▶\u{fe0e} Open REPL".to_string(),
+            RunnableKind::Suite { .. } => "▶\u{fe0e} Open REPL".to_string(),
         }
     }
     pub fn run_title(&self) -> String {
@@ -132,7 +158,7 @@ impl Runnable {
                     format!("▶\u{fe0e} Run Test (in {})", name)
                 }
             },
-            RunnableKind::Suite => "▶\u{fe0e} Run All Tests".to_string(),
+            RunnableKind::Suite { .. } => "▶\u{fe0e} Run All Tests".to_string(),
         }
     }
     pub fn debug_title(&self) -> String {
@@ -143,7 +169,7 @@ impl Runnable {
                     format!("▶\u{fe0e} Debug (in {})", name)
                 }
             },
-            RunnableKind::Suite => "▶\u{fe0e} Debug".to_string(),
+            RunnableKind::Suite { .. } => "▶\u{fe0e} Debug".to_string(),
         }
     }
 }

@@ -101,7 +101,7 @@ pub struct Runnable {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<lsp_types::LocationLink>,
     pub kind: RunnableKind,
-    pub args: Buck2RunnableArgs,
+    pub args: RunnableArgs,
 }
 
 impl Runnable {
@@ -116,13 +116,13 @@ impl Runnable {
             label: "Buck2".to_string(),
             location,
             kind: RunnableKind::Buck2,
-            args: Buck2RunnableArgs {
+            args: RunnableArgs::Buck2(Buck2RunnableArgs {
                 workspace_root,
                 command: "test".to_string(),
                 args: runnable.buck2_test_args(target.clone(), coverage_enabled),
                 target,
                 id: runnable.id(),
-            },
+            }),
         }
     }
 
@@ -136,13 +136,31 @@ impl Runnable {
             label: "Buck2".to_string(),
             location,
             kind: RunnableKind::Buck2,
-            args: Buck2RunnableArgs {
+            args: RunnableArgs::Buck2(Buck2RunnableArgs {
                 workspace_root,
                 command: "run".to_string(),
                 args: runnable.buck2_run_args(target.clone()),
                 target,
                 id: runnable.id(),
-            },
+            }),
+        }
+    }
+
+    pub fn rebar3_test(
+        runnable: elp_ide::Runnable,
+        location: Option<lsp_types::LocationLink>,
+        workspace_root: PathBuf,
+        _coverage_enabled: bool,
+    ) -> Self {
+        Self {
+            label: "Rebar3".to_string(),
+            location,
+            kind: RunnableKind::Rebar3,
+            args: RunnableArgs::Rebar3(Rebar3RunnableArgs {
+                workspace_root,
+                command: "ct".to_string(),
+                args: runnable.rebar3_test_args(),
+            }),
         }
     }
 }
@@ -151,6 +169,15 @@ impl Runnable {
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {
     Buck2,
+    Rebar3,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+#[serde(untagged)]
+pub enum RunnableArgs {
+    Buck2(Buck2RunnableArgs),
+    Rebar3(Rebar3RunnableArgs),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -162,6 +189,14 @@ pub struct Buck2RunnableArgs {
     pub target: String,
     pub id: String,
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Rebar3RunnableArgs {
+    pub workspace_root: PathBuf,
+    pub command: String,
+    pub args: Vec<String>,
+}
+
 pub enum ExternalDocs {}
 
 impl Request for ExternalDocs {
