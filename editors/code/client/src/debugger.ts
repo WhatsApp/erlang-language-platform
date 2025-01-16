@@ -8,9 +8,9 @@
  */
 
 import * as vscode from 'vscode';
+import * as dapConfig from './dapConfig';
 
 const DEBUG_TYPE = 'erlang-edb';
-const CONFIG = 'erlangDap';
 
 interface EdbDebugConfiguration extends vscode.DebugConfiguration {
     launchCommand: {
@@ -42,10 +42,9 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
     }
 
     createDebugAdapterDescriptor(_session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-        const dapConfig = vscode.workspace.getConfiguration(CONFIG);
-        const commandString = dapConfig.get<string>('command') || '';
         let command: string;
         let args: string[];
+        const commandString = dapConfig.command();
         if (commandString.length > 0) {
             command = commandString.split(' ')[0];
             args = commandString.split(' ').slice(1);
@@ -53,7 +52,7 @@ class DebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFact
             command = vscode.Uri.joinPath(this.extensionUri, 'bin', 'edb').toString();
             args = ['dap'];
         }
-        const options = { env: { "PATH": withErlangInstallationPath() } };
+        const options = { env: { "PATH": dapConfig.withErlangInstallationPath() } };
         executable = new vscode.DebugAdapterExecutable(command, args, options);
         return executable;
     }
@@ -87,19 +86,7 @@ class EDBConfigurationProvider implements vscode.DebugConfigurationProvider {
             }
         }
 
-        config.launchCommand.env = { "PATH": withErlangInstallationPath() };
+        config.launchCommand.env = { "PATH": dapConfig.withErlangInstallationPath() };
         return config;
-    }
-}
-
-function withErlangInstallationPath() {
-    const dapConfig = vscode.workspace.getConfiguration(CONFIG);
-    const erlangInstallationPath = dapConfig.get<string>('erlangInstallationPath') || '';
-    if (erlangInstallationPath != "") {
-        const path = (process.env.PATH || '').split(':');
-        path.unshift(erlangInstallationPath);
-        return path.join(':');
-    } else {
-        return process.env.PATH;
     }
 }

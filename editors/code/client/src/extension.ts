@@ -10,6 +10,7 @@
 // Based on the Microsoft template code at https://github.com/Microsoft/vscode-extension-samples
 import * as vscode from 'vscode';
 import { activateDebugger } from './debugger';
+import { registerCommands } from './commands';
 import * as path from 'path';
 
 import {
@@ -50,6 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
 			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
 		}
 	};
+
+	registerCommands(context);
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
