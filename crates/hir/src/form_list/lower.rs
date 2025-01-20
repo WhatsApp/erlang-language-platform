@@ -27,6 +27,7 @@ use super::FormIdx;
 use super::FormListData;
 use super::ModuleDocAttribute;
 use super::ParamName;
+use super::SsrDefinition;
 use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
@@ -119,6 +120,7 @@ impl<'a> Ctx<'a> {
                     ast::Form::DeprecatedAttribute(deprecated_attr) => {
                         self.lower_deprecated_attr(deprecated_attr)
                     }
+                    ast::Form::SsrDefinition(definition) => self.lower_ssr_definition(definition),
                 }?;
                 self.map_back.insert(AstPtr::new(&form), idx);
                 Some(idx)
@@ -133,6 +135,13 @@ impl<'a> Ctx<'a> {
             map_back: self.map_back,
             define_id_map: self.define_id_map,
         }
+    }
+
+    fn lower_ssr_definition(&mut self, ssr_definition: &ast::SsrDefinition) -> Option<FormIdx> {
+        let cond = self.conditions.last().copied();
+        let form_id = self.id_map.get_id(ssr_definition);
+        let res = SsrDefinition { cond, form_id };
+        Some(FormIdx::SsrDefinition(self.data.ssr_definitions.alloc(res)))
     }
 
     fn lower_deprecated_attr(

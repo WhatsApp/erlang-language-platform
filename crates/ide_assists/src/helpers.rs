@@ -270,6 +270,7 @@ pub fn expr_needs_parens(body: &Body, expr_id: ExprId) -> bool {
         Expr::Closure { .. } => false,
         Expr::Maybe { .. } => false,
         Expr::Paren { .. } => false,
+        Expr::SsrPlaceholder { .. } => false,
     }
 }
 

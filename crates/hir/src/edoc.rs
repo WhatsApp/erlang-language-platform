@@ -400,12 +400,12 @@ mod tests {
             // Note: if you update the grammar, the order of these nodes
             // may change.
             expect![[r#"
-                SyntaxNodePtr { range: 27..40, kind: MODULE_ATTRIBUTE }
-                  foo
-                    0..26: "%% @foo is an edoc comment"
                 SyntaxNodePtr { range: 61..73, kind: FUN_DECL }
                   doc
                     42..60: "%% @doc fff is ..."
+                SyntaxNodePtr { range: 27..40, kind: MODULE_ATTRIBUTE }
+                  foo
+                    0..26: "%% @foo is an edoc comment"
             "#]],
         )
     }

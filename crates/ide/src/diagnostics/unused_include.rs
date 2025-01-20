@@ -207,6 +207,7 @@ fn is_file_used(
                 FormIdx::TypeAlias(_) => {}
                 FormIdx::Spec(_) => {}
                 FormIdx::Record(_) => {}
+                FormIdx::SsrDefinition(_) => {}
             }
         }
 

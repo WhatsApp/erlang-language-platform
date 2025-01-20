@@ -2485,6 +2485,7 @@ pub enum Form {
     OptionalCallbacksAttribute(OptionalCallbacksAttribute),
     RecordDecl(RecordDecl),
     Spec(Spec),
+    SsrDefinition(SsrDefinition),
     TypeAlias(TypeAlias),
     WildAttribute(WildAttribute),
 }
@@ -2517,6 +2518,7 @@ impl AstNode for Form {
             | OPTIONAL_CALLBACKS_ATTRIBUTE
             | RECORD_DECL
             | SPEC
+            | SSR_DEFINITION
             | TYPE_ALIAS
             | WILD_ATTRIBUTE => true,
             _ => false,
@@ -2552,6 +2554,7 @@ impl AstNode for Form {
             )),
             RECORD_DECL => Some(Form::RecordDecl(RecordDecl { syntax })),
             SPEC => Some(Form::Spec(Spec { syntax })),
+            SSR_DEFINITION => Some(Form::SsrDefinition(SsrDefinition { syntax })),
             TYPE_ALIAS => Some(Form::TypeAlias(TypeAlias { syntax })),
             WILD_ATTRIBUTE => Some(Form::WildAttribute(WildAttribute { syntax })),
             _ => None,
@@ -2575,6 +2578,7 @@ impl AstNode for Form {
             Form::OptionalCallbacksAttribute(it) => it.syntax(),
             Form::RecordDecl(it) => it.syntax(),
             Form::Spec(it) => it.syntax(),
+            Form::SsrDefinition(it) => it.syntax(),
             Form::TypeAlias(it) => it.syntax(),
             Form::WildAttribute(it) => it.syntax(),
         }
@@ -2659,6 +2663,11 @@ impl From<RecordDecl> for Form {
 impl From<Spec> for Form {
     fn from(node: Spec) -> Form {
         Form::Spec(node)
+    }
+}
+impl From<SsrDefinition> for Form {
+    fn from(node: SsrDefinition) -> Form {
+        Form::SsrDefinition(node)
     }
 }
 impl From<TypeAlias> for Form {
@@ -5632,6 +5641,111 @@ impl AstNode for Spec {
 }
 #[doc = r" Via NodeType::Node 2 display"]
 impl std::fmt::Display for Spec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SsrDefinition {
+    pub(crate) syntax: SyntaxNode,
+}
+impl SsrDefinition {
+    pub fn lhs(&self) -> Option<Expr> {
+        support::child(&self.syntax, 0usize)
+    }
+    pub fn rhs(&self) -> Option<SsrReplacement> {
+        support::child(&self.syntax, 0usize)
+    }
+    pub fn when(&self) -> Option<SsrWhen> {
+        support::child(&self.syntax, 0usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for SsrDefinition {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SSR_DEFINITION
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for SsrDefinition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SsrReplacement {
+    pub(crate) syntax: SyntaxNode,
+}
+impl SsrReplacement {
+    pub fn expr(&self) -> Option<Expr> {
+        support::child(&self.syntax, 0usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for SsrReplacement {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SSR_REPLACEMENT
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for SsrReplacement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SsrWhen {
+    pub(crate) syntax: SyntaxNode,
+}
+impl SsrWhen {
+    pub fn guard(&self) -> Option<Guard> {
+        support::child(&self.syntax, 0usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for SsrWhen {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SSR_WHEN
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for SsrWhen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

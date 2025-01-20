@@ -19,6 +19,7 @@ use super::SpecOrCallback;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
+use crate::expr::SsrPlaceholder;
 use crate::AnyAttribute;
 use crate::AttributeBody;
 use crate::BinarySeg;
@@ -644,6 +645,7 @@ impl<'a> Printer<'a> {
                 });
             }
             Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
+            Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -761,6 +763,7 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
+            Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -1009,6 +1012,7 @@ impl<'a> Printer<'a> {
                 args: _,
                 macro_def: _,
             } => todo!(),
+            TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -1209,6 +1213,13 @@ impl<'a> Printer<'a> {
             print(self, expr);
         }
         write!(self, ")").ok();
+    }
+
+    fn print_ssr_placeholder(&mut self, ssr: &SsrPlaceholder) {
+        write!(self, "SsrPlaceholder {{").ok();
+        write!(self, "var: {}, ", self.db.lookup_var(ssr.var)).ok();
+        write!(self, "conditions: TBD").ok();
+        write!(self, "}}").ok();
     }
 }
 

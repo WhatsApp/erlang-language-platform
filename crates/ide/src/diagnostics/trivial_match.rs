@@ -270,6 +270,7 @@ fn matches_trivially(
             args: _,
             macro_def: _,
         } => matches_trivially(sema, in_clause, body_map, source_file, expansion, expr_id),
+        Pat::SsrPlaceholder(_) => false,
     }
 }
 

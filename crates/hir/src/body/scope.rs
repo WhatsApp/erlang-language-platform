@@ -343,6 +343,7 @@ impl ExprScopes {
                     compute_expr_scopes(*arg, body, self, scope, vt);
                 }
             }
+            crate::Pat::SsrPlaceholder(_ssr) => {}
         };
     }
 
@@ -658,6 +659,7 @@ fn compute_expr_scopes(
         crate::Expr::Paren { expr } => {
             compute_expr_scopes(*expr, body, scopes, scope, vt);
         }
+        crate::Expr::SsrPlaceholder(_ssr) => {}
     }
 }
 

@@ -154,6 +154,7 @@ fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) 
             false
         }
         Expr::Paren { .. } => false,
+        Expr::SsrPlaceholder(_) => true,
     }
 }
 

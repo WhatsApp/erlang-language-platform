@@ -289,6 +289,12 @@ pub enum Expr {
         // `fold`, but can be made visible if needed.
         expr: ExprId,
     },
+    SsrPlaceholder(SsrPlaceholder),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SsrPlaceholder {
+    pub var: Var,
 }
 
 impl Expr {
@@ -615,6 +621,7 @@ pub enum Pat {
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
     },
+    SsrPlaceholder(SsrPlaceholder),
 }
 
 impl Pat {
@@ -742,6 +749,7 @@ pub enum TypeExpr {
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
     },
+    SsrPlaceholder(SsrPlaceholder),
 }
 
 impl TypeExpr {

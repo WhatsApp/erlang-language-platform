@@ -17,6 +17,7 @@ use la_arena::RawIdx;
 use super::DocAttribute;
 use super::FeatureAttribute;
 use super::ModuleDocAttribute;
+use super::SsrDefinition;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -86,6 +87,7 @@ impl<'a> Printer<'a> {
             FormIdx::DocAttribute(idx) => self.print_doc_attribute(&self.forms[idx])?,
             FormIdx::FeatureAttribute(idx) => self.print_feature_attribute(&self.forms[idx])?,
             FormIdx::DeprecatedAttribute(idx) => self.print_deprecated(&self.forms[idx])?,
+            FormIdx::SsrDefinition(idx) => self.print_ssr(&self.forms[idx])?,
         }
         writeln!(self)
     }
@@ -396,6 +398,9 @@ impl<'a> Printer<'a> {
                 )
             }
         }
+    }
+    fn print_ssr(&mut self, ssr: &SsrDefinition) -> fmt::Result {
+        writeln!(self, "ssr:(...). %% cond: {:?}", raw_cond(&ssr.cond))
     }
 }
 

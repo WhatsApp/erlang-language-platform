@@ -860,6 +860,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 self.fold_cr_clause(else_clauses, r)
             }
             crate::Expr::Paren { expr } => self.do_fold_expr(*expr, acc),
+            Expr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -923,6 +924,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_pat(*expansion, acc);
                 args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
             }
+            crate::Pat::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -1115,6 +1117,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 };
                 r
             }
+            TypeExpr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -1926,6 +1929,7 @@ bar() ->
                         Form::CompileOption(_) => acc,
                         Form::DeprecatedAttribute(_) => acc,
                         Form::FeatureAttribute(_) => acc,
+                        Form::SsrDefinition(_) => acc,
                     }
                 } else {
                     acc

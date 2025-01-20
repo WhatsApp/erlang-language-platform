@@ -203,6 +203,7 @@ impl FormList {
             FormIdx::CompileOption(idx) => Form::CompileOption(&self[idx]),
             FormIdx::DeprecatedAttribute(idx) => Form::DeprecatedAttribute(&self[idx]),
             FormIdx::FeatureAttribute(idx) => Form::FeatureAttribute(&self[idx]),
+            FormIdx::SsrDefinition(idx) => Form::SsrDefinition(&self[idx]),
         }
     }
 
@@ -238,6 +239,7 @@ pub(crate) struct FormListData {
     record_fields: Arena<RecordField>,
     fa_entries: Arena<FaEntry>,
     deprecates: Arena<DeprecatedAttribute>,
+    ssr_definitions: Arena<SsrDefinition>,
 }
 
 impl FormListData {
@@ -267,6 +269,7 @@ impl FormListData {
             record_fields,
             fa_entries,
             deprecates,
+            ssr_definitions,
         } = self;
         module_attribute.shrink_to_fit();
         includes.shrink_to_fit();
@@ -291,6 +294,7 @@ impl FormListData {
         record_fields.shrink_to_fit();
         fa_entries.shrink_to_fit();
         deprecates.shrink_to_fit();
+        ssr_definitions.shrink_to_fit();
     }
 }
 
@@ -315,6 +319,7 @@ pub enum FormIdx {
     CompileOption(CompileOptionId),
     DeprecatedAttribute(DeprecatedAttributeId),
     FeatureAttribute(FeatureAttributeId),
+    SsrDefinition(SsrDefinitionId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -338,6 +343,7 @@ pub enum Form<'a> {
     CompileOption(&'a CompileOption),
     DeprecatedAttribute(&'a DeprecatedAttribute),
     FeatureAttribute(&'a FeatureAttribute),
+    SsrDefinition(&'a SsrDefinition),
 }
 
 pub type ModuleAttributeId = Idx<ModuleAttribute>;
@@ -363,6 +369,7 @@ pub type RecordFieldId = Idx<RecordField>;
 pub type FaEntryId = Idx<FaEntry>;
 pub type DeprecatedAttributeId = Idx<DeprecatedAttribute>;
 pub type FeatureAttributeId = Idx<FeatureAttribute>;
+pub type SsrDefinitionId = Idx<SsrDefinition>;
 
 impl Index<ModuleAttributeId> for FormList {
     type Output = ModuleAttribute;
@@ -545,6 +552,14 @@ impl Index<DeprecatedAttributeId> for FormList {
 
     fn index(&self, index: DeprecatedAttributeId) -> &Self::Output {
         &self.data.deprecates[index]
+    }
+}
+
+impl Index<SsrDefinitionId> for FormList {
+    type Output = SsrDefinition;
+
+    fn index(&self, index: SsrDefinitionId) -> &Self::Output {
+        &self.data.ssr_definitions[index]
     }
 }
 
@@ -848,6 +863,12 @@ pub struct Record {
 pub struct CompileOption {
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::CompileOptionsAttribute>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SsrDefinition {
+    pub cond: Option<PPConditionId>,
+    pub form_id: FormId<ast::SsrDefinition>,
 }
 
 // ---------------------------------------------------------------------
