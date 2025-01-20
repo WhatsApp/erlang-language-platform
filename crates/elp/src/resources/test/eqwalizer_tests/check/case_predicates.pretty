@@ -50,37 +50,20 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   'restarting' is not compatible with {'p', pid()}
 
 error: incompatible_types
-    ┌─ check/src/case_predicates.erl:164:16
-    │
-164 │   lists:nth(1, L).
-    │                ^
-    │                │
-    │                L.
-Expression has type:   none() | [dynamic()] | #{dynamic() => dynamic()}
-Context expected type: [dynamic()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
-    │                
-
-  none() | [dynamic()] | #{dynamic() => dynamic()} is not compatible with [dynamic()]
-  because
-  #{dynamic() => dynamic()} is not compatible with [dynamic()]
-
-error: incompatible_types
     ┌─ check/src/case_predicates.erl:174:16
     │
 174 │   lists:nth(1, L).
     │                ^
     │                │
     │                L.
-Expression has type:   none() | [dynamic()] | #{dynamic() => dynamic()}
-Context expected type: [dynamic()]
+Expression has type:   #{dynamic() => dynamic()} | none()
+Context expected type: [T]
 
 See https://fb.me/eqwalizer_errors#incompatible_types
     │                
 
-  none() | [dynamic()] | #{dynamic() => dynamic()} is not compatible with [dynamic()]
+  #{dynamic() => dynamic()} | none() is not compatible with [T]
   because
-  #{dynamic() => dynamic()} is not compatible with [dynamic()]
+  #{dynamic() => dynamic()} is not compatible with [T]
 
-5 ERRORS
+4 ERRORS
