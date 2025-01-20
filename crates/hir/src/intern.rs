@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::sync::Arc;
+
 use elp_base_db::salsa;
 
 use crate::Name;
@@ -18,6 +20,9 @@ pub trait InternDatabase {
 
     #[salsa::interned]
     fn var(&self, name: Name) -> Var;
+
+    #[salsa::interned]
+    fn ssr(&self, source: Arc<str>) -> SsrSource;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,6 +44,19 @@ pub struct Var(salsa::InternId);
 impl salsa::InternKey for Var {
     fn from_intern_id(v: salsa::InternId) -> Self {
         Var(v)
+    }
+
+    fn as_intern_id(&self) -> salsa::InternId {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SsrSource(salsa::InternId);
+
+impl salsa::InternKey for SsrSource {
+    fn from_intern_id(v: salsa::InternId) -> Self {
+        SsrSource(v)
     }
 
     fn as_intern_id(&self) -> salsa::InternId {
