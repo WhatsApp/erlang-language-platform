@@ -152,3 +152,23 @@ andalso1(X) ->
     true -> X;
     false -> 1
   end.
+
+-spec case_filter(
+  map() | list()
+) -> ok.
+case_filter(L) ->
+  case is_list(L) of
+    true -> ok;
+    false -> error(err)
+  end,
+  lists:nth(1, L).
+
+-spec case_filter_neg(
+  map() | list()
+) -> err.
+case_filter_neg(L) ->
+  case is_list(L) of
+    true -> error(err);
+    false -> ok
+  end,
+  lists:nth(1, L).
