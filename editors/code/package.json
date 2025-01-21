@@ -268,7 +268,7 @@
           "type": "boolean"
         },
         "elp.lens.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show Code Lenses in Erlang files.",
           "type": "boolean"
         },
@@ -283,7 +283,7 @@
           "type": "boolean"
         },
         "elp.lens.run.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show the `Run` lenses. Only applies when\n`#elp.lens.enable#` is set.",
           "type": "boolean"
         },
