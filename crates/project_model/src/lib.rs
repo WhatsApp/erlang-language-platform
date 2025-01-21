@@ -33,6 +33,7 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use glob::glob;
 use itertools::Either;
+use itertools::Itertools;
 use json::JsonProjectAppData;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
@@ -90,6 +91,18 @@ impl<'a> Deref for CommandProxy<'a> {
 impl<'a> DerefMut for CommandProxy<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.command
+    }
+}
+
+impl<'a> fmt::Display for CommandProxy<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let program = self.command.get_program().to_string_lossy();
+        let args = self
+            .command
+            .get_args()
+            .map(|a| a.to_string_lossy())
+            .join(" ");
+        write!(f, "{} {}", program, args)
     }
 }
 

@@ -630,8 +630,8 @@ fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String,
             kinds.push_str(format!("+ kind(erlang_app$, {})", deps_target).as_str());
         }
     }
-    let output = buck_config
-        .buck_command()
+    let mut command = buck_config.buck_command();
+    command
         .arg("uquery")
         .arg("--config=client.id=elp")
         .arg("--json")
@@ -645,8 +645,8 @@ fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String,
         .arg("--output-attribute")
         .arg("name")
         .arg("--output-attribute")
-        .arg("labels")
-        .output()?;
+        .arg("labels");
+    let output = command.output()?;
     if !output.status.success() {
         let reason = match output.status.code() {
             Some(code) => format!("Exited with status code: {code}"),
@@ -657,7 +657,7 @@ fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String,
             Err(_) => "".to_string(),
         };
         bail!(
-            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Reason: {reason}. Details: {details}",
+            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Command: {command}. Reason: {reason}. Details: {details}"
         );
     }
     let string = String::from_utf8(output.stdout)?;
@@ -675,14 +675,14 @@ fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, 
         targets.push("--deps_targets");
         targets.push(deps_target);
     }
-    let output = buck_config
-        .buck_command()
+    let mut command = buck_config.buck_command();
+    command
         .arg("bxl")
         .arg("--config=client.id=elp")
         .arg("prelude//erlang/elp.bxl:elp_config")
         .arg("--")
-        .args(targets)
-        .output()?;
+        .args(targets);
+    let output = command.output()?;
     if !output.status.success() {
         let reason = match output.status.code() {
             Some(code) => format!("Exited with status code: {code}"),
@@ -693,7 +693,7 @@ fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, 
             Err(_) => "".to_string(),
         };
         bail!(
-            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Reason: {reason}. Details: {details}",
+            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Command: {command}. Reason: {reason}. Details: {details}",
         );
     }
     let string = String::from_utf8(output.stdout)?;
