@@ -42,8 +42,8 @@ This section is used to configure project discovery.
 | Key        | Type   | Description                                                                                                                                                                                            |
 | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | file | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](custom-project.md#the-build_infojson-format) section. |
-| apps | String | A string pattern used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. E.g. `apps/*`|
-| deps | String | A string pattern used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. E.g. `deps/*`|
+| apps | String or Array of Strings | A string pattern used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. E.g. `"apps/*"` or `["apps/*", "other_apps/*"]`|
+| deps | String or Array of Strings | A string pattern used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. E.g. `"deps/*"` or `["more_deps/*"]`|
 
 ### \[eqwalizer\] {#eqwalizer}
 
