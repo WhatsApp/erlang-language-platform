@@ -443,8 +443,34 @@ impl Default for EqwalizerConfig {
 )]
 pub struct BuildInfoConfig {
     pub file: Option<PathBuf>,
-    pub apps: Option<String>,
-    pub deps: Option<String>,
+    pub apps: Option<StringOrVec>,
+    pub deps: Option<StringOrVec>,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
+#[serde(untagged)]
+pub enum StringOrVec {
+    String(String),
+    Vec(Vec<String>),
+}
+
+impl Into<Vec<String>> for StringOrVec {
+    fn into(self) -> Vec<String> {
+        match self {
+            StringOrVec::String(string) => vec![string],
+            StringOrVec::Vec(vec) => vec,
+        }
+    }
 }
 
 #[derive(
@@ -529,20 +555,12 @@ impl ElpConfig {
         }
     }
 
-    pub fn build_info_apps(&self) -> Option<String> {
-        if let Some(build_info) = &self.build_info {
-            build_info.apps.clone()
-        } else {
-            None
-        }
+    pub fn build_info_apps(&self) -> Option<Vec<String>> {
+        self.build_info.clone()?.apps.map(|apps| apps.into())
     }
 
-    pub fn build_info_deps(&self) -> Option<String> {
-        if let Some(build_info) = &self.build_info {
-            build_info.deps.clone()
-        } else {
-            None
-        }
+    pub fn build_info_deps(&self) -> Option<Vec<String>> {
+        self.build_info.clone()?.deps.map(|deps| deps.into())
     }
 
     pub fn config_path(&self) -> &AbsPath {
@@ -566,27 +584,29 @@ impl ElpConfig {
         Some(absolute_path)
     }
 
-    pub fn json_project_app_data(&self, apps_string: Option<String>) -> Vec<JsonProjectAppData> {
+    pub fn json_project_app_data(&self, patterns: Option<Vec<String>>) -> Vec<JsonProjectAppData> {
         let mut res = Vec::new();
 
-        if let Some(apps_string) = apps_string {
-            let apps_string = self
-                .config_path()
-                .parent()
-                .unwrap()
-                .to_path_buf()
-                .join(apps_string);
-            for entry in glob(&apps_string.as_os_str().to_string_lossy())
-                .expect("Failed to read glob pattern")
-            {
-                match entry {
-                    Ok(path) => {
-                        if let Some(app_data) = app_data_from_path(&path) {
-                            res.push(app_data);
+        if let Some(patterns) = patterns {
+            for pattern in patterns {
+                let pattern = self
+                    .config_path()
+                    .parent()
+                    .unwrap()
+                    .to_path_buf()
+                    .join(pattern);
+                for entry in glob(&pattern.as_os_str().to_string_lossy())
+                    .expect("Failed to read glob pattern")
+                {
+                    match entry {
+                        Ok(path) => {
+                            if let Some(app_data) = app_data_from_path(&path) {
+                                res.push(app_data);
+                            }
                         }
-                    }
-                    Err(e) => {
-                        log::warn!("Glob Error: {:?}", e)
+                        Err(e) => {
+                            log::warn!("Glob Error: {:?}", e)
+                        }
                     }
                 }
             }
@@ -1851,6 +1871,58 @@ mod tests {
             }
             _ => {
                 unimplemented!()
+            }
+        }
+    }
+
+    #[test]
+    fn test_toml_apps_as_array() {
+        let spec = r#"
+        //- /.elp.toml
+        [build_info]
+        apps = ["app_a"]
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let (_elp_config, manifest) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        )
+        .unwrap();
+        match manifest {
+            ProjectManifest::Json(json_config) => {
+                assert_eq!(json_config.apps.len(), 1);
+            }
+            _ => {
+                panic!("Expected json config")
+            }
+        }
+    }
+
+    #[test]
+    fn test_toml_apps_as_glob() {
+        let spec = r#"
+        //- /.elp.toml
+        [build_info]
+        apps = ["lib/*", "other_lib/*"]
+        //- /lib/app_a/src/app_a.erl
+        -module(app_a).
+        //- /lib/app_b/src/app_b.erl
+        -module(app_b).
+        //- /other_lib/app_c/src/app_c.erl
+        -module(app_c).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let (_elp_config, manifest) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("lib/app_a/src/app.erl")).unwrap(),
+        )
+        .unwrap();
+        match manifest {
+            ProjectManifest::Json(json_config) => {
+                assert_eq!(json_config.apps.len(), 3);
+            }
+            _ => {
+                panic!("Expected json config")
             }
         }
     }
