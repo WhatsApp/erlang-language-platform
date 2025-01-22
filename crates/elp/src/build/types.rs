@@ -22,8 +22,6 @@ use itertools::Itertools;
 
 use crate::line_endings::LineEndings;
 
-pub const DEFAULT_BUCK_TARGET: &str = "//erl/...";
-
 #[derive(Debug)]
 pub struct LoadResult {
     pub analysis_host: AnalysisHost,
