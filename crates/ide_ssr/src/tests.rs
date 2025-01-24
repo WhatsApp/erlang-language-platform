@@ -572,3 +572,22 @@ fn ssr_expr_case() {
         &["case F of undefined -> XX end"],
     );
 }
+
+#[test]
+fn ssr_expr_receive() {
+    assert_matches(
+        "ssr: receive _@XX -> 3 end.",
+        "bar(F) -> XX = 1, receive F -> 3 end.",
+        &["receive F -> 3 end"],
+    );
+    assert_matches(
+        "ssr: receive _@XX -> 3 after _@MS -> ok end.",
+        "bar(F) -> XX = 1, receive F -> 3 end.",
+        &[],
+    );
+    assert_matches(
+        "ssr: receive _@XX -> 3 after _@MS -> ok end.",
+        "bar(F) -> XX = 1, receive F -> 3 after 1000 -> ok end.",
+        &["receive F -> 3 after 1000 -> ok end"],
+    );
+}

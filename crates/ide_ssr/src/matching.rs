@@ -921,10 +921,18 @@ impl PatternIterator {
                         .chain(clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
                         .collect(),
                 ),
-                Expr::Receive {
-                    clauses: _,
-                    after: _,
-                } => todo!(),
+                Expr::Receive { clauses, after } => Either::Right(
+                    clauses
+                        .iter()
+                        .flat_map(|cr| cr_clause_iter(cr))
+                        .chain(iter::once("after".into()))
+                        .chain(
+                            after
+                                .iter()
+                                .flat_map(|a| a.exprs.iter().map(|e| (*e).into())),
+                        )
+                        .collect(),
+                ),
                 Expr::Try {
                     exprs: _,
                     of_clauses: _,
