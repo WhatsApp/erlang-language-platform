@@ -1,0 +1,17 @@
+[package]
+name = "elp_ssr"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+elp_ide_db.workspace = true
+elp_syntax.workspace = true
+hir.workspace = true
+
+cov-mark.workspace = true
+fxhash.workspace = true
+la-arena.workspace = true
+stdx.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true

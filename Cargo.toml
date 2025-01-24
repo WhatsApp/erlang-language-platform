@@ -16,6 +16,7 @@ elp_ide = { path = "./crates/ide" }
 elp_ide_assists = { path = "./crates/ide_assists" }
 elp_ide_completion = { path = "./crates/ide_completion" }
 elp_ide_db = { path = "./crates/ide_db" }
+elp_ide_ssr = { path = "./crates/ide_ssr" }
 elp_log = { path = "./crates/elp_log" }
 elp_project_model = { path = "./crates/project_model" }
 elp_syntax = { path = "./crates/syntax" }
