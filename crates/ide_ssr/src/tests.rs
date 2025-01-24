@@ -801,3 +801,33 @@ fn ssr_pat_binary_op() {
         &["X + 1", "X + 1 + 2"],
     );
 }
+
+#[test]
+fn ssr_pat_match_record() {
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn(X) -> #foo{ka1 = a, ka2 = <<\"blah\">>, ka3 = {c, d}} = X.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn(X) -> #boo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn(X) -> #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
+        &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = {_@C, _@D}}.",
+        "fn(X) -> #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
+        &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
+    );
+    // Order independent
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = {_@C, _@D}}.",
+        "fn(X) -> #foo{k3 = {c, d}, k2 = a, k1 = <<\"blah\">>} = X.",
+        &["#foo{k3 = {c, d}, k2 = a, k1 = <<\"blah\">>}"],
+    );
+}

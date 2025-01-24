@@ -1041,7 +1041,13 @@ impl PatternIterator {
                 Pat::BinaryOp { lhs, rhs, op } => {
                     Either::Right(vec![(*op).into(), (*lhs).into(), (*rhs).into()])
                 } // match op first to fail fast
-                Pat::Record { name: _, fields: _ } => todo!(),
+                Pat::Record { name, fields } => {
+                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                        .iter()
+                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .collect();
+                    Either::Left((vec![(*name).into()], children))
+                }
                 Pat::RecordIndex { name: _, field: _ } => todo!(),
                 Pat::Map { fields: _ } => todo!(),
                 Pat::MacroCall {
