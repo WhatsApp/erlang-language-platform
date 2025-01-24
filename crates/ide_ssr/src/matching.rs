@@ -1048,7 +1048,9 @@ impl PatternIterator {
                         .collect();
                     Either::Left((vec![(*name).into()], children))
                 }
-                Pat::RecordIndex { name: _, field: _ } => todo!(),
+                Pat::RecordIndex { name, field } => {
+                    Either::Right(vec![(*name).into(), (*field).into()])
+                }
                 Pat::Map { fields: _ } => todo!(),
                 Pat::MacroCall {
                     expansion: _,

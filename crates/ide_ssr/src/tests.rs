@@ -831,3 +831,17 @@ fn ssr_pat_match_record() {
         &["#foo{k3 = {c, d}, k2 = a, k1 = <<\"blah\">>}"],
     );
 }
+
+#[test]
+fn ssr_pat_record_index() {
+    assert_matches(
+        "ssr: #a_record.a_field.",
+        "bar(XX) -> #record.field = XX.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #record.field.",
+        "bar(XX) -> #record.field = XX.",
+        &["#record.field"],
+    );
+}
