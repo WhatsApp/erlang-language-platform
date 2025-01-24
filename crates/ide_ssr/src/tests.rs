@@ -563,3 +563,12 @@ fn ssr_expr_map_comprehension() {
         &["#{ K => V || K := V <- Map}"],
     );
 }
+
+#[test]
+fn ssr_expr_case() {
+    assert_matches(
+        "ssr: case _@XX of _@A -> _@B end .",
+        "bar(F) -> XX = 1, case F of undefined -> XX end.",
+        &["case F of undefined -> XX end"],
+    );
+}

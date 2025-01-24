@@ -33,6 +33,7 @@ use hir::Atom;
 use hir::BinarySeg;
 use hir::Body;
 use hir::BodyOrigin;
+use hir::CRClause;
 use hir::ComprehensionBuilder;
 use hir::ComprehensionExpr;
 use hir::Expr;
@@ -915,10 +916,11 @@ impl PatternIterator {
                     Either::Right(exprs.iter().map(|id| (*id).into()).collect())
                 }
                 Expr::If { clauses: _ } => todo!(),
-                Expr::Case {
-                    expr: _,
-                    clauses: _,
-                } => todo!(),
+                Expr::Case { expr, clauses } => Either::Right(
+                    iter::once((*expr).into())
+                        .chain(clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
+                        .collect(),
+                ),
                 Expr::Receive {
                     clauses: _,
                     after: _,
@@ -946,7 +948,7 @@ impl PatternIterator {
             },
             AnyExprRef::Pat(it) => match it {
                 Pat::Missing => todo!(),
-                Pat::Literal(_) => todo!(),
+                Pat::Literal(_) => Either::Right(vec![]),
                 Pat::Var(_) => Either::Right(vec![]),
                 Pat::Match { lhs: _, rhs: _ } => todo!(),
                 Pat::Tuple { pats: _ } => todo!(),
@@ -990,6 +992,19 @@ impl PatternIterator {
             PatternIterator::Map(m) => m.prefix.children.is_empty() && m.children.is_empty(),
         }
     }
+}
+
+fn cr_clause_iter(cr: &CRClause) -> Vec<SubId> {
+    iter::once(cr.pat.into())
+        .chain(iter::once("guards".into()))
+        .chain(
+            cr.guards
+                .iter()
+                .flat_map(|g| g.into_iter().map(|e| (*e).into())),
+        )
+        .chain(iter::once("exprs".into()))
+        .chain(cr.exprs.iter().map(|e| (*e).into()))
+        .collect()
 }
 
 fn iterate_binary_seg<Id>(s: &BinarySeg<Id>) -> Vec<SubId>
