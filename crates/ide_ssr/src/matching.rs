@@ -1038,11 +1038,9 @@ impl PatternIterator {
                     Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
                 }
                 Pat::UnaryOp { pat, op } => Either::Right(vec![(*op).into(), (*pat).into()]),
-                Pat::BinaryOp {
-                    lhs: _,
-                    rhs: _,
-                    op: _,
-                } => todo!(),
+                Pat::BinaryOp { lhs, rhs, op } => {
+                    Either::Right(vec![(*op).into(), (*lhs).into(), (*rhs).into()])
+                } // match op first to fail fast
                 Pat::Record { name: _, fields: _ } => todo!(),
                 Pat::RecordIndex { name: _, field: _ } => todo!(),
                 Pat::Map { fields: _ } => todo!(),
