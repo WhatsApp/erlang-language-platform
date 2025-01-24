@@ -591,3 +591,35 @@ fn ssr_expr_receive() {
         &["receive F -> 3 after 1000 -> ok end"],
     );
 }
+
+#[test]
+fn ssr_expr_try() {
+    assert_matches(
+        r#"ssr:
+             try _@AA of
+                 _@XX -> ok
+             catch
+                 _@YY when true -> ok;
+                 error:undef:_@Stack -> _@Stack
+             after
+                 ok
+             end."#,
+        r#"bar(F) ->
+             try 1 of
+                 2 -> ok
+             catch
+                 YY when true -> ok;
+                 error:undef:Stack -> Stack
+             after
+                 ok
+             end."#,
+        &[r#"try 1 of
+                 2 -> ok
+             catch
+                 YY when true -> ok;
+                 error:undef:Stack -> Stack
+             after
+                 ok
+             end"#],
+    );
+}

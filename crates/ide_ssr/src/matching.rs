@@ -934,11 +934,31 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::Try {
-                    exprs: _,
-                    of_clauses: _,
-                    catch_clauses: _,
-                    after: _,
-                } => todo!(),
+                    exprs,
+                    of_clauses,
+                    catch_clauses,
+                    after,
+                } => Either::Right({
+                    let mut res = Vec::default();
+                    exprs.iter().for_each(|e| res.push((*e).into()));
+                    res.push("of".into());
+                    of_clauses
+                        .iter()
+                        .flat_map(|cr| cr_clause_iter(cr))
+                        .for_each(|e| res.push(e));
+                    res.push("catch".into());
+                    catch_clauses.iter().for_each(|cc| {
+                        cc.class.map(|p| res.push(p.into()));
+                        res.push(cc.reason.into());
+                        cc.stack.map(|p| res.push(p.into()));
+                        cc.guards
+                            .iter()
+                            .for_each(|g| g.iter().for_each(|e| res.push((*e).into())));
+                    });
+                    res.push("after".into());
+                    after.iter().for_each(|e| res.push((*e).into()));
+                    res
+                }),
                 Expr::CaptureFun {
                     target: _,
                     arity: _,
