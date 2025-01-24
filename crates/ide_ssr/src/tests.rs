@@ -504,3 +504,12 @@ fn ssr_expr_match_map_update() {
         &[],
     );
 }
+
+#[test]
+fn ssr_expr_match_catch() {
+    assert_matches(
+        "ssr: catch _@A.",
+        "bar() -> XX = 1, catch XX.",
+        &["catch XX"],
+    );
+}

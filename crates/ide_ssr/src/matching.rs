@@ -874,7 +874,7 @@ impl PatternIterator {
                         .collect();
                     Either::Left((vec![(*expr).into()], children))
                 }
-                Expr::Catch { expr: _ } => todo!(),
+                Expr::Catch { expr } => Either::Right(vec![(*expr).into()]),
                 Expr::MacroCall {
                     expansion: _,
                     args: _,
