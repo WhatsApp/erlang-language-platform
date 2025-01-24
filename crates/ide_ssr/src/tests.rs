@@ -431,3 +431,17 @@ fn ssr_expr_match_record_update() {
         &["List#a_record{field = XX}"],
     );
 }
+
+#[test]
+fn ssr_expr_match_record_index() {
+    assert_matches(
+        "ssr: #a_record.a_field.",
+        "bar(List) -> XX = #record.field, XX.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #a_record.a_field.",
+        "bar(List) -> XX = #a_record.a_field, XX.",
+        &["#a_record.a_field"],
+    );
+}
