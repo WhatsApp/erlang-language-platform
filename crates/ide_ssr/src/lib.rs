@@ -77,6 +77,7 @@ use hir::ExprId;
 use hir::InFile;
 use hir::InSsr;
 use hir::Literal;
+use hir::Name;
 use hir::Pat;
 use hir::Semantic;
 use hir::SsrBody;
@@ -96,6 +97,7 @@ mod tests;
 pub use errors::SsrError;
 pub use matching::Match;
 pub use matching::MatchFailureReason;
+pub use matching::PlaceholderMatch;
 pub use matching::SubId;
 
 // ---------------------------------------------------------------------
@@ -268,7 +270,7 @@ impl SsrPattern {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SsrMatches {
     pub matches: Vec<Match>,
 }
@@ -423,6 +425,15 @@ impl Match {
     pub fn matched_text(&self, db: &RootDatabase) -> String {
         let file_text = db.file_text(self.range.file_id);
         file_text[self.range.range.start().into()..self.range.range.end().into()].to_string()
+    }
+
+    pub fn get_placeholder_match(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<PlaceholderMatch> {
+        let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
+        self.placeholder_values.get(&var).cloned()
     }
 }
 

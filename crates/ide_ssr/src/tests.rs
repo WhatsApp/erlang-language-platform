@@ -202,6 +202,41 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     assert_eq!(matched_strings, expected);
 }
 
+#[track_caller]
+fn assert_match_placeholder(
+    pattern: &str,
+    code: &str,
+    expected: &[&str],
+    placeholder_name: &str,
+    expected_val: Expect,
+) {
+    let (db, position, selections) = single_file(code);
+    if expected.len() > 0 {
+        if expected[0] == "" {
+            panic!("empty expected string");
+        }
+    }
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections);
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches = match_finder.matches();
+    let match0 = &matches.matches[0];
+    let placeholder_val = match0.get_placeholder_match(&sema, placeholder_name);
+    let matched_strings: Vec<String> = matches
+        .flattened()
+        .matches
+        .iter()
+        .map(|m| m.matched_text(&db))
+        .collect();
+    if matched_strings != expected && !expected.is_empty() {
+        print_match_debug_info(&match_finder, position.file_id, expected[0]);
+    }
+    assert_eq!(matched_strings, expected);
+    expected_val.assert_debug_eq(&placeholder_val);
+}
+
 // ---------------------------------------------------------------------
 
 #[test]
@@ -943,4 +978,36 @@ fn ssr_invalid_when_condition_not_compop() {
         "Parse error: Invalid `when` condition"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X = foo."));
+}
+
+// ---------------------------------------------------------------------
+
+#[test]
+fn ssr_retrieve_match_placeholder() {
+    assert_match_placeholder(
+        "ssr: {_@X = _@Y} when _@X =/= foo.",
+        "foo() -> {foo = 3},{bar = 2}.",
+        &["{bar = 2}"],
+        "_@X",
+        expect![[r#"
+            Some(
+                PlaceholderMatch {
+                    range: FileRange {
+                        file_id: FileId(
+                            0,
+                        ),
+                        range: 20..23,
+                    },
+                    node: AnyExprId(
+                        Pat(
+                            Idx::<Pat>(1),
+                        ),
+                    ),
+                    inner_matches: SsrMatches {
+                        matches: [],
+                    },
+                },
+            )
+        "#]],
+    )
 }

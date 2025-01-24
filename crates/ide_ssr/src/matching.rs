@@ -81,7 +81,7 @@ macro_rules! fail_match {
 }
 
 /// Information about a match that was found.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Match {
     pub range: FileRange,
     pub matched_node_body: BodyOrigin,
@@ -95,7 +95,7 @@ pub struct Match {
 }
 
 /// Information about a placeholder bound in a match.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PlaceholderMatch {
     pub range: FileRange,
     /// The code node that matched the placeholder
