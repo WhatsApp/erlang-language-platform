@@ -62,7 +62,7 @@ impl<'a> AnyExprRef<'a> {
             AnyExprRef::Expr(it) => it.variant_str(),
             AnyExprRef::Pat(it) => it.variant_str(),
             AnyExprRef::TypeExpr(it) => it.variant_str(),
-            AnyExprRef::Term(_) => todo!(),
+            AnyExprRef::Term(it) => it.variant_str(),
         }
     }
 }
@@ -857,6 +857,21 @@ impl TypeExpr {
             TypeExpr::Var(_) => "TypeExpr::Var",
             TypeExpr::MacroCall { .. } => "TypeExpr::MacroCall",
             TypeExpr::SsrPlaceholder(_) => "TypeExpr::SsrPlaceholder",
+        }
+    }
+}
+
+impl Term {
+    pub fn variant_str(&self) -> &'static str {
+        match &self {
+            Term::Missing => "Term::Missing",
+            Term::Literal(_) => "Term::Literal",
+            Term::Binary(_) => "Term::Binary",
+            Term::Tuple { .. } => "Term::Tuple",
+            Term::List { .. } => "Term::List",
+            Term::Map { .. } => "Term::Map",
+            Term::CaptureFun { .. } => "Term::CaptureFun",
+            Term::MacroCall { .. } => "Term::MacroCall",
         }
     }
 }
