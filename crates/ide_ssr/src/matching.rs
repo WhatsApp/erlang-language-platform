@@ -686,7 +686,10 @@ impl SubId {
                 },
                 BinaryOp::Send => "BinaryOp::Send",
             },
-            SubId::MapOp(_) => todo!(),
+            SubId::MapOp(op) => match op {
+                MapOp::Assoc => "MapOp::Assoc",
+                MapOp::Exact => "MapOp::Exact",
+            },
             SubId::Constant(v) => v,
         }
     }
@@ -736,6 +739,12 @@ impl From<UnaryOp> for SubId {
 impl From<BinaryOp> for SubId {
     fn from(value: BinaryOp) -> Self {
         SubId::BinaryOp(value)
+    }
+}
+
+impl From<MapOp> for SubId {
+    fn from(value: MapOp) -> Self {
+        SubId::MapOp(value)
     }
 }
 
@@ -858,7 +867,13 @@ impl PatternIterator {
                         .collect();
                     Either::Left((vec![], children))
                 }
-                Expr::MapUpdate { expr: _, fields: _ } => todo!(),
+                Expr::MapUpdate { expr, fields } => {
+                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                        .iter()
+                        .map(|(name, op, val)| ((*name).into(), vec![(*op).into(), (*val).into()]))
+                        .collect();
+                    Either::Left((vec![(*expr).into()], children))
+                }
                 Expr::Catch { expr: _ } => todo!(),
                 Expr::MacroCall {
                     expansion: _,

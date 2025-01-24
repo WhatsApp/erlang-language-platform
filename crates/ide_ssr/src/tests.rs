@@ -480,3 +480,27 @@ fn ssr_expr_match_map() {
         &["#{another => 3, field => XX}"],
     );
 }
+
+#[test]
+fn ssr_expr_match_map_update() {
+    assert_matches(
+        "ssr: _@A#{ foo => _@B }.",
+        "bar(List) -> XX = 1, List#{foo := XX}.",
+        &[],
+    );
+    assert_matches(
+        "ssr: _@A#{ foo => _@B }.",
+        "bar(List) -> XX = 1, List#{foo => XX}.",
+        &["List#{foo => XX}"],
+    );
+    assert_matches(
+        "ssr: _@A#{ foo => _@B, zz => _@A }.",
+        "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
+        &["List#{zz => 1, foo => XX}"],
+    );
+    assert_matches(
+        "ssr: _@A#{ foo => _@B, zz => {_@A} }.",
+        "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
+        &[],
+    );
+}
