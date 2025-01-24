@@ -860,7 +860,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 self.fold_cr_clause(else_clauses, r)
             }
             crate::Expr::Paren { expr } => self.do_fold_expr(*expr, acc),
-            Expr::SsrPlaceholder(_) => acc,
+            crate::Expr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -880,7 +880,7 @@ impl<'a, T> FoldCtx<'a, T> {
             body_origin: self.body_origin,
         };
         let acc = (self.callback)(initial, ctx);
-        let r = match &pat {
+        let r = match pat {
             crate::Pat::Missing => acc,
             crate::Pat::Literal(_) => acc,
             crate::Pat::Var(_) => acc,
@@ -924,6 +924,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_pat(*expansion, acc);
                 args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
             }
+            crate::Pat::Paren { pat } => self.do_fold_pat(*pat, acc),
             crate::Pat::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
@@ -2370,6 +2371,7 @@ bar() ->
                         }
                     }
                 },
+                AnyExpr::Pat(Pat::Paren { .. }) => acc + 1,
                 _ => acc,
             },
             &mut |acc, _on, _form_id| acc,
@@ -2418,6 +2420,15 @@ bar() ->
                 Z = ((modu):((fn)))(A).
              "#;
         count_parens(fixture_str, 5);
+    }
+
+    #[test]
+    fn parens_in_pat() {
+        let fixture_str = r#"
+              foo(((A))) ->
+                (X) = 2.
+             "#;
+        count_parens(fixture_str, 3);
     }
 
     // End of testing paren visibility

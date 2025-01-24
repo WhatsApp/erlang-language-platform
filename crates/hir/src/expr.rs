@@ -621,6 +621,13 @@ pub enum Pat {
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
     },
+    Paren {
+        // This constructor allows us to analyze the usage of parens
+        // when deciding on assists.
+        // Much like `Pat::MacroCall`, it is normally hidden during a
+        // `fold`, but can be made visible if needed.
+        pat: PatId,
+    },
     SsrPlaceholder(SsrPlaceholder),
 }
 

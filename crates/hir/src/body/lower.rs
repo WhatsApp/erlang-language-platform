@@ -792,12 +792,12 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::ParenExpr(paren_expr) => {
-                if let Some(expr) = paren_expr.expr() {
-                    let pat_id = self.lower_pat(&expr);
-                    let ptr = AstPtr::new(&expr);
+                if let Some(paren_expr) = paren_expr.expr() {
+                    let pat_id = self.lower_pat(&paren_expr);
+                    let ptr = AstPtr::new(&paren_expr);
                     let source = InFileAstPtr::new(self.curr_file_id(), ptr);
                     self.record_pat_source(pat_id, source);
-                    pat_id
+                    self.alloc_pat(Pat::Paren { pat: pat_id }, Some(expr))
                 } else {
                     self.alloc_pat(Pat::Missing, Some(expr))
                 }

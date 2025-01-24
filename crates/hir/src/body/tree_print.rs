@@ -763,6 +763,7 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
+            Pat::Paren { pat } => self.print_pat(&self.body[*pat]),
             Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }

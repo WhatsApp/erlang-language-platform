@@ -834,8 +834,12 @@ impl<'a> Index<PatId> for FoldBody<'a> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
-        // Do not "look through" macro expansion
+        // Apply the visibility strategies to macros and parens
         match &self.body.pats[index] {
+            Pat::Paren { pat } => match self.parens {
+                ParenStrategy::VisibleParens => &self.body.pats[index],
+                ParenStrategy::InvisibleParens => self.index(*pat),
+            },
             pat @ Pat::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => pat,
                 VisibleMacros::No => &self.index(*expansion),
@@ -849,9 +853,10 @@ impl Index<PatId> for Body {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
-        // "look through" macro expansion.
+        // "look through" macro expansion and parens.
         match &self.pats[index] {
             Pat::MacroCall { expansion, .. } => &self.pats[*expansion],
+            Pat::Paren { pat } => &self.pats[*pat],
             pat => pat,
         }
     }

@@ -303,6 +303,7 @@ impl<'a> Printer<'a> {
                 args: _,
                 macro_def: _,
             } => self.print_pat(&self.body[*expansion]),
+            Pat::Paren { pat } => self.print_pat(&self.body[*pat]),
             Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }

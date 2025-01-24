@@ -343,6 +343,9 @@ impl ExprScopes {
                     compute_expr_scopes(*arg, body, self, scope, vt);
                 }
             }
+            crate::Pat::Paren { pat } => {
+                self.add_bindings(body, scope, *pat, vt, add_bindings);
+            }
             crate::Pat::SsrPlaceholder(_ssr) => {}
         };
     }
