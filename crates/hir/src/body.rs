@@ -981,6 +981,7 @@ impl Index<TypeExprId> for Body {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => &self.type_exprs[*expansion],
             type_expr => type_expr,
         }

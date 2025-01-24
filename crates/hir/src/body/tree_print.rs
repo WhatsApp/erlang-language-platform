@@ -429,6 +429,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
@@ -783,6 +784,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
@@ -880,6 +882,7 @@ impl<'a> Printer<'a> {
                 expansion: _,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => todo!(),
         }
     }
@@ -1040,6 +1043,7 @@ impl<'a> Printer<'a> {
                 expansion: _,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => todo!(),
             TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }

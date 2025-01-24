@@ -311,6 +311,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => self.print_pat(&self.body[*expansion]),
             Pat::Paren { pat } => self.print_pat(&self.body[*pat]),
             Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
@@ -508,6 +509,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => self.print_expr(&self.body[*expansion]),
             Expr::Call { target, args } => {
                 self.print_call_target(target, |this, expr| this.print_expr(&this.body[*expr]))?;
@@ -732,6 +734,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => self.print_type(&self.body[*expansion]),
             TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
@@ -786,6 +789,7 @@ impl<'a> Printer<'a> {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => self.print_term(&self.body[*expansion]),
         }
     }

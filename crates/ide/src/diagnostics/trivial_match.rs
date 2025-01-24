@@ -269,6 +269,7 @@ fn matches_trivially(
             expansion,
             args: _,
             macro_def: _,
+            macro_name: _,
         } => matches_trivially(sema, in_clause, body_map, source_file, expansion, expr_id),
         Pat::Paren { pat } => {
             matches_trivially(sema, in_clause, body_map, source_file, pat, expr_id)

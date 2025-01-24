@@ -722,6 +722,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
@@ -920,6 +921,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 let r = self.do_fold_pat(*expansion, acc);
                 args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
@@ -1022,6 +1024,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 expansion,
                 args: _,
                 macro_def: _,
+                macro_name: _,
             } => {
                 // We ignore the args for now
                 self.do_fold_term(*expansion, acc)
@@ -1104,6 +1107,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
@@ -2113,6 +2117,7 @@ bar() ->
                     expansion: _,
                     args: _,
                     macro_def,
+                    macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
                         acc.push(format!("Expr:{:?}", def));
@@ -2125,6 +2130,7 @@ bar() ->
                     expansion: _,
                     args: _,
                     macro_def,
+                    macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
                         acc.push(format!("Pat:{:?}", def));
@@ -2137,6 +2143,7 @@ bar() ->
                     expansion: _,
                     args: _,
                     macro_def,
+                    macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
                         acc.push(format!("TypeExpr:{:?}", def));
@@ -2149,6 +2156,7 @@ bar() ->
                     expansion: _,
                     args: _,
                     macro_def,
+                    macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
                         acc.push(format!("Term:{:?}", def));

@@ -35,6 +35,7 @@ use super::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::Guards;
+use crate::expr::MacroCallName;
 use crate::expr::MaybeExpr;
 use crate::expr::StringVariant;
 use crate::known;
@@ -795,6 +796,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -812,6 +814,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def: None,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -1448,6 +1451,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -1465,6 +1469,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def: None,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -2124,6 +2129,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -2141,6 +2147,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def: None,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -2491,6 +2498,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -2508,6 +2516,7 @@ impl<'a> Ctx<'a> {
                             expansion,
                             args,
                             macro_def: None,
+                            macro_name: self.macro_call_name(call.name()),
                         },
                         Some(expr),
                     )
@@ -2958,6 +2967,20 @@ impl<'a> Ctx<'a> {
 
     fn curr_file_id(&self) -> FileId {
         self.macro_stack[self.macro_stack_id].file_id
+    }
+
+    fn macro_call_name(&self, name: Option<ast::MacroName>) -> MacroCallName {
+        match name {
+            Some(ast::MacroName::Atom(atom)) => {
+                let atom = self.db.atom(atom.as_name());
+                MacroCallName::Atom(atom)
+            }
+            Some(ast::MacroName::Var(var)) => {
+                let var = self.db.var(var.as_name());
+                MacroCallName::Var(var)
+            }
+            None => MacroCallName::Missing,
+        }
     }
 }
 

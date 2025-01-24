@@ -190,6 +190,13 @@ impl Literal {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum MacroCallName {
+    Var(Var),
+    Atom(Atom),
+    Missing,
+}
+
 pub type ExprId = Idx<Expr>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -259,6 +266,7 @@ pub enum Expr {
         expansion: ExprId,
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
+        macro_name: MacroCallName,
     },
     Call {
         target: CallTarget<ExprId>,
@@ -672,6 +680,7 @@ pub enum Pat {
         expansion: PatId,
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
+        macro_name: MacroCallName,
     },
     Paren {
         // This constructor allows us to analyze the usage of parens
@@ -773,6 +782,7 @@ pub enum Term {
         expansion: TermId,
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
+        macro_name: MacroCallName,
     },
 }
 
@@ -827,6 +837,7 @@ pub enum TypeExpr {
         expansion: TypeExprId,
         args: Vec<ExprId>,
         macro_def: Option<InFile<DefineId>>,
+        macro_name: MacroCallName,
     },
     SsrPlaceholder(SsrPlaceholder),
 }

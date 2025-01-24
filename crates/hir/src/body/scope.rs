@@ -337,6 +337,7 @@ impl ExprScopes {
                 expansion,
                 args,
                 macro_def: _,
+                macro_name: _,
             } => {
                 self.add_bindings(body, scope, *expansion, vt, add_bindings);
                 for arg in args {
@@ -456,6 +457,7 @@ fn compute_expr_scopes(
             expansion,
             args,
             macro_def: _,
+            macro_name: _,
         } => {
             compute_expr_scopes(*expansion, body, scopes, scope, vt);
             for arg in args {

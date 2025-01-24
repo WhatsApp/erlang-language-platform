@@ -936,6 +936,7 @@ impl PatternIterator {
                     expansion: _,
                     args: _,
                     macro_def: _,
+                    macro_name: _,
                 } => todo!(),
                 Expr::Call { target, args } => PatternIterator::as_pattern_list({
                     let mut res = Vec::default();
@@ -1125,6 +1126,7 @@ impl PatternIterator {
                     expansion: _,
                     args: _,
                     macro_def: _,
+                    macro_name: _,
                 } => todo!(),
                 Pat::Paren { pat } => PatternIterator::as_pattern_list(vec![(*pat).into()]),
                 Pat::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),

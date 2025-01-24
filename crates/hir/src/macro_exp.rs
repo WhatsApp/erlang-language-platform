@@ -10,6 +10,7 @@
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
+use crate::body::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
 use crate::form_list::FormListData;
 use crate::known;
@@ -126,6 +127,9 @@ pub(crate) fn local_resolve_query(
     file_id: FileId,
     name: MacroName,
 ) -> MacroResolution {
+    if file_id == SSR_SOURCE_FILE_ID {
+        return MacroResolution::Unresolved;
+    }
     let form_list = db.file_form_list(file_id);
 
     for (_idx, directive) in form_list.pp_stack().iter().rev() {

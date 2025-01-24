@@ -132,6 +132,7 @@ fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) 
             expansion,
             args: _,
             macro_def: _,
+            macro_name: _,
         } => has_no_effect(def_fb, expansion),
         Expr::Call { .. } | Expr::Receive { .. } => false,
 
