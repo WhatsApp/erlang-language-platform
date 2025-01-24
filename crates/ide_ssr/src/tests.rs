@@ -459,3 +459,24 @@ fn ssr_expr_match_record_field() {
         &["List#record.field"],
     );
 }
+
+#[test]
+fn ssr_expr_match_map() {
+    // Note that the map operation is always Assoc (`=>`), as per the
+    // HIR lowering
+    assert_matches(
+        "ssr: #{ field => _@A }.",
+        "bar() -> XX = 1, #{foo => XX}.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #{ field => _@A }.",
+        "bar() -> XX = 1, #{field => XX}.",
+        &["#{field => XX}"],
+    );
+    assert_matches(
+        "ssr: #{ field => _@A, another => _@B }.",
+        "bar() -> XX = 1, #{another => 3, field => XX}.",
+        &["#{another => 3, field => XX}"],
+    );
+}

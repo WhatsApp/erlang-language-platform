@@ -851,7 +851,13 @@ impl PatternIterator {
                 Expr::RecordField { expr, name, field } => {
                     Either::Right(vec![(*name).into(), (*field).into(), (*expr).into()])
                 }
-                Expr::Map { fields: _ } => todo!(),
+                Expr::Map { fields } => {
+                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                        .iter()
+                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .collect();
+                    Either::Left((vec![], children))
+                }
                 Expr::MapUpdate { expr: _, fields: _ } => todo!(),
                 Expr::Catch { expr: _ } => todo!(),
                 Expr::MacroCall {
