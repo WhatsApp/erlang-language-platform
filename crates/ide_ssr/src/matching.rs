@@ -33,6 +33,8 @@ use hir::Atom;
 use hir::BinarySeg;
 use hir::Body;
 use hir::BodyOrigin;
+use hir::ComprehensionBuilder;
+use hir::ComprehensionExpr;
 use hir::Expr;
 use hir::ExprId;
 use hir::Literal;
@@ -881,10 +883,34 @@ impl PatternIterator {
                     macro_def: _,
                 } => todo!(),
                 Expr::Call { target: _, args: _ } => todo!(),
-                Expr::Comprehension {
-                    builder: _,
-                    exprs: _,
-                } => todo!(),
+                Expr::Comprehension { builder, exprs } => {
+                    let bs: Vec<SubId> = match builder {
+                        ComprehensionBuilder::List(e) => vec![(*e).into()],
+                        ComprehensionBuilder::Binary(e) => vec![(*e).into()],
+                        ComprehensionBuilder::Map(k, v) => vec![(*k).into(), (*v).into()],
+                    };
+                    Either::Right(
+                        bs.into_iter()
+                            .chain(exprs.iter().flat_map(|cb| match cb {
+                                ComprehensionExpr::BinGenerator { pat, expr } => {
+                                    vec!["CBB".into(), (*pat).into(), (*expr).into()]
+                                }
+                                ComprehensionExpr::ListGenerator { pat, expr } => {
+                                    vec!["CBL".into(), (*pat).into(), (*expr).into()]
+                                }
+                                ComprehensionExpr::MapGenerator { key, value, expr } => {
+                                    vec![
+                                        "CBM".into(),
+                                        (*key).into(),
+                                        (*value).into(),
+                                        (*expr).into(),
+                                    ]
+                                }
+                                ComprehensionExpr::Expr(expr) => vec![(*expr).into()],
+                            }))
+                            .collect(),
+                    )
+                }
                 Expr::Block { exprs } => {
                     Either::Right(exprs.iter().map(|id| (*id).into()).collect())
                 }

@@ -513,3 +513,53 @@ fn ssr_expr_match_catch() {
         &["catch XX"],
     );
 }
+
+#[test]
+fn ssr_expr_match_macro_call() {
+    // TODO: fails because we do not have a visible macro call in the
+    // template, only Missing
+    // And it comes down to having some sort of meaningful fold option
+    // that gives the surface call, and the expansion. Maybe try both?
+    // assert_matches(
+    //     "ssr: ?ANY_MACRO(_@AA).",
+    //     "-define(BAR(X), {X}).
+    //      bar() -> ?BAR(4).",
+    //     &["broken"],
+    // );
+}
+
+#[test]
+fn ssr_expr_list_comprehension() {
+    assert_matches(
+        "ssr: [XX || XX <- _@List, _@Cond].",
+        "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
+        &["[XX || XX <- List, XX >= 5]"],
+    );
+}
+
+#[test]
+fn ssr_expr_list_comprehension_binary_generator_pattern() {
+    assert_matches(
+        "ssr: <<XX || XX <= _@List, _@Cond>>.",
+        "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_expr_list_comprehension_binary() {
+    assert_matches(
+        "ssr: <<XX || XX <= _@List>>.",
+        "bar(List) -> XX = 1, <<XX || XX <= List>>.",
+        &["<<XX || XX <= List>>"],
+    );
+}
+
+#[test]
+fn ssr_expr_map_comprehension() {
+    assert_matches(
+        "ssr: #{_@K => _@V || _@K := _@V <- _@Map}.",
+        "bar(Map) -> #{ K => V || K := V <- Map}.",
+        &["#{ K => V || K := V <- Map}"],
+    );
+}
