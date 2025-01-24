@@ -835,11 +835,16 @@ impl PatternIterator {
                         .collect();
                     Either::Left((vec![(*name).into()], children))
                 }
-                Expr::RecordUpdate {
-                    expr: _,
-                    name: _,
-                    fields: _,
-                } => todo!(),
+                Expr::RecordUpdate { expr, name, fields } => Either::Right(
+                    vec![(*name).into(), (*expr).into()]
+                        .into_iter()
+                        .chain(
+                            fields
+                                .iter()
+                                .flat_map(|(name, val)| vec![(*name).into(), (*val).into()]),
+                        )
+                        .collect(),
+                ),
                 Expr::RecordIndex { name: _, field: _ } => todo!(),
                 Expr::RecordField {
                     expr: _,

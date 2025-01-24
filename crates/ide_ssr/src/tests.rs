@@ -417,3 +417,17 @@ fn ssr_expr_binary_op() {
     assert_matches("ssr: _@A band _@B.", "fn(X,Y) -> X band Y .", &["X band Y"]);
     assert_matches("ssr: _@A and _@B.", "fn(X,Y) -> X and Y .", &["X and Y"]);
 }
+
+#[test]
+fn ssr_expr_match_record_update() {
+    assert_matches(
+        "ssr: _@A#a_record{a_field = _@B}.",
+        "bar(List) -> XX = 1, List#record{field = XX}.",
+        &[],
+    );
+    assert_matches(
+        "ssr: _@A#a_record{field = _@B}.",
+        "bar(List) -> XX = 1, List#a_record{field = XX}.",
+        &["List#a_record{field = XX}"],
+    );
+}
