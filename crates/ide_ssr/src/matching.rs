@@ -1026,7 +1026,7 @@ impl PatternIterator {
                 Pat::Missing => todo!(),
                 Pat::Literal(_) => Either::Right(vec![]),
                 Pat::Var(_) => Either::Right(vec![]),
-                Pat::Match { lhs: _, rhs: _ } => todo!(),
+                Pat::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
                 Pat::Tuple { pats } => Either::Right(pats.iter().map(|p| (*p).into()).collect()),
                 Pat::List { pats, tail } => Either::Right(
                     pats.iter()

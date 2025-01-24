@@ -667,3 +667,14 @@ fn ssr_expr_maybe_bare() {
         &["maybe {ok, A} ?= ok_a() end"],
     );
 }
+
+// ---------------------------------------------------------------------
+
+#[test]
+fn ssr_pat_match() {
+    assert_matches(
+        "ssr: _@AA = _@BB.",
+        "bar({ok, A} = B) -> A.",
+        &["{ok, A} = B"],
+    );
+}
