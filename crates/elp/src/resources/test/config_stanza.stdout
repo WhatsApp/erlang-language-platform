@@ -52,7 +52,7 @@
   },
   "elp.hoverActions.docLinks.enable": {
     "default": false,
-    "markdownDescription": "Whether to show Hover Actions of type 'docs'. Only applies when\n`#elp.hoverActions.enable#` is set.",
+    "markdownDescription": "Whether to show Hover Actions of type `docs`. Only applies when\n`#elp.hoverActions.enable#` is set.",
     "type": "boolean"
   },
   "elp.hoverActions.enable": {
