@@ -13,6 +13,7 @@
 
 use std::cell::Cell;
 use std::iter;
+use std::iter::once;
 use std::sync::Arc;
 
 use either::Either;
@@ -532,6 +533,7 @@ impl<'a> Matcher<'a> {
             SubId::UnaryOp(_) => todo!(),
             SubId::BinaryOp(_) => todo!(),
             SubId::MapOp(_) => todo!(),
+            SubId::Constant(_) => None,
         }
     }
 
@@ -592,6 +594,9 @@ pub enum SubId {
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     MapOp(MapOp),
+    // Used to mark specific syntax such as a `|` in a list, to
+    // clearly separate the optional tail
+    Constant(String),
 }
 
 impl SubId {
@@ -602,6 +607,7 @@ impl SubId {
             SubId::UnaryOp(_) => todo!(),
             SubId::BinaryOp(_) => todo!(),
             SubId::MapOp(_) => todo!(),
+            SubId::Constant(v) => v,
         }
     }
 
@@ -612,6 +618,7 @@ impl SubId {
             SubId::UnaryOp(op) => SubIdRef::UnaryOp(*op),
             SubId::BinaryOp(op) => SubIdRef::BinaryOp(*op),
             SubId::MapOp(op) => SubIdRef::MapOp(*op),
+            SubId::Constant(v) => SubIdRef::Constant(v.clone()),
         }
     }
 }
@@ -634,6 +641,12 @@ impl From<Atom> for SubId {
     }
 }
 
+impl From<&str> for SubId {
+    fn from(value: &str) -> Self {
+        SubId::Constant(value.to_string())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubIdRef<'a> {
     AnyExprRef(AnyExprRef<'a>),
@@ -641,6 +654,7 @@ pub enum SubIdRef<'a> {
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     MapOp(MapOp),
+    Constant(String),
 }
 
 #[derive(Debug, Clone)]
@@ -707,7 +721,14 @@ impl PatternIterator {
                 Expr::Tuple { exprs } => {
                     Either::Right(exprs.iter().map(|id| (*id).into()).collect())
                 }
-                Expr::List { exprs: _, tail: _ } => todo!(),
+                Expr::List { exprs, tail } => Either::Right(
+                    exprs
+                        .iter()
+                        .map(|id| (*id).into())
+                        .chain(once("|".into()))
+                        .chain(tail.iter().map(|id| (*id).into()))
+                        .collect(),
+                ),
                 Expr::Binary { segs } => {
                     Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
                 }

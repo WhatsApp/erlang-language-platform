@@ -338,3 +338,17 @@ fn ssr_record_expr_match_rhs() {
         &["#foo{k1 = 3, k3 = <<\"blah\">>, k2 = {c, d}}"],
     );
 }
+
+#[test]
+fn ssr_expr_match_list() {
+    assert_matches(
+        "ssr: [ _@A, _@B | _@C].",
+        "fn(Y) -> X = [1, 2 | [Y]].",
+        &["[1, 2 | [Y]]"],
+    );
+}
+
+#[test]
+fn ssr_expr_match_list_match_pipe() {
+    assert_matches("ssr: [ _@A, _@B | _@C].", "fn(Y) -> X = [1, 2, [Y]].", &[]);
+}
