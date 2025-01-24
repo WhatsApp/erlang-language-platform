@@ -167,7 +167,7 @@ pub(crate) fn get_match(
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
         Matcher::new(sema, *restrict_range, rule, code_body_origin)
-            .try_match(&SubId::AnyExprId(*code))
+            .try_match(debug_active, &SubId::AnyExprId(*code))
     })
 }
 
@@ -217,7 +217,20 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn try_match(&self, code: &SubId) -> Result<Match, MatchFailed> {
+    fn try_match(&self, debug_active: bool, code: &SubId) -> Result<Match, MatchFailed> {
+        if debug_active {
+            match code {
+                SubId::AnyExprId(any_expr_id) => {
+                    println!(
+                        "Matcher::try_match:code:---------------\n{}----------------\n",
+                        self.code_body
+                            .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
+                    );
+                }
+                _ => {}
+            }
+        }
+
         // First pass at matching, where we check that node types and idents match.
         self.attempt_match_node(
             &mut Phase::First,
@@ -1059,7 +1072,7 @@ impl PatternIterator {
                         .chain(else_clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
                         .collect(),
                 ),
-                Expr::Paren { expr: _ } => todo!(),
+                Expr::Paren { expr } => Either::Right(vec![(*expr).into()]),
                 Expr::SsrPlaceholder(_) => Either::Right(vec![]),
             },
             AnyExprRef::Pat(it) => match it {
@@ -1103,7 +1116,7 @@ impl PatternIterator {
                     args: _,
                     macro_def: _,
                 } => todo!(),
-                Pat::Paren { .. } => todo!(),
+                Pat::Paren { pat } => Either::Right(vec![(*pat).into()]),
                 Pat::SsrPlaceholder(_) => Either::Right(vec![]),
             },
             AnyExprRef::TypeExpr(_) => todo!(),

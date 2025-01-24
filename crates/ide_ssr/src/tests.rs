@@ -721,6 +721,12 @@ fn ssr_expr_maybe_bare() {
     );
 }
 
+#[test]
+fn ssr_expr_parens() {
+    assert_matches("ssr: ((_@AA)).", "bar(X) -> X = ((3)),X = (4).", &["((3))"]);
+    assert_matches("ssr: ((_@AA)).", "bar(((X))) -> X = 3,X = (4).", &["((X))"]);
+}
+
 // ---------------------------------------------------------------------
 
 #[test]
