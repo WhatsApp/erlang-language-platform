@@ -40,6 +40,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::Literal;
 use hir::MapOp;
+use hir::MaybeExpr;
 use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
@@ -883,7 +884,18 @@ impl PatternIterator {
                     args: _,
                     macro_def: _,
                 } => todo!(),
-                Expr::Call { target: _, args: _ } => todo!(),
+                Expr::Call { target, args } => Either::Right({
+                    let mut res = Vec::default();
+                    match target {
+                        CallTarget::Local { name } => res.push((*name).into()),
+                        CallTarget::Remote { module, name, .. } => {
+                            res.push((*module).into());
+                            res.push((*name).into());
+                        }
+                    }
+                    args.iter().for_each(|arg| res.push((*arg).into()));
+                    res
+                }),
                 Expr::Comprehension { builder, exprs } => {
                     let bs: Vec<SubId> = match builder {
                         ComprehensionBuilder::List(e) => vec![(*e).into()],
@@ -995,19 +1007,33 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::Maybe {
-                    exprs: _,
-                    else_clauses: _,
-                } => todo!(),
+                    exprs,
+                    else_clauses,
+                } => Either::Right(
+                    exprs
+                        .iter()
+                        .flat_map(|maybe_expr| match maybe_expr {
+                            MaybeExpr::Cond { lhs, rhs } => vec![(*lhs).into(), (*rhs).into()],
+                            MaybeExpr::Expr(expr) => vec![(*expr).into()],
+                        })
+                        .chain(else_clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
+                        .collect(),
+                ),
                 Expr::Paren { expr: _ } => todo!(),
-                Expr::SsrPlaceholder(_) => todo!(),
+                Expr::SsrPlaceholder(_) => Either::Right(vec![]),
             },
             AnyExprRef::Pat(it) => match it {
                 Pat::Missing => todo!(),
                 Pat::Literal(_) => Either::Right(vec![]),
                 Pat::Var(_) => Either::Right(vec![]),
                 Pat::Match { lhs: _, rhs: _ } => todo!(),
-                Pat::Tuple { pats: _ } => todo!(),
-                Pat::List { pats: _, tail: _ } => todo!(),
+                Pat::Tuple { pats } => Either::Right(pats.iter().map(|p| (*p).into()).collect()),
+                Pat::List { pats, tail } => Either::Right(
+                    pats.iter()
+                        .chain(tail.iter())
+                        .map(|id| (*id).into())
+                        .collect(),
+                ),
                 Pat::Binary { segs: _ } => todo!(),
                 Pat::UnaryOp { pat: _, op: _ } => todo!(),
                 Pat::BinaryOp {

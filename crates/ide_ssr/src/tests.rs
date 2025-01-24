@@ -646,3 +646,24 @@ fn ssr_expr_closure() {
         &["fun Bar(3) -> 7 end"],
     );
 }
+
+#[test]
+fn ssr_expr_maybe() {
+    assert_matches(
+        "ssr: maybe _@AA ?= _@BB end.",
+        "bar() -> maybe {ok, A} ?= ok_a() end.",
+        &["maybe {ok, A} ?= ok_a() end"],
+    );
+}
+
+#[test]
+fn ssr_expr_maybe_bare() {
+    // Note: we make a full maybe expression, need some way of saying
+    // it can have anything before or after.
+    // TODO: T151843175, list item
+    assert_matches(
+        "ssr: _@AA ?= _@BB.",
+        "bar() -> maybe {ok, A} ?= ok_a() end.",
+        &["maybe {ok, A} ?= ok_a() end"],
+    );
+}

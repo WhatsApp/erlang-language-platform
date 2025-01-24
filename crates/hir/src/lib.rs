@@ -69,6 +69,7 @@ pub use expr::IfClause;
 pub use expr::ListType;
 pub use expr::Literal;
 pub use expr::MapOp;
+pub use expr::MaybeExpr;
 pub use expr::Pat;
 pub use expr::PatId;
 pub use expr::ReceiveAfter;

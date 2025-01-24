@@ -1095,9 +1095,23 @@ impl<'a> Ctx<'a> {
                 }
             }
             ast::Expr::CondMatchExpr(cond) => {
-                self.lower_optional_pat(cond.lhs());
-                self.lower_optional_expr(cond.rhs());
-                self.alloc_expr(Expr::Missing, Some(expr))
+                let pat_id = self.lower_optional_pat(cond.lhs());
+                let expr_id = self.lower_optional_expr(cond.rhs());
+                if self.in_ssr {
+                    // Bare cond match, wrap it in a Maybe
+                    self.alloc_expr(
+                        Expr::Maybe {
+                            exprs: vec![MaybeExpr::Cond {
+                                lhs: pat_id,
+                                rhs: expr_id,
+                            }],
+                            else_clauses: vec![],
+                        },
+                        Some(expr),
+                    )
+                } else {
+                    self.alloc_expr(Expr::Missing, Some(expr))
+                }
             }
         }
     }
