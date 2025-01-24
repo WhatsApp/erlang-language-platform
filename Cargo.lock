@@ -665,7 +665,6 @@ name = "elp_ssr"
 version = "1.1.0"
 dependencies = [
  "cov-mark",
- "either",
  "elp_ide_db",
  "elp_syntax",
  "expect-test",

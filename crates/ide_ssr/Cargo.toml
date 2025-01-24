@@ -9,7 +9,6 @@ elp_syntax.workspace = true
 hir.workspace = true
 
 cov-mark.workspace = true
-either.workspace = true
 fxhash.workspace = true
 la-arena.workspace = true
 stdx.workspace = true

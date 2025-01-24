@@ -15,7 +15,6 @@ use std::cell::Cell;
 use std::iter;
 use std::sync::Arc;
 
-use either::Either;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::ast::ArithOp;
 use elp_syntax::ast::BinaryOp;
@@ -867,17 +866,18 @@ impl Iterator for PatternList {
 
 impl PatternIterator {
     pub fn new_any_expr(parent: &AnyExprRef) -> PatternIterator {
-        let children: Either<(Vec<SubId>, FxHashMap<SubId, Vec<SubId>>), Vec<SubId>> = match parent
-        {
+        match parent {
             AnyExprRef::Expr(it) => match it {
                 Expr::Missing => todo!(),
-                Expr::Literal(_) => Either::Right(vec![]),
-                Expr::Var(_) => Either::Right(vec![]),
-                Expr::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
-                Expr::Tuple { exprs } => {
-                    Either::Right(exprs.iter().map(|id| (*id).into()).collect())
+                Expr::Literal(_) => PatternIterator::as_pattern_list(vec![]),
+                Expr::Var(_) => PatternIterator::as_pattern_list(vec![]),
+                Expr::Match { lhs, rhs } => {
+                    PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
                 }
-                Expr::List { exprs, tail } => Either::Right(
+                Expr::Tuple { exprs } => {
+                    PatternIterator::as_pattern_list(exprs.iter().map(|id| (*id).into()).collect())
+                }
+                Expr::List { exprs, tail } => PatternIterator::as_pattern_list(
                     exprs
                         .iter()
                         .map(|id| (*id).into())
@@ -885,21 +885,25 @@ impl PatternIterator {
                         .chain(tail.iter().map(|id| (*id).into()))
                         .collect(),
                 ),
-                Expr::Binary { segs } => {
-                    Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
+                Expr::Binary { segs } => PatternIterator::as_pattern_list(
+                    segs.iter().flat_map(|s| iterate_binary_seg(s)).collect(),
+                ),
+                Expr::UnaryOp { expr, op } => {
+                    PatternIterator::as_pattern_list(vec![(*op).into(), (*expr).into()])
                 }
-                Expr::UnaryOp { expr, op } => Either::Right(vec![(*op).into(), (*expr).into()]),
-                Expr::BinaryOp { lhs, rhs, op } => {
-                    Either::Right(vec![(*op).into(), (*lhs).into(), (*rhs).into()])
-                }
+                Expr::BinaryOp { lhs, rhs, op } => PatternIterator::as_pattern_list(vec![
+                    (*op).into(),
+                    (*lhs).into(),
+                    (*rhs).into(),
+                ]),
                 Expr::Record { name, fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
-                    Either::Left((vec![(*name).into()], children))
+                    PatternIterator::as_pattern_map(vec![(*name).into()], children)
                 }
-                Expr::RecordUpdate { expr, name, fields } => Either::Right(
+                Expr::RecordUpdate { expr, name, fields } => PatternIterator::as_pattern_list(
                     vec![(*name).into(), (*expr).into()]
                         .into_iter()
                         .chain(
@@ -910,32 +914,34 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::RecordIndex { name, field } => {
-                    Either::Right(vec![(*name).into(), (*field).into()])
+                    PatternIterator::as_pattern_list(vec![(*name).into(), (*field).into()])
                 }
-                Expr::RecordField { expr, name, field } => {
-                    Either::Right(vec![(*name).into(), (*field).into(), (*expr).into()])
-                }
+                Expr::RecordField { expr, name, field } => PatternIterator::as_pattern_list(vec![
+                    (*name).into(),
+                    (*field).into(),
+                    (*expr).into(),
+                ]),
                 Expr::Map { fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
-                    Either::Left((vec![], children))
+                    PatternIterator::as_pattern_map(vec![], children)
                 }
                 Expr::MapUpdate { expr, fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
                         .map(|(name, op, val)| ((*name).into(), vec![(*op).into(), (*val).into()]))
                         .collect();
-                    Either::Left((vec![(*expr).into()], children))
+                    PatternIterator::as_pattern_map(vec![(*expr).into()], children)
                 }
-                Expr::Catch { expr } => Either::Right(vec![(*expr).into()]),
+                Expr::Catch { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
                 Expr::MacroCall {
                     expansion: _,
                     args: _,
                     macro_def: _,
                 } => todo!(),
-                Expr::Call { target, args } => Either::Right({
+                Expr::Call { target, args } => PatternIterator::as_pattern_list({
                     let mut res = Vec::default();
                     match target {
                         CallTarget::Local { name } => res.push((*name).into()),
@@ -953,7 +959,7 @@ impl PatternIterator {
                         ComprehensionBuilder::Binary(e) => vec![(*e).into()],
                         ComprehensionBuilder::Map(k, v) => vec![(*k).into(), (*v).into()],
                     };
-                    Either::Right(
+                    PatternIterator::as_pattern_list(
                         bs.into_iter()
                             .chain(exprs.iter().flat_map(|cb| match cb {
                                 ComprehensionExpr::BinGenerator { pat, expr } => {
@@ -976,17 +982,17 @@ impl PatternIterator {
                     )
                 }
                 Expr::Block { exprs } => {
-                    Either::Right(exprs.iter().map(|id| (*id).into()).collect())
+                    PatternIterator::as_pattern_list(exprs.iter().map(|id| (*id).into()).collect())
                 }
-                Expr::If { clauses } => {
-                    Either::Right(clauses.iter().flat_map(|cr| if_clause_iter(cr)).collect())
-                }
-                Expr::Case { expr, clauses } => Either::Right(
+                Expr::If { clauses } => PatternIterator::as_pattern_list(
+                    clauses.iter().flat_map(|cr| if_clause_iter(cr)).collect(),
+                ),
+                Expr::Case { expr, clauses } => PatternIterator::as_pattern_list(
                     iter::once((*expr).into())
                         .chain(clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
                         .collect(),
                 ),
-                Expr::Receive { clauses, after } => Either::Right(
+                Expr::Receive { clauses, after } => PatternIterator::as_pattern_list(
                     clauses
                         .iter()
                         .flat_map(|cr| cr_clause_iter(cr))
@@ -1003,7 +1009,7 @@ impl PatternIterator {
                     of_clauses,
                     catch_clauses,
                     after,
-                } => Either::Right({
+                } => PatternIterator::as_pattern_list({
                     let mut res = Vec::default();
                     exprs.iter().for_each(|e| res.push((*e).into()));
                     res.push("of".into());
@@ -1024,7 +1030,7 @@ impl PatternIterator {
                     after.iter().for_each(|e| res.push((*e).into()));
                     res
                 }),
-                Expr::CaptureFun { target, arity } => Either::Right({
+                Expr::CaptureFun { target, arity } => PatternIterator::as_pattern_list({
                     let mut res = Vec::default();
                     match target {
                         CallTarget::Local { name } => res.push((*name).into()),
@@ -1036,7 +1042,7 @@ impl PatternIterator {
                     res.push((*arity).into());
                     res
                 }),
-                Expr::Closure { clauses, name } => Either::Right(
+                Expr::Closure { clauses, name } => PatternIterator::as_pattern_list(
                     name.iter()
                         .map(|n| (*n).into())
                         .chain(iter::once("clauses".into()))
@@ -1062,7 +1068,7 @@ impl PatternIterator {
                 Expr::Maybe {
                     exprs,
                     else_clauses,
-                } => Either::Right(
+                } => PatternIterator::as_pattern_list(
                     exprs
                         .iter()
                         .flat_map(|maybe_expr| match maybe_expr {
@@ -1072,66 +1078,81 @@ impl PatternIterator {
                         .chain(else_clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
                         .collect(),
                 ),
-                Expr::Paren { expr } => Either::Right(vec![(*expr).into()]),
-                Expr::SsrPlaceholder(_) => Either::Right(vec![]),
+                Expr::Paren { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
+                Expr::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
             },
-            AnyExprRef::Pat(it) => match it {
-                Pat::Missing => Either::Right(vec![]),
-                Pat::Literal(_) => Either::Right(vec![]),
-                Pat::Var(_) => Either::Right(vec![]),
-                Pat::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
-                Pat::Tuple { pats } => Either::Right(pats.iter().map(|p| (*p).into()).collect()),
-                Pat::List { pats, tail } => Either::Right(
+            AnyExprRef::Pat(it) => match &*it {
+                Pat::Missing => PatternIterator::as_pattern_list(vec![]),
+                Pat::Literal(_) => PatternIterator::as_pattern_list(vec![]),
+                Pat::Var(_) => PatternIterator::as_pattern_list(vec![]),
+                Pat::Match { lhs, rhs } => {
+                    PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
+                }
+                Pat::Tuple { pats } => {
+                    PatternIterator::as_pattern_list(pats.iter().map(|p| (*p).into()).collect())
+                }
+                Pat::List { pats, tail } => PatternIterator::as_pattern_list(
                     pats.iter()
                         .chain(tail.iter())
                         .map(|id| (*id).into())
                         .collect(),
                 ),
-                Pat::Binary { segs } => {
-                    Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
+                Pat::Binary { segs } => PatternIterator::as_pattern_list(
+                    segs.iter().flat_map(|s| iterate_binary_seg(s)).collect(),
+                ),
+                Pat::UnaryOp { pat, op } => {
+                    PatternIterator::as_pattern_list(vec![(*op).into(), (*pat).into()])
                 }
-                Pat::UnaryOp { pat, op } => Either::Right(vec![(*op).into(), (*pat).into()]),
-                Pat::BinaryOp { lhs, rhs, op } => {
-                    Either::Right(vec![(*op).into(), (*lhs).into(), (*rhs).into()])
-                } // match op first to fail fast
+                Pat::BinaryOp { lhs, rhs, op } => PatternIterator::as_pattern_list(vec![
+                    (*op).into(),
+                    (*lhs).into(),
+                    (*rhs).into(),
+                ]), // match op first to fail fast
                 Pat::Record { name, fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
-                    Either::Left((vec![(*name).into()], children))
+                    PatternIterator::as_pattern_map(vec![(*name).into()], children)
                 }
                 Pat::RecordIndex { name, field } => {
-                    Either::Right(vec![(*name).into(), (*field).into()])
+                    PatternIterator::as_pattern_list(vec![(*name).into(), (*field).into()])
                 }
                 Pat::Map { fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
-                    Either::Left((vec![], children))
+                    PatternIterator::as_pattern_map(vec![], children)
                 }
                 Pat::MacroCall {
                     expansion: _,
                     args: _,
                     macro_def: _,
                 } => todo!(),
-                Pat::Paren { pat } => Either::Right(vec![(*pat).into()]),
-                Pat::SsrPlaceholder(_) => Either::Right(vec![]),
+                Pat::Paren { pat } => PatternIterator::as_pattern_list(vec![(*pat).into()]),
+                Pat::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
             },
             AnyExprRef::TypeExpr(_) => todo!(),
             AnyExprRef::Term(_) => todo!(),
-        };
-        match children {
-            Either::Right(children) => PatternIterator::List(PatternList { children, idx: 0 }),
-            Either::Left((prefix, children)) => PatternIterator::Map(PatternMap {
-                prefix: PatternList {
-                    children: prefix,
-                    idx: 0,
-                },
-                children,
-            }),
         }
+    }
+
+    fn as_pattern_list(children: Vec<SubId>) -> PatternIterator {
+        PatternIterator::List(PatternList { children, idx: 0 })
+    }
+
+    fn as_pattern_map(
+        prefix: Vec<SubId>,
+        children: FxHashMap<SubId, Vec<SubId>>,
+    ) -> PatternIterator {
+        PatternIterator::Map(PatternMap {
+            prefix: PatternList {
+                children: prefix,
+                idx: 0,
+            },
+            children,
+        })
     }
 
     pub fn is_empty(&self) -> bool {
