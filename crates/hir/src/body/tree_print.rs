@@ -207,7 +207,12 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
 
     printer.print_herald("SsrBody", &mut |this| {
         this.print_labelled("lhs", true, &mut |this| {
-            this.print_expr(&this.body[body.pattern.expr]);
+            this.print_labelled("expr", true, &mut |this| {
+                this.print_expr(&this.body[body.pattern.expr])
+            });
+            this.print_labelled("pat", false, &mut |this| {
+                this.print_pat(&this.body[body.pattern.pat])
+            });
         });
         this.print_labelled("rhs", true, &mut |this| {
             if let Some(pattern) = &body.template {

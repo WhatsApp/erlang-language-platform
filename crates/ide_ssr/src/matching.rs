@@ -1051,14 +1051,20 @@ impl PatternIterator {
                 Pat::RecordIndex { name, field } => {
                     Either::Right(vec![(*name).into(), (*field).into()])
                 }
-                Pat::Map { fields: _ } => todo!(),
+                Pat::Map { fields } => {
+                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                        .iter()
+                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .collect();
+                    Either::Left((vec![], children))
+                }
                 Pat::MacroCall {
                     expansion: _,
                     args: _,
                     macro_def: _,
                 } => todo!(),
                 Pat::Paren { .. } => todo!(),
-                Pat::SsrPlaceholder(_) => todo!(),
+                Pat::SsrPlaceholder(_) => Either::Right(vec![]),
             },
             AnyExprRef::TypeExpr(_) => todo!(),
             AnyExprRef::Term(_) => todo!(),

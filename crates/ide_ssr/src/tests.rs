@@ -49,7 +49,10 @@ fn parser_basic_query() {
 
             SsrBody {
                 lhs
-                    Expr::Var(V)
+                    expr
+                        Expr::Var(V)
+                    pat
+                        Pat::Var(V)
                 rhs
                     Expr::BinaryOp {
                         lhs
@@ -73,7 +76,10 @@ fn parser_basic_query_with_placeholder() {
 
             SsrBody {
                 lhs
-                    SsrPlaceholder {var: _@V, conditions: TBD}
+                    expr
+                        SsrPlaceholder {var: _@V, conditions: TBD}
+                    pat
+                        SsrPlaceholder {var: _@V, conditions: TBD}
                 rhs
                     Expr::BinaryOp {
                         lhs
@@ -100,7 +106,10 @@ fn parser_basic_query_with_cond() {
 
             SsrBody {
                 lhs
-                    Expr::Var(V)
+                    expr
+                        Expr::Var(V)
+                    pat
+                        Pat::Var(V)
                 rhs
                     Expr::BinaryOp {
                         lhs
@@ -179,6 +188,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
     let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections).unwrap();
+    match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern).unwrap();
     let matched_strings: Vec<String> = match_finder
         .matches()
@@ -845,3 +855,42 @@ fn ssr_pat_record_index() {
         &["#record.field"],
     );
 }
+
+#[test]
+fn ssr_pat_match_map() {
+    assert_matches(
+        "ssr: #{ foo => _@A }.",
+        "bar(YY) -> #{foo := XX} = YY.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #{ field := _@A }.",
+        "bar(YY) -> #{foo := XX} = YY.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #{ foo := _@A }.",
+        "bar(YY) -> #{foo := XX} = YY.",
+        &["#{foo := XX}"],
+    );
+    // Order independent
+    assert_matches(
+        "ssr: #{ a := _@A, b := _@B }.",
+        "bar(YY) -> #{b := 1, a := XX} = YY.",
+        &["#{b := 1, a := XX}"],
+    );
+}
+
+#[test]
+fn ssr_pat_match_macro_call() {
+    // TODO: fails because we do not have a visible macro call in the
+    // template, only Missing
+    // assert_matches(
+    //     "ssr: ?ANY_MACRO(_@AA).",
+    //     "-define(BAR(X), {X}).
+    //      bar(X) -> ?BAR(4) = X.",
+    //     &["broken"],
+    // );
+}
+
+// ---------------------------------------------------------------------
