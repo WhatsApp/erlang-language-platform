@@ -604,7 +604,12 @@ impl SubId {
         match self {
             SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
             SubId::Atom(_) => "Atom",
-            SubId::UnaryOp(_) => todo!(),
+            SubId::UnaryOp(op) => match op {
+                UnaryOp::Plus => "UnaryOp::Plus",
+                UnaryOp::Minus => "UnaryOp::Minus",
+                UnaryOp::Bnot => "UnaryOp::Bnot",
+                UnaryOp::Not => "UnaryOp::Not",
+            },
             SubId::BinaryOp(_) => todo!(),
             SubId::MapOp(_) => todo!(),
             SubId::Constant(v) => v,
@@ -644,6 +649,12 @@ impl From<Atom> for SubId {
 impl From<&str> for SubId {
     fn from(value: &str) -> Self {
         SubId::Constant(value.to_string())
+    }
+}
+
+impl From<UnaryOp> for SubId {
+    fn from(value: UnaryOp) -> Self {
+        SubId::UnaryOp(value)
     }
 }
 
@@ -732,7 +743,7 @@ impl PatternIterator {
                 Expr::Binary { segs } => {
                     Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
                 }
-                Expr::UnaryOp { expr: _, op: _ } => todo!(),
+                Expr::UnaryOp { expr, op } => Either::Right(vec![(*op).into(), (*expr).into()]),
                 Expr::BinaryOp {
                     lhs: _,
                     rhs: _,

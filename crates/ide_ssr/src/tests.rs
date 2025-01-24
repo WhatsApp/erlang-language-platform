@@ -352,3 +352,22 @@ fn ssr_expr_match_list() {
 fn ssr_expr_match_list_match_pipe() {
     assert_matches("ssr: [ _@A, _@B | _@C].", "fn(Y) -> X = [1, 2, [Y]].", &[]);
 }
+
+#[test]
+fn ssr_expr_match_binary() {
+    assert_matches(
+        "ssr: << _@A, _@B>>.",
+        "fn(Y) -> X=1, <<X,Y>>.",
+        &["<<X,Y>>"],
+    );
+}
+
+#[test]
+fn ssr_expr_match_unary_op() {
+    assert_matches("ssr: not _@A.", "fn(Y) -> not Y.", &["not Y"]);
+    assert_matches("ssr: bnot _@A.", "fn(Y) -> not Y.", &[]);
+    assert_matches("ssr: bnot _@A.", "fn(Y) -> bnot Y.", &["bnot Y"]);
+    // Note: it is an AST, not textual match
+    assert_matches("ssr: + _@A.", "fn(Y) -> +Y.", &["+Y"]);
+    assert_matches("ssr: -_@A.", "fn(Y) -> -Y.", &["-Y"]);
+}
