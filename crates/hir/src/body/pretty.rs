@@ -182,17 +182,8 @@ pub fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String 
 pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String {
     let mut printer = Printer::new(db, &ssr.body);
     let template = &ssr.template.as_ref().map(|idx| &ssr.body[idx.expr]);
-    let when = ssr.when.as_ref().map(|idxs| {
-        idxs.iter()
-            .map(|idxs| {
-                idxs.iter()
-                    .filter_map(|hir_idx| hir_idx.as_expr_id())
-                    .collect()
-            })
-            .collect()
-    });
     printer
-        .print_ssr(&ssr.body[ssr.pattern.expr], template.clone(), &when)
+        .print_ssr(&ssr.body[ssr.pattern.expr], template.clone(), &ssr.when)
         .unwrap();
     printer.to_string()
 }

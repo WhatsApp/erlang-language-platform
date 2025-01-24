@@ -52,7 +52,6 @@ use crate::FormIdx;
 use crate::FormList;
 use crate::FunctionClause;
 use crate::FunctionClauseId;
-use crate::HirIdx;
 use crate::InFile;
 use crate::Literal;
 use crate::Name;
@@ -225,7 +224,7 @@ pub struct SsrBody {
     pub body: Arc<Body>,
     pub pattern: SsrPatternIds,
     pub template: Option<SsrPatternIds>,
-    pub when: Option<Vec<Vec<HirIdx>>>,
+    pub when: Option<Vec<Vec<ExprId>>>,
 }
 
 /// We lower a SSR pattern and template as both an Expr and a Pat, as

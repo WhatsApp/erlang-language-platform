@@ -41,7 +41,6 @@ use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::name::AsName;
-use crate::AnyExprId;
 use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
@@ -61,7 +60,6 @@ use crate::ExprSource;
 use crate::FunType;
 use crate::FunctionBody;
 use crate::FunctionClauseId;
-use crate::HirIdx;
 use crate::IfClause;
 use crate::InFile;
 use crate::ListType;
@@ -482,7 +480,6 @@ impl<'a> Ctx<'a> {
         ssr_source: SsrSource,
         ssr: &ast::SsrDefinition,
     ) -> Option<(SsrBody, BodySourceMap)> {
-        let body_origin = self.body.origin;
         self.in_ssr = true;
         let lhs_ast = ssr.lhs()?;
         let lhs_expr = self.lower_expr(&lhs_ast);
@@ -493,19 +490,7 @@ impl<'a> Ctx<'a> {
                 pat: self.lower_pat(&rhs_ast),
             })
         });
-        let when_idxs = ssr.when().and_then(|w| Some(self.lower_guards(w.guard())));
-        let when = when_idxs.map(|idxs| {
-            idxs.iter()
-                .map(|idxs| {
-                    idxs.iter()
-                        .map(|idx| HirIdx {
-                            body_origin,
-                            idx: AnyExprId::Expr(*idx),
-                        })
-                        .collect()
-                })
-                .collect()
-        });
+        let when = ssr.when().and_then(|w| Some(self.lower_guards(w.guard())));
         let (body, source_map) = self.finish();
         Some((
             SsrBody {

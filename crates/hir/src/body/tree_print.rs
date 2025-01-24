@@ -21,7 +21,6 @@ use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::SsrPlaceholder;
 use crate::AnyAttribute;
-use crate::AnyExprId;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::Body;
@@ -221,20 +220,6 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
         });
         this.print_labelled("when", false, &mut |this| {
             if let Some(expr) = &body.when {
-                let expr = expr
-                    .iter()
-                    .map(|exprs| {
-                        exprs
-                            .iter()
-                            .filter_map(|hir_idx| match hir_idx.idx {
-                                AnyExprId::Expr(id) => Some(id),
-                                AnyExprId::Pat(_) => todo!(),
-                                AnyExprId::TypeExpr(_) => todo!(),
-                                AnyExprId::Term(_) => todo!(),
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>();
                 this.print_guards(&expr);
             }
         });
