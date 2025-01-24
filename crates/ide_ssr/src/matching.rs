@@ -38,6 +38,7 @@ use hir::ComprehensionBuilder;
 use hir::ComprehensionExpr;
 use hir::Expr;
 use hir::ExprId;
+use hir::IfClause;
 use hir::Literal;
 use hir::MapOp;
 use hir::MaybeExpr;
@@ -964,7 +965,9 @@ impl PatternIterator {
                 Expr::Block { exprs } => {
                     Either::Right(exprs.iter().map(|id| (*id).into()).collect())
                 }
-                Expr::If { clauses: _ } => todo!(),
+                Expr::If { clauses } => {
+                    Either::Right(clauses.iter().flat_map(|cr| if_clause_iter(cr)).collect())
+                }
                 Expr::Case { expr, clauses } => Either::Right(
                     iter::once((*expr).into())
                         .chain(clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
@@ -1124,6 +1127,15 @@ impl PatternIterator {
             PatternIterator::Map(m) => m.prefix.children.is_empty() && m.children.is_empty(),
         }
     }
+}
+
+fn if_clause_iter(ifc: &IfClause) -> Vec<SubId> {
+    ifc.guards
+        .iter()
+        .flat_map(|g| g.into_iter().map(|e| (*e).into()))
+        .chain(iter::once("exprs".into()))
+        .chain(ifc.exprs.iter().map(|e| (*e).into()))
+        .collect()
 }
 
 fn cr_clause_iter(cr: &CRClause) -> Vec<SubId> {

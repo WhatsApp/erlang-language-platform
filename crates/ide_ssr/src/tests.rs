@@ -609,6 +609,15 @@ fn ssr_expr_map_comprehension() {
 }
 
 #[test]
+fn ssr_expr_if() {
+    assert_matches(
+        "ssr: if _@Cond -> _@B end .",
+        "bar(F) -> if is_atom(F) -> 22 end.",
+        &["if is_atom(F) -> 22 end"],
+    );
+}
+
+#[test]
 fn ssr_expr_case() {
     assert_matches(
         "ssr: case _@XX of _@A -> _@B end .",
