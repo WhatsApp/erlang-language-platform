@@ -604,7 +604,7 @@ impl PatternIterator {
             AnyExprRef::Expr(it) => match it {
                 Expr::Missing => todo!(),
                 Expr::Literal(_) => Either::Right(vec![]),
-                Expr::Var(_) => todo!(),
+                Expr::Var(_) => Either::Right(vec![]),
                 Expr::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
                 Expr::Tuple { exprs: _ } => todo!(),
                 Expr::List { exprs: _, tail: _ } => todo!(),
@@ -640,7 +640,9 @@ impl PatternIterator {
                     builder: _,
                     exprs: _,
                 } => todo!(),
-                Expr::Block { exprs: _ } => todo!(),
+                Expr::Block { exprs } => {
+                    Either::Right(exprs.iter().map(|id| (*id).into()).collect())
+                }
                 Expr::If { clauses: _ } => todo!(),
                 Expr::Case {
                     expr: _,

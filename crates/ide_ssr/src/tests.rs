@@ -204,3 +204,30 @@ fn ssr_let_stmt_in_fn_match_1() {
 fn ssr_let_stmt_in_fn_match_2() {
     assert_matches("ssr: _@A = _@B.", "foo() -> X = 10, X.", &["X = 10"]);
 }
+
+#[test]
+fn ssr_block_expr_match_1() {
+    assert_matches(
+        "ssr: begin _@A = _@B end.",
+        "fon() -> begin X = 10 end.",
+        &["begin X = 10 end"],
+    );
+}
+
+#[test]
+fn ssr_block_expr_match_2() {
+    assert_matches(
+        "ssr: begin _@A = _@B, _@C end.",
+        "foo() -> begin X = 10, X end.",
+        &["begin X = 10, X end"],
+    );
+}
+
+#[test]
+fn ssr_block_expr_match_multiple_statements() {
+    assert_matches(
+        "ssr: begin _@A = _@B, _@C, _@D end.",
+        "foo() -> begin X = 10, Y = 20, Z = X + Y end.",
+        &["begin X = 10, Y = 20, Z = X + Y end"],
+    );
+}
