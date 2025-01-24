@@ -463,8 +463,7 @@ impl<'db> Semantic<'db> {
         def.source(self.db.upcast())
     }
 
-    // Try to keep this private, it should go away one day
-    fn range_for_anyexpr(&self, body: &Body, expr_id: &AnyExprId) -> Option<TextRange> {
+    pub fn range_for_anyexpr(&self, body: &Body, expr_id: &AnyExprId) -> Option<TextRange> {
         let body_map = body.get_body_map(self)?;
         let ast = body_map.any(*expr_id)?;
         Some(ast.range())

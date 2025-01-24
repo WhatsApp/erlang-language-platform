@@ -201,6 +201,22 @@ impl BodyOrigin {
             BodyOrigin::Invalid(file_id) => file_id == &SSR_SOURCE_FILE_ID,
         }
     }
+
+    pub fn get_body(&self, sema: &Semantic) -> Option<Arc<Body>> {
+        match self {
+            BodyOrigin::Invalid(_) => None,
+            BodyOrigin::FormIdx { file_id, form_id } => {
+                let (body, _body_map) = sema.get_body_and_map(*file_id, *form_id)?;
+                Some(body)
+            }
+            BodyOrigin::Define { file_id, define_id } => {
+                let (body, _body_map) = sema
+                    .db
+                    .define_body_with_source(InFile::new(*file_id, *define_id))?;
+                Some(body.body.clone())
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -217,8 +233,8 @@ pub struct SsrBody {
 /// Note: extend to Types and Terms when needed.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SsrPatternIds {
-    expr: ExprId,
-    pat: PatId,
+    pub expr: ExprId,
+    pub pat: PatId,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

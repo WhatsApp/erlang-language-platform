@@ -32,7 +32,7 @@ use crate::Semantic;
 use crate::TypeAliasDef;
 use crate::Var;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AnyExprId {
     Expr(ExprId),
     Pat(PatId),
@@ -54,6 +54,17 @@ pub enum AnyExprRef<'a> {
     Pat(&'a Pat),
     TypeExpr(&'a TypeExpr),
     Term(&'a Term),
+}
+
+impl<'a> AnyExprRef<'a> {
+    pub fn variant_str(&self) -> &'static str {
+        match self {
+            AnyExprRef::Expr(it) => it.variant_str(),
+            AnyExprRef::Pat(it) => it.variant_str(),
+            AnyExprRef::TypeExpr(_) => todo!(),
+            AnyExprRef::Term(_) => todo!(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -155,6 +166,13 @@ impl StringVariant {
         match self {
             StringVariant::Normal(s) => s.chars(),
             StringVariant::Verbatim(s) => s.chars(),
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        match self {
+            StringVariant::Normal(s) => s.clone(),
+            StringVariant::Verbatim(s) => s.clone(),
         }
     }
 }
@@ -364,6 +382,40 @@ impl Expr {
                 if literals_only { Some(res) } else { None }
             }
             _ => None,
+        }
+    }
+
+    pub fn variant_str(&self) -> &'static str {
+        match &self {
+            Expr::Missing => "Expr::Missing",
+            Expr::Literal(_) => "Expr::Literal",
+            Expr::Var(_) => "Expr::Var",
+            Expr::Match { .. } => "Expr::Match",
+            Expr::Tuple { .. } => "Expr::Tuple",
+            Expr::List { .. } => "Expr::List",
+            Expr::Binary { .. } => "Expr::Binary",
+            Expr::UnaryOp { .. } => "Expr::UnaryOp",
+            Expr::BinaryOp { .. } => "Expr::BinaryOp",
+            Expr::Record { .. } => "Expr::Record",
+            Expr::RecordUpdate { .. } => "Expr::RecordUpdate",
+            Expr::RecordIndex { .. } => "Expr::RecordIndex",
+            Expr::RecordField { .. } => "Expr::RecordField",
+            Expr::Map { .. } => "Expr::Map",
+            Expr::MapUpdate { .. } => "Expr::MapUpdate",
+            Expr::Catch { .. } => "Expr::Catch",
+            Expr::MacroCall { .. } => "Expr::MacroCall",
+            Expr::Call { .. } => "Expr::Call",
+            Expr::Comprehension { .. } => "Expr::Comprehension",
+            Expr::Block { .. } => "Expr::Block",
+            Expr::If { .. } => "Expr::If",
+            Expr::Case { .. } => "Expr::Case",
+            Expr::Receive { .. } => "Expr::Receive",
+            Expr::Try { .. } => "Expr::Try",
+            Expr::CaptureFun { .. } => "Expr::CaptureFun",
+            Expr::Closure { .. } => "Expr::Closure",
+            Expr::Maybe { .. } => "Expr::Maybe",
+            Expr::Paren { .. } => "Expr::Paren",
+            Expr::SsrPlaceholder(_) => "Expr::SsrPlaceholder",
         }
     }
 }
@@ -636,6 +688,26 @@ impl Pat {
         match self {
             Pat::Var(var) => Some(*var),
             _ => None,
+        }
+    }
+
+    pub fn variant_str(&self) -> &'static str {
+        match &self {
+            Pat::Missing => "Pat::Missing",
+            Pat::Literal(_) => "Pat::Literal",
+            Pat::Var(_) => "Pat::Var",
+            Pat::Match { .. } => "Pat::Match",
+            Pat::Tuple { .. } => "Pat::Tuple",
+            Pat::List { .. } => "Pat::List",
+            Pat::Binary { .. } => "Pat::Binary",
+            Pat::UnaryOp { .. } => "Pat::UnaryOp",
+            Pat::BinaryOp { .. } => "Pat::BinaryOp",
+            Pat::Record { .. } => "Pat::Record",
+            Pat::RecordIndex { .. } => "Pat::RecordIndex",
+            Pat::Map { .. } => "Pat::Map",
+            Pat::MacroCall { .. } => "Pat::MacroCall",
+            Pat::Paren { .. } => "Pat::Paren",
+            Pat::SsrPlaceholder(_) => "Pat::SsrPlaceholder",
         }
     }
 }

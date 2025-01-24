@@ -7,24 +7,31 @@
  * of this source tree.
  */
 
+use elp_ide_db::elp_base_db::fixture;
+use elp_ide_db::elp_base_db::fixture::RangeOrOffset;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FilePosition;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::RootDatabase;
 use expect_test::expect;
 use expect_test::Expect;
+use hir::Semantic;
 
-use crate::SsrPattern;
+use crate::MatchFinder;
+use crate::SsrRule;
 
 #[track_caller]
 fn parse_error_text(query: &str) -> String {
     let (mut db, _file_id) = RootDatabase::with_single_file(&query);
-    let pattern = SsrPattern::parse_str(&mut db, query);
+    let pattern = SsrRule::parse_str(&mut db, query);
     format!("{}", pattern.unwrap_err())
 }
 
 #[track_caller]
 fn parse_good_text(query: &str, expect: Expect) {
     let (mut db, _file_id) = RootDatabase::with_single_file(&query);
-    let pattern = SsrPattern::parse_str(&mut db, query);
+    let pattern = SsrRule::parse_str(&mut db, query);
     let actual = pattern.unwrap().tree_print(&db);
     expect.assert_eq(actual.as_str());
 }
@@ -117,4 +124,83 @@ fn parser_basic_query_with_cond() {
             }
         "#]],
     );
+}
+
+// ---------------------------------------------------------------------
+
+/// `code` may optionally contain a cursor marker `~`. If it doesn't,
+/// then the position will be the start of the file. If there's a
+/// second cursor marker, then we'll return a single range.
+pub(crate) fn single_file(code: &str) -> (RootDatabase, FilePosition, Vec<FileRange>) {
+    let (db, file_id, range_or_offset) = if code.contains(fixture::CURSOR_MARKER) {
+        RootDatabase::with_range_or_offset(code)
+    } else {
+        let (db, file_id) = RootDatabase::with_single_file(code);
+        (db, file_id, RangeOrOffset::Offset(0.into()))
+    };
+    let selections;
+    let position;
+    match range_or_offset {
+        RangeOrOffset::Range(range) => {
+            position = FilePosition {
+                file_id,
+                offset: range.start(),
+            };
+            selections = vec![FileRange { file_id, range }];
+        }
+        RangeOrOffset::Offset(offset) => {
+            position = FilePosition { file_id, offset };
+            selections = vec![];
+        }
+    }
+    (db, position, selections)
+}
+
+fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: FileId, snippet: &str) {
+    let debug_info = match_finder.debug_where_text_equal(file_id, snippet);
+    println!(
+        "Match debug info: {} nodes had text exactly equal to '{}'",
+        debug_info.len(),
+        snippet
+    );
+    for (index, d) in debug_info.iter().enumerate() {
+        println!("Node #{index}\n{d:#?}\n");
+    }
+}
+
+#[track_caller]
+fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
+    let (db, position, selections) = single_file(code);
+    if expected.len() > 0 {
+        if expected[0] == "" {
+            panic!("empty expected string");
+        }
+    }
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections).unwrap();
+    match_finder.add_search_pattern(pattern).unwrap();
+    let matched_strings: Vec<String> = match_finder
+        .matches()
+        .flattened()
+        .matches
+        .iter()
+        .map(|m| m.matched_text(&db))
+        .collect();
+    if matched_strings != expected && !expected.is_empty() {
+        print_match_debug_info(&match_finder, position.file_id, expected[0]);
+    }
+    assert_eq!(matched_strings, expected);
+}
+
+// ---------------------------------------------------------------------
+
+#[test]
+fn ssr_let_stmt_in_fn_match_1() {
+    assert_matches("ssr: _@A = 10.", "foo() -> X = 10, X.", &["X = 10"]);
+}
+
+#[test]
+fn ssr_let_stmt_in_fn_match_2() {
+    assert_matches("ssr: _@A = _@B.", "foo() -> X = 10, X.", &["X = 10"]);
 }

@@ -79,6 +79,8 @@ pub use expr::Term;
 pub use expr::TermId;
 pub use expr::TypeExpr;
 pub use expr::TypeExprId;
+use fold::fold_file;
+use fold::AnyCallBack;
 pub use fold::FoldCtx;
 pub use fold::On;
 pub use fold::Strategy;
@@ -250,6 +252,75 @@ impl HirIdx {
             )
             .to_string(),
         }
+    }
+}
+
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SsrIdx {
+    WholeFile(FileId),
+}
+
+impl SsrIdx {
+    pub fn fold<'a, T>(
+        &self,
+        sema: &Semantic,
+        strategy: Strategy,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+        form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
+    ) -> T {
+        match &self {
+            SsrIdx::WholeFile(file_id) => {
+                fold_file(sema, strategy, *file_id, initial, callback, form_callback)
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+/// `InSsr<T>` stores a value of `T` inside a particular Ssr definition.
+/// Based on `InFile`
+///
+/// Typical usages are:
+///
+/// * `InSsr<SsrId>` -- node in a ssr file
+/// * `InSsr<ast::FnDef>` -- ast node in a ssr file
+/// * `InSsr<TextSize>` -- offset in a ssr file
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct InSsr<T> {
+    pub ssr_source: SsrSource,
+    pub value: T,
+}
+
+impl<T> InSsr<T> {
+    pub fn new(ssr_source: SsrSource, value: T) -> InSsr<T> {
+        InSsr { ssr_source, value }
+    }
+
+    pub fn with_value<U>(&self, value: U) -> InSsr<U> {
+        InSsr::new(self.ssr_source, value)
+    }
+
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> InSsr<U> {
+        InSsr::new(self.ssr_source, f(self.value))
+    }
+
+    pub fn as_ref(&self) -> InSsr<&T> {
+        self.with_value(&self.value)
+    }
+}
+
+impl<T: Clone> InSsr<&T> {
+    pub fn cloned(&self) -> InSsr<T> {
+        self.with_value(self.value.clone())
+    }
+}
+
+impl<T> InSsr<Option<T>> {
+    pub fn transpose(self) -> Option<InSsr<T>> {
+        self.value.map(|value| InSsr::new(self.ssr_source, value))
     }
 }
 

@@ -113,7 +113,7 @@ impl SearchScope {
         }
     }
 
-    fn project(db: &dyn DefDatabase, project_id: ProjectId) -> SearchScope {
+    pub fn project(db: &dyn DefDatabase, project_id: ProjectId) -> SearchScope {
         let mut entries = FxHashMap::default();
 
         for &source_root_id in &db.project_data(project_id).source_roots {
