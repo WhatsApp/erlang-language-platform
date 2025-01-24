@@ -894,3 +894,10 @@ fn ssr_pat_match_macro_call() {
 }
 
 // ---------------------------------------------------------------------
+// Types.  Initially ensure we do not blow up on matches
+
+#[test]
+fn ssr_spec_no_blowup() {
+    assert_matches("ssr: _@X = 1.", "-spec foo() -> ok.", &[]);
+}
+// ---------------------------------------------------------------------

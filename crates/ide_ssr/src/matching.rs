@@ -574,8 +574,10 @@ impl<'a> Matcher<'a> {
     fn is_placeholder(&self, id: &SubId) -> bool {
         let pattern_str = self.get_pattern_str(id);
 
-        pattern_str == "Pat::SsrPlaceholder" || pattern_str == "Expr::SsrPlaceholder"
-        // TODO: look for TypeExpr::SsrPlaceholder, and Term::SsrPlaceholder
+        pattern_str == "Pat::SsrPlaceholder"
+            || pattern_str == "Expr::SsrPlaceholder"
+            || pattern_str == "TypeExpr::SsrPlaceholder"
+            || pattern_str == "Term::SsrPlaceholder"
     }
 }
 

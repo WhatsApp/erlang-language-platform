@@ -61,7 +61,7 @@ impl<'a> AnyExprRef<'a> {
         match self {
             AnyExprRef::Expr(it) => it.variant_str(),
             AnyExprRef::Pat(it) => it.variant_str(),
-            AnyExprRef::TypeExpr(_) => todo!(),
+            AnyExprRef::TypeExpr(it) => it.variant_str(),
             AnyExprRef::Term(_) => todo!(),
         }
     }
@@ -836,6 +836,27 @@ impl TypeExpr {
         match self {
             TypeExpr::Literal(Literal::Atom(atom)) => Some(*atom),
             _ => None,
+        }
+    }
+
+    pub fn variant_str(&self) -> &'static str {
+        match &self {
+            TypeExpr::AnnType { .. } => "TypeExpr::AnnType",
+            TypeExpr::BinaryOp { .. } => "TypeExpr::BinaryOp",
+            TypeExpr::Call { .. } => "TypeExpr::Call",
+            TypeExpr::Fun(_) => "TypeExpr::Fun",
+            TypeExpr::List(_) => "TypeExpr::List",
+            TypeExpr::Literal(_) => "TypeExpr::Literal",
+            TypeExpr::Map { .. } => "TypeExpr::Map",
+            TypeExpr::Missing => "TypeExpr::Missing",
+            TypeExpr::Union { .. } => "TypeExpr::Union",
+            TypeExpr::Range { .. } => "TypeExpr::Range",
+            TypeExpr::Record { .. } => "TypeExpr::Record",
+            TypeExpr::Tuple { .. } => "TypeExpr::Tuple",
+            TypeExpr::UnaryOp { .. } => "TypeExpr::UnaryOp",
+            TypeExpr::Var(_) => "TypeExpr::Var",
+            TypeExpr::MacroCall { .. } => "TypeExpr::MacroCall",
+            TypeExpr::SsrPlaceholder(_) => "TypeExpr::SsrPlaceholder",
         }
     }
 }

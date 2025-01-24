@@ -152,7 +152,7 @@ impl SsrPattern {
             SubId::AnyExprId(AnyExprId::Pat(_)) => {
                 SubId::AnyExprId(AnyExprId::Pat(self.pattern_node.pat.clone()))
             }
-            _ => panic!(),
+            _ => SubId::Constant("not implemented yet".to_string()),
         }
     }
 }
