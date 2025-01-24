@@ -678,3 +678,17 @@ fn ssr_pat_match() {
         &["{ok, A} = B"],
     );
 }
+
+#[test]
+fn ssr_pat_list() {
+    assert_matches(
+        "ssr: [ _@A, _@B | _@C].",
+        "fn(X) -> [1, 2 | [Y]] = X.",
+        &["[1, 2 | [Y]]"],
+    );
+}
+
+#[test]
+fn ssr_pat_binary() {
+    assert_matches("ssr: << _@A, _@B>>.", "fn(Y) -> <<X,Z>> = Y.", &["<<X,Z>>"]);
+}

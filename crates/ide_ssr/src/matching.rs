@@ -1023,7 +1023,7 @@ impl PatternIterator {
                 Expr::SsrPlaceholder(_) => Either::Right(vec![]),
             },
             AnyExprRef::Pat(it) => match it {
-                Pat::Missing => todo!(),
+                Pat::Missing => Either::Right(vec![]),
                 Pat::Literal(_) => Either::Right(vec![]),
                 Pat::Var(_) => Either::Right(vec![]),
                 Pat::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
@@ -1034,7 +1034,9 @@ impl PatternIterator {
                         .map(|id| (*id).into())
                         .collect(),
                 ),
-                Pat::Binary { segs: _ } => todo!(),
+                Pat::Binary { segs } => {
+                    Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
+                }
                 Pat::UnaryOp { pat: _, op: _ } => todo!(),
                 Pat::BinaryOp {
                     lhs: _,
