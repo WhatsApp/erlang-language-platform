@@ -69,11 +69,15 @@ use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use hir::db::DefDatabase;
 use hir::db::InternDatabase;
+use hir::fold::fold_body;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Body;
 use hir::Expr;
 use hir::ExprId;
+use hir::FoldBody;
 use hir::InFile;
 use hir::InSsr;
 use hir::Literal;
@@ -95,6 +99,7 @@ mod search;
 mod tests;
 
 pub use errors::SsrError;
+use hir::Strategy;
 pub use matching::Match;
 pub use matching::MatchFailureReason;
 pub use matching::PlaceholderMatch;
@@ -102,10 +107,15 @@ pub use matching::SubId;
 
 // ---------------------------------------------------------------------
 
-pub fn match_pattern_in_file(sema: &Semantic, file_id: FileId, pattern: &str) -> SsrMatches {
+pub fn match_pattern_in_file(
+    sema: &Semantic,
+    strategy: Strategy,
+    file_id: FileId,
+    pattern: &str,
+) -> SsrMatches {
     let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
     let restrict_ranges = vec![];
-    let mut match_finder = MatchFinder::in_context(&sema, file_id, restrict_ranges);
+    let mut match_finder = MatchFinder::in_context(&sema, strategy, file_id, restrict_ranges);
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches: SsrMatches = match_finder.matches().flattened();
@@ -136,10 +146,22 @@ impl SsrRule {
     }
 
     fn parse_ssr_source(db: &dyn DefDatabase, ssr_source: SsrSource) -> Result<SsrRule, SsrError> {
-        if let Some((body, _)) = db.ssr_body_with_source(ssr_source) {
-            let conditions = SsrRule::make_conditions(&body)?;
+        if let Some((ssr_body, _)) = db.ssr_body_with_source(ssr_source) {
+            // Using a `FoldBody` with invisible parens is fine for
+            // conditions, because either way we only check a
+            // placeholder when we actually see one, and we do not
+            // want to worry about parens in evaluating the
+            // conditions.
+            let body = fold_body(
+                Strategy {
+                    macros: MacroStrategy::Expand,
+                    parens: ParenStrategy::InvisibleParens,
+                },
+                &ssr_body.body,
+            );
+            let conditions = SsrRule::make_conditions(&ssr_body, &body)?;
             Ok(SsrRule {
-                parsed_rule: body.clone(),
+                parsed_rule: ssr_body.clone(),
                 conditions,
             })
         } else {
@@ -163,13 +185,14 @@ impl SsrRule {
     /// ```
     fn make_conditions(
         ssr_body: &SsrBody,
+        body: &FoldBody,
     ) -> Result<FxHashMap<SsrPlaceholder, Condition>, SsrError> {
         let mut conditions: FxHashMap<SsrPlaceholder, Condition> = FxHashMap::default();
         let mut error = None;
         ssr_body.when.as_ref().map(|w| {
             w.iter().for_each(|conds| {
                 conds.iter().for_each(|cond| {
-                    extract_condition(ssr_body, cond, &mut conditions, &mut error);
+                    extract_condition(body, cond, &mut conditions, &mut error);
                 });
             })
         });
@@ -182,22 +205,21 @@ impl SsrRule {
 }
 
 fn extract_condition(
-    ssr_body: &SsrBody,
+    body: &FoldBody,
     cond: &ExprId,
     conditions: &mut FxHashMap<SsrPlaceholder, Condition>,
     error: &mut Option<SsrError>,
 ) {
-    match ssr_body.body[*cond] {
+    match body[*cond] {
         Expr::BinaryOp { lhs, rhs, op } => {
-            match &ssr_body.body[lhs] {
+            match &body[lhs] {
                 Expr::SsrPlaceholder(ssr_placeholder) => {
                     // We have a condition on the current placeholder, store it if valid
                     match op {
                         ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
-                            if let Some(lit_rhs) = get_literal_subid(
-                                &ssr_body.body,
-                                &SubId::AnyExprId(AnyExprId::Expr(rhs)),
-                            ) {
+                            if let Some(lit_rhs) =
+                                get_literal_subid(&body, &SubId::AnyExprId(AnyExprId::Expr(rhs)))
+                            {
                                 if negated {
                                     conditions.insert(
                                         ssr_placeholder.clone(),
@@ -284,6 +306,7 @@ pub struct MatchFinder<'a> {
     file_id: FileId,
     restrict_ranges: Vec<FileRange>,
     pub debug_print: bool,
+    strategy: Strategy,
 }
 
 impl<'a> MatchFinder<'a> {
@@ -291,6 +314,7 @@ impl<'a> MatchFinder<'a> {
     /// they appeared at `lookup_context`.
     pub fn in_context(
         sema: &'a Semantic<'a>,
+        strategy: Strategy,
         file_id: FileId,
         mut restrict_ranges: Vec<FileRange>,
     ) -> MatchFinder<'a> {
@@ -301,6 +325,7 @@ impl<'a> MatchFinder<'a> {
             file_id,
             restrict_ranges,
             debug_print: false,
+            strategy,
         }
     }
 
@@ -376,6 +401,13 @@ impl<'a> MatchFinder<'a> {
                         for rule in &self.rules {
                             let any_expr_id = AnyExprId::Expr(in_clause_expr.value);
                             let body_origin = in_clause_expr.body().origin;
+                            let pattern_body =
+                                rule.get_body(self.sema).expect("Cannot get pattern_body");
+                            let pattern_body = fold_body(self.strategy, &pattern_body);
+                            let code_body = &body_origin
+                                .get_body(self.sema)
+                                .expect("Could not get code Body");
+                            let code_body = fold_body(self.strategy, &code_body);
                             out.push(MatchDebugInfo {
                                 matched: matching::get_match(
                                     true,
@@ -384,6 +416,8 @@ impl<'a> MatchFinder<'a> {
                                     &any_expr_id,
                                     restrict_range,
                                     &self.sema,
+                                    &code_body,
+                                    &pattern_body,
                                 )
                                 .map_err(|e| MatchFailureReason {
                                     reason: e.reason.unwrap_or_else(|| {
@@ -463,7 +497,7 @@ impl std::fmt::Debug for MatchDebugInfo {
     }
 }
 
-fn get_literal_subid<'a>(body: &'a Body, code: &'a SubId) -> Option<&'a Literal> {
+fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<&'a Literal> {
     let literal = match code {
         SubId::AnyExprId(any_expr_id) => match body.get_any(*any_expr_id) {
             AnyExprRef::Expr(expr) => match expr {
@@ -489,7 +523,10 @@ mod test {
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide_db::RootDatabase;
     use expect_test::expect;
+    use hir::fold::MacroStrategy;
+    use hir::fold::ParenStrategy;
     use hir::Semantic;
+    use hir::Strategy;
 
     use crate::match_pattern_in_file;
 
@@ -500,7 +537,15 @@ mod test {
         let (db, file_id) = RootDatabase::with_single_file(fixture);
         let sema = Semantic::new(&db);
 
-        let m = match_pattern_in_file(&sema, file_id, "ssr: {foo, _@A}.");
+        let m = match_pattern_in_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            "ssr: {foo, _@A}.",
+        );
         expect![[r#"
             SsrMatches {
                 matches: [

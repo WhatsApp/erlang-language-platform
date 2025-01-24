@@ -13,13 +13,12 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::SearchScope;
 use fxhash::FxHashSet;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use hir::fold::fold_body;
 use hir::AnyExprId;
 use hir::BodyOrigin;
+use hir::FoldBody;
 use hir::FormIdx;
 use hir::SsrIdx;
-use hir::Strategy;
 
 use crate::matching;
 use crate::matching::Match;
@@ -33,9 +32,11 @@ impl MatchFinder<'_> {
     /// remove overlapping matches. This is done in the `nesting`
     /// module.
     pub(crate) fn find_matches_for_rule(&self, rule: &SsrPattern, matches_out: &mut Vec<Match>) {
+        let pattern_body = rule.get_body(self.sema).expect("Cannot get pattern_body");
+        let pattern_body = fold_body(self.strategy, &pattern_body);
         self.search_files_do(|file_id| {
             let code = SsrIdx::WholeFile(file_id);
-            self.slow_scan_node(&code, rule, &None, matches_out);
+            self.slow_scan_node(&code, rule, &None, matches_out, &pattern_body);
         })
     }
 
@@ -73,6 +74,7 @@ impl MatchFinder<'_> {
         rule: &SsrPattern,
         restrict_range: &Option<FileRange>,
         matches_out: &mut Vec<Match>,
+        pattern_body: &FoldBody,
     ) {
         // - Fold over the code.
         // - For each HIR AST node, check if there is a match
@@ -81,18 +83,22 @@ impl MatchFinder<'_> {
 
         code.fold(
             &self.sema,
-            Strategy {
-                macros: MacroStrategy::ExpandButIncludeMacroCall,
-                parens: ParenStrategy::InvisibleParens,
-            },
+            self.strategy,
             (),
             &mut |_acc, ctx| {
+                let code_body = &ctx
+                    .body_origin
+                    .get_body(self.sema)
+                    .expect("Could not get code Body");
+                let code_body = fold_body(self.strategy, &code_body);
                 self.try_add_match(
                     rule,
                     &ctx.body_origin,
                     &ctx.item_id,
                     restrict_range,
                     matches_out,
+                    &code_body,
+                    pattern_body,
                 );
             },
             &mut |_acc, _on, _form_id: FormIdx| {},
@@ -107,6 +113,8 @@ impl MatchFinder<'_> {
         code: &AnyExprId,
         restrict_range: &Option<FileRange>,
         matches_out: &mut Vec<Match>,
+        code_body: &FoldBody,
+        pattern_body: &FoldBody,
     ) {
         if let Ok(m) = matching::get_match(
             self.debug_print,
@@ -115,6 +123,8 @@ impl MatchFinder<'_> {
             code,
             restrict_range,
             &self.sema,
+            code_body,
+            pattern_body,
         ) {
             matches_out.push(m);
         }

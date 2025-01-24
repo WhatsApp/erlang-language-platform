@@ -36,6 +36,7 @@ pub use body::BodyOrigin;
 pub use body::BodySourceMap;
 pub use body::DefineBody;
 pub use body::ExprSource;
+pub use body::FoldBody;
 pub use body::FunctionBody;
 pub use body::FunctionClauseBody;
 pub use body::InFileAstPtr;

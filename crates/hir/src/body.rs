@@ -100,6 +100,18 @@ pub struct FoldBody<'a> {
     pub parens: ParenStrategy,
 }
 
+impl<'a> FoldBody<'a> {
+    /// Equivalent to `Body::get_any`, but uses the `FoldBody` `Index` instances
+    pub fn get_any(&self, id: AnyExprId) -> AnyExprRef<'_> {
+        match id {
+            AnyExprId::Expr(expr_id) => AnyExprRef::Expr(&self[expr_id]),
+            AnyExprId::Pat(pat_id) => AnyExprRef::Pat(&self[pat_id]),
+            AnyExprId::TypeExpr(type_id) => AnyExprRef::TypeExpr(&self[type_id]),
+            AnyExprId::Term(term_id) => AnyExprRef::Term(&self[term_id]),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub function_id: InFile<FunctionDefId>,

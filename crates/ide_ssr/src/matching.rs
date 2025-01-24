@@ -13,7 +13,6 @@
 
 use std::cell::Cell;
 use std::iter;
-use std::sync::Arc;
 
 use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::ast::ArithOp;
@@ -29,7 +28,6 @@ use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Atom;
 use hir::BinarySeg;
-use hir::Body;
 use hir::BodyOrigin;
 use hir::CRClause;
 use hir::CallTarget;
@@ -37,6 +35,7 @@ use hir::ComprehensionBuilder;
 use hir::ComprehensionExpr;
 use hir::Expr;
 use hir::ExprId;
+use hir::FoldBody;
 use hir::IfClause;
 use hir::Literal;
 use hir::MapOp;
@@ -163,10 +162,19 @@ pub(crate) fn get_match(
     code: &AnyExprId,
     restrict_range: &Option<FileRange>,
     sema: &Semantic,
+    code_body: &FoldBody,
+    pattern_body: &FoldBody,
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
-        Matcher::new(sema, *restrict_range, rule, code_body_origin)
-            .try_match(debug_active, &SubId::AnyExprId(*code))
+        Matcher::new(
+            sema,
+            *restrict_range,
+            rule,
+            code_body_origin,
+            &pattern_body,
+            &code_body,
+        )
+        .try_match(debug_active, &SubId::AnyExprId(*code))
     })
 }
 
@@ -190,8 +198,8 @@ struct Matcher<'a> {
     /// If any placeholders come from anywhere outside of this range,
     /// then the match will be rejected.
     restrict_range: Option<FileRange>,
-    pattern_body: Arc<Body>,
-    code_body: Arc<Body>,
+    pattern_body: &'a FoldBody<'a>,
+    code_body: &'a FoldBody<'a>,
     code_body_origin: &'a BodyOrigin,
 }
 
@@ -201,11 +209,9 @@ impl<'a> Matcher<'a> {
         restrict_range: Option<FileRange>,
         pattern: &'a SsrPattern,
         code_body_origin: &'a BodyOrigin,
+        pattern_body: &'a FoldBody<'a>,
+        code_body: &'a FoldBody<'a>,
     ) -> Matcher<'a> {
-        let pattern_body = pattern.get_body(sema).expect("Cannot get pattern_body");
-        let code_body = code_body_origin
-            .get_body(sema)
-            .expect("Could not get code Body");
         Matcher {
             sema,
             rule: pattern,
@@ -223,6 +229,7 @@ impl<'a> Matcher<'a> {
                     println!(
                         "Matcher::try_match:code:---------------\n{}----------------\n",
                         self.code_body
+                            .body
                             .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
                     );
                 }
@@ -239,7 +246,7 @@ impl<'a> Matcher<'a> {
 
         let range = self.get_code_range(code).expect("cannot get code range");
         let code_range = FileRange {
-            file_id: self.code_body.origin.file_id(),
+            file_id: self.code_body.body.origin.file_id(),
             range,
         };
         self.validate_range(&code_range)?;
@@ -327,7 +334,7 @@ impl<'a> Matcher<'a> {
                         self.check_condition(code, condition)?;
                     }
                     if let Some(range) = self.get_code_range(code) {
-                        let file_id = self.code_body.origin.file_id();
+                        let file_id = self.code_body.body.origin.file_id();
                         let original_range = FileRange { file_id, range };
                         // We validated the range for the node
                         // when we started the match, so the
@@ -585,7 +592,7 @@ impl<'a> Matcher<'a> {
 
     fn get_code_range(&self, code: &SubId) -> Option<TextRange> {
         match code {
-            SubId::AnyExprId(code) => self.code_body.range_for_any(self.sema, *code),
+            SubId::AnyExprId(code) => self.code_body.body.range_for_any(self.sema, *code),
             SubId::Atom(_) => todo!(),
             SubId::UnaryOp(_) => todo!(),
             SubId::BinaryOp(_) => todo!(),
@@ -659,7 +666,7 @@ pub enum SubId {
 }
 
 impl SubId {
-    pub fn variant_str<'a>(&'a self, body: &'a Body) -> &'a str {
+    pub fn variant_str<'a>(&'a self, body: &'a FoldBody) -> &'a str {
         match self {
             SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
             SubId::Atom(_) => "Atom",
@@ -748,7 +755,7 @@ impl SubId {
         }
     }
 
-    pub fn sub_id_ref<'a>(&'a self, body: &'a Body) -> SubIdRef<'a> {
+    pub fn sub_id_ref<'a>(&'a self, body: &'a FoldBody) -> SubIdRef<'a> {
         match self {
             SubId::AnyExprId(code) => SubIdRef::AnyExprRef(body.get_any(*code)),
             SubId::Atom(a) => SubIdRef::Atom(*a),

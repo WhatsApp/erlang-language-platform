@@ -16,7 +16,10 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::RootDatabase;
 use expect_test::expect;
 use expect_test::Expect;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use hir::Semantic;
+use hir::Strategy;
 
 use crate::MatchFinder;
 use crate::SsrRule;
@@ -178,6 +181,19 @@ fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: FileId, snipp
 
 #[track_caller]
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        pattern,
+        code,
+        expected,
+    );
+}
+
+#[track_caller]
+fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, selections) = single_file(code);
     if expected.len() > 0 {
         if expected[0] == "" {
@@ -186,7 +202,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
-    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections);
+    let mut match_finder = MatchFinder::in_context(&sema, strategy, position.file_id, selections);
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matched_strings: Vec<String> = match_finder
@@ -218,7 +234,15 @@ fn assert_match_placeholder(
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
-    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections);
+    let mut match_finder = MatchFinder::in_context(
+        &sema,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        position.file_id,
+        selections,
+    );
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches = match_finder.matches();
@@ -723,8 +747,38 @@ fn ssr_expr_maybe_bare() {
 
 #[test]
 fn ssr_expr_parens() {
-    assert_matches("ssr: ((_@AA)).", "bar(X) -> X = ((3)),X = (4).", &["((3))"]);
-    assert_matches("ssr: ((_@AA)).", "bar(((X))) -> X = 3,X = (4).", &["((X))"]);
+    let invisible_parens = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let visible_parens = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::VisibleParens,
+    };
+    assert_matches_with_strategy(
+        visible_parens,
+        "ssr: ((_@AA)).",
+        "bar(X) -> X = ((3)),X = (4).",
+        &["((3))"],
+    );
+    assert_matches_with_strategy(
+        visible_parens,
+        "ssr: ((_@AA)).",
+        "bar(((X))) -> X = 3,X = (4).",
+        &["((X))"],
+    );
+    assert_matches_with_strategy(
+        invisible_parens,
+        "ssr: ((_@AA)).",
+        "bar(X) -> X = ((3)),X = (4).",
+        &["X", "X = ((3))", "X", "((3))", "X", "X = (4)", "(4)"],
+    );
+    assert_matches_with_strategy(
+        invisible_parens,
+        "ssr: ((_@AA)).",
+        "bar(((X))) -> X = 3,X = (4).",
+        &["((X))", "X = 3", "X", "3", "X = (4)", "X", "(4)"],
+    );
 }
 
 // ---------------------------------------------------------------------
