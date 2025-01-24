@@ -692,3 +692,11 @@ fn ssr_pat_list() {
 fn ssr_pat_binary() {
     assert_matches("ssr: << _@A, _@B>>.", "fn(Y) -> <<X,Z>> = Y.", &["<<X,Z>>"]);
 }
+
+#[test]
+fn ssr_pat_unary_op() {
+    assert_matches("ssr: not _@A.", "fn(Y) -> {not {X}} = Y.", &["not {X}"]);
+    assert_matches("ssr: bnot _@A.", "fn(Y) -> {not {X}} = Y.", &[]);
+    assert_matches("ssr: + _@A.", "fn(Y) -> {+X} = Y.", &["+X"]);
+    assert_matches("ssr: - _@A.", "fn(Y) -> {-X} = Y.", &["-X"]);
+}

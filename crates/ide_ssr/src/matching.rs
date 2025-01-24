@@ -1037,7 +1037,7 @@ impl PatternIterator {
                 Pat::Binary { segs } => {
                     Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
                 }
-                Pat::UnaryOp { pat: _, op: _ } => todo!(),
+                Pat::UnaryOp { pat, op } => Either::Right(vec![(*op).into(), (*pat).into()]),
                 Pat::BinaryOp {
                     lhs: _,
                     rhs: _,
