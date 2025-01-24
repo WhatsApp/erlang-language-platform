@@ -310,7 +310,7 @@ pub enum Expr {
     SsrPlaceholder(SsrPlaceholder),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct SsrPlaceholder {
     pub var: Var,
 }

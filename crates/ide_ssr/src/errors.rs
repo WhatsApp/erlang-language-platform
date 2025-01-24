@@ -34,7 +34,6 @@ impl std::fmt::Display for SsrError {
 }
 
 impl SsrError {
-    #[allow(dead_code)]
     pub(crate) fn new(message: impl Into<String>) -> SsrError {
         SsrError(message.into())
     }

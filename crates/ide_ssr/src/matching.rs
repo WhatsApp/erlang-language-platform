@@ -47,6 +47,8 @@ use hir::Semantic;
 use hir::SsrPlaceholder;
 use hir::Var;
 
+use crate::get_literal_subid;
+use crate::Condition;
 use crate::SsrMatches;
 use crate::SsrPattern;
 
@@ -292,6 +294,12 @@ impl<'a> Matcher<'a> {
         self.attempt_match_node_children(phase, pattern, code)
     }
 
+    /// If the given `code` is a placeholder, attempt a match.
+    /// The return values are a bit subtle
+    /// - If the pattern is not a placeholder,
+    ///   return Ok(false)
+    /// - If the pattern is a placeholder, and the code is a placeholder,
+    ///   return Ok(true) or Err(MatchFailed) depending on the condition
     fn attempt_match_placeholder(
         &self,
         pattern: &SubId,
@@ -301,6 +309,10 @@ impl<'a> Matcher<'a> {
         if self.is_placeholder(pattern) {
             if let Some(placeholder) = self.get_placeholder_for_node(pattern) {
                 if let Phase::Second(matches_out) = phase {
+                    // check constraints
+                    if let Some(condition) = self.rule.conditions.get(placeholder) {
+                        self.check_condition(code, condition)?;
+                    }
                     if let Some(range) = self.get_code_range(code) {
                         let file_id = self.code_body.origin.file_id();
                         let original_range = FileRange { file_id, range };
@@ -319,6 +331,26 @@ impl<'a> Matcher<'a> {
             }
         }
         return Ok(false);
+    }
+
+    fn check_condition(&self, code: &SubId, condition: &Condition) -> Result<(), MatchFailed> {
+        match condition {
+            Condition::Literal(literal) => {
+                if let Some(code_literal) = get_literal_subid(&self.code_body, code) {
+                    if code_literal != literal {
+                        fail_match!("literal match condition failed: literals different");
+                    }
+                } else {
+                    fail_match!("literal match condition failed: placeholder not a literal");
+                }
+            }
+            Condition::Not(condition) => {
+                if self.check_condition(code, condition).is_ok() {
+                    fail_match!("condition matched when it was expected not to");
+                }
+            }
+        }
+        Ok(())
     }
 
     fn attempt_match_node_children(

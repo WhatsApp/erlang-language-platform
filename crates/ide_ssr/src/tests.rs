@@ -99,7 +99,7 @@ fn parser_basic_query_with_placeholder() {
 fn parser_basic_query_with_cond() {
     parse_good_text(
         "ssr: V ==>> V + 1
-              when is_atom(V)
+              when V == foo
          .
         ",
         expect![[r#"
@@ -121,14 +121,13 @@ fn parser_basic_query_with_cond() {
                     }
                 when
                     guard
-                        Expr::Call {
-                            target
-                                CallTarget::Remote {
-                                    Literal(Atom('erlang'))
-                                    Literal(Atom('is_atom'))
-                                }
-                            args
-                                Expr::Var(V),
+                        Expr::BinaryOp {
+                            lhs
+                                Expr::Var(V)
+                            rhs
+                                Literal(Atom('foo'))
+                            op
+                                CompOp(Eq { strict: false, negated: false }),
                         },
             }
         "#]],
@@ -907,4 +906,41 @@ fn ssr_spec_no_blowup() {
 #[test]
 fn ssr_term_no_blowup() {
     assert_matches("ssr: _@X = 1.", "-wild_attr([any,thing]).", &[]);
+}
+
+// ---------------------------------------------------------------------
+// Check conditions
+
+#[test]
+fn ssr_match_constant_atom_placeholder() {
+    assert_matches(
+        "ssr: {_@X = _@Y} when _@X == foo.",
+        "foo() -> {foo = 3},{bar = 2}.",
+        &["{foo = 3}"],
+    );
+}
+
+#[test]
+fn ssr_match_constant_negated_atom_placeholder() {
+    assert_matches(
+        "ssr: {_@X = _@Y} when _@X =/= foo.",
+        "foo() -> {foo = 3},{bar = 2}.",
+        &["{bar = 2}"],
+    );
+}
+
+#[test]
+fn ssr_invalid_when_condition_not_literal() {
+    expect![[r#"
+        "Parse error: Invalid `when` RHS, expecting a literal"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X == Y."));
+}
+
+#[test]
+fn ssr_invalid_when_condition_not_compop() {
+    expect![[r#"
+        "Parse error: Invalid `when` condition"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X = foo."));
 }

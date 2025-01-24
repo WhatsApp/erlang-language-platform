@@ -62,18 +62,26 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
 use elp_syntax::ast;
+use elp_syntax::ast::CompOp;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use fxhash::FxHashMap;
 use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use hir::AnyExprId;
+use hir::AnyExprRef;
 use hir::Body;
+use hir::Expr;
+use hir::ExprId;
 use hir::InFile;
 use hir::InSsr;
+use hir::Literal;
+use hir::Pat;
 use hir::Semantic;
 use hir::SsrBody;
 use hir::SsrPatternIds;
+use hir::SsrPlaceholder;
 use hir::SsrSource;
 
 #[macro_use]
@@ -109,6 +117,14 @@ pub fn match_pattern_in_file(sema: &Semantic, file_id: FileId, pattern: &str) ->
 #[derive(Debug)]
 pub struct SsrRule {
     parsed_rule: Arc<SsrBody>,
+    conditions: FxHashMap<SsrPlaceholder, Condition>,
+}
+
+/// A possible condition extracted from the ssr rule `when` clause
+#[derive(Debug)]
+pub enum Condition {
+    Literal(hir::Literal),
+    Not(Box<Condition>),
 }
 
 impl SsrRule {
@@ -119,8 +135,10 @@ impl SsrRule {
 
     fn parse_ssr_source(db: &dyn DefDatabase, ssr_source: SsrSource) -> Result<SsrRule, SsrError> {
         if let Some((body, _)) = db.ssr_body_with_source(ssr_source) {
+            let conditions = SsrRule::make_conditions(&body)?;
             Ok(SsrRule {
                 parsed_rule: body.clone(),
+                conditions,
             })
         } else {
             Err(SsrError("Could not lower rule".to_string()))
@@ -131,20 +149,101 @@ impl SsrRule {
         let ssr_source = db.ssr(Arc::from(pattern_str));
         Self::parse_ssr_source(db, ssr_source)
     }
+
+    /// The `when` clause is lowered as HIR guards.
+    /// Process these and turn them into something we can easily check
+    /// when matching.
+    /// Initially we only support conditions which check that a
+    /// placeholder is a literal, such as
+    ///
+    /// ```erlang
+    /// ssr: _@X when _@X == foo.
+    /// ```
+    fn make_conditions(
+        ssr_body: &SsrBody,
+    ) -> Result<FxHashMap<SsrPlaceholder, Condition>, SsrError> {
+        let mut conditions: FxHashMap<SsrPlaceholder, Condition> = FxHashMap::default();
+        let mut error = None;
+        ssr_body.when.as_ref().map(|w| {
+            w.iter().for_each(|conds| {
+                conds.iter().for_each(|cond| {
+                    extract_condition(ssr_body, cond, &mut conditions, &mut error);
+                });
+            })
+        });
+        if let Some(error) = error {
+            Err(error)
+        } else {
+            Ok(conditions)
+        }
+    }
+}
+
+fn extract_condition(
+    ssr_body: &SsrBody,
+    cond: &ExprId,
+    conditions: &mut FxHashMap<SsrPlaceholder, Condition>,
+    error: &mut Option<SsrError>,
+) {
+    match ssr_body.body[*cond] {
+        Expr::BinaryOp { lhs, rhs, op } => {
+            match &ssr_body.body[lhs] {
+                Expr::SsrPlaceholder(ssr_placeholder) => {
+                    // We have a condition on the current placeholder, store it if valid
+                    match op {
+                        ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
+                            if let Some(lit_rhs) = get_literal_subid(
+                                &ssr_body.body,
+                                &SubId::AnyExprId(AnyExprId::Expr(rhs)),
+                            ) {
+                                if negated {
+                                    conditions.insert(
+                                        ssr_placeholder.clone(),
+                                        Condition::Not(Box::new(Condition::Literal(
+                                            lit_rhs.clone(),
+                                        ))),
+                                    );
+                                } else {
+                                    conditions.insert(
+                                        ssr_placeholder.clone(),
+                                        Condition::Literal(lit_rhs.clone()),
+                                    );
+                                }
+                            } else {
+                                *error =
+                                    Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
+                            }
+                        }
+                        _ => {
+                            *error = Some(SsrError::new(
+                                "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
+                            ))
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {
+            *error = Some(SsrError::new("Invalid `when` condition"));
+        }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct SsrPattern {
     pub(crate) ssr_source: SsrSource,
+    pub(crate) conditions: FxHashMap<SsrPlaceholder, Condition>,
     pub(crate) pattern_node: SsrPatternIds,
     pub(crate) index: usize,
 }
 
 impl SsrPattern {
-    pub(crate) fn new(rule: Arc<SsrBody>, index: usize) -> SsrPattern {
+    pub(crate) fn new(rule: SsrRule, index: usize) -> SsrPattern {
         SsrPattern {
-            ssr_source: rule.ssr_source,
-            pattern_node: rule.pattern.clone(),
+            ssr_source: rule.parsed_rule.ssr_source,
+            conditions: rule.conditions,
+            pattern_node: rule.parsed_rule.pattern.clone(),
             index,
         }
     }
@@ -211,8 +310,7 @@ impl<'a> MatchFinder<'a> {
                 rule.tree_print(self.sema.db.upcast())
             );
         }
-        self.rules
-            .push(SsrPattern::new(rule.parsed_rule, self.rules.len()));
+        self.rules.push(SsrPattern::new(rule, self.rules.len()));
     }
 
     /// Returns matches for all added rules.
@@ -352,6 +450,27 @@ impl std::fmt::Debug for MatchDebugInfo {
         writeln!(f, "============================")?;
         Ok(())
     }
+}
+
+fn get_literal_subid<'a>(body: &'a Body, code: &'a SubId) -> Option<&'a Literal> {
+    let literal = match code {
+        SubId::AnyExprId(any_expr_id) => match body.get_any(*any_expr_id) {
+            AnyExprRef::Expr(expr) => match expr {
+                Expr::Literal(literal) => Some(literal),
+                _ => None,
+            },
+            AnyExprRef::Pat(pat) => match pat {
+                Pat::Literal(literal) => Some(literal),
+                _ => None,
+            },
+            AnyExprRef::TypeExpr(_) => None,
+            AnyExprRef::Term(_) => None,
+        },
+
+        SubId::Atom(_) => todo!(),
+        _ => None,
+    };
+    literal
 }
 
 #[cfg(test)]
