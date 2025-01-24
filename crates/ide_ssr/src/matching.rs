@@ -34,6 +34,7 @@ use hir::BinarySeg;
 use hir::Body;
 use hir::BodyOrigin;
 use hir::CRClause;
+use hir::CallTarget;
 use hir::ComprehensionBuilder;
 use hir::ComprehensionExpr;
 use hir::Expr;
@@ -959,10 +960,18 @@ impl PatternIterator {
                     after.iter().for_each(|e| res.push((*e).into()));
                     res
                 }),
-                Expr::CaptureFun {
-                    target: _,
-                    arity: _,
-                } => todo!(),
+                Expr::CaptureFun { target, arity } => Either::Right({
+                    let mut res = Vec::default();
+                    match target {
+                        CallTarget::Local { name } => res.push((*name).into()),
+                        CallTarget::Remote { module, name, .. } => {
+                            res.push((*module).into());
+                            res.push((*name).into());
+                        }
+                    }
+                    res.push((*arity).into());
+                    res
+                }),
                 Expr::Closure {
                     clauses: _,
                     name: _,
