@@ -170,7 +170,7 @@ pub(crate) fn single_file(code: &str) -> (RootDatabase, FilePosition, Vec<FileRa
 fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: FileId, snippet: &str) {
     let debug_info = match_finder.debug_where_text_equal(file_id, snippet);
     println!(
-        "Match debug info: {} nodes had text exactly equal to '{}'",
+        "Match debug info: {} nodes had text exactly equal to \"{}\"",
         debug_info.len(),
         snippet
     );
@@ -588,12 +588,55 @@ fn ssr_expr_match_macro_call() {
     // template, only Missing
     // And it comes down to having some sort of meaningful fold option
     // that gives the surface call, and the expansion. Maybe try both?
-    // assert_matches(
-    //     "ssr: ?ANY_MACRO(_@AA).",
-    //     "-define(BAR(X), {X}).
-    //      bar() -> ?BAR(4).",
-    //     &["broken"],
-    // );
+    assert_matches_with_strategy(
+        // The default, if not given
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "-define(BAR(X), {X}).
+         bar() -> ?BAR(4).",
+        &[],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "bar() -> ?BAR(4).",
+        &["?BAR(4)"],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "bar() -> ?NOT_BAR(4).",
+        &[],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::DoNotExpand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "-define(BAR(X), {X}).
+         bar() -> ?BAR(4).",
+        &["?BAR(4)"],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: {_@AA}.",
+        "-define(BAR(X), {X}).
+         bar() -> ?BAR(4).",
+        &["{X}", "?BAR(4)"],
+    );
 }
 
 #[test]
@@ -988,12 +1031,57 @@ fn ssr_pat_match_map() {
 fn ssr_pat_match_macro_call() {
     // TODO: fails because we do not have a visible macro call in the
     // template, only Missing
-    // assert_matches(
-    //     "ssr: ?ANY_MACRO(_@AA).",
-    //     "-define(BAR(X), {X}).
-    //      bar(X) -> ?BAR(4) = X.",
-    //     &["broken"],
-    // );
+    // And it comes down to having some sort of meaningful fold option
+    // that gives the surface call, and the expansion. Maybe try both?
+    assert_matches_with_strategy(
+        // The default, if not given
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "-define(BAR(X), {X}).
+         bar(?BAR(4)) -> ok.",
+        &[],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "bar(?BAR(4)) -> ok.",
+        &["?BAR(4)"],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "bar(?NOT_BAR(4)) -> ok.",
+        &[],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::DoNotExpand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: ?BAR(_@AA).",
+        "-define(BAR(X), {X}).
+         bar(?BAR(4)) -> ok.",
+        &["?BAR(4)"],
+    );
+    assert_matches_with_strategy(
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        "ssr: {_@AA}.",
+        "-define(BAR(X), {X}).
+         bar(?BAR(4)) -> ok.",
+        &["{X}", "?BAR(4)"],
+    );
 }
 
 // ---------------------------------------------------------------------

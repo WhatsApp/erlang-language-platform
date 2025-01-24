@@ -38,6 +38,7 @@ use hir::ExprId;
 use hir::FoldBody;
 use hir::IfClause;
 use hir::Literal;
+use hir::MacroCallName;
 use hir::MapOp;
 use hir::MaybeExpr;
 use hir::Pat;
@@ -545,6 +546,17 @@ impl<'a> Matcher<'a> {
                     );
                 }
             }
+            (SubIdRef::Var(pat_var), SubIdRef::Var(code_var)) => {
+                if self.sema.db.lookup_var(pat_var) == self.sema.db.lookup_var(*code_var) {
+                    return Ok(());
+                } else {
+                    fail_match!(
+                        "Pattern had var `{}`, code had var `{}`",
+                        self.sema.db.lookup_var(pat_var),
+                        self.sema.db.lookup_var(*code_var),
+                    );
+                }
+            }
             // UnaryOp and BinaryOp can be fully distinguished by variant_str.
             _ => {}
         }
@@ -657,6 +669,7 @@ fn render_str(sema: &Semantic, lit: &Literal) -> String {
 pub enum SubId {
     AnyExprId(AnyExprId),
     Atom(Atom),
+    Var(Var),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     MapOp(MapOp),
@@ -670,6 +683,7 @@ impl SubId {
         match self {
             SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
             SubId::Atom(_) => "Atom",
+            SubId::Var(_) => "Var",
             SubId::UnaryOp(op) => match op {
                 UnaryOp::Plus => "UnaryOp::Plus",
                 UnaryOp::Minus => "UnaryOp::Minus",
@@ -759,6 +773,7 @@ impl SubId {
         match self {
             SubId::AnyExprId(code) => SubIdRef::AnyExprRef(body.get_any(*code)),
             SubId::Atom(a) => SubIdRef::Atom(*a),
+            SubId::Var(a) => SubIdRef::Var(*a),
             SubId::UnaryOp(op) => SubIdRef::UnaryOp(*op),
             SubId::BinaryOp(op) => SubIdRef::BinaryOp(*op),
             SubId::MapOp(op) => SubIdRef::MapOp(*op),
@@ -809,10 +824,21 @@ impl From<MapOp> for SubId {
     }
 }
 
+impl From<&MacroCallName> for SubId {
+    fn from(value: &MacroCallName) -> Self {
+        match value {
+            MacroCallName::Var(var) => SubId::Var(*var),
+            MacroCallName::Atom(atom) => SubId::Atom(*atom),
+            MacroCallName::Missing => "missing".into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubIdRef<'a> {
     AnyExprRef(AnyExprRef<'a>),
     Atom(Atom),
+    Var(Var),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
     MapOp(MapOp),
@@ -934,10 +960,14 @@ impl PatternIterator {
                 Expr::Catch { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
                 Expr::MacroCall {
                     expansion: _,
-                    args: _,
+                    args,
                     macro_def: _,
-                    macro_name: _,
-                } => todo!(),
+                    macro_name,
+                } => PatternIterator::as_pattern_list(
+                    iter::once(macro_name.into())
+                        .chain(args.iter().map(|id| (*id).into()))
+                        .collect(),
+                ),
                 Expr::Call { target, args } => PatternIterator::as_pattern_list({
                     let mut res = Vec::default();
                     match target {
@@ -1124,10 +1154,14 @@ impl PatternIterator {
                 }
                 Pat::MacroCall {
                     expansion: _,
-                    args: _,
+                    args,
                     macro_def: _,
-                    macro_name: _,
-                } => todo!(),
+                    macro_name,
+                } => PatternIterator::as_pattern_list(
+                    iter::once(macro_name.into())
+                        .chain(args.iter().map(|id| (*id).into()))
+                        .collect(),
+                ),
                 Pat::Paren { pat } => PatternIterator::as_pattern_list(vec![(*pat).into()]),
                 Pat::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
             },
