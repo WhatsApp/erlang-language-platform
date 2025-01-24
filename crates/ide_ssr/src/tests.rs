@@ -371,3 +371,49 @@ fn ssr_expr_match_unary_op() {
     assert_matches("ssr: + _@A.", "fn(Y) -> +Y.", &["+Y"]);
     assert_matches("ssr: -_@A.", "fn(Y) -> -Y.", &["-Y"]);
 }
+
+#[test]
+fn ssr_expr_binary_op() {
+    assert_matches("ssr: _@A + _@B.", "fn(X) -> Y = {X + 1}, Y.", &["X + 1"]);
+    assert_matches("ssr: _@A - _@B.", "fn(X) -> Y = {X + 1}, Y.", &[]);
+    assert_matches("ssr: _@A and _@B.", "fn(X,Y) -> X and Y .", &["X and Y"]);
+    assert_matches(
+        "ssr: _@A andalso _@B.",
+        "fn(X,Y) -> X andalso Y .",
+        &["X andalso Y"],
+    );
+    assert_matches("ssr: _@A or _@B.", "fn(X,Y) -> X or Y .", &["X or Y"]);
+    assert_matches(
+        "ssr: _@A orelse _@B.",
+        "fn(X,Y) -> X orelse Y .",
+        &["X orelse Y"],
+    );
+    assert_matches("ssr: _@A ! _@B.", "fn(X,Y) -> X ! Y .", &["X ! Y"]);
+    // Comparison operators
+    assert_matches("ssr: _@A == _@B.", "fn(X,Y) -> X == Y .", &["X == Y"]);
+    assert_matches("ssr: _@A /= _@B.", "fn(X,Y) -> X /= Y .", &["X /= Y"]);
+    assert_matches("ssr: _@A =< _@B.", "fn(X,Y) -> X =< Y .", &["X =< Y"]);
+    assert_matches("ssr: _@A  < _@B.", "fn(X,Y) -> X  < Y .", &["X  < Y"]);
+    assert_matches("ssr: _@A >= _@B.", "fn(X,Y) -> X >= Y .", &["X >= Y"]);
+    assert_matches("ssr: _@A >  _@B.", "fn(X,Y) -> X >  Y .", &["X >  Y"]);
+    assert_matches("ssr: _@A =:= _@B.", "fn(X,Y) -> X =:= Y .", &["X =:= Y"]);
+    assert_matches("ssr: _@A =/= _@B.", "fn(X,Y) -> X =/= Y .", &["X =/= Y"]);
+    // List operators
+    assert_matches("ssr: _@A ++ _@B.", "fn(X,Y) -> X ++ Y .", &["X ++ Y"]);
+    assert_matches("ssr: _@A -- _@B.", "fn(X,Y) -> X -- Y .", &["X -- Y"]);
+    // Add operators
+    assert_matches("ssr: _@A + _@B.", "fn(X,Y) -> X + Y .", &["X + Y"]);
+    assert_matches("ssr: _@A - _@B.", "fn(X,Y) -> X - Y .", &["X - Y"]);
+    assert_matches("ssr: _@A bor _@B.", "fn(X,Y) -> X bor Y .", &["X bor Y"]);
+    assert_matches("ssr: _@A bxor _@B.", "fn(X,Y) -> X bxor Y .", &["X bxor Y"]);
+    assert_matches("ssr: _@A bsl _@B.", "fn(X,Y) -> X bsl Y .", &["X bsl Y"]);
+    assert_matches("ssr: _@A bsr _@B.", "fn(X,Y) -> X bsr Y .", &["X bsr Y"]);
+    assert_matches("ssr: _@A or _@B.", "fn(X,Y) -> X or Y .", &["X or Y"]);
+    // Mult operators
+    assert_matches("ssr: _@A / _@B.", "fn(X,Y) -> X / Y .", &["X / Y"]);
+    assert_matches("ssr: _@A * _@B.", "fn(X,Y) -> X * Y .", &["X * Y"]);
+    assert_matches("ssr: _@A div _@B.", "fn(X,Y) -> X div Y .", &["X div Y"]);
+    assert_matches("ssr: _@A rem _@B.", "fn(X,Y) -> X rem Y .", &["X rem Y"]);
+    assert_matches("ssr: _@A band _@B.", "fn(X,Y) -> X band Y .", &["X band Y"]);
+    assert_matches("ssr: _@A and _@B.", "fn(X,Y) -> X and Y .", &["X and Y"]);
+}

@@ -18,7 +18,12 @@ use std::sync::Arc;
 
 use either::Either;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_syntax::ast::ArithOp;
 use elp_syntax::ast::BinaryOp;
+use elp_syntax::ast::CompOp;
+use elp_syntax::ast::ListOp;
+use elp_syntax::ast::LogicOp;
+use elp_syntax::ast::Ordering;
 use elp_syntax::ast::UnaryOp;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
@@ -610,7 +615,77 @@ impl SubId {
                 UnaryOp::Bnot => "UnaryOp::Bnot",
                 UnaryOp::Not => "UnaryOp::Not",
             },
-            SubId::BinaryOp(_) => todo!(),
+            SubId::BinaryOp(op) => match op {
+                BinaryOp::LogicOp(op) => match op {
+                    LogicOp::And { lazy } => {
+                        if *lazy {
+                            "LogicOp::And{true}"
+                        } else {
+                            "LogicOp::And{false}"
+                        }
+                    }
+                    LogicOp::Or { lazy } => {
+                        if *lazy {
+                            "LogicOp::Or{true}"
+                        } else {
+                            "LogicOp::Or{false}"
+                        }
+                    }
+                    LogicOp::Xor => "LogicOp::Xor",
+                },
+                BinaryOp::ArithOp(op) => match op {
+                    ArithOp::Add => "ArithOp::Add",
+                    ArithOp::Mul => "ArithOp::Mul",
+                    ArithOp::Sub => "ArithOp::Sub",
+                    ArithOp::FloatDiv => "ArithOp::FloatDiv",
+                    ArithOp::Div => "ArithOp::Div",
+                    ArithOp::Rem => "ArithOp::Rem",
+                    ArithOp::Band => "ArithOp::Band",
+                    ArithOp::Bor => "ArithOp::Bor",
+                    ArithOp::Bxor => "ArithOp::Bxor",
+                    ArithOp::Bsr => "ArithOp::Bsr",
+                    ArithOp::Bsl => "ArithOp::Bsl",
+                },
+                BinaryOp::ListOp(op) => match op {
+                    ListOp::Append => "ListOp::Append",
+                    ListOp::Subtract => "ListOp::Subtract",
+                },
+                BinaryOp::CompOp(op) => match op {
+                    CompOp::Eq {
+                        strict: true,
+                        negated: true,
+                    } => "CompOp::Eq{true,true}",
+                    CompOp::Eq {
+                        strict: true,
+                        negated: false,
+                    } => "CompOp::Eq{true,false}",
+                    CompOp::Eq {
+                        strict: false,
+                        negated: true,
+                    } => "CompOp::Eq{false,true}",
+                    CompOp::Eq {
+                        strict: false,
+                        negated: false,
+                    } => "CompOp::Eq{false,false}",
+                    CompOp::Ord {
+                        ordering: Ordering::Greater,
+                        strict: true,
+                    } => "CompOp::Ord{>,true}",
+                    CompOp::Ord {
+                        ordering: Ordering::Greater,
+                        strict: false,
+                    } => "CompOp::Ord{>,false}",
+                    CompOp::Ord {
+                        ordering: Ordering::Less,
+                        strict: true,
+                    } => "CompOp::Ord{<,true}",
+                    CompOp::Ord {
+                        ordering: Ordering::Less,
+                        strict: false,
+                    } => "CompOp::Ord{<,false}",
+                },
+                BinaryOp::Send => "BinaryOp::Send",
+            },
             SubId::MapOp(_) => todo!(),
             SubId::Constant(v) => v,
         }
@@ -655,6 +730,12 @@ impl From<&str> for SubId {
 impl From<UnaryOp> for SubId {
     fn from(value: UnaryOp) -> Self {
         SubId::UnaryOp(value)
+    }
+}
+
+impl From<BinaryOp> for SubId {
+    fn from(value: BinaryOp) -> Self {
+        SubId::BinaryOp(value)
     }
 }
 
@@ -744,11 +825,9 @@ impl PatternIterator {
                     Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
                 }
                 Expr::UnaryOp { expr, op } => Either::Right(vec![(*op).into(), (*expr).into()]),
-                Expr::BinaryOp {
-                    lhs: _,
-                    rhs: _,
-                    op: _,
-                } => todo!(),
+                Expr::BinaryOp { lhs, rhs, op } => {
+                    Either::Right(vec![(*op).into(), (*lhs).into(), (*rhs).into()])
+                }
                 Expr::Record { name, fields } => {
                     let children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
