@@ -44,6 +44,7 @@ use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
 use hir::SsrPlaceholder;
+use hir::TypeExpr;
 use hir::Var;
 
 use crate::get_literal_subid;
@@ -575,8 +576,11 @@ impl<'a> Matcher<'a> {
                 Pat::SsrPlaceholder(placeholder) => Some(placeholder),
                 _ => None,
             },
-            AnyExprRef::TypeExpr(_) => todo!(),
-            AnyExprRef::Term(_) => todo!(),
+            AnyExprRef::TypeExpr(type_expr) => match type_expr {
+                TypeExpr::SsrPlaceholder(placeholder) => Some(placeholder),
+                _ => None,
+            },
+            AnyExprRef::Term(_) => None,
         }
     }
 
@@ -593,11 +597,7 @@ impl<'a> Matcher<'a> {
     fn get_code_range(&self, code: &SubId) -> Option<TextRange> {
         match code {
             SubId::AnyExprId(code) => self.code_body.body.range_for_any(self.sema, *code),
-            SubId::Atom(_) => todo!(),
-            SubId::UnaryOp(_) => todo!(),
-            SubId::BinaryOp(_) => todo!(),
-            SubId::MapOp(_) => todo!(),
-            SubId::Constant(_) => None,
+            _ => None,
         }
     }
 
@@ -642,7 +642,7 @@ fn render_str(sema: &Semantic, lit: &Literal) -> String {
         Literal::Char(c) => format!("{c}"),
         Literal::Atom(a) => a.as_string(sema.db.upcast()),
         Literal::Integer(i) => format!("{i}"),
-        Literal::Float(_) => todo!(),
+        Literal::Float(f) => format!("{f}"),
     }
 }
 
@@ -850,17 +850,6 @@ impl Default for PatternIterator {
     }
 }
 
-impl Iterator for PatternIterator {
-    type Item = SubId;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            PatternIterator::List(l) => l.next(),
-            PatternIterator::Map(_) => todo!(),
-        }
-    }
-}
-
 impl Iterator for PatternList {
     type Item = SubId;
 
@@ -875,7 +864,7 @@ impl PatternIterator {
     pub fn new_any_expr(parent: &AnyExprRef) -> PatternIterator {
         match parent {
             AnyExprRef::Expr(it) => match it {
-                Expr::Missing => todo!(),
+                Expr::Missing => PatternIterator::as_pattern_list(vec![]),
                 Expr::Literal(_) => PatternIterator::as_pattern_list(vec![]),
                 Expr::Var(_) => PatternIterator::as_pattern_list(vec![]),
                 Expr::Match { lhs, rhs } => {

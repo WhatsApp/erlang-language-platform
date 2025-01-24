@@ -511,8 +511,6 @@ fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<&'a Lite
             AnyExprRef::TypeExpr(_) => None,
             AnyExprRef::Term(_) => None,
         },
-
-        SubId::Atom(_) => todo!(),
         _ => None,
     };
     literal
