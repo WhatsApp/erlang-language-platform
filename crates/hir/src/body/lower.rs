@@ -28,7 +28,10 @@ use fxhash::FxHashMap;
 use super::BodyOrigin;
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
+use super::SsrBody;
+use super::SsrPatternIds;
 use super::TopLevelMacro;
+use super::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::Guards;
@@ -38,6 +41,7 @@ use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::name::AsName;
+use crate::AnyExprId;
 use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
@@ -57,6 +61,7 @@ use crate::ExprSource;
 use crate::FunType;
 use crate::FunctionBody;
 use crate::FunctionClauseId;
+use crate::HirIdx;
 use crate::IfClause;
 use crate::InFile;
 use crate::ListType;
@@ -74,6 +79,8 @@ use crate::RecordFieldBody;
 use crate::ResolvedMacro;
 use crate::SpecBody;
 use crate::SpecSig;
+use crate::SsrPlaceholder;
+use crate::SsrSource;
 use crate::Term;
 use crate::TermId;
 use crate::TypeBody;
@@ -104,6 +111,10 @@ pub struct Ctx<'a> {
     // For transferring corresponding entries from the macro_stack to
     // the source_map.macro_map when recursing
     macro_source_map: FxHashMap<MacroName, MacroSource>,
+    // We are stealing syntax for SSR placeholders, to match what merl does.
+    // This means we need to lower a Var specially when processing a SSR
+    // template, where if it has a prefix of `_@` it is a placeholder.
+    in_ssr: bool,
 }
 
 #[derive(Debug)]
@@ -139,6 +150,7 @@ impl<'a> Ctx<'a> {
             source_map: BodySourceMap::default(),
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
+            in_ssr: false,
         }
     }
 
@@ -463,6 +475,51 @@ impl<'a> Ctx<'a> {
             guards,
             exprs,
         }
+    }
+
+    pub fn lower_ssr(
+        mut self,
+        ssr_source: SsrSource,
+        ssr: &ast::SsrDefinition,
+    ) -> Option<(SsrBody, BodySourceMap)> {
+        let body_origin = self.body.origin;
+        self.in_ssr = true;
+        let lhs_ast = ssr.lhs()?;
+        let lhs_expr = self.lower_expr(&lhs_ast);
+        let lhs_pat = self.lower_pat(&lhs_ast);
+        let rhs = ssr.rhs().and_then(|rhs| {
+            rhs.expr().map(|rhs_ast| SsrPatternIds {
+                expr: self.lower_expr(&rhs_ast),
+                pat: self.lower_pat(&rhs_ast),
+            })
+        });
+        let when_idxs = ssr.when().and_then(|w| Some(self.lower_guards(w.guard())));
+        let when = when_idxs.map(|idxs| {
+            idxs.iter()
+                .map(|idxs| {
+                    idxs.iter()
+                        .map(|idx| HirIdx {
+                            body_origin,
+                            idx: AnyExprId::Expr(*idx),
+                        })
+                        .collect()
+                })
+                .collect()
+        });
+        let (body, source_map) = self.finish();
+        Some((
+            SsrBody {
+                ssr_source,
+                body,
+                pattern: SsrPatternIds {
+                    expr: lhs_expr,
+                    pat: lhs_pat,
+                },
+                template: rhs,
+                when,
+            },
+            source_map,
+        ))
     }
 
     fn lower_optional_pat(&mut self, expr: Option<ast::Expr>) -> PatId {
@@ -858,9 +915,15 @@ impl<'a> Ctx<'a> {
                 let pats = tup.expr().map(|expr| self.lower_pat(&expr)).collect();
                 self.alloc_pat(Pat::Tuple { pats }, Some(expr))
             }
-            ast::ExprMax::Var(var) => self
-                .resolve_var(var, |this, expr| this.lower_optional_pat(expr.expr()))
-                .unwrap_or_else(|var| self.alloc_pat(Pat::Var(var), Some(expr))),
+            ast::ExprMax::Var(var) => {
+                if self.in_ssr && var.is_ssr_placeholder() {
+                    let var = self.db.var(var.as_name());
+                    self.alloc_pat(Pat::SsrPlaceholder(SsrPlaceholder { var }), Some(expr))
+                } else {
+                    self.resolve_var(var, |this, expr| this.lower_optional_pat(expr.expr()))
+                        .unwrap_or_else(|var| self.alloc_pat(Pat::Var(var), Some(expr)))
+                }
+            }
         }
     }
 
@@ -1145,12 +1208,16 @@ impl<'a> Ctx<'a> {
     }
 
     fn imported_module(&self, name: Name, arity: ast::Arity) -> Option<Name> {
-        let name_arity = NameArity::new(name, arity? as u32);
-        self.db
-            .def_map(self.file_id())
-            .get_imports()
-            .get(&name_arity)
-            .cloned()
+        if self.file_id() != SSR_SOURCE_FILE_ID {
+            let name_arity = NameArity::new(name, arity? as u32);
+            self.db
+                .def_map(self.file_id())
+                .get_imports()
+                .get(&name_arity)
+                .cloned()
+        } else {
+            None
+        }
     }
 
     fn erlang_expr_id(&mut self) -> ExprId {
@@ -1490,9 +1557,15 @@ impl<'a> Ctx<'a> {
                 let exprs = tup.expr().map(|expr| self.lower_expr(&expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, Some(expr))
             }
-            ast::ExprMax::Var(var) => self
-                .resolve_var(var, |this, expr| this.lower_optional_expr(expr.expr()))
-                .unwrap_or_else(|var| self.alloc_expr(Expr::Var(var), Some(expr))),
+            ast::ExprMax::Var(var) => {
+                if self.in_ssr && var.is_ssr_placeholder() {
+                    let var = self.db.var(var.as_name());
+                    self.alloc_expr(Expr::SsrPlaceholder(SsrPlaceholder { var }), Some(expr))
+                } else {
+                    self.resolve_var(var, |this, expr| this.lower_optional_expr(expr.expr()))
+                        .unwrap_or_else(|var| self.alloc_expr(Expr::Var(var), Some(expr)))
+                }
+            }
             ast::ExprMax::MaybeExpr(maybe) => {
                 let exprs = maybe
                     .exprs()
@@ -2104,9 +2177,18 @@ impl<'a> Ctx<'a> {
                 let args = tup.expr().map(|expr| self.lower_type_expr(&expr)).collect();
                 self.alloc_type_expr(TypeExpr::Tuple { args }, Some(expr))
             }
-            ast::ExprMax::Var(var) => self
-                .resolve_var(var, |this, expr| this.lower_optional_type_expr(expr.expr()))
-                .unwrap_or_else(|var| self.alloc_type_expr(TypeExpr::Var(var), Some(expr))),
+            ast::ExprMax::Var(var) => {
+                if self.in_ssr && var.is_ssr_placeholder() {
+                    let var = self.db.var(var.as_name());
+                    self.alloc_type_expr(
+                        TypeExpr::SsrPlaceholder(SsrPlaceholder { var }),
+                        Some(expr),
+                    )
+                } else {
+                    self.resolve_var(var, |this, expr| this.lower_optional_type_expr(expr.expr()))
+                        .unwrap_or_else(|var| self.alloc_type_expr(TypeExpr::Var(var), Some(expr)))
+                }
+            }
             ast::ExprMax::MaybeExpr(maybe) => {
                 maybe.exprs().for_each(|expr| {
                     self.lower_expr(&expr);

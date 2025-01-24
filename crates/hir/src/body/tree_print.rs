@@ -21,6 +21,7 @@ use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::SsrPlaceholder;
 use crate::AnyAttribute;
+use crate::AnyExprId;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::Body;
@@ -39,6 +40,7 @@ use crate::ListType;
 use crate::Literal;
 use crate::Pat;
 use crate::PatId;
+use crate::SsrBody;
 use crate::Term;
 use crate::TermId;
 use crate::TypeAlias;
@@ -197,6 +199,42 @@ pub(crate) fn print_spec(
         }
     });
     write!(printer, ".").unwrap();
+    printer.to_string()
+}
+
+pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
+    let mut printer = Printer::new(db, &body.body);
+
+    printer.print_herald("SsrBody", &mut |this| {
+        this.print_labelled("lhs", true, &mut |this| {
+            this.print_expr(&this.body[body.pattern.expr]);
+        });
+        this.print_labelled("rhs", true, &mut |this| {
+            if let Some(pattern) = &body.template {
+                this.print_expr(&this.body[pattern.expr]);
+            }
+        });
+        this.print_labelled("when", false, &mut |this| {
+            if let Some(expr) = &body.when {
+                let expr = expr
+                    .iter()
+                    .map(|exprs| {
+                        exprs
+                            .iter()
+                            .filter_map(|hir_idx| match hir_idx.idx {
+                                AnyExprId::Expr(id) => Some(id),
+                                AnyExprId::Pat(_) => todo!(),
+                                AnyExprId::TypeExpr(_) => todo!(),
+                                AnyExprId::Term(_) => todo!(),
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>();
+                this.print_guards(&expr);
+            }
+        });
+    });
+
     printer.to_string()
 }
 

@@ -82,6 +82,7 @@ use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
 use crate::SpecId;
+use crate::SsrSource;
 use crate::Term;
 use crate::TermId;
 use crate::TypeExpr;
@@ -994,6 +995,11 @@ impl<'db> Semantic<'db> {
         self.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| f(def));
+    }
+
+    pub fn tree_print_ssr(&self, ssr_source: SsrSource) -> String {
+        let (body, _) = self.db.ssr_body_with_source(ssr_source).unwrap();
+        body.tree_print(self.db.upcast())
     }
 }
 

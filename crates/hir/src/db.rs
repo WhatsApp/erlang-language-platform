@@ -48,6 +48,8 @@ use crate::RecordId;
 use crate::ResolvedMacro;
 use crate::SpecBody;
 use crate::SpecId;
+use crate::SsrBody;
+use crate::SsrSource;
 use crate::TypeAliasId;
 use crate::TypeBody;
 
@@ -114,6 +116,12 @@ pub trait DefDatabase:
         define_id: InFile<DefineId>,
     ) -> Option<(Arc<DefineBody>, Arc<BodySourceMap>)>;
 
+    #[salsa::invoke(SsrBody::ssr_body_with_source_query)]
+    fn ssr_body_with_source(
+        &self,
+        ssr_source: SsrSource,
+    ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)>;
+
     // Projection queries to stop recomputation if structure didn't change, even if positions did
     fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
     fn function_clause_body(
@@ -127,6 +135,7 @@ pub trait DefDatabase:
     fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody>;
     fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody>;
     fn define_body(&self, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>>;
+    fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
 
     #[salsa::invoke(FunctionScopes::function_scopes_query)]
     fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
@@ -198,5 +207,10 @@ fn compile_body(db: &dyn DefDatabase, attribute_id: InFile<CompileOptionId>) -> 
 
 fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>> {
     db.define_body_with_source(define_id)
+        .map(|(body, _source)| body)
+}
+
+fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {
+    db.ssr_body_with_source(ssr_source)
         .map(|(body, _source)| body)
 }

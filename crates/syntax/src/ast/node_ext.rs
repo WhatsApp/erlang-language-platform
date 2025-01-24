@@ -106,9 +106,18 @@ impl nodes::Atom {
     }
 }
 
+pub const SSR_PLACEHOLDER_PREFIX: &'static str = "_@";
+
 impl nodes::Var {
     pub fn text(&self) -> TokenText {
         text_of_token(self.syntax())
+    }
+
+    /// Returns true if this is a SSR placeholder, when parsing an SSR
+    /// template.
+    /// This is recognised by having a prefix of `_@`
+    pub fn is_ssr_placeholder(&self) -> bool {
+        self.text().starts_with(SSR_PLACEHOLDER_PREFIX)
     }
 }
 

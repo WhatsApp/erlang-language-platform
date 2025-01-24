@@ -602,7 +602,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
         .filter_map::<Result<NodeType, anyhow::Error>, _>(|node| {
             let id = SymbolId(language.id_for_node_kind(&node.nodetype, node.named));
             println!("processing {:?}", node.nodetype);
-            if node.nodetype == "expression" {
+            if node.nodetype == "==>>" {
                 println!("processing {:?}", node);
             }
             if id.0 == 65535 {
@@ -783,6 +783,8 @@ fn map_name(name: &str) -> Result<NameType> {
         "$" => Ok(Punctuation("Dollar".into())),
         "'_'" => Ok(Punctuation("DeprecatedWildcard".into())),
 
+        "==>>" => Ok(Punctuation("SsrMatch".into())),
+
         // "@" => Ok(Punctuation("At".into())),
         // "%" => Ok(Punctuation("Percent".into())),
         // "^" => Ok(Punctuation("Caret".into())),
@@ -853,7 +855,7 @@ fn build_fields(fields: &BTreeMap<String, RawField>) -> Vec<Field> {
                 // we have some types overlapping with _expr, ignore them
                 [_, ty] if ty.nodetype == "_expr" => ty,
                 [] => panic!("field with no types"),
-                _ => panic!("fields with multiple types are not supported {}", k),
+                _ => panic!("fields with multiple types are not supported '{}'", k),
             };
             (k, v, ty)
         })

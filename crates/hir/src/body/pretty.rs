@@ -179,6 +179,24 @@ pub fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String 
     printer.to_string()
 }
 
+pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String {
+    let mut printer = Printer::new(db, &ssr.body);
+    let template = &ssr.template.as_ref().map(|idx| &ssr.body[idx.expr]);
+    let when = ssr.when.as_ref().map(|idxs| {
+        idxs.iter()
+            .map(|idxs| {
+                idxs.iter()
+                    .filter_map(|hir_idx| hir_idx.as_expr_id())
+                    .collect()
+            })
+            .collect()
+    });
+    printer
+        .print_ssr(&ssr.body[ssr.pattern.expr], template.clone(), &when)
+        .unwrap();
+    printer.to_string()
+}
+
 struct Printer<'a> {
     db: &'a dyn InternDatabase,
     body: &'a Body,
@@ -334,6 +352,23 @@ impl<'a> Printer<'a> {
         } else {
             write!(self, " ->")
         }
+    }
+
+    fn print_ssr_guards(&mut self, guards: &[Vec<ExprId>]) -> fmt::Result {
+        if !guards.is_empty() {
+            let mut sep = "";
+            for guard_clause in guards {
+                write!(self, "{}", sep)?;
+                sep = ";\n";
+                let mut sep = "";
+                for expr in guard_clause {
+                    write!(self, "{}", sep)?;
+                    sep = ",\n";
+                    self.print_expr(&self.body[*expr])?;
+                }
+            }
+        }
+        writeln!(self, "")
     }
 
     fn print_type_guards(&mut self, guards: &[(Var, TypeExprId)]) -> fmt::Result {
@@ -863,6 +898,24 @@ impl<'a> Printer<'a> {
 
     fn print_ssr_placeholder(&mut self, ssr: &SsrPlaceholder) -> fmt::Result {
         write!(self, "{}", self.db.lookup_var(ssr.var))
+    }
+
+    fn print_ssr(
+        &mut self,
+        lhs: &Expr,
+        rhs: Option<&Expr>,
+        when: &Option<Vec<Vec<ExprId>>>,
+    ) -> fmt::Result {
+        self.print_expr(lhs)?;
+        rhs.map(|rhs| {
+            write!(self, " ==>> ")?;
+            self.print_expr(&rhs)
+        });
+        if let Some(when) = when {
+            writeln!(self, "\nwhen")?;
+            self.print_ssr_guards(&when)?;
+        };
+        Ok(())
     }
 }
 

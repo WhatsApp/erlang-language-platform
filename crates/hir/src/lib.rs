@@ -43,6 +43,9 @@ pub use body::MacroSource;
 pub use body::RecordBody;
 pub use body::SpecBody;
 pub use body::SpecOrCallback;
+pub use body::SsrBody;
+pub use body::SsrPatternId;
+pub use body::SsrPatternIds;
 pub use body::TypeBody;
 pub use def_map::DefMap;
 pub use def_map::FunctionDefId;
@@ -71,6 +74,7 @@ pub use expr::PatId;
 pub use expr::ReceiveAfter;
 pub use expr::RecordFieldBody;
 pub use expr::SpecSig;
+pub use expr::SsrPlaceholder;
 pub use expr::Term;
 pub use expr::TermId;
 pub use expr::TypeExpr;
@@ -121,6 +125,7 @@ pub use form_list::TypeAliasId;
 pub use form_list::TypeExport;
 pub use form_list::TypeExportId;
 pub use intern::Atom;
+pub use intern::SsrSource;
 pub use intern::Var;
 pub use macro_exp::ResolvedMacro;
 pub use module_data::CallbackDef;
@@ -208,4 +213,145 @@ impl<T> InFile<Option<T>> {
 pub struct HirIdx {
     pub body_origin: BodyOrigin,
     pub idx: AnyExprId,
+}
+
+impl HirIdx {
+    pub fn as_expr_id(&self) -> Option<ExprId> {
+        match self.idx {
+            AnyExprId::Expr(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// This function is used to print a representation of the HIR AST
+    /// corresponding to the given `HirIdx`.  It is used for debugging
+    /// and testing.
+    pub fn tree_print(&self, sema: &Semantic) -> String {
+        match self.body_origin {
+            BodyOrigin::Invalid(_) => "BodyOrigin::Invalid".to_string(),
+            BodyOrigin::FormIdx { file_id, form_id } => match form_id {
+                FormIdx::ModuleAttribute(_) => todo!(),
+                FormIdx::FunctionClause(fun_idx) => {
+                    let body = sema.db.function_clause_body(InFile::new(file_id, fun_idx));
+                    body.body.tree_print_any_expr(sema.db.upcast(), self.idx)
+                }
+                _ => format!(
+                    "HirIdx::tree_print not implemented for FormIdx '{:?}'",
+                    form_id
+                )
+                .to_string(),
+            },
+            BodyOrigin::Define {
+                file_id: _,
+                define_id: _,
+            } => format!(
+                "HirIdx::tree_print not implemented for BodyOrigin::Define '{:?}'",
+                self.body_origin
+            )
+            .to_string(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::fixture::WithFixture;
+    use expect_test::expect;
+    use la_arena::Idx;
+    use la_arena::RawIdx;
+
+    use crate::expr::ClauseId;
+    use crate::test_db::TestDB;
+    use crate::AnyExprId;
+    use crate::FunctionBody;
+    use crate::FunctionDefId;
+    use crate::HirIdx;
+    use crate::InFile;
+    use crate::Semantic;
+
+    #[test]
+    fn print_fun_expr() {
+        let fixture_str = r#"
+              bar() ->
+                begin
+                  A = B + 3,
+                  [A|A],
+                  Y = ~A,
+                  catch A,
+                  begin
+                    A,
+                    Y = 6
+                  end,
+                  A
+                end.
+              "#;
+
+        let (db, file_id, _range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+        let function_def_id: FunctionDefId = FunctionDefId::new(Idx::from_raw(RawIdx::from(0)));
+
+        let (body, _body_map) = FunctionBody::function_body_with_source_query(
+            &db,
+            InFile {
+                file_id,
+                value: function_def_id,
+            },
+        );
+
+        let idx = ClauseId::from_raw(RawIdx::from(0));
+        let clause = &body[idx];
+        let expr_id = AnyExprId::Expr(clause.clause.exprs[0]);
+        let hir_idx = HirIdx {
+            body_origin: clause.body.origin,
+            idx: expr_id,
+        };
+
+        expect![[r#"
+
+            Expr::Block {
+                Expr::Match {
+                    lhs
+                        Pat::Var(A)
+                    rhs
+                        Expr::BinaryOp {
+                            lhs
+                                Expr::Var(B)
+                            rhs
+                                Literal(Integer(3))
+                            op
+                                ArithOp(Add),
+                        }
+                },
+                Expr::List {
+                    exprs
+                        Expr::Var(A),
+                    tail
+                        Expr::Var(A),
+                },
+                Expr::Match {
+                    lhs
+                        Pat::Var(Y)
+                    rhs
+                        Expr::Var(A)
+                },
+                Expr::Catch {
+                    expr
+                        Expr::Var(A)
+                },
+                Expr::Block {
+                    Expr::Var(A),
+                    Expr::Match {
+                        lhs
+                            Pat::Var(Y)
+                        rhs
+                            Literal(Integer(6))
+                    },
+                },
+                Expr::Var(A),
+            }
+        "#]]
+        .assert_eq(&hir_idx.tree_print(&sema));
+    }
 }

@@ -9,12 +9,14 @@
 
 use std::ops::Index;
 use std::sync::Arc;
+use std::u32;
 
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
+use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use la_arena::Arena;
@@ -50,6 +52,7 @@ use crate::FormIdx;
 use crate::FormList;
 use crate::FunctionClause;
 use crate::FunctionClauseId;
+use crate::HirIdx;
 use crate::InFile;
 use crate::Literal;
 use crate::Name;
@@ -63,6 +66,7 @@ use crate::Semantic;
 use crate::Spec;
 use crate::SpecId;
 use crate::SpecSig;
+use crate::SsrSource;
 use crate::Strategy;
 use crate::Term;
 use crate::TermId;
@@ -163,9 +167,17 @@ pub enum BodyOrigin {
     },
 }
 
+// We use this as a sentinel value to indicate that the body is not valid.
+// It is only used when lowering a SSR pattern.
+pub const SSR_SOURCE_FILE_ID: FileId = FileId::from_raw(FileId::MAX - 1);
+
 impl BodyOrigin {
     pub fn new(file_id: FileId, form_id: FormIdx) -> BodyOrigin {
         BodyOrigin::FormIdx { file_id, form_id }
+    }
+
+    pub fn for_ssr(_ssr_id: SsrSource) -> BodyOrigin {
+        BodyOrigin::Invalid(SSR_SOURCE_FILE_ID)
     }
 
     pub fn file_id(&self) -> FileId {
@@ -186,9 +198,33 @@ impl BodyOrigin {
         match self {
             BodyOrigin::FormIdx { .. } => true,
             BodyOrigin::Define { .. } => true,
-            BodyOrigin::Invalid(_) => false,
+            BodyOrigin::Invalid(file_id) => file_id == &SSR_SOURCE_FILE_ID,
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SsrBody {
+    pub ssr_source: SsrSource,
+    pub body: Arc<Body>,
+    pub pattern: SsrPatternIds,
+    pub template: Option<SsrPatternIds>,
+    pub when: Option<Vec<Vec<HirIdx>>>,
+}
+
+/// We lower a SSR pattern and template as both an Expr and a Pat, as
+/// we do not know how it will be matched when used.
+/// Note: extend to Types and Terms when needed.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct SsrPatternIds {
+    expr: ExprId,
+    pat: PatId,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum SsrPatternId {
+    Expr,
+    Pat,
 }
 
 impl Body {
@@ -647,6 +683,37 @@ impl DefineBody {
         )
         .lower_define(&define_ast)?;
         Some((Arc::new(body), Arc::new(source_map)))
+    }
+}
+
+impl SsrBody {
+    pub fn ssr_body_with_source_query(
+        db: &dyn DefDatabase,
+        ssr_source: SsrSource,
+    ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)> {
+        let text = db.lookup_ssr(ssr_source);
+        let parse = SourceFile::parse_text(&text);
+        if !parse.errors().is_empty() {
+            // We should perhaps report the errors, but then do not
+            // fit in with the general usage of other body and map
+            // queries
+            return None;
+        }
+
+        let form = parse.tree().forms().next()?;
+        let ssr_ast = ast::SsrDefinition::cast(form.syntax().clone())?;
+
+        let (body, source_map) =
+            lower::Ctx::new(db, BodyOrigin::for_ssr(ssr_source)).lower_ssr(ssr_source, &ssr_ast)?;
+        Some((Arc::new(body), Arc::new(source_map)))
+    }
+
+    pub fn print(&self, db: &dyn InternDatabase) -> String {
+        pretty::print_ssr(db, self)
+    }
+
+    pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
+        tree_print::print_ssr(db, self)
     }
 }
 

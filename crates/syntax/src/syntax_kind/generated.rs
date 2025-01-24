@@ -215,6 +215,7 @@ pub enum SyntaxKind {
     ANON_SPEC = 65u16,
     ANON_SSR = 2u16,
     SSR_DEFINITION = 137u16,
+    ANON_SSR_MATCH = 5u16,
     SSR_REPLACEMENT = 138u16,
     SSR_WHEN = 139u16,
     ANON_STAR = 86u16,
@@ -312,7 +313,7 @@ impl SyntaxKind {
             | ANON_LT | ANON_LT_DASH | ANON_LT_EQ | ANON_LT_LT | ANON_PIPE | ANON_PIPE_PIPE
             | ANON_PLUS | ANON_PLUS_PLUS | ANON_POUND | ANON_QMARK | ANON_QMARK_EQ
             | ANON_RBRACK | ANON_RPAREN | ANON_RRACE | ANON_SEMI | ANON_SLASH | ANON_SLASH_EQ
-            | ANON_STAR => true,
+            | ANON_SSR_MATCH | ANON_STAR => true,
             _ => false,
         }
     }
