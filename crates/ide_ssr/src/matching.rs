@@ -848,11 +848,9 @@ impl PatternIterator {
                 Expr::RecordIndex { name, field } => {
                     Either::Right(vec![(*name).into(), (*field).into()])
                 }
-                Expr::RecordField {
-                    expr: _,
-                    name: _,
-                    field: _,
-                } => todo!(),
+                Expr::RecordField { expr, name, field } => {
+                    Either::Right(vec![(*name).into(), (*field).into(), (*expr).into()])
+                }
                 Expr::Map { fields: _ } => todo!(),
                 Expr::MapUpdate { expr: _, fields: _ } => todo!(),
                 Expr::Catch { expr: _ } => todo!(),

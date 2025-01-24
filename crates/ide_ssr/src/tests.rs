@@ -445,3 +445,17 @@ fn ssr_expr_match_record_index() {
         &["#a_record.a_field"],
     );
 }
+
+#[test]
+fn ssr_expr_match_record_field() {
+    assert_matches(
+        "ssr: _@A#a_record.a_field.",
+        "bar(List) -> XX = List#record.field, XX.",
+        &[],
+    );
+    assert_matches(
+        "ssr: _@A#record.field.",
+        "bar(List) -> XX = List#record.field, XX.",
+        &["List#record.field"],
+    );
+}
