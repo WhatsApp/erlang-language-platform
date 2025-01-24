@@ -231,3 +231,26 @@ fn ssr_block_expr_match_multiple_statements() {
         &["begin X = 10, Y = 20, Z = X + Y end"],
     );
 }
+
+#[test]
+fn ssr_expr_match_tuple() {
+    assert_matches(
+        "ssr: {foo, _@A, _@B, _@C, _@D}.",
+        "fn() -> X = {foo, a, b, c, d}, X.",
+        &["{foo, a, b, c, d}"],
+    );
+}
+
+#[test]
+fn ssr_expr_match_tuple_nested() {
+    assert_matches(
+        "ssr: {foo, {foo, 1}}.",
+        "fn() -> X = {foo, {foo, 1}}.",
+        &["{foo, {foo, 1}}"],
+    );
+    assert_matches(
+        "ssr: {foo, _@A}.",
+        "fn() -> X = {foo, {foo, 1}}.",
+        &["{foo, {foo, 1}}", "{foo, 1}"],
+    );
+}

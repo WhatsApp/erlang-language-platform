@@ -606,7 +606,9 @@ impl PatternIterator {
                 Expr::Literal(_) => Either::Right(vec![]),
                 Expr::Var(_) => Either::Right(vec![]),
                 Expr::Match { lhs, rhs } => Either::Right(vec![(*lhs).into(), (*rhs).into()]),
-                Expr::Tuple { exprs: _ } => todo!(),
+                Expr::Tuple { exprs } => {
+                    Either::Right(exprs.iter().map(|id| (*id).into()).collect())
+                }
                 Expr::List { exprs: _, tail: _ } => todo!(),
                 Expr::Binary { segs: _ } => todo!(),
                 Expr::UnaryOp { expr: _, op: _ } => todo!(),
