@@ -187,9 +187,9 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
-    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections).unwrap();
+    let mut match_finder = MatchFinder::in_context(&sema, position.file_id, selections);
     match_finder.debug_print = false;
-    match_finder.add_search_pattern(pattern).unwrap();
+    match_finder.add_search_pattern(pattern);
     let matched_strings: Vec<String> = match_finder
         .matches()
         .flattened()

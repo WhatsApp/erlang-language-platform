@@ -86,9 +86,21 @@ mod search;
 mod tests;
 
 pub use errors::SsrError;
-use matching::Match;
-use matching::MatchFailureReason;
-use matching::SubId;
+pub use matching::Match;
+pub use matching::MatchFailureReason;
+pub use matching::SubId;
+
+// ---------------------------------------------------------------------
+
+pub fn match_pattern_in_file(sema: &Semantic, file_id: FileId, pattern: &str) -> SsrMatches {
+    let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
+    let restrict_ranges = vec![];
+    let mut match_finder = MatchFinder::in_context(&sema, file_id, restrict_ranges);
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches: SsrMatches = match_finder.matches().flattened();
+    matches
+}
 
 // ---------------------------------------------------------------------
 
@@ -170,7 +182,7 @@ pub struct MatchFinder<'a> {
     rules: Vec<SsrPattern>,
     file_id: FileId,
     restrict_ranges: Vec<FileRange>,
-    debug_print: bool,
+    pub debug_print: bool,
 }
 
 impl<'a> MatchFinder<'a> {
@@ -180,19 +192,19 @@ impl<'a> MatchFinder<'a> {
         sema: &'a Semantic<'a>,
         file_id: FileId,
         mut restrict_ranges: Vec<FileRange>,
-    ) -> Result<MatchFinder<'a>, SsrError> {
+    ) -> MatchFinder<'a> {
         restrict_ranges.retain(|range| !range.range.is_empty());
-        Ok(MatchFinder {
+        MatchFinder {
             sema,
             rules: Vec::new(),
             file_id,
             restrict_ranges,
             debug_print: false,
-        })
+        }
     }
 
     /// Adds a search pattern.
-    pub fn add_search_pattern(&mut self, rule: SsrRule) -> Result<(), SsrError> {
+    pub fn add_search_pattern(&mut self, rule: SsrRule) {
         if self.debug_print {
             println!(
                 "MatchFinder: adding pattern:\n{}",
@@ -201,7 +213,6 @@ impl<'a> MatchFinder<'a> {
         }
         self.rules
             .push(SsrPattern::new(rule.parsed_rule, self.rules.len()));
-        Ok(())
     }
 
     /// Returns matches for all added rules.
@@ -340,5 +351,75 @@ impl std::fmt::Debug for MatchDebugInfo {
         writeln!(f, "{:#?}", self.pattern)?;
         writeln!(f, "============================")?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
+    use elp_ide_db::RootDatabase;
+    use expect_test::expect;
+    use hir::Semantic;
+
+    use crate::match_pattern_in_file;
+
+    #[test]
+    fn test_match_pattern_in_file() {
+        let fixture = r#"fn() -> {foo, a}."#;
+
+        let (db, file_id) = RootDatabase::with_single_file(fixture);
+        let sema = Semantic::new(&db);
+
+        let m = match_pattern_in_file(&sema, file_id, "ssr: {foo, _@A}.");
+        expect![[r#"
+            SsrMatches {
+                matches: [
+                    Match {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 8..16,
+                        },
+                        matched_node_body: FormIdx {
+                            file_id: FileId(
+                                0,
+                            ),
+                            form_id: FunctionClause(
+                                Idx::<FunctionClause>(0),
+                            ),
+                        },
+                        matched_node: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(3),
+                            ),
+                        ),
+                        placeholder_values: {
+                            Var(
+                                0,
+                            ): PlaceholderMatch {
+                                range: FileRange {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    range: 14..15,
+                                },
+                                node: AnyExprId(
+                                    Expr(
+                                        Idx::<Expr>(2),
+                                    ),
+                                ),
+                                inner_matches: SsrMatches {
+                                    matches: [],
+                                },
+                            },
+                        },
+                        rule_index: 0,
+                        depth: 0,
+                    },
+                ],
+            }
+        "#]]
+        .assert_debug_eq(&m);
     }
 }

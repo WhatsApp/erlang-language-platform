@@ -96,22 +96,25 @@ pub struct Match {
 #[derive(Debug)]
 pub struct PlaceholderMatch {
     pub range: FileRange,
+    /// The code node that matched the placeholder
+    pub node: SubId,
     /// More matches, found within `node`.
     pub inner_matches: SsrMatches,
 }
 
 impl PlaceholderMatch {
-    fn from_range(range: FileRange) -> Self {
+    fn new(range: FileRange, node: SubId) -> Self {
         Self {
             range,
+            node,
             inner_matches: SsrMatches::default(),
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct MatchFailureReason {
-    pub(crate) reason: String,
+pub struct MatchFailureReason {
+    pub reason: String,
 }
 
 /// An "error" indicating that matching failed. Use the fail_match!
@@ -308,7 +311,7 @@ impl<'a> Matcher<'a> {
                         self.validate_range(&original_range)?;
                         matches_out.placeholder_values.insert(
                             placeholder.var.clone(),
-                            PlaceholderMatch::from_range(original_range),
+                            PlaceholderMatch::new(original_range, code.clone()),
                         );
                     }
                 }
