@@ -263,3 +263,78 @@ fn ssr_record_expr_match() {
         &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
     );
 }
+
+#[test]
+fn ssr_record_expr_match_5() {
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}, X.",
+        &["#foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}"],
+    );
+}
+
+#[test]
+fn ssr_record_expr_match_6() {
+    // Note: HIR record only stores atom field names, so will silently
+    // discard the placeholder. This will be fixed later in the stack.
+    assert_matches(
+        "ssr: #foo{_@K = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_record_expr_match_record() {
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #boo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{ka1 = a, ka2 = <<\"blah\">>, ka3 = {c, d}}, X.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
+    );
+}
+
+#[test]
+#[ignore]
+fn ssr_record_expr_match_record_subset() {
+    // Note: this test currently fails.
+    // We need to extend the syntax to be able to say there are
+    // possibly don't care extra fields.
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B}.",
+        "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
+    );
+}
+
+#[test]
+fn ssr_record_expr_match_unordered() {
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}, X.",
+        &["#foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}"],
+    );
+}
+
+#[test]
+fn ssr_record_expr_match_rhs() {
+    assert_matches(
+        "ssr: #foo{k1 = 3, k2 = {_@A, _@B}, k3 = _@C}.",
+        "fn() -> X = #foo{k1 = a, k3 = <<\"blah\">>, k2 = {c, d}}, X.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #foo{k1 = 3, k2 = {_@A, _@B}, k3 = _@C}.",
+        "fn() -> X = #foo{k1 = 3, k3 = <<\"blah\">>, k2 = {c, d}}, X.",
+        &["#foo{k1 = 3, k3 = <<\"blah\">>, k2 = {c, d}}"],
+    );
+}

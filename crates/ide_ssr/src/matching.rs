@@ -320,6 +320,10 @@ impl<'a> Matcher<'a> {
             (PatternIterator::List(pl), PatternIterator::List(cl)) => {
                 self.attempt_match_pattern_lists(phase, pl, cl)
             }
+            (PatternIterator::Map(pm), PatternIterator::Map(cm)) => {
+                self.attempt_match_pattern_maps(phase, pm, cm)
+            }
+            _ => fail_match!("Expecting two PatternMaps or two PatternLists"),
         }
     }
 
@@ -358,6 +362,77 @@ impl<'a> Matcher<'a> {
                     }
                 },
             }
+        }
+    }
+
+    fn attempt_match_pattern_maps(
+        &self,
+        phase: &mut Phase<'_>,
+        pattern_it: PatternMap,
+        code_it: PatternMap,
+    ) -> Result<(), MatchFailed> {
+        self.attempt_match_pattern_lists(phase, pattern_it.prefix, code_it.prefix)?;
+        // We have a map of fields that can map in any order.  Each is
+        // a key, with possible values
+
+        // Some of the keys might be placeholders.  So first see what
+        // non-placeholders we can match.
+
+        // Note: Perhaps preprocess the pattern map when constructing
+        // it, to avoid rework on every match.  But make it work
+        // first.
+
+        // What do we do if we have more than one possible match?
+        // e.g. two placeholder field names, with placeholder RHS?
+        // Pathological, ignore for now.
+
+        let non_placeholders: Vec<(&SubId, &Vec<SubId>)> = pattern_it
+            .children
+            .iter()
+            .filter(|(k, _v)| !self.is_placeholder(k))
+            .collect();
+
+        // We are likely to have best results matching in order
+        // (heuristic).  So pulling something out of the set is not
+        // ideal, but we need to be able to loop through, attempting,
+        // and then remove if matched. Optimize later.
+        let mut code_keys: Vec<(&SubId, &Vec<SubId>)> = code_it.children.iter().collect();
+        // Note: this is potentially n^2 in the number of fields
+        for p in non_placeholders {
+            if let Ok(index) = self.attempt_match_vec(phase, &p, &code_keys) {
+                code_keys.remove(index);
+            } else {
+                fail_match!("no match in child vector");
+            };
+        }
+        if !code_keys.is_empty() {
+            fail_match!("unmatched fields");
+        }
+        Ok(())
+    }
+
+    fn attempt_match_vec(
+        &self,
+        phase: &mut Phase<'_>,
+        pattern: &(&SubId, &Vec<SubId>),
+        codes: &[(&SubId, &Vec<SubId>)],
+    ) -> Result<usize, MatchFailed> {
+        if let Some((idx, rhs)) = codes.iter().enumerate().find_map(|(idx, (code, rhs))| {
+            if let Ok(_) = if self.is_code_leaf(code) {
+                self.attempt_match_leaf(phase, pattern.0, code)
+            } else {
+                self.attempt_match_node(phase, pattern.0, code)
+            } {
+                Some((idx, *rhs))
+            } else {
+                None
+            }
+        }) {
+            // Now match the RHS too
+            self.attempt_match_pattern_lists(phase, pattern.1.clone().into(), rhs.clone().into())?;
+            Ok(idx)
+        } else {
+            fail_match!("nope");
         }
     }
 
@@ -523,7 +598,7 @@ impl SubId {
     pub fn variant_str<'a>(&'a self, body: &'a Body) -> &'a str {
         match self {
             SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
-            SubId::Atom(_) => todo!(),
+            SubId::Atom(_) => "Atom",
             SubId::UnaryOp(_) => todo!(),
             SubId::BinaryOp(_) => todo!(),
             SubId::MapOp(_) => todo!(),
@@ -553,6 +628,12 @@ impl From<ExprId> for SubId {
     }
 }
 
+impl From<Atom> for SubId {
+    fn from(value: Atom) -> Self {
+        SubId::Atom(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubIdRef<'a> {
     AnyExprRef(AnyExprRef<'a>),
@@ -565,12 +646,26 @@ pub enum SubIdRef<'a> {
 #[derive(Debug, Clone)]
 pub enum PatternIterator {
     List(PatternList),
+    // For records and fields, we record the name and value separately
+    Map(PatternMap),
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct PatternList {
     children: Vec<SubId>,
     idx: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PatternMap {
+    prefix: PatternList,
+    children: FxHashMap<SubId, Vec<SubId>>,
+}
+
+impl From<Vec<SubId>> for PatternList {
+    fn from(children: Vec<SubId>) -> Self {
+        PatternList { children, idx: 0 }
+    }
 }
 
 impl Default for PatternIterator {
@@ -585,6 +680,7 @@ impl Iterator for PatternIterator {
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             PatternIterator::List(l) => l.next(),
+            PatternIterator::Map(_) => todo!(),
         }
     }
 }
@@ -621,8 +717,12 @@ impl PatternIterator {
                     rhs: _,
                     op: _,
                 } => todo!(),
-                Expr::Record { name: _, fields } => {
-                    Either::Right(fields.iter().map(|(_name, val)| (*val).into()).collect())
+                Expr::Record { name, fields } => {
+                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                        .iter()
+                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .collect();
+                    Either::Left((vec![(*name).into()], children))
                 }
                 Expr::RecordUpdate {
                     expr: _,
@@ -711,13 +811,20 @@ impl PatternIterator {
         };
         match children {
             Either::Right(children) => PatternIterator::List(PatternList { children, idx: 0 }),
-            Either::Left(_) => todo!(),
+            Either::Left((prefix, children)) => PatternIterator::Map(PatternMap {
+                prefix: PatternList {
+                    children: prefix,
+                    idx: 0,
+                },
+                children,
+            }),
         }
     }
 
     pub fn is_empty(&self) -> bool {
         match self {
             PatternIterator::List(l) => l.children.is_empty(),
+            PatternIterator::Map(m) => m.prefix.children.is_empty() && m.children.is_empty(),
         }
     }
 }
