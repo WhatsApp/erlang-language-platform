@@ -13,7 +13,6 @@
 
 use std::cell::Cell;
 use std::iter;
-use std::iter::once;
 use std::sync::Arc;
 
 use either::Either;
@@ -830,7 +829,7 @@ impl PatternIterator {
                     exprs
                         .iter()
                         .map(|id| (*id).into())
-                        .chain(once("|".into()))
+                        .chain(iter::once("|".into()))
                         .chain(tail.iter().map(|id| (*id).into()))
                         .collect(),
                 ),
@@ -972,10 +971,29 @@ impl PatternIterator {
                     res.push((*arity).into());
                     res
                 }),
-                Expr::Closure {
-                    clauses: _,
-                    name: _,
-                } => todo!(),
+                Expr::Closure { clauses, name } => Either::Right(
+                    name.iter()
+                        .map(|n| (*n).into())
+                        .chain(iter::once("clauses".into()))
+                        .chain(clauses.iter().flat_map(|clause| {
+                            iter::once("pats".into()).chain(
+                                clause
+                                    .pats
+                                    .iter()
+                                    .map(|p| (*p).into())
+                                    .chain(iter::once("guards".into()))
+                                    .chain(
+                                        clause
+                                            .guards
+                                            .iter()
+                                            .flat_map(|guard| guard.iter().map(|g| (*g).into())),
+                                    )
+                                    .chain(iter::once("exprs".into()))
+                                    .chain(clause.exprs.iter().map(|e| (*e).into())),
+                            )
+                        }))
+                        .collect(),
+                ),
                 Expr::Maybe {
                     exprs: _,
                     else_clauses: _,

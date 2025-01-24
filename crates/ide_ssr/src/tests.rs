@@ -632,3 +632,17 @@ fn ssr_expr_capture_fun() {
         &["fun modu:fun/XX"],
     );
 }
+
+#[test]
+fn ssr_expr_closure() {
+    assert_matches(
+        "ssr: fun (_@XX) -> _@YY end.",
+        "bar(XX) -> F = fun (3) -> 7 end, F.",
+        &["fun (3) -> 7 end"],
+    );
+    assert_matches(
+        "ssr: fun _@Name(_@XX) -> _@YY end.",
+        "bar(XX) -> F = fun Bar(3) -> 7 end, F.",
+        &["fun Bar(3) -> 7 end"],
+    );
+}
