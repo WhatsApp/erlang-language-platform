@@ -12,6 +12,7 @@
 //! values are recorded.
 
 use std::cell::Cell;
+use std::iter;
 use std::sync::Arc;
 
 use either::Either;
@@ -23,6 +24,7 @@ use fxhash::FxHashMap;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Atom;
+use hir::BinarySeg;
 use hir::Body;
 use hir::BodyOrigin;
 use hir::Expr;
@@ -610,14 +612,18 @@ impl PatternIterator {
                     Either::Right(exprs.iter().map(|id| (*id).into()).collect())
                 }
                 Expr::List { exprs: _, tail: _ } => todo!(),
-                Expr::Binary { segs: _ } => todo!(),
+                Expr::Binary { segs } => {
+                    Either::Right(segs.iter().flat_map(|s| iterate_binary_seg(s)).collect())
+                }
                 Expr::UnaryOp { expr: _, op: _ } => todo!(),
                 Expr::BinaryOp {
                     lhs: _,
                     rhs: _,
                     op: _,
                 } => todo!(),
-                Expr::Record { name: _, fields: _ } => todo!(),
+                Expr::Record { name: _, fields } => {
+                    Either::Right(fields.iter().map(|(_name, val)| (*val).into()).collect())
+                }
                 Expr::RecordUpdate {
                     expr: _,
                     name: _,
@@ -714,4 +720,14 @@ impl PatternIterator {
             PatternIterator::List(l) => l.children.is_empty(),
         }
     }
+}
+
+fn iterate_binary_seg<Id>(s: &BinarySeg<Id>) -> Vec<SubId>
+where
+    SubId: From<Id>,
+    Id: Copy,
+{
+    iter::once(s.elem.into())
+        .chain(s.size.into_iter().map(|id| id.into()))
+        .collect()
 }

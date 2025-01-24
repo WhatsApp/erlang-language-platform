@@ -254,3 +254,12 @@ fn ssr_expr_match_tuple_nested() {
         &["{foo, {foo, 1}}", "{foo, 1}"],
     );
 }
+
+#[test]
+fn ssr_record_expr_match() {
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
+        "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &["#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}"],
+    );
+}
