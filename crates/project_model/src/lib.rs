@@ -370,18 +370,7 @@ pub struct StaticProject {
 // [eqwalizer]
 // enable_all = true
 //```
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Ord,
-    PartialOrd,
-    Deserialize,
-    Serialize,
-    Default
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct ElpConfig {
     #[serde(skip_deserializing)]
     #[serde(skip_serializing)]
@@ -429,46 +418,32 @@ impl Default for EqwalizerConfig {
     }
 }
 
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Ord,
-    PartialOrd,
-    Deserialize,
-    Serialize
-)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct BuildInfoConfig {
     pub file: Option<PathBuf>,
-    pub apps: Option<StringOrVec>,
-    pub deps: Option<StringOrVec>,
+    pub apps: Option<SingleOrMulti>,
+    pub deps: Option<SingleOrMulti>,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Ord,
-    PartialOrd,
-    Deserialize,
-    Serialize
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum StringOrVec {
+pub enum StringOrApp {
     String(String),
-    Vec(Vec<String>),
+    App(JsonProjectAppData),
 }
 
-impl Into<Vec<String>> for StringOrVec {
-    fn into(self) -> Vec<String> {
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum SingleOrMulti {
+    Single(StringOrApp),
+    Multi(Vec<StringOrApp>),
+}
+
+impl Into<Vec<StringOrApp>> for SingleOrMulti {
+    fn into(self) -> Vec<StringOrApp> {
         match self {
-            StringOrVec::String(string) => vec![string],
-            StringOrVec::Vec(vec) => vec,
+            SingleOrMulti::Single(single) => vec![single],
+            SingleOrMulti::Multi(multi) => multi,
         }
     }
 }
@@ -555,11 +530,11 @@ impl ElpConfig {
         }
     }
 
-    pub fn build_info_apps(&self) -> Option<Vec<String>> {
+    pub fn build_info_apps(&self) -> Option<Vec<StringOrApp>> {
         self.build_info.clone()?.apps.map(|apps| apps.into())
     }
 
-    pub fn build_info_deps(&self) -> Option<Vec<String>> {
+    pub fn build_info_deps(&self) -> Option<Vec<StringOrApp>> {
         self.build_info.clone()?.deps.map(|deps| deps.into())
     }
 
@@ -584,35 +559,53 @@ impl ElpConfig {
         Some(absolute_path)
     }
 
-    pub fn json_project_app_data(&self, patterns: Option<Vec<String>>) -> Vec<JsonProjectAppData> {
-        let mut res = Vec::new();
+    pub fn json_project_app_data(
+        &self,
+        patterns: Option<Vec<StringOrApp>>,
+    ) -> Vec<JsonProjectAppData> {
+        let mut res = FxHashMap::default();
 
         if let Some(patterns) = patterns {
             for pattern in patterns {
-                let pattern = self
-                    .config_path()
-                    .parent()
-                    .unwrap()
-                    .to_path_buf()
-                    .join(pattern);
-                for entry in glob(&pattern.as_os_str().to_string_lossy())
-                    .expect("Failed to read glob pattern")
-                {
-                    match entry {
-                        Ok(path) => {
-                            if let Some(app_data) = app_data_from_path(&path) {
-                                res.push(app_data);
+                match pattern {
+                    StringOrApp::String(pattern) => {
+                        let pattern = self
+                            .config_path()
+                            .parent()
+                            .unwrap()
+                            .to_path_buf()
+                            .join(pattern);
+                        for entry in glob(&pattern.as_os_str().to_string_lossy())
+                            .expect("Failed to read glob pattern")
+                        {
+                            match entry {
+                                Ok(path) => {
+                                    if let Some(app_data) = app_data_from_path(&path) {
+                                        res.insert(app_data.clone().name, app_data);
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!("Glob Error: {:?}", e)
+                                }
                             }
                         }
-                        Err(e) => {
-                            log::warn!("Glob Error: {:?}", e)
-                        }
+                    }
+                    StringOrApp::App(mut app) => {
+                        let app_dir = app.dir.to_string();
+                        app.dir = self
+                            .config_path()
+                            .parent()
+                            .unwrap()
+                            .to_path_buf()
+                            .join(app_dir)
+                            .to_string();
+                        res.insert(app.name.clone(), app);
                     }
                 }
             }
         }
 
-        res
+        res.values().cloned().collect()
     }
 
     pub fn rebar_profile(&self) -> Profile {
@@ -1920,6 +1913,46 @@ mod tests {
         match manifest {
             ProjectManifest::Json(json_config) => {
                 assert_eq!(json_config.apps.len(), 3);
+            }
+            _ => {
+                panic!("Expected json config")
+            }
+        }
+    }
+
+    #[test]
+    fn test_toml_apps_as_glob_struct() {
+        let spec = r#"
+        //- /.elp.toml
+        [build_info]
+        apps = [ "lib/*",
+                 {"name" = "app_a", "dir" = "lib/app_a", "src_dirs" = ["src", "gen"]}, 
+                 "other_lib/*"
+               ]
+        //- /lib/app_a/src/app_a.erl
+        -module(app_a).
+        //- /lib/app_a/src/gen/app_a_gen.erl
+        -module(app_a_gen).
+        //- /lib/app_b/src/app_b.erl
+        -module(app_b).
+        //- /other_lib/app_c/src/app_c.erl
+        -module(app_c).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let (_elp_config, manifest) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("lib/app_a/src/app.erl")).unwrap(),
+        )
+        .unwrap();
+        match manifest {
+            ProjectManifest::Json(json_config) => {
+                let mut apps = FxHashMap::default();
+                json_config.apps.iter().for_each(|app| {
+                    apps.insert(app.name.clone(), app);
+                });
+                let app_a = apps.get("app_a");
+                let app_b = apps.get("app_b");
+                assert_eq!(app_a.unwrap().src_dirs, ["src", "gen"]);
+                assert_eq!(app_b.unwrap().src_dirs, ["src"]);
             }
             _ => {
                 panic!("Expected json config")
