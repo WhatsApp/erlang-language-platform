@@ -9,6 +9,7 @@ elp_erlang_service.workspace = true
 elp_ide_assists.workspace = true
 elp_ide_completion.workspace = true
 elp_ide_db.workspace = true
+elp_ide_ssr.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
 elp_types_db.workspace = true

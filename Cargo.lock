@@ -517,6 +517,7 @@ dependencies = [
  "elp_ide_assists",
  "elp_ide_completion",
  "elp_ide_db",
+ "elp_ide_ssr",
  "elp_project_model",
  "elp_syntax",
  "elp_types_db",
@@ -616,6 +617,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "elp_ide_ssr"
+version = "1.1.0"
+dependencies = [
+ "cov-mark",
+ "elp_ide_db",
+ "elp_syntax",
+ "expect-test",
+ "fxhash",
+ "hir",
+ "la-arena",
+ "stdx",
+]
+
+[[package]]
 name = "elp_log"
 version = "1.1.0"
 dependencies = [
@@ -658,20 +673,6 @@ dependencies = [
  "text-size",
  "thiserror",
  "toml",
-]
-
-[[package]]
-name = "elp_ssr"
-version = "1.1.0"
-dependencies = [
- "cov-mark",
- "elp_ide_db",
- "elp_syntax",
- "expect-test",
- "fxhash",
- "hir",
- "la-arena",
- "stdx",
 ]
 
 [[package]]

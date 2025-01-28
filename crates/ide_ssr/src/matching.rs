@@ -95,6 +95,12 @@ pub struct Match {
     pub depth: usize,
 }
 
+impl Match {
+    pub fn range(&self) -> TextRange {
+        self.range.range
+    }
+}
+
 /// Information about a placeholder bound in a match.
 #[derive(Debug, Clone)]
 pub struct PlaceholderMatch {
@@ -112,6 +118,10 @@ impl PlaceholderMatch {
             node,
             inner_matches: SsrMatches::default(),
         }
+    }
+
+    pub fn range(&self) -> TextRange {
+        self.range.range
     }
 }
 

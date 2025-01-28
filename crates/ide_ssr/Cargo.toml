@@ -1,5 +1,5 @@
 [package]
-name = "elp_ssr"
+name = "elp_ide_ssr"
 edition.workspace = true
 version.workspace = true
 
