@@ -14,6 +14,7 @@ use elp_syntax::algo;
 use elp_syntax::ast::{self};
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
+use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
@@ -54,9 +55,9 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
         let form_list = sema.form_list(file_id);
 
         for range in ranges {
-            if let Some(call) = algo::find_node_at_offset::<ast::Call>(syntax, range.start()) {
+            if let Some(ref_syntax) = call_or_internal_fun(syntax, &range) {
                 let enclosing_function_id =
-                    sema.find_enclosing_function_clause_id(file_id, call.syntax())?;
+                    sema.find_enclosing_function_clause_id(file_id, &ref_syntax)?;
                 let enclosing_function_name = &form_list[enclosing_function_id].name;
                 let def_map = sema.def_map(file_id);
                 let enclosing_function_def = def_map.get_function(enclosing_function_name)?;
@@ -76,6 +77,14 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
     }
 
     Some(calls.into_items())
+}
+
+fn call_or_internal_fun(syntax: &SyntaxNode, range: &TextRange) -> Option<SyntaxNode> {
+    node_syntax::<ast::Call>(syntax, range)
+        .or_else(|| node_syntax::<ast::InternalFun>(syntax, range))
+}
+fn node_syntax<T: AstNode>(syntax: &SyntaxNode, range: &TextRange) -> Option<SyntaxNode> {
+    algo::find_node_at_offset::<T>(syntax, range.start()).map(|c| c.syntax().clone())
 }
 
 pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
@@ -396,6 +405,36 @@ mod tests {
     callee() -> ok.
  %% ^^^^^^ to: b:callee/0
     "#,
+        );
+    }
+
+    #[test]
+    fn test_call_hierarchy_on_fun() {
+        check_call_hierarchy(
+            r#"
+   cal~lee() ->
+%% ^^^^^^ from: ref_caller/0
+     ok.
+   ref_caller() ->
+     Fun = {fun callee/0},
+     Fun.
+   "#,
+            r#"
+   cal~lee() ->
+     ok.
+   ref_caller() ->
+%% ^^^^^^^^^^ from: ref_caller/0
+     Fun = {fun callee/0},
+             %% ^^^^^^ from_range: ref_caller/0
+     Fun.
+   "#,
+            r#"
+   cal~lee() ->
+     ok.
+   ref_caller() ->
+     Fun = {fun callee/0},
+     Fun.
+   "#,
         );
     }
 }
