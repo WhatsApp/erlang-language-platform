@@ -9,10 +9,7 @@
 
 //! Searching for matches.
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::SearchScope;
-use fxhash::FxHashSet;
 use hir::fold::fold_body;
 use hir::AnyExprId;
 use hir::BodyOrigin;
@@ -34,38 +31,8 @@ impl MatchFinder<'_> {
     pub(crate) fn find_matches_for_rule(&self, rule: &SsrPattern, matches_out: &mut Vec<Match>) {
         let pattern_body = rule.get_body(self.sema).expect("Cannot get pattern_body");
         let pattern_body = fold_body(self.strategy, &pattern_body);
-        self.search_files_do(|file_id| {
-            let code = SsrIdx::WholeFile(file_id);
-            self.slow_scan_node(&code, rule, &None, matches_out, &pattern_body);
-        })
-    }
-
-    fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
-        if self.restrict_ranges.is_empty() {
-            // AZ: Look at using SymbolDefinition::search_scope() implementation
-            let file_id = self.file_id;
-            match self
-                .sema
-                .db
-                .app_data(self.sema.db.file_source_root(file_id))
-            {
-                Some(app_data) => {
-                    let search_scope = SearchScope::project(self.sema.db, app_data.project_id);
-                    for (file_id, _) in search_scope.into_iter() {
-                        callback(file_id);
-                    }
-                }
-                None => callback(file_id),
-            };
-        } else {
-            // Search is restricted, deduplicate file IDs (generally only one).
-            let mut files = FxHashSet::default();
-            for range in &self.restrict_ranges {
-                if files.insert(range.file_id) {
-                    callback(range.file_id);
-                }
-            }
-        }
+        let code = SsrIdx::WholeFile(self.file_id);
+        self.slow_scan_node(&code, rule, &None, matches_out, &pattern_body);
     }
 
     fn slow_scan_node(

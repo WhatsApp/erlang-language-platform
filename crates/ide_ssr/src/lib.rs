@@ -114,8 +114,7 @@ pub fn match_pattern_in_file(
     pattern: &str,
 ) -> SsrMatches {
     let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
-    let restrict_ranges = vec![];
-    let mut match_finder = MatchFinder::in_context(&sema, strategy, file_id, restrict_ranges);
+    let mut match_finder = MatchFinder::in_context(&sema, strategy, file_id);
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches: SsrMatches = match_finder.matches().flattened();
@@ -304,7 +303,6 @@ pub struct MatchFinder<'a> {
     sema: &'a Semantic<'a>,
     rules: Vec<SsrPattern>,
     file_id: FileId,
-    restrict_ranges: Vec<FileRange>,
     pub debug_print: bool,
     strategy: Strategy,
 }
@@ -316,14 +314,11 @@ impl<'a> MatchFinder<'a> {
         sema: &'a Semantic<'a>,
         strategy: Strategy,
         file_id: FileId,
-        mut restrict_ranges: Vec<FileRange>,
     ) -> MatchFinder<'a> {
-        restrict_ranges.retain(|range| !range.range.is_empty());
         MatchFinder {
             sema,
             rules: Vec::new(),
             file_id,
-            restrict_ranges,
             debug_print: false,
             strategy,
         }

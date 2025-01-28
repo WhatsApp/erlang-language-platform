@@ -194,7 +194,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 
 #[track_caller]
 fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, expected: &[&str]) {
-    let (db, position, selections) = single_file(code);
+    let (db, position, _selections) = single_file(code);
     if expected.len() > 0 {
         if expected[0] == "" {
             panic!("empty expected string");
@@ -202,7 +202,7 @@ fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, e
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
-    let mut match_finder = MatchFinder::in_context(&sema, strategy, position.file_id, selections);
+    let mut match_finder = MatchFinder::in_context(&sema, strategy, position.file_id);
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matched_strings: Vec<String> = match_finder
@@ -226,7 +226,7 @@ fn assert_match_placeholder(
     placeholder_name: &str,
     expected_val: Expect,
 ) {
-    let (db, position, selections) = single_file(code);
+    let (db, position, _selections) = single_file(code);
     if expected.len() > 0 {
         if expected[0] == "" {
             panic!("empty expected string");
@@ -241,7 +241,6 @@ fn assert_match_placeholder(
             parens: ParenStrategy::InvisibleParens,
         },
         position.file_id,
-        selections,
     );
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
