@@ -14,8 +14,8 @@ will not perform any upward auto-discovery for the structure of a project.
 ## A Sample `.elp.toml` Configuration File
 
 Here is an example of a full `.elp.toml` file. All sections are optional. The
-[build_info](#build-info) can be used to mark the root of a project (via
-the `build_info` property). The available configuration sections are described
+[build_info](#build-info) can be used to mark the root of a project (via the
+`build_info` property). The available configuration sections are described
 below.
 
 ```toml
@@ -35,15 +35,50 @@ profile = "test"
 
 ## Configuration Sections
 
-### \[build\_info\] {#build-info}
+### \[build_info\] {#build-info}
 
 This section is used to configure project discovery.
 
-| Key        | Type   | Description                                                                                                                                                                                            |
-| ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| file | String | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](custom-project.md#the-build_infojson-format) section. |
-| apps | String or Array of Strings | A string pattern used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. E.g. `"apps/*"` or `["apps/*", "other_apps/*"]`|
-| deps | String or Array of Strings | A string pattern used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. E.g. `"deps/*"` or `["more_deps/*"]`|
+| Key  | Type                                | Description                                                                                                                                                                                                                        |
+| ---- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| file | String                              | Path to a JSON file describing the project. This is only honoured if `buck.enabled` is `false` or missing. The format of the JSON file is described in the [build_info.json](custom-project.md#the-build_infojson-format) section. |
+| apps | String or Array of Strings/App Data | A string pattern or a sequence of string patterns or app data used to generate the applications for the `build_info.json` configuration. Unused if `file` is specified. See below for examples.                                    |
+| deps | String or Array of Strings/App Data | A string pattern or a sequence of string patterns or app data used to generate the dependencies for the `build_info.json` configuration. Unused if `file` is specified. See below for examples.                                    |
+
+The `apps` and `deps` fields can contain a string pattern or a sequence of
+string patterns. Each pattern can use wildcards. E.g.
+
+    [build_info]
+    apps = ["some_apps/*", "more_apps/*"]
+    deps = "deps/*"
+
+Each pattern will be expanded, behind the scenes, to an _app_, as described in
+the [build_info.json](custom-project.md#the-build_infojson-format) section. Each
+app will look something like:
+
+    {
+        "name": "app_name",
+        "dir": "path/to/app",                         // Relative to project root
+        "src_dirs": ["path/to/src", ...],             // Relative to app dir, defaults to ["src"]
+        "extra_src_dirs": ["path/to/extra_src", ...], // Relative to app dir, defaults to []
+        "ebin": "path/to/ebin",                       // Relative to app dir, defaults to "ebin"
+        "include_dirs": ["include", ...],             // Relative to app dir, defaults to []
+        "macros": ["MACRO", ...],                     // Defaults to []
+    }
+
+It is possible to override these values for a given app. For example:
+
+    [build_info]
+    apps = [ "some_apps/*",
+             "more_apps/*",
+             {name = "special_app", dir = "some_apps/special_app", "src_dirs" = ["src", "more_src"]}
+             ]
+    deps = "deps/*"
+
+The order in which the entries are specified is important, in the sense that
+"the last entry wins". In the above example, the `special_app` in
+`some_apps/special_app` will contain an extra source directory, while all the
+other apps in the same `some_apps` directory will default to `src` only.
 
 ### \[eqwalizer\] {#eqwalizer}
 
@@ -61,10 +96,10 @@ This can be overriden per module via the following attributes:
 
 :::
 
-| Key         | Type    | Description                                                                                                |
-| ----------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above |
-| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI.          |
+| Key         | Type    | Description                                                                                                                                          |
+| ----------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above                                           |
+| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI. |
 
 ### \[buck\] {#buck}
 
@@ -78,8 +113,8 @@ about Erlang support for Buck2.
 
 :::warning
 
-The github version is not built with buck2 support enabled. This will
-change soon, once we tweak the tests.
+The github version is not built with buck2 support enabled. This will change
+soon, once we tweak the tests.
 
 :::
 
@@ -87,6 +122,6 @@ change soon, once we tweak the tests.
 
 Configure ELP for [rebar3](https://rebar3.org/)-based projects.
 
-| Key     | Type   | Description                                                                                                                                    | Default |
-| ------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| profile | String | The `rebar3` profile to use for project discovery. Only used if the `file` property is specified in the [build_info](#build-info) section.     | test    |
+| Key     | Type   | Description                                                                                                                                | Default |
+| ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| profile | String | The `rebar3` profile to use for project discovery. Only used if the `file` property is specified in the [build_info](#build-info) section. | test    |
