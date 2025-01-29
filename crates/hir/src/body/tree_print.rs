@@ -60,7 +60,7 @@ pub(crate) fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> Str
 
 pub(crate) fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_type(&body[ty]);
+    printer.print_type(&ty);
     printer.to_string()
 }
 
@@ -137,7 +137,7 @@ pub(crate) fn print_type_alias(
         write!(this, "{}", db.lookup_var(var)).ok();
     });
     write!(printer, " :: ").ok();
-    printer.print_type(&printer.body[body.ty]);
+    printer.print_type(&body.ty);
     write!(printer, ".").ok();
 
     printer.to_string()
@@ -172,13 +172,13 @@ pub(crate) fn print_spec(
             for arg in &sig.args {
                 write!(printer, "{}", args_sep).unwrap();
                 args_sep = ",\n";
-                printer.print_type(&printer.body[*arg]);
+                printer.print_type(arg);
             }
             printer.indent_level -= 1;
             writeln!(printer, "\n) ->").unwrap();
         }
         printer.indent_level += 1;
-        printer.print_type(&printer.body[sig.result]);
+        printer.print_type(&sig.result);
         printer.indent_level -= 1;
         if sig.guards.len() > 0 {
             writeln!(printer, "\nwhen").unwrap();
@@ -192,7 +192,7 @@ pub(crate) fn print_spec(
                     }
                     writeln!(printer, "{} ::", db.lookup_var(*var)).unwrap();
                     printer.indent_level += 1;
-                    printer.print_type(&printer.body[*guard]);
+                    printer.print_type(guard);
                     printer.indent_level -= 1;
                 });
         }
@@ -865,20 +865,20 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_type(&mut self, ty: &TypeExpr) {
-        match ty {
+    fn print_type(&mut self, ty: &TypeExprId) {
+        match &self.body[*ty] {
             TypeExpr::AnnType { var, ty } => {
                 self.print_herald("TypeExpr::AnnType", &mut |this| {
                     this.print_labelled("var", true, &mut |this| {
                         write!(this, "{}", this.db.lookup_var(*var)).ok();
                     });
-                    this.print_labelled("ty", true, &mut |this| this.print_type(&this.body[*ty]));
+                    this.print_labelled("ty", true, &mut |this| this.print_type(ty));
                 });
             }
             TypeExpr::BinaryOp { lhs, rhs, op } => {
                 self.print_herald("TypeExpr::BinaryOp", &mut |this| {
-                    this.print_labelled("lhs", true, &mut |this| this.print_type(&this.body[*lhs]));
-                    this.print_labelled("rhs", true, &mut |this| this.print_type(&this.body[*rhs]));
+                    this.print_labelled("lhs", true, &mut |this| this.print_type(lhs));
+                    this.print_labelled("rhs", true, &mut |this| this.print_type(rhs));
                     this.print_labelled("op", true, &mut |this| {
                         write!(this, "{:?},", op).ok();
                     });
@@ -887,15 +887,14 @@ impl<'a> Printer<'a> {
             TypeExpr::Call { target, args } => {
                 self.print_herald("TypeExpr::Call", &mut |this| {
                     this.print_labelled("target", true, &mut |this1| {
-                        this1
-                            .print_call_target(target, |this, ty| this.print_type(&this.body[*ty]));
+                        this1.print_call_target(target, |this, ty| this.print_type(ty));
                     });
                     this.print_labelled("args", false, &mut |this| {
                         if args.len() == 0 {
                             writeln!(this, "()").ok();
                         } else {
                             args.iter().for_each(|ty| {
-                                this.print_type(&this.body[*ty]);
+                                this.print_type(ty);
                                 writeln!(this, ",").ok();
                             });
                         }
@@ -910,7 +909,7 @@ impl<'a> Printer<'a> {
                     FunType::AnyArgs { result } => {
                         this.print_herald("FunType::AnyArgs", &mut |this| {
                             this.print_labelled("result", true, &mut |this| {
-                                this.print_type(&this.body[*result]);
+                                this.print_type(result);
                             });
                         });
                     }
@@ -918,12 +917,12 @@ impl<'a> Printer<'a> {
                         this.print_herald("FunType::Full", &mut |this| {
                             this.print_labelled("params", false, &mut |this| {
                                 params.iter().for_each(|ty| {
-                                    this.print_type(&this.body[*ty]);
+                                    this.print_type(ty);
                                     writeln!(this, ",").ok();
                                 });
                             });
                             this.print_labelled("result", true, &mut |this| {
-                                this.print_type(&this.body[*result]);
+                                this.print_type(result);
                             });
                         });
                     }
@@ -936,12 +935,12 @@ impl<'a> Printer<'a> {
                     }
                     ListType::Regular(ty) => {
                         this.print_herald("ListType::Regular", &mut |this| {
-                            this.print_type(&this.body[*ty]);
+                            this.print_type(ty);
                         });
                     }
                     ListType::NonEmpty(ty) => {
                         this.print_herald("ListType::NonEmpty", &mut |this| {
-                            this.print_type(&this.body[*ty]);
+                            this.print_type(ty);
                         });
                     }
                 });
@@ -954,11 +953,11 @@ impl<'a> Printer<'a> {
             TypeExpr::Map { fields } => {
                 self.print_herald("TypeExpr::Map", &mut |this| {
                     fields.iter().for_each(|(name, op, value)| {
-                        this.print_type(&this.body[*name]);
+                        this.print_type(name);
                         this.indent();
                         writeln!(this).ok();
                         writeln!(this, "{:?}", op).ok();
-                        this.print_type(&this.body[*value]);
+                        this.print_type(value);
                         writeln!(this, ",").ok();
                         this.dedent();
                     });
@@ -970,7 +969,7 @@ impl<'a> Printer<'a> {
             TypeExpr::Union { types } => {
                 self.print_herald("TypeExpr::Union", &mut |this| {
                     types.iter().for_each(|ty| {
-                        this.print_type(&this.body[*ty]);
+                        this.print_type(ty);
                         writeln!(this, ",").ok();
                     });
                 });
@@ -978,10 +977,10 @@ impl<'a> Printer<'a> {
             TypeExpr::Range { lhs, rhs } => {
                 self.print_herald("TypeExpr::Range", &mut |this| {
                     this.print_labelled("lhs", true, &mut |this| {
-                        this.print_type(&this.body[*lhs]);
+                        this.print_type(lhs);
                     });
                     this.print_labelled("rhs", true, &mut |this| {
-                        this.print_type(&this.body[*rhs]);
+                        this.print_type(rhs);
                     });
                 });
             }
@@ -992,7 +991,7 @@ impl<'a> Printer<'a> {
                         fields.iter().for_each(|(name, ty)| {
                             writeln!(this, "Atom('{}'):", this.db.lookup_atom(*name)).ok();
                             this.indent();
-                            this.print_type(&this.body[*ty]);
+                            this.print_type(ty);
                             writeln!(this, ",").ok();
                             this.dedent();
                         });
@@ -1002,14 +1001,14 @@ impl<'a> Printer<'a> {
             TypeExpr::Tuple { args } => {
                 self.print_herald("TypeExpr::Tuple", &mut |this| {
                     args.iter().for_each(|ty| {
-                        this.print_type(&this.body[*ty]);
+                        this.print_type(ty);
                         writeln!(this, ",").ok();
                     });
                 });
             }
             TypeExpr::UnaryOp { type_expr, op } => {
                 self.print_herald("TypeExpr::UnaryOp", &mut |this| {
-                    this.print_type(&this.body[*type_expr]);
+                    this.print_type(type_expr);
                     writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
