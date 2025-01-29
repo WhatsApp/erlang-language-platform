@@ -66,7 +66,7 @@ pub(crate) fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -
 
 pub(crate) fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_term(&body[term]);
+    printer.print_term(&term);
     printer.to_string()
 }
 
@@ -83,7 +83,7 @@ pub(crate) fn print_attribute(
     }
 
     printer.indent();
-    printer.print_term(&printer.body[body.value]);
+    printer.print_term(&body.value);
     writeln!(printer).ok();
     printer.dedent();
     write!(printer, ").").ok();
@@ -776,8 +776,8 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_term(&mut self, term: &Term) {
-        match term {
+    fn print_term(&mut self, term: &TermId) {
+        match &self.body[*term] {
             Term::Missing => {
                 write!(self, "Term::Missing").ok();
             }
@@ -804,7 +804,7 @@ impl<'a> Printer<'a> {
             Term::Tuple { exprs } => {
                 self.print_herald("Term::Tuple", &mut |this| {
                     exprs.iter().for_each(|term_id| {
-                        this.print_term(&this.body[*term_id]);
+                        this.print_term(term_id);
                         writeln!(this, ",").ok();
                     });
                 });
@@ -813,14 +813,14 @@ impl<'a> Printer<'a> {
                 self.print_herald("Term::List", &mut |this| {
                     this.print_labelled("exprs", false, &mut |this| {
                         exprs.iter().for_each(|term_id| {
-                            this.print_term(&this.body[*term_id]);
+                            this.print_term(term_id);
                             writeln!(this, ",").ok();
                         });
                     });
 
                     this.print_labelled("tail", false, &mut |this| {
                         if let Some(term_id) = tail {
-                            this.print_term(&this.body[*term_id]);
+                            this.print_term(term_id);
                             writeln!(this, ",").ok();
                         }
                     });
@@ -831,9 +831,9 @@ impl<'a> Printer<'a> {
                     fields.iter().for_each(|(name, value)| {
                         writeln!(this, "{{").ok();
                         this.indent();
-                        this.print_term(&this.body[*name]);
+                        this.print_term(name);
                         write!(this, " => ").ok();
-                        this.print_term(&this.body[*value]);
+                        this.print_term(value);
                         writeln!(this, ",").ok();
                         this.dedent();
                         writeln!(this, "}},").ok();
