@@ -689,6 +689,13 @@ pub enum SubId {
 }
 
 impl SubId {
+    pub fn any_expr_id(&self) -> Option<AnyExprId> {
+        match self {
+            SubId::AnyExprId(any_expr_id) => Some(*any_expr_id),
+            _ => None,
+        }
+    }
+
     pub fn variant_str<'a>(&'a self, body: &'a FoldBody) -> &'a str {
         match self {
             SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
