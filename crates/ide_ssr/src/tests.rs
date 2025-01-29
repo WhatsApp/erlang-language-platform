@@ -80,13 +80,13 @@ fn parser_basic_query_with_placeholder() {
             SsrBody {
                 lhs
                     expr
-                        SsrPlaceholder {var: _@V, conditions: TBD}
+                        SsrPlaceholder {var: _@V, }
                     pat
-                        SsrPlaceholder {var: _@V, conditions: TBD}
+                        SsrPlaceholder {var: _@V, }
                 rhs
                     Expr::BinaryOp {
                         lhs
-                            SsrPlaceholder {var: _@V, conditions: TBD}
+                            SsrPlaceholder {var: _@V, }
                         rhs
                             Literal(Integer(1))
                         op

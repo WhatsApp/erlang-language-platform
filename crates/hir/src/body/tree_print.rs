@@ -1251,7 +1251,6 @@ impl<'a> Printer<'a> {
     fn print_ssr_placeholder(&mut self, ssr: &SsrPlaceholder) {
         write!(self, "SsrPlaceholder {{").ok();
         write!(self, "var: {}, ", self.db.lookup_var(ssr.var)).ok();
-        write!(self, "conditions: TBD").ok();
         write!(self, "}}").ok();
     }
 }
