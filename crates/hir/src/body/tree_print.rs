@@ -48,7 +48,7 @@ use crate::TypeExprId;
 
 pub(crate) fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_expr(&body[expr]);
+    printer.print_expr(&expr);
     printer.to_string()
 }
 
@@ -207,7 +207,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
     printer.print_herald("SsrBody", &mut |this| {
         this.print_labelled("lhs", true, &mut |this| {
             this.print_labelled("expr", true, &mut |this| {
-                this.print_expr(&this.body[body.pattern.expr])
+                this.print_expr(&body.pattern.expr)
             });
             this.print_labelled("pat", false, &mut |this| {
                 this.print_pat(&this.body[body.pattern.pat])
@@ -215,7 +215,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
         });
         this.print_labelled("rhs", true, &mut |this| {
             if let Some(pattern) = &body.template {
-                this.print_expr(&this.body[pattern.expr]);
+                this.print_expr(&pattern.expr);
             }
         });
         this.print_labelled("when", false, &mut |this| {
@@ -266,8 +266,8 @@ impl<'a> Printer<'a> {
         self.indent_level -= 1;
     }
 
-    fn print_expr(&mut self, expr: &Expr) {
-        match expr {
+    fn print_expr(&mut self, expr_id: &ExprId) {
+        match &self.body[*expr_id] {
             Expr::Missing => {
                 write!(self, "Expr::Missing").ok();
             }
@@ -285,14 +285,14 @@ impl<'a> Printer<'a> {
                         this.print_pat(&this.body[*lhs]);
                     });
                     this.print_labelled("rhs", true, &mut |this| {
-                        this.print_expr(&this.body[*rhs]);
+                        this.print_expr(rhs);
                     });
                 });
             }
             Expr::Tuple { exprs } => {
                 self.print_herald("Expr::Tuple", &mut |this| {
                     exprs.iter().for_each(|expr_id| {
-                        this.print_expr(&this.body[*expr_id]);
+                        this.print_expr(expr_id);
                         writeln!(this, ",").ok();
                     });
                 });
@@ -301,14 +301,14 @@ impl<'a> Printer<'a> {
                 self.print_herald("Expr::List", &mut |this| {
                     this.print_labelled("exprs", false, &mut |this| {
                         exprs.iter().for_each(|expr_id| {
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                         });
                     });
 
                     this.print_labelled("tail", false, &mut |this| {
                         if let Some(expr_id) = tail {
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                         }
                     });
@@ -318,7 +318,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Expr::Binary", &mut |this| {
                     segs.iter().for_each(|seg| {
                         this.print_bin_segment(seg, |this, expr| {
-                            this.print_expr(&this.body[expr]);
+                            this.print_expr(&expr);
                         });
                         writeln!(this).ok();
                     });
@@ -326,15 +326,15 @@ impl<'a> Printer<'a> {
             }
             Expr::UnaryOp { expr, op } => {
                 self.print_herald("Expr::UnaryOp", &mut |this| {
-                    this.print_expr(&this.body[*expr]);
+                    this.print_expr(expr);
                     writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
             }
             Expr::BinaryOp { lhs, rhs, op } => {
                 self.print_herald("Expr::BinaryOp", &mut |this| {
-                    this.print_labelled("lhs", true, &mut |this| this.print_expr(&this.body[*lhs]));
-                    this.print_labelled("rhs", true, &mut |this| this.print_expr(&this.body[*rhs]));
+                    this.print_labelled("lhs", true, &mut |this| this.print_expr(lhs));
+                    this.print_labelled("rhs", true, &mut |this| this.print_expr(rhs));
                     this.print_labelled("op", true, &mut |this| {
                         write!(this, "{:?},", op).ok();
                     });
@@ -347,7 +347,7 @@ impl<'a> Printer<'a> {
                         fields.iter().for_each(|(name, expr_id)| {
                             writeln!(this, "Atom('{}'):", this.db.lookup_atom(*name)).ok();
                             this.indent();
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                             this.dedent();
                         });
@@ -356,15 +356,13 @@ impl<'a> Printer<'a> {
             }
             Expr::RecordUpdate { expr, name, fields } => {
                 self.print_herald("Expr::RecordUpdate", &mut |this| {
-                    this.print_labelled("expr", true, &mut |this| {
-                        this.print_expr(&this.body[*expr])
-                    });
+                    this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                     writeln!(this, "name: Atom('{}')", this.db.lookup_atom(*name)).ok();
                     this.print_labelled("fields", false, &mut |this| {
                         fields.iter().for_each(|(name, expr_id)| {
                             writeln!(this, "Atom('{}'):", this.db.lookup_atom(*name)).ok();
                             this.indent();
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                             this.dedent();
                         });
@@ -379,9 +377,7 @@ impl<'a> Printer<'a> {
             }
             Expr::RecordField { expr, name, field } => {
                 self.print_herald("Expr::RecordField", &mut |this| {
-                    this.print_labelled("expr", true, &mut |this| {
-                        this.print_expr(&this.body[*expr])
-                    });
+                    this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                     writeln!(this, "name: Atom('{}')", this.db.lookup_atom(*name)).ok();
                     writeln!(this, "field: Atom('{}')", this.db.lookup_atom(*field)).ok();
                 });
@@ -391,9 +387,9 @@ impl<'a> Printer<'a> {
                     fields.iter().for_each(|(name, value)| {
                         writeln!(this, "{{").ok();
                         this.indent();
-                        this.print_expr(&this.body[*name]);
+                        this.print_expr(name);
                         writeln!(this, ",").ok();
-                        this.print_expr(&this.body[*value]);
+                        this.print_expr(value);
                         writeln!(this, ",").ok();
                         this.dedent();
                         writeln!(this, "}},").ok();
@@ -402,16 +398,14 @@ impl<'a> Printer<'a> {
             }
             Expr::MapUpdate { expr, fields } => {
                 self.print_herald("Expr::MapUpdate", &mut |this| {
-                    this.print_labelled("expr", true, &mut |this| {
-                        this.print_expr(&this.body[*expr])
-                    });
+                    this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                     this.print_labelled("fields", false, &mut |this| {
                         fields.iter().for_each(|(name, op, value)| {
-                            this.print_expr(&this.body[*name]);
+                            this.print_expr(name);
                             this.indent();
                             writeln!(this).ok();
                             writeln!(this, "{:?}", op).ok();
-                            this.print_expr(&this.body[*value]);
+                            this.print_expr(value);
                             writeln!(this, ",").ok();
                             this.dedent();
                         });
@@ -420,9 +414,7 @@ impl<'a> Printer<'a> {
             }
             Expr::Catch { expr } => {
                 self.print_herald("Expr::Catch", &mut |this| {
-                    this.print_labelled("expr", true, &mut |this| {
-                        this.print_expr(&this.body[*expr])
-                    });
+                    this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                 });
             }
             Expr::MacroCall {
@@ -433,21 +425,17 @@ impl<'a> Printer<'a> {
             } => {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
-                    this.print_labelled("expansion", true, &mut |this| {
-                        this.print_expr(&this.body[*expansion])
-                    });
+                    this.print_labelled("expansion", true, &mut |this| this.print_expr(expansion));
                 });
             }
             Expr::Call { target, args } => {
                 self.print_herald("Expr::Call", &mut |this| {
                     this.print_labelled("target", true, &mut |this1| {
-                        this1.print_call_target(target, |this, expr| {
-                            this.print_expr(&this.body[*expr])
-                        });
+                        this1.print_call_target(target, |this, expr| this.print_expr(expr));
                     });
                     this.print_labelled("args", false, &mut |this| {
                         args.iter().for_each(|expr_id| {
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                         });
                     });
@@ -459,22 +447,22 @@ impl<'a> Printer<'a> {
                         match builder {
                             ComprehensionBuilder::List(expr) => {
                                 this.print_herald("ComprehensionBuilder::List", &mut |this| {
-                                    this.print_expr(&this.body[*expr]);
+                                    this.print_expr(expr);
                                     writeln!(this).ok();
                                 });
                             }
                             ComprehensionBuilder::Binary(expr) => {
                                 this.print_herald("ComprehensionBuilder::Binary", &mut |this| {
-                                    this.print_expr(&this.body[*expr]);
+                                    this.print_expr(expr);
                                     writeln!(this).ok();
                                 });
                             }
                             ComprehensionBuilder::Map(expr1, expr2) => {
                                 this.print_herald("ComprehensionBuilder::Map", &mut |this| {
-                                    this.print_expr(&this.body[*expr1]);
+                                    this.print_expr(expr1);
                                     writeln!(this).ok();
                                     writeln!(this, "=>").ok();
-                                    this.print_expr(&this.body[*expr2]);
+                                    this.print_expr(expr2);
                                     writeln!(this).ok();
                                 });
                             }
@@ -490,7 +478,7 @@ impl<'a> Printer<'a> {
                                         &mut |this| {
                                             this.print_pat(&this.body[*pat]);
                                             writeln!(this).ok();
-                                            this.print_expr(&this.body[*expr]);
+                                            this.print_expr(expr);
                                             writeln!(this).ok();
                                         },
                                     );
@@ -501,14 +489,14 @@ impl<'a> Printer<'a> {
                                         &mut |this| {
                                             this.print_pat(&this.body[*pat]);
                                             writeln!(this).ok();
-                                            this.print_expr(&this.body[*expr]);
+                                            this.print_expr(expr);
                                             writeln!(this).ok();
                                         },
                                     );
                                 }
                                 ComprehensionExpr::Expr(expr) => {
                                     this.print_herald("ComprehensionExpr::Expr", &mut |this| {
-                                        this.print_expr(&this.body[*expr]);
+                                        this.print_expr(expr);
                                         writeln!(this).ok();
                                     });
                                 }
@@ -520,7 +508,7 @@ impl<'a> Printer<'a> {
                                             writeln!(this, " :=").ok();
                                             this.print_pat(&this.body[*value]);
                                             writeln!(this, " <-").ok();
-                                            this.print_expr(&this.body[*expr]);
+                                            this.print_expr(expr);
                                             writeln!(this).ok();
                                         },
                                     );
@@ -534,7 +522,7 @@ impl<'a> Printer<'a> {
             Expr::Block { exprs } => {
                 self.print_herald("Expr::Block", &mut |this| {
                     exprs.iter().for_each(|expr_id| {
-                        this.print_expr(&this.body[*expr_id]);
+                        this.print_expr(expr_id);
                         writeln!(this, ",").ok();
                     });
                 });
@@ -556,9 +544,7 @@ impl<'a> Printer<'a> {
             }
             Expr::Case { expr, clauses } => {
                 self.print_herald("Expr::Case", &mut |this| {
-                    this.print_labelled("expr", true, &mut |this| {
-                        this.print_expr(&this.body[*expr])
-                    });
+                    this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                     this.print_labelled("clauses", false, &mut |this| {
                         clauses.iter().for_each(|clause| {
                             this.print_cr_clause(clause);
@@ -578,12 +564,12 @@ impl<'a> Printer<'a> {
                         if let Some(after) = after {
                             this.print_herald("ReceiveAfter", &mut |this| {
                                 this.print_labelled("timeout", true, &mut |this| {
-                                    this.print_expr(&this.body[after.timeout])
+                                    this.print_expr(&after.timeout)
                                 });
 
                                 this.print_labelled("exprs", false, &mut |this| {
                                     after.exprs.iter().for_each(|expr_id| {
-                                        this.print_expr(&this.body[*expr_id]);
+                                        this.print_expr(expr_id);
                                         writeln!(this, ",").ok();
                                     });
                                 });
@@ -601,7 +587,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Expr::Try", &mut |this| {
                     this.print_labelled("exprs", false, &mut |this| {
                         exprs.iter().for_each(|expr_id| {
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                         });
                     });
@@ -620,7 +606,7 @@ impl<'a> Printer<'a> {
 
                     this.print_labelled("after", false, &mut |this| {
                         after.iter().for_each(|expr_id| {
-                            this.print_expr(&this.body[*expr_id]);
+                            this.print_expr(expr_id);
                             writeln!(this, ",").ok();
                         });
                     });
@@ -629,14 +615,10 @@ impl<'a> Printer<'a> {
             Expr::CaptureFun { target, arity } => {
                 self.print_herald("Expr::CaptureFun", &mut |this| {
                     this.print_labelled("target", true, &mut |this1| {
-                        this1.print_call_target(target, |this, expr| {
-                            this.print_expr(&this.body[*expr])
-                        });
+                        this1.print_call_target(target, |this, expr| this.print_expr(expr));
                     });
 
-                    this.print_labelled("arity", true, &mut |this| {
-                        this.print_expr(&this.body[*arity])
-                    });
+                    this.print_labelled("arity", true, &mut |this| this.print_expr(arity));
                 });
             }
             Expr::Closure { clauses, name } => {
@@ -673,7 +655,7 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
+            Expr::Paren { expr } => self.print_expr(expr),
             Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
@@ -771,7 +753,7 @@ impl<'a> Printer<'a> {
                     fields.iter().for_each(|(name, value)| {
                         writeln!(this, "{{").ok();
                         this.indent();
-                        this.print_expr(&this.body[*name]);
+                        this.print_expr(name);
                         writeln!(this, ",").ok();
                         this.print_pat(&this.body[*value]);
                         writeln!(this, ",").ok();
@@ -1123,7 +1105,7 @@ impl<'a> Printer<'a> {
             for guard_clause in guards {
                 self.print_labelled("guard", false, &mut |this| {
                     for expr in guard_clause {
-                        this.print_expr(&this.body[*expr]);
+                        this.print_expr(expr);
                         writeln!(this, ",").ok();
                     }
                 });
@@ -1133,7 +1115,7 @@ impl<'a> Printer<'a> {
 
     fn print_exprs(&mut self, exprs: &[ExprId]) {
         for expr_id in exprs {
-            self.print_expr(&self.body[*expr_id]);
+            self.print_expr(expr_id);
             writeln!(self, ",").ok();
         }
     }
@@ -1180,7 +1162,7 @@ impl<'a> Printer<'a> {
             this.indent();
             if let Some(size) = seg.size {
                 writeln!(this, "Some(").ok();
-                this.print_expr(&this.body[size]);
+                this.print_expr(&size);
                 writeln!(this, ")").ok();
             } else {
                 writeln!(this, "None").ok();
@@ -1225,12 +1207,12 @@ impl<'a> Printer<'a> {
             MaybeExpr::Cond { lhs, rhs } => {
                 self.print_herald("MaybeExpr::Cond", &mut |this| {
                     this.print_labelled("lhs", true, &mut |this| this.print_pat(&this.body[*lhs]));
-                    this.print_labelled("rhs", true, &mut |this| this.print_expr(&this.body[*rhs]));
+                    this.print_labelled("rhs", true, &mut |this| this.print_expr(rhs));
                 });
             }
             MaybeExpr::Expr(expr) => {
                 self.print_herald_parens("MaybeExpr::Expr", &mut |this| {
-                    this.print_expr(&this.body[*expr]);
+                    this.print_expr(expr);
                     writeln!(this).ok();
                 });
             }
