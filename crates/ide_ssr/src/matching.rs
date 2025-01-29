@@ -15,6 +15,7 @@ use std::cell::Cell;
 use std::iter;
 
 use elp_ide_db::elp_base_db::FileRange;
+use elp_syntax::ast;
 use elp_syntax::ast::ArithOp;
 use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::CompOp;
@@ -28,6 +29,7 @@ use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Atom;
 use hir::BinarySeg;
+use hir::Body;
 use hir::BodyOrigin;
 use hir::CRClause;
 use hir::CallTarget;
@@ -37,6 +39,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::FoldBody;
 use hir::IfClause;
+use hir::InFileAstPtr;
 use hir::Literal;
 use hir::MacroCallName;
 use hir::MapOp;
@@ -122,6 +125,18 @@ impl PlaceholderMatch {
 
     pub fn range(&self) -> TextRange {
         self.range.range
+    }
+
+    pub fn text(&self, sema: &Semantic, body: &Body) -> Option<String> {
+        let placeholder_match_id = self.node.any_expr_id()?;
+        let placeholder_match_src: InFileAstPtr<ast::Expr> =
+            body.get_body_map(sema)?.any(placeholder_match_id)?;
+
+        Some(
+            placeholder_match_src
+                .to_node(&sema.parse(body.origin.file_id()))?
+                .to_string(),
+        )
     }
 }
 

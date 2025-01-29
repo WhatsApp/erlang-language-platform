@@ -464,6 +464,17 @@ impl Match {
         let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
         self.placeholder_values.get(&var).cloned()
     }
+
+    pub fn placeholder_text(&self, sema: &Semantic, placeholder_name: &str) -> Option<String> {
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        placeholder_match.text(sema, &body)
+    }
+
+    pub fn placeholder_range(&self, sema: &Semantic, placeholder_name: &str) -> Option<TextRange> {
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        Some(placeholder_match.range())
+    }
 }
 
 pub struct MatchDebugInfo {
@@ -589,5 +600,36 @@ mod test {
             }
         "#]]
         .assert_debug_eq(&m);
+    }
+
+    #[test]
+    fn test_match_source_text() {
+        let fixture = r#"fn() -> {foo, a + 1}."#;
+
+        let (db, file_id) = RootDatabase::with_single_file(fixture);
+        let sema = Semantic::new(&db);
+
+        let m = match_pattern_in_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            "ssr: {foo, _@A}.",
+        );
+        expect![[r#"
+            Some(
+                "a + 1",
+            )
+        "#]]
+        .assert_debug_eq(&m.matches[0].placeholder_text(&sema, "_@A"));
+
+        expect![[r#"
+            Some(
+                14..19,
+            )
+        "#]]
+        .assert_debug_eq(&m.matches[0].placeholder_range(&sema, "_@A"));
     }
 }
