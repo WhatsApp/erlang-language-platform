@@ -709,6 +709,11 @@ fn ssr_expr_receive() {
         "bar(F) -> XX = 1, receive F -> 3 after 1000 -> ok end.",
         &["receive F -> 3 after 1000 -> ok end"],
     );
+    assert_matches(
+        "ssr: receive _@XX -> true; _@AA -> _@BB after _@MS -> timeout end.",
+        "bar() -> receive all_good -> true; X -> false after 1000 -> timeout end.",
+        &["receive all_good -> true; X -> false after 1000 -> timeout end"],
+    );
 }
 
 #[test]
