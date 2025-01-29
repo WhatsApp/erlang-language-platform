@@ -54,7 +54,7 @@ pub(crate) fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> 
 
 pub(crate) fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_pat(&body[pat]);
+    printer.print_pat(&pat);
     printer.to_string()
 }
 
@@ -209,9 +209,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
             this.print_labelled("expr", true, &mut |this| {
                 this.print_expr(&body.pattern.expr)
             });
-            this.print_labelled("pat", false, &mut |this| {
-                this.print_pat(&this.body[body.pattern.pat])
-            });
+            this.print_labelled("pat", false, &mut |this| this.print_pat(&body.pattern.pat));
         });
         this.print_labelled("rhs", true, &mut |this| {
             if let Some(pattern) = &body.template {
@@ -282,7 +280,7 @@ impl<'a> Printer<'a> {
             Expr::Match { lhs, rhs } => {
                 self.print_herald("Expr::Match", &mut |this| {
                     this.print_labelled("lhs", true, &mut |this| {
-                        this.print_pat(&this.body[*lhs]);
+                        this.print_pat(lhs);
                     });
                     this.print_labelled("rhs", true, &mut |this| {
                         this.print_expr(rhs);
@@ -476,7 +474,7 @@ impl<'a> Printer<'a> {
                                     this.print_herald(
                                         "ComprehensionExpr::BinGenerator",
                                         &mut |this| {
-                                            this.print_pat(&this.body[*pat]);
+                                            this.print_pat(pat);
                                             writeln!(this).ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
@@ -487,7 +485,7 @@ impl<'a> Printer<'a> {
                                     this.print_herald(
                                         "ComprehensionExpr::ListGenerator",
                                         &mut |this| {
-                                            this.print_pat(&this.body[*pat]);
+                                            this.print_pat(pat);
                                             writeln!(this).ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
@@ -504,9 +502,9 @@ impl<'a> Printer<'a> {
                                     this.print_herald(
                                         "ComprehensionExpr::MapGenerator",
                                         &mut |this| {
-                                            this.print_pat(&this.body[*key]);
+                                            this.print_pat(key);
                                             writeln!(this, " :=").ok();
-                                            this.print_pat(&this.body[*value]);
+                                            this.print_pat(value);
                                             writeln!(this, " <-").ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
@@ -631,7 +629,7 @@ impl<'a> Printer<'a> {
                     });
                     this.print_labelled("name", false, &mut |this| {
                         if let Some(name) = name {
-                            this.print_pat(&this.body[*name]);
+                            this.print_pat(name);
                             writeln!(this).ok();
                         }
                     });
@@ -660,8 +658,8 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_pat(&mut self, pat: &Pat) {
-        match pat {
+    fn print_pat(&mut self, pat: &PatId) {
+        match &self.body[*pat] {
             Pat::Missing => {
                 write!(self, "Pat::Missing").ok();
             }
@@ -675,14 +673,14 @@ impl<'a> Printer<'a> {
             }
             Pat::Match { lhs, rhs } => {
                 self.print_herald("Pat::Match", &mut |this| {
-                    this.print_labelled("lhs", true, &mut |this| this.print_pat(&this.body[*lhs]));
-                    this.print_labelled("rhs", true, &mut |this| this.print_pat(&this.body[*rhs]));
+                    this.print_labelled("lhs", true, &mut |this| this.print_pat(lhs));
+                    this.print_labelled("rhs", true, &mut |this| this.print_pat(rhs));
                 });
             }
             Pat::Tuple { pats } => {
                 self.print_herald("Pat::Tuple", &mut |this| {
                     pats.iter().for_each(|pat_id| {
-                        this.print_pat(&this.body[*pat_id]);
+                        this.print_pat(pat_id);
                         writeln!(this, ",").ok();
                     });
                 });
@@ -691,14 +689,14 @@ impl<'a> Printer<'a> {
                 self.print_herald("Pat::List", &mut |this| {
                     this.print_labelled("exprs", false, &mut |this| {
                         pats.iter().for_each(|pat_id| {
-                            this.print_pat(&this.body[*pat_id]);
+                            this.print_pat(pat_id);
                             writeln!(this, ",").ok();
                         });
                     });
 
                     this.print_labelled("tail", false, &mut |this| {
                         if let Some(pat_id) = tail {
-                            this.print_pat(&this.body[*pat_id]);
+                            this.print_pat(pat_id);
                             writeln!(this, ",").ok();
                         }
                     });
@@ -707,22 +705,22 @@ impl<'a> Printer<'a> {
             Pat::Binary { segs } => {
                 self.print_herald("Pat::Binary", &mut |this| {
                     segs.iter().for_each(|seg| {
-                        this.print_bin_segment(seg, |this, pat| this.print_pat(&this.body[pat]));
+                        this.print_bin_segment(seg, |this, pat| this.print_pat(&pat));
                         writeln!(this).ok();
                     });
                 });
             }
             Pat::UnaryOp { pat, op } => {
                 self.print_herald("Pat::UnaryOp", &mut |this| {
-                    this.print_pat(&this.body[*pat]);
+                    this.print_pat(pat);
                     writeln!(this).ok();
                     writeln!(this, "{:?},", op).ok();
                 });
             }
             Pat::BinaryOp { lhs, rhs, op } => {
                 self.print_herald("Pat::BinaryOp", &mut |this| {
-                    this.print_labelled("lhs", true, &mut |this| this.print_pat(&this.body[*lhs]));
-                    this.print_labelled("rhs", true, &mut |this| this.print_pat(&this.body[*rhs]));
+                    this.print_labelled("lhs", true, &mut |this| this.print_pat(lhs));
+                    this.print_labelled("rhs", true, &mut |this| this.print_pat(rhs));
                     this.print_labelled("op", true, &mut |this| {
                         write!(this, "{:?},", op).ok();
                     });
@@ -735,7 +733,7 @@ impl<'a> Printer<'a> {
                         fields.iter().for_each(|(name, pat_id)| {
                             writeln!(this, "Atom('{}'):", this.db.lookup_atom(*name)).ok();
                             this.indent();
-                            this.print_pat(&this.body[*pat_id]);
+                            this.print_pat(pat_id);
                             writeln!(this, ",").ok();
                             this.dedent();
                         });
@@ -755,7 +753,7 @@ impl<'a> Printer<'a> {
                         this.indent();
                         this.print_expr(name);
                         writeln!(this, ",").ok();
-                        this.print_pat(&this.body[*value]);
+                        this.print_pat(value);
                         writeln!(this, ",").ok();
                         this.dedent();
                         writeln!(this, "}},").ok();
@@ -770,12 +768,10 @@ impl<'a> Printer<'a> {
             } => {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
-                    this.print_labelled("expansion", true, &mut |this| {
-                        this.print_pat(&this.body[*expansion])
-                    });
+                    this.print_labelled("expansion", true, &mut |this| this.print_pat(expansion));
                 });
             }
-            Pat::Paren { pat } => self.print_pat(&self.body[*pat]),
+            Pat::Paren { pat } => self.print_pat(pat),
             Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
@@ -1045,8 +1041,8 @@ impl<'a> Printer<'a> {
     fn print_clause(&mut self, clause: &Clause) {
         self.print_herald("Clause", &mut |this| {
             this.print_labelled("pats", false, &mut |this| {
-                for pat in clause.pats.iter().map(|pat_id| &this.body[*pat_id]) {
-                    this.print_pat(pat);
+                for pat_id in clause.pats.iter() {
+                    this.print_pat(pat_id);
                     writeln!(this, ",").ok();
                 }
             });
@@ -1062,7 +1058,7 @@ impl<'a> Printer<'a> {
     fn print_cr_clause(&mut self, clause: &CRClause) {
         self.print_herald("CRClause", &mut |this| {
             this.print_labelled("pat", true, &mut |this| {
-                this.print_pat(&this.body[clause.pat]);
+                this.print_pat(&clause.pat);
             });
             this.print_labelled("guards", false, &mut |this| {
                 this.print_guards(&clause.guards);
@@ -1078,16 +1074,16 @@ impl<'a> Printer<'a> {
         self.print_herald("CatchClause", &mut |this| {
             this.print_labelled("class", false, &mut |this| {
                 if let Some(class) = clause.class {
-                    this.print_pat(&this.body[class]);
+                    this.print_pat(&class);
                     writeln!(this).ok();
                 }
             });
             this.print_labelled("reason", true, &mut |this| {
-                this.print_pat(&this.body[clause.reason]);
+                this.print_pat(&clause.reason);
             });
             this.print_labelled("stack", false, &mut |this| {
                 if let Some(stack) = clause.stack {
-                    this.print_pat(&this.body[stack]);
+                    this.print_pat(&stack);
                     writeln!(this).ok();
                 }
             });
@@ -1206,7 +1202,7 @@ impl<'a> Printer<'a> {
         match expr {
             MaybeExpr::Cond { lhs, rhs } => {
                 self.print_herald("MaybeExpr::Cond", &mut |this| {
-                    this.print_labelled("lhs", true, &mut |this| this.print_pat(&this.body[*lhs]));
+                    this.print_labelled("lhs", true, &mut |this| this.print_pat(lhs));
                     this.print_labelled("rhs", true, &mut |this| this.print_expr(rhs));
                 });
             }
