@@ -1419,21 +1419,21 @@ bar() ->
             "#,
             expect![[r#"
 
-            Clause {
-                pats
-                guards
-                exprs
-                    Expr::Block {
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                            Literal(Atom('foo')),
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<8>:Expr::Block {
+                            Expr<5>:Expr::Tuple {
+                                Expr<1>:Literal(Atom('foo')),
+                                Expr<2>:Literal(Atom('foo')),
+                            },
+                            Expr<7>:Expr::Tuple {
+                                Expr<6>:Literal(Atom('foo')),
+                            },
                         },
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                        },
-                    },
-            }
-        "#]],
+                }
+            "#]],
             expect![[r#"
             (
                 2,
@@ -1460,21 +1460,21 @@ bar() ->
             "#,
             expect![[r#"
 
-            Clause {
-                pats
-                guards
-                exprs
-                    Expr::Block {
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                            Literal(Atom('foo')),
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<8>:Expr::Block {
+                            Expr<5>:Expr::Tuple {
+                                Expr<1>:Literal(Atom('foo')),
+                                Expr<2>:Literal(Atom('foo')),
+                            },
+                            Expr<7>:Expr::Tuple {
+                                Expr<6>:Literal(Atom('foo')),
+                            },
                         },
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                        },
-                    },
-            }
-        "#]],
+                }
+            "#]],
             expect![[r#"
             (
                 0,
@@ -1501,21 +1501,21 @@ bar() ->
             "#,
             expect![[r#"
 
-            Clause {
-                pats
-                guards
-                exprs
-                    Expr::Block {
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                            Literal(Atom('foo')),
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<8>:Expr::Block {
+                            Expr<5>:Expr::Tuple {
+                                Expr<1>:Literal(Atom('foo')),
+                                Expr<2>:Literal(Atom('foo')),
+                            },
+                            Expr<7>:Expr::Tuple {
+                                Expr<6>:Literal(Atom('foo')),
+                            },
                         },
-                        Expr::Tuple {
-                            Literal(Atom('foo')),
-                        },
-                    },
-            }
-        "#]],
+                }
+            "#]],
             expect![[r#"
             (
                 0,

@@ -384,46 +384,46 @@ mod tests {
 
         expect![[r#"
 
-            Expr::Block {
-                Expr::Match {
+            Expr<17>:Expr::Block {
+                Expr<4>:Expr::Match {
                     lhs
-                        Pat::Var(A)
+                        Pat<0>:Pat::Var(A)
                     rhs
-                        Expr::BinaryOp {
+                        Expr<3>:Expr::BinaryOp {
                             lhs
-                                Expr::Var(B)
+                                Expr<1>:Expr::Var(B)
                             rhs
-                                Literal(Integer(3))
+                                Expr<2>:Literal(Integer(3))
                             op
                                 ArithOp(Add),
                         }
                 },
-                Expr::List {
+                Expr<7>:Expr::List {
                     exprs
-                        Expr::Var(A),
+                        Expr<5>:Expr::Var(A),
                     tail
-                        Expr::Var(A),
+                        Expr<6>:Expr::Var(A),
                 },
-                Expr::Match {
+                Expr<9>:Expr::Match {
                     lhs
-                        Pat::Var(Y)
+                        Pat<1>:Pat::Var(Y)
                     rhs
-                        Expr::Var(A)
+                        Expr<8>:Expr::Var(A)
                 },
-                Expr::Catch {
+                Expr<11>:Expr::Catch {
                     expr
-                        Expr::Var(A)
+                        Expr<10>:Expr::Var(A)
                 },
-                Expr::Block {
-                    Expr::Var(A),
-                    Expr::Match {
+                Expr<15>:Expr::Block {
+                    Expr<12>:Expr::Var(A),
+                    Expr<14>:Expr::Match {
                         lhs
-                            Pat::Var(Y)
+                            Pat<2>:Pat::Var(Y)
                         rhs
-                            Literal(Integer(6))
+                            Expr<13>:Literal(Integer(6))
                     },
                 },
-                Expr::Var(A),
+                Expr<16>:Expr::Var(A),
             }
         "#]]
         .assert_eq(&hir_idx.tree_print(&sema));

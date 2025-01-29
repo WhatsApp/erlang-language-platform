@@ -232,6 +232,7 @@ struct Printer<'a> {
     buf: String,
     indent_level: usize,
     needs_indent: bool,
+    include_id: bool,
 }
 
 impl<'a> Printer<'a> {
@@ -242,6 +243,7 @@ impl<'a> Printer<'a> {
             buf: String::new(),
             indent_level: 0,
             needs_indent: true,
+            include_id: true,
         }
     }
 
@@ -265,6 +267,9 @@ impl<'a> Printer<'a> {
     }
 
     fn print_expr(&mut self, expr_id: &ExprId) {
+        if self.include_id {
+            write!(self, "Expr<{}>:", expr_id.into_raw().into_u32()).ok();
+        }
         match &self.body[*expr_id] {
             Expr::Missing => {
                 write!(self, "Expr::Missing").ok();
@@ -659,6 +664,9 @@ impl<'a> Printer<'a> {
     }
 
     fn print_pat(&mut self, pat: &PatId) {
+        if self.include_id {
+            write!(self, "Pat<{}>:", pat.into_raw().into_u32()).ok();
+        }
         match &self.body[*pat] {
             Pat::Missing => {
                 write!(self, "Pat::Missing").ok();
@@ -1436,9 +1444,9 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Tuple {
-                            Literal(Atom('a')),
-                            Literal(Integer(1)),
+                        Expr<3>:Expr::Tuple {
+                            Expr<1>:Literal(Atom('a')),
+                            Expr<2>:Literal(Integer(1)),
                         },
                 }.
             "#]],
@@ -1456,11 +1464,11 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Match {
+                        Expr<2>:Expr::Match {
                             lhs
-                                Pat::Var(A)
+                                Pat<0>:Pat::Var(A)
                             rhs
-                                Literal(Char($b))
+                                Expr<1>:Literal(Char($b))
                         },
                 }.
             "#]],
@@ -1478,12 +1486,12 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::List {
+                        Expr<4>:Expr::List {
                             exprs
-                                Expr::Var(A),
-                                Literal(Atom('b')),
+                                Expr<1>:Expr::Var(A),
+                                Expr<2>:Literal(Atom('b')),
                             tail
-                                Literal(Float(2.1)),
+                                Expr<3>:Literal(Float(2.1)),
                         },
                 }.
             "#]],
@@ -1501,11 +1509,11 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Binary {
+                        Expr<6>:Expr::Binary {
                             BinarySeg {
                                 elem
-                                    Expr::UnaryOp {
-                                        Literal(Integer(1))
+                                    Expr<2>:Expr::UnaryOp {
+                                        Expr<1>:Literal(Integer(1))
                                         Plus,
                                     }
                                 size
@@ -1533,13 +1541,13 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Record {
+                        Expr<6>:Expr::Record {
                             name: Atom('record')
                             fields
                                 Atom('field'):
-                                    Literal(Integer(3)),
+                                    Expr<2>:Literal(Integer(3)),
                                 Atom('bar'):
-                                    Literal(Integer(5)),
+                                    Expr<4>:Literal(Integer(5)),
                         },
                 }.
             "#]],
@@ -1557,13 +1565,13 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::RecordUpdate {
+                        Expr<5>:Expr::RecordUpdate {
                             expr
-                                Expr::Var(Name)
+                                Expr<1>:Expr::Var(Name)
                             name: Atom('record')
                             fields
                                 Atom('field'):
-                                    Literal(Atom('undefined')),
+                                    Expr<3>:Literal(Atom('undefined')),
                         },
                 }.
             "#]],
@@ -1581,7 +1589,7 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::RecordIndex {
+                        Expr<3>:Expr::RecordIndex {
                             name: Atom('rec')
                             field: Atom('name')
                         },
@@ -1601,9 +1609,9 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::RecordField {
+                        Expr<4>:Expr::RecordField {
                             expr
-                                Expr::Var(Name)
+                                Expr<1>:Expr::Var(Name)
                             name: Atom('record')
                             field: Atom('field')
                         },
@@ -1623,21 +1631,21 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Map {
+                        Expr<7>:Expr::Map {
                             {
-                                Literal(Atom('foo')),
-                                Expr::BinaryOp {
+                                Expr<1>:Literal(Atom('foo')),
+                                Expr<4>:Expr::BinaryOp {
                                     lhs
-                                        Literal(Atom('a'))
+                                        Expr<2>:Literal(Atom('a'))
                                     rhs
-                                        Literal(Integer(3))
+                                        Expr<3>:Literal(Integer(3))
                                     op
                                         ArithOp(Add),
                                 },
                             },
                             {
-                                Literal(Atom('bar')),
-                                Literal(Char($v)),
+                                Expr<5>:Literal(Atom('bar')),
+                                Expr<6>:Literal(Char($v)),
                             },
                         },
                 }.
@@ -1656,21 +1664,21 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::MapUpdate {
+                        Expr<8>:Expr::MapUpdate {
                             expr
-                                Expr::Map {
+                                Expr<3>:Expr::Map {
                                     {
-                                        Literal(Atom('a')),
-                                        Literal(Atom('b')),
+                                        Expr<1>:Literal(Atom('a')),
+                                        Expr<2>:Literal(Atom('b')),
                                     },
                                 }
                             fields
-                                Literal(Atom('a'))
+                                Expr<4>:Literal(Atom('a'))
                                     Exact
-                                    Literal(Atom('b')),
-                                Literal(Atom('c'))
+                                    Expr<5>:Literal(Atom('b')),
+                                Expr<6>:Literal(Atom('c'))
                                     Assoc
-                                    Literal(Atom('d')),
+                                    Expr<7>:Literal(Atom('d')),
                         },
                 }.
             "#]],
@@ -1688,13 +1696,13 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Catch {
+                        Expr<4>:Expr::Catch {
                             expr
-                                Expr::BinaryOp {
+                                Expr<3>:Expr::BinaryOp {
                                     lhs
-                                        Literal(Integer(1))
+                                        Expr<1>:Literal(Integer(1))
                                     rhs
-                                        Literal(Integer(2))
+                                        Expr<2>:Literal(Integer(2))
                                     op
                                         ArithOp(Add),
                                 }
@@ -1717,11 +1725,11 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::BinaryOp {
+                        Expr<5>:Expr::BinaryOp {
                             lhs
-                                Literal(Integer(1))
+                                Expr<1>:Literal(Integer(1))
                             rhs
-                                Literal(Integer(2))
+                                Expr<2>:Literal(Integer(2))
                             op
                                 ArithOp(Add),
                         },
@@ -1741,15 +1749,15 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Call {
+                        Expr<5>:Expr::Call {
                             target
                                 CallTarget::Remote {
-                                    Literal(Atom('baz'))
-                                    Literal(Atom('bar'))
+                                    Expr<1>:Literal(Atom('baz'))
+                                    Expr<2>:Literal(Atom('bar'))
                                 }
                             args
-                                Literal(Integer(3)),
-                                Expr::Var(X),
+                                Expr<3>:Literal(Integer(3)),
+                                Expr<4>:Expr::Var(X),
                         },
                 }.
             "#]],
@@ -1767,14 +1775,14 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Call {
+                        Expr<4>:Expr::Call {
                             target
                                 CallTarget::Local {
-                                    Literal(Atom('bar'))
+                                    Expr<1>:Literal(Atom('bar'))
                                 }
                             args
-                                Literal(Integer(3)),
-                                Expr::Var(X),
+                                Expr<2>:Literal(Integer(3)),
+                                Expr<3>:Expr::Var(X),
                         },
                 }.
             "#]],
@@ -1793,22 +1801,22 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Comprehension {
+                        Expr<6>:Expr::Comprehension {
                             builder
                                 ComprehensionBuilder::List {
-                                    Expr::Var(X)
+                                    Expr<1>:Expr::Var(X)
                                 }
                             exprs
                                 ComprehensionExpr::ListGenerator {
-                                    Pat::Var(X)
-                                    Expr::Var(List)
+                                    Pat<0>:Pat::Var(X)
+                                    Expr<2>:Expr::Var(List)
                                 },
                                 ComprehensionExpr::Expr {
-                                    Expr::BinaryOp {
+                                    Expr<5>:Expr::BinaryOp {
                                         lhs
-                                            Expr::Var(X)
+                                            Expr<3>:Expr::Var(X)
                                         rhs
-                                            Literal(Integer(5))
+                                            Expr<4>:Literal(Integer(5))
                                         op
                                             CompOp(Ord { ordering: Greater, strict: false }),
                                     }
@@ -1831,31 +1839,31 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Comprehension {
+                        Expr<6>:Expr::Comprehension {
                             builder
                                 ComprehensionBuilder::Binary {
-                                    Expr::Var(Byte)
+                                    Expr<1>:Expr::Var(Byte)
                                 }
                             exprs
                                 ComprehensionExpr::BinGenerator {
-                                    Pat::Binary {
+                                    Pat<1>:Pat::Binary {
                                         BinarySeg {
                                             elem
-                                                Pat::Var(Byte)
+                                                Pat<0>:Pat::Var(Byte)
                                             size
                                                 None
                                             tys
                                             unit
                                         }
                                     }
-                                    Expr::Var(Bytes)
+                                    Expr<2>:Expr::Var(Bytes)
                                 },
                                 ComprehensionExpr::Expr {
-                                    Expr::BinaryOp {
+                                    Expr<5>:Expr::BinaryOp {
                                         lhs
-                                            Expr::Var(Byte)
+                                            Expr<3>:Expr::Var(Byte)
                                         rhs
-                                            Literal(Integer(5))
+                                            Expr<4>:Literal(Integer(5))
                                         op
                                             CompOp(Ord { ordering: Greater, strict: false }),
                                     }
@@ -1878,18 +1886,18 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Comprehension {
+                        Expr<4>:Expr::Comprehension {
                             builder
                                 ComprehensionBuilder::Map {
-                                    Expr::Var(KK)
+                                    Expr<1>:Expr::Var(KK)
                                     =>
-                                    Expr::Var(VV)
+                                    Expr<2>:Expr::Var(VV)
                                 }
                             exprs
                                 ComprehensionExpr::MapGenerator {
-                                    Pat::Var(KK) :=
-                                    Pat::Var(VV) <-
-                                    Expr::Var(Map)
+                                    Pat<0>:Pat::Var(KK) :=
+                                    Pat<1>:Pat::Var(VV) <-
+                                    Expr<3>:Expr::Var(Map)
                                 },
                         },
                 }.
@@ -1908,9 +1916,9 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Block {
-                            Literal(Integer(1)),
-                            Literal(Integer(2)),
+                        Expr<3>:Expr::Block {
+                            Expr<1>:Literal(Integer(1)),
+                            Expr<2>:Literal(Integer(2)),
                         },
                 }.
             "#]],
@@ -1931,28 +1939,28 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::If {
+                        Expr<8>:Expr::If {
                             IfClause {
                                 guards
                                     guard
-                                        Expr::Call {
+                                        Expr<4>:Expr::Call {
                                             target
                                                 CallTarget::Remote {
-                                                    Literal(Atom('erlang'))
-                                                    Literal(Atom('is_atom'))
+                                                    Expr<2>:Literal(Atom('erlang'))
+                                                    Expr<1>:Literal(Atom('is_atom'))
                                                 }
                                             args
-                                                Expr::Var(X),
+                                                Expr<3>:Expr::Var(X),
                                         },
                                 exprs
-                                    Literal(Atom('ok')),
+                                    Expr<5>:Literal(Atom('ok')),
                             }
                             IfClause {
                                 guards
                                     guard
-                                        Literal(Atom('true')),
+                                        Expr<6>:Literal(Atom('true')),
                                 exprs
-                                    Literal(Atom('error')),
+                                    Expr<7>:Literal(Atom('error')),
                             }
                         },
                 }.
@@ -1975,56 +1983,56 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Case {
+                        Expr<15>:Expr::Case {
                             expr
-                                Expr::BinaryOp {
+                                Expr<3>:Expr::BinaryOp {
                                     lhs
-                                        Literal(Integer(1))
+                                        Expr<1>:Literal(Integer(1))
                                     rhs
-                                        Literal(Integer(2))
+                                        Expr<2>:Literal(Integer(2))
                                     op
                                         ArithOp(Add),
                                 }
                             clauses
                                 CRClause {
                                     pat
-                                        Pat::Var(X)
+                                        Pat<0>:Pat::Var(X)
                                     guards
                                         guard
-                                            Expr::BinaryOp {
+                                            Expr<6>:Expr::BinaryOp {
                                                 lhs
-                                                    Expr::Var(X)
+                                                    Expr<4>:Expr::Var(X)
                                                 rhs
-                                                    Literal(Atom('true'))
+                                                    Expr<5>:Literal(Atom('true'))
                                                 op
                                                     LogicOp(And { lazy: true }),
                                             },
                                         guard
-                                            Expr::BinaryOp {
+                                            Expr<9>:Expr::BinaryOp {
                                                 lhs
-                                                    Expr::Var(X)
+                                                    Expr<7>:Expr::Var(X)
                                                 rhs
-                                                    Literal(Integer(100))
+                                                    Expr<8>:Literal(Integer(100))
                                                 op
                                                     CompOp(Ord { ordering: Less, strict: true }),
                                             },
-                                            Expr::BinaryOp {
+                                            Expr<12>:Expr::BinaryOp {
                                                 lhs
-                                                    Expr::Var(X)
+                                                    Expr<10>:Expr::Var(X)
                                                 rhs
-                                                    Literal(Integer(5))
+                                                    Expr<11>:Literal(Integer(5))
                                                 op
                                                     CompOp(Ord { ordering: Greater, strict: false }),
                                             },
                                     exprs
-                                        Literal(Atom('ok')),
+                                        Expr<13>:Literal(Atom('ok')),
                                 }
                                 CRClause {
                                     pat
-                                        Pat::Var(_)
+                                        Pat<1>:Pat::Var(_)
                                     guards
                                     exprs
-                                        Literal(Atom('error')),
+                                        Expr<14>:Literal(Atom('error')),
                                 }
                         },
                 }.
@@ -2048,30 +2056,30 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Receive {
+                        Expr<6>:Expr::Receive {
                             clauses
                                 CRClause {
                                     pat
-                                        Literal(Atom('ok'))
+                                        Pat<0>:Literal(Atom('ok'))
                                     guards
                                         guard
-                                            Literal(Atom('true')),
+                                            Expr<1>:Literal(Atom('true')),
                                     exprs
-                                        Literal(Atom('ok')),
+                                        Expr<2>:Literal(Atom('ok')),
                                 }
                                 CRClause {
                                     pat
-                                        Pat::Var(_)
+                                        Pat<1>:Pat::Var(_)
                                     guards
                                     exprs
-                                        Literal(Atom('error')),
+                                        Expr<3>:Literal(Atom('error')),
                                 }
                             after
                                 ReceiveAfter {
                                     timeout
-                                        Expr::Var(Timeout)
+                                        Expr<4>:Expr::Var(Timeout)
                                     exprs
-                                        Literal(Atom('timeout')),
+                                        Expr<5>:Literal(Atom('timeout')),
                                 }},
                 }.
             "#]],
@@ -2097,43 +2105,43 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Try {
+                        Expr<8>:Expr::Try {
                             exprs
-                                Literal(Integer(1)),
-                                Literal(Integer(2)),
+                                Expr<1>:Literal(Integer(1)),
+                                Expr<2>:Literal(Integer(2)),
                             of_clauses
                                 CRClause {
                                     pat
-                                        Pat::Var(_)
+                                        Pat<0>:Pat::Var(_)
                                     guards
                                     exprs
-                                        Literal(Atom('ok')),
+                                        Expr<3>:Literal(Atom('ok')),
                                 }
                             catch_clauses
                                 CatchClause {
                                     class
                                     reason
-                                        Pat::Var(Pat)
+                                        Pat<1>:Pat::Var(Pat)
                                     stack
                                     guards
                                         guard
-                                            Literal(Atom('true')),
+                                            Expr<4>:Literal(Atom('true')),
                                     exprs
-                                        Literal(Atom('ok')),
+                                        Expr<5>:Literal(Atom('ok')),
                                 },
                                 CatchClause {
                                     class
-                                        Literal(Atom('error'))
+                                        Pat<2>:Literal(Atom('error'))
                                     reason
-                                        Literal(Atom('undef'))
+                                        Pat<3>:Literal(Atom('undef'))
                                     stack
-                                        Pat::Var(Stack)
+                                        Pat<4>:Pat::Var(Stack)
                                     guards
                                     exprs
-                                        Expr::Var(Stack),
+                                        Expr<6>:Expr::Var(Stack),
                                 },
                             after
-                                Literal(Atom('ok')),
+                                Expr<7>:Literal(Atom('ok')),
                         },
                 }.
             "#]],
@@ -2154,31 +2162,31 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::CaptureFun {
+                        Expr<3>:Expr::CaptureFun {
                             target
                                 CallTarget::Local {
-                                    Literal(Atom('foo'))
+                                    Expr<1>:Literal(Atom('foo'))
                                 }
                             arity
-                                Literal(Integer(1))
+                                Expr<2>:Literal(Integer(1))
                         },
-                        Expr::CaptureFun {
+                        Expr<7>:Expr::CaptureFun {
                             target
                                 CallTarget::Remote {
-                                    Literal(Atom('mod'))
-                                    Literal(Atom('foo'))
+                                    Expr<4>:Literal(Atom('mod'))
+                                    Expr<5>:Literal(Atom('foo'))
                                 }
                             arity
-                                Literal(Integer(1))
+                                Expr<6>:Literal(Integer(1))
                         },
-                        Expr::CaptureFun {
+                        Expr<11>:Expr::CaptureFun {
                             target
                                 CallTarget::Remote {
-                                    Expr::Var(Mod)
-                                    Expr::Var(Foo)
+                                    Expr<8>:Expr::Var(Mod)
+                                    Expr<9>:Expr::Var(Foo)
                                 }
                             arity
-                                Expr::Var(Arity)
+                                Expr<10>:Expr::Var(Arity)
                         },
                 }.
             "#]],
@@ -2200,40 +2208,40 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Closure {
+                        Expr<3>:Expr::Closure {
                             clauses
                                 Clause {
                                     pats
-                                        Literal(Atom('ok')),
+                                        Pat<0>:Literal(Atom('ok')),
                                     guards
                                     exprs
-                                        Literal(Atom('ok')),
+                                        Expr<1>:Literal(Atom('ok')),
                                 },
                                 Clause {
                                     pats
-                                        Literal(Atom('error')),
+                                        Pat<1>:Literal(Atom('error')),
                                     guards
                                     exprs
-                                        Literal(Atom('error')),
+                                        Expr<2>:Literal(Atom('error')),
                                 },
                             name
                         },
-                        Expr::Closure {
+                        Expr<6>:Expr::Closure {
                             clauses
                                 Clause {
                                     pats
                                     guards
                                     exprs
-                                        Expr::Call {
+                                        Expr<5>:Expr::Call {
                                             target
                                                 CallTarget::Local {
-                                                    Expr::Var(Named)
+                                                    Expr<4>:Expr::Var(Named)
                                                 }
                                             args
                                         },
                                 },
                             name
-                                Pat::Var(Named)
+                                Pat<2>:Pat::Var(Named)
                         },
                 }.
             "#]],
@@ -2259,64 +2267,64 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr::Maybe {
+                        Expr<14>:Expr::Maybe {
                             exprs
                                 MaybeExpr::Cond {
                                     lhs
-                                        Pat::Tuple {
-                                            Literal(Atom('ok')),
-                                            Pat::Var(A),
+                                        Pat<2>:Pat::Tuple {
+                                            Pat<0>:Literal(Atom('ok')),
+                                            Pat<1>:Pat::Var(A),
                                         }
                                     rhs
-                                        Expr::Call {
+                                        Expr<2>:Expr::Call {
                                             target
                                                 CallTarget::Local {
-                                                    Literal(Atom('a'))
+                                                    Expr<1>:Literal(Atom('a'))
                                                 }
                                             args
                                         }
                                 },
                                 MaybeExpr::Expr(
-                                    Expr::Match {
+                                    Expr<7>:Expr::Match {
                                         lhs
-                                            Literal(Atom('true'))
+                                            Pat<3>:Literal(Atom('true'))
                                         rhs
-                                            Expr::BinaryOp {
+                                            Expr<6>:Expr::BinaryOp {
                                                 lhs
-                                                    Expr::Var(A)
+                                                    Expr<4>:Expr::Var(A)
                                                 rhs
-                                                    Literal(Integer(0))
+                                                    Expr<5>:Literal(Integer(0))
                                                 op
                                                     CompOp(Ord { ordering: Greater, strict: false }),
                                             }
                                     }
                                 ),
                                 MaybeExpr::Expr(
-                                    Expr::Var(A)
+                                    Expr<8>:Expr::Var(A)
                                 ),
                             else_clauses
                                 CRClause {
                                     pat
-                                        Literal(Atom('error'))
+                                        Pat<4>:Literal(Atom('error'))
                                     guards
                                     exprs
-                                        Literal(Atom('error')),
+                                        Expr<9>:Literal(Atom('error')),
                                 }
                                 CRClause {
                                     pat
-                                        Pat::Var(Other)
+                                        Pat<5>:Pat::Var(Other)
                                     guards
                                         guard
-                                            Expr::BinaryOp {
+                                            Expr<12>:Expr::BinaryOp {
                                                 lhs
-                                                    Expr::Var(Other)
+                                                    Expr<10>:Expr::Var(Other)
                                                 rhs
-                                                    Literal(Integer(0))
+                                                    Expr<11>:Literal(Integer(0))
                                                 op
                                                     CompOp(Eq { strict: false, negated: false }),
                                             },
                                     exprs
-                                        Literal(Atom('error')),
+                                        Expr<13>:Literal(Atom('error')),
                                 }
                         },
                 }.
@@ -2333,10 +2341,10 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::Missing,
+                        Pat<2>:Pat::Missing,
                     guards
                     exprs
-                        Expr::Missing,
+                        Expr<3>:Expr::Missing,
                 }.
             "#]],
         );
@@ -2351,15 +2359,15 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::Match {
+                        Pat<2>:Pat::Match {
                             lhs
-                                Pat::Var(A)
+                                Pat<0>:Pat::Var(A)
                             rhs
-                                Literal(Integer(4))
+                                Pat<1>:Literal(Integer(4))
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<1>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2374,16 +2382,16 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::List {
+                        Pat<3>:Pat::List {
                             exprs
-                                Pat::Var(A),
-                                Literal(Integer(4)),
+                                Pat<0>:Pat::Var(A),
+                                Pat<1>:Literal(Integer(4)),
                             tail
-                                Pat::Var(X),
+                                Pat<2>:Pat::Var(X),
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<1>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2398,18 +2406,18 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::Match {
+                        Pat<3>:Pat::Match {
                             lhs
-                                Pat::Var(X)
+                                Pat<0>:Pat::Var(X)
                             rhs
-                                Pat::UnaryOp {
-                                    Literal(Integer(1))
+                                Pat<2>:Pat::UnaryOp {
+                                    Pat<1>:Literal(Integer(1))
                                     Plus,
                                 }
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<1>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2424,17 +2432,17 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::BinaryOp {
+                        Pat<2>:Pat::BinaryOp {
                             lhs
-                                Pat::Var(X)
+                                Pat<0>:Pat::Var(X)
                             rhs
-                                Literal(Integer(4))
+                                Pat<1>:Literal(Integer(4))
                             op
                                 ArithOp(Add),
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<1>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2449,17 +2457,17 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::Record {
+                        Pat<2>:Pat::Record {
                             name: Atom('rec')
                             fields
                                 Atom('f'):
-                                    Pat::Var(X),
+                                    Pat<0>:Pat::Var(X),
                                 Atom('g'):
-                                    Pat::Var(Y),
+                                    Pat<1>:Pat::Var(Y),
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<4>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2474,13 +2482,13 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::RecordIndex {
+                        Pat<0>:Pat::RecordIndex {
                             name: Atom('rec')
                             field: Atom('f')
                         },
                     guards
                     exprs
-                        Literal(Atom('ok')),
+                        Expr<3>:Literal(Atom('ok')),
                 }.
             "#]],
         );
@@ -2495,21 +2503,21 @@ mod tests {
             expect![[r#"
                 Clause {
                     pats
-                        Pat::Map {
+                        Pat<3>:Pat::Map {
                             {
-                                Expr::BinaryOp {
+                                Expr<3>:Expr::BinaryOp {
                                     lhs
-                                        Literal(Integer(1))
+                                        Expr<1>:Literal(Integer(1))
                                     rhs
-                                        Literal(Integer(2))
+                                        Expr<2>:Literal(Integer(2))
                                     op
                                         ArithOp(Add),
                                 },
-                                Pat::BinaryOp {
+                                Pat<2>:Pat::BinaryOp {
                                     lhs
-                                        Literal(Integer(3))
+                                        Pat<0>:Literal(Integer(3))
                                     rhs
-                                        Literal(Integer(4))
+                                        Pat<1>:Literal(Integer(4))
                                     op
                                         ArithOp(Add),
                                 },
@@ -2517,10 +2525,10 @@ mod tests {
                         },
                     guards
                     exprs
-                        Expr::Map {
+                        Expr<6>:Expr::Map {
                             {
-                                Literal(Atom('a')),
-                                Literal(Atom('b')),
+                                Expr<4>:Literal(Atom('a')),
+                                Expr<5>:Literal(Atom('b')),
                             },
                         },
                 }.

@@ -53,15 +53,15 @@ fn parser_basic_query() {
             SsrBody {
                 lhs
                     expr
-                        Expr::Var(V)
+                        Expr<0>:Expr::Var(V)
                     pat
-                        Pat::Var(V)
+                        Pat<0>:Pat::Var(V)
                 rhs
-                    Expr::BinaryOp {
+                    Expr<3>:Expr::BinaryOp {
                         lhs
-                            Expr::Var(V)
+                            Expr<1>:Expr::Var(V)
                         rhs
-                            Literal(Integer(1))
+                            Expr<2>:Literal(Integer(1))
                         op
                             ArithOp(Add),
                     }
@@ -80,15 +80,15 @@ fn parser_basic_query_with_placeholder() {
             SsrBody {
                 lhs
                     expr
-                        SsrPlaceholder {var: _@V, }
+                        Expr<0>:SsrPlaceholder {var: _@V, }
                     pat
-                        SsrPlaceholder {var: _@V, }
+                        Pat<0>:SsrPlaceholder {var: _@V, }
                 rhs
-                    Expr::BinaryOp {
+                    Expr<3>:Expr::BinaryOp {
                         lhs
-                            SsrPlaceholder {var: _@V, }
+                            Expr<1>:SsrPlaceholder {var: _@V, }
                         rhs
-                            Literal(Integer(1))
+                            Expr<2>:Literal(Integer(1))
                         op
                             ArithOp(Add),
                     }
@@ -110,25 +110,25 @@ fn parser_basic_query_with_cond() {
             SsrBody {
                 lhs
                     expr
-                        Expr::Var(V)
+                        Expr<0>:Expr::Var(V)
                     pat
-                        Pat::Var(V)
+                        Pat<0>:Pat::Var(V)
                 rhs
-                    Expr::BinaryOp {
+                    Expr<3>:Expr::BinaryOp {
                         lhs
-                            Expr::Var(V)
+                            Expr<1>:Expr::Var(V)
                         rhs
-                            Literal(Integer(1))
+                            Expr<2>:Literal(Integer(1))
                         op
                             ArithOp(Add),
                     }
                 when
                     guard
-                        Expr::BinaryOp {
+                        Expr<6>:Expr::BinaryOp {
                             lhs
-                                Expr::Var(V)
+                                Expr<4>:Expr::Var(V)
                             rhs
-                                Literal(Atom('foo'))
+                                Expr<5>:Literal(Atom('foo'))
                             op
                                 CompOp(Eq { strict: false, negated: false }),
                         },
