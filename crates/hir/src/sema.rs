@@ -464,9 +464,11 @@ impl<'db> Semantic<'db> {
     }
 
     pub fn range_for_anyexpr(&self, body: &Body, expr_id: &AnyExprId) -> Option<TextRange> {
-        let body_map = body.get_body_map(self)?;
-        let ast = body_map.any(*expr_id)?;
-        Some(ast.range())
+        body.range_for_any(self, *expr_id)
+    }
+
+    pub fn text_for_anyexpr(&self, body: &Body, expr_id: &AnyExprId) -> Option<String> {
+        body.text_for_any(self, *expr_id)
     }
 
     /// We expose a high-level function, which internally does some

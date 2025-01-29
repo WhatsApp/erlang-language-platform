@@ -302,6 +302,13 @@ impl Body {
         Some(ast.range())
     }
 
+    pub fn text_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<String> {
+        let body_map = self.get_body_map(sema)?;
+        let ast_ptr = body_map.any(id)?;
+        let ast = ast_ptr.to_node(&sema.parse(self.origin.file_id()))?;
+        Some(ast.syntax().text().to_string())
+    }
+
     pub fn print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
         match expr {
             AnyExprId::Expr(expr_id) => pretty::print_expr(db, self, expr_id),
