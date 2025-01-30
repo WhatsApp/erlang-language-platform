@@ -261,11 +261,11 @@ impl HirIdx {
 // ---------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SsrIdx {
+pub enum SsrSearchScope {
     WholeFile(FileId),
 }
 
-impl SsrIdx {
+impl SsrSearchScope {
     pub fn fold<'a, T>(
         &self,
         sema: &Semantic,
@@ -275,7 +275,7 @@ impl SsrIdx {
         form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
     ) -> T {
         match &self {
-            SsrIdx::WholeFile(file_id) => {
+            SsrSearchScope::WholeFile(file_id) => {
                 fold_file(sema, strategy, *file_id, initial, callback, form_callback)
             }
         }
