@@ -140,6 +140,7 @@ fn find_definitions(
 
 /// Rename a variable.  Currently only in a function clause body, will
 /// extend in future to other body types.
+#[allow(unused)]
 pub fn rename_var(
     sema: &Semantic,
     body: &Body,
