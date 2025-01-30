@@ -1063,6 +1063,7 @@ foo() -> fun a~nother/0.
 //- /src/main.erl
 -module(main).
 
+% elp:ignore W0026 (unexported_function)
 foo() -> fun another:f~oo/0.
 
 //- /src/another.erl

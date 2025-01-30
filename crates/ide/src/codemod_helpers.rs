@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::any::Any;
+
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;
@@ -28,6 +30,7 @@ use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::InFunctionClauseBody;
+use hir::Literal;
 use hir::Semantic;
 use hir::Strategy;
 use lazy_static::lazy_static;
@@ -450,7 +453,6 @@ pub struct CheckCallCtx<'a, T> {
 #[derive(Debug, Clone)]
 pub enum Args {
     Args(Vec<ExprId>),
-    #[allow(unused)]
     Arity(u32),
 }
 
@@ -534,11 +536,21 @@ pub(crate) fn find_call_in_function<T, U>(
         },
         (),
         &mut |acc, clause_id, ctx| {
-            if let AnyExpr::Expr(Expr::Call { target, args }) = ctx.item {
+            let def_fc = &def_fb[clause_id];
+            if let Some((target, args)) = match ctx.item {
+                AnyExpr::Expr(Expr::CaptureFun { target, arity }) => match &def_fc.body[arity] {
+                    Expr::Literal(Literal::Integer(arity)) => {
+                        Some((target, Args::Arity(*arity as u32)))
+                    }
+                    _ => None,
+                },
+                AnyExpr::Expr(Expr::Call { target, args }) => Some((target, Args::Args(args))),
+                _ => None,
+            } {
                 if let Some((mfa, t)) = matcher.get_match(
                     &target,
-                    args.len() as u32,
-                    Some(&args),
+                    args.arity(),
+                    Some(&args.as_vec()),
                     sema,
                     &def_fb.body(clause_id),
                 ) {
@@ -548,7 +560,7 @@ pub(crate) fn find_call_in_function<T, U>(
                         parents: ctx.parents,
                         t,
                         target: &target,
-                        args: Args::Args(args.clone()),
+                        args: args.clone(),
                         in_clause,
                     };
                     if let Some(extra) = check_call(context) {
@@ -569,7 +581,7 @@ pub(crate) fn find_call_in_function<T, U>(
                                 sema,
                                 def_fb: in_clause,
                                 target: &target,
-                                args: Args::Args(args),
+                                args,
                                 extra: &extra,
                                 range_mf_only,
                                 range: *range,

@@ -501,4 +501,25 @@ private() -> ok.
             crate::tests::IncludeCodeActionAssists::Yes,
         )
     }
+
+    #[test]
+    fn test_capture_fun() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main() ->
+    {fun dependency:exists/0,
+    fun dependency:not_exists/1,
+%%      ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:not_exists/1' is undefined.
+    fun dependency:module_info/2}.
+%%      ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:module_info/2' is undefined.
+  exists() -> ok.
+//- /src/dependency.erl
+  -module(dependency).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
 }

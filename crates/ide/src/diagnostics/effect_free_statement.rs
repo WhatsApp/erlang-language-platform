@@ -318,6 +318,7 @@ mod tests {
     fn remove_useless_lambda() {
         check_diagnostics(
             r#"
+            //- /src/main.erl
             -module(main).
             test_foo(_Config) ->
                 do_something(),
@@ -331,6 +332,10 @@ mod tests {
             %%% ^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> 42.
+            //- /src/erlang.erl
+            -module(erlang).
+            -export([length/1]).
+            length(_) -> 42.
             "#,
         );
     }
