@@ -323,6 +323,11 @@ pub struct SsrPlaceholder {
     pub var: Var,
 }
 
+// We need to treat Var specially for SSR matching, as we want to be
+// able to match a Pat::Var and Expr::Var occurring as a placeholder
+// result as the same, if the placeholders have the same name.
+pub const COMMON_VAR_VARIANT_STR: &'static str = "::Var";
+
 impl Expr {
     pub fn as_atom(&self) -> Option<Atom> {
         match self {
@@ -397,7 +402,7 @@ impl Expr {
         match &self {
             Expr::Missing => "Expr::Missing",
             Expr::Literal(_) => "Expr::Literal",
-            Expr::Var(_) => "Expr::Var",
+            Expr::Var(_) => COMMON_VAR_VARIANT_STR,
             Expr::Match { .. } => "Expr::Match",
             Expr::Tuple { .. } => "Expr::Tuple",
             Expr::List { .. } => "Expr::List",
@@ -704,7 +709,7 @@ impl Pat {
         match &self {
             Pat::Missing => "Pat::Missing",
             Pat::Literal(_) => "Pat::Literal",
-            Pat::Var(_) => "Pat::Var",
+            Pat::Var(_) => COMMON_VAR_VARIANT_STR,
             Pat::Match { .. } => "Pat::Match",
             Pat::Tuple { .. } => "Pat::Tuple",
             Pat::List { .. } => "Pat::List",

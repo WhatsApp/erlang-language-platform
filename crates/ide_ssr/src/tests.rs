@@ -559,12 +559,12 @@ fn ssr_expr_match_map_update() {
         &["List#{foo => XX}"],
     );
     assert_matches(
-        "ssr: _@A#{ foo => _@B, zz => _@A }.",
+        "ssr: _@A#{ foo => _@B, zz => _@C }.",
         "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
         &["List#{zz => 1, foo => XX}"],
     );
     assert_matches(
-        "ssr: _@A#{ foo => _@B, zz => {_@A} }.",
+        "ssr: _@A#{ foo => _@B, zz => {_@C} }.",
         "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
         &[],
     );
@@ -1219,4 +1219,19 @@ fn ssr_retrieve_match_placeholder_multiple_matches() {
             )
         "#]],
     )
+}
+
+#[test]
+fn ssr_repeated_placeholder() {
+    assert_matches(
+        "ssr: << _@A, _@A>>.",
+        "fn(Y) -> X=1, <<X,X>>.",
+        &["<<X,X>>"],
+    );
+    assert_matches(
+        "ssr: { _@A, _@A}.",
+        "fn(Y) -> {[a,b,Y],[a,b,Y]}.",
+        &["{[a,b,Y],[a,b,Y]}"],
+    );
+    assert_matches("ssr: <<_@A, _@A>>.", "fn(Y) -> X=1, <<X,Y>>.", &[]);
 }

@@ -142,6 +142,34 @@ impl PlaceholderMatch {
                 .to_string(),
         )
     }
+
+    // Check if our `code_id` and the `other` represent equivalent
+    // code fragments.
+    fn equivalent(
+        &self,
+        sema: &Semantic,
+        rule: &SsrPattern,
+        body: &FoldBody,
+        other: &SubId,
+    ) -> bool {
+        let debug_print = false;
+        if let SubId::AnyExprId(code_id) = self.code_id {
+            get_match(
+                debug_print,
+                rule,
+                other,
+                &body.body.origin,
+                &code_id,
+                &None,
+                sema,
+                body,
+                body,
+            )
+            .is_ok()
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -339,8 +367,12 @@ impl<'a> Matcher<'a> {
                 code_node_type,
             );
         }
-        // The current node types are the same, descend into the children of each.
-        self.attempt_match_node_children(phase, pattern, code)
+        if self.is_code_leaf(code) {
+            self.attempt_match_leaf(phase, pattern, code)
+        } else {
+            // The current node types are the same, descend into the children of each.
+            self.attempt_match_node_children(phase, pattern, code)
+        }
     }
 
     /// If the given `code` is a placeholder, attempt a match.
@@ -370,6 +402,25 @@ impl<'a> Matcher<'a> {
                         // placeholder probably can't fail range
                         // validation, but just to be safe...
                         self.validate_range(&original_range)?;
+
+                        // If there is already a match for the same
+                        // placeholder.var, fail if they are not compatible.
+                        if let Some(match_ids) =
+                            matches_out.placeholders_by_var.get(&placeholder.var)
+                        {
+                            for match_id in match_ids.iter() {
+                                if let Some(m) = matches_out.placeholder_values.get(match_id) {
+                                    if !m.equivalent(self.sema, &self.rule, self.code_body, code) {
+                                        fail_match!(
+                                            "placeholder match failed: different occurrences do not match:\n---------------\n{:?}\n-----------",
+                                            &m
+                                        );
+                                    }
+                                }
+                            }
+                            // })
+                        }
+
                         matches_out.placeholder_values.insert(
                             pattern.clone(),
                             PlaceholderMatch::new(original_range, code.clone()),
@@ -569,6 +620,18 @@ impl<'a> Matcher<'a> {
                     );
                 }
             }
+            (
+                SubIdRef::AnyExprRef(AnyExprRef::Expr(Expr::Var(code_var))),
+                SubIdRef::AnyExprRef(AnyExprRef::Expr(Expr::Var(pat_var))),
+            ) => {
+                self.attempt_match_var(code_var, pat_var)?;
+            }
+            (
+                SubIdRef::AnyExprRef(AnyExprRef::Pat(Pat::Var(code_var))),
+                SubIdRef::AnyExprRef(AnyExprRef::Pat(Pat::Var(pat_var))),
+            ) => {
+                self.attempt_match_var(code_var, pat_var)?;
+            }
             (SubIdRef::Atom(pat_atom), SubIdRef::Atom(code_atom)) => {
                 if self.sema.db.lookup_atom(pat_atom) == self.sema.db.lookup_atom(*code_atom) {
                     return Ok(());
@@ -581,15 +644,7 @@ impl<'a> Matcher<'a> {
                 }
             }
             (SubIdRef::Var(pat_var), SubIdRef::Var(code_var)) => {
-                if self.sema.db.lookup_var(pat_var) == self.sema.db.lookup_var(*code_var) {
-                    return Ok(());
-                } else {
-                    fail_match!(
-                        "Pattern had var `{}`, code had var `{}`",
-                        self.sema.db.lookup_var(pat_var),
-                        self.sema.db.lookup_var(*code_var),
-                    );
-                }
+                self.attempt_match_var(code_var, &pat_var)?;
             }
             // UnaryOp and BinaryOp can be fully distinguished by variant_str.
             _ => {}
@@ -602,6 +657,18 @@ impl<'a> Matcher<'a> {
             );
         } else {
             Ok(())
+        }
+    }
+
+    fn attempt_match_var(&self, code_var: &Var, pat_var: &Var) -> Result<(), MatchFailed> {
+        if self.sema.db.lookup_var(*pat_var) == self.sema.db.lookup_var(*code_var) {
+            return Ok(());
+        } else {
+            fail_match!(
+                "Pattern had var `{}`, code had var `{}`",
+                self.sema.db.lookup_var(*pat_var),
+                self.sema.db.lookup_var(*code_var),
+            );
         }
     }
 
@@ -841,6 +908,12 @@ impl From<Atom> for SubId {
     }
 }
 
+impl From<Var> for SubId {
+    fn from(value: Var) -> Self {
+        SubId::Var(value)
+    }
+}
+
 impl From<&str> for SubId {
     fn from(value: &str) -> Self {
         SubId::Constant(value.to_string())
@@ -931,9 +1004,9 @@ impl PatternIterator {
     pub fn new_any_expr(parent: &AnyExprRef) -> PatternIterator {
         match parent {
             AnyExprRef::Expr(it) => match it {
+                Expr::Var(var) => PatternIterator::as_pattern_list(vec![(*var).into()]),
                 Expr::Missing => PatternIterator::as_pattern_list(vec![]),
                 Expr::Literal(_) => PatternIterator::as_pattern_list(vec![]),
-                Expr::Var(_) => PatternIterator::as_pattern_list(vec![]),
                 Expr::Match { lhs, rhs } => {
                     PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
                 }
@@ -1150,9 +1223,9 @@ impl PatternIterator {
                 Expr::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
             },
             AnyExprRef::Pat(it) => match &*it {
+                Pat::Var(var) => PatternIterator::as_pattern_list(vec![(*var).into()]),
                 Pat::Missing => PatternIterator::as_pattern_list(vec![]),
                 Pat::Literal(_) => PatternIterator::as_pattern_list(vec![]),
-                Pat::Var(_) => PatternIterator::as_pattern_list(vec![]),
                 Pat::Match { lhs, rhs } => {
                     PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
                 }
