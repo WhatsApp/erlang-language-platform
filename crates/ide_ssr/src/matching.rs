@@ -964,6 +964,7 @@ pub enum PatternIterator {
     List(PatternList),
     // For records and fields, we record the name and value separately
     Map(PatternMap),
+    Leaf,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -986,7 +987,7 @@ impl From<Vec<SubId>> for PatternList {
 
 impl Default for PatternIterator {
     fn default() -> Self {
-        PatternIterator::List(PatternList::default())
+        PatternIterator::Leaf
     }
 }
 
@@ -1004,9 +1005,9 @@ impl PatternIterator {
     pub fn new_any_expr(parent: &AnyExprRef) -> PatternIterator {
         match parent {
             AnyExprRef::Expr(it) => match it {
+                Expr::Missing => PatternIterator::Leaf,
+                Expr::Literal(_) => PatternIterator::Leaf,
                 Expr::Var(var) => PatternIterator::as_pattern_list(vec![(*var).into()]),
-                Expr::Missing => PatternIterator::as_pattern_list(vec![]),
-                Expr::Literal(_) => PatternIterator::as_pattern_list(vec![]),
                 Expr::Match { lhs, rhs } => {
                     PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
                 }
@@ -1220,12 +1221,12 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::Paren { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
-                Expr::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
+                Expr::SsrPlaceholder(_) => PatternIterator::Leaf,
             },
             AnyExprRef::Pat(it) => match &*it {
+                Pat::Missing => PatternIterator::Leaf,
+                Pat::Literal(_) => PatternIterator::Leaf,
                 Pat::Var(var) => PatternIterator::as_pattern_list(vec![(*var).into()]),
-                Pat::Missing => PatternIterator::as_pattern_list(vec![]),
-                Pat::Literal(_) => PatternIterator::as_pattern_list(vec![]),
                 Pat::Match { lhs, rhs } => {
                     PatternIterator::as_pattern_list(vec![(*lhs).into(), (*rhs).into()])
                 }
@@ -1277,7 +1278,7 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Pat::Paren { pat } => PatternIterator::as_pattern_list(vec![(*pat).into()]),
-                Pat::SsrPlaceholder(_) => PatternIterator::as_pattern_list(vec![]),
+                Pat::SsrPlaceholder(_) => PatternIterator::Leaf,
             },
             AnyExprRef::TypeExpr(_) => todo!(),
             AnyExprRef::Term(_) => todo!(),
@@ -1303,8 +1304,8 @@ impl PatternIterator {
 
     pub fn is_empty(&self) -> bool {
         match self {
-            PatternIterator::List(l) => l.children.is_empty(),
-            PatternIterator::Map(m) => m.prefix.children.is_empty() && m.children.is_empty(),
+            PatternIterator::Leaf => true,
+            _ => false,
         }
     }
 }
