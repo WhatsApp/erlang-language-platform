@@ -73,7 +73,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
             if in_anonymous_fun(def_fb, parents) {
                 return None;
             }
-            match args[..] {
+            match args.as_vec()[..] {
                 [_module] => Some(()),
                 [_module, options] => {
                     let body = def_fb.body();
@@ -94,7 +94,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                    args,
                    range,
                    ..
-               }| match args[..] {
+               }| match args.as_vec()[..] {
             [module] => {
                 if let Some(module_range) = def_fb.range_for_expr(module) {
                     let diag = make_diagnostic(

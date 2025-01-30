@@ -91,20 +91,21 @@ pub fn replace_call_site_if_args_match(
                        range,
                        ..
                    }: MakeDiagCtx<'_, (String, String)>| {
-                let mfa = MFA::from_call_target(
-                    target,
-                    args.len() as u32,
-                    sema,
-                    &def_fb.body(),
-                    file_id,
-                )?;
+                let mfa =
+                    MFA::from_call_target(target, args.arity(), sema, &def_fb.body(), file_id)?;
                 let mfa_str = mfa.label();
 
                 let diag = diagnostic_builder(&mfa, &extra.0, range)?;
 
-                if let Some(edit) =
-                    replace_call(replacement, sema, def_fb, file_id, args, target, &range)
-                {
+                if let Some(edit) = replace_call(
+                    replacement,
+                    sema,
+                    def_fb,
+                    file_id,
+                    &args.as_vec(),
+                    target,
+                    &range,
+                ) {
                     Some(diag.with_fixes(Some(vec![fix(
                         "replace_call_site",
                         &format!("Replace call to '{:?}' {}", &mfa_str, extra.1),
@@ -507,7 +508,7 @@ mod tests {
                     },
                     &|CheckCallCtx {
                           args, in_clause, ..
-                      }: CheckCallCtx<()>| match in_clause[args[1]] {
+                      }: CheckCallCtx<()>| match in_clause[args.get(1)?] {
                         Expr::Literal(Literal::Integer(42)) => {
                             Some(("with 42".to_string(), "for fix".to_string()))
                         }

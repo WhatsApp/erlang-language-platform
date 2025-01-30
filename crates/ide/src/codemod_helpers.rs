@@ -443,8 +443,38 @@ pub struct CheckCallCtx<'a, T> {
     pub parents: &'a Vec<ParentId>,
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
-    pub args: &'a [ExprId],
+    pub args: Args,
     pub in_clause: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Args {
+    Args(Vec<ExprId>),
+    #[allow(unused)]
+    Arity(u32),
+}
+
+impl Args {
+    pub fn get(&self, i: usize) -> Option<ExprId> {
+        match self {
+            Args::Args(args) => args.get(i as usize).copied(),
+            Args::Arity(_) => None,
+        }
+    }
+
+    pub fn arity(&self) -> u32 {
+        match self {
+            Args::Args(args) => args.len() as u32,
+            Args::Arity(arity) => *arity,
+        }
+    }
+
+    pub fn as_vec(&self) -> Vec<ExprId> {
+        match self {
+            Args::Args(args) => args.to_vec(),
+            Args::Arity(_arity) => vec![],
+        }
+    }
 }
 
 /// Check a specific call instance, and return extra info for a
@@ -455,7 +485,7 @@ pub struct MakeDiagCtx<'a, U> {
     pub sema: &'a Semantic<'a>,
     pub def_fb: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
     pub target: &'a CallTarget<ExprId>,
-    pub args: &'a [ExprId],
+    pub args: Args,
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
     pub range_mf_only: Option<TextRange>,
@@ -518,7 +548,7 @@ pub(crate) fn find_call_in_function<T, U>(
                         parents: ctx.parents,
                         t,
                         target: &target,
-                        args: &args,
+                        args: Args::Args(args.clone()),
                         in_clause,
                     };
                     if let Some(extra) = check_call(context) {
@@ -539,7 +569,7 @@ pub(crate) fn find_call_in_function<T, U>(
                                 sema,
                                 def_fb: in_clause,
                                 target: &target,
-                                args: &args,
+                                args: Args::Args(args),
                                 extra: &extra,
                                 range_mf_only,
                                 range: *range,

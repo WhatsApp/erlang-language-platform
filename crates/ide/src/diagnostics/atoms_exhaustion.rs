@@ -91,7 +91,7 @@ fn check_function(
             // @fb-only
             is_safe = false; // @oss-only
             if !is_safe {
-                match args[..] {
+                match args.as_vec()[..] {
                     [_, options] => {
                         let body = in_clause.body();
                         match &body[options].literal_list_contains_atom(in_clause, "safe") {

@@ -72,7 +72,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                    in_clause: def_fb,
                    ..
                }: CheckCallCtx<'_, ()>| {
-            let arity = args.len() as u32;
+            let arity = args.arity();
             match target {
                 hir::CallTarget::Remote { module, name, .. } => {
                     let module = &def_fb[*module];

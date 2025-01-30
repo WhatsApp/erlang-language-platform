@@ -138,11 +138,11 @@ fn process_badmatches(
                }: CheckCallCtx<'_, &BadEnvCallAction>| match t {
             BadEnvCallAction::AppArg(arg_index) => {
                 let arg = args.get(*arg_index)?;
-                check_valid_application(sema, in_clause, arg, def)
+                check_valid_application(sema, in_clause, &arg, def)
             }
             BadEnvCallAction::OptionsArg { arg_index, tag } => {
                 let arg = args.get(*arg_index)?;
-                match &in_clause[*arg] {
+                match &in_clause[arg] {
                     hir::Expr::List { exprs, tail: _ } => {
                         exprs.iter().find_map(|expr| match &in_clause[*expr] {
                             hir::Expr::Tuple { exprs } => {
@@ -168,11 +168,11 @@ fn process_badmatches(
                 // in. At the end we expect a tuple, and check the
                 // first arg of that.
                 let arg = args.get(*arg_index)?;
-                match &in_clause[*arg] {
+                match &in_clause[arg] {
                     hir::Expr::Map { fields: _ } => {
                         if let Some(AnyExprId::Expr(rhs)) = in_clause.body().lookup_map_path(
                             sema.db.upcast(),
-                            AnyExprId::Expr(*arg),
+                            AnyExprId::Expr(arg),
                             keys,
                         ) {
                             check_tuple(in_clause, &rhs, sema, def)
