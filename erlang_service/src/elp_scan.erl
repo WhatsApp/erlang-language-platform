@@ -1188,7 +1188,7 @@ scan_vstring(Cs, Q, Off, Wcs) ->
         [Q | Ncs] ->
             {ok, {Ncs, Off + 1, Wcs}};
         [$\n = C | Ncs] ->
-            scan_vstring(Ncs, Q, Off + 1, 1, [C | Wcs]);
+            scan_vstring(Ncs, Q, Off + 1, [C | Wcs]);
         [C | Ncs] when ?UNICODE(C) ->
             scan_vstring(Ncs, Q, Off + 1, [C | Wcs]);
         [C | Ncs] when ?CHAR(C) ->
