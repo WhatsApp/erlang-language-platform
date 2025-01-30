@@ -72,6 +72,13 @@ impl Logger {
         log::set_max_level(shared.max_level());
     }
 
+    pub fn remove_logger(&self, name: &str) {
+        let mut shared = self.shared.write();
+        shared.writers.remove(name.into());
+
+        log::set_max_level(shared.max_level());
+    }
+
     pub fn reconfigure(&self, name: &str, filter: Builder) {
         let mut shared = self.shared.write();
 
