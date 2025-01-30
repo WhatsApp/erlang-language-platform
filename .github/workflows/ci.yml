@@ -137,12 +137,12 @@ jobs:
       - name: Add elp to path
         run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
       - name: Upload elp binary
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v4"
         with:
           name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: target/${{ matrix.target}}/release/elp
       - name: Upload eqwalizer native binary
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v4"
         with:
           name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: ./eqwalizer/eqwalizer/eqwalizer
@@ -191,7 +191,7 @@ jobs:
         working-directory: editors/code
         run: mv erlang-language-platform-*.vsix erlang-language-platform.vsix
       - name: Upload Extension
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v4"
         with:
           name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           path: editors/code/erlang-language-platform.vsix
