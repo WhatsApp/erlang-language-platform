@@ -58,42 +58,25 @@ impl MatchFinder<'_> {
                     .get_body(self.sema)
                     .expect("Could not get code Body");
                 let code_body = fold_body(self.strategy, &code_body);
-                self.try_add_match(
-                    rule,
-                    &ctx.body_origin,
-                    &ctx.item_id,
-                    restrict_range,
-                    matches_out,
-                    &code_body,
-                    pattern_body,
-                );
+                {
+                    let code_body_origin: &BodyOrigin = &ctx.body_origin;
+                    let code: &AnyExprId = &ctx.item_id;
+                    let code_body: &FoldBody = &code_body;
+                    if let Ok(m) = matching::get_match(
+                        self.debug_print,
+                        rule,
+                        code_body_origin,
+                        code,
+                        restrict_range,
+                        self.sema,
+                        code_body,
+                        pattern_body,
+                    ) {
+                        matches_out.push(m);
+                    }
+                };
             },
             &mut |_acc, _on, _form_id: FormIdx| {},
         );
-    }
-
-    // Check for a match originating at this point in the `code` AST.
-    fn try_add_match(
-        &self,
-        rule: &SsrPattern,
-        code_body_origin: &BodyOrigin,
-        code: &AnyExprId,
-        restrict_range: &Option<FileRange>,
-        matches_out: &mut Vec<Match>,
-        code_body: &FoldBody,
-        pattern_body: &FoldBody,
-    ) {
-        if let Ok(m) = matching::get_match(
-            self.debug_print,
-            rule,
-            code_body_origin,
-            code,
-            restrict_range,
-            &self.sema,
-            code_body,
-            pattern_body,
-        ) {
-            matches_out.push(m);
-        }
     }
 }
