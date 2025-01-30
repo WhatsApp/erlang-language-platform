@@ -246,7 +246,7 @@ fn assert_match_placeholder(
     match_finder.add_search_pattern(pattern);
     let matches = match_finder.matches();
     let match0 = &matches.matches[0];
-    let placeholder_val = match0.get_placeholder_match(&sema, placeholder_name);
+    let placeholder_val = match0.get_placeholder_matches(&sema, placeholder_name);
     let matched_strings: Vec<String> = matches
         .flattened()
         .matches
@@ -1150,22 +1150,72 @@ fn ssr_retrieve_match_placeholder() {
         "_@X",
         expect![[r#"
             Some(
-                PlaceholderMatch {
-                    range: FileRange {
-                        file_id: FileId(
-                            0,
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 20..23,
+                        },
+                        code_id: AnyExprId(
+                            Pat(
+                                Idx::<Pat>(1),
+                            ),
                         ),
-                        range: 20..23,
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
                     },
-                    node: AnyExprId(
-                        Pat(
-                            Idx::<Pat>(1),
+                ],
+            )
+        "#]],
+    )
+}
+
+#[test]
+fn ssr_retrieve_match_placeholder_multiple_matches() {
+    assert_match_placeholder(
+        "ssr: {_@X,_@X}.",
+        "foo() -> {bar, bar}.",
+        &["{bar, bar}"],
+        "_@X",
+        expect![[r#"
+            Some(
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 10..13,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(1),
+                            ),
                         ),
-                    ),
-                    inner_matches: SsrMatches {
-                        matches: [],
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
                     },
-                },
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 15..18,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(2),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
             )
         "#]],
     )

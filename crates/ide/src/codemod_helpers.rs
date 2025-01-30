@@ -7,8 +7,6 @@
  * of this source tree.
  */
 
-use std::any::Any;
-
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;

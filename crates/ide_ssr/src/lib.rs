@@ -482,19 +482,70 @@ impl Match {
         file_text[self.range.range.start().into()..self.range.range.end().into()].to_string()
     }
 
+    pub fn get_placeholder_matches(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<Vec<PlaceholderMatch>> {
+        let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
+        let subids = self.placeholders_by_var.get(&var)?;
+        Some(
+            subids
+                .iter()
+                .map(|sub_id| self.placeholder_values.get(sub_id).cloned())
+                .flatten()
+                .collect(),
+        )
+    }
     pub fn get_placeholder_match(
         &self,
         sema: &Semantic,
         placeholder_name: &str,
     ) -> Option<PlaceholderMatch> {
         let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
-        self.placeholder_values.get(&var).cloned()
+        let subids = self.placeholders_by_var.get(&var)?;
+        if subids.len() == 1 {
+            self.placeholder_values
+                .get(&subids.iter().next().cloned()?)
+                .cloned()
+        } else {
+            // We panic here because this should be used when doing
+            // development only, give feedback to the dev.
+            panic!(
+                "expecting a single match for '{}', got multiple",
+                placeholder_name
+            );
+        }
+    }
+
+    pub fn placeholder_texts(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<Vec<String>> {
+        let placeholder_matches = self.get_placeholder_matches(sema, placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        Some(
+            placeholder_matches
+                .iter()
+                .flat_map(|pm| pm.text(sema, &body))
+                .collect(),
+        )
     }
 
     pub fn placeholder_text(&self, sema: &Semantic, placeholder_name: &str) -> Option<String> {
         let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
         let body = self.matched_node_body.get_body(sema)?;
         placeholder_match.text(sema, &body)
+    }
+
+    pub fn placeholder_ranges(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<Vec<TextRange>> {
+        let placeholder_matches = self.get_placeholder_matches(sema, placeholder_name)?;
+        Some(placeholder_matches.iter().map(|pm| pm.range()).collect())
     }
 
     pub fn placeholder_range(&self, sema: &Semantic, placeholder_name: &str) -> Option<TextRange> {
@@ -600,8 +651,10 @@ mod test {
                             ),
                         ),
                         placeholder_values: {
-                            Var(
-                                0,
+                            AnyExprId(
+                                Expr(
+                                    Idx::<Expr>(1),
+                                ),
                             ): PlaceholderMatch {
                                 range: FileRange {
                                     file_id: FileId(
@@ -609,7 +662,7 @@ mod test {
                                     ),
                                     range: 14..15,
                                 },
-                                node: AnyExprId(
+                                code_id: AnyExprId(
                                     Expr(
                                         Idx::<Expr>(2),
                                     ),
@@ -617,6 +670,17 @@ mod test {
                                 inner_matches: SsrMatches {
                                     matches: [],
                                 },
+                            },
+                        },
+                        placeholders_by_var: {
+                            Var(
+                                0,
+                            ): {
+                                AnyExprId(
+                                    Expr(
+                                        Idx::<Expr>(1),
+                                    ),
+                                ),
                             },
                         },
                         rule_index: 0,

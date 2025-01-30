@@ -25,6 +25,7 @@ use elp_syntax::ast::Ordering;
 use elp_syntax::ast::UnaryOp;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Atom;
@@ -90,8 +91,11 @@ pub struct Match {
     pub range: FileRange,
     pub matched_node_body: BodyOrigin,
     pub matched_node: SubId,
-    // TODO: Using hir::Var, which is an arena index. May need to store its string val
-    pub placeholder_values: FxHashMap<Var, PlaceholderMatch>,
+    // A placeholder originates as a `SubId`, and carries a `hir::Var`.
+    // The `SubId` is unique, but we need to ensure that each
+    // `hir::Var` in a match corresponds to the `same` code fragment.
+    pub placeholder_values: FxHashMap<SubId, PlaceholderMatch>,
+    pub(crate) placeholders_by_var: FxHashMap<Var, FxHashSet<SubId>>,
     /// Which rule matched
     pub rule_index: usize,
     /// The depth of matched_node.
@@ -109,16 +113,16 @@ impl Match {
 pub struct PlaceholderMatch {
     pub range: FileRange,
     /// The code node that matched the placeholder
-    pub node: SubId,
+    pub code_id: SubId,
     /// More matches, found within `node`.
     pub inner_matches: SsrMatches,
 }
 
 impl PlaceholderMatch {
-    fn new(range: FileRange, node: SubId) -> Self {
+    fn new(range: FileRange, code_id: SubId) -> Self {
         Self {
             range,
-            node,
+            code_id,
             inner_matches: SsrMatches::default(),
         }
     }
@@ -128,7 +132,7 @@ impl PlaceholderMatch {
     }
 
     pub fn text(&self, sema: &Semantic, body: &Body) -> Option<String> {
-        let placeholder_match_id = self.node.any_expr_id()?;
+        let placeholder_match_id = self.code_id.any_expr_id()?;
         let placeholder_match_src: InFileAstPtr<ast::Expr> =
             body.get_body_map(sema)?.any(placeholder_match_id)?;
 
@@ -282,6 +286,7 @@ impl<'a> Matcher<'a> {
             matched_node_body: self.code_body_origin.clone(),
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
+            placeholders_by_var: FxHashMap::default(),
             rule_index: self.rule.index,
             depth: 0,
         };
@@ -369,9 +374,16 @@ impl<'a> Matcher<'a> {
                         // validation, but just to be safe...
                         self.validate_range(&original_range)?;
                         matches_out.placeholder_values.insert(
-                            placeholder.var.clone(),
+                            pattern.clone(),
                             PlaceholderMatch::new(original_range, code.clone()),
                         );
+                        matches_out
+                            .placeholders_by_var
+                            .entry(placeholder.var)
+                            .and_modify(|s| {
+                                s.insert(pattern.clone());
+                            })
+                            .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
                     }
                 }
                 return Ok(true);
