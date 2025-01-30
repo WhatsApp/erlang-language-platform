@@ -304,10 +304,17 @@ impl SsrPattern {
 
     /// The pattern is lowered both as a HIR Pat and an Expr.
     /// Choose which of these to use for matching the given `code` node.
-    pub(crate) fn pattern_sub_id_for_code(&self, code: &AnyExprId) -> SubId {
+    pub(crate) fn pattern_sub_id_for_code(
+        &self,
+        pattern_body: &FoldBody,
+        code: &AnyExprId,
+    ) -> SubId {
         match code {
             AnyExprId::Expr(_) => SubId::AnyExprId(AnyExprId::Expr(self.pattern_node.expr.clone())),
-            AnyExprId::Pat(_) => SubId::AnyExprId(AnyExprId::Pat(self.pattern_node.pat.clone())),
+            AnyExprId::Pat(_) => match pattern_body[self.pattern_node.pat] {
+                Pat::Missing => SubId::Constant("Cannot match pattern Pat::Missing".to_string()),
+                _ => SubId::AnyExprId(AnyExprId::Pat(self.pattern_node.pat.clone())),
+            },
             _ => SubId::Constant("not implemented yet".to_string()),
         }
     }
@@ -429,7 +436,7 @@ impl<'a> MatchFinder<'a> {
                                 matched: matching::get_match(
                                     true,
                                     rule,
-                                    &rule.pattern_sub_id_for_code(&any_expr_id),
+                                    &rule.pattern_sub_id_for_code(&pattern_body, &any_expr_id),
                                     &body_origin,
                                     &any_expr_id,
                                     restrict_range,

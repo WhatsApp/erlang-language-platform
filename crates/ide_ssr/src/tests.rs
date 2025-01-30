@@ -1235,3 +1235,18 @@ fn ssr_repeated_placeholder() {
     );
     assert_matches("ssr: <<_@A, _@A>>.", "fn(Y) -> X=1, <<X,Y>>.", &[]);
 }
+
+#[test]
+fn ssr_do_not_match_pattern_missing() {
+    assert_matches(
+        "ssr: maps:update(_@Key,_@Value,_@Map).",
+        r#"
+         g() ->
+             <<$",$\\,194,181,$A,$">> =
+                 ~b"""
+                   "\\µA"
+                   """.
+         "#,
+        &[],
+    );
+}

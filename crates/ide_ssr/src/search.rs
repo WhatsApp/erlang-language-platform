@@ -65,7 +65,7 @@ impl MatchFinder<'_> {
                     if let Ok(m) = matching::get_match(
                         self.debug_print,
                         rule,
-                        &rule.pattern_sub_id_for_code(code),
+                        &rule.pattern_sub_id_for_code(pattern_body, code),
                         code_body_origin,
                         code,
                         restrict_range,
