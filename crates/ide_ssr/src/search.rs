@@ -15,12 +15,12 @@ use hir::AnyExprId;
 use hir::BodyOrigin;
 use hir::FoldBody;
 use hir::FormIdx;
-use hir::SsrSearchScope;
 
 use crate::matching;
 use crate::matching::Match;
 use crate::MatchFinder;
 use crate::SsrPattern;
+use crate::SsrSearchScope;
 
 impl MatchFinder<'_> {
     /// Adds all matches for `rule` to `matches_out`. Matches may

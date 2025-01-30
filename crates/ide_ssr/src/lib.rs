@@ -70,6 +70,8 @@ use fxhash::FxHashMap;
 use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use hir::fold::fold_body;
+use hir::fold::fold_file;
+use hir::fold::AnyCallBack;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::AnyExprId;
@@ -78,10 +80,12 @@ use hir::Body;
 use hir::Expr;
 use hir::ExprId;
 use hir::FoldBody;
+use hir::FormIdx;
 use hir::InFile;
 use hir::InSsr;
 use hir::Literal;
 use hir::Name;
+use hir::On;
 use hir::Pat;
 use hir::Semantic;
 use hir::SsrBody;
@@ -106,6 +110,28 @@ pub use matching::PlaceholderMatch;
 pub use matching::SubId;
 
 // ---------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SsrSearchScope {
+    WholeFile(FileId),
+}
+
+impl SsrSearchScope {
+    pub fn fold<'a, T>(
+        &self,
+        sema: &Semantic,
+        strategy: Strategy,
+        initial: T,
+        callback: AnyCallBack<'a, T>,
+        form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
+    ) -> T {
+        match &self {
+            SsrSearchScope::WholeFile(file_id) => {
+                fold_file(sema, strategy, *file_id, initial, callback, form_callback)
+            }
+        }
+    }
+}
 
 pub fn match_pattern_in_file(
     sema: &Semantic,

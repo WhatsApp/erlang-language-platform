@@ -82,8 +82,6 @@ pub use expr::Term;
 pub use expr::TermId;
 pub use expr::TypeExpr;
 pub use expr::TypeExprId;
-use fold::fold_file;
-use fold::AnyCallBack;
 pub use fold::FoldCtx;
 pub use fold::On;
 pub use fold::Strategy;
@@ -254,30 +252,6 @@ impl HirIdx {
                 self.body_origin
             )
             .to_string(),
-        }
-    }
-}
-
-// ---------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SsrSearchScope {
-    WholeFile(FileId),
-}
-
-impl SsrSearchScope {
-    pub fn fold<'a, T>(
-        &self,
-        sema: &Semantic,
-        strategy: Strategy,
-        initial: T,
-        callback: AnyCallBack<'a, T>,
-        form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
-    ) -> T {
-        match &self {
-            SsrSearchScope::WholeFile(file_id) => {
-                fold_file(sema, strategy, *file_id, initial, callback, form_callback)
-            }
         }
     }
 }
