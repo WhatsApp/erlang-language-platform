@@ -189,6 +189,7 @@ fn recording_match_fail_reasons() -> bool {
 pub(crate) fn get_match(
     debug_active: bool,
     rule: &SsrPattern,
+    pattern: &SubId,
     code_body_origin: &BodyOrigin,
     code: &AnyExprId,
     restrict_range: &Option<FileRange>,
@@ -199,8 +200,9 @@ pub(crate) fn get_match(
     record_match_fails_reasons_scope(debug_active, || {
         Matcher::new(
             sema,
-            *restrict_range,
             rule,
+            *restrict_range,
+            pattern,
             code_body_origin,
             &pattern_body,
             &code_body,
@@ -226,6 +228,7 @@ enum Phase<'a> {
 struct Matcher<'a> {
     sema: &'a Semantic<'a>,
     rule: &'a SsrPattern,
+    pattern: &'a SubId,
     /// If any placeholders come from anywhere outside of this range,
     /// then the match will be rejected.
     restrict_range: Option<FileRange>,
@@ -237,16 +240,18 @@ struct Matcher<'a> {
 impl<'a> Matcher<'a> {
     fn new(
         sema: &'a Semantic<'a>,
+        rule: &'a SsrPattern,
         restrict_range: Option<FileRange>,
-        pattern: &'a SsrPattern,
+        pattern: &'a SubId,
         code_body_origin: &'a BodyOrigin,
         pattern_body: &'a FoldBody<'a>,
         code_body: &'a FoldBody<'a>,
     ) -> Matcher<'a> {
         Matcher {
             sema,
-            rule: pattern,
+            rule,
             restrict_range,
+            pattern,
             pattern_body,
             code_body,
             code_body_origin,
@@ -269,11 +274,7 @@ impl<'a> Matcher<'a> {
         }
 
         // First pass at matching, where we check that node types and idents match.
-        self.attempt_match_node(
-            &mut Phase::First,
-            &self.rule.pattern_sub_id_for_code(code),
-            code,
-        )?;
+        self.attempt_match_node(&mut Phase::First, self.pattern, code)?;
 
         let range = self.get_code_range(code).expect("cannot get code range");
         let code_range = FileRange {
@@ -294,11 +295,7 @@ impl<'a> Matcher<'a> {
         // Second matching pass, where we record placeholder matches,
         // ignored comments and maybe do any other more expensive
         // checks that we didn't want to do on the first pass.
-        self.attempt_match_node(
-            &mut Phase::Second(&mut the_match),
-            &self.rule.pattern_sub_id_for_code(code),
-            code,
-        )?;
+        self.attempt_match_node(&mut Phase::Second(&mut the_match), &self.pattern, code)?;
 
         Ok(the_match)
     }
