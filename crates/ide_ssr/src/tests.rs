@@ -342,8 +342,6 @@ fn ssr_record_expr_match_5() {
 
 #[test]
 fn ssr_record_expr_match_6() {
-    // Note: HIR record only stores atom field names, so will silently
-    // discard the placeholder. This will be fixed later in the stack.
     assert_matches(
         "ssr: #foo{_@K = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
