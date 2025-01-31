@@ -146,7 +146,16 @@ fn add_token_based_completions(
         ] if matches!(trigger, Some('.') | None) => {
             add_record_index_completions(rec_name.text(), "", acc)
         }
-
+        // #rec_name{field_prefix~
+        [
+            ..,
+            (K::ANON_POUND, _),
+            (K::ATOM, rec_name),
+            (K::ANON_LBRACE, _),
+            (K::ATOM, rec_field_prefix),
+        ] if matches!(trigger, Some('#') | None) => {
+            add_record_index_completions(rec_name.text(), rec_field_prefix.text(), acc)
+        }
         _ => false,
     }
 }
@@ -413,6 +422,38 @@ mod test {
             expect![[
                 r#"{label:field2, kind:RecordField, contents:String("field2 = "), position:None}"#
             ]],
+        );
+    }
+
+    #[test]
+    fn test_record_name_in_function_signature() {
+        check(
+            r#"
+        -module(sample).
+        -record(this_record, {field1=1, field2=2}).
+        -record(that_record, {}).
+        -record(another, {}).
+        foo(#th~
+        "#,
+            None,
+            expect![[r#"
+                {label:that_record, kind:Record, contents:SameAsLabel, position:None}
+                {label:this_record, kind:Record, contents:SameAsLabel, position:None}"#]],
+        );
+    }
+
+    #[test]
+    fn test_record_field_in_function_signature() {
+        check(
+            r#"
+        -module(sample).
+        -record(rec, {field1, field2, other}).
+        foo(#rec{fie~
+        "#,
+            None,
+            expect![[r#"
+                {label:field1, kind:RecordField, contents:SameAsLabel, position:None}
+                {label:field2, kind:RecordField, contents:SameAsLabel, position:None}"#]],
         );
     }
 }

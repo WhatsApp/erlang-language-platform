@@ -166,7 +166,8 @@ pub fn completions(
             let _ = attributes::add_completions(&mut acc, ctx)
                 // @fb-only
                 || vars::add_completions(&mut acc, ctx)
-                || maps::add_completions(&mut acc, ctx);
+                || maps::add_completions(&mut acc, ctx)
+                || records::add_completions(&mut acc, ctx);
         }
     }
     // Sort for maintainable snapshot tests:
