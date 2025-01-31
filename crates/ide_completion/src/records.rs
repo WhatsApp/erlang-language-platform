@@ -19,8 +19,8 @@ use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
 
-pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Ctx) -> DoneFlag {
-    add_in_create_or_update(acc, args) || add_token_based_completions(acc, args)
+pub(crate) fn add_completions(acc: &mut Vec<Completion>, ctx: &Ctx) -> DoneFlag {
+    add_in_create_or_update(acc, ctx) || add_token_based_completions(acc, ctx)
 }
 
 /// #rec{field1~} or X#rec{field1~}

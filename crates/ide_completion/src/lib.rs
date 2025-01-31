@@ -101,6 +101,7 @@ pub enum Kind {
     Map,
 }
 
+#[derive(Debug)]
 struct Ctx<'a> {
     ctx_kind: CtxKind,
     sema: &'a Semantic<'a>,
