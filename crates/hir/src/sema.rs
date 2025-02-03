@@ -57,6 +57,7 @@ pub use crate::intern::InternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 use crate::AnyExprId;
+use crate::Atom;
 use crate::AttributeBody;
 use crate::Body;
 use crate::BodySourceMap;
@@ -275,6 +276,12 @@ impl<'db> Semantic<'db> {
                 file_id: module_file_id,
             },
         })
+    }
+
+    pub fn resolve_module_expr(&self, file_id: FileId, module_expr: &Expr) -> Option<Module> {
+        let module_atom: Atom = module_expr.as_atom()?;
+        let module_name: Name = self.db.lookup_atom(module_atom);
+        self.resolve_module_name(file_id, module_name.as_str())
     }
 
     pub fn file_edoc_comments(

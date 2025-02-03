@@ -237,6 +237,8 @@ pub mod known {
         ELP,
         // known atoms
         apply,
+        behaviour_info,
+        behavior_info,
         client,
         erlang,
         error,

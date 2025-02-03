@@ -22,6 +22,7 @@ use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::known;
 use hir::Expr;
 use hir::FunctionDef;
+use hir::Module;
 use hir::NameArity;
 use hir::Semantic;
 use text_edit::TextRange;
@@ -79,6 +80,11 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                     let name = &def_fb[*name];
                     if in_exclusion_list(sema, module, name, arity) {
                         None
+                    } else if sema
+                        .resolve_module_expr(def_fb.file_id(), module)
+                        .is_some_and(|module| is_automatically_added(sema, module, name, arity))
+                    {
+                        None
                     } else {
                         let maybe_function_def =
                             target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body());
@@ -121,6 +127,20 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
 
 fn is_exported_function(file_id: FileId, sema: &Semantic, name: &NameArity) -> bool {
     sema.def_map(file_id).is_function_exported(name)
+}
+
+fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arity: u32) -> bool {
+    // If the module defines callbacks, {behaviour,behavior}_info are automatically defined
+    let module_has_callbacks_defined: bool = sema
+        .form_list(module.file.file_id)
+        .callback_attributes()
+        .next()
+        .is_some();
+
+    let function_name_is_behaviour_info: bool = sema.is_atom_named(function, known::behaviour_info)
+        || sema.is_atom_named(function, known::behavior_info);
+
+    function_name_is_behaviour_info && arity == 1 && module_has_callbacks_defined
 }
 
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
@@ -262,6 +282,35 @@ mod tests {
   -compile(export_all).
   exists() -> ok.
             "#,
+        )
+    }
+
+    #[test]
+    fn test_callbacks_define_behaviour_info() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  -callback foo() -> ok.
+  main() ->
+    ?MODULE:behaviour_info(callbacks),
+    ?MODULE:behavior_info(callbacks),
+    main:behaviour_info(callbacks),
+    hascallback:behaviour_info(callbacks),
+    nocallback:behaviour_info(callbacks),
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'nocallback:behaviour_info/1' is undefined.
+    nonexisting:behaviour_info(callbacks),
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'nonexisting:behaviour_info/1' is undefined.
+
+    behaviour_info(callbacks).
+//- /src/hascallback.erl
+   -module(hascallback).
+   -callback foo() -> ok.
+   go() -> ok.
+//- /src/nocallback.erl
+   -module(nocallback).
+   go() -> ok.
+    "#,
         )
     }
 
