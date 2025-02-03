@@ -162,7 +162,6 @@ mod tests {
         assert_eq!(expected, actual);
     }
 
-    // Note: Test names are based on those in erlang_ls
     #[test]
     fn application_local() {
         check(
@@ -185,6 +184,38 @@ mod tests {
 
             function_g(X) ->
               F = fun function_b/0,
+            %%        ^^^^^^^^^^
+              G = { },
+              {F, G}.
+
+"#,
+        );
+    }
+
+    #[test]
+    fn application_local_multiple_clauses() {
+        check(
+            r#"
+            -module(main).
+            -export([ function_a/0, function_b/1, function_g/1 ]).
+            %%                      ^^^^^^^^^^
+
+            -define(MACRO_A, macro_a).
+            -define(MACRO_A(X), erlang:display(X)).
+
+            function_a() ->
+              fun~ction_b(42),
+           %% ^^^^^^^^^^
+              #record_a{}.
+
+            function_b(X) when is_atom(X) ->
+         %% ^^^^^^^^^^
+              ?MACRO_A;
+            function_b(X) ->
+              X.
+
+            function_g(X) ->
+              F = fun function_b/1,
             %%        ^^^^^^^^^^
               G = { },
               {F, G}.
