@@ -43,6 +43,7 @@ pub struct NavigationTarget {
     ///
     /// Clients should place the cursor on this range when navigating to this target.
     pub focus_range: Option<TextRange>,
+    pub highlight_ranges: Option<Vec<TextRange>>,
     pub name: SmolStr,
     pub kind: SymbolKind,
 }
@@ -106,10 +107,12 @@ impl ToNav for hir::Module {
         let focus_range = attr
             .as_ref()
             .map(|attr| attr.form_id.get(&source).syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.name(db).raw(),
             kind: SymbolKind::Module,
         }
@@ -121,20 +124,27 @@ impl ToNav for hir::FunctionDef {
         let file_id = self.file.file_id;
         let source = self.source(db.upcast());
         let full_range = self.range(db.upcast()).unwrap_or_default(); // Should always succeed, but play safe
-        let focus_range = source
+        let highlight_ranges: Vec<TextRange> = source
             .iter()
-            .find_map(|fun_clause| match fun_clause.clause() {
+            .filter_map(|fun_clause| match fun_clause.clause() {
                 Some(ast::FunctionOrMacroClause::FunctionClause(clause)) => {
                     clause.name().map(|name| name.syntax().text_range())
                 }
                 _ => None,
-            });
+            })
+            .collect();
+        let focus_range = highlight_ranges.first().copied();
         let arity = self.name.arity();
         let name = self.name.name().raw();
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges: if highlight_ranges.is_empty() {
+                None
+            } else {
+                Some(highlight_ranges)
+            },
             name: SmolStr::new(format!("{name}/{arity}")),
             kind: SymbolKind::Function,
         }
@@ -147,10 +157,12 @@ impl ToNav for hir::RecordDef {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         let focus_range = source.name().map(|name| name.syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.record.name.raw(),
             kind: SymbolKind::Record,
         }
@@ -163,10 +175,12 @@ impl ToNav for hir::RecordFieldDef {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         let focus_range = source.name().map(|name| name.syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.field.name.raw(),
             kind: SymbolKind::RecordField,
         }
@@ -179,10 +193,12 @@ impl ToNav for hir::TypeAliasDef {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         let focus_range = source.type_name().map(|name| name.syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.type_alias.name().name().raw(),
             kind: SymbolKind::Type,
         }
@@ -195,10 +211,12 @@ impl ToNav for hir::CallbackDef {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         let focus_range = source.fun().map(|name| name.syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.callback.name.name().raw(),
             kind: SymbolKind::Callback,
         }
@@ -211,10 +229,12 @@ impl ToNav for hir::DefineDef {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
         let focus_range = source.lhs().map(|lhs| lhs.syntax().text_range());
+        let highlight_ranges = Some(vec![focus_range.unwrap_or(full_range)]);
         NavigationTarget {
             file_id,
             full_range,
             focus_range,
+            highlight_ranges,
             name: self.define.name.name().raw(),
             kind: SymbolKind::Define,
         }
@@ -225,10 +245,12 @@ impl ToNav for hir::File {
     fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
+        let highlight_ranges = Some(vec![full_range]);
         NavigationTarget {
             file_id: self.file_id,
             full_range,
             focus_range: None,
+            highlight_ranges,
             name: self.name(db.upcast()),
             kind: SymbolKind::File,
         }
@@ -239,10 +261,12 @@ impl ToNav for hir::VarDef {
     fn to_nav(&self, db: &dyn DefDatabase) -> NavigationTarget {
         let source = self.source(db.upcast());
         let full_range = source.syntax().text_range();
+        let highlight_ranges = Some(vec![full_range]);
         NavigationTarget {
             file_id: self.file.file_id,
             full_range,
             focus_range: None,
+            highlight_ranges,
             name: self.name(db.upcast()).raw(),
             kind: SymbolKind::Variable,
         }
