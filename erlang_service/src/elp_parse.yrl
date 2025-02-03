@@ -55,7 +55,7 @@ maybe_expr maybe_match_exprs maybe_match.
 Terminals
 char integer float atom sigil_prefix string sigil_suffix var
 
-'(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' ';' ':' '#' '.'
+'(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' '<:-' ';' ':' '#' '.'
 'after' 'begin' 'case' 'try' 'catch' 'end' 'fun' 'if' 'of' 'receive' 'when'
 'maybe' 'else'
 'andalso' 'orelse'
@@ -63,7 +63,7 @@ char integer float atom sigil_prefix string sigil_suffix var
 '*' '/' 'div' 'rem' 'band' 'and'
 '+' '-' 'bor' 'bxor' 'bsl' 'bsr' 'or' 'xor'
 '++' '--'
-'==' '/=' '=<' '<' '>=' '>' '=:=' '=/=' '<=' '=>' ':='
+'==' '/=' '=<' '<' '>=' '>' '=:=' '=/=' '<=' '<:=' '=>' ':='
 '<<' '>>'
 '!' '=' '::' '..' '...'
 '?='
@@ -338,8 +338,11 @@ lc_exprs -> lc_expr ',' lc_exprs : ['$1'|'$3'].
 
 lc_expr -> expr : '$1'.
 lc_expr -> map_field_exact '<-' expr : {m_generate, ?anno('$1', '$3'), '$1', '$3'}.
+lc_expr -> map_field_exact '<:-' expr : {m_generate_strict, ?anno('$1', '$3'), '$1', '$3'}.
 lc_expr -> expr '<-' expr : {generate,?anno('$1','$3'),'$1','$3'}.
+lc_expr -> expr '<:-' expr : {generate_strict,?anno('$1','$3'),'$1','$3'}.
 lc_expr -> binary '<=' expr : {b_generate,?anno('$1','$3'),'$1','$3'}.
+lc_expr -> binary '<:=' expr : {b_generate_strict,?anno('$1','$3'),'$1','$3'}.
 
 tuple -> '{' '}' : {tuple,?anno('$1','$2'),[]}.
 tuple -> '{' exprs '}' : {tuple,?anno('$1','$3'),'$2'}.
@@ -738,8 +741,11 @@ Erlang code.
 
 -type af_generator() ::
     {'generate', anno(), af_pattern(), abstract_expr()}
+    | {'generate_strict', anno(), af_pattern(), abstract_expr()}
     | {'m_generate', anno(), af_assoc_exact(af_pattern()), abstract_expr()}
-    | {'b_generate', anno(), af_pattern(), abstract_expr()}.
+    | {'m_generate_strict', anno(), af_assoc_exact(af_pattern()), abstract_expr()}
+    | {'b_generate', anno(), af_pattern(), abstract_expr()}
+    | {'b_generate_strict', anno(), af_pattern(), abstract_expr()}.
 
 -type af_filter() :: abstract_expr().
 

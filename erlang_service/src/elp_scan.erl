@@ -359,13 +359,20 @@ scan1("?=" ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '?=', 2);
 scan1("?" = Cs, St, Off, Toks) ->
     {more, {Cs, St, Off, Toks, [], fun scan/5}};
-%% << <- <=
+%% << <:- <- <:= <=
 scan1("<<" ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '<<', 2);
+
+scan1("<:-" ++Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, '<:-', 3);
 scan1("<-" ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '<-', 2);
+scan1("<:=" ++ Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, '<:=', 3);
 scan1("<=" ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '<=', 2);
+scan1("<:" = Cs, St, Off, Toks) ->
+    {more, {Cs, St, Off, Toks, [], fun scan/5}};
 scan1("<" = Cs, St, Off, Toks) ->
     {more, {Cs, St, Off, Toks, [], fun scan/5}};
 %% >> >=

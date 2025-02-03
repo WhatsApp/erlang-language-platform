@@ -2573,6 +2573,23 @@ baz(1)->4.
     }
 
     #[test]
+    fn erlang_service_strict_generators() {
+        check_diagnostics(
+            r#"
+               //- erlang_service
+               //- /src/main.erl
+                   -module(main).
+                   -export([foo/3]).
+
+                   foo(List, Bytes, Map) ->
+                       [X || X <:- List, X >= 5],
+                       << Byte || <<Byte>> <:= Bytes, Byte >= 5>>,
+                       #{KK => VV || KK := VV <:- Map}.
+            "#,
+        );
+    }
+
+    #[test]
     fn edoc_generic_diagnostics_suppressed() {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::ErlangService("O0000".to_string()));
