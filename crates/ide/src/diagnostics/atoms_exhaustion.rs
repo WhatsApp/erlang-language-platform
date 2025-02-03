@@ -18,7 +18,7 @@ use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MakeDiagCtx;
-// @fb-only
+// @fb-only: 
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -47,7 +47,7 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
             // FunctionMatch::mfa("erlang", "binary_to_term", 2),
         ]
         .into_iter()
-        // @fb-only
+        // @fb-only: 
         .collect();
 
         static ref BAD_CALLS_MFAS: Vec<(&'static FunctionMatch, ())> = BAD_CALLS
@@ -61,7 +61,7 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
         .for_each(|(_arity, def)| {
             if def.file.file_id == file_id {
                 let is_relevant;
-                // @fb-only
+                // @fb-only: 
                 is_relevant = true; // @oss-only
                 if is_relevant {
                     check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
@@ -88,7 +88,7 @@ fn check_function(
                    ..
                }: CheckCallCtx<'_, ()>| {
             let is_safe;
-            // @fb-only
+            // @fb-only: 
             is_safe = false; // @oss-only
             if !is_safe {
                 match args.as_vec()[..] {
