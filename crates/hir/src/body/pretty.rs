@@ -587,22 +587,39 @@ impl<'a> Printer<'a> {
                 self.indent_level -= 1;
                 writeln!(self)?;
                 self.print_seq(exprs, None, "||", end, ",", |this, expr| match expr {
-                    ComprehensionExpr::BinGenerator { pat, expr } => {
+                    ComprehensionExpr::BinGenerator { pat, expr, strict } => {
                         this.print_pat(&this.body[*pat])?;
-                        write!(this, " <= ")?;
+                        if *strict {
+                            write!(this, " <:= ")?;
+                        } else {
+                            write!(this, " <= ")?;
+                        }
                         this.print_expr(&this.body[*expr])
                     }
-                    ComprehensionExpr::ListGenerator { pat, expr } => {
+                    ComprehensionExpr::ListGenerator { pat, expr, strict } => {
                         this.print_pat(&this.body[*pat])?;
-                        write!(this, " <- ")?;
+                        if *strict {
+                            write!(this, " <:- ")?;
+                        } else {
+                            write!(this, " <- ")?;
+                        }
                         this.print_expr(&this.body[*expr])
                     }
                     ComprehensionExpr::Expr(expr) => this.print_expr(&this.body[*expr]),
-                    ComprehensionExpr::MapGenerator { key, value, expr } => {
+                    ComprehensionExpr::MapGenerator {
+                        key,
+                        value,
+                        expr,
+                        strict,
+                    } => {
                         this.print_pat(&this.body[*key])?;
                         write!(this, " := ")?;
                         this.print_pat(&this.body[*value])?;
-                        write!(this, " <- ")?;
+                        if *strict {
+                            write!(this, " <:- ")?;
+                        } else {
+                            write!(this, " <- ")?;
+                        }
                         this.print_expr(&this.body[*expr])
                     }
                 })

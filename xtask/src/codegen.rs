@@ -741,7 +741,9 @@ fn map_name(name: &str) -> Result<NameType> {
         // begin
         "||" => Ok(Punctuation("PipePipe".into())),
         "<-" => Ok(Punctuation("LtDash".into())),
+        "<:-" => Ok(Punctuation("LtColonDash".into())),
         "<=" => Ok(Punctuation("LtEq".into())),
+        "<:=" => Ok(Punctuation("LtColonEq".into())),
         "+" => Ok(Punctuation("Plus".into())),
         // bnot
         // not

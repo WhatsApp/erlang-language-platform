@@ -948,6 +948,16 @@ impl From<&MacroCallName> for SubId {
     }
 }
 
+impl From<&bool> for SubId {
+    fn from(value: &bool) -> Self {
+        if *value {
+            SubId::Constant("true".to_string())
+        } else {
+            SubId::Constant("false".to_string())
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubIdRef<'a> {
     AnyExprRef(AnyExprRef<'a>),
@@ -1104,15 +1114,21 @@ impl PatternIterator {
                     PatternIterator::as_pattern_list(
                         bs.into_iter()
                             .chain(exprs.iter().flat_map(|cb| match cb {
-                                ComprehensionExpr::BinGenerator { pat, expr } => {
-                                    vec!["CBB".into(), (*pat).into(), (*expr).into()]
+                                ComprehensionExpr::BinGenerator { pat, expr, strict } => {
+                                    vec!["CBB".into(), strict.into(), (*pat).into(), (*expr).into()]
                                 }
-                                ComprehensionExpr::ListGenerator { pat, expr } => {
-                                    vec!["CBL".into(), (*pat).into(), (*expr).into()]
+                                ComprehensionExpr::ListGenerator { pat, expr, strict } => {
+                                    vec!["CBL".into(), strict.into(), (*pat).into(), (*expr).into()]
                                 }
-                                ComprehensionExpr::MapGenerator { key, value, expr } => {
+                                ComprehensionExpr::MapGenerator {
+                                    key,
+                                    value,
+                                    expr,
+                                    strict,
+                                } => {
                                     vec![
                                         "CBM".into(),
+                                        strict.into(),
                                         (*key).into(),
                                         (*value).into(),
                                         (*expr).into(),

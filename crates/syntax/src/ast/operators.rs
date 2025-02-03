@@ -189,3 +189,21 @@ impl fmt::Display for MapOp {
         f.write_str(str)
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum GeneratorOp {
+    Plain { strict: bool },
+    Binary { strict: bool },
+}
+
+impl fmt::Display for GeneratorOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            GeneratorOp::Plain { strict: false } => "<-",
+            GeneratorOp::Plain { strict: true } => "<:-",
+            GeneratorOp::Binary { strict: false } => "<=",
+            GeneratorOp::Binary { strict: true } => "<:=",
+        };
+        f.write_str(str)
+    }
+}

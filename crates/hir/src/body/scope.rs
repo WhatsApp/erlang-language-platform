@@ -483,12 +483,20 @@ fn compute_expr_scopes(
             let scope = &mut scopes.new_scope(*scope);
             for expr in exprs {
                 match expr {
-                    crate::ComprehensionExpr::BinGenerator { pat, expr } => {
+                    crate::ComprehensionExpr::BinGenerator {
+                        pat,
+                        expr,
+                        strict: _,
+                    } => {
                         compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
                         *scope = scopes.new_scope(*scope);
                         scopes.add_bindings(body, scope, *pat, &mut sub_vt, AddBinding::Always);
                     }
-                    crate::ComprehensionExpr::ListGenerator { pat, expr } => {
+                    crate::ComprehensionExpr::ListGenerator {
+                        pat,
+                        expr,
+                        strict: _,
+                    } => {
                         compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
                         *scope = scopes.new_scope(*scope);
                         scopes.add_bindings(body, scope, *pat, &mut sub_vt, AddBinding::Always);
@@ -496,7 +504,12 @@ fn compute_expr_scopes(
                     crate::ComprehensionExpr::Expr(expr) => {
                         compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt)
                     }
-                    crate::ComprehensionExpr::MapGenerator { key, value, expr } => {
+                    crate::ComprehensionExpr::MapGenerator {
+                        key,
+                        value,
+                        expr,
+                        strict: _,
+                    } => {
                         compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
                         *scope = scopes.new_scope(*scope);
                         scopes.add_bindings(body, scope, *key, &mut sub_vt, AddBinding::Always);

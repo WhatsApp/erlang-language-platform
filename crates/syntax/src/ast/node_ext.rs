@@ -22,6 +22,7 @@ use smol_str::SmolStr;
 use stdx::trim_indent;
 
 use super::generated::nodes;
+use super::operators::GeneratorOp;
 use super::ArithOp;
 use super::BinaryOp;
 use super::CompOp;
@@ -473,6 +474,60 @@ fn trim_quotes_and_sigils(s: &str) -> String {
             .unwrap_or(trimmed)
     } else {
         trimmed
+    }
+}
+
+// Generator types
+impl super::Generator {
+    pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
+        generator_op(&self.syntax())
+    }
+
+    pub fn strict(&self) -> bool {
+        self.op()
+            .map(|(op, _)| op == GeneratorOp::Plain { strict: true })
+            .unwrap_or(false)
+    }
+}
+
+impl super::BGenerator {
+    pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
+        generator_op(&self.syntax())
+    }
+
+    pub fn strict(&self) -> bool {
+        self.op()
+            .map(|(op, _)| op == GeneratorOp::Binary { strict: true })
+            .unwrap_or(false)
+    }
+}
+
+impl super::MapGenerator {
+    pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
+        generator_op(&self.syntax())
+    }
+
+    pub fn strict(&self) -> bool {
+        self.op()
+            .map(|(op, _)| op == GeneratorOp::Plain { strict: true })
+            .unwrap_or(false)
+    }
+}
+
+fn generator_op(parent: &SyntaxNode) -> Option<(GeneratorOp, SyntaxToken)> {
+    parent
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find_map(|c| Some((match_generator_op(&c)?, c)))
+}
+
+fn match_generator_op(c: &SyntaxToken) -> Option<GeneratorOp> {
+    match c.kind() {
+        ANON_LT_DASH => Some(GeneratorOp::Plain { strict: false }),
+        ANON_LT_COLON_DASH => Some(GeneratorOp::Plain { strict: true }),
+        ANON_LT_EQ => Some(GeneratorOp::Binary { strict: false }),
+        ANON_LT_COLON_EQ => Some(GeneratorOp::Binary { strict: true }),
+        _ => None,
     }
 }
 

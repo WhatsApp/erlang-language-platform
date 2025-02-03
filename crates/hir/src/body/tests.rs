@@ -614,6 +614,40 @@ foo() ->
 }
 
 #[test]
+fn strict_comprehensions() {
+    check(
+        r#"
+foo() ->
+    [X || X <:- List, X >= 5],
+    << Byte || <<Byte>> <:= Bytes, Byte >= 5>>,
+    #{KK => VV || KK := VV <:- Map}.
+"#,
+        expect![[r#"
+            foo() ->
+                [
+                    X
+                ||
+                    X <:- List,
+                    (X >= 5)
+                ],
+                <<
+                    Byte
+                ||
+                    <<
+                        Byte
+                    >> <:= Bytes,
+                    (Byte >= 5)
+                >>,
+                #{
+                    KK => VV
+                ||
+                    KK := VV <:- Map
+                }.
+        "#]],
+    );
+}
+
+#[test]
 fn fun() {
     check(
         r#"

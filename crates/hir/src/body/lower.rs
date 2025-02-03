@@ -1751,18 +1751,31 @@ impl<'a> Ctx<'a> {
                 ast::LcExpr::BGenerator(bin_gen) => {
                     let pat = self.lower_optional_pat(bin_gen.lhs());
                     let expr = self.lower_optional_expr(bin_gen.rhs());
-                    ComprehensionExpr::BinGenerator { pat, expr }
+                    ComprehensionExpr::BinGenerator {
+                        pat,
+                        expr,
+                        strict: bin_gen.strict(),
+                    }
                 }
                 ast::LcExpr::Generator(list_gen) => {
                     let pat = self.lower_optional_pat(list_gen.lhs());
                     let expr = self.lower_optional_expr(list_gen.rhs());
-                    ComprehensionExpr::ListGenerator { pat, expr }
+                    ComprehensionExpr::ListGenerator {
+                        pat,
+                        expr,
+                        strict: list_gen.strict(),
+                    }
                 }
                 ast::LcExpr::MapGenerator(map_gen) => {
                     let key = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.key()));
                     let value = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.value()));
                     let expr = self.lower_optional_expr(map_gen.rhs());
-                    ComprehensionExpr::MapGenerator { key, value, expr }
+                    ComprehensionExpr::MapGenerator {
+                        key,
+                        value,
+                        expr,
+                        strict: map_gen.strict(),
+                    }
                 }
             })
             .collect()

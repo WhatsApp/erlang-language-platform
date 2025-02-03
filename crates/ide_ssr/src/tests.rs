@@ -643,12 +643,22 @@ fn ssr_expr_list_comprehension() {
         "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
         &["[XX || XX <- List, XX >= 5]"],
     );
+    assert_matches(
+        "ssr: [XX || XX <:- _@List, _@Cond].",
+        "bar() -> XX = 1, [XX || XX <:- List, XX >= 5].",
+        &["[XX || XX <:- List, XX >= 5]"],
+    );
 }
 
 #[test]
 fn ssr_expr_list_comprehension_binary_generator_pattern() {
     assert_matches(
         "ssr: <<XX || XX <= _@List, _@Cond>>.",
+        "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
+        &[],
+    );
+    assert_matches(
+        "ssr: <<XX || XX <:= _@List, _@Cond>>.",
         "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
         &[],
     );
@@ -661,6 +671,11 @@ fn ssr_expr_list_comprehension_binary() {
         "bar(List) -> XX = 1, <<XX || XX <= List>>.",
         &["<<XX || XX <= List>>"],
     );
+    assert_matches(
+        "ssr: <<XX || XX <:= _@List>>.",
+        "bar(List) -> XX = 1, <<XX || XX <:= List>>.",
+        &["<<XX || XX <:= List>>"],
+    );
 }
 
 #[test]
@@ -669,6 +684,11 @@ fn ssr_expr_map_comprehension() {
         "ssr: #{_@K => _@V || _@K := _@V <- _@Map}.",
         "bar(Map) -> #{ K => V || K := V <- Map}.",
         &["#{ K => V || K := V <- Map}"],
+    );
+    assert_matches(
+        "ssr: #{_@K => _@V || _@K := _@V <:- _@Map}.",
+        "bar(Map) -> #{ K => V || K := V <:- Map}.",
+        &["#{ K => V || K := V <:- Map}"],
     );
 }
 

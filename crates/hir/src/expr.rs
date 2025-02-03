@@ -621,15 +621,18 @@ pub enum ComprehensionExpr {
     BinGenerator {
         pat: PatId,
         expr: ExprId,
+        strict: bool,
     },
     ListGenerator {
         pat: PatId,
         expr: ExprId,
+        strict: bool,
     },
     MapGenerator {
         key: PatId,
         value: PatId,
         expr: ExprId,
+        strict: bool,
     },
     Expr(ExprId),
 }

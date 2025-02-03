@@ -967,16 +967,29 @@ impl<'a, T> FoldCtx<'a, T> {
         exprs
             .iter()
             .fold(r, |acc, comprehension_expr| match comprehension_expr {
-                ComprehensionExpr::BinGenerator { pat, expr } => {
+                ComprehensionExpr::BinGenerator {
+                    pat,
+                    expr,
+                    strict: _,
+                } => {
                     let r = self.do_fold_pat(*pat, acc);
                     self.do_fold_expr(*expr, r)
                 }
-                ComprehensionExpr::ListGenerator { pat, expr } => {
+                ComprehensionExpr::ListGenerator {
+                    pat,
+                    expr,
+                    strict: _,
+                } => {
                     let r = self.do_fold_pat(*pat, acc);
                     self.do_fold_expr(*expr, r)
                 }
                 ComprehensionExpr::Expr(expr) => self.do_fold_expr(*expr, acc),
-                ComprehensionExpr::MapGenerator { key, value, expr } => {
+                ComprehensionExpr::MapGenerator {
+                    key,
+                    value,
+                    expr,
+                    strict: _,
+                } => {
                     let r = self.do_fold_pat(*key, acc);
                     let r = self.do_fold_pat(*value, r);
                     self.do_fold_expr(*expr, r)

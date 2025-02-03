@@ -475,7 +475,7 @@ impl<'a> Printer<'a> {
                     this.print_labelled("exprs", false, &mut |this| {
                         exprs.iter().for_each(|expr| {
                             match expr {
-                                ComprehensionExpr::BinGenerator { pat, expr } => {
+                                ComprehensionExpr::BinGenerator { pat, expr, strict } => {
                                     this.print_herald(
                                         "ComprehensionExpr::BinGenerator",
                                         &mut |this| {
@@ -483,10 +483,11 @@ impl<'a> Printer<'a> {
                                             writeln!(this).ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
+                                            writeln!(format!("strict: {}", strict)).ok();
                                         },
                                     );
                                 }
-                                ComprehensionExpr::ListGenerator { pat, expr } => {
+                                ComprehensionExpr::ListGenerator { pat, expr, strict } => {
                                     this.print_herald(
                                         "ComprehensionExpr::ListGenerator",
                                         &mut |this| {
@@ -494,6 +495,7 @@ impl<'a> Printer<'a> {
                                             writeln!(this).ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
+                                            writeln!(format!("strict: {}", strict)).ok();
                                         },
                                     );
                                 }
@@ -503,7 +505,12 @@ impl<'a> Printer<'a> {
                                         writeln!(this).ok();
                                     });
                                 }
-                                ComprehensionExpr::MapGenerator { key, value, expr } => {
+                                ComprehensionExpr::MapGenerator {
+                                    key,
+                                    value,
+                                    expr,
+                                    strict,
+                                } => {
                                     this.print_herald(
                                         "ComprehensionExpr::MapGenerator",
                                         &mut |this| {
@@ -513,6 +520,7 @@ impl<'a> Printer<'a> {
                                             writeln!(this, " <-").ok();
                                             this.print_expr(expr);
                                             writeln!(this).ok();
+                                            writeln!(format!("strict: {}", strict)).ok();
                                         },
                                     );
                                 }
