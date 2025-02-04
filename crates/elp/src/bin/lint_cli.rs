@@ -507,7 +507,7 @@ struct FixResult {
     diff: Option<String>,
 }
 
-const LINT_APPLICATION_RECURSION_LIMIT: i32 = 50;
+const LINT_APPLICATION_RECURSION_LIMIT: i32 = 250;
 
 impl<'a> Lints<'a> {
     #[allow(clippy::too_many_arguments)]
