@@ -51,7 +51,6 @@ pub enum DiagnosticCode {
     UndefinedFunction,
     Unexpected(String),
     ExpressionCanBeSimplified,
-    ExpressionCanBeOptimised,
     CannotEvaluateCTCallbacks,
     MeckMissingNoLinkInInitPerSuite,
     AtomsExhaustion,
@@ -59,6 +58,13 @@ pub enum DiagnosticCode {
     BooleanPrecedence,
     UnexportedFunction,
     RecordTupleMatch,
+    UnnecessaryFlatteningToFindFlatLength,
+    UnnecessaryReversalToFindLastElementOfList,
+    UnnecessaryMapToListInComprehension,
+    MapsPutFunctionRatherThanSyntax,
+    MapsUpdateFunctionRatherThanSyntax,
+    MapsFindFunctionRatherThanSyntax,
+    ListsZipWithSeqRatherThanEnumerate,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -184,7 +190,13 @@ impl DiagnosticCode {
             DiagnosticCode::BooleanPrecedence => "W0025".to_string(),
             DiagnosticCode::UnexportedFunction => "W0026".to_string(),
             DiagnosticCode::RecordTupleMatch => "W0027".to_string(),
-            DiagnosticCode::ExpressionCanBeOptimised => "W0028".to_string(), // expression-can-be-optimised
+            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength => "W0028".to_string(),
+            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList => "W0029".to_string(),
+            DiagnosticCode::MapsPutFunctionRatherThanSyntax => "W0030".to_string(),
+            DiagnosticCode::MapsUpdateFunctionRatherThanSyntax => "W0031".to_string(),
+            DiagnosticCode::MapsFindFunctionRatherThanSyntax => "W0032".to_string(),
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => "W0033".to_string(),
+            DiagnosticCode::UnnecessaryMapToListInComprehension => "W0034".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -230,7 +242,27 @@ impl DiagnosticCode {
             DiagnosticCode::UnexportedFunction => "unexported_function".to_string(),
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
             DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
-            DiagnosticCode::ExpressionCanBeOptimised => "expression_can_be_optimised".to_string(),
+            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength => {
+                "unnecessary_flattening_to_find_flat_length".to_string()
+            }
+            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList => {
+                "unnecessary_reversal_to_find_last_element_of_list".to_string()
+            }
+            DiagnosticCode::MapsPutFunctionRatherThanSyntax => {
+                "maps_put_function_rather_than_syntax".to_string()
+            }
+            DiagnosticCode::MapsUpdateFunctionRatherThanSyntax => {
+                "maps_update_function_rather_than_syntax".to_string()
+            }
+            DiagnosticCode::MapsFindFunctionRatherThanSyntax => {
+                "maps_find_rather_than_syntax".to_string()
+            }
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => {
+                "lists_zip_with_seq_rather_than_enumerate".to_string()
+            }
+            DiagnosticCode::UnnecessaryMapToListInComprehension => {
+                "unnecessary_map_to_list_in_comprehension".to_string()
+            }
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -345,7 +377,13 @@ impl DiagnosticCode {
             DiagnosticCode::UndefinedFunction => false,
             DiagnosticCode::Unexpected(_) => false,
             DiagnosticCode::ExpressionCanBeSimplified => false,
-            DiagnosticCode::ExpressionCanBeOptimised => false,
+            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength => false,
+            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList => false,
+            DiagnosticCode::UnnecessaryMapToListInComprehension => false,
+            DiagnosticCode::MapsPutFunctionRatherThanSyntax => false,
+            DiagnosticCode::MapsUpdateFunctionRatherThanSyntax => false,
+            DiagnosticCode::MapsFindFunctionRatherThanSyntax => false,
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => false,
             DiagnosticCode::CannotEvaluateCTCallbacks => false,
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
             DiagnosticCode::AtomsExhaustion => false,

@@ -123,11 +123,11 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
         message,
         inefficient_call_range,
     )
-    .with_severity(Severity::Warning)
+    .with_severity(Severity::WeakWarning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
 }
@@ -149,11 +149,11 @@ fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Diagnostic 
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
         message,
         inefficient_call_range,
     )
-    .with_severity(Severity::Warning)
+    .with_severity(Severity::WeakWarning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
 }
@@ -170,17 +170,17 @@ fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Di
     let efficient_enumerate = format!("lists:enumerate({index_arg}, {step_arg}, {list_arg})");
     builder.replace(inefficient_call_range, efficient_enumerate);
     let fixes = vec![fix(
-        "lists_zip_lists_seq_to_lists_enumerate",
+        "list_zip_with_seq_rather_than_enumerate",
         "Rewrite to use lists:enumerate/3",
         builder.finish(),
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
         message,
         inefficient_call_range,
     )
-    .with_severity(Severity::Warning)
+    .with_severity(Severity::WeakWarning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
     .add_categories([Category::SimplificationRule])
@@ -197,7 +197,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::ListsZipWithSeqRatherThanEnumerate
     }
 
     #[track_caller]
@@ -218,7 +218,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(List) -> lists:zip(lists:seq(1,length(List)),List).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
             "#,
         )
     }
@@ -262,7 +262,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(N, List) -> lists:zip(lists:seq(N,length(List)),List).
-         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unnecessary intermediate list allocated.
+         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
             "#,
         )
     }
@@ -294,7 +294,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(N, Step, List) -> lists:zip(lists:seq(N,Step,length(List)),List).
-         %%                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unnecessary intermediate list allocated.
+         %%                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
             "#,
         )
     }

@@ -91,7 +91,7 @@ fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Diagnostic {
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
         message,
         inefficient_call_range,
     )
@@ -111,13 +111,13 @@ fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Diagnostic {
     let efficient_last = format!("{last_elem_binding} = lists:last({list_arg})");
     builder.replace(inefficient_call_range, efficient_last);
     let fixes = vec![fix(
-        "list_head_reverse_to_last",
+        "unnecessary_reversal_to_find_last_element_of_list",
         "Rewrite to use lists:last/1",
         builder.finish(),
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
         message,
         inefficient_call_range,
     )
@@ -138,7 +138,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::UnnecessaryReversalToFindLastElementOfList
     }
 
     #[track_caller]

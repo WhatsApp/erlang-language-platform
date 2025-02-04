@@ -84,11 +84,11 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         inefficient_comprehension_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::UnnecessaryMapToListInComprehension,
         message,
         inefficient_comprehension_range,
     )
-    .with_severity(Severity::Warning)
+    .with_severity(Severity::WeakWarning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
     .add_categories([Category::SimplificationRule])
@@ -105,7 +105,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::UnnecessaryMapToListInComprehension
     }
 
     #[track_caller]
@@ -127,7 +127,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(Map) -> [K + V + 1 || {K,V} <- maps:to_list(Map)].
-         %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unnecessary intermediate list allocated.
+         %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
             "#,
         )
     }

@@ -60,14 +60,20 @@ enum MapInsertionFunction {
 impl MapInsertionFunction {
     pub fn to_fix_id(&self) -> &'static str {
         match self {
-            MapInsertionFunction::Put => "map_put_function_to_syntax",
-            MapInsertionFunction::Update => "map_update_function_to_syntax",
+            MapInsertionFunction::Put => "maps_put_function_rather_than_syntax",
+            MapInsertionFunction::Update => "maps_update_function_rather_than_syntax",
         }
     }
     pub fn to_fix_label(&self) -> &'static str {
         match self {
             MapInsertionFunction::Put => "Rewrite to use map put syntax",
             MapInsertionFunction::Update => "Rewrite to use map update syntax",
+        }
+    }
+    pub fn to_code(&self) -> DiagnosticCode {
+        match self {
+            MapInsertionFunction::Put => DiagnosticCode::MapsPutFunctionRatherThanSyntax,
+            MapInsertionFunction::Update => DiagnosticCode::MapsUpdateFunctionRatherThanSyntax,
         }
     }
     pub fn to_replacement_str(&self, sema: &Semantic, m: &Match) -> String {
@@ -143,15 +149,11 @@ fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapInsertionFunction) -
         builder.finish(),
         map_function_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
-        message,
-        map_function_call_range,
-    )
-    .with_severity(Severity::Information)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
+    Diagnostic::new(op.to_code(), message, map_function_call_range)
+        .with_severity(Severity::Information)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]
@@ -165,7 +167,8 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::MapsPutFunctionRatherThanSyntax
+            || d.code == DiagnosticCode::MapsUpdateFunctionRatherThanSyntax
     }
 
     #[track_caller]

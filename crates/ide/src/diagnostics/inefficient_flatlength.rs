@@ -67,17 +67,17 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
     let efficient_flatlength = format!("lists:flatlength({nested_list_arg_match_src})");
     builder.replace(inefficient_call_range, efficient_flatlength);
     let fixes = vec![fix(
-        "length_lists_flatten_to_lists_flatlength",
+        "unnecessary_flattening_to_find_flat_length",
         "Rewrite to use lists:flatlength/1",
         builder.finish(),
         inefficient_call_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::UnnecessaryFlatteningToFindFlatLength,
         message,
         inefficient_call_range,
     )
-    .with_severity(Severity::Warning)
+    .with_severity(Severity::WeakWarning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
     .add_categories([Category::SimplificationRule])
@@ -94,7 +94,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::UnnecessaryFlatteningToFindFlatLength
     }
 
     #[track_caller]
@@ -115,7 +115,7 @@ mod tests {
          -module(inefficient_flatlength).
 
          fn(NestedList) -> length(lists:flatten(NestedList)).
-         %%                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unnecessary intermediate flat-list allocated.
+         %%                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate flat-list allocated.
             "#,
         )
     }

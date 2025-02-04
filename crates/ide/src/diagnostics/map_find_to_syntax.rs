@@ -188,13 +188,13 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
     let map_syntax_replacement = get_map_syntax_replacement(sema, matched);
     builder.replace(old_query_range, map_syntax_replacement);
     let fixes = vec![fix(
-        "map_find_function_to_syntax",
+        "maps_find_rather_than_syntax",
         "Rewrite to use map query syntax",
         builder.finish(),
         old_query_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeOptimised,
+        DiagnosticCode::MapsFindFunctionRatherThanSyntax,
         message,
         old_query_range,
     )
@@ -231,7 +231,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeOptimised
+        d.code == DiagnosticCode::MapsFindFunctionRatherThanSyntax
     }
 
     #[track_caller]
@@ -253,7 +253,7 @@ mod tests {
 
          get_key() -> [a,b].
 
-         fn(K, V, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(get_key(), M) of {ok, V} -> Found; error -> NotFound end.
             "#,
@@ -267,7 +267,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(#{}, M) of {ok, V} -> Found; error -> NotFound end.
             "#,
@@ -283,7 +283,7 @@ mod tests {
 
          get_key() -> [a,b].
 
-         fn(K, V, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find({tag,get_key()}, M) of {ok, V} -> Found; error -> NotFound end.
             "#,
@@ -297,7 +297,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(my_key,M) of {ok, V} -> Found; error -> NotFound end.
          %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
@@ -312,7 +312,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find({key_a,key_b},M) of {ok, V} -> Found; error -> NotFound end.
          %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
@@ -327,7 +327,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; error -> NotFound end.
          %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
@@ -342,7 +342,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; _ -> NotFound end.
          %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
@@ -357,7 +357,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Map, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:fi~nd(K,M) of
                 {ok, V} ->
@@ -369,7 +369,7 @@ mod tests {
             expect![[r#"
          -module(map_find_function).
 
-         fn(K, V, Map, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case M of
                 #{K := V} ->
@@ -388,7 +388,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(K, V, Map, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:fi~nd(K,M) of
                 {ok, V} ->
@@ -400,7 +400,7 @@ mod tests {
             expect![[r#"
          -module(map_find_function).
 
-         fn(K, V, Map, Found, NotFound) ->
+         fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case M of
                 #{K := V} ->
@@ -419,7 +419,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(V, Map, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:fi~nd(my_key,M) of
                 {ok, V} ->
@@ -431,7 +431,7 @@ mod tests {
             expect![[r#"
          -module(map_find_function).
 
-         fn(V, Map, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case M of
                 #{my_key := V} ->
@@ -450,7 +450,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(V, Map, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:fi~nd({key_a,key_b},M) of
                 {ok, V} ->
@@ -462,7 +462,7 @@ mod tests {
             expect![[r#"
          -module(map_find_function).
 
-         fn(V, Map, Found, NotFound) ->
+         fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case M of
                 #{{key_a,key_b} := V} ->
@@ -481,7 +481,7 @@ mod tests {
          //- /src/map_find_function.erl
          -module(map_find_function).
 
-         fn(KB, V, Map, Found, NotFound) ->
+         fn(KB, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:fi~nd({key_a,KB},M) of
                 {ok, V} ->
@@ -493,7 +493,7 @@ mod tests {
             expect![[r#"
          -module(map_find_function).
 
-         fn(KB, V, Map, Found, NotFound) ->
+         fn(KB, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case M of
                 #{{key_a,KB} := V} ->
