@@ -21,6 +21,7 @@ use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
 use hir::Semantic;
 
+use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
@@ -79,6 +80,7 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
     .with_severity(Severity::Warning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
+    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]

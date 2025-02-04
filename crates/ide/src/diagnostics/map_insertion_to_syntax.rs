@@ -27,6 +27,7 @@ use hir::AnyExprId;
 use hir::Expr;
 use hir::Semantic;
 
+use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
@@ -150,6 +151,7 @@ fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapInsertionFunction) -
     .with_severity(Severity::Information)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
+    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]

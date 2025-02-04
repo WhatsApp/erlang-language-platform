@@ -25,6 +25,7 @@ use hir::Expr;
 use hir::Literal;
 use hir::Semantic;
 
+use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
@@ -182,6 +183,7 @@ fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Di
     .with_severity(Severity::Warning)
     .with_ignore_fix(sema, file_id)
     .with_fixes(Some(fixes))
+    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]
