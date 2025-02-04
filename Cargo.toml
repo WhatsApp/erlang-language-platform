@@ -99,8 +99,8 @@ threadpool = "1.8.1"
 timeout-readwrite = "0.3.3"
 toml = "0.5"
 tree-sitter = "0.23.2"
-# @fb-only
-tree-sitter-erlang = "0.10.0" # @oss-only
+# @fb-only:
+tree-sitter-erlang = "0.11.0" # @oss-only
 url = "2.5.4"
 vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }

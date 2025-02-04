@@ -107,7 +107,7 @@ pub mod diagnostics;
 pub mod diagnostics_collection;
 pub mod diff;
 mod highlight_related;
-// @fb-only
+// @fb-only:
 
 pub use annotations::Annotation;
 pub use annotations::AnnotationKind;
