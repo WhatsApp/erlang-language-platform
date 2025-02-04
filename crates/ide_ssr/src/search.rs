@@ -20,7 +20,6 @@ use crate::matching;
 use crate::matching::Match;
 use crate::MatchFinder;
 use crate::SsrPattern;
-use crate::SsrSearchScope;
 
 impl MatchFinder<'_> {
     /// Adds all matches for `rule` to `matches_out`. Matches may
@@ -31,13 +30,11 @@ impl MatchFinder<'_> {
     pub(crate) fn find_matches_for_rule(&self, rule: &SsrPattern, matches_out: &mut Vec<Match>) {
         let pattern_body = rule.get_body(self.sema).expect("Cannot get pattern_body");
         let pattern_body = fold_body(self.strategy, &pattern_body);
-        let code = SsrSearchScope::WholeFile(self.file_id);
-        self.slow_scan_node(&code, rule, &None, matches_out, &pattern_body);
+        self.slow_scan_node(rule, &None, matches_out, &pattern_body);
     }
 
     fn slow_scan_node(
         &self,
-        code: &SsrSearchScope,
         rule: &SsrPattern,
         restrict_range: &Option<FileRange>,
         matches_out: &mut Vec<Match>,
@@ -48,7 +45,7 @@ impl MatchFinder<'_> {
         //   Most will fail fast because the initial node
         //   does not match.
 
-        code.fold(
+        self.scope.fold(
             &self.sema,
             self.strategy,
             (),

@@ -23,6 +23,7 @@ use hir::Strategy;
 
 use crate::MatchFinder;
 use crate::SsrRule;
+use crate::SsrSearchScope;
 
 #[track_caller]
 fn parse_error_text(query: &str) -> String {
@@ -202,7 +203,8 @@ fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, e
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
-    let mut match_finder = MatchFinder::in_context(&sema, strategy, position.file_id);
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(position.file_id));
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matched_strings: Vec<String> = match_finder
@@ -240,7 +242,7 @@ fn assert_match_placeholder(
             macros: MacroStrategy::Expand,
             parens: ParenStrategy::InvisibleParens,
         },
-        position.file_id,
+        SsrSearchScope::WholeFile(position.file_id),
     );
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);

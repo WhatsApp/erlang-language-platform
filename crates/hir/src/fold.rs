@@ -206,7 +206,6 @@ impl Fold for Define {
 // ---------------------------------------------------------------------
 
 /// Fold over the contents of a file.
-#[allow(dead_code)] // Until the balance of the stack lands and it gets used
 pub fn fold_file<'a, T>(
     sema: &Semantic,
     strategy: Strategy,
@@ -288,6 +287,26 @@ pub fn fold_file<'a, T>(
         form_callback(r, On::Exit, form_idx)
     });
     r
+}
+
+/// Fold over only the functions in a file.
+pub fn fold_file_functions<'a, T>(
+    sema: &Semantic,
+    strategy: Strategy,
+    file_id: FileId,
+    initial: T,
+    callback: AnyCallBack<'a, T>,
+) -> T {
+    sema.def_map_local(file_id)
+        .get_functions()
+        .fold(initial, |r, (_na, def)| {
+            sema.fold_function(
+                strategy,
+                InFile::new(file_id, def.function_id),
+                r,
+                &mut |a, _, b| callback(a, b),
+            )
+        })
 }
 
 // ---------------------------------------------------------------------

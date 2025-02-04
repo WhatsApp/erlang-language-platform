@@ -71,6 +71,7 @@ use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use hir::fold::fold_body;
 use hir::fold::fold_file;
+use hir::fold::fold_file_functions;
 use hir::fold::AnyCallBack;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
@@ -114,6 +115,7 @@ pub use matching::SubId;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SsrSearchScope {
     WholeFile(FileId),
+    FunctionsOnly(FileId),
 }
 
 impl SsrSearchScope {
@@ -129,6 +131,9 @@ impl SsrSearchScope {
             SsrSearchScope::WholeFile(file_id) => {
                 fold_file(sema, strategy, *file_id, initial, callback, form_callback)
             }
+            SsrSearchScope::FunctionsOnly(file_id) => {
+                fold_file_functions(sema, strategy, *file_id, initial, callback)
+            }
         }
     }
 }
@@ -140,7 +145,23 @@ pub fn match_pattern_in_file(
     pattern: &str,
 ) -> SsrMatches {
     let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
-    let mut match_finder = MatchFinder::in_context(&sema, strategy, file_id);
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches: SsrMatches = match_finder.matches().flattened();
+    matches
+}
+
+pub fn match_pattern_in_file_functions(
+    sema: &Semantic,
+    strategy: Strategy,
+    file_id: FileId,
+    pattern: &str,
+) -> SsrMatches {
+    let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::FunctionsOnly(file_id));
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches: SsrMatches = match_finder.matches().flattened();
@@ -331,7 +352,7 @@ pub struct MatchFinder<'a> {
     /// Our source of information about the user's code.
     sema: &'a Semantic<'a>,
     rules: Vec<SsrPattern>,
-    file_id: FileId,
+    scope: SsrSearchScope,
     pub debug_print: bool,
     strategy: Strategy,
 }
@@ -342,12 +363,12 @@ impl<'a> MatchFinder<'a> {
     pub fn in_context(
         sema: &'a Semantic<'a>,
         strategy: Strategy,
-        file_id: FileId,
+        scope: SsrSearchScope,
     ) -> MatchFinder<'a> {
         MatchFinder {
             sema,
             rules: Vec::new(),
-            file_id,
+            scope,
             debug_print: false,
             strategy,
         }
@@ -614,6 +635,7 @@ mod test {
     use hir::Strategy;
 
     use crate::match_pattern_in_file;
+    use crate::match_pattern_in_file_functions;
 
     #[test]
     fn test_match_pattern_in_file() {
@@ -665,6 +687,92 @@ mod test {
                                         0,
                                     ),
                                     range: 14..15,
+                                },
+                                code_id: AnyExprId(
+                                    Expr(
+                                        Idx::<Expr>(2),
+                                    ),
+                                ),
+                                inner_matches: SsrMatches {
+                                    matches: [],
+                                },
+                            },
+                        },
+                        placeholders_by_var: {
+                            Var(
+                                0,
+                            ): {
+                                AnyExprId(
+                                    Expr(
+                                        Idx::<Expr>(1),
+                                    ),
+                                ),
+                            },
+                        },
+                        rule_index: 0,
+                        depth: 0,
+                    },
+                ],
+            }
+        "#]]
+        .assert_debug_eq(&m);
+    }
+
+    #[test]
+    fn test_match_pattern_in_file_functions() {
+        // Note: currently we do not match types, so the spec will not
+        // match anyway. But show that we DO still match.
+        let fixture = r#"
+               -spec fn() -> {foo, a}.
+               fn() -> {foo, a}.
+                "#;
+
+        let (db, file_id) = RootDatabase::with_single_file(fixture);
+        let sema = Semantic::new(&db);
+
+        let m = match_pattern_in_file_functions(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            "ssr: {foo, _@A}.",
+        );
+        expect![[r#"
+            SsrMatches {
+                matches: [
+                    Match {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 32..40,
+                        },
+                        matched_node_body: FormIdx {
+                            file_id: FileId(
+                                0,
+                            ),
+                            form_id: FunctionClause(
+                                Idx::<FunctionClause>(0),
+                            ),
+                        },
+                        matched_node: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(3),
+                            ),
+                        ),
+                        placeholder_values: {
+                            AnyExprId(
+                                Expr(
+                                    Idx::<Expr>(1),
+                                ),
+                            ): PlaceholderMatch {
+                                range: FileRange {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    range: 38..39,
                                 },
                                 code_id: AnyExprId(
                                     Expr(
