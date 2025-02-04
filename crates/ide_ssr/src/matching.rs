@@ -537,12 +537,13 @@ impl<'a> Matcher<'a> {
         // What do we do if we have more than one possible match?
         // e.g. two placeholder field names, with placeholder RHS?
         // Pathological, ignore for now.
-
-        let non_placeholders: Vec<(&SubId, &Vec<SubId>)> = pattern_it
+        let (placeholders, non_placeholders): (
+            Vec<(&SubId, &Vec<SubId>)>,
+            Vec<(&SubId, &Vec<SubId>)>,
+        ) = pattern_it
             .children
             .iter()
-            .filter(|(k, _v)| !self.is_placeholder(k))
-            .collect();
+            .partition(|(k, _v)| self.is_placeholder_expr(k));
 
         // We are likely to have best results matching in order
         // (heuristic).  So pulling something out of the set is not
@@ -554,7 +555,17 @@ impl<'a> Matcher<'a> {
             if let Ok(index) = self.attempt_match_vec(phase, &p, &code_keys) {
                 code_keys.remove(index);
             } else {
-                fail_match!("no match in child vector");
+                fail_match!("no non-placeholder match in child vector");
+            };
+        }
+        // We have dealt with the non-placeholders, which give an explicit match.
+        // Now we assign the placeholders in the order they appear,
+        // with the fields in the order they appear.
+        for p in placeholders {
+            if let Ok(index) = self.attempt_match_vec(phase, &p, &code_keys) {
+                code_keys.remove(index);
+            } else {
+                fail_match!("no placeholder match in child vector");
             };
         }
         if !code_keys.is_empty() {
@@ -746,6 +757,17 @@ impl<'a> Matcher<'a> {
             || pattern_str == "Expr::SsrPlaceholder"
             || pattern_str == "TypeExpr::SsrPlaceholder"
             || pattern_str == "Term::SsrPlaceholder"
+    }
+
+    fn is_placeholder_expr(&self, id: &SubId) -> bool {
+        match id {
+            SubId::AnyExprId(any_expr_id) => match self.pattern_body.get_any(*any_expr_id) {
+                AnyExprRef::Expr(Expr::SsrPlaceholder(_)) => true,
+                AnyExprRef::Pat(Pat::SsrPlaceholder(_)) => true,
+                _ => false,
+            },
+            _ => false,
+        }
     }
 }
 

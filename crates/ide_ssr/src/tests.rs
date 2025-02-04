@@ -544,6 +544,7 @@ fn ssr_expr_match_map() {
         "bar() -> XX = 1, #{another => 3, field => XX}.",
         &["#{another => 3, field => XX}"],
     );
+    assert_matches("ssr: #{ }.", "bar() -> #{}.", &["#{}"]);
 }
 
 #[test]
@@ -1268,5 +1269,16 @@ fn ssr_do_not_match_pattern_missing() {
                    """.
          "#,
         &[],
+    );
+}
+
+#[test]
+fn ssr_complex_match() {
+    assert_matches(
+        "ssr: lists:foldl(fun({_@Key,_@Value}, _@Acc) -> _@Acc#{_@Key => _@Value} end, #{}, _@List).",
+        r#"
+         fn(List) -> lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List).
+         "#,
+        &["lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List)"],
     );
 }
