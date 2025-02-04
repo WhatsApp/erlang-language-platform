@@ -7,7 +7,7 @@
  * of this source tree.
  */
 
-//! Lint/fix: unused_function_args
+//! Lint/fix: simplify_expression
 //!
 //! Return a diagnostic if an expression can be trivially simplified. Covers things like
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
