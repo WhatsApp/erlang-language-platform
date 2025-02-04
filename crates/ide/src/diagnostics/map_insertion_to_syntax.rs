@@ -51,22 +51,22 @@ static VALUE_VAR: &str = "_@Value";
 static MAP_VAR: &str = "_@Map";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum MapFunction {
+enum MapInsertionFunction {
     Put,
     Update,
 }
 
-impl MapFunction {
+impl MapInsertionFunction {
     pub fn to_fix_id(&self) -> &'static str {
         match self {
-            MapFunction::Put => "map_put_function_to_syntax",
-            MapFunction::Update => "map_update_function_to_syntax",
+            MapInsertionFunction::Put => "map_put_function_to_syntax",
+            MapInsertionFunction::Update => "map_update_function_to_syntax",
         }
     }
     pub fn to_fix_label(&self) -> &'static str {
         match self {
-            MapFunction::Put => "Rewrite to use map put syntax",
-            MapFunction::Update => "Rewrite to use map update syntax",
+            MapInsertionFunction::Put => "Rewrite to use map put syntax",
+            MapInsertionFunction::Update => "Rewrite to use map update syntax",
         }
     }
     pub fn to_replacement_str(&self, sema: &Semantic, m: &Match) -> String {
@@ -74,8 +74,8 @@ impl MapFunction {
         let key = m.placeholder_text(sema, KEY_VAR).unwrap();
         let value = m.placeholder_text(sema, VALUE_VAR).unwrap();
         match self {
-            MapFunction::Put => format!("{map}#{{{key} => {value}}}",),
-            MapFunction::Update => format!("{map}#{{{key} := {value}}}"),
+            MapInsertionFunction::Put => format!("{map}#{{{key} => {value}}}",),
+            MapInsertionFunction::Update => format!("{map}#{{{key} := {value}}}"),
         }
     }
 }
@@ -93,7 +93,7 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
     matches.matches.iter().for_each(|m| {
         let map_match = m.get_placeholder_match(sema, MAP_VAR).unwrap();
         if is_var(sema, m, map_match) {
-            let diagnostic = make_diagnostic(sema, m, MapFunction::Put);
+            let diagnostic = make_diagnostic(sema, m, MapInsertionFunction::Put);
             diags.push(diagnostic)
         }
     });
@@ -112,7 +112,7 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
     matches.matches.iter().for_each(|m| {
         let map_match = m.get_placeholder_match(sema, MAP_VAR).unwrap();
         if is_var(sema, m, map_match) {
-            let diagnostic = make_diagnostic(sema, m, MapFunction::Update);
+            let diagnostic = make_diagnostic(sema, m, MapInsertionFunction::Update);
             diags.push(diagnostic)
         }
     });
@@ -129,7 +129,7 @@ fn is_var(sema: &Semantic, m: &Match, matched: PlaceholderMatch) -> bool {
     })
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapFunction) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapInsertionFunction) -> Diagnostic {
     let file_id = matched.range.file_id;
     let map_function_call_range = matched.range.range;
     let message = "Consider using map syntax rather than a function call.".to_string();

@@ -91,7 +91,8 @@ mod from_config;
 mod head_mismatch;
 mod helpers;
 mod inefficient_flatlength;
-mod map_function_to_syntax;
+mod map_find_to_syntax;
+mod map_insertion_to_syntax;
 mod meck;
 // @fb-only: 
 mod missing_compile_warn_missing_spec;
@@ -855,7 +856,8 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &inefficient_flatlength::DESCRIPTOR,
-        &map_function_to_syntax::DESCRIPTOR,
+        &map_insertion_to_syntax::DESCRIPTOR,
+        &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
         &missing_compile_warn_missing_spec::DESCRIPTOR,
