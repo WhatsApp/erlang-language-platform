@@ -91,7 +91,7 @@ mod from_config;
 mod head_mismatch;
 mod helpers;
 mod meck;
-// @fb-only: 
+// @fb-only
 mod missing_compile_warn_missing_spec;
 mod missing_separator;
 mod misspelled_attribute;
@@ -798,7 +798,7 @@ pub fn native_diagnostics(
         config
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
-        // @fb-only: 
+        // @fb-only
         syntax_diagnostics(&sema, &parse, &mut res, file_id);
         diagnostics_from_descriptors(
             &mut res,
@@ -1503,7 +1503,7 @@ pub fn ct_diagnostics(
             let testcases =
                 common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
             common_test::unreachable_test(&mut res, &sema, file_id, &testcases);
-            // @fb-only: 
+            // @fb-only
         }
         CommonTestInfo::EvalError(_error) => {
             // The error currently does not contain anything useful, so we ignore it
