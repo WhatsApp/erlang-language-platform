@@ -90,6 +90,7 @@ mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
 mod helpers;
+mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
@@ -856,6 +857,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &inefficient_flatlength::DESCRIPTOR,
+        &inefficient_enumerate::DESCRIPTOR,
         &map_insertion_to_syntax::DESCRIPTOR,
         &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
