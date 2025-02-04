@@ -7,25 +7,20 @@
  * of this source tree.
  */
 
-//! Lint: wid_tuple
+//! Lint: length_lists_flatten_to_lists_flatlength
 //!
 //! warn on code of the form `length(lists:flatten(L))` and suggest `lists:flatlength(L)`
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
-use hir::Expr;
-use hir::FunctionDef;
-use hir::InFileAstPtr;
+use elp_ide_ssr::match_pattern_in_file;
+use elp_ide_ssr::Match;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 use hir::Semantic;
-use text_edit::TextRange;
 
-use crate::codemod_helpers::find_call_in_function;
-use crate::codemod_helpers::Args;
-use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::FunctionMatcher;
-use crate::codemod_helpers::MakeDiagCtx;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
@@ -40,90 +35,35 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         default_disabled: false,
     },
     checker: &|acc, sema, file_id, _ext| {
-        inefficient_flatlength(acc, sema, file_id);
+        inefficient_flatlength_ssr(acc, sema, file_id);
     },
 };
 
-fn inefficient_flatlength(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.for_each_function(file_id, |def| check_function(acc, sema, def));
-}
+static LIST_ARG_VAR: &str = "_@List";
 
-fn check_function(acc: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    let erlang_length = FunctionMatch::mfa("erlang", "length", 1);
-    let lists_flatten = FunctionMatch::mfa("lists", "flatten", 1);
-    let lists_flatten_match = &vec![(&lists_flatten, ())];
-    find_call_in_function(
-        acc,
+fn inefficient_flatlength_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    let matches = match_pattern_in_file(
         sema,
-        def,
-        &vec![(&erlang_length, ())],
-        &move |CheckCallCtx {
-                   args,
-                   in_clause: def_fb,
-                   ..
-               }: CheckCallCtx<'_, ()>| {
-            let body_map = def_fb.get_body_map();
-            let body = def_fb.body();
-            match args {
-                Args::Args(arg_elems) => match arg_elems[..] {
-                    [erlang_length_arg] => match &body[erlang_length_arg] {
-                        Expr::Call {
-                            target: flatten_target,
-                            args: flatten_args,
-                        } => {
-                            let lists_flatten_matcher = FunctionMatcher::new(lists_flatten_match);
-                            if let Some(_) = lists_flatten_matcher.get_match(
-                                flatten_target,
-                                1,
-                                Some(&arg_elems),
-                                sema,
-                                &body,
-                            ) {
-                                // We already verified that the function call was of arity 1
-                                Some(body_map.expr(*flatten_args.first()?)?)
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                },
-                _ => None,
-            }
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
         },
-        &move |MakeDiagCtx {
-                   sema,
-                   def_fb,
-                   range: inefficent_call_range,
-                   extra: nested_list_arg,
-                   ..
-               }| {
-            Some(make_diagnostic(
-                sema,
-                def_fb.file_id(),
-                inefficent_call_range,
-                nested_list_arg,
-            ))
-        },
+        file_id,
+        format!("ssr: length(lists:flatten({LIST_ARG_VAR})).").as_str(),
     );
+    matches.matches.iter().for_each(|m| {
+        let diagnostic = make_diagnostic(sema, m);
+        diags.push(diagnostic);
+    });
 }
 
-fn make_diagnostic(
-    sema: &Semantic,
-    file_id: FileId,
-    inefficient_call_range: TextRange,
-    nested_list_arg: &InFileAstPtr<elp_syntax::ast::Expr>,
-) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
+    let file_id = matched.range.file_id;
+    let inefficient_call_range = matched.range.range;
+    let nested_list_arg_match_src = matched.placeholder_text(sema, LIST_ARG_VAR).unwrap();
     let message = "Unnecessary intermediate flat-list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
-    let efficient_flatlength = format!(
-        "lists:flatlength({})",
-        nested_list_arg
-            .to_node(&sema.parse(file_id))
-            .unwrap()
-            .to_string()
-    );
+    let efficient_flatlength = format!("lists:flatlength({nested_list_arg_match_src})");
     builder.replace(inefficient_call_range, efficient_flatlength);
     let fixes = vec![fix(
         "length_lists_flatten_to_lists_flatlength",
