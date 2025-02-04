@@ -83,7 +83,7 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         inefficient_comprehension_range,
     )];
     Diagnostic::new(
-        DiagnosticCode::ExpressionCanBeSimplified,
+        DiagnosticCode::ExpressionCanBeOptimised,
         message,
         inefficient_comprehension_range,
     )
@@ -103,7 +103,7 @@ mod tests {
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
-        d.code == DiagnosticCode::ExpressionCanBeSimplified
+        d.code == DiagnosticCode::ExpressionCanBeOptimised
     }
 
     #[track_caller]
