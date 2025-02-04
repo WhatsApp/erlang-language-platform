@@ -92,6 +92,7 @@ mod head_mismatch;
 mod helpers;
 mod inefficient_enumerate;
 mod inefficient_flatlength;
+mod inefficient_last;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
 mod meck;
@@ -856,6 +857,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unused_record_field::DESCRIPTOR,
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
+        &inefficient_last::DESCRIPTOR,
         &inefficient_flatlength::DESCRIPTOR,
         &inefficient_enumerate::DESCRIPTOR,
         &map_insertion_to_syntax::DESCRIPTOR,
