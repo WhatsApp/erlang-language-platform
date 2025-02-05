@@ -330,9 +330,13 @@ impl StubContractivityChecker<'_> {
             .expanded_stub(self.project_id, ModuleName::new(id.module.as_str()))
             .map_err(|err| ContractivityCheckError::ErrorExpandingID(id.clone(), Box::new(err)))?;
         fn subst(decl: &TypeDecl, args: &[Type]) -> Type {
-            let sub: FxHashMap<u32, &Type> =
-                decl.params.iter().map(|v| v.n).zip(args.iter()).collect();
-            Subst { sub }.apply(decl.body.clone())
+            if decl.params.is_empty() {
+                decl.body.clone()
+            } else {
+                let sub: FxHashMap<u32, &Type> =
+                    decl.params.iter().map(|v| v.n).zip(args.iter()).collect();
+                Subst { sub }.apply(decl.body.clone())
+            }
         }
         Ok(stub
             .types
