@@ -145,7 +145,7 @@ pub use module_data::TypeAliasDef;
 pub use module_data::TypeAliasSource;
 pub use module_data::VarDef;
 pub use name::known;
-// @fb-only: 
+// @fb-only
 pub use name::AsName;
 pub use name::MacroName;
 pub use name::Name;
