@@ -138,6 +138,10 @@ pub struct EqwalizeAll {
     pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
+    /// Print statistics when done
+    pub stats: bool,
+    /// When printing statistics, include the list of modules parsed
+    pub list_modules: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

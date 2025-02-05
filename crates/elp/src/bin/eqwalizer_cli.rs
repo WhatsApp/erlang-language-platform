@@ -53,6 +53,8 @@ use crate::args::EqwalizeApp;
 use crate::args::EqwalizeStats;
 use crate::args::EqwalizeTarget;
 use crate::reporting;
+use crate::reporting::add_stat;
+use crate::reporting::dump_stats;
 use crate::reporting::ParseDiagnostic;
 use crate::reporting::Reporter;
 
@@ -166,11 +168,14 @@ pub fn do_eqwalize_all(
         .iter_own()
         .par_bridge()
         .progress_with(pb.clone())
-        .map_with(analysis.clone(), |analysis, (_name, _source, file_id)| {
+        .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
             if analysis
                 .should_eqwalize(file_id, include_generated)
                 .unwrap()
             {
+                if args.stats {
+                    add_stat(name.to_string());
+                }
                 Some(file_id)
             } else {
                 None
@@ -201,7 +206,11 @@ pub fn do_eqwalize_all(
         file_ids,
         reporter,
         bail_on_error,
-    })
+    })?;
+    if args.stats {
+        dump_stats(cli, args.list_modules);
+    }
+    Ok(())
 }
 
 pub fn eqwalize_app(

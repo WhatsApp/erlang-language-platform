@@ -206,6 +206,8 @@ impl ShellCommand {
                         include_generated,
                         clause_coverage,
                         bail_on_error: false,
+                        stats: false,
+                        list_modules: false,
                     })));
                 }
                 "exit" | "quit" => return Ok(Some(ShellCommand::Quit)),
