@@ -16,8 +16,10 @@ import * as path from 'path';
 import {
 	LanguageClient,
 	LanguageClientOptions,
+	ResolveCodeActionSignature,
 	ServerOptions
 } from 'vscode-languageclient/node';
+import { CodeAction317, resolveCodeActionData } from './lspExtensions';
 
 let client: LanguageClient;
 let log: vscode.OutputChannel;
@@ -32,10 +34,10 @@ export function activate(context: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration(ELP);
 	let serverPath = config.get<string>("serverPath");
 	if (serverPath === "") {
-        serverPath = context.asAbsolutePath(
-            path.join('bin', 'elp')
-        );
-    }
+		serverPath = context.asAbsolutePath(
+			path.join('bin', 'elp')
+		);
+	}
 	const serverArgs = config.get<string>("serverArgs", "server");
 	const serverOptions: ServerOptions = {
 		command: serverPath,
@@ -49,6 +51,18 @@ export function activate(context: vscode.ExtensionContext) {
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
+		},
+		middleware: {
+			// Used to intercept "rename" requests, allowing the user to provide a custom new name
+			resolveCodeAction: async (action: vscode.CodeAction, token: vscode.CancellationToken, next: ResolveCodeActionSignature): Promise<vscode.CodeAction> => {
+				// The VS Code type definitions still do not take `data` into account, even if that's part of LSP 3.17
+				// Therefore, we convert it to a custom type, operate on it and convert it back
+				const action317 = action as unknown as CodeAction317;
+				if ('data' in action317) {
+					action317.data = await resolveCodeActionData(action317.data);
+				}
+				return next(action as unknown as vscode.CodeAction, token);
+			}
 		}
 	};
 
