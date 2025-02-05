@@ -34,7 +34,9 @@ use elp_ide::elp_ide_db::EqwalizerDiagnostic;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
 use indicatif::ProgressBar;
+use itertools::Itertools;
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 
 pub trait Reporter {
     fn write_eqwalizer_diagnostics(
@@ -346,4 +348,29 @@ lazy_static! {
         spec.set_fg(Some(Color::Yellow));
         spec
     };
+}
+
+// ---------------------------------------------------------------------
+
+pub(crate) fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
+    let stats = STATS.lock();
+    if list_modules {
+        writeln!(cli, "--------------start of modules----------").ok();
+        stats.iter().sorted().for_each(|stat| {
+            writeln!(cli, "{}", stat).ok();
+        });
+    }
+    writeln!(cli, "{} modules processed", stats.len()).ok();
+}
+
+lazy_static! {
+    static ref STATS: Mutex<Vec<String>> = {
+        let stats = Vec::new();
+        Mutex::new(stats)
+    };
+}
+
+pub(crate) fn add_stat(stat: String) {
+    let mut stats = STATS.lock();
+    stats.push(stat);
 }

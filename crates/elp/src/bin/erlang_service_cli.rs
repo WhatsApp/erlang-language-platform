@@ -31,13 +31,12 @@ use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use indicatif::ParallelProgressIterator;
-use itertools::Itertools;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use rayon::prelude::*;
 
 use crate::args::ParseAll;
 use crate::reporting;
+use crate::reporting::add_stat;
+use crate::reporting::dump_stats;
 use crate::reporting::ParseDiagnostic;
 
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
@@ -68,17 +67,6 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
         return Err(Error::msg("Parsing failed with diagnostics."));
     }
     Ok(())
-}
-
-fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
-    let stats = STATS.lock();
-    if list_modules {
-        writeln!(cli, "--------------start of modules----------").ok();
-        stats.iter().sorted().for_each(|stat| {
-            writeln!(cli, "{}", stat).ok();
-        });
-    }
-    writeln!(cli, "{} modules processed", stats.len()).ok();
 }
 
 pub fn do_parse_all(
@@ -125,18 +113,6 @@ pub fn do_parse_all(
         })?;
     result.sort_by(|f, l| f.relative_path.cmp(&l.relative_path));
     Ok(result)
-}
-
-lazy_static! {
-    static ref STATS: Mutex<Vec<String>> = {
-        let stats = Vec::new();
-        Mutex::new(stats)
-    };
-}
-
-fn add_stat(stat: String) {
-    let mut stats = STATS.lock();
-    stats.push(stat);
 }
 
 pub fn do_parse_one(
