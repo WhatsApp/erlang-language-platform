@@ -34,7 +34,7 @@ mod helpers;
 mod keywords;
 mod macros;
 mod maps;
-// @fb-only
+// @fb-only: 
 mod modules;
 mod records;
 mod spec;
@@ -164,7 +164,7 @@ pub fn completions(
         }
         CtxKind::Other => {
             let _ = attributes::add_completions(&mut acc, ctx)
-                // @fb-only
+                // @fb-only: 
                 || vars::add_completions(&mut acc, ctx)
                 || maps::add_completions(&mut acc, ctx)
                 || records::add_completions(&mut acc, ctx);

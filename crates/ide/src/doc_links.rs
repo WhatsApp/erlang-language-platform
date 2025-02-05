@@ -14,7 +14,7 @@ use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
 
-// @fb-only
+// @fb-only: 
 mod otp_links;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +39,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
             .iter()
             .for_each(|def| otp_links::links(&mut doc_links, &sema, &def));
     }
-    // @fb-only
+    // @fb-only: 
     Some(doc_links)
 }
 

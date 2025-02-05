@@ -4306,14 +4306,14 @@ is_format_function(io, fwrite) -> true;
 is_format_function(io, format) -> true;
 is_format_function(io_lib, fwrite) -> true;
 is_format_function(io_lib, format) -> true;
-% @fb-only
-% @fb-only
+% @fb-only: 
+% @fb-only: 
 is_format_function(M, F) when is_atom(M), is_atom(F) -> false.
 
 %% check_format_1([Arg]) -> ok | {warn,Level,Format,[Arg]}.
 
-% @fb-only
-% @fb-only
+% @fb-only: 
+% @fb-only: 
 format_args(_M, _F, As) ->
     As.
 
