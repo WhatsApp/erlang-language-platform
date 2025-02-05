@@ -1,8 +1,8 @@
 [alias]
 xtask = "run --package xtask --"
 
-# @fb-only
-# @fb-only
+# @fb-only: 
+# @fb-only: 
 
 [profile.release]
 lto = "thin"
