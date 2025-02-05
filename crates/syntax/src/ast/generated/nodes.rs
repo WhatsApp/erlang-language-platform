@@ -2484,6 +2484,7 @@ pub enum Form {
     Opaque(Opaque),
     OptionalCallbacksAttribute(OptionalCallbacksAttribute),
     RecordDecl(RecordDecl),
+    Shebang(Shebang),
     Spec(Spec),
     SsrDefinition(SsrDefinition),
     TypeAlias(TypeAlias),
@@ -2517,6 +2518,7 @@ impl AstNode for Form {
             | OPAQUE
             | OPTIONAL_CALLBACKS_ATTRIBUTE
             | RECORD_DECL
+            | SHEBANG
             | SPEC
             | SSR_DEFINITION
             | TYPE_ALIAS
@@ -2553,6 +2555,7 @@ impl AstNode for Form {
                 OptionalCallbacksAttribute { syntax },
             )),
             RECORD_DECL => Some(Form::RecordDecl(RecordDecl { syntax })),
+            SHEBANG => Some(Form::Shebang(Shebang { syntax })),
             SPEC => Some(Form::Spec(Spec { syntax })),
             SSR_DEFINITION => Some(Form::SsrDefinition(SsrDefinition { syntax })),
             TYPE_ALIAS => Some(Form::TypeAlias(TypeAlias { syntax })),
@@ -2577,6 +2580,7 @@ impl AstNode for Form {
             Form::Opaque(it) => it.syntax(),
             Form::OptionalCallbacksAttribute(it) => it.syntax(),
             Form::RecordDecl(it) => it.syntax(),
+            Form::Shebang(it) => it.syntax(),
             Form::Spec(it) => it.syntax(),
             Form::SsrDefinition(it) => it.syntax(),
             Form::TypeAlias(it) => it.syntax(),
@@ -2658,6 +2662,11 @@ impl From<OptionalCallbacksAttribute> for Form {
 impl From<RecordDecl> for Form {
     fn from(node: RecordDecl) -> Form {
         Form::RecordDecl(node)
+    }
+}
+impl From<Shebang> for Form {
+    fn from(node: Shebang) -> Form {
+        Form::Shebang(node)
     }
 }
 impl From<Spec> for Form {
@@ -5571,6 +5580,33 @@ impl AstNode for ReplacementParens {
 impl std::fmt::Display for ReplacementParens {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Literal 2"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Shebang {
+    pub(crate) syntax: SyntaxNode,
+}
+#[doc = r" Via NodeType::Literal 2"]
+impl Shebang {
+    pub fn self_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, SHEBANG, 0)
+    }
+}
+#[doc = r" Via NodeType::Literal 2"]
+impl AstNode for Shebang {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SHEBANG
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
     }
 }
 #[doc = r" Via NodeType::Node 2 struct inner"]

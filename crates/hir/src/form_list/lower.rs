@@ -121,6 +121,7 @@ impl<'a> Ctx<'a> {
                         self.lower_deprecated_attr(deprecated_attr)
                     }
                     ast::Form::SsrDefinition(definition) => self.lower_ssr_definition(definition),
+                    ast::Form::Shebang(shebang) => self.lower_shebang(shebang),
                 }?;
                 self.map_back.insert(AstPtr::new(&form), idx);
                 Some(idx)
@@ -142,6 +143,10 @@ impl<'a> Ctx<'a> {
         let form_id = self.id_map.get_id(ssr_definition);
         let res = SsrDefinition { cond, form_id };
         Some(FormIdx::SsrDefinition(self.data.ssr_definitions.alloc(res)))
+    }
+
+    fn lower_shebang(&mut self, _shebang: &ast::Shebang) -> Option<FormIdx> {
+        None
     }
 
     fn lower_deprecated_attr(
