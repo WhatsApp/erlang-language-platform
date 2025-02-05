@@ -65,25 +65,30 @@ fn inefficient_enumerate_custom_index_ssr(
     );
     matches.matches.iter().for_each(|m| {
         if is_indexing_from_literal_one(sema, m) {
-            let diagnostic = make_diagnostic(sema, m);
-            diags.push(diagnostic);
+            if let Some(diagnostic) = make_diagnostic(sema, m) {
+                diags.push(diagnostic);
+            }
         } else {
-            let diagnostic = make_diagnostic_custom_index(sema, m);
-            diags.push(diagnostic);
+            if let Some(diagnostic) = make_diagnostic_custom_index(sema, m) {
+                diags.push(diagnostic);
+            }
         }
     });
 }
 
 fn is_indexing_from_literal_one(sema: &Semantic, m: &Match) -> bool {
-    let index_match = m.get_placeholder_match(sema, INDEX_VAR).unwrap();
-    let body = &m.matched_node_body.get_body(sema).unwrap();
-    match index_match.code_id {
-        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body[expr_id] {
-            Expr::Literal(Literal::Integer(1)) => true,
-            _ => false,
-        },
-        _ => false,
-    }
+    || -> Option<bool> {
+        let index_match = m.get_placeholder_match(sema, INDEX_VAR)?;
+        let body = &m.matched_node_body.get_body(sema)?;
+        match index_match.code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body[expr_id] {
+                Expr::Literal(Literal::Integer(1)) => Some(true),
+                _ => Some(false),
+            },
+            _ => Some(false),
+        }
+    }()
+    .unwrap_or(false)
 }
 
 fn inefficient_enumerate_custom_index_and_step_ssr(
@@ -102,16 +107,17 @@ fn inefficient_enumerate_custom_index_and_step_ssr(
             .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let diagnostic = make_diagnostic_custom_index_and_step(sema, m);
-        diags.push(diagnostic);
+        if let Some(diagnostic) = make_diagnostic_custom_index_and_step(sema, m) {
+            diags.push(diagnostic);
+        }
     });
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR).unwrap();
-    let list_arg = list_arg_matches.first().unwrap();
+    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
+    let list_arg = list_arg_matches.first()?;
     let message = "Unnecessary intermediate list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_enumerate = format!("lists:enumerate({list_arg})");
@@ -122,22 +128,24 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes)),
     )
-    .with_severity(Severity::WeakWarning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
 }
 
-fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR).unwrap();
-    let list_arg = list_arg_matches.first().unwrap();
-    let index_arg = matched.placeholder_text(sema, INDEX_VAR).unwrap();
+    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
+    let list_arg = list_arg_matches.first()?;
+    let index_arg = matched.placeholder_text(sema, INDEX_VAR)?;
     let message = "Unnecessary intermediate list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_enumerate = format!("lists:enumerate({index_arg}, {list_arg})");
@@ -148,23 +156,25 @@ fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Diagnostic 
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes)),
     )
-    .with_severity(Severity::WeakWarning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
 }
 
-fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR).unwrap();
-    let list_arg = list_arg_matches.first().unwrap();
-    let index_arg = matched.placeholder_text(sema, INDEX_VAR).unwrap();
-    let step_arg = matched.placeholder_text(sema, STEP_VAR).unwrap();
+    let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
+    let list_arg = list_arg_matches.first()?;
+    let index_arg = matched.placeholder_text(sema, INDEX_VAR)?;
+    let step_arg = matched.placeholder_text(sema, STEP_VAR)?;
     let message = "Unnecessary intermediate list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_enumerate = format!("lists:enumerate({index_arg}, {step_arg}, {list_arg})");
@@ -175,15 +185,17 @@ fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Di
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::WeakWarning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]

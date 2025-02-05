@@ -55,8 +55,9 @@ fn inefficient_last_hd_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id
         format!("ssr: hd(lists:reverse({LIST_VAR})).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let diagnostic = make_diagnostic_hd(sema, m);
-        diags.push(diagnostic)
+        if let Some(diagnostic) = make_diagnostic_hd(sema, m) {
+            diags.push(diagnostic)
+        }
     });
 }
 
@@ -71,15 +72,16 @@ fn inefficient_last_pat_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
         format!("ssr: [{LAST_ELEM_VAR}|_] = lists:reverse({LIST_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let diagnostic = make_diagnostic_pat(sema, m);
-        diags.push(diagnostic)
+        if let Some(diagnostic) = make_diagnostic_pat(sema, m) {
+            diags.push(diagnostic)
+        }
     });
 }
 
-fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let list_arg = matched.placeholder_text(sema, LIST_VAR).unwrap();
+    let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
     let message = "Unnecessary intermediate reverse list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_last = format!("lists:last({list_arg})");
@@ -90,22 +92,24 @@ fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::Warning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::Warning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
-fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let list_arg = matched.placeholder_text(sema, LIST_VAR).unwrap();
-    let last_elem_binding = matched.placeholder_text(sema, LAST_ELEM_VAR).unwrap();
+    let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
+    let last_elem_binding = matched.placeholder_text(sema, LAST_ELEM_VAR)?;
     let message = "Unnecessary intermediate reverse list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_last = format!("{last_elem_binding} = lists:last({list_arg})");
@@ -116,15 +120,17 @@ fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::Warning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::Warning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]

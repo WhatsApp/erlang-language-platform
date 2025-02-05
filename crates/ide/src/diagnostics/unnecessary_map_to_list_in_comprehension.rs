@@ -61,18 +61,19 @@ fn unnecessary_map_to_list_in_comprehension_ssr(
             .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let diagnostic = make_diagnostic(sema, m);
-        diags.push(diagnostic);
+        if let Some(diagnostic) = make_diagnostic(sema, m) {
+            diags.push(diagnostic);
+        }
     });
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_comprehension_range = matched.range.range;
-    let body = matched.placeholder_text(sema, BODY_VAR).unwrap();
-    let key = matched.placeholder_text(sema, KEY_VAR).unwrap();
-    let value = matched.placeholder_text(sema, VALUE_VAR).unwrap();
-    let map = matched.placeholder_text(sema, MAP_VAR).unwrap();
+    let body = matched.placeholder_text(sema, BODY_VAR)?;
+    let key = matched.placeholder_text(sema, KEY_VAR)?;
+    let value = matched.placeholder_text(sema, VALUE_VAR)?;
+    let map = matched.placeholder_text(sema, MAP_VAR)?;
     let message = "Unnecessary intermediate list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let direct_comprehension = format!("[{body} || {key} := {value} <- {map}]");
@@ -83,15 +84,17 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         inefficient_comprehension_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::UnnecessaryMapToListInComprehension,
-        message,
-        inefficient_comprehension_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::UnnecessaryMapToListInComprehension,
+            message,
+            inefficient_comprehension_range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::WeakWarning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]

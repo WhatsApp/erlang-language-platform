@@ -76,14 +76,14 @@ impl MapInsertionFunction {
             MapInsertionFunction::Update => DiagnosticCode::MapsUpdateFunctionRatherThanSyntax,
         }
     }
-    pub fn to_replacement_str(&self, sema: &Semantic, m: &Match) -> String {
-        let map = m.placeholder_text(sema, MAP_VAR).unwrap();
-        let key = m.placeholder_text(sema, KEY_VAR).unwrap();
-        let value = m.placeholder_text(sema, VALUE_VAR).unwrap();
-        match self {
+    pub fn to_replacement_str(&self, sema: &Semantic, m: &Match) -> Option<String> {
+        let map = m.placeholder_text(sema, MAP_VAR)?;
+        let key = m.placeholder_text(sema, KEY_VAR)?;
+        let value = m.placeholder_text(sema, VALUE_VAR)?;
+        Some(match self {
             MapInsertionFunction::Put => format!("{map}#{{{key} => {value}}}",),
             MapInsertionFunction::Update => format!("{map}#{{{key} := {value}}}"),
-        }
+        })
     }
 }
 
@@ -98,10 +98,12 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
         format!("ssr: maps:put({},{},{}).", KEY_VAR, VALUE_VAR, MAP_VAR).as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let map_match = m.get_placeholder_match(sema, MAP_VAR).unwrap();
-        if is_var(sema, m, map_match) {
-            let diagnostic = make_diagnostic(sema, m, MapInsertionFunction::Put);
-            diags.push(diagnostic)
+        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
+            if is_var(sema, m, map_match) {
+                if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Put) {
+                    diags.push(diagnostic)
+                }
+            }
         }
     });
 }
@@ -117,10 +119,12 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
         format!("ssr: maps:update({},{},{}).", KEY_VAR, VALUE_VAR, MAP_VAR).as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let map_match = m.get_placeholder_match(sema, MAP_VAR).unwrap();
-        if is_var(sema, m, map_match) {
-            let diagnostic = make_diagnostic(sema, m, MapInsertionFunction::Update);
-            diags.push(diagnostic)
+        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
+            if is_var(sema, m, map_match) {
+                if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Update) {
+                    diags.push(diagnostic)
+                }
+            }
         }
     });
 }
@@ -136,12 +140,16 @@ fn is_var(sema: &Semantic, m: &Match, matched: PlaceholderMatch) -> bool {
     })
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapInsertionFunction) -> Diagnostic {
+fn make_diagnostic(
+    sema: &Semantic,
+    matched: &Match,
+    op: MapInsertionFunction,
+) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let map_function_call_range = matched.range.range;
     let message = "Consider using map syntax rather than a function call.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
-    let map_syntax = op.to_replacement_str(sema, matched);
+    let map_syntax = op.to_replacement_str(sema, matched)?;
     builder.replace(map_function_call_range, map_syntax);
     let fixes = vec![fix(
         op.to_fix_id(),
@@ -149,11 +157,13 @@ fn make_diagnostic(sema: &Semantic, matched: &Match, op: MapInsertionFunction) -
         builder.finish(),
         map_function_call_range,
     )];
-    Diagnostic::new(op.to_code(), message, map_function_call_range)
-        .with_severity(Severity::Information)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes))
-        .add_categories([Category::SimplificationRule])
+    Some(
+        Diagnostic::new(op.to_code(), message, map_function_call_range)
+            .with_severity(Severity::Information)
+            .with_ignore_fix(sema, file_id)
+            .with_fixes(Some(fixes))
+            .add_categories([Category::SimplificationRule]),
+    )
 }
 
 #[cfg(test)]

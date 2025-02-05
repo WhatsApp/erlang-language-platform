@@ -94,14 +94,18 @@ fn map_find_to_syntax_error_atom_ssr(
         .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let key = m.get_placeholder_match(sema, KEY_VAR).unwrap();
-        let value = m.get_placeholder_match(sema, VALUE_VAR).unwrap();
-        let body_arc = m.matched_node_body.get_body(sema).unwrap();
-        let body = body_arc.as_ref();
-        if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
-            let diagnostic = make_diagnostic(sema, m);
-            diags.push(diagnostic)
-        }
+        || -> Option<()> {
+            let key = m.get_placeholder_match(sema, KEY_VAR)?;
+            let value = m.get_placeholder_match(sema, VALUE_VAR)?;
+            let body_arc = m.matched_node_body.get_body(sema)?;
+            let body = body_arc.as_ref();
+            if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
+                if let Some(diagnostic) = make_diagnostic(sema, m) {
+                    diags.push(diagnostic)
+                }
+            };
+            Some(())
+        }();
     });
 }
 
@@ -126,14 +130,18 @@ fn map_find_to_syntax_underscore_ssr(
         .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let key = m.get_placeholder_match(sema, KEY_VAR).unwrap();
-        let value = m.get_placeholder_match(sema, VALUE_VAR).unwrap();
-        let body_arc = m.matched_node_body.get_body(sema).unwrap();
-        let body = body_arc.as_ref();
-        if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
-            let diagnostic = make_diagnostic(sema, m);
-            diags.push(diagnostic)
-        }
+        || -> Option<()> {
+            let key = m.get_placeholder_match(sema, KEY_VAR)?;
+            let value = m.get_placeholder_match(sema, VALUE_VAR)?;
+            let body_arc = m.matched_node_body.get_body(sema)?;
+            let body = body_arc.as_ref();
+            if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
+                if let Some(diagnostic) = make_diagnostic(sema, m) {
+                    diags.push(diagnostic)
+                }
+            }
+            Some(())
+        }();
     });
 }
 
@@ -180,12 +188,12 @@ fn is_pat_valid(body: &Body, pat: Pat) -> bool {
     }
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let old_query_range = matched.range.range;
     let message = "Unnecessary allocation of result tuple when the key is found.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
-    let map_syntax_replacement = get_map_syntax_replacement(sema, matched);
+    let map_syntax_replacement = get_map_syntax_replacement(sema, matched)?;
     builder.replace(old_query_range, map_syntax_replacement);
     let fixes = vec![fix(
         "maps_find_rather_than_syntax",
@@ -193,31 +201,33 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         old_query_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::MapsFindFunctionRatherThanSyntax,
-        message,
-        old_query_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::MapsFindFunctionRatherThanSyntax,
+            message,
+            old_query_range,
+        )
+        .with_severity(Severity::Warning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::Warning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
-fn get_map_syntax_replacement(sema: &Semantic, m: &Match) -> String {
-    let key = m.placeholder_text(sema, KEY_VAR).unwrap();
-    let map = m.placeholder_text(sema, MAP_VAR).unwrap();
-    let val = m.placeholder_text(sema, VALUE_VAR).unwrap();
-    let found = m.placeholder_text(sema, FOUND_BODY_VAR).unwrap();
-    let not_found = m.placeholder_text(sema, NOT_FOUND_BODY_VAR).unwrap();
-    format!(
+fn get_map_syntax_replacement(sema: &Semantic, m: &Match) -> Option<String> {
+    let key = m.placeholder_text(sema, KEY_VAR)?;
+    let map = m.placeholder_text(sema, MAP_VAR)?;
+    let val = m.placeholder_text(sema, VALUE_VAR)?;
+    let found = m.placeholder_text(sema, FOUND_BODY_VAR)?;
+    let not_found = m.placeholder_text(sema, NOT_FOUND_BODY_VAR)?;
+    Some(format!(
         "case {map} of
        #{{{key} := {val}}} ->
            {found};
        #{{}} ->
            {not_found}
    end"
-    )
+    ))
 }
 
 #[cfg(test)]

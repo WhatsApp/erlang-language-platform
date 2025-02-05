@@ -53,15 +53,16 @@ fn inefficient_flatlength_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file
         format!("ssr: length(lists:flatten({LIST_ARG_VAR})).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        let diagnostic = make_diagnostic(sema, m);
-        diags.push(diagnostic);
+        if let Some(diagnostic) = make_diagnostic(sema, m) {
+            diags.push(diagnostic);
+        }
     });
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
+fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
-    let nested_list_arg_match_src = matched.placeholder_text(sema, LIST_ARG_VAR).unwrap();
+    let nested_list_arg_match_src = matched.placeholder_text(sema, LIST_ARG_VAR)?;
     let message = "Unnecessary intermediate flat-list allocated.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_flatlength = format!("lists:flatlength({nested_list_arg_match_src})");
@@ -72,15 +73,17 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Diagnostic {
         builder.finish(),
         inefficient_call_range,
     )];
-    Diagnostic::new(
-        DiagnosticCode::UnnecessaryFlatteningToFindFlatLength,
-        message,
-        inefficient_call_range,
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength,
+            message,
+            inefficient_call_range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .with_ignore_fix(sema, file_id)
+        .with_fixes(Some(fixes))
+        .add_categories([Category::SimplificationRule]),
     )
-    .with_severity(Severity::WeakWarning)
-    .with_ignore_fix(sema, file_id)
-    .with_fixes(Some(fixes))
-    .add_categories([Category::SimplificationRule])
 }
 
 #[cfg(test)]
