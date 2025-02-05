@@ -3,7 +3,7 @@ error: bad_map_key
    │
 10 │ -type bad_map_1() :: #{atom() := integer()}.
    │                        ^^^^^^^^^^^^^^^^^ Map type will be approximated to #{dynamic() => dynamic()}, suppressing potential errors.
-Required map key should always be composed of statically defined atoms or tuples.
+Use => instead of := here. Required map key should always be composed of statically defined atoms or tuples.
 
 See https://fb.me/eqwalizer_errors#bad_map_key
 
@@ -12,7 +12,7 @@ error: bad_map_key
    │
 14 │ -type bad_map_3() :: #{a => b, atom() := integer()}.
    │                                ^^^^^^^^^^^^^^^^^ Map type will be approximated to #{dynamic() => dynamic()}, suppressing potential errors.
-Required map key should always be composed of statically defined atoms or tuples.
+Use => instead of := here. Required map key should always be composed of statically defined atoms or tuples.
 
 See https://fb.me/eqwalizer_errors#bad_map_key
 
