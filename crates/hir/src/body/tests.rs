@@ -2554,3 +2554,16 @@ fn verbatim_binary_sigil_in_term() {
         "#]],
     );
 }
+
+#[test]
+fn lowering_with_error_nodes() {
+    check(
+        r#"
+            f(1a) -> ok begin 1 end.
+        "#,
+        expect![[r#"
+            f('a') ->
+                'ok'.
+        "#]],
+    );
+}
