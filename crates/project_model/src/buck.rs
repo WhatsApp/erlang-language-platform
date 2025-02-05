@@ -1456,7 +1456,7 @@ mod tests {
     }
 
     // TODO: enable when buck is properly set up on github project
-    // @fb-only: 
+    // @fb-only
     const BUCK_TESTS_ENABLED: bool = false; // @oss-only
 
     fn get_prelude_cell(buck_config: &BuckConfig) -> Result<String> {
