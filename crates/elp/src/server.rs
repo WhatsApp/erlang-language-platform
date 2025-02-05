@@ -256,6 +256,16 @@ pub struct Server {
     vfs_config_version: u32,
 }
 
+impl Drop for Server {
+    fn drop(&mut self) {
+        // Remove the LSP logger. This prevents a deadlock because the logger has a strong
+        // reference to the `Connection`'s `Sender`.
+        self.logger.remove_logger(LOGGER_NAME);
+        // Cancel any ongoing analyses.
+        self.analysis_host.request_cancellation();
+    }
+}
+
 impl Server {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -603,7 +613,6 @@ impl Server {
         RequestDispatcher::new(self, req)
             .on_sync::<request::Shutdown>(|this, ()| {
                 this.transition(Status::ShuttingDown);
-                this.analysis_host.request_cancellation();
                 Ok(())
             })?
             .on::<request::CodeActionRequest>(handlers::handle_code_action)
