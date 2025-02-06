@@ -109,6 +109,7 @@ mod replace_in_spec;
 mod slow_functions;
 mod trivial_match;
 mod undefined_function;
+mod unnecessary_fold_to_build_map;
 mod unnecessary_map_to_list_in_comprehension;
 mod unused_function_args;
 mod unused_include;
@@ -863,6 +864,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &inefficient_enumerate::DESCRIPTOR,
         &map_insertion_to_syntax::DESCRIPTOR,
         &unnecessary_map_to_list_in_comprehension::DESCRIPTOR,
+        &unnecessary_fold_to_build_map::DESCRIPTOR,
         &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,

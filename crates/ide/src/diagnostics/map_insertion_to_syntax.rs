@@ -16,15 +16,12 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
+use elp_ide_ssr::is_placeholder_a_var_from_sema_and_match;
 use elp_ide_ssr::match_pattern_in_file;
 use elp_ide_ssr::Match;
-use elp_ide_ssr::PlaceholderMatch;
-use elp_ide_ssr::SubId;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
-use hir::AnyExprId;
-use hir::Expr;
 use hir::Semantic;
 
 use crate::diagnostics::Category;
@@ -99,7 +96,7 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
     );
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
-            if is_var(sema, m, map_match) {
+            if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
                 if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Put) {
                     diags.push(diagnostic)
                 }
@@ -120,24 +117,13 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
     );
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
-            if is_var(sema, m, map_match) {
+            if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
                 if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Update) {
                     diags.push(diagnostic)
                 }
             }
         }
     });
-}
-
-fn is_var(sema: &Semantic, m: &Match, matched: PlaceholderMatch) -> bool {
-    let body = &m.matched_node_body.get_body(sema);
-    body.as_ref().map_or(false, |b| match matched.code_id {
-        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match b[expr_id] {
-            Expr::Var(_) => true,
-            _ => false,
-        },
-        _ => false,
-    })
 }
 
 fn make_diagnostic(

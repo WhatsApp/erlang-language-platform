@@ -168,6 +168,35 @@ pub fn match_pattern_in_file_functions(
     matches
 }
 
+pub fn is_placeholder_a_var_from_body(body: &Body, m: &PlaceholderMatch) -> bool {
+    match m.code_id {
+        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body.exprs[expr_id] {
+            Expr::Var(_) => true,
+            _ => false,
+        },
+        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match body.pats[pat_id] {
+            Pat::Var(_) => true,
+            _ => false,
+        },
+        SubId::Var(_) => true,
+        _ => false,
+    }
+}
+
+pub fn is_placeholder_a_var_from_sema_and_match(
+    sema: &Semantic,
+    overall_match: &Match,
+    m: &PlaceholderMatch,
+) -> bool {
+    return overall_match
+        .matched_node_body
+        .get_body(sema)
+        .map_or(false, |body_arc| {
+            let body = body_arc.as_ref();
+            is_placeholder_a_var_from_body(body, m)
+        });
+}
+
 // ---------------------------------------------------------------------
 
 // A structured search replace rule. Create by calling `parse` on a str.
