@@ -14,7 +14,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::match_pattern_in_file;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
@@ -50,7 +50,7 @@ fn unnecessary_map_to_list_in_comprehension_ssr(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,

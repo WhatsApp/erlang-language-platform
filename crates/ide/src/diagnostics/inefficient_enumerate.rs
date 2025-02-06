@@ -14,7 +14,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::match_pattern_in_file;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use elp_ide_ssr::SubId;
 use hir::fold::MacroStrategy;
@@ -54,7 +54,7 @@ fn inefficient_enumerate_custom_index_ssr(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,
@@ -96,7 +96,7 @@ fn inefficient_enumerate_custom_index_and_step_ssr(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,

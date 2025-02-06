@@ -23,7 +23,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_ssr::is_placeholder_a_var_from_body;
-use elp_ide_ssr::match_pattern_in_file;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use elp_ide_ssr::PlaceholderMatch;
 use elp_ide_ssr::SubId;
@@ -65,7 +65,7 @@ fn unnecessary_fold_to_build_map_from_list_ssr(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,
@@ -105,7 +105,7 @@ fn unnecessary_fold_to_build_map_from_keys_ssr(
     sema: &Semantic,
     file_id: FileId,
 ) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,

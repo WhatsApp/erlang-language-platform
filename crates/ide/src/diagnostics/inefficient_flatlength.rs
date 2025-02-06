@@ -14,7 +14,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::match_pattern_in_file;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
@@ -43,7 +43,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 static LIST_ARG_VAR: &str = "_@List";
 
 fn inefficient_flatlength_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let matches = match_pattern_in_file(
+    let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
             macros: MacroStrategy::Expand,
