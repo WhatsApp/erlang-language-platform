@@ -956,27 +956,36 @@ fn targets_to_project_data_bxl(
         } else {
             vec![]
         };
-        let abs_src_dirs: FxHashSet<_> = target
-            .src_files
-            .iter()
-            .filter(|src| src.extension() == Some(&ERL_EXT))
-            .filter_map(|src| src.parent())
-            .map(|dir| dir.to_path_buf())
-            .filter(|dir| dir.file_name() != Some(&TEST_DIR))
-            .collect();
-        let extra_src_dirs: FxHashSet<String> = target
-            .src_files
-            .iter()
-            .filter(|src| src.extension() == Some(&ERL_EXT))
-            .filter_map(|src| src.parent())
-            .map(|dir| dir.to_path_buf())
-            .filter(|dir| dir.file_name() == Some(&TEST_DIR))
-            .filter_map(|d| {
-                d.strip_prefix(&target.dir.to_path_buf())
-                    .map(|r| r.to_path_buf())
-            })
-            .map(|d| d.as_str().to_string())
-            .collect();
+        // Note: For BUCK targets, it is either a single test file in
+        // a test suite, or one or more files as an app target.
+        // This is indicated by TargetType::ErlangTest for the former
+        let (abs_src_dirs, extra_src_dirs) = match target.target_type {
+            TargetType::ErlangApp | TargetType::ThirdParty => (
+                target
+                    .src_files
+                    .iter()
+                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter_map(|src| src.parent())
+                    .map(|dir| dir.to_path_buf())
+                    .collect(),
+                FxHashSet::default(),
+            ),
+            TargetType::ErlangTest | TargetType::ErlangTestUtils => (
+                FxHashSet::default(),
+                target
+                    .src_files
+                    .iter()
+                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter_map(|src| src.parent())
+                    .map(|dir| dir.to_path_buf())
+                    .filter_map(|d| {
+                        d.strip_prefix(&target.dir.to_path_buf())
+                            .map(|r| r.to_path_buf())
+                    })
+                    .map(|d| d.as_str().to_string())
+                    .collect(),
+            ),
+        };
         let project_app_data = ProjectAppData {
             name: AppName(target.app_name.clone()),
             dir: target.dir.clone(),

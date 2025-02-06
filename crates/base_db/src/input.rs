@@ -92,7 +92,7 @@ impl SourceRoot {
             Some((file_id, FileSource::Extra, path))
         } else if app_data.is_test_target == Some(true) {
             // buck test target source file. It only has one.
-            Some((file_id, FileSource::Src, path))
+            Some((file_id, FileSource::Extra, path))
         } else {
             None
         }
