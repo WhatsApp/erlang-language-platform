@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:13:11
    │
 13 │ foo(X) -> {X, X}.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   {A, A}
 Context expected type: A
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:17:5
    │
 17 │     X.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:20:14
    │
 20 │ foo(X, _) -> X.
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: A
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:24:13
    │
 24 │     {ok, _} = X.
@@ -37,8 +31,6 @@ error: incompatible_types
    │             match_expr.
 Expression has type:   {'ok', term()}
 Context expected type: {atom(), atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
   at tuple index 2:
@@ -46,7 +38,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:27:21
    │
 27 │ concat1() -> [1] ++ 1.
@@ -54,9 +46,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: [term()]
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:30:25
    │
 30 │ concat2(X, X) -> [1] ++ X.
@@ -64,16 +54,12 @@ error: incompatible_types
 Expression has type:   X
 Context expected type: [term()]
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/neg.erl:33:25
    │
 33 │ concat3(X, X) -> [1] ++ X.
    │                         ^ X.
 Expression has type:   X
 Context expected type: [term()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 7 ERRORS

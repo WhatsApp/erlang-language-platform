@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_logic.erl:32:38
    │
 32 │ test07_neg(X, Y) when X andalso Y -> Y.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   'true'
 Context expected type: 'false'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_logic.erl:35:40
    │
 35 │ test08_neg(X) when not is_number(X) -> X.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_logic.erl:57:20
    │
 57 │        is_pid(X)-> X.
@@ -27,8 +23,6 @@ error: incompatible_types
    │                    X.
 Expression has type:   number() | atom() | pid()
 Context expected type: number() | atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                    
 
   number() | atom() | pid() is not compatible with number() | atom()
@@ -37,7 +31,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   pid() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_logic.erl:73:5
    │
 73 │     {X, Y}.
@@ -46,8 +40,6 @@ error: incompatible_types
    │     {X, Y}.
 Expression has type:   {term(), term()}
 Context expected type: {number(), number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   at tuple index 1:
@@ -55,14 +47,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/guards_logic.erl:101:46
     │
 101 │ test21_neg(X) when (X =:= a) or (X =:= b) -> X.
     │                                              ^ X.
 Expression has type:   'a' | 'b'
 Context expected type: 'c'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 5 ERRORS

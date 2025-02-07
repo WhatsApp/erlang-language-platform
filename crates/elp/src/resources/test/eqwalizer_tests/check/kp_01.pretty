@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/kp_01.erl:27:22
    │
 27 │     Res = transform1(fun id/1, A),
@@ -7,8 +7,6 @@ error: incompatible_types
    │                      id/1.
 Expression has type:   fun((X) -> X)
 Context expected type: pure(fun((T1) -> Ret))
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                      
 
   fun((X) -> X) is not compatible with pure(fun((T1) -> Ret))

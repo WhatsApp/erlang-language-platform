@@ -120,7 +120,8 @@ impl<'a> Reporter for PrettyReporter<'a> {
                 None => "".to_string(),
             };
 
-            let msg = format!("{}{}\n\nSee {}", expr, diagnostic.message, diagnostic.uri);
+            let code = format!("{} (See {})", diagnostic.code, diagnostic.uri);
+            let msg = format!("{}{}", expr, diagnostic.message);
             let msg_label = Label::primary(reporting_id, range.clone()).with_message(&msg);
             let mut labels = vec![msg_label];
             if let Some(s) = &diagnostic.explanation {
@@ -129,7 +130,7 @@ impl<'a> Reporter for PrettyReporter<'a> {
                 labels.push(explanation_label);
             };
             let d: ReportingDiagnostic<usize> = ReportingDiagnostic::error()
-                .with_message(&diagnostic.code)
+                .with_message(code)
                 .with_labels(labels);
 
             term::emit(&mut self.cli, &REPORTING_CONFIG, &reporting_files, &d).unwrap();

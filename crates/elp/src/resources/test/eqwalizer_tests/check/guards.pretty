@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards.erl:51:5
    │
 51 │     X.
@@ -6,32 +6,24 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: #{number() => number()}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: type_alias_is_non_productive
+error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ check/src/guards.erl:53:1
    │
 53 │ -type loop() :: loop().
    │ ^^^^^^^^^^^^^^^^^^^^ recursive type loop/0 is not productive
 
-See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/guards.erl:54:1
    │
 54 │ -record(invalid, {field :: loop()}).
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid references type with invalid definition: loop/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards.erl:89:25
    │
 89 │ guard_element_neg(T) -> T + 1.
    │                         ^ T.
 Expression has type:   tuple()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 4 ERRORS

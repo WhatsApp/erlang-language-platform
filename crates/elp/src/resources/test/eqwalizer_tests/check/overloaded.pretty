@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/overloaded.erl:29:5
    │
 29 │     B.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   binary()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:117:15
     │
 117 │     Res = bar(F),
@@ -17,8 +15,6 @@ error: incompatible_types
     │               F.
 Expression has type:   fun(('a') -> 'z')
 Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │               
 
   fun(('a') -> 'z') is not compatible with fun(('a') -> 'b') | fun(('a') -> 'c')
@@ -27,7 +23,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'z' is not compatible with 'b'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:126:15
     │
 126 │     Res = bar({fun(a) -> a end}),
@@ -36,13 +32,11 @@ error: incompatible_types
     │               {fun}.
 Expression has type:   {fun((dynamic()) -> dynamic())}
 Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │               
 
 expected union does not contain any tuple type of size 1
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:141:5
     │
 141 │     Map.
@@ -50,9 +44,7 @@ error: incompatible_types
 Expression has type:   maps:iterator(Key, Value)
 Context expected type: #{Key => Value}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:198:37
     │
 198 │ overlap_neg_1(X) when is_atom(X) -> 1;
@@ -60,9 +52,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: {T}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:203:37
     │
 203 │ overlap_neg_2(X) when is_atom(X) -> 1;
@@ -70,9 +60,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: {T}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:246:23
     │
 246 │ take_ok_or_any(ok) -> ok;
@@ -80,9 +68,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: 'error'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:259:21
     │
 259 │ use_over(X) -> over(X).
@@ -91,32 +77,26 @@ error: incompatible_types
     │                     X.
 Expression has type:   number() | {}
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                     
 
   number() | {} is not compatible with number()
   because
   {} is not compatible with number()
 
-error: unbound_type_var
+error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
     ┌─ check/src/overloaded.erl:261:1
     │
 261 │ -type invalid() :: _T.
     │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
 
-See https://fb.me/eqwalizer_errors#unbound_type_var
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/overloaded.erl:263:1
     │  
 263 │ ╭ -spec use_invalid_neg(a) -> a;
 264 │ │                  (err) -> invalid().
     │ ╰─────────────────────────────────^ use_invalid_neg/1 references type with invalid definition: invalid/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:269:14
     │
 269 │     _ = swap(""),
@@ -125,15 +105,13 @@ error: incompatible_types
     │              string_lit.
 Expression has type:   []
 Context expected type: atom() | binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │              
 
   [] is not compatible with atom() | binary()
   because
   [] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:290:5
     │
 290 │     swap(ok).
@@ -141,16 +119,12 @@ error: incompatible_types
 Expression has type:   binary()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:308:19
     │
 308 │ reachable_3(_) -> b.
     │                   ^ 'b'.
 Expression has type:   'b'
 Context expected type: 'a'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 13 ERRORS

@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generics_with_unions.erl:17:18
    │
 17 │ test02_neg(X) -> {X, X}.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                  {X, X}.
 Expression has type:   {T | U, T | U}
 Context expected type: {T, U}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                  
 
   at tuple index 1:
@@ -18,7 +16,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   U is not compatible with T
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generics_with_unions.erl:70:19
    │
 70 │ test_ret_neg() -> union(a, b).
@@ -26,17 +24,13 @@ error: incompatible_types
 Expression has type:   'a' | 'b'
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: unbound_type_var
+error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
    ┌─ check/src/generics_with_unions.erl:72:1
    │
 72 │ -type ty_var_from_nowhere() :: _T.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
 
-See https://fb.me/eqwalizer_errors#unbound_type_var
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/generics_with_unions.erl:74:1
    │  
 74 │ ╭ -spec test_uses_ty_var_from_nowhere
@@ -44,9 +38,7 @@ error: reference_to_invalid_type
 76 │ │     -> nok.
    │ ╰──────────^ test_uses_ty_var_from_nowhere/1 references type with invalid definition: ty_var_from_nowhere/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:132:5
     │
 132 │     set_list([{a, 5}], [{a, 5}]).
@@ -55,15 +47,13 @@ error: incompatible_types
     │     set_list([{'a', 5}], [{'a', 5}]).
 Expression has type:   props('a', number())
 Context expected type: 'wrong_ret'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   props('a', number()) is not compatible with 'wrong_ret'
   because
   [prop('a', number())] is not compatible with 'wrong_ret'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:217:19
     │
 217 │ overlap_1([T]) -> T;
@@ -71,9 +61,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: T
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:221:17
     │
 221 │ overlap_2(T) -> T;
@@ -82,15 +70,13 @@ error: incompatible_types
     │                 T.
 Expression has type:   T | [T]
 Context expected type: T
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
   T | [T] is not compatible with T
   because
   [T] is not compatible with T
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:230:5
     │
 230 │     overlap_2([ok]).
@@ -98,9 +84,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: ['ok']
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:233:18
     │
 233 │ trick(_, {B}) -> B.
@@ -108,9 +92,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: B
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:256:5
     │
 256 │     Default;
@@ -118,9 +100,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: Value
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:328:29
     │
 328 │ overlapping_union_neg(X) -> X.
@@ -129,8 +109,6 @@ error: incompatible_types
     │                             X.
 Expression has type:   [K] | [[K]]
 Context expected type: [K]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                             
 
   [K] | [[K]] is not compatible with [K]
@@ -139,16 +117,14 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   [K] is not compatible with K
 
-error: ambiguous_union
+error: ambiguous_union (See https://fb.me/eqwalizer_errors#ambiguous_union)
     ┌─ check/src/generics_with_unions.erl:332:31
     │
 332 │     _ = overlapping_union_neg([]),
     │                               ^^ [].
 Expression has type [] which matches multiple generic types in [K] | [[K]]
 
-See https://fb.me/eqwalizer_errors#ambiguous_union
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:379:28
     │
 379 │     Q2 = where1({i, atom}, Q),
@@ -157,8 +133,6 @@ error: incompatible_types
     │                            Q.
 Expression has type:   query()
 Context expected type: fun(({'i', 'atom'}) -> 'ok')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                            
 
   query() is not compatible with fun(({'i', 'atom'}) -> 'ok')
@@ -170,7 +144,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   at tuple index 2:
   {'i', 'atom'} is not compatible with {'i', number()}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:392:17
     │
 392 │     Q2 = where2(Q, {a, 123}),
@@ -179,8 +153,6 @@ error: incompatible_types
     │                 Q.
 Expression has type:   query()
 Context expected type: fun(({'a', number()}) -> 'ok')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
   query() is not compatible with fun(({'a', number()}) -> 'ok')

@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_fun.erl:65:3
    │
 65 │   fun M:id/1.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   fun((dynamic()) -> dynamic())
 Context expected type: fun(() -> pid())
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_fun.erl:71:3
    │
 71 │   Res.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   fun((dynamic()) -> dynamic())
 Context expected type: fun(() -> pid())
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_fun.erl:87:3
    │
 87 │   fun M:F/2.
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
 Context expected type: fun((pid()) -> pid())
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_fun.erl:93:3
    │
 93 │   Res.
@@ -36,9 +30,7 @@ error: incompatible_types
 Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
 Context expected type: fun((pid()) -> pid())
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_fun.erl:98:7
    │
 98 │   fun M:F/1.
@@ -46,9 +38,7 @@ error: incompatible_types
 Expression has type:   {atom()}
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:103:9
     │
 103 │   fun M:F/1.
@@ -56,9 +46,7 @@ error: incompatible_types
 Expression has type:   {atom()}
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:109:11
     │
 109 │   fun M:F/A.
@@ -66,9 +54,7 @@ error: incompatible_types
 Expression has type:   pid()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:146:24
     │
 146 │ f5_to_f4_cov_neg(F) -> F.
@@ -77,8 +63,6 @@ error: incompatible_types
     │                        F.
 Expression has type:   f5('a' | 'b')
 Context expected type: f4('a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                        
 
   f5('a' | 'b') is not compatible with f4('a')
@@ -89,7 +73,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' | 'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:155:20
     │
 155 │ apply_f4_neg(F) -> F(a).
@@ -97,9 +81,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: boolean()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:170:22
     │
 170 │ fun3_to_f4_neg(F) -> F.
@@ -108,8 +90,6 @@ error: incompatible_types
     │                      F.
 Expression has type:   fun((term()) -> 'a' | 'b')
 Context expected type: f4('a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                      
 
   fun((term()) -> 'a' | 'b') is not compatible with f4('a')
@@ -120,7 +100,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:176:21
     │
 176 │ f4_to_fun_neg(F) -> F.
@@ -129,8 +109,6 @@ error: incompatible_types
     │                     F.
 Expression has type:   f4('a' | 'b')
 Context expected type: fun((term()) -> 'a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                     
 
   f4('a' | 'b') is not compatible with fun((term()) -> 'a')

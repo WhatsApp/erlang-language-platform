@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_bounded.erl:16:21
    │
 16 │ bd_unsafe_neg(V) -> V.
@@ -7,15 +7,13 @@ error: incompatible_types
    │                     V.
 Expression has type:   dyn('a') | 'b'
 Context expected type: 'c'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                     
 
   dyn('a') | 'b' is not compatible with 'c'
   because
   'b' is not compatible with 'c'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_bounded.erl:25:26
    │
 25 │ bd_coerce_safe_neg(V) -> V.
@@ -24,8 +22,6 @@ error: incompatible_types
    │                          V.
 Expression has type:   'a'
 Context expected type: dyn('b')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                          
 
   'a' is not compatible with dyn('b')
@@ -36,31 +32,25 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' is not compatible with 'b'
 
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_bounded.erl:44:27
    │
 44 │     eqwalizer:reveal_type(V).
    │                           ^ #{b => dynamic('c'), number() => 'a'}
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_bounded.erl:51:27
    │
 51 │     eqwalizer:reveal_type(V).
    │                           ^ #{a := 'b', b => dynamic('c')}
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_bounded.erl:66:51
    │
 66 │ bd_distrib_print({a, V}) -> eqwalizer:reveal_type(V).
    │                                                   ^ dynamic('b')
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_bounded.erl:79:5
    │
 79 │     bd_generic_fun(test, 42).
@@ -69,15 +59,13 @@ error: incompatible_types
    │     bd_generic_fun('test', 42).
 Expression has type:   'test' | number()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   'test' | number() is not compatible with number()
   because
   'test' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_bounded.erl:89:5
    │
 89 │     bd_generic_fun(test, N).
@@ -86,8 +74,6 @@ error: incompatible_types
    │     bd_generic_fun('test', N).
 Expression has type:   'test' | dyn(number())
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   'test' | dyn(number()) is not compatible with number()

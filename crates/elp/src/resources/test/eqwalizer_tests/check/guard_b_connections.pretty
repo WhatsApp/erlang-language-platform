@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guard_b_connections.erl:22:3
    │
 22 │   R.
@@ -7,8 +7,6 @@ error: incompatible_types
    │   R.
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   #r1{} | #r2{} is not compatible with r1()
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #r2{} is not compatible with #r1{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guard_b_connections.erl:27:3
    │
 27 │   R.
@@ -26,8 +24,6 @@ error: incompatible_types
    │   R.
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   #r1{} | #r2{} is not compatible with r1()
@@ -36,7 +32,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #r2{} is not compatible with #r1{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guard_b_connections.erl:32:3
    │
 32 │   R.
@@ -45,8 +41,6 @@ error: incompatible_types
    │   R.
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   #r1{} | #r2{} is not compatible with r1()
@@ -55,7 +49,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #r2{} is not compatible with #r1{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guard_b_connections.erl:38:3
    │
 38 │   R.
@@ -64,8 +58,6 @@ error: incompatible_types
    │   R.
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   #r1{} | #r2{} is not compatible with r1()
@@ -74,7 +66,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #r2{} is not compatible with #r1{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guard_b_connections.erl:44:3
    │
 44 │   R.
@@ -83,8 +75,6 @@ error: incompatible_types
    │   R.
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   #r1{} | #r2{} is not compatible with r1()

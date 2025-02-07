@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:31:51
    │
 31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                                                   L.
 Expression has type:   [binary() | atom()]
 Context expected type: [binary()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                                                   
 
   [binary() | atom()] is not compatible with [binary()]
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:48:23
    │
 48 │ occ_list_07_neg(L) -> L.
@@ -25,9 +23,7 @@ error: incompatible_types
 Expression has type:   [term()]
 Context expected type: []
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:54:23
    │
 54 │ occ_list_08_neg(A) -> A.
@@ -36,15 +32,13 @@ error: incompatible_types
    │                       A.
 Expression has type:   none() | atom() | []
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                       
 
   none() | atom() | [] is not compatible with atom()
   because
   [] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:61:19
    │
 61 │ occ_list_09(A) -> A.
@@ -53,15 +47,13 @@ error: incompatible_types
    │                   A.
 Expression has type:   none() | atom() | []
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                   
 
   none() | atom() | [] is not compatible with atom()
   because
   [] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:69:19
    │
 69 │ occ_list_10(L) -> L.
@@ -69,9 +61,7 @@ error: incompatible_types
 Expression has type:   [term()]
 Context expected type: []
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:76:23
    │
 76 │ occ_list_11_neg(L) -> L.
@@ -80,8 +70,6 @@ error: incompatible_types
    │                       L.
 Expression has type:   [atom()] | [binary()]
 Context expected type: [binary()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                       
 
   [atom()] | [binary()] is not compatible with [binary()]
@@ -90,7 +78,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:97:23
    │
 97 │ occ_list_14_neg(L) -> L.
@@ -98,9 +86,7 @@ error: incompatible_types
 Expression has type:   []
 Context expected type: binary()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater_lists.erl:130:23
     │
 130 │ occ_list_20_neg(V) -> [ok | [V]].
@@ -109,8 +95,6 @@ error: incompatible_types
     │                       ['ok', V].
 Expression has type:   [atom() | binary()]
 Context expected type: [atom()] | [binary()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                       
 
   [atom() | binary()] is not compatible with [atom()] | [binary()]

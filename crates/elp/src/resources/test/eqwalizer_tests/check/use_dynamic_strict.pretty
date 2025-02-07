@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/use_dynamic_strict.erl:17:3
    │
 17 │   {erlang:atom_to_binary(Dyn)}.
@@ -7,8 +7,6 @@ error: incompatible_types
    │   {erlang:atom_to_binary(Dyn)}.
 Expression has type:   {binary()}
 Context expected type: {atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   at tuple index 1:

@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tries.erl:30:19
    │
 30 │         {_, Y} -> Y
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tries.erl:42:5
    │
 42 │     Res.
@@ -17,15 +15,13 @@ error: incompatible_types
    │     Res.
 Expression has type:   [] | 'error'
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   [] | 'error' is not compatible with atom()
   because
   [] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tries.erl:75:16
    │
 75 │     catch _ -> error
@@ -33,9 +29,7 @@ error: incompatible_types
 Expression has type:   'error'
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tries.erl:80:9
    │
 80 │     try ok()
@@ -43,9 +37,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: 'error'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tries.erl:88:19
    │
 88 │         only_atom(1)
@@ -53,9 +45,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/tries.erl:130:17
     │
 130 │         true -> Y
@@ -63,9 +53,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/tries.erl:136:19
     │
 136 │         {X, X} -> X
@@ -73,16 +61,12 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/tries.erl:148:5
     │
 148 │     Res.
     │     ^^^ Res.
 Expression has type:   term()
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 8 ERRORS

@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:121:3
     │
 121 │   A / 2.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:125:7
     │
 125 │   2 / A.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:129:7
     │
 129 │   2 * A.
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:133:3
     │
 133 │   A * 2.
@@ -36,9 +30,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:137:7
     │
 137 │   X = A * 2,
@@ -46,9 +38,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:142:9
     │
 142 │   2 div A.
@@ -56,9 +46,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:146:14
     │
 146 │   X = (2 div A),
@@ -66,9 +54,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:151:3
     │
 151 │   A div 2.
@@ -76,9 +62,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:155:7
     │
 155 │   X = A div 2,
@@ -86,9 +70,7 @@ error: incompatible_types
 Expression has type:   'a'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:160:3
     │
 160 │   1 div 2.
@@ -96,9 +78,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: 'a'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:182:3
     │
 182 │   bnot 0.
@@ -106,9 +86,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: pid()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:350:5
     │
 350 │   (+X).
@@ -116,9 +94,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:354:9
     │
 354 │   _ = (+X),
@@ -126,9 +102,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:359:9
     │
 359 │   _ = (-X),
@@ -136,9 +110,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:364:9
     │
 364 │   _ = (-X),
@@ -146,9 +118,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:428:8
     │
 428 │   bnot X.
@@ -156,9 +126,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:433:12
     │
 433 │   _ = bnot X,
@@ -166,9 +134,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:491:3
     │
 491 │   U * N.
@@ -177,15 +143,13 @@ error: incompatible_types
     │   U.
 Expression has type:   'a' | number()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │   
 
   'a' | number() is not compatible with number()
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:552:3
     │
 552 │   U1 div U2 / (U2 bsl U1).
@@ -193,9 +157,7 @@ error: incompatible_types
 Expression has type:   'a' | 'b'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:559:3
     │
 559 │   U1 * U2 / (U2 + U1).
@@ -203,9 +165,7 @@ error: incompatible_types
 Expression has type:   'a' | 'b'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:577:3
     │
 577 │   -X.
@@ -213,9 +173,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: none()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:583:3
     │
 583 │   bnot X.
@@ -223,9 +181,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: none()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:589:3
     │
 589 │   5 * X.
@@ -233,9 +189,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: none()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:644:3
     │    
 644 │ ╭ ╭   {
@@ -248,8 +202,6 @@ error: incompatible_types
     │ ╰─│───^ {1, 0, - _, Int, 'error'}.
 Expression has type:   {number(), number(), number(), number(), 'error'}
 Context expected type: {number(), number(), number(), number(), 'ok'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │   ╰───' 
 
   at tuple index 5:
@@ -257,14 +209,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'error' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:658:3
     │
 658 │   1.0.
     │   ^^^ float_lit.
 Expression has type:   number()
 Context expected type: pid()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 25 ERRORS

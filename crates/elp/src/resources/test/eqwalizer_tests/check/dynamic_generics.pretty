@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:33:3
    │
 33 │   lists:map(fun inc/1, Ns).
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   [number()]
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:43:3
    │
 43 │   lists:map(fun dyn_fun/1, Ns).
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:53:3
    │
 53 │   lists:foldl(fun add/2, 0, Ns).
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:65:3
    │
 65 │   lists:foldl(fun add/2, Acc, Ns).
@@ -37,15 +31,13 @@ error: incompatible_types
    │   lists:foldl(add/2, Acc, Ns).
 Expression has type:   number() | dynamic()
 Context expected type: none()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   number() | dynamic() is not compatible with none()
   because
   number() is not compatible with none()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:72:3
    │
 72 │   {Res}.
@@ -53,9 +45,7 @@ error: incompatible_types
 Expression has type:   {number() | dynamic()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:78:3
    │
 78 │   lists:foldl(fun dyn_fun/2, Acc, Ns).
@@ -64,15 +54,13 @@ error: incompatible_types
    │   lists:foldl(dyn_fun/2, Acc, Ns).
 Expression has type:   dynamic() | string()
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   dynamic() | string() is not compatible with 'ok'
   because
   string() is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:87:3
    │
 87 │   fapply(fun inc/1, dyn_val()).
@@ -80,9 +68,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:92:3
    │
 92 │   {Res}.
@@ -90,9 +76,7 @@ error: incompatible_types
 Expression has type:   {dynamic()}
 Context expected type: X
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:9
     │
 115 │         Fib(N - 2) + Fib(N - 1)
@@ -101,15 +85,13 @@ error: incompatible_types
     │         Fib(_ - _).
 Expression has type:   number() | 'three'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │         
 
   number() | 'three' is not compatible with number()
   because
   'three' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:127:13
     │
 127 │         Fib(undefined) + Fib(N - 1)
@@ -117,14 +99,10 @@ error: incompatible_types
 Expression has type:   'undefined'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/dynamic_generics.erl:171:47
     │
 171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
     │                                               ^^^^^^^^^^^^ dynamic() | 'undef'
-
-See https://fb.me/eqwalizer_errors#reveal_type
 
 11 ERRORS

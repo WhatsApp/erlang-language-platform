@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:30:18
    │
 30 │ mk_rec1_neg() -> #rec2{}.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   #rec2{}
 Context expected type: #rec1{}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:40:5
    │
 40 │     R.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   #rec2{}
 Context expected type: #rec1{}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:50:21
    │
 50 │ mk_rec_neg(rec2) -> #rec2{}.
@@ -27,23 +23,19 @@ error: incompatible_types
    │                     #rec2{...}.
 Expression has type:   #rec2{}
 Context expected type: #rec1{} | #rec3{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                     
 
   #rec2{} is not compatible with #rec1{} | #rec3{}
   because
   #rec2{} is not compatible with #rec1{}
 
-error: undefined_field
+error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
    ┌─ check/src/records.erl:59:11
    │
 59 │     Foo = #foo{name = bar},
    │           ^^^^^^^^^^^^^^^^ #foo{...}: id is 'undefined'
 
-See https://fb.me/eqwalizer_errors#undefined_field
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:73:5
    │
 73 │     Foo#foo_def{name = default, id = 0}.
@@ -51,9 +43,7 @@ error: incompatible_types
 Expression has type:   #foo_def{}
 Context expected type: #foo{}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:86:5
    │
 86 │     #foo.name.
@@ -61,9 +51,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:91:5
    │
 91 │     Index.
@@ -71,9 +59,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:104:5
     │
 104 │     Foo#foo.name.
@@ -81,9 +67,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:109:5
     │
 109 │     Id.
@@ -91,9 +75,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:117:35
     │
 117 │ rec_index_pat_neg(#foo.id = I) -> I.
@@ -101,9 +83,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:127:5
     │
 127 │     {N, I}.
@@ -112,8 +92,6 @@ error: incompatible_types
     │     {N, I}.
 Expression has type:   {atom(), number()}
 Context expected type: {number(), atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   at tuple index 1:
@@ -121,15 +99,13 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with number()
 
-error: undefined_field
+error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
     ┌─ check/src/records.erl:144:17
     │
 144 │     when Foo == #foo{} -> ok.
     │                 ^^^^^^ #foo{...}: id is 'undefined'
 
-See https://fb.me/eqwalizer_errors#undefined_field
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:154:37
     │
 154 │     when Foo == #foo_def{id = X} -> X.
@@ -137,9 +113,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:167:5
     │
 167 │     (X#rec_b.field)#rec_a.field.
@@ -147,9 +121,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:174:23
     │
 174 │     #iodata_box{iod = 's'}.
@@ -157,9 +129,7 @@ error: incompatible_types
 Expression has type:   's'
 Context expected type: iodata()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:189:35
     │
 189 │     #mrec{id1 = 1, name1 = n, _ = ok}.
@@ -167,9 +137,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:217:5
     │
 217 │     #any_box{inner = ok}.
@@ -178,8 +146,6 @@ error: incompatible_types
     │     #any_box{...}.
 Expression has type:   #any_box{inner :: 'ok'}
 Context expected type: int_box()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   #any_box{inner :: 'ok'} is not compatible with int_box()
@@ -188,7 +154,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'ok' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:222:5
     │
 222 │     #any_box{inner = ok}.
@@ -197,15 +163,13 @@ error: incompatible_types
     │     #any_box{...}.
 Expression has type:   #any_box{inner :: 'ok'}
 Context expected type: #any_box{inner :: number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   #any_box{inner :: 'ok'} is not compatible with #any_box{inner :: number()}
   because
   'ok' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:282:27
     │
 282 │     #int_bool_box{inner = a}.
@@ -214,15 +178,13 @@ error: incompatible_types
     │                           'a'.
 Expression has type:   'a'
 Context expected type: number() | boolean()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
   'a' is not compatible with number() | boolean()
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:287:23
     │
 287 │     #int_bool_box{_ = a}.
@@ -231,15 +193,13 @@ error: incompatible_types
     │                       'a'.
 Expression has type:   'a'
 Context expected type: number() | boolean()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                       
 
   'a' is not compatible with number() | boolean()
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:292:5
     │
 292 │     #int_bool_box{}.
@@ -248,8 +208,6 @@ error: incompatible_types
     │     #int_bool_box{...}.
 Expression has type:   #int_bool_box{inner :: 'true'}
 Context expected type: only_int_box()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   #int_bool_box{inner :: 'true'} is not compatible with only_int_box()
@@ -258,7 +216,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'true' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:308:28
     │
 308 │     B#int_bool_box{inner = a}.
@@ -267,15 +225,13 @@ error: incompatible_types
     │                            'a'.
 Expression has type:   'a'
 Context expected type: number() | boolean()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                            
 
   'a' is not compatible with number() | boolean()
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:314:5
     │
 314 │     B#int_bool_box{inner = 4}.
@@ -284,8 +240,6 @@ error: incompatible_types
     │     ...#int_bool_box{...}.
 Expression has type:   #int_bool_box{inner :: number()}
 Context expected type: only_bool_box()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   #int_bool_box{inner :: number()} is not compatible with only_bool_box()
@@ -294,7 +248,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   number() is not compatible with boolean()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:319:5
     │
 319 │     R#any_box.inner.
@@ -303,15 +257,13 @@ error: incompatible_types
     │     R.
 Expression has type:   only_int_box()
 Context expected type: #any_box{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   only_int_box() is not compatible with #any_box{}
   because
   #int_bool_box{inner :: number()} is not compatible with #any_box{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:324:5
     │
 324 │     R#int_bool_box.inner.
@@ -319,9 +271,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: boolean()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:329:5
     │
 329 │     {int_bool_box, a}.
@@ -330,8 +280,6 @@ error: incompatible_types
     │     {'int_bool_box', 'a'}.
 Expression has type:   {'int_bool_box', 'a'}
 Context expected type: #int_bool_box{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   at tuple index 2:
@@ -341,7 +289,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:334:5
     │
 334 │     {int_bool_box, a}.
@@ -350,8 +298,6 @@ error: incompatible_types
     │     {'int_bool_box', 'a'}.
 Expression has type:   {'int_bool_box', 'a'}
 Context expected type: only_int_box()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   {'int_bool_box', 'a'} is not compatible with only_int_box()
@@ -361,7 +307,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:352:5
     │
 352 │     R#int_bool_box.inner.
@@ -370,15 +316,13 @@ error: incompatible_types
     │     ...#int_bool_box.inner.
 Expression has type:   boolean() | 'true'
 Context expected type: 'true'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   boolean() | 'true' is not compatible with 'true'
   because
   boolean() is not compatible with 'true'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:355:13
     │
 355 │     inner = true :: integer()
@@ -386,9 +330,7 @@ error: incompatible_types
 Expression has type:   'true'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:366:5
     │
 366 │     #bad_default{inner = 42}.
@@ -397,15 +339,13 @@ error: incompatible_types
     │     #bad_default{...}.
 Expression has type:   #bad_default{}
 Context expected type: only_int_box()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   #bad_default{} is not compatible with only_int_box()
   because
   #bad_default{} is not compatible with #int_bool_box{inner :: number()}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:372:5
     │
 372 │     R#bad_default.inner.
@@ -414,8 +354,6 @@ error: incompatible_types
     │     R.
 Expression has type:   {'int_bool_box', number()}
 Context expected type: #bad_default{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   at tuple index 1:
@@ -423,7 +361,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'int_bool_box' is not compatible with 'bad_default'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:388:31
     │
 388 │ test_subtype_refine_neg(R) -> R.
@@ -432,15 +370,13 @@ error: incompatible_types
     │                               R.
 Expression has type:   #refined_two_fields{}
 Context expected type: #refined_two_fields{inner :: number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                               
 
   #refined_two_fields{} is not compatible with #refined_two_fields{inner :: number()}
   because
   term() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:402:5
     │
 402 │     lists:nth(1, L) * 3.
@@ -448,42 +384,32 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: type_var_in_record_field
+error: type_var_in_record_field (See https://fb.me/eqwalizer_errors#type_var_in_record_field)
     ┌─ check/src/records.erl:412:14
     │
 412 │     field :: _T
     │              ^^ _T: Type variables are meaningless in record fields. Did you mean to use an alias?
 
-See https://fb.me/eqwalizer_errors#type_var_in_record_field
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/records.erl:415:1
     │  
 415 │ ╭ -spec test_recurd2_neg(#recurd2{}) ->
 416 │ │     #recurd2{}.
     │ ╰──────────────^ test_recurd2_neg/1 references type with invalid definition: #recurd2{}
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: type_alias_is_non_productive
+error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/records.erl:420:1
     │
 420 │ -type loop() :: loop().
     │ ^^^^^^^^^^^^^^^^^^^^ recursive type loop/0 is not productive
 
-See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/records.erl:421:1
     │
 421 │ -record(invalid, {field :: loop()}).
     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid references type with invalid definition: loop/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:425:5
     │
 425 │     X#invalid.field.
@@ -491,9 +417,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: #invalid{}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:429:9
     │
 429 │     _ = X#invalid.field,
@@ -501,17 +425,13 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: #invalid{}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/records.erl:445:27
     │
 445 │     eqwalizer:reveal_type(Field2),
     │                           ^^^^^^ dynamic()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:473:20
     │
 473 │     binary_to_atom(B);
@@ -520,15 +440,13 @@ error: incompatible_types
     │                    B.
 Expression has type:   'my_record' | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                    
 
   'my_record' | binary() is not compatible with binary()
   because
   'my_record' is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:523:24
     │
 523 │ narrow5_neg({X, X}) -> X.
@@ -536,9 +454,7 @@ error: incompatible_types
 Expression has type:   #two_ref{b :: boolean(), a :: atom()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:536:5
     │
 536 │     Id.
@@ -547,15 +463,13 @@ error: incompatible_types
     │     Id.
 Expression has type:   number() | none()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   number() | none() is not compatible with atom()
   because
   number() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:545:5
     │
 545 │     Rec#two_ref.a.
@@ -564,15 +478,13 @@ error: incompatible_types
     │     ...#two_ref.a.
 Expression has type:   term() | none()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   term() | none() is not compatible with atom()
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:551:5
     │
 551 │     A.
@@ -581,22 +493,18 @@ error: incompatible_types
     │     A.
 Expression has type:   term() | none()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   term() | none() is not compatible with atom()
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:557:5
     │
 557 │     I#{a => b}.
     │     ^^^^^^^^^^ ..#{..}.
 Expression has type:   #{a := 'b', dynamic() => dynamic()}
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 46 ERRORS

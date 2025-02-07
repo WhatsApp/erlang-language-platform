@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats.erl:36:3
    │
 36 │   wn_ey_sy() + 3.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats.erl:43:3
    │
 43 │   wy_ey_sy() + 3.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats.erl:46:3
    │
 46 │   wy_ey_sy() + 3.
@@ -26,16 +22,12 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats.erl:55:3
    │
 55 │   wy_ey_sy() + 3.
    │   ^^^^^^^^^^ wy_ey_sy().
 Expression has type:   'ok'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 4 ERRORS

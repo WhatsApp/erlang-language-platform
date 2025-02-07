@@ -1,11 +1,9 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats2.erl:15:11
    │
 15 │   _ = 1 + Atom,
    │           ^^^^ Atom.
 Expression has type:   atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 1 ERROR

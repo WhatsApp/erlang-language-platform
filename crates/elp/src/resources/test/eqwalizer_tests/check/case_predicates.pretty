@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/case_predicates.erl:13:24
    │
 13 │     {true, true} -> aa(X, Y);
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:124:14
     │
 124 │     false -> {p, X}
@@ -17,8 +15,6 @@ error: incompatible_types
     │              {'p', X}.
 Expression has type:   {'p', none() | pid() | reference()}
 Context expected type: {'a', atom()} | {'p', pid()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │              
 
   {'p', none() | pid() | reference()} is not compatible with {'a', atom()} | {'p', pid()}
@@ -30,7 +26,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   reference() is not compatible with pid()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:144:10
     │
 144 │     _ -> X
@@ -39,8 +35,6 @@ error: incompatible_types
     │          X.
 Expression has type:   'undefined' | none() | 'restarting'
 Context expected type: {'p', pid()} | 'undefined'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │          
 
   'undefined' | none() | 'restarting' is not compatible with {'p', pid()} | 'undefined'
@@ -49,7 +43,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'restarting' is not compatible with {'p', pid()}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:174:16
     │
 174 │   lists:nth(1, L).
@@ -58,8 +52,6 @@ error: incompatible_types
     │                L.
 Expression has type:   #{dynamic() => dynamic()} | none()
 Context expected type: [T]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                
 
   #{dynamic() => dynamic()} | none() is not compatible with [T]

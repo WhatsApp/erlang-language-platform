@@ -1,44 +1,34 @@
-error: type_var_in_record_field
+error: type_var_in_record_field (See https://fb.me/eqwalizer_errors#type_var_in_record_field)
    ┌─ debug/src/records_wip.erl:60:14
    │
 60 │     field :: _TyVar
    │              ^^^^^^ _TyVar: Type variables are meaningless in record fields. Did you mean to use an alias?
 
-See https://fb.me/eqwalizer_errors#type_var_in_record_field
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/records_wip.erl:62:1
    │
 62 │ -type ty_var_in_field() :: #ty_var_in_field{}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ty_var_in_field/0 references type with invalid definition: #ty_var_in_field{}
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: type_var_in_record_field
+error: type_var_in_record_field (See https://fb.me/eqwalizer_errors#type_var_in_record_field)
    ┌─ debug/src/records_wip.erl:66:9
    │
 66 │         _TyVar
    │         ^^^^^^ _TyVar: Type variables are meaningless in record fields. Did you mean to use an alias?
 
-See https://fb.me/eqwalizer_errors#type_var_in_record_field
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/records_wip.erl:68:1
    │
 68 │ -type ty_var_in_field2() :: #ty_var_in_field2{}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ty_var_in_field2/0 references type with invalid definition: #ty_var_in_field2{}
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: unbound_type_var
+error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
    ┌─ debug/src/records_wip.erl:70:1
    │
 70 │ -type var_from_nowhere() :: _T.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
 
-See https://fb.me/eqwalizer_errors#unbound_type_var
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/records_wip.erl:72:1
    │  
 72 │ ╭ -record(ty_var_in_field3, {
@@ -47,14 +37,10 @@ error: reference_to_invalid_type
 75 │ │ }).
    │ ╰──^ ty_var_in_field3 references type with invalid definition: var_from_nowhere/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/records_wip.erl:76:1
    │
 76 │ -type ty_var_in_field3() :: #ty_var_in_field3{}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ty_var_in_field3/0 references type with invalid definition: #ty_var_in_field3{}
-
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
 
 7 ERRORS

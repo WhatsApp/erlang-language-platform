@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:18:5
    │
 18 │     gb_sets:from_list(Atoms).
@@ -7,15 +7,13 @@ error: incompatible_types
    │     gb_sets:from_list(Atoms).
 Expression has type:   gb_sets:set(atom())
 Context expected type: gb_sets:set(number())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   gb_sets:set(atom()) is not compatible with gb_sets:set(number())
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:42:5
    │
 42 │     List.
@@ -24,15 +22,13 @@ error: incompatible_types
    │     List.
 Expression has type:   [[A]]
 Context expected type: [A]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   [[A]] is not compatible with [A]
   because
   [A] is not compatible with A
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:93:14
    │
 93 │         1 -> gb_sets:new();
@@ -41,15 +37,13 @@ error: incompatible_types
    │              gb_sets:new().
 Expression has type:   gb_sets:set(none())
 Context expected type: {term(), term()} | 'a'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │              
 
   gb_sets:set(none()) is not compatible with {term(), term()} | 'a'
   because
   gb_sets:set(none()) is not compatible with {term(), term()}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:99:17
    │
 99 │ test3_neg(X) -> X.
@@ -57,9 +51,7 @@ error: incompatible_types
 Expression has type:   maps:iterator('k', 'v')
 Context expected type: sets:set('a')
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:102:13
     │
 102 │ ts(X, X) -> X.
@@ -67,9 +59,7 @@ error: incompatible_types
 Expression has type:   sets:set('a')
 Context expected type: T
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:107:11
     │
 107 │     ts(X, X),
@@ -77,9 +67,7 @@ error: incompatible_types
 Expression has type:   maps:iterator('k', 'v')
 Context expected type: sets:set('a')
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/otp_opaques.erl:124:5
     │
 124 │     X().
@@ -87,16 +75,12 @@ error: expected_fun_type
 Expected fun type with arity 0
 Got: maps:iterator('k', 'v') | sets:set('a')
 
-See https://fb.me/eqwalizer_errors#expected_fun_type
-
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/otp_opaques.erl:130:5
     │
 130 │     X().
     │     ^ X.
 Expected fun type with arity 0
 Got: sets:set('a')
-
-See https://fb.me/eqwalizer_errors#expected_fun_type
 
 8 ERRORS

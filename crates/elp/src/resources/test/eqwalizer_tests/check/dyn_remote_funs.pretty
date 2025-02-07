@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:69:12
    │
 69 │         -> Res;
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: fun((none()) -> term())
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:80:5
    │
 80 │     fun M:F/2.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
 Context expected type: 'a'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:85:9
    │
 85 │ fun M:F/A.
@@ -26,16 +22,12 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:90:9
    │
 90 │ fun M:F/A.
    │         ^ A.
 Expression has type:   atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 4 ERRORS

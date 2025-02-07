@@ -1,11 +1,9 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs_uncommon.erl:38:13
    │
 38 │     field = {fun(X) -> X end, an_atom}
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^ {fun, 'an_atom'}.
 Expression has type:   {fun((dynamic()) -> dynamic()), 'an_atom'}
 Context expected type: fun(('a') -> 'a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 1 ERROR

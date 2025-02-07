@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:46:21
    │
 46 │ to_f_any_neg2(F) -> F.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   'f0' | fun((atom()) -> pid()) | 'f1'
 Context expected type: fun()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:49:23
    │
 49 │ f_any_to_f0_neg(F) -> F.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   fun()
 Context expected type: 'f0'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:61:31
    │
 61 │     when is_function(F, 1) -> F.
@@ -27,15 +23,13 @@ error: incompatible_types
    │                               F.
 Expression has type:   fun((term()) -> term())
 Context expected type: f2()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                               
 
   fun((term()) -> term()) is not compatible with f2()
   because
   fun((term()) -> term()) is not compatible with fun((term(), term()) -> term())
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:92:24
    │
 92 │ f5_to_f4_cov_neg(F) -> F.
@@ -44,8 +38,6 @@ error: incompatible_types
    │                        F.
 Expression has type:   f5('a' | 'b')
 Context expected type: f4('a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                        
 
   f5('a' | 'b') is not compatible with f4('a')
@@ -56,7 +48,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' | 'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:98:20
    │
 98 │ apply_f4_neg(F) -> F(a).
@@ -64,9 +56,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: boolean()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/any_fun_type.erl:113:22
     │
 113 │ fun3_to_f4_neg(F) -> F.
@@ -75,8 +65,6 @@ error: incompatible_types
     │                      F.
 Expression has type:   fun((term()) -> 'a' | 'b')
 Context expected type: f4('a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                      
 
   fun((term()) -> 'a' | 'b') is not compatible with f4('a')

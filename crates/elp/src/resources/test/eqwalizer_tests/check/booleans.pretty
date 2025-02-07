@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/booleans.erl:47:3
    │
 47 │   1 andalso b().
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: boolean()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/booleans.erl:59:3
    │
 59 │   dyn() andalso only_true().
@@ -17,8 +15,6 @@ error: incompatible_types
    │   _ andalso _.
 Expression has type:   'false' | 'true'
 Context expected type: 'true'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   'false' | 'true' is not compatible with 'true'

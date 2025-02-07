@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/other.erl:46:27
    │
 46 │ any_as_metadata_neg(M) -> M.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                           M.
 Expression has type:   term()
 Context expected type: logger:metadata()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                           
 
   term() is not compatible with logger:metadata()

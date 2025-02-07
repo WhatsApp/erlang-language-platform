@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_catch.erl:22:16
    │
 22 │     {ok, A} -> A;
@@ -7,8 +7,6 @@ error: incompatible_types
    │                A.
 Expression has type:   atom() | dynamic()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                
 
   atom() | dynamic() is not compatible with binary()

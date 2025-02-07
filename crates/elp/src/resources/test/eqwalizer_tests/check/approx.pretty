@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/approx.erl:36:5
    │
 36 │     {X, X}.
@@ -6,17 +6,13 @@ error: incompatible_types
 Expression has type:   {dynamic(), dynamic()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: unknown_id
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
    ┌─ check/src/approx.erl:39:1
    │
 39 │ generics_with_unions:type_var_from_nowhere().
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unknown id: generics_with_unions:type_var_from_nowhere/0
 
-See https://fb.me/eqwalizer_errors#unknown_id
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/approx.erl:41:1
    │  
 41 │ ╭ -spec test_trans_invalid1_neg(
@@ -24,9 +20,7 @@ error: reference_to_invalid_type
 43 │ │ ) -> nok.
    │ ╰────────^ test_trans_invalid1_neg/1 references type with invalid definition: trans_invalid/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/approx.erl:47:1
    │  
 47 │ ╭ -spec test_trans_invalid2_neg(
@@ -34,9 +28,7 @@ error: reference_to_invalid_type
 49 │ │ ) -> nok.
    │ ╰────────^ test_trans_invalid2_neg/1 references type with invalid definition: trans_invalid/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/approx.erl:53:1
    │  
 53 │ ╭ -spec test_trans_invalid3_neg(
@@ -44,9 +36,7 @@ error: reference_to_invalid_type
 55 │ │ ) -> nok.
    │ ╰────────^ test_trans_invalid3_neg/1 references type with invalid definition: trans_invalid/0
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
    ┌─ check/src/approx.erl:62:30
    │
 62 │ test_opaque_as_fun_neg(X) -> X(ok).
@@ -54,9 +44,7 @@ error: expected_fun_type
 Expected fun type with arity 1
 Got: misc:o() | fun((term()) -> none())
 
-See https://fb.me/eqwalizer_errors#expected_fun_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/approx.erl:69:3
    │
 69 │   Dyn2.
@@ -65,28 +53,22 @@ error: incompatible_types
    │   Dyn2.
 Expression has type:   string() | dynamic()
 Context expected type: 'anything'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   string() | dynamic() is not compatible with 'anything'
   because
   string() is not compatible with 'anything'
 
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/approx.erl:79:25
    │
 79 │   eqwalizer:reveal_type(Res),
    │                         ^^^ dynamic(number())
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/approx.erl:90:25
    │
 90 │   eqwalizer:reveal_type(Res),
    │                         ^^^ dynamic(number())
-
-See https://fb.me/eqwalizer_errors#reveal_type
 
 9 ERRORS

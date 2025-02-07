@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:162:7
     │
 162 │       B
@@ -7,15 +7,13 @@ error: incompatible_types
     │       B.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │       
 
   none() | number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:172:22
     │
 172 │ occ05_3_neg_cl(B) -> B.
@@ -24,15 +22,13 @@ error: incompatible_types
     │                      B.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                      
 
   none() | number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:183:7
     │
 183 │       A
@@ -41,15 +37,13 @@ error: incompatible_types
     │       A.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │       
 
   none() | number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:340:13
     │
 340 │ occ11(A) -> A.
@@ -58,15 +52,13 @@ error: incompatible_types
     │             A.
 Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │             
 
   #ab_rec{} | atom() is not compatible with atom()
   because
   #ab_rec{} is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:356:16
     │
 356 │ occ13(A, _) -> A.
@@ -75,15 +67,13 @@ error: incompatible_types
     │                A.
 Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                
 
   #ab_rec{} | atom() is not compatible with atom()
   because
   #ab_rec{} is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:404:25
     │
 404 │ get_int4_neg({_, I}) -> I.
@@ -91,9 +81,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:415:21
     │
 415 │ get_int6({_, I}) -> I.
@@ -102,15 +90,13 @@ error: incompatible_types
     │                     I.
 Expression has type:   number() | atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                     
 
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:422:25
     │
 422 │ get_int7_neg({_, I}) -> I.
@@ -119,15 +105,13 @@ error: incompatible_types
     │                         I.
 Expression has type:   number() | atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                         
 
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:429:25
     │
 429 │ get_int8_neg({_, I}) -> I.
@@ -136,15 +120,13 @@ error: incompatible_types
     │                         I.
 Expression has type:   number() | atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                         
 
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:496:3
     │
 496 │   A.
@@ -153,15 +135,13 @@ error: incompatible_types
     │   A.
 Expression has type:   atom() | none()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │   
 
   atom() | none() is not compatible with binary()
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:521:22
     │
 521 │   record_occ07_tuple(R).
@@ -170,8 +150,6 @@ error: incompatible_types
     │                      R.
 Expression has type:   #union_field{}
 Context expected type: {'union_field', atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                      
 
   at tuple index 2:
@@ -181,7 +159,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   binary() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:559:50
     │
 559 │ record_occ13_neg(#union_field4{x = A, y = _}) -> A.
@@ -190,15 +168,13 @@ error: incompatible_types
     │                                                  A.
 Expression has type:   number() | 'ok'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                                                  
 
   number() | 'ok' is not compatible with number()
   because
   'ok' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:590:8
     │
 590 │     -> B#b.id;
@@ -207,15 +183,13 @@ error: incompatible_types
     │        B.
 Expression has type:   #a{} | #b{} | #c{}
 Context expected type: #b{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │        
 
   #a{} | #b{} | #c{} is not compatible with #b{}
   because
   #a{} is not compatible with #b{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:631:27
     │
 631 │ occ23_neg({_, B}, F) -> F(B).
@@ -224,15 +198,13 @@ error: incompatible_types
     │                           B.
 Expression has type:   A | B
 Context expected type: B
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
   A | B is not compatible with B
   because
   A is not compatible with B
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:649:17
     │
 649 │ occ26_neg(T) -> T.
@@ -241,15 +213,13 @@ error: incompatible_types
     │                 T.
 Expression has type:   fun() | {term()}
 Context expected type: {term()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
   fun() | {term()} is not compatible with {term()}
   because
   fun() is not compatible with {term()}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:660:17
     │
 660 │ occ28_neg(A) -> A.
@@ -258,15 +228,13 @@ error: incompatible_types
     │                 A.
 Expression has type:   tuple() | atom()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
   tuple() | atom() is not compatible with atom()
   because
   tuple() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:681:18
     │
 681 │     {_N, _N1} -> X#one_field.f1
@@ -275,15 +243,13 @@ error: incompatible_types
     │                  X.
 Expression has type:   #one_field{} | #two_fields1{}
 Context expected type: #one_field{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                  
 
   #one_field{} | #two_fields1{} is not compatible with #one_field{}
   because
   #two_fields1{} is not compatible with #one_field{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:839:27
     │
 839 │ multi_param2_neg(_, Y) -> Y.
@@ -292,15 +258,13 @@ error: incompatible_types
     │                           Y.
 Expression has type:   number() | atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:997:31
     │
 997 │ occ42_neg({F, S} = {_, _}) -> F.
@@ -308,9 +272,7 @@ error: incompatible_types
 Expression has type:   string() | 'undefined'
 Context expected type: string()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1004:31
      │
 1004 │ occ43_neg({F, S} = {_, _}) -> F.
@@ -318,9 +280,7 @@ error: incompatible_types
 Expression has type:   string() | 'undefined'
 Context expected type: string()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1091:20
      │
 1091 │ occ53_neg(_, I) -> I.
@@ -329,15 +289,13 @@ error: incompatible_types
      │                    I.
 Expression has type:   number() | 'undefined'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │                    
 
   number() | 'undefined' is not compatible with number()
   because
   'undefined' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1122:14
      │
 1122 │         A -> [A]
@@ -346,8 +304,6 @@ error: incompatible_types
      │              [A].
 Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │              
 
   [[atom()]] | [atom()] is not compatible with [atom()]
@@ -356,7 +312,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   [atom()] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1131:15
      │
 1131 │         A2 -> [A2]
@@ -365,8 +321,6 @@ error: incompatible_types
      │               [A2].
 Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │               
 
   [[atom()]] | [atom()] is not compatible with [atom()]
@@ -375,7 +329,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   [atom()] is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1155:7
      │
 1155 │       X
@@ -384,15 +338,13 @@ error: incompatible_types
      │       X.
 Expression has type:   binary() | string()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │       
 
   binary() | string() is not compatible with binary()
   because
   string() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1181:7
      │
 1181 │       Y
@@ -401,15 +353,13 @@ error: incompatible_types
      │       Y.
 Expression has type:   binary() | atom()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │       
 
   binary() | atom() is not compatible with binary()
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1189:60
      │
 1189 │ occ_guard_binary_2_neg(V) when V =:= <<"ok">>; V =:= ok -> V;
@@ -418,15 +368,13 @@ error: incompatible_types
      │                                                            V.
 Expression has type:   'ok' | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                            
 
   'ok' | binary() is not compatible with binary()
   because
   'ok' is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1194:30
      │
 1194 │ occ_guard_binary_3_neg(V) -> V.
@@ -435,15 +383,13 @@ error: incompatible_types
      │                              V.
 Expression has type:   binary() | 'ok'
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │                              
 
   binary() | 'ok' is not compatible with 'ok'
   because
   binary() is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1225:14
      │
 1225 │         _ -> Args
@@ -452,15 +398,13 @@ error: incompatible_types
      │              Args.
 Expression has type:   {term(), my_list()} | none() | number()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │              
 
   {term(), my_list()} | none() | number() is not compatible with number()
   because
   {term(), my_list()} is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1231:31
      │
 1231 │         _ when is_tuple(T) -> T
@@ -468,9 +412,7 @@ error: incompatible_types
 Expression has type:   tuple()
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1257:29
      │
 1257 │ non_linear_neg_1({B, B}) -> B.
@@ -479,15 +421,13 @@ error: incompatible_types
      │                             B.
 Expression has type:   'a' | 'b'
 Context expected type: 'b'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │                             
 
   'a' | 'b' is not compatible with 'b'
   because
   'a' is not compatible with 'b'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1269:5
      │
 1269 │     V.
@@ -496,15 +436,13 @@ error: incompatible_types
      │     V.
 Expression has type:   'a' | none()
 Context expected type: 'b'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │     
 
   'a' | none() is not compatible with 'b'
   because
   'a' is not compatible with 'b'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1286:60
      │
 1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
@@ -513,8 +451,6 @@ error: incompatible_types
      │                                                            A.
 Expression has type:   none() | 'c'
 Context expected type: 'a' | 'b'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                            
 
   none() | 'c' is not compatible with 'a' | 'b'
@@ -523,14 +459,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'c' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1291:43
      │
 1291 │ negate_number_neg(N) when not (N == 1) -> N;
      │                                           ^ N.
 Expression has type:   number()
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 33 ERRORS

@@ -1,25 +1,19 @@
-error: unknown_id
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
    ┌─ debug/src/types2.erl:18:5
    │
 18 │     forms1:my_number().
    │     ^^^^^^^^^^^^^^^^^^ Unknown id: forms1:my_number/0
 
-See https://fb.me/eqwalizer_errors#unknown_id
-
-error: unknown_id
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
    ┌─ debug/src/types2.erl:21:5
    │
 21 │     unknown:my_number().
    │     ^^^^^^^^^^^^^^^^^^^ Unknown id: unknown:my_number/0
 
-See https://fb.me/eqwalizer_errors#unknown_id
-
-error: type_alias_is_non_productive
+error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ debug/src/types2.erl:30:1
    │
 30 │ -type recur_invalid(X) :: o(
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type recur_invalid/1 is not productive
-
-See https://fb.me/eqwalizer_errors#type_alias_is_non_productive
 
 3 ERRORS

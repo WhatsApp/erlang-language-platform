@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_records.erl:35:16
    │
 35 │ id3_neg(Id) -> Id.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                Id.
 Expression has type:   user()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                
 
   user() is not compatible with number()
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #rec1{} is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_records.erl:40:16
    │
 40 │ id4_neg(Id) -> Id.
@@ -26,8 +24,6 @@ error: incompatible_types
    │                Id.
 Expression has type:   user()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                
 
   user() is not compatible with number()
@@ -36,7 +32,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #rec1{} is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_records.erl:47:11
    │
 47 │     Id -> Id
@@ -45,8 +41,6 @@ error: incompatible_types
    │           Id.
 Expression has type:   user()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │           
 
   user() is not compatible with number()
@@ -55,7 +49,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #rec1{} is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater_records.erl:106:25
     │
 106 │ normalize_neg1(Pair) -> Pair.
@@ -64,8 +58,6 @@ error: incompatible_types
     │                         Pair.
 Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
 Context expected type: {#rec1{}, #rec2{}}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                         
 
   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
@@ -75,7 +67,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   #rec2{} is not compatible with #rec1{}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater_records.erl:115:25
     │
 115 │ normalize_neg2(Pair) -> Pair.
@@ -84,8 +76,6 @@ error: incompatible_types
     │                         Pair.
 Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
 Context expected type: {#rec1{}, #rec2{}}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                         
 
   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}

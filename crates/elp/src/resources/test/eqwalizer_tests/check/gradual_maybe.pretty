@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_maybe.erl:26:9
    │
 26 │         A
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_maybe.erl:50:14
    │
 50 │         _ -> 3
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_maybe.erl:58:21
    │
 58 │         {err, A} ?= T,
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   {'ok', atom()} | {'err', term()}
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_maybe.erl:67:20
    │
 67 │         {ok, A} ?= T,
@@ -36,9 +30,7 @@ error: incompatible_types
 Expression has type:   {'ok', atom()} | {'err', term()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_maybe.erl:91:9
    │
 91 │         B
@@ -46,9 +38,7 @@ error: incompatible_types
 Expression has type:   'ok'
 Context expected type: 'err'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_maybe.erl:123:18
     │
 123 │         a = A ?= T,
@@ -57,8 +47,6 @@ error: incompatible_types
     │                  T.
 Expression has type:   'a' | 'b' | 'c'
 Context expected type: 'b' | 'c'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                  
 
   'a' | 'b' | 'c' is not compatible with 'b' | 'c'
@@ -67,7 +55,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'a' is not compatible with 'b'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_maybe.erl:147:14
     │
 147 │         c -> err
@@ -75,9 +63,7 @@ error: incompatible_types
 Expression has type:   'err'
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_maybe.erl:156:13
     │  
 156 │ ╭             maybe
@@ -88,7 +74,5 @@ error: incompatible_types
     │ ╰───────────────^ maybe ...
 Expression has type:   {'a', term()} | {'b', {'a', term()}}
 Context expected type: 'err'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 8 ERRORS

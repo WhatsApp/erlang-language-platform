@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs2.erl:32:20
    │
 32 │     fun(_, Acc) -> [Acc] end,
@@ -7,8 +7,6 @@ error: incompatible_types
    │                    [Acc].
 Expression has type:   [[[[]]]]
 Context expected type: [[[]]]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                    
 
   [[[[]]]] is not compatible with [[[]]]
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   [[]] is not compatible with []
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs2.erl:54:5
    │
 54 │     X.
@@ -25,9 +23,7 @@ error: incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs2.erl:95:24
    │
 95 │ generic({}, {}, {}) -> nok.
@@ -35,9 +31,7 @@ error: incompatible_types
 Expression has type:   'nok'
 Context expected type: T
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs2.erl:101:9
     │
 101 │         fun erlang:atom_to_list/1,
@@ -46,22 +40,18 @@ error: incompatible_types
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
 Context expected type: fun((atom()) -> atom())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │         
 
   fun((atom()) -> string()) is not compatible with fun((atom()) -> atom())
   because
   string() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs2.erl:152:27
     │
 152 │             (X, X) -> X + A
     │                           ^ A.
 Expression has type:   atom()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 5 ERRORS

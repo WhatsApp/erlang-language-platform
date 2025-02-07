@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:50:18
    │
 50 │ refine5(X, X) -> X.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                  X.
 Expression has type:   [atom() | binary()]
 Context expected type: [binary()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                  
 
   [atom() | binary()] is not compatible with [binary()]
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:55:22
    │
 55 │ refine6_neg(X, X) -> X.
@@ -26,8 +24,6 @@ error: incompatible_types
    │                      X.
 Expression has type:   [atom() | binary()]
 Context expected type: [atom()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                      
 
   [atom() | binary()] is not compatible with [atom()]
@@ -36,7 +32,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   binary() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:60:27
    │
 60 │ refine_to_empty1(X, X) -> X.
@@ -44,16 +40,12 @@ error: incompatible_types
 Expression has type:   [atom()]
 Context expected type: []
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:83:17
    │
 83 │ test2_neg(X) -> X.
    │                 ^ X.
 Expression has type:   iolist()
 Context expected type: 'wrong_ret'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 4 ERRORS

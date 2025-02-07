@@ -1,11 +1,9 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/strict_receive.erl:71:9
    │
 71 │   after T -> ok
    │         ^ T.
 Expression has type:   atom()
 Context expected type: timeout()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 1 ERROR

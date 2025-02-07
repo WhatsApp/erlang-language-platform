@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/strict_complex_types.erl:24:3
    │
 24 │   undefined.
@@ -7,31 +7,25 @@ error: incompatible_types
    │   'undefined'.
 Expression has type:   'undefined'
 Context expected type: complex_map()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   'undefined' is not compatible with complex_map()
   because
   'undefined' is not compatible with #{id := number(), {secret, id} => number(), atom() => term()}
 
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/strict_complex_types.erl:29:25
    │
 29 │   eqwalizer:reveal_type(Map),
    │                         ^^^ complex_map()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/strict_complex_types.erl:35:25
    │
 35 │   eqwalizer:reveal_type(List),
    │                         ^^^^ [complex_map()]
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/strict_complex_types.erl:48:16
    │
 48 │   lists:nth(7, Map).
@@ -40,8 +34,6 @@ error: incompatible_types
    │                Map.
 Expression has type:   complex_map()
 Context expected type: [T]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                
 
   complex_map() is not compatible with [T]

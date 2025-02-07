@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:37:3
    │
 37 │   Arg.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   string()
 Context expected type: binary()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:46:3
    │
 46 │   Arg.
@@ -17,15 +15,13 @@ error: incompatible_types
    │   Arg.
 Expression has type:   string() | binary()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   string() | binary() is not compatible with binary()
   because
   string() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:61:26
    │
 61 │     andalso list_to_atom(A).
@@ -33,9 +29,7 @@ error: incompatible_types
 Expression has type:   binary()
 Context expected type: string()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:68:26
    │
 68 │     andalso list_to_atom(A).
@@ -43,9 +37,7 @@ error: incompatible_types
 Expression has type:   binary()
 Context expected type: string()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:82:3
    │    
 82 │ ╭ ╭   is_number(N)
@@ -54,8 +46,6 @@ error: incompatible_types
    │ ╰─│──────────────────^ _ andalso _.
 Expression has type:   'false' | {number(), atom()}
 Context expected type: 'false' | {atom(), number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   ╰──────────────────' 
 
   'false' | {number(), atom()} is not compatible with 'false' | {atom(), number()}
@@ -67,7 +57,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   number() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:90:3
    │
 90 │   {X, A}.
@@ -76,8 +66,6 @@ error: incompatible_types
    │   {X, A}.
 Expression has type:   {'false' | number(), term()}
 Context expected type: {'false' | number(), number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │   
 
   at tuple index 2:

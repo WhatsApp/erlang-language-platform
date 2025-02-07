@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:17:11
    │
 17 │ f01(X) -> X.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: {A, A}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:20:11
    │
 20 │ f02(X) -> X.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:24:11
    │
 24 │ f03(F) -> F.
@@ -27,15 +23,13 @@ error: incompatible_types
    │           F.
 Expression has type:   fun((atom()) -> term())
 Context expected type: fun((term()) -> atom())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │           
 
   fun((atom()) -> term()) is not compatible with fun((term()) -> atom())
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:27:11
    │
 27 │ f04(X) -> X.
@@ -44,8 +38,6 @@ error: incompatible_types
    │           X.
 Expression has type:   'a' | 'b' | 'c'
 Context expected type: 'a' | 'b'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │           
 
   'a' | 'b' | 'c' is not compatible with 'a' | 'b'
@@ -54,7 +46,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'c' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:30:11
    │
 30 │ f05(X) -> X.
@@ -62,9 +54,7 @@ error: incompatible_types
 Expression has type:   'a' | 'b'
 Context expected type: none()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:34:11
    │
 34 │ f06(X) -> X.
@@ -73,8 +63,6 @@ error: incompatible_types
    │           X.
 Expression has type:   {'a' | 'b', 'a' | 'b'}
 Context expected type: {'a', 'b'} | {'b', 'a'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │           
 
   {'a' | 'b', 'a' | 'b'} is not compatible with {'a', 'b'} | {'b', 'a'}
@@ -86,7 +74,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:38:11
    │
 38 │ f07(X) -> X.
@@ -95,8 +83,6 @@ error: incompatible_types
    │           X.
 Expression has type:   pair_ab()
 Context expected type: pair_diff_elems()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │           
 
   pair_ab() is not compatible with pair_diff_elems()
@@ -108,7 +94,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   at tuple index 1:
   {ab(), ab()} is not compatible with {'a', 'b'}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:41:11
    │
 41 │ f08(X) -> X.
@@ -116,9 +102,7 @@ error: incompatible_types
 Expression has type:   {none(), none()}
 Context expected type: none()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:48:13
    │
 48 │ map02(M) -> M.
@@ -127,13 +111,11 @@ error: incompatible_types
    │             M.
 Expression has type:   #{a => atom()}
 Context expected type: #{a := atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:52:13
    │
 52 │ map03(M) -> M.
@@ -142,13 +124,11 @@ error: incompatible_types
    │             M.
 Expression has type:   #{a := atom(), b := atom()}
 Context expected type: #{a => atom()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
 key `b` is declared in the former but not in the latter and the latter map has no default association
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:60:13
    │
 60 │ map05(M) -> M.
@@ -157,13 +137,11 @@ error: incompatible_types
    │             M.
 Expression has type:   #{'a' | 'b' => 'a' | 'b' | 'c'}
 Context expected type: #{a := 'a' | 'b', b => 'a' | 'b'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:64:13
    │
 64 │ map06(M) -> M.
@@ -172,8 +150,6 @@ error: incompatible_types
    │             M.
 Expression has type:   #{term() => number()}
 Context expected type: #{atom() => number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
   #{term() => number()} is not compatible with #{atom() => number()}
@@ -181,7 +157,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:68:13
    │
 68 │ map07(M) -> M.
@@ -190,8 +166,6 @@ error: incompatible_types
    │             M.
 Expression has type:   #{atom() => term()}
 Context expected type: #{atom() => number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
   #{atom() => term()} is not compatible with #{atom() => number()}
@@ -199,7 +173,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   term() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:72:13
    │
 72 │ map08(M) -> M.
@@ -208,8 +182,6 @@ error: incompatible_types
    │             M.
 Expression has type:   #{atom() => term()}
 Context expected type: #{}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
   #{atom() => term()} is not compatible with #{}
@@ -217,7 +189,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   #{atom() => term()} is not compatible with #{}
   the latter map has no default association while the first map has one
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:79:15
    │
 79 │ any_fun(F) -> F.
@@ -225,9 +197,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: fun()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:83:5
    │
 83 │     {{}, error}.
@@ -236,8 +206,6 @@ error: incompatible_types
    │     {{}, 'error'}.
 Expression has type:   {{}, 'error'}
 Context expected type: {tuple(), 'ok'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   at tuple index 2:
@@ -245,7 +213,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'error' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:87:5
    │
 87 │     {[], error}.
@@ -254,8 +222,6 @@ error: incompatible_types
    │     {[], 'error'}.
 Expression has type:   {[], 'error'}
 Context expected type: {[pid()], 'ok'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   at tuple index 2:
@@ -263,7 +229,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'error' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:91:5
    │
 91 │     {[], error}.
@@ -272,8 +238,6 @@ error: incompatible_types
    │     {[], 'error'}.
 Expression has type:   {[], 'error'}
 Context expected type: {iolist(), 'ok'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   at tuple index 2:
@@ -281,7 +245,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'error' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:94:13
    │
 94 │ nil_1(L) -> L.
@@ -289,9 +253,7 @@ error: incompatible_types
 Expression has type:   ['a']
 Context expected type: []
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:97:13
    │
 97 │ nil_2(L) -> L.
@@ -300,8 +262,6 @@ error: incompatible_types
    │             L.
 Expression has type:   ['a'] | [none()]
 Context expected type: []
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
   ['a'] | [none()] is not compatible with []

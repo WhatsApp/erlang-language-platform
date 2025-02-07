@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ debug/src/expr1.erl:83:8
    │
 83 │     << X || X <- [1, 2, 3] >>.
@@ -6,16 +6,12 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: binary()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ debug/src/expr1.erl:86:8
    │
 86 │     << X || <<X>> <= <<1, 2, 3>> >>.
    │        ^ X.
 Expression has type:   number()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 2 ERRORS

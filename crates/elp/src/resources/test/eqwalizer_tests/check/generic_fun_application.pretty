@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:27:18
    │
 27 │ test01_neg(X) -> fapply(fun id/1, X).
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: pid()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:38:29
    │
 38 │     lmap(fun atom_to_pid/1, [2, 4]).
@@ -17,15 +15,13 @@ error: incompatible_types
    │                             [2, 4].
 Expression has type:   [number()]
 Context expected type: [atom()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                             
 
   [number()] is not compatible with [atom()]
   because
   number() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:43:18
    │
 43 │     mapl([2, 4], fun atom_to_pid/1).
@@ -34,15 +30,13 @@ error: incompatible_types
    │                  atom_to_pid/1.
 Expression has type:   fun((atom()) -> pid())
 Context expected type: fun((number()) -> B)
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                  
 
   fun((atom()) -> pid()) is not compatible with fun((number()) -> B)
   because
   pid() is not compatible with B
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:47:33
    │
 47 │     X = lmap(fun atom_to_pid/1, [2, 4]),
@@ -51,15 +45,13 @@ error: incompatible_types
    │                                 [2, 4].
 Expression has type:   [number()]
 Context expected type: [atom()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                                 
 
   [number()] is not compatible with [atom()]
   because
   number() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:52:22
    │
 52 │     X = mapl([2, 4], fun atom_to_pid/1),
@@ -68,15 +60,13 @@ error: incompatible_types
    │                      atom_to_pid/1.
 Expression has type:   fun((atom()) -> pid())
 Context expected type: fun((number()) -> B)
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                      
 
   fun((atom()) -> pid()) is not compatible with fun((number()) -> B)
   because
   pid() is not compatible with B
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:67:23
    │
 67 │ test08_neg() -> lhead(h).
@@ -84,9 +74,7 @@ error: incompatible_types
 Expression has type:   'h'
 Context expected type: [LH]
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:80:18
    │
 80 │ test09_neg(M) -> maptt(M).
@@ -94,9 +82,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: pid()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:95:13
    │
 95 │     map_att(M).
@@ -105,13 +91,11 @@ error: incompatible_types
    │             M.
 Expression has type:   #{true => pid()}
 Context expected type: #{a => dynamic()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │             
 
 key `true` is declared in the former but not in the latter and the latter map has no default association
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:99:13
    │
 99 │     map_att(3).
@@ -119,9 +103,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: #{a => T}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:102:22
     │
 102 │ test13_neg() -> lmap({}, [2, 4]).
@@ -129,9 +111,7 @@ error: incompatible_types
 Expression has type:   {}
 Context expected type: fun((A) -> B)
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:105:31
     │
 105 │ test13b_neg() -> mapl([2, 4], {}).
@@ -139,9 +119,7 @@ error: incompatible_types
 Expression has type:   {}
 Context expected type: fun((number()) -> B)
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:119:7
     │
 119 │     F(Shape).
@@ -150,8 +128,6 @@ error: incompatible_types
     │       Shape.
 Expression has type:   #{a => number()}
 Context expected type: #{atom() => T}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │       
 
   #{a => number()} is not compatible with #{atom() => T}
@@ -161,7 +137,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   number() is not compatible with T
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:126:5
     │
 126 │     F(Tuple).
@@ -169,9 +145,7 @@ error: incompatible_types
 Expression has type:   X
 Context expected type: 'false'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:130:5
     │
 130 │     lmap(F, [2, 4]).
@@ -179,9 +153,7 @@ error: incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:134:5
     │
 134 │     mapl([2, 4], F).
@@ -189,9 +161,7 @@ error: incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:144:5
     │
 144 │     ttt(AB, a).
@@ -200,15 +170,13 @@ error: incompatible_types
     │     ttt(AB, 'a').
 Expression has type:   'a' | 'b'
 Context expected type: 'a'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   'a' | 'b' is not compatible with 'a'
   because
   'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:157:5
     │
 157 │     ttt(a, b).
@@ -216,9 +184,7 @@ error: incompatible_types
 Expression has type:   'a' | 'b'
 Context expected type: pid()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:167:5
     │
 167 │     ttt(a, b).
@@ -227,15 +193,13 @@ error: incompatible_types
     │     ttt('a', 'b').
 Expression has type:   'a' | 'b'
 Context expected type: 'a'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   'a' | 'b' is not compatible with 'a'
   because
   'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:172:5
     │
 172 │     ttt(a, b).
@@ -244,15 +208,13 @@ error: incompatible_types
     │     ttt('a', 'b').
 Expression has type:   'a' | 'b'
 Context expected type: 'b'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   'a' | 'b' is not compatible with 'b'
   because
   'a' is not compatible with 'b'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:258:23
     │
 258 │ test36_neg(F, X) -> F(X).
@@ -260,9 +222,7 @@ error: incompatible_types
 Expression has type:   T
 Context expected type: {T}
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:270:5
     │
 270 │     fun0_id(F).
@@ -271,15 +231,13 @@ error: incompatible_types
     │     fun0_id(F).
 Expression has type:   fun(() -> A)
 Context expected type: fun(() -> X)
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   fun(() -> A) is not compatible with fun(() -> X)
   because
   A is not compatible with X
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:276:13
     │
 276 │     fun0_id(F).
@@ -287,9 +245,7 @@ error: incompatible_types
 Expression has type:   fun((A) -> B)
 Context expected type: fun(() -> X)
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:288:5
     │
 288 │     X.
@@ -298,15 +254,13 @@ error: incompatible_types
     │     X.
 Expression has type:   'first' | Last
 Context expected type: 'first'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   'first' | Last is not compatible with 'first'
   because
   Last is not compatible with 'first'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:296:5
     │
 296 │     X.
@@ -315,15 +269,13 @@ error: incompatible_types
     │     X.
 Expression has type:   atom() | T
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   atom() | T is not compatible with atom()
   because
   T is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:322:5
     │    
 322 │ ╭ ╭     expect_shape(
@@ -332,8 +284,6 @@ error: incompatible_types
     │ ╰─│─────^ expect_shape(#{..}).
 Expression has type:   {number(), pid()}
 Context expected type: {pid(), number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │   ╰─────' 
 
   at tuple index 1:
@@ -341,7 +291,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   number() is not compatible with pid()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:330:5
     │
 330 │     F(A).
@@ -349,9 +299,7 @@ error: incompatible_types
 Expression has type:   B
 Context expected type: C
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:346:9
     │
 346 │         fun fun1_id_pos_a/1),
@@ -359,9 +307,7 @@ error: incompatible_types
 Expression has type:   fun((Z) -> Z) with 1 type parameter
 Context expected type: fun((A) -> A) with 0 type parameters
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:358:9
     │
 358 │         fun fun1_id_pos_z/1),
@@ -369,9 +315,7 @@ error: incompatible_types
 Expression has type:   fun((Z) -> Z) with 1 type parameter
 Context expected type: fun((Z) -> Z) with 0 type parameters
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:432:28
     │
 432 │ test_dict1(D) -> num_and_t(D, D).
@@ -379,9 +323,7 @@ error: incompatible_types
 Expression has type:   #{atom() => pid()}
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:441:16
     │
 441 │     shape_vars(#{T => 3}, 3).
@@ -390,13 +332,11 @@ error: incompatible_types
     │                #{..}.
 Expression has type:   #{T => number()}
 Context expected type: #{a := T}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:446:15
     │
 446 │     dict_vars(F, N).
@@ -405,15 +345,13 @@ error: incompatible_types
     │               F.
 Expression has type:   fun((#{a => number()}) -> number())
 Context expected type: fun((#{{T} => T}) -> T)
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │               
 
   fun((#{a => number()}) -> number()) is not compatible with fun((#{{T} => T}) -> T)
   because
   number() is not compatible with T
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:471:24
     │
 471 │ test_aliases_neg(F) -> F.
@@ -422,15 +360,13 @@ error: incompatible_types
     │                        F.
 Expression has type:   fun(('a') -> 'b')
 Context expected type: fun(('a') -> 'c')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                        
 
   fun(('a') -> 'b') is not compatible with fun(('a') -> 'c')
   because
   'b' is not compatible with 'c'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:478:17
     │
 478 │     takesShape1(#{}).
@@ -439,13 +375,11 @@ error: incompatible_types
     │                 #{..}.
 Expression has type:   #{}
 Context expected type: #{a := T}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                 
 
 key `a` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:500:38
     │
 500 │ test_quanitifer_scope_neg(F, X) -> F(X).
@@ -453,9 +387,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: T
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:551:5
     │
 551 │     X.
@@ -464,8 +396,6 @@ error: incompatible_types
     │     X.
 Expression has type:   contravar(contravar('a' | 'b'))
 Context expected type: contravar(contravar('a'))
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   contravar(contravar('a' | 'b')) is not compatible with contravar(contravar('a'))
@@ -476,7 +406,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   contravar('a') is not compatible with contravar('a' | 'b')
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:563:5
     │
 563 │     X.
@@ -485,8 +415,6 @@ error: incompatible_types
     │     X.
 Expression has type:   invar('a')
 Context expected type: fun((atom()) -> atom())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   invar('a') is not compatible with fun((atom()) -> atom())
@@ -495,7 +423,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:569:5
     │
 569 │     X.
@@ -504,8 +432,6 @@ error: incompatible_types
     │     X.
 Expression has type:   invar('a')
 Context expected type: invar(atom())
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   invar('a') is not compatible with invar(atom())
@@ -516,7 +442,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:585:5
     │
 585 │     a.
@@ -525,15 +451,13 @@ error: incompatible_types
     │     'a'.
 Expression has type:   'a'
 Context expected type: invar('a')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   'a' is not compatible with invar('a')
   because
   'a' is not compatible with fun(('a') -> 'a')
 
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/generic_fun_application.erl:645:5
     │
 645 │     F(1, 2),
@@ -541,9 +465,7 @@ error: expected_fun_type
 Expected fun type with arity 2
 Got: fun((Z) -> Z)
 
-See https://fb.me/eqwalizer_errors#expected_fun_type
-
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/generic_fun_application.erl:651:5
     │
 651 │     F(1, 2).
@@ -551,9 +473,7 @@ error: expected_fun_type
 Expected fun type with arity 2
 Got: fun((Z) -> Z)
 
-See https://fb.me/eqwalizer_errors#expected_fun_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:684:9
     │
 684 │         #{u => 1, t => Pid, extra => 3}
@@ -562,13 +482,11 @@ error: incompatible_types
     │         #{..}.
 Expression has type:   #{extra := number(), t := pid(), u := number()}
 Context expected type: #{t := pid(), u := number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │         
 
 key `extra` is declared in the former but not in the latter and the latter map has no default association
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:721:25
     │
 721 │ test_apply2() -> apply2(fun tat/2, 1, 1).
@@ -576,9 +494,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: 'a'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:739:5
     │
 739 │     invar(a, a).
@@ -587,8 +503,6 @@ error: incompatible_types
     │     invar('a', 'a').
 Expression has type:   fun(('a') -> 'a')
 Context expected type: fun(('a' | 'b') -> 'a' | 'b')
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │     
 
   fun(('a') -> 'a') is not compatible with fun(('a' | 'b') -> 'a' | 'b')
@@ -597,14 +511,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'b' is not compatible with 'a'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:752:32
     │
 752 │     _ = fun_with_tuple({a, b}, {}),
     │                                ^^ {}.
 Expression has type:   {}
 Context expected type: [A]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 44 ERRORS

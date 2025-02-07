@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_sound.erl:44:26
    │
 44 │ t02(A) -> atom_to_binary(A).
@@ -7,8 +7,6 @@ error: incompatible_types
    │                          A.
 Expression has type:   ab()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                          
 
   ab() is not compatible with atom()
@@ -17,7 +15,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   binary() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_sound.erl:50:14
    │
 50 │ t03(_, B) -> B.
@@ -26,8 +24,6 @@ error: incompatible_types
    │              B.
 Expression has type:   ab()
 Context expected type: binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │              
 
   ab() is not compatible with binary()
@@ -36,7 +32,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   atom() is not compatible with binary()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_sound.erl:53:28
    │
 53 │ tuple_trick_neg({X}, _) -> X.
@@ -44,9 +40,7 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: U
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_sound.erl:57:6
    │
 57 │   -> X.
@@ -54,16 +48,12 @@ error: incompatible_types
 Expression has type:   _T
 Context expected type: U
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_sound.erl:60:24
    │
 60 │ union_trick(_, {B}) -> B.
    │                        ^ B.
 Expression has type:   term()
 Context expected type: B
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 5 ERRORS

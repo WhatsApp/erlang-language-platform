@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/overloaded_specs_union.erl:16:29
    │
 16 │ use_over_neg_1(Arg) -> over(Arg).
@@ -7,15 +7,13 @@ error: incompatible_types
    │                             Arg.
 Expression has type:   atom() | pid()
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                             
 
   atom() | pid() is not compatible with atom()
   because
   pid() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/overloaded_specs_union.erl:19:29
    │
 19 │ use_over_neg_2(Arg) -> over(Arg).
@@ -24,8 +22,6 @@ error: incompatible_types
    │                             Arg.
 Expression has type:   atom() | binary() | pid()
 Context expected type: atom() | binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                             
 
   atom() | binary() | pid() is not compatible with atom() | binary()

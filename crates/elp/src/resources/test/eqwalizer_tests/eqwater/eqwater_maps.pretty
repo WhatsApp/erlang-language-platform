@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_maps.erl:26:53
    │
 26 │ map_occ_04_neg(M = #{a := I}) when is_integer(I) -> M;
@@ -7,13 +7,11 @@ error: incompatible_types
    │                                                     M.
 Expression has type:   #{a := number(), b => number()}
 Context expected type: #{a := number(), b := number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                                                     
 
 key `b` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_maps.erl:36:22
    │
 36 │ map_occ_06_neg(V) -> V.
@@ -22,15 +20,13 @@ error: incompatible_types
    │                      V.
 Expression has type:   #{} | 'ok'
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                      
 
   #{} | 'ok' is not compatible with 'ok'
   because
   #{} is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_maps.erl:42:22
    │
 42 │ map_occ_07_neg(M) -> M.
@@ -39,8 +35,6 @@ error: incompatible_types
    │                      M.
 Expression has type:   none() | #{c := number()}
 Context expected type: #{b := number()}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                      
 
   none() | #{c := number()} is not compatible with #{b := number()}
@@ -48,14 +42,12 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   #{c := number()} is not compatible with #{b := number()}
   key `b` is declared as required in the latter but not in the former
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_maps.erl:55:34
    │
 55 │ map_occ_08_neg(#{a := _} = M) -> M;
    │                                  ^ M.
 Expression has type:   #{a := dynamic(), dynamic() => dynamic()}
 Context expected type: 'err'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 4 ERRORS

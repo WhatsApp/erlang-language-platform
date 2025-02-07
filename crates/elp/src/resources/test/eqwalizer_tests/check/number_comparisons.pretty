@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/number_comparisons.erl:11:30
    │
 11 │ test_1_neg(X) when X >= 1 -> X.
@@ -6,16 +6,12 @@ error: incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/number_comparisons.erl:253:3
     │
 253 │   X.
     │   ^ X.
 Expression has type:   number()
 Context expected type: none()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 2 ERRORS

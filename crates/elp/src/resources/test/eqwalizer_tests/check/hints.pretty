@@ -1,36 +1,28 @@
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:13:27
    │
 13 │     eqwalizer:reveal_type(A),
    │                           ^ atom()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:24:27
    │
 24 │     eqwalizer:reveal_type(_A),
    │                           ^^ atom() | binary()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:32:27
    │
 32 │     eqwalizer:reveal_type(B),
    │                           ^ none() | binary()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:41:27
    │
 41 │     eqwalizer:reveal_type(BT),
    │                           ^^ none() | binary() | tuple()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/hints.erl:47:5
    │
 47 │     Key.
@@ -39,15 +31,13 @@ error: incompatible_types
    │     Key.
 Expression has type:   term() | 'undefined'
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   term() | 'undefined' is not compatible with atom()
   because
   term() is not compatible with atom()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/hints.erl:52:5
    │
 52 │     Key.
@@ -56,20 +46,16 @@ error: incompatible_types
    │     Key.
 Expression has type:   term() | 'undefined'
 Context expected type: atom()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   term() | 'undefined' is not compatible with atom()
   because
   term() is not compatible with atom()
 
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:56:27
    │
 56 │     eqwalizer:reveal_type(X),
    │                           ^ none()
-
-See https://fb.me/eqwalizer_errors#reveal_type
 
 7 ERRORS

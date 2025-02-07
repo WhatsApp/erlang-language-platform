@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_lambdas.erl:39:17
    │
 39 │         true -> A + 1;
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: expected_fun_type
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
    ┌─ check/src/gradual_lambdas.erl:55:3
    │
 55 │   DoWork().
@@ -16,16 +14,12 @@ error: expected_fun_type
 Expected fun type with arity 0
 Got: fun((dynamic()) -> dynamic())
 
-See https://fb.me/eqwalizer_errors#expected_fun_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_lambdas.erl:70:13
    │
 70 │   fun(X) -> X + 1 end.
    │             ^ X.
 Expression has type:   string()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 3 ERRORS

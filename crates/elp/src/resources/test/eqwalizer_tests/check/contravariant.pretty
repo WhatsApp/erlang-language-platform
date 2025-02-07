@@ -1,13 +1,11 @@
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:16:1
    │
 16 │ -opaque opaque_contra(X) :: fun((X) -> ok).
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Opaque opaque_contra/1 expands to a type in which X appears in function parameter position
 	opaque_contra/1 expands to fun((X) -> 'ok')
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:18:1
    │
 18 │ -opaque opaque_ref_contra(X) :: ref_contravariant(X).
@@ -16,17 +14,13 @@ error: type_var_in_parameter_position
 	which expands to contravariant:contravariant(X)
 	which expands to fun((X) -> 'ok')
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: reference_to_invalid_type
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/contravariant.erl:22:1
    │
 22 │ -opaque opaque_ref_opaque(X) :: opaque_contra(X).
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ opaque_ref_opaque/1 references type with invalid definition: opaque_contra/1
 
-See https://fb.me/eqwalizer_errors#reference_to_invalid_type
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:30:1
    │
 30 │ -opaque complex_expansion_opaque(X) :: complex_expansion_2(X).
@@ -36,9 +30,7 @@ error: type_var_in_parameter_position
 	which expands to {contravariant:complex_expansion_2(X), #{a => contravariant:contravariant(X)}}
 	which expands to {contravariant:complex_expansion_2(X), #{a => fun((X) -> 'ok')}}
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:32:1
    │
 32 │ -opaque contra_in_res(X) :: fun((a) -> contravariant(X)).
@@ -46,9 +38,7 @@ error: type_var_in_parameter_position
 	contra_in_res/1 expands to fun(('a') -> contravariant:contravariant(X))
 	which expands to fun(('a') -> fun((X) -> 'ok'))
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:40:1
    │
 40 │ -opaque contra_in_rec_ref(X) :: #my_rec{a :: contravariant(X)}.
@@ -56,9 +46,7 @@ error: type_var_in_parameter_position
 	contra_in_rec_ref/1 expands to #my_rec{}
 	which expands to #my_rec{}
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:42:1
    │
 42 │ -opaque contra_in_dict_values(X) :: #{atom() => contravariant(X)}.
@@ -66,9 +54,7 @@ error: type_var_in_parameter_position
 	contra_in_dict_values/1 expands to #{atom() => contravariant:contravariant(X)}
 	which expands to #{atom() => fun((X) -> 'ok')}
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: type_var_in_parameter_position
+error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
    ┌─ check/src/contravariant.erl:44:1
    │
 44 │ -opaque contra_in_shape(X) :: #{a => ok, b := ok, c := contravariant(X)}.
@@ -76,9 +62,7 @@ error: type_var_in_parameter_position
 	contra_in_shape/1 expands to #{a => 'ok', b := 'ok', c := contravariant:contravariant(X)}
 	which expands to #{a => 'ok', b := 'ok', c := fun((X) -> 'ok')}
 
-See https://fb.me/eqwalizer_errors#type_var_in_parameter_position
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/contravariant.erl:54:33
    │
 54 │ contravariant_subtype_neg(F) -> F.
@@ -87,8 +71,6 @@ error: incompatible_types
    │                                 F.
 Expression has type:   ref_contravariant('a')
 Context expected type: ref_contravariant_ab()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                                 
 
   ref_contravariant('a') is not compatible with ref_contravariant_ab()

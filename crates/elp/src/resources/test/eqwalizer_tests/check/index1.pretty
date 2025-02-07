@@ -1,11 +1,9 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/index1.erl:31:21
    │
 31 │   _ = X#rec{field = 3},
    │                     ^ 3.
 Expression has type:   number()
 Context expected type: [number()]
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 1 ERROR

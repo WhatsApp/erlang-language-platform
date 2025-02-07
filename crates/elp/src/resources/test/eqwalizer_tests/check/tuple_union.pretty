@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tuple_union.erl:27:19
    │
 27 │ test_03_neg(X) -> X.
@@ -7,8 +7,6 @@ error: incompatible_types
    │                   X.
 Expression has type:   t4()
 Context expected type: t5()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                   
 
   t4() is not compatible with t5()
@@ -20,7 +18,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   at tuple index 2:
   {'msg', 'ok' | 'err', 'arg' | 'nil'} is not compatible with {'msg', 'ok', 'arg'}
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tuple_union.erl:66:26
    │
 66 │ tree3_as_tree1_neg(T) -> T.
@@ -29,8 +27,6 @@ error: incompatible_types
    │                          T.
 Expression has type:   tree3()
 Context expected type: tree1()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │                          
 
   tree3() is not compatible with tree1()

@@ -1,19 +1,15 @@
-error: redundant_nowarn_function
+error: redundant_nowarn_function (See https://fb.me/eqwalizer_errors#redundant_nowarn_function)
    ┌─ check/src/nowarn.erl:10:1
    │
 10 │ -eqwalizer({nowarn_function, nowarn_redundant/0}).
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redundant nowarn_function
 
-See https://fb.me/eqwalizer_errors#redundant_nowarn_function
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/nowarn.erl:20:3
    │
 20 │   ok.
    │   ^^ 'ok'.
 Expression has type:   'ok'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 2 ERRORS

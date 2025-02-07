@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_refine.erl:86:21
    │
 86 │     is_list(Arg) -> {Arg}
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   {[term()]}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_refine.erl:95:21
    │
 95 │     is_list(Dyn) -> {Dyn}
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   {dynamic([term()])}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:102:23
     │
 102 │     is_binary(Arg) -> {Arg}
@@ -26,9 +22,7 @@ error: incompatible_types
 Expression has type:   {binary()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:111:23
     │
 111 │     is_binary(Dyn) -> {Dyn};
@@ -36,9 +30,7 @@ error: incompatible_types
 Expression has type:   {dynamic(binary())}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:123:3
     │
 123 │   {Mixed}.
@@ -46,9 +38,7 @@ error: incompatible_types
 Expression has type:   {term()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:133:3
     │
 133 │   {Mixed}.
@@ -56,9 +46,7 @@ error: incompatible_types
 Expression has type:   {term()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:143:3
     │
 143 │   {Mixed}.
@@ -66,9 +54,7 @@ error: incompatible_types
 Expression has type:   {boolean() | dynamic()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:153:3
     │
 153 │   {Mixed}.
@@ -76,9 +62,7 @@ error: incompatible_types
 Expression has type:   {dynamic() | binary()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:168:3
     │
 168 │   {Mixed2}.
@@ -86,17 +70,13 @@ error: incompatible_types
 Expression has type:   {binary() | atom() | dynamic()}
 Context expected type: 'ok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/dynamic_refine.erl:180:25
     │
 180 │   eqwalizer:reveal_type(Name),
     │                         ^^^^ atom()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:221:28
     │
 221 │ dyn_refine_union_neg(D) -> D.
@@ -105,15 +85,13 @@ error: incompatible_types
     │                            D.
 Expression has type:   dynamic() | 'error' | none()
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                            
 
   dynamic() | 'error' | none() is not compatible with 'ok'
   because
   'error' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:236:18
     │
 236 │   atom_to_binary(Id).
@@ -121,9 +99,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:247:32
     │
 247 │ refine_union_alias_neg({X}) -> X.
@@ -132,15 +108,13 @@ error: incompatible_types
     │                                X.
 Expression has type:   dyn_alias() | 'err'
 Context expected type: 'ok'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                                
 
   dyn_alias() | 'err' is not compatible with 'ok'
   because
   'err' is not compatible with 'ok'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:260:27
     │
 260 │ refine_in_tuple_neg(T) -> T.
@@ -149,8 +123,6 @@ error: incompatible_types
     │                           T.
 Expression has type:   union()
 Context expected type: {'ok'}
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                           
 
   union() is not compatible with {'ok'}

@@ -1,4 +1,4 @@
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:30:5
    │
 30 │     Res.
@@ -6,9 +6,7 @@ error: incompatible_types
 Expression has type:   atom()
 Context expected type: binary()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:48:5
    │
 48 │     Res.
@@ -16,9 +14,7 @@ error: incompatible_types
 Expression has type:   atom() | {number()}
 Context expected type: {atom()} | number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:76:5
    │
 76 │     Res.
@@ -27,15 +23,13 @@ error: incompatible_types
    │     Res.
 Expression has type:   'error' | 'exit' | 'throw' | number()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   'error' | 'exit' | 'throw' | number() is not compatible with number()
   because
   'error' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:86:5
    │
 86 │     Res.
@@ -44,15 +38,13 @@ error: incompatible_types
    │     Res.
 Expression has type:   number() | [dynamic()]
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
    │     
 
   number() | [dynamic()] is not compatible with number()
   because
   [dynamic()] is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:93:17
    │
 93 │         A:_  -> A
@@ -60,16 +52,12 @@ error: incompatible_types
 Expression has type:   'error' | 'exit' | 'throw'
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/elab_clause.erl:101:27
     │
 101 │         Class:_:Stack  -> {Class, Stack}
     │                           ^^^^^^^^^^^^^^ {Class, Stack}.
 Expression has type:   {'error' | 'exit' | 'throw', [dynamic()]}
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
 
 6 ERRORS

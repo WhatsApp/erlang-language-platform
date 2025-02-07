@@ -1,44 +1,34 @@
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:14:27
    │
 14 │     eqwalizer:reveal_type(element(42, Tup)).
    │                           ^^^^^^^^^^^^^^^^ dynamic()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:18:27
    │
 18 │     eqwalizer:reveal_type(element(2, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(atom())
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:22:27
    │
 22 │     eqwalizer:reveal_type(element(1, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(number())
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:26:27
    │
 26 │     eqwalizer:reveal_type(element(1, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(none())
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:30:27
    │
 30 │     eqwalizer:reveal_type(element(N, Tup)).
    │                           ^^^^^^^^^^^^^^^ dynamic(number() | atom())
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:43:3
    │
 43 │   application:get_env(app1).
@@ -46,9 +36,7 @@ error: incompatible_types
 Expression has type:   'undefined' | {'ok', dynamic()}
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:56:3
    │
 56 │   application:get_env(app1, key1).
@@ -56,9 +44,7 @@ error: incompatible_types
 Expression has type:   'undefined' | {'ok', dynamic()}
 Context expected type: number()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:73:3
    │
 73 │   lists:flatten(In).
@@ -66,9 +52,7 @@ error: incompatible_types
 Expression has type:   ['b' | 'c' | 'a']
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:85:3
    │
 85 │   lists:flatten(In, Tail).
@@ -76,9 +60,7 @@ error: incompatible_types
 Expression has type:   ['b' | 'a' | 'y' | 'z' | 'c' | 'x']
 Context expected type: atom()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:94:3
    │
 94 │   file:consult(some_file).
@@ -86,9 +68,7 @@ error: incompatible_types
 Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
 Context expected type: 'nok'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:99:3
    │
 99 │   abs(dynamic()).
@@ -96,9 +76,7 @@ error: incompatible_types
 Expression has type:   number()
 Context expected type: 'anything'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:108:7
     │
 108 │   abs(N).
@@ -107,15 +85,13 @@ error: incompatible_types
     │       N.
 Expression has type:   dynamic() | 'a'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │       
 
   dynamic() | 'a' is not compatible with number()
   because
   'a' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:120:3
     │
 120 │   ets:lookup(tab, Any).
@@ -123,9 +99,7 @@ error: incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: pid()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:124:14
     │
 124 │   ets:lookup("not atom", Any).
@@ -133,9 +107,7 @@ error: incompatible_types
 Expression has type:   string()
 Context expected type: ets:tab()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:143:16
     │
 143 │   ets:tab2list("not atom").
@@ -143,9 +115,7 @@ error: incompatible_types
 Expression has type:   string()
 Context expected type: ets:tab()
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:158:3
     │  
 158 │ ╭   maps:without(
@@ -156,9 +126,7 @@ error: incompatible_types
 Expression has type:   #{dynamic() => dynamic()}
 Context expected type: 'wrong_ret'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:185:3
     │  
 185 │ ╭   maps:with(
@@ -169,41 +137,31 @@ error: incompatible_types
 Expression has type:   #{a := dynamic()}
 Context expected type: 'wrong_ret'
 
-See https://fb.me/eqwalizer_errors#incompatible_types
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:203:25
     │
 203 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:210:25
     │
 210 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:217:25
     │
 217 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:224:25
     │
 224 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:245:19
     │
 245 │ min3_neg(X, Y) -> min(X, Y).
@@ -212,15 +170,13 @@ error: incompatible_types
     │                   erlang:min(X, Y).
 Expression has type:   number() | 'undefined'
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                   
 
   number() | 'undefined' is not compatible with number()
   because
   'undefined' is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:257:19
     │
 257 │ min5_neg(X, Y) -> min(X, Y).
@@ -229,15 +185,13 @@ error: incompatible_types
     │                   erlang:min(X, Y).
 Expression has type:   number() | atom() | binary()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                   
 
   number() | atom() | binary() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:263:19
     │
 263 │ min6_neg(X, Y) -> min(X, Y).
@@ -246,15 +200,13 @@ error: incompatible_types
     │                   erlang:min(X, Y).
 Expression has type:   number() | dynamic() | number() | atom() | dynamic()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                   
 
   number() | dynamic() | number() | atom() | dynamic() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:269:19
     │
 269 │ min7_neg(X, Y) -> min(X, Y).
@@ -263,23 +215,19 @@ error: incompatible_types
     │                   erlang:min(X, Y).
 Expression has type:   number() | dynamic() | atom() | dynamic()
 Context expected type: number()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │                   
 
   number() | dynamic() | atom() | dynamic() is not compatible with number()
   because
   atom() is not compatible with number()
 
-error: reveal_type
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:277:25
     │
 277 │   eqwalizer:reveal_type(Y),
     │                         ^ dynamic() | {none()}
 
-See https://fb.me/eqwalizer_errors#reveal_type
-
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:325:13
     │
 325 │     true -> Atom;
@@ -288,8 +236,6 @@ error: incompatible_types
     │             Atom.
 Expression has type:   'bar' | 'undefined' | 'foo'
 Context expected type: 'foo' | 'bar' | binary()
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │             
 
   'bar' | 'undefined' | 'foo' is not compatible with 'foo' | 'bar' | binary()
@@ -298,7 +244,7 @@ See https://fb.me/eqwalizer_errors#incompatible_types
   because
   'undefined' is not compatible with 'foo'
 
-error: incompatible_types
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:343:3
     │
 343 │   parse_atom(Bin, [foo, bar]).
@@ -307,8 +253,6 @@ error: incompatible_types
     │   parse_atom(Bin, ['foo', 'bar']).
 Expression has type:   'foo' | 'bar'
 Context expected type: 'foo'
-
-See https://fb.me/eqwalizer_errors#incompatible_types
     │   
 
   'foo' | 'bar' is not compatible with 'foo'
