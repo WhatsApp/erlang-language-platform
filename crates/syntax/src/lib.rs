@@ -459,38 +459,42 @@ mod tests {
 
     #[test]
     fn error_nodes1() {
+        // Note: even though the FUN_DECL is in an ERROR node, we
+        // still lower it into something we can use.  See test
+        // body::tests::lowering_with_error_nodes
         check_node(
             "f(1a) -> ok begin 1 end.",
             expect![[r#"
                 SOURCE_FILE@0..24
-                  FUN_DECL@0..11
-                    FUNCTION_CLAUSE@0..11
-                      ATOM@0..1
-                        ATOM@0..1 "f"
-                      EXPR_ARGS@1..5
-                        ANON_LPAREN@1..2 "("
-                        ERROR@2..3
-                          INTEGER@2..3
-                            INTEGER@2..3 "1"
-                        ATOM@3..4
-                          ATOM@3..4 "a"
-                        ANON_RPAREN@4..5 ")"
-                      WHITESPACE@5..6 " "
-                      CLAUSE_BODY@6..11
-                        ANON_DASH_GT@6..8 "->"
-                        WHITESPACE@8..9 " "
-                        ATOM@9..11
-                          ATOM@9..11 "ok"
-                  WHITESPACE@11..12 " "
-                  ERROR@12..24
+                  ERROR@0..17
+                    FUN_DECL@0..11
+                      FUNCTION_CLAUSE@0..11
+                        ATOM@0..1
+                          ATOM@0..1 "f"
+                        EXPR_ARGS@1..5
+                          ANON_LPAREN@1..2 "("
+                          ERROR@2..3
+                            INTEGER@2..3
+                              INTEGER@2..3 "1"
+                          ATOM@3..4
+                            ATOM@3..4 "a"
+                          ANON_RPAREN@4..5 ")"
+                        WHITESPACE@5..6 " "
+                        CLAUSE_BODY@6..11
+                          ANON_DASH_GT@6..8 "->"
+                          WHITESPACE@8..9 " "
+                          ATOM@9..11
+                            ATOM@9..11 "ok"
+                    WHITESPACE@11..12 " "
                     ATOM@12..17
                       ATOM@12..17 "begin"
-                    WHITESPACE@17..18 " "
-                    INTEGER@18..19
-                      INTEGER@18..19 "1"
-                    WHITESPACE@19..20 " "
-                    ANON_END@20..23 "end"
-                    ANON_DOT@23..24 ".""#]],
+                  WHITESPACE@17..18 " "
+                  INTEGER@18..19
+                    INTEGER@18..19 "1"
+                  WHITESPACE@19..20 " "
+                  ATOM@20..23
+                    ATOM@20..23 "end"
+                  ANON_DOT@23..24 ".""#]],
         );
     }
 
