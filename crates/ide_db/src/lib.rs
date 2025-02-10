@@ -13,6 +13,7 @@ use std::panic::RefUnwindSafe;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use elp_base_db::limit_logged_string;
 use elp_base_db::salsa;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
@@ -398,7 +399,11 @@ impl TypedSemantic for RootDatabase {
             ),
             EqwalizerDiagnostics::NoAst { .. } => Some(vec![]),
             EqwalizerDiagnostics::Error(err) => {
-                log::error!("EqWAlizer failed for {}: {}", module.as_str(), err);
+                log::error!(
+                    "EqWAlizer failed for {}: {}",
+                    module.as_str(),
+                    limit_logged_string(err)
+                );
                 Some(vec![])
             }
         }

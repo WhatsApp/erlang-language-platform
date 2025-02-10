@@ -21,6 +21,7 @@ use std::time::Duration;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use elp_base_db::limit_logged_string;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
@@ -99,7 +100,7 @@ impl IpcHandle {
                     err, command_str, cmd, &attr
                 );
                 // Show up in error log
-                log::error!("{error_str}");
+                log::error!("{}", limit_logged_string(&error_str));
                 // And show up as an eqwalizer error
                 bail!(error_str);
             }

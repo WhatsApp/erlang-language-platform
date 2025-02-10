@@ -509,3 +509,20 @@ pub fn to_quoted_string(input: &str) -> Cow<str> {
         Cow::Owned(format!("'{}'", &input))
     }
 }
+
+// ---------------------------------------------------------------------
+
+// We make the limit fairly generous, we hit problems on the other
+// side with javascript strings > 512 Mb.
+pub const MAX_LOGGED_STRING_LEN: usize = 100_000;
+pub fn truncate_string(s: &str, n: usize) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() > n {
+        format!("{}...", chars.iter().take(n).collect::<String>())
+    } else {
+        s.to_string()
+    }
+}
+pub fn limit_logged_string(s: &str) -> String {
+    truncate_string(s, MAX_LOGGED_STRING_LEN)
+}

@@ -21,6 +21,7 @@ use anyhow::Context;
 use anyhow::Result;
 use ast::Error;
 use ast::Pos;
+use elp_base_db::limit_logged_string;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::types::Type;
@@ -327,8 +328,8 @@ fn do_typecheck(
             }
             msg => {
                 log::warn!(
-                    "received unexpected message from eqwalizer, ignoring: {:?}",
-                    msg
+                    "received unexpected message from eqwalizer, ignoring: {}",
+                    limit_logged_string(&format!("{:?}", msg))
                 )
             }
         }
@@ -464,8 +465,8 @@ fn get_module_diagnostics(
             }
             msg => {
                 log::warn!(
-                    "received unexpected message from eqwalizer, ignoring: {:?}",
-                    msg
+                    "received unexpected message from eqwalizer, ignoring: {}",
+                    limit_logged_string(&format!("{:?}", msg))
                 )
             }
         }
