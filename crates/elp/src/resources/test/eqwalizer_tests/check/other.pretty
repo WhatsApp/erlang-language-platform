@@ -9,6 +9,12 @@ Expression has type:   term()
 Context expected type: logger:metadata()
    │                           
 
+Because in the expression's type:
+  Here the type is:     term()
+  Context expects type: #{...}
+
+------------------------------ Detailed message ------------------------------
+
   term() is not compatible with logger:metadata()
   because
   term() is not compatible with #{domain => [atom()], file => file:filename(), gl => pid(), line => number(), mfa => {atom(), atom(), number()}, pid => pid(), report_cb => logger:report_cb(), time => logger:timestamp(), atom() => term()}

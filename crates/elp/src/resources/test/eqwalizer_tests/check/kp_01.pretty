@@ -9,6 +9,13 @@ Expression has type:   fun((X) -> X)
 Context expected type: pure(fun((T1) -> Ret))
    │                      
 
+Because in the expression's type:
+  Here the type is:     fun((X) -> X) with 1 type parameter
+  Context expects type: fun((T1) -> Ret) with 0 type parameters
+  The number of type parameters doesn't match.
+
+------------------------------ Detailed message ------------------------------
+
   fun((X) -> X) is not compatible with pure(fun((T1) -> Ret))
   because
   fun((X) -> X) with 1 type parameter is not compatible with fun((T1) -> Ret) with 0 type parameters

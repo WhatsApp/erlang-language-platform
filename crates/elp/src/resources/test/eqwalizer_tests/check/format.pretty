@@ -9,6 +9,12 @@ Expression has type:   io_lib:chars()
 Context expected type: string()
    │   
 
+Because in the expression's type:
+  Here the type is:     [number() | io_lib:chars()]
+  Context expects type: string()
+
+------------------------------ Detailed message ------------------------------
+
   io_lib:chars() is not compatible with string()
   because
   [number() | io_lib:chars()] is not compatible with string()

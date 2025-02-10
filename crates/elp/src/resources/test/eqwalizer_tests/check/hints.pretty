@@ -33,6 +33,12 @@ Expression has type:   term() | 'undefined'
 Context expected type: atom()
    │     
 
+Because in the expression's type:
+  Here the type is:     term()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   term() | 'undefined' is not compatible with atom()
   because
   term() is not compatible with atom()
@@ -47,6 +53,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term() | 'undefined'
 Context expected type: atom()
    │     
+
+Because in the expression's type:
+  Here the type is:     term()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   term() | 'undefined' is not compatible with atom()
   because

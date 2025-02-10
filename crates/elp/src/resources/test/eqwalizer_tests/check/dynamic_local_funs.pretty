@@ -9,6 +9,12 @@ Expression has type:   dynamic() | number()
 Context expected type: atom()
    │   
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   dynamic() | number() is not compatible with atom()
   because
   number() is not compatible with atom()

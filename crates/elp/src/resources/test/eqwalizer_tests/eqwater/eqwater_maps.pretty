@@ -9,6 +9,13 @@ Expression has type:   #{a := number(), b => number()}
 Context expected type: #{a := number(), b := number()}
    │                                                     
 
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+------------------------------ Detailed message ------------------------------
+
 key `b` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -21,6 +28,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{} | 'ok'
 Context expected type: 'ok'
    │                      
+
+Because in the expression's type:
+  Here the type is:     #{}
+  Context expects type: 'ok'
+
+------------------------------ Detailed message ------------------------------
 
   #{} | 'ok' is not compatible with 'ok'
   because
@@ -36,6 +49,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   none() | #{c := number()}
 Context expected type: #{b := number()}
    │                      
+
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+------------------------------ Detailed message ------------------------------
 
   none() | #{c := number()} is not compatible with #{b := number()}
   because

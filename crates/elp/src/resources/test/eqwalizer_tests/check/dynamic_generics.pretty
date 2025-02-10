@@ -33,6 +33,12 @@ Expression has type:   number() | dynamic()
 Context expected type: none()
    │   
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: none()
+
+------------------------------ Detailed message ------------------------------
+
   number() | dynamic() is not compatible with none()
   because
   number() is not compatible with none()
@@ -55,6 +61,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   dynamic() | string()
 Context expected type: 'ok'
    │   
+
+Because in the expression's type:
+  Here the type is:     string()
+  Context expects type: 'ok'
+
+------------------------------ Detailed message ------------------------------
 
   dynamic() | string() is not compatible with 'ok'
   because
@@ -86,6 +98,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | 'three'
 Context expected type: number()
     │         
+
+Because in the expression's type:
+  Here the type is:     'three'
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | 'three' is not compatible with number()
   because

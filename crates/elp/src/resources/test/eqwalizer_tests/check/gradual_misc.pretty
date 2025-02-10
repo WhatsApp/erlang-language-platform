@@ -33,6 +33,13 @@ Expression has type:   none() | {'b', 'c'}
 Context expected type: 'a' | {none()}
    │                                         
 
+Because in the expression's type:
+  Here the type is:     {'b', 'c'}
+  Context expects type: 'a' | {none()}
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   none() | {'b', 'c'} is not compatible with 'a' | {none()}
   because
   {'b', 'c'} is not compatible with 'a' | {none()}

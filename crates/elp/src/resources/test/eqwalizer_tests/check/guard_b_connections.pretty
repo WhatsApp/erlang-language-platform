@@ -9,6 +9,12 @@ Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
    │   
 
+Because in the expression's type:
+  Here the type is:     #r2{}
+  Context expects type: #r1{}
+
+------------------------------ Detailed message ------------------------------
+
   #r1{} | #r2{} is not compatible with r1()
   because
   #r1{} | #r2{} is not compatible with #r1{}
@@ -25,6 +31,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
    │   
+
+Because in the expression's type:
+  Here the type is:     #r2{}
+  Context expects type: #r1{}
+
+------------------------------ Detailed message ------------------------------
 
   #r1{} | #r2{} is not compatible with r1()
   because
@@ -43,6 +55,12 @@ Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
    │   
 
+Because in the expression's type:
+  Here the type is:     #r2{}
+  Context expects type: #r1{}
+
+------------------------------ Detailed message ------------------------------
+
   #r1{} | #r2{} is not compatible with r1()
   because
   #r1{} | #r2{} is not compatible with #r1{}
@@ -60,6 +78,12 @@ Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
    │   
 
+Because in the expression's type:
+  Here the type is:     #r2{}
+  Context expects type: #r1{}
+
+------------------------------ Detailed message ------------------------------
+
   #r1{} | #r2{} is not compatible with r1()
   because
   #r1{} | #r2{} is not compatible with #r1{}
@@ -76,6 +100,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #r1{} | #r2{}
 Context expected type: r1()
    │   
+
+Because in the expression's type:
+  Here the type is:     #r2{}
+  Context expects type: #r1{}
+
+------------------------------ Detailed message ------------------------------
 
   #r1{} | #r2{} is not compatible with r1()
   because

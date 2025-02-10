@@ -25,6 +25,12 @@ Expression has type:   n()
 Context expected type: [term()]
    │         
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
   n() is not compatible with [term()]
   because
   number() is not compatible with [term()]
@@ -39,6 +45,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   n()
 Context expected type: atom()
    │                                   
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   n() is not compatible with atom()
   because
@@ -55,6 +67,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [n()]
 Context expected type: ['a']
    │   ╰─────' 
+
+Because in the expression's type:
+  [
+    Here the type is:     number()
+    Context expects type: 'a'
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [n()] is not compatible with ['a']
   because
@@ -73,6 +93,12 @@ Expression has type:   n()
 Context expected type: [term()]
    │                  
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
   n() is not compatible with [term()]
   because
   number() is not compatible with [term()]
@@ -87,6 +113,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   n()
 Context expected type: atom()
    │                               
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   n() is not compatible with atom()
   because

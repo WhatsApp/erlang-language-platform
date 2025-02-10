@@ -9,6 +9,14 @@ Expression has type:   chainA()
 Context expected type: chainB()
    │                    
 
+Because in the expression's type:
+  { 
+    Here the type is:     'a'
+    Context expects type: 'b'
+  , chainA()}
+
+------------------------------ Detailed message ------------------------------
+
   chainA() is not compatible with chainB()
   because
   'nil' | {'a', chainA()} is not compatible with chainB()
@@ -27,6 +35,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   chainB()
 Context expected type: chainA()
    │                    
+
+Because in the expression's type:
+  { 
+    Here the type is:     'b'
+    Context expects type: 'a'
+  , chainB()}
+
+------------------------------ Detailed message ------------------------------
 
   chainB() is not compatible with chainA()
   because
@@ -47,6 +63,14 @@ Expression has type:   chainAB()
 Context expected type: chainA()
    │                    
 
+Because in the expression's type:
+  { 
+    Here the type is:     'b'
+    Context expects type: 'a'
+  , chainAB()}
+
+------------------------------ Detailed message ------------------------------
+
   chainAB() is not compatible with chainA()
   because
   'nil' | {'a', chainAB()} | {'b', chainAB()} is not compatible with chainA()
@@ -65,6 +89,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   chainAB()
 Context expected type: chainB()
    │                    
+
+Because in the expression's type:
+  { 
+    Here the type is:     'a'
+    Context expects type: 'b'
+  , chainAB()}
+
+------------------------------ Detailed message ------------------------------
 
   chainAB() is not compatible with chainB()
   because
@@ -98,6 +130,13 @@ Expression has type:   pchainA(atom())
 Context expected type: pchainAB(atom())
    │                      
 
+Because in the expression's type:
+  Here the type is:     {'a', atom(), pchainA(atom())}
+  Context expects type: 'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   pchainA(atom()) is not compatible with pchainAB(atom())
   because
   'nil' | {'a', atom(), pchainA(atom())} is not compatible with pchainAB(atom())
@@ -117,6 +156,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   mChainB()
 Context expected type: mChainA()
     │                       
+
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
+
+------------------------------ Detailed message ------------------------------
 
   mChainB() is not compatible with mChainA()
   because
@@ -144,6 +190,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   pchainA('a')
 Context expected type: pchainA('b' | 'c')
     │                     
+
+Because in the expression's type:
+  { 'a', 
+    Here the type is:     'a'
+    Context expects type: 'b' | 'c'
+    No candidate matches in the expected union.
+  , pchainA('a')}
+
+------------------------------ Detailed message ------------------------------
 
   pchainA('a') is not compatible with pchainA('b' | 'c')
   because
@@ -189,9 +244,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/recursive_aliases.erl:223:23
     │
 223 │ test4_neg({mu, M}) -> M.
-    │                       ^ M.
+    │                       ^
+    │                       │
+    │                       M.
 Expression has type:   atom() | mu2()
 Context expected type: pid()
+    │                       
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: pid()
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:296:1

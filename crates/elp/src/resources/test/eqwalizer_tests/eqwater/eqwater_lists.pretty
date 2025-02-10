@@ -9,6 +9,14 @@ Expression has type:   [binary() | atom()]
 Context expected type: [binary()]
    │                                                   
 
+Because in the expression's type:
+  [
+    Here the type is:     atom()
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [binary() | atom()] is not compatible with [binary()]
   because
   binary() | atom() is not compatible with binary()
@@ -19,9 +27,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ eqwater/src/eqwater_lists.erl:48:23
    │
 48 │ occ_list_07_neg(L) -> L.
-   │                       ^ L.
+   │                       ^
+   │                       │
+   │                       L.
 Expression has type:   [term()]
 Context expected type: []
+   │                       
+
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: none()
+  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:54:23
@@ -33,6 +50,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   none() | atom() | []
 Context expected type: atom()
    │                       
+
+Because in the expression's type:
+  Here the type is:     []
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   none() | atom() | [] is not compatible with atom()
   because
@@ -49,6 +72,12 @@ Expression has type:   none() | atom() | []
 Context expected type: atom()
    │                   
 
+Because in the expression's type:
+  Here the type is:     []
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   none() | atom() | [] is not compatible with atom()
   because
   [] is not compatible with atom()
@@ -57,9 +86,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ eqwater/src/eqwater_lists.erl:69:19
    │
 69 │ occ_list_10(L) -> L.
-   │                   ^ L.
+   │                   ^
+   │                   │
+   │                   L.
 Expression has type:   [term()]
 Context expected type: []
+   │                   
+
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: none()
+  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:76:23
@@ -71,6 +109,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [atom()] | [binary()]
 Context expected type: [binary()]
    │                       
+
+Because in the expression's type:
+  [
+    Here the type is:     atom()
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [atom()] | [binary()] is not compatible with [binary()]
   because
@@ -96,6 +142,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [atom() | binary()]
 Context expected type: [atom()] | [binary()]
     │                       
+
+Because in the expression's type:
+  [
+    Here the type is:     binary()
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [atom() | binary()] is not compatible with [atom()] | [binary()]
   because

@@ -17,6 +17,14 @@ Expression has type:   {B, A}
 Context expected type: {none(), none()}
    │                 
 
+Because in the expression's type:
+  { 
+    Here the type is:     B
+    Context expects type: none()
+  , A}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 1:
   {B, A} is not compatible with {none(), none()}
   because
@@ -41,6 +49,14 @@ Expression has type:   fun((B | A) -> A)
 Context expected type: fun((A | B) -> none())
    │                
 
+Because in the expression's type:
+  fun((B | A) ->
+    Here the type is:     A
+    Context expects type: none()
+  )
+
+------------------------------ Detailed message ------------------------------
+
   fun((B | A) -> A) is not compatible with fun((A | B) -> none())
   because
   A is not compatible with none()
@@ -55,6 +71,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((atom() | A) -> A)
 Context expected type: fun((A | atom()) -> none())
    │                
+
+Because in the expression's type:
+  fun((atom() | A) ->
+    Here the type is:     A
+    Context expects type: none()
+  )
+
+------------------------------ Detailed message ------------------------------
 
   fun((atom() | A) -> A) is not compatible with fun((A | atom()) -> none())
   because
@@ -103,6 +127,14 @@ Expression has type:   {number(), binary()}
 Context expected type: {none(), none()}
     │                          
 
+Because in the expression's type:
+  { 
+    Here the type is:     number()
+    Context expects type: none()
+  , binary()}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 1:
   {number(), binary()} is not compatible with {none(), none()}
   because
@@ -118,6 +150,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {number(), atom()}
 Context expected type: {none(), none()}
     │                                
+
+Because in the expression's type:
+  { 
+    Here the type is:     number()
+    Context expects type: none()
+  , atom()}
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 1:
   {number(), atom()} is not compatible with {none(), none()}
@@ -143,6 +183,14 @@ Expression has type:   ['a' | 'b']
 Context expected type: ['a']
     │                        
 
+Because in the expression's type:
+  [
+    Here the type is:     'b'
+    Context expects type: 'a'
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   ['a' | 'b'] is not compatible with ['a']
   because
   'a' | 'b' is not compatible with 'a'
@@ -167,6 +215,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   ['a' | 'b']
 Context expected type: ['a']
     │                        
+
+Because in the expression's type:
+  [
+    Here the type is:     'b'
+    Context expects type: 'a'
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   ['a' | 'b'] is not compatible with ['a']
   because
@@ -241,6 +297,14 @@ Expression has type:   #my_rec{}
 Context expected type: {'not_my_rec', term(), term()}
     │                            
 
+Because in the expression's type:
+  { 
+    Here the type is:     'my_rec'
+    Context expects type: 'not_my_rec'
+  , number(), atom()}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 1:
   {'my_rec', number(), atom()} is not compatible with {'not_my_rec', term(), term()}
   because
@@ -269,6 +333,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'my_rec', atom(), number()}
 Context expected type: #my_rec{}
     │                            
+
+Because in the expression's type:
+  { 'my_rec', 
+    Here the type is:     atom()
+    Context expects type: number()
+  , number()}
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
   {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
@@ -318,6 +390,14 @@ Expression has type:   {'my_rec', atom(), number()}
 Context expected type: #my_rec{}
     │                          
 
+Because in the expression's type:
+  { 'my_rec', 
+    Here the type is:     atom()
+    Context expects type: number()
+  , number()}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 2:
   {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
   because
@@ -333,6 +413,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #my_rec{}
 Context expected type: {'my_rec', atom(), number()}
     │                          
+
+Because in the expression's type:
+  { 'my_rec', 
+    Here the type is:     number()
+    Context expects type: atom()
+  , atom()}
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
   {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), number()}
@@ -350,6 +438,14 @@ Expression has type:   #my_rec{}
 Context expected type: {'my_rec', atom(), atom()}
     │                     
 
+Because in the expression's type:
+  { 'my_rec', 
+    Here the type is:     number()
+    Context expects type: atom()
+  , atom()}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 2:
   {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), atom()}
   because
@@ -366,6 +462,12 @@ Expression has type:   atom() | number()
 Context expected type: number()
     │                
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   atom() | number() is not compatible with number()
   because
   atom() is not compatible with number()
@@ -381,6 +483,12 @@ Expression has type:   #my_rec{} | 'a'
 Context expected type: {'my_rec', term(), term()}
     │             
 
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: {'my_rec', term(), term()}
+
+------------------------------ Detailed message ------------------------------
+
   #my_rec{} | 'a' is not compatible with {'my_rec', term(), term()}
   because
   'a' is not compatible with {'my_rec', term(), term()}
@@ -395,6 +503,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'undefined' | binary()
 Context expected type: binary()
     │     
+
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
 
   'undefined' | binary() is not compatible with binary()
   because

@@ -43,6 +43,15 @@ Expression has type:   [term()]
 Context expected type: [T | X]
      │     
 
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: T | X
+    No candidate matches in the expected union.
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [term()] is not compatible with [T | X]
   because
   term() is not compatible with T | X
@@ -57,6 +66,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((T) -> boolean() | {'true', X})
 Context expected type: fun((term()) -> boolean() | {'true', term()})
      │               
+
+Because in the expression's type:
+  fun((
+    Here the type is:     term()
+    Context expects type: T
+  ) -> boolean() | {'true', X})
+
+------------------------------ Detailed message ------------------------------
 
   fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
   because

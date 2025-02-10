@@ -9,6 +9,12 @@ Expression has type:   atom() | dynamic()
 Context expected type: binary()
    │                
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   atom() | dynamic() is not compatible with binary()
   because
   atom() is not compatible with binary()

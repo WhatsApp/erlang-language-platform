@@ -9,6 +9,14 @@ Expression has type:   [number()]
 Context expected type: [atom()]
    │     
 
+Because in the expression's type:
+  [
+    Here the type is:     number()
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [number()] is not compatible with [atom()]
   because
   number() is not compatible with atom()
@@ -55,6 +63,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [number()]
 Context expected type: [binary()]
    │     
+
+Because in the expression's type:
+  [
+    Here the type is:     number()
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [number()] is not compatible with [binary()]
   because
@@ -152,6 +168,14 @@ Expression has type:   [atom()]
 Context expected type: [binary()]
     │     
 
+Because in the expression's type:
+  [
+    Here the type is:     atom()
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [atom()] is not compatible with [binary()]
   because
   atom() is not compatible with binary()
@@ -166,6 +190,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   ['true']
 Context expected type: ['false']
     │     
+
+Because in the expression's type:
+  [
+    Here the type is:     'true'
+    Context expects type: 'false'
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   ['true'] is not compatible with ['false']
   because
@@ -182,6 +214,14 @@ Expression has type:   ['true']
 Context expected type: ['false']
     │     
 
+Because in the expression's type:
+  [
+    Here the type is:     'true'
+    Context expects type: 'false'
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   ['true'] is not compatible with ['false']
   because
   'true' is not compatible with 'false'
@@ -197,6 +237,14 @@ Expression has type:   [number()]
 Context expected type: [atom()]
     │     
 
+Because in the expression's type:
+  [
+    Here the type is:     number()
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [number()] is not compatible with [atom()]
   because
   number() is not compatible with atom()
@@ -211,6 +259,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [binary() | 'undefined']
 Context expected type: [binary()]
     │     
+
+Because in the expression's type:
+  [
+    Here the type is:     'undefined'
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [binary() | 'undefined'] is not compatible with [binary()]
   because

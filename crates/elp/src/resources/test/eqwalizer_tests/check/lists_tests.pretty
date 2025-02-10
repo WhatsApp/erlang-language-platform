@@ -9,6 +9,14 @@ Expression has type:   [atom() | binary()]
 Context expected type: [atom()] | [binary()]
    │                            
 
+Because in the expression's type:
+  [
+    Here the type is:     binary()
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [atom() | binary()] is not compatible with [atom()] | [binary()]
   because
   [atom() | binary()] is not compatible with [atom()]
@@ -27,6 +35,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [atom() | binary()]
 Context expected type: [atom()] | [binary()]
    │                            
+
+Because in the expression's type:
+  [
+    Here the type is:     binary()
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [atom() | binary()] is not compatible with [atom()] | [binary()]
   because

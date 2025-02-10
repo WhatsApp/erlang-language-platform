@@ -17,6 +17,14 @@ Expression has type:   fun(('a') -> 'z')
 Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
     │               
 
+Because in the expression's type:
+  fun(('a') ->
+    Here the type is:     'z'
+    Context expects type: 'b'
+  )
+
+------------------------------ Detailed message ------------------------------
+
   fun(('a') -> 'z') is not compatible with fun(('a') -> 'b') | fun(('a') -> 'c')
   because
   fun(('a') -> 'z') is not compatible with fun(('a') -> 'b')
@@ -41,7 +49,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 141 │     Map.
     │     ^^^ Map.
-Expression has type:   maps:iterator(Key, Value)
+Expression has type:   opaque maps:iterator(Key, Value)
 Context expected type: #{Key => Value}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -78,6 +86,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | {}
 Context expected type: number()
     │                     
+
+Because in the expression's type:
+  Here the type is:     {}
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | {} is not compatible with number()
   because

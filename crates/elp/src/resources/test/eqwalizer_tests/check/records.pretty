@@ -94,6 +94,14 @@ Expression has type:   {atom(), number()}
 Context expected type: {number(), atom()}
     │     
 
+Because in the expression's type:
+  { 
+    Here the type is:     atom()
+    Context expects type: number()
+  , number()}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 1:
   {atom(), number()} is not compatible with {number(), atom()}
   because
@@ -148,6 +156,14 @@ Expression has type:   #any_box{inner :: 'ok'}
 Context expected type: int_box()
     │     
 
+Because in the expression's type:
+  #any_box{inner ::
+    Here the type is:     'ok'
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
+
   #any_box{inner :: 'ok'} is not compatible with int_box()
   because
   #any_box{inner :: 'ok'} is not compatible with #any_box{inner :: number()}
@@ -164,6 +180,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #any_box{inner :: 'ok'}
 Context expected type: #any_box{inner :: number()}
     │     
+
+Because in the expression's type:
+  #any_box{inner ::
+    Here the type is:     'ok'
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
 
   #any_box{inner :: 'ok'} is not compatible with #any_box{inner :: number()}
   because
@@ -210,6 +234,14 @@ Expression has type:   #int_bool_box{inner :: 'true'}
 Context expected type: only_int_box()
     │     
 
+Because in the expression's type:
+  #int_bool_box{inner ::
+    Here the type is:     'true'
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
+
   #int_bool_box{inner :: 'true'} is not compatible with only_int_box()
   because
   #int_bool_box{inner :: 'true'} is not compatible with #int_bool_box{inner :: number()}
@@ -242,6 +274,14 @@ Expression has type:   #int_bool_box{inner :: number()}
 Context expected type: only_bool_box()
     │     
 
+Because in the expression's type:
+  #int_bool_box{inner ::
+    Here the type is:     number()
+    Context expects type: boolean()
+  }
+
+------------------------------ Detailed message ------------------------------
+
   #int_bool_box{inner :: number()} is not compatible with only_bool_box()
   because
   #int_bool_box{inner :: number()} is not compatible with #int_bool_box{inner :: boolean()}
@@ -258,6 +298,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   only_int_box()
 Context expected type: #any_box{}
     │     
+
+Because in the expression's type:
+  Here the type is:     #int_bool_box{inner :: number()}
+  Context expects type: #any_box{}
+
+------------------------------ Detailed message ------------------------------
 
   only_int_box() is not compatible with #any_box{}
   because
@@ -282,6 +328,15 @@ Expression has type:   {'int_bool_box', 'a'}
 Context expected type: #int_bool_box{}
     │     
 
+Because in the expression's type:
+  { 'int_bool_box', 
+    Here the type is:     'a'
+    Context expects type: number() | boolean()
+    No candidate matches in the expected union.
+  }
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 2:
   {'int_bool_box', 'a'} is not compatible with {'int_bool_box', number() | boolean()}
   because
@@ -300,6 +355,14 @@ Expression has type:   {'int_bool_box', 'a'}
 Context expected type: only_int_box()
     │     
 
+Because in the expression's type:
+  { 'int_bool_box', 
+    Here the type is:     'a'
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
+
   {'int_bool_box', 'a'} is not compatible with only_int_box()
   because
   at tuple index 2:
@@ -317,6 +380,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   boolean() | 'true'
 Context expected type: 'true'
     │     
+
+Because in the expression's type:
+  Here the type is:     boolean()
+  Context expects type: 'true'
+
+------------------------------ Detailed message ------------------------------
 
   boolean() | 'true' is not compatible with 'true'
   because
@@ -341,6 +410,12 @@ Expression has type:   #bad_default{}
 Context expected type: only_int_box()
     │     
 
+Because in the expression's type:
+  Here the type is:     #bad_default{}
+  Context expects type: #int_bool_box{inner :: number()}
+
+------------------------------ Detailed message ------------------------------
+
   #bad_default{} is not compatible with only_int_box()
   because
   #bad_default{} is not compatible with #int_bool_box{inner :: number()}
@@ -355,6 +430,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'int_bool_box', number()}
 Context expected type: #bad_default{}
     │     
+
+Because in the expression's type:
+  { 
+    Here the type is:     'int_bool_box'
+    Context expects type: 'bad_default'
+  , number()}
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 1:
   {'int_bool_box', number()} is not compatible with {'bad_default', number()}
@@ -371,6 +454,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #refined_two_fields{}
 Context expected type: #refined_two_fields{inner :: number()}
     │                               
+
+Because in the expression's type:
+  #refined_two_fields{inner ::
+    Here the type is:     term()
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
 
   #refined_two_fields{} is not compatible with #refined_two_fields{inner :: number()}
   because
@@ -442,6 +533,12 @@ Expression has type:   'my_record' | binary()
 Context expected type: binary()
     │                    
 
+Because in the expression's type:
+  Here the type is:     'my_record'
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   'my_record' | binary() is not compatible with binary()
   because
   'my_record' is not compatible with binary()
@@ -465,6 +562,12 @@ Expression has type:   number() | none()
 Context expected type: atom()
     │     
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   number() | none() is not compatible with atom()
   because
   number() is not compatible with atom()
@@ -480,6 +583,12 @@ Expression has type:   term() | none()
 Context expected type: atom()
     │     
 
+Because in the expression's type:
+  Here the type is:     term()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   term() | none() is not compatible with atom()
   because
   term() is not compatible with atom()
@@ -494,6 +603,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term() | none()
 Context expected type: atom()
     │     
+
+Because in the expression's type:
+  Here the type is:     term()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   term() | none() is not compatible with atom()
   because

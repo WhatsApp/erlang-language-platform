@@ -2,9 +2,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/any_fun_type.erl:46:21
    │
 46 │ to_f_any_neg2(F) -> F.
-   │                     ^ F.
+   │                     ^
+   │                     │
+   │                     F.
 Expression has type:   'f0' | fun((atom()) -> pid()) | 'f1'
 Context expected type: fun()
+   │                     
+
+Because in the expression's type:
+  Here the type is:     'f0'
+  Context expects type: fun()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/any_fun_type.erl:49:23
@@ -25,6 +32,12 @@ Expression has type:   fun((term()) -> term())
 Context expected type: f2()
    │                               
 
+Because in the expression's type:
+  Here the type is:     fun((term()) -> term())
+  Context expects type: fun((term(), term()) -> term())
+
+------------------------------ Detailed message ------------------------------
+
   fun((term()) -> term()) is not compatible with f2()
   because
   fun((term()) -> term()) is not compatible with fun((term(), term()) -> term())
@@ -39,6 +52,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   f5('a' | 'b')
 Context expected type: f4('a')
    │                        
+
+Because in the expression's type:
+  fun((term()) ->
+    Here the type is:     'b'
+    Context expects type: 'a'
+  )
+
+------------------------------ Detailed message ------------------------------
 
   f5('a' | 'b') is not compatible with f4('a')
   because
@@ -66,6 +87,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term()) -> 'a' | 'b')
 Context expected type: f4('a')
     │                      
+
+Because in the expression's type:
+  fun((term()) ->
+    Here the type is:     'b'
+    Context expects type: 'a'
+  )
+
+------------------------------ Detailed message ------------------------------
 
   fun((term()) -> 'a' | 'b') is not compatible with f4('a')
   because

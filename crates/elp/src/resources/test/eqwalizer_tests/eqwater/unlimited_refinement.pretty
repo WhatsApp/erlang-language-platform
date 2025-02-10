@@ -9,6 +9,12 @@ Expression has type:   binary() | number()
 Context expected type: number()
    │              
 
+Because in the expression's type:
+  Here the type is:     binary()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   binary() | number() is not compatible with number()
   because
   binary() is not compatible with number()

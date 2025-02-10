@@ -9,6 +9,12 @@ Expression has type:   none() | number() | binary()
 Context expected type: binary()
     │       
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   none() | number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
@@ -23,6 +29,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
     │                      
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
 
   none() | number() | binary() is not compatible with binary()
   because
@@ -39,6 +51,12 @@ Expression has type:   none() | number() | binary()
 Context expected type: binary()
     │       
 
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   none() | number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
@@ -54,6 +72,12 @@ Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
     │             
 
+Because in the expression's type:
+  Here the type is:     #ab_rec{}
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   #ab_rec{} | atom() is not compatible with atom()
   because
   #ab_rec{} is not compatible with atom()
@@ -68,6 +92,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
     │                
+
+Because in the expression's type:
+  Here the type is:     #ab_rec{}
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
 
   #ab_rec{} | atom() is not compatible with atom()
   because
@@ -92,6 +122,12 @@ Expression has type:   number() | atom()
 Context expected type: number()
     │                     
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
@@ -106,6 +142,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | atom()
 Context expected type: number()
     │                         
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | atom() is not compatible with number()
   because
@@ -122,6 +164,12 @@ Expression has type:   number() | atom()
 Context expected type: number()
     │                         
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | atom() is not compatible with number()
   because
   atom() is not compatible with number()
@@ -137,6 +185,12 @@ Expression has type:   atom() | none()
 Context expected type: binary()
     │   
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   atom() | none() is not compatible with binary()
   because
   atom() is not compatible with binary()
@@ -151,6 +205,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #union_field{}
 Context expected type: {'union_field', atom()}
     │                      
+
+Because in the expression's type:
+  { 'union_field', 
+    Here the type is:     binary()
+    Context expects type: atom()
+  }
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
   {'union_field', none() | binary()} is not compatible with {'union_field', atom()}
@@ -170,6 +232,12 @@ Expression has type:   number() | 'ok'
 Context expected type: number()
     │                                                  
 
+Because in the expression's type:
+  Here the type is:     'ok'
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | 'ok' is not compatible with number()
   because
   'ok' is not compatible with number()
@@ -184,6 +252,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #a{} | #b{} | #c{}
 Context expected type: #b{}
     │        
+
+Because in the expression's type:
+  Here the type is:     #a{}
+  Context expects type: #b{}
+
+------------------------------ Detailed message ------------------------------
 
   #a{} | #b{} | #c{} is not compatible with #b{}
   because
@@ -200,6 +274,12 @@ Expression has type:   A | B
 Context expected type: B
     │                           
 
+Because in the expression's type:
+  Here the type is:     A
+  Context expects type: B
+
+------------------------------ Detailed message ------------------------------
+
   A | B is not compatible with B
   because
   A is not compatible with B
@@ -214,6 +294,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun() | {term()}
 Context expected type: {term()}
     │                 
+
+Because in the expression's type:
+  Here the type is:     fun()
+  Context expects type: {term()}
+
+------------------------------ Detailed message ------------------------------
 
   fun() | {term()} is not compatible with {term()}
   because
@@ -230,6 +316,12 @@ Expression has type:   tuple() | atom()
 Context expected type: atom()
     │                 
 
+Because in the expression's type:
+  Here the type is:     tuple()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   tuple() | atom() is not compatible with atom()
   because
   tuple() is not compatible with atom()
@@ -245,6 +337,12 @@ Expression has type:   #one_field{} | #two_fields1{}
 Context expected type: #one_field{}
     │                  
 
+Because in the expression's type:
+  Here the type is:     #two_fields1{}
+  Context expects type: #one_field{}
+
+------------------------------ Detailed message ------------------------------
+
   #one_field{} | #two_fields1{} is not compatible with #one_field{}
   because
   #two_fields1{} is not compatible with #one_field{}
@@ -259,6 +357,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | atom()
 Context expected type: number()
     │                           
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | atom() is not compatible with number()
   because
@@ -291,6 +395,12 @@ Expression has type:   number() | 'undefined'
 Context expected type: number()
      │                    
 
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | 'undefined' is not compatible with number()
   because
   'undefined' is not compatible with number()
@@ -305,6 +415,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
      │              
+
+Because in the expression's type:
+  [
+    Here the type is:     [atom()]
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [[atom()]] | [atom()] is not compatible with [atom()]
   because
@@ -323,6 +441,14 @@ Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
      │               
 
+Because in the expression's type:
+  [
+    Here the type is:     [atom()]
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [[atom()]] | [atom()] is not compatible with [atom()]
   because
   [[atom()]] is not compatible with [atom()]
@@ -340,6 +466,12 @@ Expression has type:   binary() | string()
 Context expected type: binary()
      │       
 
+Because in the expression's type:
+  Here the type is:     string()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   binary() | string() is not compatible with binary()
   because
   string() is not compatible with binary()
@@ -354,6 +486,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   binary() | atom()
 Context expected type: binary()
      │       
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
 
   binary() | atom() is not compatible with binary()
   because
@@ -370,6 +508,12 @@ Expression has type:   'ok' | binary()
 Context expected type: binary()
      │                                                            
 
+Because in the expression's type:
+  Here the type is:     'ok'
+  Context expects type: binary()
+
+------------------------------ Detailed message ------------------------------
+
   'ok' | binary() is not compatible with binary()
   because
   'ok' is not compatible with binary()
@@ -385,6 +529,12 @@ Expression has type:   binary() | 'ok'
 Context expected type: 'ok'
      │                              
 
+Because in the expression's type:
+  Here the type is:     binary()
+  Context expects type: 'ok'
+
+------------------------------ Detailed message ------------------------------
+
   binary() | 'ok' is not compatible with 'ok'
   because
   binary() is not compatible with 'ok'
@@ -399,6 +549,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {term(), my_list()} | none() | number()
 Context expected type: number()
      │              
+
+Because in the expression's type:
+  Here the type is:     {term(), my_list()}
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   {term(), my_list()} | none() | number() is not compatible with number()
   because
@@ -423,6 +579,12 @@ Expression has type:   'a' | 'b'
 Context expected type: 'b'
      │                             
 
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: 'b'
+
+------------------------------ Detailed message ------------------------------
+
   'a' | 'b' is not compatible with 'b'
   because
   'a' is not compatible with 'b'
@@ -438,6 +600,12 @@ Expression has type:   'a' | none()
 Context expected type: 'b'
      │     
 
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: 'b'
+
+------------------------------ Detailed message ------------------------------
+
   'a' | none() is not compatible with 'b'
   because
   'a' is not compatible with 'b'
@@ -452,6 +620,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   none() | 'c'
 Context expected type: 'a' | 'b'
      │                                                            
+
+Because in the expression's type:
+  Here the type is:     'c'
+  Context expects type: 'a' | 'b'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
 
   none() | 'c' is not compatible with 'a' | 'b'
   because

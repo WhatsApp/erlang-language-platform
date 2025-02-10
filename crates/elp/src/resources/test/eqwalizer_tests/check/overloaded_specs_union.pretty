@@ -9,6 +9,12 @@ Expression has type:   atom() | pid()
 Context expected type: atom()
    │                             
 
+Because in the expression's type:
+  Here the type is:     pid()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
   atom() | pid() is not compatible with atom()
   because
   pid() is not compatible with atom()
@@ -23,6 +29,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   atom() | binary() | pid()
 Context expected type: atom() | binary()
    │                             
+
+Because in the expression's type:
+  Here the type is:     pid()
+  Context expects type: atom() | binary()
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
 
   atom() | binary() | pid() is not compatible with atom() | binary()
   because

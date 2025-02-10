@@ -17,6 +17,12 @@ Expression has type:   'false' | 'true'
 Context expected type: 'true'
    │   
 
+Because in the expression's type:
+  Here the type is:     'false'
+  Context expects type: 'true'
+
+------------------------------ Detailed message ------------------------------
+
   'false' | 'true' is not compatible with 'true'
   because
   'false' is not compatible with 'true'

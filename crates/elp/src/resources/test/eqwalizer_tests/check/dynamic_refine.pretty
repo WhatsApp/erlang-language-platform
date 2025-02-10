@@ -87,6 +87,12 @@ Expression has type:   dynamic() | 'error' | none()
 Context expected type: 'ok'
     │                            
 
+Because in the expression's type:
+  Here the type is:     'error'
+  Context expects type: 'ok'
+
+------------------------------ Detailed message ------------------------------
+
   dynamic() | 'error' | none() is not compatible with 'ok'
   because
   'error' is not compatible with 'ok'
@@ -110,6 +116,12 @@ Expression has type:   dyn_alias() | 'err'
 Context expected type: 'ok'
     │                                
 
+Because in the expression's type:
+  Here the type is:     'err'
+  Context expects type: 'ok'
+
+------------------------------ Detailed message ------------------------------
+
   dyn_alias() | 'err' is not compatible with 'ok'
   because
   'err' is not compatible with 'ok'
@@ -124,6 +136,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   union()
 Context expected type: {'ok'}
     │                           
+
+Because in the expression's type:
+  { 
+    Here the type is:     'err'
+    Context expects type: 'ok'
+  }
+
+------------------------------ Detailed message ------------------------------
 
   union() is not compatible with {'ok'}
   because

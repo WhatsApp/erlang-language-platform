@@ -9,6 +9,12 @@ Expression has type:   'undefined'
 Context expected type: complex_map()
    │   
 
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: #{...}
+
+------------------------------ Detailed message ------------------------------
+
   'undefined' is not compatible with complex_map()
   because
   'undefined' is not compatible with #{id := number(), {secret, id} => number(), atom() => term()}
@@ -36,6 +42,12 @@ Expression has type:   complex_map()
 Context expected type: [T]
    │                
 
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: [T]
+
+------------------------------ Detailed message ------------------------------
+
   complex_map() is not compatible with [T]
   because
   #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [T]
@@ -56,9 +68,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/gradual_complex_types.erl:110:3
     │
 110 │   generic(DM, S).
-    │   ^^^^^^^^^^^^^^ generic(DM, S).
+    │   ^^^^^^^^^^^^^^
+    │   │
+    │   generic(DM, S).
 Expression has type:   dyn_map() | #{a => atom()}
 Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     #{dynamic() => dynamic()}
+  Context expects type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_complex_types.erl:115:3
@@ -70,6 +89,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {dyn_map(), 'ok'}
 Context expected type: {#{a => 'atom'}, number()}
     │   
+
+Because in the expression's type:
+  { dyn_map(), 
+    Here the type is:     'ok'
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
   {dyn_map(), 'ok'} is not compatible with {#{a => 'atom'}, number()}

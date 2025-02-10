@@ -9,7 +9,15 @@ Expression has type:   gb_sets:set(atom())
 Context expected type: gb_sets:set(number())
    │     
 
-  gb_sets:set(atom()) is not compatible with gb_sets:set(number())
+Because in the expression's type:
+  Opaque gb_sets:set/1(
+    Here the type is:     atom()
+    Context expects type: number()
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  opaque gb_sets:set(atom()) is not compatible with opaque gb_sets:set(number())
   because
   atom() is not compatible with number()
 
@@ -23,6 +31,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [[A]]
 Context expected type: [A]
    │     
+
+Because in the expression's type:
+  [
+    Here the type is:     [A]
+    Context expects type: A
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   [[A]] is not compatible with [A]
   because
@@ -39,33 +55,54 @@ Expression has type:   gb_sets:set(none())
 Context expected type: {term(), term()} | 'a'
    │              
 
-  gb_sets:set(none()) is not compatible with {term(), term()} | 'a'
+Because in the expression's type:
+  Here the type is:     opaque gb_sets:set(none())
+  Context expects type: {term(), term()} | 'a'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
+  opaque gb_sets:set(none()) is not compatible with {term(), term()} | 'a'
   because
-  gb_sets:set(none()) is not compatible with {term(), term()}
+  opaque gb_sets:set(none()) is not compatible with {term(), term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:99:17
    │
 99 │ test3_neg(X) -> X.
-   │                 ^ X.
+   │                 ^
+   │                 │
+   │                 X.
 Expression has type:   maps:iterator('k', 'v')
 Context expected type: sets:set('a')
+   │                 
+
+Because in the expression's type:
+  Here the type is:     opaque maps:iterator('k', 'v')
+  Context expects type: opaque sets:set('a')
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:102:13
     │
 102 │ ts(X, X) -> X.
     │             ^ X.
-Expression has type:   sets:set('a')
+Expression has type:   opaque sets:set('a')
 Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:107:11
     │
 107 │     ts(X, X),
-    │           ^ X.
+    │           ^
+    │           │
+    │           X.
 Expression has type:   maps:iterator('k', 'v')
 Context expected type: sets:set('a')
+    │           
+
+Because in the expression's type:
+  Here the type is:     opaque maps:iterator('k', 'v')
+  Context expects type: opaque sets:set('a')
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/otp_opaques.erl:124:5

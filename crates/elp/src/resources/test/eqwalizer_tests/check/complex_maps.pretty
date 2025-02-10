@@ -9,6 +9,13 @@ Expression has type:   #{a => 'b', c => 'd'}
 Context expected type: #{a => 'b'}
    │                     
 
+Because in the expression's type:
+  Here the type is:     #{c => ...}
+  Context expects type: #{...}
+  The expected map has no corresponding key for: c.
+
+------------------------------ Detailed message ------------------------------
+
 key `c` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -21,6 +28,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a => 'b', c => 'd'}
 Context expected type: #{a => 'b', atom() => number()}
    │                     
+
+Because in the expression's type:
+  #{ c =>
+    Here the type is:     'd'
+    Context expects type: number()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   #{a => 'b', c => 'd'} is not compatible with #{a => 'b', atom() => number()}
   because
@@ -40,6 +55,13 @@ Expression has type:   #{a => 'b', atom() => atom()}
 Context expected type: #{a => 'b', c => 'd'}
    │                   
 
+Because in the expression's type:
+  Here the type is:     #{atom() => atom()}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+------------------------------ Detailed message ------------------------------
+
   #{a => 'b', atom() => atom()} is not compatible with #{a => 'b', c => 'd'}
   key c is not present in the former map but is incompatible with its default association
   because
@@ -55,6 +77,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a => 'b', atom() => number()}
 Context expected type: #{a => 'b', c => 'd', atom() => number()}
    │                   
+
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     number()
+    Context expects type: 'd'
+  , ... }
+  The context introduces a new association c => 'd' which is incompatible with the expression's default association.
+
+------------------------------ Detailed message ------------------------------
 
   #{a => 'b', atom() => number()} is not compatible with #{a => 'b', c => 'd', atom() => number()}
   key c is not present in the former map but is incompatible with its default association
@@ -72,6 +103,13 @@ Expression has type:   #{a => 'b', atom() => atom()}
 Context expected type: #{a => 'b'}
    │                     
 
+Because in the expression's type:
+  Here the type is:     #{atom() => atom()}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+------------------------------ Detailed message ------------------------------
+
   #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
   because
   #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
@@ -88,6 +126,13 @@ Expression has type:   #{a => 'b', dynamic(atom()) => atom()}
 Context expected type: #{a => 'b'}
    │                          
 
+Because in the expression's type:
+  Here the type is:     #{dynamic(atom()) => atom()}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+------------------------------ Detailed message ------------------------------
+
   #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
   because
   #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
@@ -103,6 +148,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a => 'b', atom() => dynamic(atom())}
 Context expected type: #{a => 'b'}
    │                          
+
+Because in the expression's type:
+  Here the type is:     #{atom() => dynamic(atom())}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+------------------------------ Detailed message ------------------------------
 
   #{a => 'b', atom() => dynamic(atom())} is not compatible with #{a => 'b'}
   because
@@ -160,6 +212,14 @@ Expression has type:   #{atom() => binary()}
 Context expected type: #{a => binary(), atom() => atom()}
    │                            
 
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     binary()
+    Context expects type: atom()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
   #{atom() => binary()} is not compatible with #{a => binary(), atom() => atom()}
   the default associations are not compatible
   because
@@ -175,6 +235,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a := 'b', atom() => binary()}
 Context expected type: #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
    │                            
+
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     binary()
+    Context expects type: atom()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
   the default associations are not compatible
@@ -192,6 +260,14 @@ Expression has type:   #{a := 'b', atom() => binary()}
 Context expected type: #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
    │                            
 
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     binary()
+    Context expects type: atom()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
   #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
   the default associations are not compatible
   because
@@ -207,6 +283,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{dynamic() => atom()}
 Context expected type: #{dynamic() => binary()}
    │                             
+
+Because in the expression's type:
+  #{ dynamic() =>
+    Here the type is:     atom()
+    Context expects type: binary()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   #{dynamic() => atom()} is not compatible with #{dynamic() => binary()}
   the default associations are not compatible

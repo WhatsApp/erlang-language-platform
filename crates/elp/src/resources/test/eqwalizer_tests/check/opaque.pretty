@@ -9,7 +9,17 @@ Expression has type:   sets:set({'ok', 'error'})
 Context expected type: sets:set({'ok', 'ok'})
    │   
 
-  sets:set({'ok', 'error'}) is not compatible with sets:set({'ok', 'ok'})
+Because in the expression's type:
+  Opaque sets:set/1(
+    { 'ok', 
+      Here the type is:     'error'
+      Context expects type: 'ok'
+    }
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  opaque sets:set({'ok', 'error'}) is not compatible with opaque sets:set({'ok', 'ok'})
   because
   at tuple index 2:
   {'ok', 'error'} is not compatible with {'ok', 'ok'}
@@ -36,25 +46,39 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/opaque.erl:32:17
    │
 32 │ test3_neg(X) -> X.
-   │                 ^ X.
+   │                 ^
+   │                 │
+   │                 X.
 Expression has type:   misc:o()
 Context expected type: tuple()
+   │                 
+
+Because in the expression's type:
+  Here the type is:     opaque misc:o()
+  Context expects type: tuple()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/opaque.erl:57:11
    │
 57 │           X2
    │           ^^ X2.
-Expression has type:   misc:o()
+Expression has type:   opaque misc:o()
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/opaque.erl:63:3
    │
 63 │   Res.
-   │   ^^^ Res.
+   │   ^^^
+   │   │
+   │   Res.
 Expression has type:   misc:o()
 Context expected type: tuple()
+   │   
+
+Because in the expression's type:
+  Here the type is:     opaque misc:o()
+  Context expects type: tuple()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/opaque.erl:95:6
@@ -83,11 +107,18 @@ Expression has type:   misc:o() | 'a'
 Context expected type: {'ok'} | 'a'
     │                  
 
+Because in the expression's type:
+  Here the type is:     opaque misc:o()
+  Context expects type: {'ok'} | 'a'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   misc:o() | 'a' is not compatible with {'ok'} | 'a'
   because
-  misc:o() is not compatible with {'ok'} | 'a'
+  opaque misc:o() is not compatible with {'ok'} | 'a'
   because
-  misc:o() is not compatible with {'ok'}
+  opaque misc:o() is not compatible with {'ok'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/opaque.erl:125:18
@@ -100,9 +131,15 @@ Expression has type:   misc:o() | 'a'
 Context expected type: misc:o()
     │                  
 
-  misc:o() | 'a' is not compatible with misc:o()
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: opaque misc:o()
+
+------------------------------ Detailed message ------------------------------
+
+  misc:o() | 'a' is not compatible with opaque misc:o()
   because
-  'a' is not compatible with misc:o()
+  'a' is not compatible with opaque misc:o()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/opaque.erl:135:18
@@ -115,9 +152,15 @@ Expression has type:   misc:o() | 'a'
 Context expected type: misc:o()
     │                  
 
-  misc:o() | 'a' is not compatible with misc:o()
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: opaque misc:o()
+
+------------------------------ Detailed message ------------------------------
+
+  misc:o() | 'a' is not compatible with opaque misc:o()
   because
-  'a' is not compatible with misc:o()
+  'a' is not compatible with opaque misc:o()
 
 error: type_var_in_parameter_position (See https://fb.me/eqwalizer_errors#type_var_in_parameter_position)
     ┌─ check/src/opaque.erl:160:1
@@ -138,9 +181,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/opaque.erl:171:3
     │
 171 │   X.
-    │   ^ X.
+    │   ^
+    │   │
+    │   X.
 Expression has type:   misc:o()
 Context expected type: {'ok'}
+    │   
+
+Because in the expression's type:
+  Here the type is:     opaque misc:o()
+  Context expects type: {'ok'}
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/opaque.erl:269:8

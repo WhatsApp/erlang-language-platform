@@ -25,6 +25,14 @@ Expression has type:   fun((atom()) -> term())
 Context expected type: fun((term()) -> atom())
    │           
 
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     term()
+    Context expects type: atom()
+  )
+
+------------------------------ Detailed message ------------------------------
+
   fun((atom()) -> term()) is not compatible with fun((term()) -> atom())
   because
   term() is not compatible with atom()
@@ -40,6 +48,13 @@ Expression has type:   'a' | 'b' | 'c'
 Context expected type: 'a' | 'b'
    │           
 
+Because in the expression's type:
+  Here the type is:     'c'
+  Context expects type: 'a' | 'b'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'a' | 'b' | 'c' is not compatible with 'a' | 'b'
   because
   'c' is not compatible with 'a' | 'b'
@@ -50,9 +65,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/subtype_neg.erl:30:11
    │
 30 │ f05(X) -> X.
-   │           ^ X.
+   │           ^
+   │           │
+   │           X.
 Expression has type:   'a' | 'b'
 Context expected type: none()
+   │           
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:34:11
@@ -64,6 +86,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'a' | 'b', 'a' | 'b'}
 Context expected type: {'a', 'b'} | {'b', 'a'}
    │           
+
+Because in the expression's type:
+  { 
+    Here the type is:     'b'
+    Context expects type: 'a'
+  , 'a' | 'b'}
+
+------------------------------ Detailed message ------------------------------
 
   {'a' | 'b', 'a' | 'b'} is not compatible with {'a', 'b'} | {'b', 'a'}
   because
@@ -84,6 +114,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   pair_ab()
 Context expected type: pair_diff_elems()
    │           
+
+Because in the expression's type:
+  { 
+    Here the type is:     'b'
+    Context expects type: 'a'
+  , ab()}
+
+------------------------------ Detailed message ------------------------------
 
   pair_ab() is not compatible with pair_diff_elems()
   because
@@ -113,6 +151,13 @@ Expression has type:   #{a => atom()}
 Context expected type: #{a := atom()}
    │             
 
+Because in the expression's type:
+  Here the type is:     #{a => ..., ...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
+
+------------------------------ Detailed message ------------------------------
+
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -125,6 +170,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a := atom(), b := atom()}
 Context expected type: #{a => atom()}
    │             
+
+Because in the expression's type:
+  Here the type is:     #{b := ...}
+  Context expects type: #{...}
+  The expected map has no corresponding key for: b.
+
+------------------------------ Detailed message ------------------------------
 
 key `b` is declared in the former but not in the latter and the latter map has no default association
 
@@ -139,6 +191,13 @@ Expression has type:   #{'a' | 'b' => 'a' | 'b' | 'c'}
 Context expected type: #{a := 'a' | 'b', b => 'a' | 'b'}
    │             
 
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
+
+------------------------------ Detailed message ------------------------------
+
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -151,6 +210,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{term() => number()}
 Context expected type: #{atom() => number()}
    │             
+
+Because in the expression's type:
+  #{ map domains are incompatible:
+    Here the type is:     term()
+    Context expects type: atom()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   #{term() => number()} is not compatible with #{atom() => number()}
   the default associations are not compatible
@@ -168,6 +235,14 @@ Expression has type:   #{atom() => term()}
 Context expected type: #{atom() => number()}
    │             
 
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     term()
+    Context expects type: number()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
   #{atom() => term()} is not compatible with #{atom() => number()}
   the default associations are not compatible
   because
@@ -183,6 +258,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{atom() => term()}
 Context expected type: #{}
    │             
+
+Because in the expression's type:
+  Here the type is:     #{atom() => term()}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+------------------------------ Detailed message ------------------------------
 
   #{atom() => term()} is not compatible with #{}
   because
@@ -208,6 +290,14 @@ Expression has type:   {{}, 'error'}
 Context expected type: {tuple(), 'ok'}
    │     
 
+Because in the expression's type:
+  { {}, 
+    Here the type is:     'error'
+    Context expects type: 'ok'
+  }
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 2:
   {{}, 'error'} is not compatible with {tuple(), 'ok'}
   because
@@ -223,6 +313,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {[], 'error'}
 Context expected type: {[pid()], 'ok'}
    │     
+
+Because in the expression's type:
+  { [], 
+    Here the type is:     'error'
+    Context expects type: 'ok'
+  }
+
+------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
   {[], 'error'} is not compatible with {[pid()], 'ok'}
@@ -240,6 +338,14 @@ Expression has type:   {[], 'error'}
 Context expected type: {iolist(), 'ok'}
    │     
 
+Because in the expression's type:
+  { [], 
+    Here the type is:     'error'
+    Context expects type: 'ok'
+  }
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 2:
   {[], 'error'} is not compatible with {iolist(), 'ok'}
   because
@@ -249,9 +355,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/subtype_neg.erl:94:13
    │
 94 │ nil_1(L) -> L.
-   │             ^ L.
+   │             ^
+   │             │
+   │             L.
 Expression has type:   ['a']
 Context expected type: []
+   │             
+
+Because in the expression's type:
+  [
+    Here the type is:     'a'
+    Context expects type: none()
+  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/subtype_neg.erl:97:13
@@ -263,6 +378,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   ['a'] | [none()]
 Context expected type: []
    │             
+
+Because in the expression's type:
+  [
+    Here the type is:     'a'
+    Context expects type: none()
+  ]
+
+------------------------------ Detailed message ------------------------------
 
   ['a'] | [none()] is not compatible with []
   because

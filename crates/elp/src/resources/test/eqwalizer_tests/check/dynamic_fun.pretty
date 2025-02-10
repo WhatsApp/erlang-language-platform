@@ -65,6 +65,14 @@ Expression has type:   f5('a' | 'b')
 Context expected type: f4('a')
     │                        
 
+Because in the expression's type:
+  fun((term()) ->
+    Here the type is:     'b'
+    Context expects type: 'a'
+  )
+
+------------------------------ Detailed message ------------------------------
+
   f5('a' | 'b') is not compatible with f4('a')
   because
   fun((term()) -> 'a' | 'b') is not compatible with f4('a')
@@ -92,6 +100,14 @@ Expression has type:   fun((term()) -> 'a' | 'b')
 Context expected type: f4('a')
     │                      
 
+Because in the expression's type:
+  fun((term()) ->
+    Here the type is:     'b'
+    Context expects type: 'a'
+  )
+
+------------------------------ Detailed message ------------------------------
+
   fun((term()) -> 'a' | 'b') is not compatible with f4('a')
   because
   fun((term()) -> 'a' | 'b') is not compatible with fun((...) -> 'a')
@@ -110,6 +126,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   f4('a' | 'b')
 Context expected type: fun((term()) -> 'a')
     │                     
+
+Because in the expression's type:
+  fun((term()) ->
+    Here the type is:     'b'
+    Context expects type: 'a'
+  )
+
+------------------------------ Detailed message ------------------------------
 
   f4('a' | 'b') is not compatible with fun((term()) -> 'a')
   because

@@ -32,17 +32,31 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/gradual_custom.erl:43:3
    │
 43 │   application:get_env(app1).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1').
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   application:get_env('app1').
 Expression has type:   'undefined' | {'ok', dynamic()}
 Context expected type: number()
+   │   
+
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:56:3
    │
 56 │   application:get_env(app1, key1).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1', 'key1').
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   application:get_env('app1', 'key1').
 Expression has type:   'undefined' | {'ok', dynamic()}
 Context expected type: number()
+   │   
+
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:73:3
@@ -64,9 +78,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/gradual_custom.erl:94:3
    │
 94 │   file:consult(some_file).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
+   │   ^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   file:consult('some_file').
 Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
 Context expected type: 'nok'
+   │   
+
+Because in the expression's type:
+  Here the type is:     {'ok', [dynamic()]}
+  Context expects type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:99:3
@@ -86,6 +107,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   dynamic() | 'a'
 Context expected type: number()
     │       
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   dynamic() | 'a' is not compatible with number()
   because
@@ -172,6 +199,12 @@ Expression has type:   number() | 'undefined'
 Context expected type: number()
     │                   
 
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | 'undefined' is not compatible with number()
   because
   'undefined' is not compatible with number()
@@ -186,6 +219,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | atom() | binary()
 Context expected type: number()
     │                   
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | atom() | binary() is not compatible with number()
   because
@@ -202,6 +241,12 @@ Expression has type:   number() | dynamic() | number() | atom() | dynamic()
 Context expected type: number()
     │                   
 
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
   number() | dynamic() | number() | atom() | dynamic() is not compatible with number()
   because
   atom() is not compatible with number()
@@ -216,6 +261,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | dynamic() | atom() | dynamic()
 Context expected type: number()
     │                   
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
 
   number() | dynamic() | atom() | dynamic() is not compatible with number()
   because
@@ -238,6 +289,13 @@ Expression has type:   'bar' | 'undefined' | 'foo'
 Context expected type: 'foo' | 'bar' | binary()
     │             
 
+Because in the expression's type:
+  Here the type is:     'undefined'
+  Context expects type: 'foo' | 'bar' | binary()
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'bar' | 'undefined' | 'foo' is not compatible with 'foo' | 'bar' | binary()
   because
   'undefined' is not compatible with 'foo' | 'bar' | binary()
@@ -254,6 +312,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'foo' | 'bar'
 Context expected type: 'foo'
     │   
+
+Because in the expression's type:
+  Here the type is:     'bar'
+  Context expects type: 'foo'
+
+------------------------------ Detailed message ------------------------------
 
   'foo' | 'bar' is not compatible with 'foo'
   because

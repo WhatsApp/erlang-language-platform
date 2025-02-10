@@ -17,6 +17,14 @@ Expression has type:   {'p', none() | pid() | reference()}
 Context expected type: {'a', atom()} | {'p', pid()}
     │              
 
+Because in the expression's type:
+  { 'p', 
+    Here the type is:     reference()
+    Context expects type: pid()
+  }
+
+------------------------------ Detailed message ------------------------------
+
   {'p', none() | pid() | reference()} is not compatible with {'a', atom()} | {'p', pid()}
   because
   at tuple index 2:
@@ -37,6 +45,13 @@ Expression has type:   'undefined' | none() | 'restarting'
 Context expected type: {'p', pid()} | 'undefined'
     │          
 
+Because in the expression's type:
+  Here the type is:     'restarting'
+  Context expects type: {'p', pid()} | 'undefined'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'undefined' | none() | 'restarting' is not compatible with {'p', pid()} | 'undefined'
   because
   'restarting' is not compatible with {'p', pid()} | 'undefined'
@@ -53,6 +68,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{dynamic() => dynamic()} | none()
 Context expected type: [T]
     │                
+
+Because in the expression's type:
+  Here the type is:     #{dynamic() => dynamic()}
+  Context expects type: [T]
+
+------------------------------ Detailed message ------------------------------
 
   #{dynamic() => dynamic()} | none() is not compatible with [T]
   because

@@ -9,6 +9,14 @@ Expression has type:   {T | U, T | U}
 Context expected type: {T, U}
    │                  
 
+Because in the expression's type:
+  { 
+    Here the type is:     U
+    Context expects type: T
+  , T | U}
+
+------------------------------ Detailed message ------------------------------
+
   at tuple index 1:
   {T | U, T | U} is not compatible with {T, U}
   because
@@ -20,9 +28,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/generics_with_unions.erl:70:19
    │
 70 │ test_ret_neg() -> union(a, b).
-   │                   ^^^^^^^^^^^ union('a', 'b').
+   │                   ^^^^^^^^^^^
+   │                   │
+   │                   union('a', 'b').
 Expression has type:   'a' | 'b'
 Context expected type: 'ok'
+   │                   
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: 'ok'
 
 error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
    ┌─ check/src/generics_with_unions.erl:72:1
@@ -49,6 +64,12 @@ Expression has type:   props('a', number())
 Context expected type: 'wrong_ret'
     │     
 
+Because in the expression's type:
+  Here the type is:     [prop('a', number())]
+  Context expects type: 'wrong_ret'
+
+------------------------------ Detailed message ------------------------------
+
   props('a', number()) is not compatible with 'wrong_ret'
   because
   [prop('a', number())] is not compatible with 'wrong_ret'
@@ -71,6 +92,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   T | [T]
 Context expected type: T
     │                 
+
+Because in the expression's type:
+  Here the type is:     [T]
+  Context expects type: T
+
+------------------------------ Detailed message ------------------------------
 
   T | [T] is not compatible with T
   because
@@ -111,6 +138,14 @@ Expression has type:   [K] | [[K]]
 Context expected type: [K]
     │                             
 
+Because in the expression's type:
+  [
+    Here the type is:     [K]
+    Context expects type: K
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [K] | [[K]] is not compatible with [K]
   because
   [[K]] is not compatible with [K]
@@ -135,6 +170,16 @@ Expression has type:   query()
 Context expected type: fun(({'i', 'atom'}) -> 'ok')
     │                            
 
+Because in the expression's type:
+  fun((
+    { 'i', 
+      Here the type is:     'atom'
+      Context expects type: number()
+    }
+  ) -> 'ok')
+
+------------------------------ Detailed message ------------------------------
+
   query() is not compatible with fun(({'i', 'atom'}) -> 'ok')
   because
   fun(({'a', atom()} | {'b', binary()} | {'i', number()}) -> 'ok') is not compatible with fun(({'i', 'atom'}) -> 'ok')
@@ -154,6 +199,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   query()
 Context expected type: fun(({'a', number()}) -> 'ok')
     │                 
+
+Because in the expression's type:
+  fun((
+    { 'a', 
+      Here the type is:     number()
+      Context expects type: atom()
+    }
+  ) -> 'ok')
+
+------------------------------ Detailed message ------------------------------
 
   query() is not compatible with fun(({'a', number()}) -> 'ok')
   because

@@ -9,6 +9,18 @@ Expression has type:   [[[[]]]]
 Context expected type: [[[]]]
    │                    
 
+Because in the expression's type:
+  [
+    [
+      [
+        Here the type is:     []
+        Context expects type: none()
+      ]
+    ]
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [[[[]]]] is not compatible with [[[]]]
   because
   [[[]]] is not compatible with [[]]
@@ -41,6 +53,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((atom()) -> string())
 Context expected type: fun((atom()) -> atom())
     │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: atom()
+  )
+
+------------------------------ Detailed message ------------------------------
 
   fun((atom()) -> string()) is not compatible with fun((atom()) -> atom())
   because

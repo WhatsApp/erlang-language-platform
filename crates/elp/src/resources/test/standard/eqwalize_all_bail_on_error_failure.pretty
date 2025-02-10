@@ -39,6 +39,13 @@ Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_
 Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
    │     
 
+Because in the expression's type:
+  Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}
+  Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
+  The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
+
+------------------------------ Detailed message ------------------------------
+
 keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -51,6 +58,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})
 Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
     │     
+
+Because in the expression's type:
+  #{ b =>
+    #{ c =>
+      Here the type is:     #{d => ..., ...}
+      Context expects type: #{e := ..., d := ..., ...}
+      The type of the expression is missing the following required keys: e, d.
+    , ... }
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   id(#{a := 'va', b := #{c := #{d => atom()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
@@ -71,6 +89,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})
 Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
     │     
+
+Because in the expression's type:
+  #{ b =>
+    #{ c =>
+      #{ e =>
+        Here the type is:     pid()
+        Context expects type: atom()
+      , ... }
+    , ... }
+  , ... }
+
+------------------------------ Detailed message ------------------------------
 
   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
   because
@@ -134,6 +164,15 @@ Expression has type:   [term()]
 Context expected type: [T | X]
      │     
 
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: T | X
+    No candidate matches in the expected union.
+  ]
+
+------------------------------ Detailed message ------------------------------
+
   [term()] is not compatible with [T | X]
   because
   term() is not compatible with T | X
@@ -148,6 +187,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((T) -> boolean() | {'true', X})
 Context expected type: fun((term()) -> boolean() | {'true', term()})
      │               
+
+Because in the expression's type:
+  fun((
+    Here the type is:     term()
+    Context expects type: T
+  ) -> boolean() | {'true', X})
+
+------------------------------ Detailed message ------------------------------
 
   fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
   because

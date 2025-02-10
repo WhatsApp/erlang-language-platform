@@ -73,6 +73,14 @@ Expression has type:   ref_contravariant('a')
 Context expected type: ref_contravariant_ab()
    │                                 
 
+Because in the expression's type:
+  fun((
+    Here the type is:     'b'
+    Context expects type: 'a'
+  ) -> 'ok')
+
+------------------------------ Detailed message ------------------------------
+
   ref_contravariant('a') is not compatible with ref_contravariant_ab()
   because
   contravariant('a') is not compatible with ref_contravariant_ab()
