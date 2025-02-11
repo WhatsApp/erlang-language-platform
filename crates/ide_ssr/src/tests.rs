@@ -714,6 +714,16 @@ fn ssr_expr_case() {
 }
 
 #[test]
+fn ssr_underscore_pattern_in_code_and_placeholder_in_ssr_do_not_match_if_atom_literal_pattens_do_no_match()
+ {
+    assert_matches(
+        "ssr: case X of false -> _@BranchA; _@PatA -> _@BranchB end.",
+        "foo(X) -> case X of true -> a; _ -> b end.",
+        &[],
+    );
+}
+
+#[test]
 fn ssr_expr_receive() {
     assert_matches(
         "ssr: receive _@XX -> 3 end.",

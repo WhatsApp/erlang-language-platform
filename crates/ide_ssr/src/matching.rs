@@ -632,6 +632,22 @@ impl<'a> Matcher<'a> {
                 }
             }
             (
+                SubIdRef::AnyExprRef(AnyExprRef::Pat(Pat::Literal(pat_lit))),
+                SubIdRef::AnyExprRef(AnyExprRef::Pat(Pat::Literal(code_lit))),
+            ) => {
+                let pat_lit_str = render_str(self.sema, pat_lit);
+                let code_lit_str = render_str(self.sema, code_lit);
+                if pat_lit_str == code_lit_str {
+                    return Ok(());
+                } else {
+                    fail_match!(
+                        "Pattern had `{}`, code had `{}`",
+                        &pat_lit_str,
+                        &code_lit_str
+                    );
+                }
+            }
+            (
                 SubIdRef::AnyExprRef(AnyExprRef::Expr(Expr::Var(code_var))),
                 SubIdRef::AnyExprRef(AnyExprRef::Expr(Expr::Var(pat_var))),
             ) => {
