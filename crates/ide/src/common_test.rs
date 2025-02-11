@@ -43,6 +43,7 @@ use hir::FunctionDef;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 
 use crate::diagnostics::Diagnostic;
@@ -76,6 +77,10 @@ pub fn unreachable_test(
     testcases: &Option<FxHashSet<NameArity>>,
 ) {
     let exported_test_ranges = exported_test_ranges(sema, file_id);
+    let exported_test_ranges = exported_test_ranges
+        .iter()
+        .map(|(n, r)| (n, sema.db.clamp_range(file_id, *r)))
+        .collect_vec();
     if let Some(runnable_names) = testcases {
         for (name, range) in exported_test_ranges {
             if !runnable_names.contains(&name) {
