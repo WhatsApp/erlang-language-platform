@@ -29,9 +29,11 @@ interpret(Forms, Mod, ShouldRequestGroups, Anno) ->
     Result.
 
 parse_to_map(Forms) ->
-    Local = #{{local, Name, Arity} => Clauses || {function, _, Name, Arity, Clauses} <- Forms},
-    Remote = #{{remote, NA} => Mod || {attribute, _, import, {Mod, NAs}} <- Forms, NA <- NAs},
-    maps:merge(Local, Remote).
+    %% we still support OTP 25, we can't use map comprehensions yet
+    maps:from_list(
+        [{{local, Name, Arity}, Clauses} || {function, _, Name, Arity, Clauses} <- Forms] ++
+            [{{remote, NA}, Mod} || {attribute, _, import, {Mod, NAs}} <- Forms, NA <- NAs]
+    ).
 
 code_handler(Name, Args, Dict, Mod) ->
     Arity = length(Args),
@@ -43,7 +45,7 @@ code_handler(Name, Args, Dict, Mod) ->
                     {value, Val, _} = erl_eval:exprs(Body, Bindings, Handler),
                     Val;
                 nomatch ->
-                    erlang:error({function_clause, [{Mod,Name,Args}]})
+                    erlang:error({function_clause, [{Mod, Name, Args}]})
             end;
         #{{remote, {Name, Arity}} := Mod} ->
             apply(Mod, Name, Args);
