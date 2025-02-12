@@ -1,0 +1,4 @@
+THIS FILE CONTAINS AN ARTIFICIAL ERLANG STACKTRACE
+Details: exception error: made up error
+  in function local_g/0 (definitions/src/local_def.erl, line 7)
+  in call from local_def:f/0 (definitions/src/local_def.erl, line 5)
