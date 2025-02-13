@@ -62,6 +62,9 @@ jobs:
       - name: Show uname
         run: |
           uname -m
+      - name: Show runner OS
+        run: |
+          echo $RUNNER_OS
       - name: Set up SBT
         uses: olafurpg/setup-scala@v11
         with:
