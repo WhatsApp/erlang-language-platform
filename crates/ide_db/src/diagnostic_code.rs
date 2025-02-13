@@ -66,6 +66,7 @@ pub enum DiagnosticCode {
     MapsFindFunctionRatherThanSyntax,
     ListsZipWithSeqRatherThanEnumerate,
     UnnecessaryFoldToBuildMapFromList,
+    UnnecessaryMapFromListAroundComprehension,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -199,6 +200,7 @@ impl DiagnosticCode {
             DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => "W0033".to_string(),
             DiagnosticCode::UnnecessaryMapToListInComprehension => "W0034".to_string(),
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => "W0035".to_string(),
+            DiagnosticCode::UnnecessaryMapFromListAroundComprehension => "W0036".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -267,6 +269,9 @@ impl DiagnosticCode {
             }
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => {
                 "unnecessary_fold_to_build_map_from_list".to_string()
+            }
+            DiagnosticCode::UnnecessaryMapFromListAroundComprehension => {
+                "unnecessary_map_from_list_around_comprehension".to_string()
             }
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
@@ -390,6 +395,7 @@ impl DiagnosticCode {
             DiagnosticCode::MapsFindFunctionRatherThanSyntax => false,
             DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => false,
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => false,
+            DiagnosticCode::UnnecessaryMapFromListAroundComprehension => false,
             DiagnosticCode::CannotEvaluateCTCallbacks => false,
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
             DiagnosticCode::AtomsExhaustion => false,
