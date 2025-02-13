@@ -11,7 +11,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, ubuntu-24.04-arm, macos-13-x64, macos-latest-arm]
+        platform-arch: [ubuntu-20.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm]
         otp-version: [25.3, 26.2, 27.1]
         include:
           - otp-version: 25.3
@@ -28,8 +28,8 @@ jobs:
             os: linux
             target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
-          - platform-arch: ubuntu-24.04-arm
-            platform: ubuntu-24.04-arm
+          - platform-arch: ubuntu-22.04-arm
+            platform: ubuntu-22.04-arm
             os: linux
             target: aarch64-unknown-linux-gnu
             vscode-target: linux-arm64
@@ -73,6 +73,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
+      - name: Set up cross-compiler
+        if: matrix.platform-arch == 'ubuntu-22.04-arm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y crossbuild-essential-arm64
       - name: Install Erlang/OTP (Linux Only)
         if: matrix.os == 'linux'
         uses: erlef/setup-beam@v1
