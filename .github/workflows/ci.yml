@@ -11,7 +11,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform-arch: [ubuntu-20.04-x64, ubuntu-20.04-arm, macos-13-x64, macos-latest-arm]
+        platform-arch: [ubuntu-20.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm]
         otp-version: [25.3, 26.2, 27.1]
         include:
           - otp-version: 25.3
@@ -28,8 +28,8 @@ jobs:
             os: linux
             target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
-          - platform-arch: ubuntu-20.04-arm
-            platform: ubuntu-20.04
+          - platform-arch: ubuntu-22.04-arm
+            platform: ubuntu-22.04-arm
             os: linux
             target: aarch64-unknown-linux-gnu
             vscode-target: linux-arm64
@@ -54,7 +54,6 @@ jobs:
           path: eqwalizer
           ref: main
       - name: Set up GraalVM
-        if: matrix.platform-arch != 'ubuntu-20.04-arm'
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: '17'
@@ -68,11 +67,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
-      - name: Set up cross-compiler
-        if: matrix.platform-arch == 'ubuntu-20.04-arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y crossbuild-essential-arm64
       - name: Install Erlang/OTP (Linux Only)
         if: matrix.os == 'linux'
         uses: erlef/setup-beam@v1
@@ -100,37 +94,11 @@ jobs:
         working-directory: eqwalizer/eqwalizer
         run: "sbt assembly"
       - name: Assemble eqwalizer binary
-        if: matrix.platform-arch != 'ubuntu-20.04-arm'
         working-directory: eqwalizer/eqwalizer
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-2.13/eqwalizer.jar eqwalizer'
-      - name: Assemble eqwalizer binary (qemu)
-        if: matrix.platform-arch == 'ubuntu-20.04-arm'
-        uses: uraimo/run-on-arch-action@v2
-        with:
-          arch: aarch64
-          distro: ubuntu20.04
-          dockerRunArgs: |
-            --volume "${PWD}/eqwalizer/eqwalizer:/eqwalizer"
-          install: |
-            apt-get -q update
-            apt-get -q install -y curl gcc zlib1g-dev
-            GRAALVM_URL=https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_linux-aarch64_bin.tar.gz
-            GRAALVM_SHA256=$(curl -s "${GRAALVM_URL}.sha256")
-            curl --output graalvm.tar.gz "${GRAALVM_URL}"
-            echo "$GRAALVM_SHA256  graalvm.tar.gz" | sha256sum -c
-            mkdir /opt/graalvm
-            tar -xzf graalvm.tar.gz -C /opt/graalvm --strip-components=1
-          run: |
-            /opt/graalvm/bin/native-image \
-              -H:IncludeResources=application.conf \
-              -H:+ReportExceptionStackTraces \
-              --no-server \
-              --no-fallback \
-              -jar /eqwalizer/target/scala-2.13/eqwalizer.jar \
-              /eqwalizer/eqwalizer
       - name: Test elp
         # Do not run the tests in case of cross-compilation
-        if: (matrix.platform-arch != 'ubuntu-20.04-arm') && (matrix.platform-arch != 'macos-latest-arm')
+        if: matrix.platform-arch != 'macos-latest-arm'
         run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
       - name: Build elp
         run: 'cargo build --release  --target ${{ matrix.target }} --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"'
