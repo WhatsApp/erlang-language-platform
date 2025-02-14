@@ -659,6 +659,7 @@ impl DiagnosticsConfig {
 /// initially.  But could by anything supported by serde.
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct LintConfig {
+    #[serde(default)]
     pub enabled_lints: Vec<DiagnosticCode>,
     #[serde(default)]
     pub disabled_lints: Vec<DiagnosticCode>,

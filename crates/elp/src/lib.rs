@@ -215,4 +215,14 @@ mod tests {
         "#]]
         .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }
+
+    #[test]
+    fn serde_read_lint_config_empty_enabled() {
+        let content = r#"
+            disabled_lints = []
+            "#;
+        let config = toml::from_str::<LintConfig>(&content).unwrap();
+        assert_eq!(config.enabled_lints, vec![]);
+        assert_eq!(config.disabled_lints, vec![]);
+    }
 }
