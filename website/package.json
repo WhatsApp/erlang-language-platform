@@ -49,6 +49,7 @@
     "cross-spawn": ">=6.0.6",
     "react-live": ">=3.2.0",
     "jackspeak": "2.1.1",
-    "katex": ">=0.16.21"
+    "katex": ">=0.16.21",
+    "dompurify": ">=3.2.4"
   }
 }
