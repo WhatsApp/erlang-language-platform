@@ -1,7 +1,9 @@
 module specified: diagnostics
 Diagnostics reported in 1 modules:
-  diagnostics: 4
+  diagnostics: 6
+      2:9-2:26::[Hint] [W0037] Unspecific include.
       3:0-3:0::[Error] [L0000] Issue in included file
+      3:9-3:33::[Hint] [W0037] Unspecific include.
       5:30-5:44::[Error] [L1295] type undefined_type() undefined
       6:0-6:4::[Warning] [L1230] function main/1 is unused
       9:0-9:3::[Warning] [L1230] function foo/0 is unused

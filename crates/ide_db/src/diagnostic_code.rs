@@ -67,6 +67,7 @@ pub enum DiagnosticCode {
     ListsZipWithSeqRatherThanEnumerate,
     UnnecessaryFoldToBuildMapFromList,
     UnnecessaryMapFromListAroundComprehension,
+    UnspecificInclude,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -201,6 +202,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnnecessaryMapToListInComprehension => "W0034".to_string(),
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => "W0035".to_string(),
             DiagnosticCode::UnnecessaryMapFromListAroundComprehension => "W0036".to_string(),
+            DiagnosticCode::UnspecificInclude => "W0037".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -273,6 +275,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnnecessaryMapFromListAroundComprehension => {
                 "unnecessary_map_from_list_around_comprehension".to_string()
             }
+            DiagnosticCode::UnspecificInclude => "unspecific_include".to_string(),
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -402,6 +405,7 @@ impl DiagnosticCode {
             DiagnosticCode::SlowFunction => false,
             DiagnosticCode::BooleanPrecedence => false,
             DiagnosticCode::UnexportedFunction => false,
+            DiagnosticCode::UnspecificInclude => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,

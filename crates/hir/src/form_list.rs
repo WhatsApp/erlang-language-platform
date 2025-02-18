@@ -593,6 +593,13 @@ impl IncludeAttribute {
             IncludeAttribute::IncludeLib { form_id, .. } => form_id.upcast(),
         }
     }
+
+    pub fn path(&self) -> &SmolStr {
+        match self {
+            IncludeAttribute::Include { path, .. } => path,
+            IncludeAttribute::IncludeLib { path, .. } => path,
+        }
+    }
 }
 
 /// -deprecated

@@ -370,10 +370,34 @@ impl nodes::PpInclude {
     pub fn text_range(&self) -> TextRange {
         self.syntax.text_range()
     }
+
+    pub fn include_range(&self) -> Option<TextRange> {
+        include_range(&self.file())
+    }
 }
 impl nodes::PpIncludeLib {
     pub fn text_range(&self) -> TextRange {
         self.syntax.text_range()
+    }
+
+    pub fn include_range(&self) -> Option<TextRange> {
+        include_range(&self.file())
+    }
+}
+
+fn include_range(file: &super::AstChildren<super::IncludeDetail>) -> Option<TextRange> {
+    let start = file.clone().into_iter().next()?;
+    let end = file.clone().into_iter().last()?;
+    Some(TextRange::new(
+        detail_range(&start).start(),
+        detail_range(&end).end(),
+    ))
+}
+
+fn detail_range(detail: &super::IncludeDetail) -> TextRange {
+    match detail {
+        super::IncludeDetail::String(str) => str.syntax().text_range(),
+        super::IncludeDetail::MacroCallExpr(mc) => mc.syntax().text_range(),
     }
 }
 

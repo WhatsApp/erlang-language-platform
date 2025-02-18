@@ -112,6 +112,7 @@ mod undefined_function;
 mod unnecessary_fold_to_build_map;
 mod unnecessary_map_from_list_around_comprehension;
 mod unnecessary_map_to_list_in_comprehension;
+mod unspecific_include;
 mod unused_function_args;
 mod unused_include;
 mod unused_macro;
@@ -882,6 +883,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &atoms_exhaustion::DESCRIPTOR,
         &boolean_precedence::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
+        &unspecific_include::DESCRIPTOR,
     ]
 }
 

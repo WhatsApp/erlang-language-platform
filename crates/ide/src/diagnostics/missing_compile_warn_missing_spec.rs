@@ -217,8 +217,9 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config =
-            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default()
+            .enable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::UnspecificInclude);
         check_diagnostics_with_config(config, fixture)
     }
 
