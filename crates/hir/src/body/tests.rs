@@ -132,6 +132,24 @@ foo(42) -> 4_2.
 }
 
 #[test]
+fn integer_with_base() {
+    check(
+        r#"
+foo(10#42) ->
+  {10#42, 2#1011011, 16#1FFF}.
+"#,
+        expect![[r#"
+            foo(42) ->
+                {
+                    42,
+                    91,
+                    8191
+                }.
+        "#]],
+    );
+}
+
+#[test]
 fn string() {
     check(
         r#"

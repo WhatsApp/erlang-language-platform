@@ -3010,15 +3010,31 @@ fn lower_float(float: &ast::Float) -> Option<Literal> {
 }
 
 fn lower_raw_int(int: &ast::Integer) -> Option<BasedInteger> {
-    // TODO: crack out base prefix, parse as appropriate
-    let text = int.text();
-    let value = if text.contains('_') {
-        let str = text.replace('_', "");
-        str.parse().ok()
-    } else {
-        text.parse().ok()
-    }?;
-    Some(BasedInteger { base: 10, value })
+    let text = int.text().replace('_', "");
+    let parts: Vec<_> = text.split("#").collect();
+    match &parts[..] {
+        [val] => Some(BasedInteger {
+            base: 10,
+            value: val.parse().ok()?,
+        }),
+        [base, val] => {
+            let base = base.parse().ok()?;
+            Some(BasedInteger {
+                base,
+                value: parse_based(base, val)?,
+            })
+        }
+        _ => None,
+    }
+}
+
+fn parse_based(base: u32, str: &str) -> Option<i128> {
+    let acc_base = base as i128;
+    str.chars().fold(Some(0), |acc, c| {
+        let r = acc?;
+        let val = c.to_digit(base)?;
+        Some(r * acc_base + val as i128)
+    })
 }
 
 fn lower_int(int: &ast::Integer) -> Option<Literal> {
