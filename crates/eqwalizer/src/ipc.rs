@@ -11,11 +11,14 @@ use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::BufWriter;
+use std::io::ErrorKind;
 use std::io::Write;
+use std::process::Child;
 use std::process::ChildStdin;
 use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
+use std::thread;
 use std::time::Duration;
 
 use anyhow::bail;
@@ -83,28 +86,41 @@ const WRITE_TIMEOUT: Duration = Duration::from_secs(240);
 const READ_TIMEOUT: Duration = Duration::from_secs(240);
 
 impl IpcHandle {
+    fn spawn_cmd(cmd: &mut Command) -> Result<Child> {
+        // Spawn can fail due to a race condition with the creation/closing of the
+        // eqWAlizer executable, so we retry until the file is properly closed.
+        // See https://github.com/rust-lang/rust/issues/114554
+        loop {
+            match cmd.spawn() {
+                Ok(c) => return Ok(c),
+                Err(err) => {
+                    if err.kind() == ErrorKind::ExecutableFileBusy {
+                        thread::sleep(Duration::from_millis(10));
+                    } else {
+                        // Provide extra debugging detail, to track down T198872667
+                        let command_str = cmd.get_program();
+                        let attr = fs::metadata(command_str);
+                        let error_str = format!(
+                            "err: {}, command_str: {:?}, cmd: {:?}, meta_data: {:?}",
+                            err, command_str, cmd, &attr
+                        );
+                        // Show up in error log
+                        log::error!("{}", limit_logged_string(&error_str));
+                        // And show up as an eqwalizer error
+                        bail!(error_str)
+                    }
+                }
+            }
+        }
+    }
+
     pub fn from_command(cmd: &mut Command) -> Result<Self> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             // for debugging purposes
             .stderr(Stdio::inherit());
 
-        let mut child = match cmd.spawn() {
-            Ok(c) => c,
-            Err(err) => {
-                // Provide extra debugging detail, to track down T198872667
-                let command_str = cmd.get_program();
-                let attr = fs::metadata(command_str);
-                let error_str = format!(
-                    "err: {}, command_str: {:?}, cmd: {:?}, meta_data: {:?}",
-                    err, command_str, cmd, &attr
-                );
-                // Show up in error log
-                log::error!("{}", limit_logged_string(&error_str));
-                // And show up as an eqwalizer error
-                bail!(error_str);
-            }
-        };
+        let mut child = Self::spawn_cmd(cmd)?;
         let stdin = child
             .stdin
             .take()
