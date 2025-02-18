@@ -538,7 +538,7 @@ pub(crate) fn find_call_in_function<T, U>(
             if let Some((target, args)) = match ctx.item {
                 AnyExpr::Expr(Expr::CaptureFun { target, arity }) => match &def_fc.body[arity] {
                     Expr::Literal(Literal::Integer(arity)) => {
-                        Some((target, Args::Arity(*arity as u32)))
+                        Some((target, Args::Arity(arity.value as u32)))
                     }
                     _ => None,
                 },

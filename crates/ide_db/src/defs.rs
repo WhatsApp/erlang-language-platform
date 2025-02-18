@@ -498,7 +498,7 @@ pub fn from_is_record(
                         3 => match &body[args[2]] {
                             Expr::Literal(Literal::Integer(size)) => {
                                 let num_fields = record.record.fields.clone().count();
-                                if num_fields == (*size) as usize {
+                                if num_fields == size.value as usize {
                                     reference_direct(Some(record.clone()))
                                 } else {
                                     None

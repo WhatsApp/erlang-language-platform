@@ -792,7 +792,7 @@ fn render_str(sema: &Semantic, lit: &Literal) -> String {
         Literal::String(s) => s.as_string(),
         Literal::Char(c) => format!("{c}"),
         Literal::Atom(a) => a.as_string(sema.db.upcast()),
-        Literal::Integer(i) => format!("{i}"),
+        Literal::Integer(i) => format!("{}", i.value),
         Literal::Float(f) => format!("{f}"),
     }
 }

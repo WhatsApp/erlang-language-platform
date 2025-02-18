@@ -231,7 +231,7 @@ fn is_literal_atom(sema: &Semantic, expr: &hir::Expr, name: Name) -> bool {
 
 fn is_integer(n: i128, expr: &hir::Expr) -> bool {
     match expr {
-        hir::Expr::Literal(hir::Literal::Integer(i)) => *i == n,
+        hir::Expr::Literal(hir::Literal::Integer(i)) => i.value == n,
         _ => false,
     }
 }

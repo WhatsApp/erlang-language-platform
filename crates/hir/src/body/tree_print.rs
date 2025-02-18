@@ -1047,7 +1047,7 @@ impl<'a> Printer<'a> {
             Literal::String(string) => write!(self, "String({:?})", string),
             Literal::Char(char) => write!(self, "Char(${})", char),
             Literal::Atom(atom) => write!(self, "Atom('{}')", self.db.lookup_atom(*atom)),
-            Literal::Integer(int) => write!(self, "Integer({})", int),
+            Literal::Integer(int) => write!(self, "Integer({})", int.value), // TODO: other base
             Literal::Float(float) => write!(self, "Float({})", f64::from_bits(*float)),
         }
         .ok();

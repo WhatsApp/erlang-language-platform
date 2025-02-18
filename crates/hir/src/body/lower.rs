@@ -44,6 +44,7 @@ use crate::macro_exp::BuiltInMacro;
 use crate::name::AsName;
 use crate::Atom;
 use crate::AttributeBody;
+use crate::BasedInteger;
 use crate::BinarySeg;
 use crate::Body;
 use crate::BodySourceMap;
@@ -2388,7 +2389,7 @@ impl<'a> Ctx<'a> {
                                                 Term::Binary(vec)
                                             }
                                             Term::Literal(Literal::Integer(int)) => {
-                                                vec.push(*int as u8);
+                                                vec.push((*int).value as u8);
                                                 Term::Binary(vec)
                                             }
                                             Term::Literal(Literal::String(str)) => {
@@ -2437,7 +2438,7 @@ impl<'a> Ctx<'a> {
                     Term::Literal(Literal::Integer(arity)),
                 ) = (&self.body[module], &self.body[name], &self.body[arity])
                 {
-                    if let Ok(arity) = (*arity).try_into() {
+                    if let Ok(arity) = (arity.value).try_into() {
                         let term = Term::CaptureFun {
                             module: *module,
                             name: *name,
@@ -2590,9 +2591,9 @@ impl<'a> Ctx<'a> {
             BuiltInMacro::FUNCTION_NAME => self.function_info.map(|(name, _)| Literal::Atom(name)),
             BuiltInMacro::FUNCTION_ARITY => self
                 .function_info
-                .map(|(_, arity)| Literal::Integer(arity as i128)),
+                .map(|(_, arity)| Literal::Integer(arity.into())),
             // Dummy value, we don't want to depend on the exact position
-            BuiltInMacro::LINE => Some(Literal::Integer(0)),
+            BuiltInMacro::LINE => Some(Literal::Integer(0.into())),
             BuiltInMacro::MODULE => {
                 let form_list = self.db.file_form_list(self.file_id());
                 form_list
@@ -2607,7 +2608,7 @@ impl<'a> Ctx<'a> {
             }
             BuiltInMacro::MACHINE => Some(Literal::Atom(self.db.atom(known::ELP))),
             // Dummy value, must be an integer
-            BuiltInMacro::OTP_RELEASE => Some(Literal::Integer(2000)),
+            BuiltInMacro::OTP_RELEASE => Some(Literal::Integer(2000.into())),
         }
     }
 
@@ -2768,8 +2769,8 @@ impl<'a> Ctx<'a> {
 
     fn resolve_arity(&mut self, arity: ast::ArityValue) -> Option<i128> {
         let expr_id = self.lower_expr(&arity.into());
-        if let Expr::Literal(Literal::Integer(int)) = self.body[expr_id] {
-            Some(int)
+        if let Expr::Literal(Literal::Integer(int)) = &self.body[expr_id] {
+            Some(int.value)
         } else {
             None
         }
@@ -3008,14 +3009,16 @@ fn lower_float(float: &ast::Float) -> Option<Literal> {
     Some(Literal::Float(float.to_bits()))
 }
 
-fn lower_raw_int(int: &ast::Integer) -> Option<i128> {
+fn lower_raw_int(int: &ast::Integer) -> Option<BasedInteger> {
+    // TODO: crack out base prefix, parse as appropriate
     let text = int.text();
-    if text.contains('_') {
+    let value = if text.contains('_') {
         let str = text.replace('_', "");
         str.parse().ok()
     } else {
         text.parse().ok()
-    }
+    }?;
+    Some(BasedInteger { base: 10, value })
 }
 
 fn lower_int(int: &ast::Integer) -> Option<Literal> {

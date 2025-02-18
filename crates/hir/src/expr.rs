@@ -151,8 +151,38 @@ pub enum Literal {
     String(StringVariant),
     Char(char),
     Atom(Atom),
-    Integer(i128), // TODO: bigints
-    Float(u64),    // FIXME: f64 is not Eq
+    Integer(BasedInteger),
+    Float(u64), // FIXME: f64 is not Eq
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct BasedInteger {
+    pub base: u32,
+    pub value: i128, // TODO: bigints
+}
+
+impl From<u32> for BasedInteger {
+    fn from(value: u32) -> Self {
+        BasedInteger {
+            base: 10,
+            value: value as i128,
+        }
+    }
+}
+
+impl From<i32> for BasedInteger {
+    fn from(value: i32) -> Self {
+        BasedInteger {
+            base: 10,
+            value: value as i128,
+        }
+    }
+}
+
+impl From<i128> for BasedInteger {
+    fn from(value: i128) -> Self {
+        BasedInteger { base: 10, value }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -183,8 +213,8 @@ impl Literal {
             Literal::String(_) => None,
             Literal::Atom(_) => None,
             // Weird, but allowed https://github.com/erlang/otp/blob/09c601fa2183d4c545791ebcd68f869a5ab912a4/lib/stdlib/src/erl_parse.yrl#L1432
-            Literal::Char(ch) => Some(Literal::Integer(-(*ch as i128))),
-            Literal::Integer(int) => Some(Literal::Integer(-int)),
+            Literal::Char(ch) => Some(Literal::Integer((-(*ch as i128)).into())),
+            Literal::Integer(int) => Some(Literal::Integer((-int.value).into())),
             Literal::Float(bits) => Some(Literal::Float((-f64::from_bits(*bits)).to_bits())),
         }
     }

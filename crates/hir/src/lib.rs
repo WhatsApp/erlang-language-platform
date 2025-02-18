@@ -55,6 +55,7 @@ pub use diagnostics::DiagnosticMessage;
 pub use expr::AnyExpr;
 pub use expr::AnyExprId;
 pub use expr::AnyExprRef;
+pub use expr::BasedInteger;
 pub use expr::BinarySeg;
 pub use expr::CRClause;
 pub use expr::CallTarget;

@@ -1210,8 +1210,8 @@ impl GleanIndexer {
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
                     if let Some((body, range)) = ctx.find_range(&sema) {
-                        let arity: Option<u32> = match body[*arity] {
-                            Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
+                        let arity: Option<u32> = match &body[*arity] {
+                            Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
                             _ => None,
                         };
                         if let Some(arity) = arity {
@@ -1332,8 +1332,8 @@ impl GleanIndexer {
             }
             hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
                 let (body, range) = ctx.find_range(&sema)?;
-                let arity: Option<u32> = match body[*arity] {
-                    Expr::Literal(Literal::Integer(int)) => int.try_into().ok(),
+                let arity: Option<u32> = match &body[*arity] {
+                    Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
                     _ => None,
                 };
                 Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)

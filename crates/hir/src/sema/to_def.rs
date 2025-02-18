@@ -627,8 +627,8 @@ fn resolve_capture(sema: &Semantic<'_>, fun: InFile<ast::Expr>) -> Option<Functi
         Expr::CaptureFun { target, arity } => (target, arity),
         _ => return None,
     };
-    let arity = match body[*arity] {
-        Expr::Literal(Literal::Integer(int)) => int.try_into().ok()?,
+    let arity = match &body[*arity] {
+        Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok()?,
         _ => return None,
     };
     resolve_call_target(sema, target, Some(arity), fun.file_id, &body)

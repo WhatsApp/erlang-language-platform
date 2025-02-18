@@ -21,6 +21,7 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
 use hir::AnyExprId;
+use hir::BasedInteger;
 use hir::Expr;
 use hir::Literal;
 use hir::Semantic;
@@ -82,7 +83,7 @@ fn is_indexing_from_literal_one(sema: &Semantic, m: &Match) -> bool {
         let body = &m.matched_node_body.get_body(sema)?;
         match index_match.code_id {
             SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body[expr_id] {
-                Expr::Literal(Literal::Integer(1)) => Some(true),
+                Expr::Literal(Literal::Integer(BasedInteger { base: _, value: 1 })) => Some(true),
                 _ => Some(false),
             },
             _ => Some(false),
