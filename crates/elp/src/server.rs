@@ -340,33 +340,11 @@ impl Server {
             let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
                 include_text: Some(false),
                 text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
-                    document_selector: Some(vec![
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/*.{e,h}rl".to_string()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/rebar.{config,config.script,lock}".to_string()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/BUCK".to_string()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/TARGETS".to_string()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/TARGETS.v2".to_string()),
-                        },
-                    ]),
+                    document_selector: Some(vec![lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/*.{e,h}rl".to_string()),
+                    }]),
                 },
             };
 
