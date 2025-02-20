@@ -48,7 +48,7 @@ impl ProjectFolders {
 
         let load = loader_config(project_apps);
 
-        let mut watch: Vec<_> = project_apps
+        let mut watch_paths: FxHashSet<_> = project_apps
             .all_apps
             .iter()
             .flat_map(|(project_id, app)| {
@@ -56,10 +56,7 @@ impl ProjectFolders {
             })
             .filter_map(|(project_id, root)| {
                 if Some(*project_id) != project_apps.otp_project_id {
-                    Some(lsp_types::FileSystemWatcher {
-                        glob_pattern: format!("{}/**/*.{{e,h}}rl", root),
-                        kind: None,
-                    })
+                    Some(format!("{}/**/*.{{e,h}}rl", root))
                 } else {
                     None
                 }
@@ -68,33 +65,23 @@ impl ProjectFolders {
 
         for project in &project_apps.projects {
             let root = project.root();
-            // LSP spec says "If omitted it defaults to
-            // WatchKind.Create | WatchKind.Change | WatchKind.Delete
-            // which is 7".
-            let kind = None;
-            watch.extend(vec![
-                lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/BUCK", root),
-                    kind,
-                },
-                lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/TARGETS", root),
-                    kind,
-                },
-                lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/**/TARGETS.v2", root),
-                    kind,
-                },
-                lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/.elp.toml", root),
-                    kind,
-                },
-                lsp_types::FileSystemWatcher {
-                    glob_pattern: format!("{}/.elp_lint.toml", root),
-                    kind,
-                },
+            watch_paths.extend(vec![
+                format!("{}/**/BUCK", root),
+                format!("{}/**/TARGETS", root),
+                format!("{}/**/TARGETS.v2", root),
+                format!("{}/.elp.toml", root),
+                format!("{}/.elp_lint.toml", root),
             ]);
         }
+
+        // LSP spec says "If omitted it defaults to
+        // WatchKind.Create | WatchKind.Change | WatchKind.Delete
+        // which is 7".
+        let kind = None;
+        let watch: Vec<_> = watch_paths
+            .into_iter()
+            .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind })
+            .collect();
 
         ProjectFolders {
             load,
