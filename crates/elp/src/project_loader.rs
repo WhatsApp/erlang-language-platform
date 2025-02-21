@@ -18,6 +18,7 @@ use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 
 pub struct ProjectLoader {
     pub(crate) project_roots: FxHashMap<AbsPathBuf, Option<ProjectManifest>>,
@@ -42,7 +43,7 @@ impl ProjectLoader {
         }
     }
 
-    pub fn clear(&mut self, paths: &Vec<AbsPathBuf>) -> bool {
+    pub fn clear(&mut self, paths: &FxHashSet<AbsPathBuf>) -> bool {
         let mut result = false;
         for path in paths {
             let mut path_it: &AbsPath = path.as_ref();

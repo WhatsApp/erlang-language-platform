@@ -755,17 +755,61 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidSaveTextDocument>(|this, params| {
-                process_changed_files(
-                    this,
-                    &[FileEvent::new(
-                        params.text_document.uri,
-                        FileChangeType::CHANGED,
-                    )],
-                );
+                let change = FileEvent::new(params.text_document.uri, FileChangeType::CHANGED);
+                if let Ok(path) = convert::abs_path(&change.uri) {
+                    // We only put .erl/.hrl files into the
+                    // `mem_docs` store, but will get changes for
+                    // other kinds of files. So we neede to do
+                    // this check.
+                    let opened = convert::vfs_path(&change.uri)
+                        .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
+                        .unwrap_or(false);
+                    if opened {
+                        if this.should_reload_config_for_path(&path) {
+                            // e.g. `.elp_lint.toml`
+                            this.refresh_config();
+                        }
+                        if this.should_reload_project_for_path(&path, &change) {
+                            this.reload_project(FxHashSet::from_iter(vec![path]));
+                        }
+                        this.eqwalizer_and_erlang_service_diagnostics_requested = true;
+                        if this.config.eqwalizer().all {
+                            this.eqwalizer_project_diagnostics_requested = true;
+                        }
+                        this.edoc_diagnostics_requested = true;
+                        this.ct_diagnostics_requested = true;
+                        this.native_diagnostics_requested = true;
+                    } else {
+                        this.vfs_loader.handle.invalidate(path);
+                    }
+                };
                 Ok(())
             })?
             .on::<notification::DidChangeWatchedFiles>(|this, params| {
-                process_changed_files(this, &params.changes);
+                let changes: &[FileEvent] = &params.changes;
+                let mut to_reload = FxHashSet::default();
+                let mut refresh_config = false;
+                for change in changes {
+                    if let Ok(path) = convert::abs_path(&change.uri) {
+                        let opened = convert::vfs_path(&change.uri)
+                            .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
+                            .unwrap_or(false);
+                        if !opened {
+                            if this.should_reload_project_for_path(&path, change) {
+                                to_reload.insert(path.clone());
+                            }
+                            if this.should_reload_config_for_path(&path) {
+                                // e.g. `.elp_lint.toml`
+                                refresh_config = true;
+                            }
+                            this.vfs_loader.handle.invalidate(path);
+                        }
+                    }
+                }
+                if refresh_config {
+                    this.refresh_config();
+                }
+                this.reload_project(to_reload);
                 Ok(())
             })?
             .on::<notification::DidChangeConfiguration>(|this, _params| {
@@ -1389,7 +1433,7 @@ impl Server {
             .register(request.id.clone(), (request.method.clone(), received_timer))
     }
 
-    fn reload_project(&mut self, paths: Vec<AbsPathBuf>) {
+    fn reload_project(&mut self, paths: FxHashSet<AbsPathBuf>) {
         if !paths.is_empty() {
             let loader = self.project_loader.clone();
             let query_config = self.config.buck_query();
@@ -1761,38 +1805,6 @@ fn lsp_msg_for_context(message: &lsp_server::Message) -> String {
         lsp_server::Message::Response(m) => format!("{}", m.id),
         lsp_server::Message::Notification(m) => m.method.clone(),
     }
-}
-
-fn process_changed_files(this: &mut Server, changes: &[FileEvent]) {
-    let mut to_reload = vec![];
-    let mut refresh_config = false;
-    for change in changes {
-        if let Ok(path) = convert::abs_path(&change.uri) {
-            if this.should_reload_project_for_path(&path, change) {
-                to_reload.push(path.clone());
-            }
-            if this.should_reload_config_for_path(&path) {
-                refresh_config = true;
-            }
-            let opened = convert::vfs_path(&change.uri)
-                .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
-                .unwrap_or(false);
-            if !opened {
-                this.vfs_loader.handle.invalidate(path);
-            }
-        }
-    }
-    this.reload_project(to_reload);
-    if refresh_config {
-        this.refresh_config();
-    }
-    this.eqwalizer_and_erlang_service_diagnostics_requested = true;
-    if this.config.eqwalizer().all {
-        this.eqwalizer_project_diagnostics_requested = true;
-    }
-    this.edoc_diagnostics_requested = true;
-    this.ct_diagnostics_requested = true;
-    this.native_diagnostics_requested = true;
 }
 
 fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
