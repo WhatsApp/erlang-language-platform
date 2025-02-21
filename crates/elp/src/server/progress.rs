@@ -124,12 +124,13 @@ impl ProgressBar {
     }
 
     pub fn report(&self, done: usize, total: usize) {
-        let message = format!("{}%", done);
-        let percent = done as f64 / total.max(1) as f64;
+        let percent_f = done as f64 / total.max(1) as f64;
+        let percent = (percent_f * 100.0) as u32;
+        let message = format!("{}%", percent);
         let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
             cancellable: None,
             message: Some(message),
-            percentage: Some((percent * 100.0) as u32),
+            percentage: Some(percent),
         });
         send_progress(&self.sender, self.token.clone(), msg);
     }
