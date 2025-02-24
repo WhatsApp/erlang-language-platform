@@ -448,6 +448,7 @@ impl Server {
                 Task::FetchProject(spinner, projects) => {
                     self.fetch_project_completed(&spinner, projects)?;
                     spinner.end();
+                    self.reload_manager.lock().set_reload_done();
                 }
                 Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
                 Task::EqwalizerDiagnostics(spinner, diags_types) => {
@@ -495,6 +496,7 @@ impl Server {
 
         let to_reload = self.reload_manager.lock().query_changed_files();
         if let Some(to_reload) = to_reload {
+            self.reload_manager.lock().set_reload_active();
             self.reload_project(to_reload);
         }
 

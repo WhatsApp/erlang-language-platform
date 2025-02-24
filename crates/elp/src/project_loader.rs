@@ -116,6 +116,9 @@ impl ProjectLoader {
 pub struct ReloadManager {
     changed_files: FxHashSet<AbsPathBuf>,
     last_change: SystemTime,
+    /// ReloadManager clients should ensure this is set when a reload
+    /// task is active, reset when done.
+    reload_in_progress: bool,
 }
 
 /// How long to wait after the last changed file was added before
@@ -127,6 +130,7 @@ impl ReloadManager {
         ReloadManager {
             changed_files: FxHashSet::default(),
             last_change: SystemTime::now(),
+            reload_in_progress: false,
         }
     }
 
@@ -136,11 +140,20 @@ impl ReloadManager {
         !self.changed_files.is_empty()
     }
 
+    pub fn set_reload_active(&mut self) {
+        self.reload_in_progress = true;
+    }
+    pub fn set_reload_done(&mut self) {
+        self.reload_in_progress = false;
+    }
+
     /// If there are changed files and `RELOAD_QUIESCENT_WAIT_TIME`
     /// has passed since the last was inserted, return and remove
-    /// them.
+    /// them, provided we do not have a currently active reload
+    /// process.
     pub fn query_changed_files(&mut self) -> Option<FxHashSet<AbsPathBuf>> {
-        if !self.changed_files.is_empty()
+        if !self.reload_in_progress
+            && !self.changed_files.is_empty()
             && self
                 .last_change
                 .elapsed()
