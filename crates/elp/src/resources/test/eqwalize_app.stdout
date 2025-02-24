@@ -1,0 +1,13 @@
+Usage: [--project PROJECT] [--as PROFILE] [--include-generated] [--rebar] [--clause-coverage] [--bail-on-error] <APP>
+
+Available positional items:
+    <APP>  app name
+
+Available options:
+        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
+        --as <PROFILE>       Rebar3 profile to pickup (default is test)
+        --include-generated  Also eqwalize opted-in generated modules from project
+        --rebar              Run with rebar
+        --clause-coverage    Use experimental clause coverage checker
+        --bail-on-error      Exit with a non-zero status code if any errors are found
+    -h, --help               Prints help information

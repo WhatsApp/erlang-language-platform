@@ -1757,6 +1757,8 @@ mod tests {
         }
     }
 
+    // -----------------------------------------------------------------
+
     #[test]
     fn help() {
         let args = args::args().run_inner(Args::from(&["--help"])).unwrap_err();
@@ -1781,6 +1783,26 @@ mod tests {
             .run_inner(Args::from(&["eqwalize", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/eqwalize_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn eqwalize_target_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["eqwalize-target", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/eqwalize_target_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn eqwalize_app_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["eqwalize-app", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/eqwalize_app.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }
@@ -1874,6 +1896,8 @@ mod tests {
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }
+
+    // -----------------------------------------------------------------
 
     #[test]
     fn explain_code() {

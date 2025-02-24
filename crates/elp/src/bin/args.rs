@@ -151,13 +151,13 @@ pub struct EqwalizeTarget {
     pub project: PathBuf,
     /// Also eqwalize opted-in generated modules from application
     pub include_generated: bool,
-    /// target, like //erl/chatd/...
-    #[bpaf(positional::< String > ("TARGET"))]
-    pub target: String,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
+    /// target, like //erl/chatd/...
+    #[bpaf(positional("TARGET"))]
+    pub target: String,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -172,13 +172,13 @@ pub struct EqwalizeApp {
     pub include_generated: bool,
     /// Run with rebar
     pub rebar: bool,
-    /// app name
-    #[bpaf(positional::< String > ("APP"))]
-    pub app: String,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
+    /// app name
+    #[bpaf(positional::< String > ("APP"))]
+    pub app: String,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -682,5 +682,18 @@ impl ParseAllElp {
 
     pub fn is_format_json(&self) -> bool {
         self.format == Some("json".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use bpaf::Parser;
+
+    use super::command;
+
+    #[test]
+    fn check_options() {
+        command().to_options().check_invariants(false)
     }
 }
