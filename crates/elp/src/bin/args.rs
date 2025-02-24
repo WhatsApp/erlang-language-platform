@@ -151,13 +151,13 @@ pub struct EqwalizeTarget {
     pub project: PathBuf,
     /// Also eqwalize opted-in generated modules from application
     pub include_generated: bool,
-    /// target, like //erl/chatd/...
-    #[bpaf(positional::< String > ("TARGET"))]
-    pub target: String,
     /// Use experimental clause coverage checker
     pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
+    /// target, like //erl/chatd/...
+    #[bpaf(positional("TARGET"))]
+    pub target: String,
 }
 
 #[derive(Clone, Debug, Bpaf)]
