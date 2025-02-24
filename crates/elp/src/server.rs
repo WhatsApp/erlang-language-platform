@@ -100,6 +100,7 @@ use crate::lsp_ext;
 use crate::mem_docs::DocumentData;
 use crate::mem_docs::MemDocs;
 use crate::project_loader::ProjectLoader;
+use crate::project_loader::ReloadManager;
 use crate::read_lint_config_file;
 use crate::reload::ProjectFolders;
 use crate::snapshot::SharedMap;
@@ -239,6 +240,7 @@ pub struct Server {
     status: Status,
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
+    reload_manager: Arc<Mutex<ReloadManager>>,
     unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
@@ -301,6 +303,7 @@ impl Server {
             status: Status::Initialising,
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
+            reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             reset_source_roots: false,
             native_diagnostics_requested: false,
@@ -485,6 +488,11 @@ impl Server {
 
         if self.status == Status::ShuttingDown {
             return Ok(());
+        }
+
+        let to_reload = self.reload_manager.lock().query_changed_files();
+        if let Some(to_reload) = to_reload {
+            self.reload_project(to_reload);
         }
 
         let changed = self.process_changes_to_vfs_store();
@@ -770,7 +778,7 @@ impl Server {
                             this.refresh_config();
                         }
                         if this.should_reload_project_for_path(&path, &change) {
-                            this.reload_project(FxHashSet::from_iter(vec![path]));
+                            this.reload_manager.lock().add(path.clone());
                         }
                         this.eqwalizer_and_erlang_service_diagnostics_requested = true;
                         if this.config.eqwalizer().all {
@@ -787,7 +795,6 @@ impl Server {
             })?
             .on::<notification::DidChangeWatchedFiles>(|this, params| {
                 let changes: &[FileEvent] = &params.changes;
-                let mut to_reload = FxHashSet::default();
                 let mut refresh_config = false;
                 for change in changes {
                     if let Ok(path) = convert::abs_path(&change.uri) {
@@ -796,7 +803,7 @@ impl Server {
                             .unwrap_or(false);
                         if !opened {
                             if this.should_reload_project_for_path(&path, change) {
-                                to_reload.insert(path.clone());
+                                this.reload_manager.lock().add(path.clone());
                             }
                             if this.should_reload_config_for_path(&path) {
                                 // e.g. `.elp_lint.toml`
@@ -809,7 +816,6 @@ impl Server {
                 if refresh_config {
                     this.refresh_config();
                 }
-                this.reload_project(to_reload);
                 Ok(())
             })?
             .on::<notification::DidChangeConfiguration>(|this, _params| {

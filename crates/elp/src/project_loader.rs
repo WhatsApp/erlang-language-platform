@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::time::Duration;
 use std::time::SystemTime;
 
 use anyhow::Result;
@@ -108,6 +109,49 @@ impl ProjectLoader {
             let diff = self.start.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
             let data = serde_json::Value::String("project_loading_completed".to_string());
             telemetry::send_with_duration(module_path!().to_string(), data, diff, self.start);
+        }
+    }
+}
+
+pub struct ReloadManager {
+    changed_files: FxHashSet<AbsPathBuf>,
+    last_change: SystemTime,
+}
+
+/// How long to wait after the last changed file was added before
+/// processing them.
+const RELOAD_QUIESCENT_WAIT_TIME: Duration = Duration::from_millis(500);
+
+impl ReloadManager {
+    pub fn new() -> ReloadManager {
+        ReloadManager {
+            changed_files: FxHashSet::default(),
+            last_change: SystemTime::now(),
+        }
+    }
+
+    /// If there are changed files and `RELOAD_QUIESCENT_WAIT_TIME`
+    /// has passed since the last was inserted, return and remove
+    /// them.
+    pub fn query_changed_files(&mut self) -> Option<FxHashSet<AbsPathBuf>> {
+        if !self.changed_files.is_empty()
+            && self
+                .last_change
+                .elapsed()
+                .unwrap_or_else(|_| Duration::from_millis(0))
+                > RELOAD_QUIESCENT_WAIT_TIME
+        {
+            self.last_change = SystemTime::now();
+            Some(std::mem::take(&mut self.changed_files))
+        } else {
+            None
+        }
+    }
+
+    pub fn add(&mut self, path: AbsPathBuf) {
+        if self.changed_files.insert(path) {
+            // Only update the time if the path is newly added
+            self.last_change = SystemTime::now();
         }
     }
 }
