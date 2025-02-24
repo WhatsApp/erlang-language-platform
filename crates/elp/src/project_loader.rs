@@ -130,6 +130,12 @@ impl ReloadManager {
         }
     }
 
+    /// Used to check if any files are queued, and if so cancel an
+    /// existing reload
+    pub fn has_changed_files(&self) -> bool {
+        !self.changed_files.is_empty()
+    }
+
     /// If there are changed files and `RELOAD_QUIESCENT_WAIT_TIME`
     /// has passed since the last was inserted, return and remove
     /// them.

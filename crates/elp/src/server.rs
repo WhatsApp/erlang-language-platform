@@ -1584,6 +1584,11 @@ impl Server {
     }
 
     fn fetch_project_completed(&mut self, spinner: &Spinner, projects: Vec<Project>) -> Result<()> {
+        if self.reload_manager.lock().has_changed_files() {
+            // There are other changed files, abort this reload, to
+            // allow the next one.
+            return Ok(());
+        }
         if let Err(err) = self.switch_workspaces(spinner, projects) {
             let params = lsp_types::ShowMessageParams {
                 typ: lsp_types::MessageType::ERROR,
