@@ -70,18 +70,34 @@ impl ProgressManager {
 pub struct Spinner {
     token: NumberOrString,
     sender: Sender<ProgressTask>,
+    /// The message sent when sending the final end report.
+    /// It is used in e2e tests to check for a specific task being done.
+    end_message: String,
 }
 
 impl Spinner {
     fn begin(sender: Sender<ProgressTask>, token: NumberOrString, title: String) -> Self {
         let msg = WorkDoneProgressBegin {
-            title,
+            title: title.clone(),
             cancellable: None,
             message: None,
             percentage: None,
         };
         send_begin(&sender, token.clone(), msg);
-        Self { token, sender }
+        Self {
+            token,
+            sender,
+            end_message: title,
+        }
+    }
+
+    pub fn report(&self, message: String) {
+        let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
+            cancellable: None,
+            message: Some(message),
+            percentage: None,
+        });
+        send_progress(&self.sender, self.token.clone(), msg);
     }
 
     pub fn end(self) {
@@ -94,7 +110,9 @@ impl Drop for Spinner {
         send_progress(
             &self.sender,
             self.token.clone(),
-            WorkDoneProgress::End(WorkDoneProgressEnd { message: None }),
+            WorkDoneProgress::End(WorkDoneProgressEnd {
+                message: Some(self.end_message.clone()),
+            }),
         )
     }
 }
@@ -104,6 +122,9 @@ impl Drop for Spinner {
 pub struct ProgressBar {
     token: NumberOrString,
     sender: Sender<ProgressTask>,
+    /// The message sent when sending the final end report.
+    /// It is used in e2e tests to check for a specific task being done.
+    end_message: String,
 }
 
 impl ProgressBar {
@@ -114,13 +135,17 @@ impl ProgressBar {
         total: Option<usize>,
     ) -> Self {
         let msg = WorkDoneProgressBegin {
-            title,
+            title: title.clone(),
             cancellable: None,
             message: total.map(|_total| format!("0%")),
             percentage: Some(0),
         };
         send_begin(&sender, token.clone(), msg);
-        Self { token, sender }
+        Self {
+            token,
+            sender,
+            end_message: title,
+        }
     }
 
     pub fn report(&self, done: usize, total: usize) {
@@ -145,7 +170,9 @@ impl Drop for ProgressBar {
         send_progress(
             &self.sender,
             self.token.clone(),
-            WorkDoneProgress::End(WorkDoneProgressEnd { message: None }),
+            WorkDoneProgress::End(WorkDoneProgressEnd {
+                message: Some(self.end_message.clone()),
+            }),
         )
     }
 }

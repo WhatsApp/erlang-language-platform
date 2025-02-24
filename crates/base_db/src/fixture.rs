@@ -299,8 +299,13 @@ impl ChangeFixture {
             };
             let (elp_config, manifest) =
                 ProjectManifest::discover(&AbsPathBuf::assert(json_config_file.into())).unwrap();
-            let loaded_project =
-                Project::load(&manifest, elp_config.eqwalizer, &BuckQueryConfig::Original).unwrap();
+            let loaded_project = Project::load(
+                &manifest,
+                elp_config.eqwalizer,
+                &BuckQueryConfig::Original,
+                &|_| {},
+            )
+            .unwrap();
             project = loaded_project;
         }
 

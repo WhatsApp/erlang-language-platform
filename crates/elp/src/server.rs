@@ -136,7 +136,7 @@ enum Event {
 pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
-    FetchProject(Vec<Project>),
+    FetchProject(Spinner, Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     EqwalizerDiagnostics(
         Spinner,
@@ -445,7 +445,10 @@ impl Server {
             },
             Event::Task(task) => match task {
                 Task::Response(response) => self.send_response(response),
-                Task::FetchProject(projects) => self.fetch_project_completed(projects)?,
+                Task::FetchProject(spinner, projects) => {
+                    self.fetch_project_completed(&spinner, projects)?;
+                    spinner.end();
+                }
                 Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
                 Task::EqwalizerDiagnostics(spinner, diags_types) => {
                     spinner.end();
@@ -1230,7 +1233,11 @@ impl Server {
         }
     }
 
-    fn switch_workspaces(&mut self, new_projects: Vec<Project>) -> Result<()> {
+    fn switch_workspaces(&mut self, spinner: &Spinner, new_projects: Vec<Project>) -> Result<()> {
+        if new_projects.is_empty() {
+            log::info!("nothing new, not switching workspaces");
+            return Ok(());
+        }
         log::info!("will switch workspaces");
 
         let mut projects: Vec<Project> = self.projects.iter().cloned().collect();
@@ -1252,6 +1259,7 @@ impl Server {
         raw_db.clear_erlang_services();
 
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
+        spinner.report("Gathering file paths".to_string());
         let folders = ProjectFolders::new(&project_apps);
         // We will set the FileId -> AppDataIndex structure when the file
         // loads
@@ -1443,11 +1451,14 @@ impl Server {
         if !paths.is_empty() {
             let loader = self.project_loader.clone();
             let query_config = self.config.buck_query();
+            let spinner = self
+                .progress
+                .begin_spinner("ELP reloading projects".to_string());
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
                     let mut loader = loader.lock();
+                    let mut projects = vec![];
                     if loader.clear(&paths) {
-                        let mut projects = vec![];
                         for path in paths {
                             let manifest = loader.load_manifest_if_new(&path);
                             if let Some((elp_config, main, fallback)) = manifest {
@@ -1458,6 +1469,7 @@ impl Server {
                                     fallback,
                                     &sender,
                                     &query_config,
+                                    &spinner,
                                 ) {
                                     projects.push(project);
                                 }
@@ -1465,9 +1477,8 @@ impl Server {
                         }
                         log::info!("did reload projects");
                         log::debug!("reloaded projects {:?}", &projects);
-
-                        sender.send(Task::FetchProject(projects)).unwrap();
                     }
+                    sender.send(Task::FetchProject(spinner, projects)).unwrap();
                 }
             });
         }
@@ -1480,6 +1491,7 @@ impl Server {
         fallback: ProjectManifest,
         sender: &Sender<Task>,
         query_config: &BuckQueryConfig,
+        spinner: &Spinner,
     ) -> Result<Project> {
         let mut fallback_used = false;
         let mut errors = vec![];
@@ -1496,7 +1508,14 @@ impl Server {
                 fallback.clone()
             }
         };
-        let mut project = Project::load(&manifest, elp_config.eqwalizer.clone(), query_config);
+
+        spinner.report("Loading project".to_string());
+        let mut project = Project::load(
+            &manifest,
+            elp_config.eqwalizer.clone(),
+            query_config,
+            &|message| spinner.report(message.to_string()),
+        );
         if let Err(err) = &project {
             log::error!(
                 "Failed to load project for manifest {:?}, error: {:?}",
@@ -1505,7 +1524,10 @@ impl Server {
             );
             errors.push(err.to_string());
             if !fallback_used {
-                project = Project::load(&fallback, elp_config.eqwalizer, query_config);
+                project =
+                    Project::load(&fallback, elp_config.eqwalizer, query_config, &|message| {
+                        spinner.report(message.to_string())
+                    });
                 if let Err(err) = &project {
                     log::error!(
                         "Failed to load project for fallback manifest {:?}, error: {:?}",
@@ -1523,6 +1545,7 @@ impl Server {
             };
             sender.send(Task::ShowMessage(params))?;
         }
+        spinner.report("Project loaded".to_string());
         project
     }
 
@@ -1530,6 +1553,9 @@ impl Server {
         let path = path.to_path_buf();
         let loader = self.project_loader.clone();
         let query_config = self.config.buck_query();
+        let spinner = self
+            .progress
+            .begin_spinner("ELP loading project".to_string());
         self.project_pool.handle.spawn_with_sender({
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
@@ -1541,6 +1567,7 @@ impl Server {
                         fallback,
                         &sender,
                         &query_config,
+                        &spinner,
                     ),
                     None => return,
                 };
@@ -1548,14 +1575,16 @@ impl Server {
                 log::info!("did fetch project");
                 log::debug!("fetched projects {:?}", project);
                 if let Ok(project) = project {
-                    sender.send(Task::FetchProject(vec![project])).unwrap();
+                    sender
+                        .send(Task::FetchProject(spinner, vec![project]))
+                        .unwrap();
                 }
             }
         })
     }
 
-    fn fetch_project_completed(&mut self, projects: Vec<Project>) -> Result<()> {
-        if let Err(err) = self.switch_workspaces(projects) {
+    fn fetch_project_completed(&mut self, spinner: &Spinner, projects: Vec<Project>) -> Result<()> {
+        if let Err(err) = self.switch_workspaces(spinner, projects) {
             let params = lsp_types::ShowMessageParams {
                 typ: lsp_types::MessageType::ERROR,
                 message: err.to_string(),

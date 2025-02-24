@@ -965,6 +965,7 @@ impl Project {
         manifest: &ProjectManifest,
         eqwalizer_config: EqwalizerConfig,
         query_config: &BuckQueryConfig,
+        report_progress: &impl Fn(&str),
     ) -> Result<Project> {
         let (project_build_info, mut project_apps, otp_root) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
@@ -996,7 +997,8 @@ impl Project {
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, apps, otp_root) = BuckProject::load_from_config(buck, query_config)?;
+                let (project, apps, otp_root) =
+                    BuckProject::load_from_config(buck, query_config, report_progress)?;
                 (ProjectBuildData::Buck(project), apps, otp_root)
             }
             ProjectManifest::Json(config) => {
@@ -1022,6 +1024,7 @@ impl Project {
 
         let (otp, otp_project_apps) = Otp::discover(otp_root);
         project_apps.extend(otp_project_apps);
+        report_progress("Project info loaded");
         Ok(Project {
             otp,
             project_build_data: project_build_info,

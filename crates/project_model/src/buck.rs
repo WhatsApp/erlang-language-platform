@@ -24,6 +24,7 @@ use anyhow::Result;
 use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
+use elp_log::timeit_with_telemetry;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::indexset;
@@ -162,11 +163,13 @@ impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
+        report_progress: &impl Fn(&str),
     ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
+        let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
         let (otp_root, project_app_data, project) = if query_config == &BuckQueryConfig::Original {
-            load_from_config_orig(buck_conf)?
+            load_from_config_orig(buck_conf, report_progress)?
         } else {
-            load_from_config_bxl(buck_conf)?
+            load_from_config_bxl(buck_conf, report_progress)?
         };
         Ok((project, project_app_data, otp_root))
     }
@@ -178,8 +181,10 @@ impl BuckProject {
 
 fn load_from_config_orig(
     buck_conf: &BuckConfig,
+    report_progress: &impl Fn(&str),
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
-    let target_info = load_buck_targets_orig(buck_conf)?;
+    let target_info = load_buck_targets_orig(buck_conf, report_progress)?;
+    report_progress("Making project app data");
     let otp_root = Otp::find_otp()?;
     let project_app_data = targets_to_project_data_orig(&target_info.targets, &otp_root);
     let project = BuckProject {
@@ -191,8 +196,10 @@ fn load_from_config_orig(
 
 fn load_from_config_bxl(
     buck_conf: &BuckConfig,
+    report_progress: &impl Fn(&str),
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
-    let target_info = load_buck_targets_bxl(buck_conf)?;
+    let target_info = load_buck_targets_bxl(buck_conf, report_progress)?;
+    report_progress("Making project app data");
     let otp_root = Otp::find_otp()?;
     let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
     let project = BuckProject {
@@ -339,16 +346,23 @@ pub enum TargetType {
     ErlangTestUtils,
 }
 
-fn load_buck_targets_bxl(buck_config: &BuckConfig) -> Result<TargetInfo> {
+fn load_buck_targets_bxl(
+    buck_config: &BuckConfig,
+    report_progress: &impl Fn(&str),
+) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
     let root = buck_config.buck_root();
 
     let mut dep_path = if buck_config.build_deps {
+        report_progress("Building third party targets");
         build_third_party_targets(buck_config)?
     } else {
         FxHashMap::default()
     };
+    report_progress("Querying buck targets");
     let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl)?;
+
+    report_progress("Making target info");
     let mut target_info = TargetInfo::default();
 
     let mut used_deps = FxHashSet::default();
@@ -459,17 +473,23 @@ fn make_buck_target(
     })
 }
 
-fn load_buck_targets_orig(buck_config: &BuckConfig) -> Result<TargetInfo> {
+fn load_buck_targets_orig(
+    buck_config: &BuckConfig,
+    report_progress: &impl Fn(&str),
+) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
     let root = buck_config.buck_root();
 
     let mut dep_path = if buck_config.build_deps {
+        report_progress("Building third party targets");
         build_third_party_targets(buck_config)?
     } else {
         FxHashMap::default()
     };
+    report_progress("Querying buck targets");
     let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Original)?;
 
+    report_progress("Making target info");
     let mut target_info = TargetInfo::default();
     for (name, target) in buck_targets {
         let mut private_header = false;
