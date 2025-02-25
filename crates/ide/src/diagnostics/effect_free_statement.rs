@@ -266,10 +266,10 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 ok,
-            %%% ^^ 💡 warning: this statement has no effect
+            %%  ^^ 💡 warning: this statement has no effect
                 do_something_else(),
                 bar,
-            %%% ^^^ 💡 warning: this statement has no effect
+            %%  ^^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> ok.
             "#,
@@ -284,7 +284,7 @@ mod tests {
             test_foo(_Config) ->
                 X = 42,
                 X,
-            %%% ^ 💡 warning: this statement has no effect
+            %%  ^ 💡 warning: this statement has no effect
                 ok.
             "#,
         );
@@ -298,16 +298,16 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 42,
-            %%% ^^ 💡 warning: this statement has no effect
+            %%  ^^ 💡 warning: this statement has no effect
                 41.9999,
-            %%% ^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^ 💡 warning: this statement has no effect
                 do_something_else(),
                 "foo",
-            %%% ^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^ 💡 warning: this statement has no effect
                 <<"foo">>,
-            %%% ^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^ 💡 warning: this statement has no effect
                 'A',
-            %%% ^^^ 💡 warning: this statement has no effect
+            %%  ^^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> 42.
             "#,
@@ -323,13 +323,13 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 fun() -> do_something() end,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 F = fun() -> do_something() end,
                 F(),
                 fun do_something/0,
-            %%% ^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 fun erlang:length/1,
-            %%% ^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> 42.
             //- /src/erlang.erl
@@ -348,7 +348,7 @@ mod tests {
             test_foo(_Config) ->
                 (do_something()),
                 (blah),
-            %%% ^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> (42).
             "#,
@@ -363,13 +363,13 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 begin 42, blah, ("foo") end,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
-            %%%       ^^ 💡 warning: this statement has no effect
-            %%%           ^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%        ^^ 💡 warning: this statement has no effect
+            %%            ^^^^ 💡 warning: this statement has no effect
                 begin
                   do_something(),
                   blah,
-              %%% ^^^^ 💡 warning: this statement has no effect
+              %%  ^^^^ 💡 warning: this statement has no effect
                   ok
                 end,
                 ok.
@@ -386,10 +386,10 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 [42, blah, ("foo")],
-            %%% ^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 [42, do_something(), blah],
                 [],
-            %%% ^^ 💡 warning: this statement has no effect
+            %%  ^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> [].
             "#,
@@ -404,10 +404,10 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 {42, [blah], {"foo"}},
-            %%% ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 {42, do_something(), blah},
                 {},
-            %%% ^^ 💡 warning: this statement has no effect
+            %%  ^^ 💡 warning: this statement has no effect
                 ok.
             do_something() -> [].
             "#,
@@ -423,11 +423,11 @@ mod tests {
             test_foo(P) ->
                 do_something(),
                 #person{name="Bob", age=42},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 #person{name=get_name(), age=42},
                 P#person{name="Alice"},
                 #person.name,
-            %%% ^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 P#person.name,
                 ok.
             get_name() -> "bob".
@@ -443,7 +443,7 @@ mod tests {
             test_foo(P) ->
                 do_something(),
                 #{name => "Bob", age => 42},
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
                 #{name => get_name(), age => 42},
                 #{get_key() => "Bob", age => 42},
                 P#{name=>"Alice"},
@@ -462,10 +462,10 @@ mod tests {
             test_foo(_P) ->
                 catch do_something(),
                 catch ok,
-            %%% ^^^^^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^ 💡 warning: this statement has no effect
                 try does, nothing catch _ -> do_stuff() end,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
-                %%% ^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+                %%  ^^^^ 💡 warning: this statement has no effect
                 try
                     does_nothing
                 of _ -> ok
@@ -477,20 +477,20 @@ mod tests {
                     ok
                 end,
                 try does, nothing after blah, ok end,
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
-                %%% ^^^^ 💡 warning: this statement has no effect
-                                    %%% ^^^^ 💡 warning: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+                %%  ^^^^ 💡 warning: this statement has no effect
+                                    %%  ^^^^ 💡 warning: this statement has no effect
                 try
                     does, nothing
-                %%% ^^^^ 💡 warning: this statement has no effect
+                %%  ^^^^ 💡 warning: this statement has no effect
                 of _ -> foo, bar
-                    %%% ^^^ 💡 warning: this statement has no effect
+                    %%  ^^^ 💡 warning: this statement has no effect
                 catch
                   _ -> 42, not_ok
-                   %%% ^^ 💡 warning: this statement has no effect
+                   %%  ^^ 💡 warning: this statement has no effect
                 after
                   [1,2,3],
-              %%% ^^^^^^^ 💡 warning: this statement has no effect
+              %%  ^^^^^^^ 💡 warning: this statement has no effect
                   ok
                 end,
                 ok.
@@ -513,7 +513,7 @@ mod tests {
 
             blah() ->
                  noop,
-             %%% ^^^^ 💡 warning: this statement has no effect
+             %%  ^^^^ 💡 warning: this statement has no effect
                  do_something(),
                  ?included_noop(42),
                  do_something(),
