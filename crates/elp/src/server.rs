@@ -1435,12 +1435,21 @@ impl Server {
     }
 
     fn send(&self, message: lsp_server::Message) {
-        // Temporary for T180205228 / #17
         let _pctx = stdx::panic_context::enter(format!(
             "\nserver::send:msg={}",
             lsp_msg_for_context(&message)
         ));
-        self.connection.sender.send(message).unwrap()
+        match self.connection.sender.send(message) {
+            Ok(_) => {}
+            Err(err) => {
+                if self.status != Status::ShuttingDown {
+                    // We have set the panic context to include the
+                    // message, no need to repeat here.
+                    // This way we do not have to clone it on the send
+                    panic!("Could not send message, got: {}", err);
+                }
+            }
+        }
     }
 
     fn register_request(&mut self, request: &Request, received_timer: TimeIt) {
