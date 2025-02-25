@@ -186,7 +186,6 @@ pub enum Status {
     Loading(ProgressBar),
     Running,
     ShuttingDown,
-    Invalid,
 }
 
 impl Status {
@@ -196,7 +195,6 @@ impl Status {
             Status::Loading(_) => lsp_ext::Status::Loading,
             Status::Running => lsp_ext::Status::Running,
             Status::ShuttingDown => lsp_ext::Status::ShuttingDown,
-            Status::Invalid => lsp_ext::Status::Invalid,
         }
     }
 }
@@ -876,9 +874,7 @@ impl Server {
         always!(config_version <= self.vfs_config_version);
         // n_done is `None` for a response to a config change
         if let Some(n_done) = n_done {
-            if n_total == 0 {
-                self.transition(Status::Invalid);
-            } else if n_done == 0 {
+            if n_done == 0 && n_total != 0 {
                 let pb = self
                     .progress
                     .begin_bar("Loading source files".into(), Some(n_total));
@@ -888,6 +884,13 @@ impl Server {
                     pb.report(n_done, n_total);
                 }
             } else {
+                if n_total == 0 {
+                    let params = lsp_types::ShowMessageParams {
+                        typ: lsp_types::MessageType::WARNING,
+                        message: "Loaded zero files, check your project config".to_owned(),
+                    };
+                    self.show_message(params);
+                }
                 assert_eq!(n_done, n_total);
                 self.transition(Status::Running);
                 self.schedule_compile_deps();
