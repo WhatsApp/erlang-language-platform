@@ -26,12 +26,10 @@ use elp_project_model::otp::OTP_ERLANG_MODULE;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
 use elp_project_model::test_fixture::extract_annotations;
-use elp_project_model::test_fixture::extract_range_or_offset;
+use elp_project_model::test_fixture::get_text_and_pos;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::test_fixture::RangeOrOffset;
-use elp_project_model::test_fixture::CURSOR_MARKER;
-use elp_project_model::test_fixture::ESCAPED_CURSOR_MARKER;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::Project;
@@ -191,10 +189,10 @@ impl ChangeFixture {
         let mut tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>> = FxHashMap::default();
 
         for entry in fixture.clone() {
-            let (text, file_pos) = Self::get_text_and_pos(&entry.text, file_id);
-            if file_pos.is_some() {
+            let (text, file_pos) = get_text_and_pos(&entry.text);
+            if let Some(range) = file_pos {
                 assert!(file_position.is_none());
-                file_position = file_pos;
+                file_position = Some((file_id, range));
             }
 
             assert!(entry.path.starts_with(&source_root_prefix));
@@ -261,8 +259,7 @@ impl ChangeFixture {
             let files: Vec<(String, String)> = fixture
                 .iter()
                 .map(|entry| {
-                    let (text, _file_pos) =
-                        Self::get_text_and_pos(&entry.text, FileId::from_raw(0));
+                    let (text, _file_pos) = get_text_and_pos(&entry.text);
                     (entry.path.clone(), text)
                 })
                 .collect();
@@ -392,26 +389,6 @@ impl ChangeFixture {
         FileRange {
             file_id,
             range: range_or_offset.into(),
-        }
-    }
-
-    fn get_text_and_pos(
-        entry_text: &str,
-        file_id: FileId,
-    ) -> (String, Option<(FileId, RangeOrOffset)>) {
-        if entry_text.contains(CURSOR_MARKER) {
-            if entry_text.contains(ESCAPED_CURSOR_MARKER) {
-                (
-                    entry_text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER),
-                    None,
-                )
-            } else {
-                let (range_or_offset, text) = extract_range_or_offset(entry_text);
-                let file_position = Some((file_id, range_or_offset));
-                (text, file_position)
-            }
-        } else {
-            (entry_text.to_string(), None)
         }
     }
 

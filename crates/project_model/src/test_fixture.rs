@@ -758,6 +758,22 @@ pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
     (RangeOrOffset::Offset(offset), text)
 }
 
+pub fn get_text_and_pos(entry_text: &str) -> (String, Option<RangeOrOffset>) {
+    if entry_text.contains(CURSOR_MARKER) {
+        if entry_text.contains(ESCAPED_CURSOR_MARKER) {
+            (
+                entry_text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER),
+                None,
+            )
+        } else {
+            let (range_or_offset, text) = extract_range_or_offset(entry_text);
+            (text, Some(range_or_offset))
+        }
+    } else {
+        (entry_text.to_string(), None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
