@@ -768,6 +768,7 @@ mod tests {
     use super::FixtureWithProjectMeta;
     use crate::test_fixture::contains_annotation;
     use crate::test_fixture::extract_annotations;
+    use crate::test_fixture::extract_tags;
     use crate::test_fixture::remove_annotations;
 
     #[test]
@@ -1201,27 +1202,27 @@ meaning_of_life() ->
             "%% <<< 💡 error: Top of file diagnostic"
         ));
     }
-}
 
-#[test]
-fn test_extract_tags_1() {
-    let (tags, text) = extract_tags(r#"<tag region>foo() -> ok.</tag>"#, "tag");
-    let actual = tags
-        .into_iter()
-        .map(|(range, attr)| (&text[range], attr))
-        .collect::<Vec<_>>();
-    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
-}
+    #[test]
+    fn test_extract_tags_1() {
+        let (tags, text) = extract_tags(r#"<tag region>foo() -> ok.</tag>"#, "tag");
+        let actual = tags
+            .into_iter()
+            .map(|(range, attr)| (&text[range], attr))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
+    }
 
-#[test]
-fn test_extract_tags_2() {
-    let (tags, text) = extract_tags(
-        r#"bar() -> ok.\n<tag region>foo() -> ok.</tag>\nbaz() -> ok."#,
-        "tag",
-    );
-    let actual = tags
-        .into_iter()
-        .map(|(range, attr)| (&text[range], attr))
-        .collect::<Vec<_>>();
-    assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
+    #[test]
+    fn test_extract_tags_2() {
+        let (tags, text) = extract_tags(
+            r#"bar() -> ok.\n<tag region>foo() -> ok.</tag>\nbaz() -> ok."#,
+            "tag",
+        );
+        let actual = tags
+            .into_iter()
+            .map(|(range, attr)| (&text[range], attr))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
+    }
 }
