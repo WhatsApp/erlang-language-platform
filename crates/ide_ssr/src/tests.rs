@@ -7,12 +7,12 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::fixture;
-use elp_ide_db::elp_base_db::fixture::RangeOrOffset;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::RangeOrOffset;
+use elp_ide_db::elp_base_db::CURSOR_MARKER;
 use elp_ide_db::RootDatabase;
 use expect_test::expect;
 use expect_test::Expect;
@@ -144,7 +144,7 @@ fn parser_basic_query_with_cond() {
 /// then the position will be the start of the file. If there's a
 /// second cursor marker, then we'll return a single range.
 pub(crate) fn single_file(code: &str) -> (RootDatabase, FilePosition, Vec<FileRange>) {
-    let (db, file_id, range_or_offset) = if code.contains(fixture::CURSOR_MARKER) {
+    let (db, file_id, range_or_offset) = if code.contains(CURSOR_MARKER) {
         RootDatabase::with_range_or_offset(code)
     } else {
         let (db, file_id) = RootDatabase::with_single_file(code);

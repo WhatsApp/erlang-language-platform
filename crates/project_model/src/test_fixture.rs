@@ -80,14 +80,17 @@
 //! "
 //! ```
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 
+use lazy_static::lazy_static;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
 use paths::Utf8PathBuf;
+use regex::Regex;
 pub use stdx::trim_indent;
 use text_size::TextRange;
 use text_size::TextSize;
@@ -441,6 +444,320 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
 
 // ---------------------------------------------------------------------
 
+/// Extracts `%%^^^ some text` annotations.
+///
+/// A run of `^^^` can be arbitrary long and points to the corresponding range
+/// in the line above.
+///
+/// The `%% ^file text` syntax can be used to attach `text` to the entirety of
+/// the file.
+///
+/// The `%%<^^^ text` syntax can be used to attach `text` the span
+/// starting at `%%`, rather than the first `^`.
+///
+/// Multiline string values are supported:
+///
+/// %% ^^^ first line
+/// %%   | second line
+///
+/// Annotations point to the last line that actually was long enough for the
+/// range, not counting annotations themselves. So overlapping annotations are
+/// possible:
+/// ```not_rust
+/// %% stuff        other stuff
+/// %% ^^ 'st'
+/// %% ^^^^^ 'stuff'
+/// %%              ^^^^^^^^^^^ 'other stuff'
+/// ```
+pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
+    let mut res = Vec::new();
+    // map from line length to beginning of last line that had that length
+    let mut line_start_map = BTreeMap::new();
+    let mut line_start: TextSize = 0.into();
+    let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
+    for (idx, line) in text.split_inclusive('\n').enumerate() {
+        if idx == 0 && line.starts_with(TOP_OF_FILE_MARKER) {
+            // First line, look for header marker
+            if let Some(anno) = line.strip_prefix(TOP_OF_FILE_MARKER) {
+                res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
+            }
+        } else if line.contains(TOP_OF_FILE_MARKER) {
+            panic!(
+                "Annotation line {} is invalid here. \
+                     The top of file marker '{}' can only appear first in the file on the left margin.\n\
+                     The offending line: {:?}",
+                idx, TOP_OF_FILE_MARKER, line
+            );
+        }
+        let mut this_line_annotations = Vec::new();
+        let line_length = if let Some((prefix, suffix)) = line.split_once("%%") {
+            let ss_len = TextSize::of("%%");
+            let annotation_offset = TextSize::of(prefix) + ss_len;
+            for annotation in extract_line_annotations(suffix.trim_end_matches('\n')) {
+                match annotation {
+                    LineAnnotation::Annotation {
+                        mut range,
+                        zero_offset,
+                        content,
+                        file,
+                    } => {
+                        if zero_offset {
+                            range = TextRange::new(0.into(), range.end() + annotation_offset);
+                        } else {
+                            range += annotation_offset;
+                        };
+                        this_line_annotations.push((range.end(), res.len()));
+                        let range = if file {
+                            TextRange::up_to(TextSize::of(text))
+                        } else {
+                            let zero: TextSize = 0.into();
+                            let line_start = line_start_map
+                                .range(range.end()..)
+                                .next()
+                                .unwrap_or((&zero, &zero));
+
+                            range + line_start.1
+                        };
+                        res.push((range, content))
+                    }
+                    LineAnnotation::Continuation {
+                        mut offset,
+                        content,
+                    } => {
+                        // Deal with "annotations" in files from otp
+                        if res.len() > 0 {
+                            offset += annotation_offset;
+                            this_line_annotations.push((offset, res.len() - 1));
+                            let &(_, idx) = prev_line_annotations
+                                .iter()
+                                .find(|&&(off, _idx)| off == offset)
+                                .unwrap();
+                            res[idx].1.push('\n');
+                            res[idx].1.push_str(&content);
+                        }
+                    }
+                }
+            }
+            annotation_offset
+        } else {
+            TextSize::of(line)
+        };
+
+        line_start_map = line_start_map.split_off(&line_length);
+        line_start_map.insert(line_length, line_start);
+
+        line_start += TextSize::of(line);
+
+        if !this_line_annotations.is_empty() {
+            prev_line_annotations = this_line_annotations;
+        }
+    }
+
+    res
+}
+
+lazy_static! {
+    static ref TOP_OF_FILE_RANGE: TextRange = TextRange::new(0.into(), 0.into());
+}
+
+const TOP_OF_FILE_MARKER: &str = "%% <<< ";
+
+/// Return a copy of the input text, with all `%% ^^^ 💡 some text` annotations removed
+pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
+    let mut lines = Vec::new();
+    for line in text.split('\n') {
+        if !contains_annotation(line) {
+            if let Some(marker) = marker {
+                if let Some((_pos, clean_line)) = try_extract_marker(marker, line) {
+                    lines.push(clean_line)
+                } else {
+                    lines.push(line.to_string())
+                }
+            } else {
+                lines.push(line.to_string())
+            }
+        }
+    }
+    lines.join("\n")
+}
+
+/// Check if the given line contains a `%% ^^^ 💡 some text` annotation
+pub fn contains_annotation(line: &str) -> bool {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+| <<<| +\|) +💡?.*$").unwrap();
+    }
+    RE.is_match(line)
+}
+
+#[derive(Debug)]
+enum LineAnnotation {
+    Annotation {
+        range: TextRange,
+        /// True if the marker starts with `<`, indicating it starts
+        /// at the left margin, i.e. 0
+        zero_offset: bool,
+        content: String,
+        file: bool,
+    },
+    Continuation {
+        offset: TextSize,
+        content: String,
+    },
+}
+
+fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
+    let mut res = Vec::new();
+    let mut offset: TextSize = 0.into();
+    let marker: fn(char) -> bool = if line.contains('^') {
+        |c| c == '^' || c == '<'
+    } else {
+        |c| c == '|'
+    };
+    while let Some(idx) = line.find(marker) {
+        offset += TextSize::try_from(idx).unwrap();
+        line = &line[idx..];
+
+        let len_prefix = line.chars().take_while(|&it| it == '<').count();
+        let mut len = line[len_prefix..]
+            .chars()
+            .take_while(|&it| it == '^')
+            .count();
+        len = len + len_prefix;
+        let mut continuation = false;
+        if len == 0 {
+            assert!(line.starts_with('|'));
+            continuation = true;
+            len = 1;
+        }
+        let range = TextRange::at(offset, len.try_into().unwrap());
+        let next = line[len..].find(marker).map_or(line.len(), |it| it + len);
+        let mut content = &line[len..][..next - len];
+
+        let mut file = false;
+        if !continuation && content.starts_with("file") {
+            file = true;
+            content = &content["file".len()..]
+        }
+
+        let content = content.trim().to_string();
+
+        let annotation = if continuation {
+            LineAnnotation::Continuation {
+                offset: range.end(),
+                content,
+            }
+        } else {
+            LineAnnotation::Annotation {
+                range,
+                zero_offset: len_prefix > 0,
+                content,
+                file,
+            }
+        };
+        res.push(annotation);
+
+        line = &line[next..];
+        offset += TextSize::try_from(next).unwrap();
+    }
+
+    res
+}
+
+// ---------------------------------------------------------------------
+
+/// Infallible version of `try_extract_offset()`.
+pub fn extract_offset(text: &str) -> (TextSize, String) {
+    match try_extract_marker(CURSOR_MARKER, text) {
+        None => panic!("text should contain cursor marker"),
+        Some(result) => result,
+    }
+}
+
+/// Infallible version of `try_extract_offset()`.
+pub fn extract_marker_offset(marker: &str, text: &str) -> (TextSize, String) {
+    match try_extract_marker(marker, text) {
+        None => panic!("text should contain marker '{}'", marker),
+        Some(result) => result,
+    }
+}
+
+pub const CURSOR_MARKER: &str = "~";
+pub const ESCAPED_CURSOR_MARKER: &str = "\\~";
+
+/// Returns the offset of the first occurrence of `~` marker and the copy of `text`
+/// without the marker.
+fn try_extract_offset(text: &str) -> Option<(TextSize, String)> {
+    try_extract_marker(CURSOR_MARKER, text)
+}
+
+fn try_extract_marker(marker: &str, text: &str) -> Option<(TextSize, String)> {
+    let cursor_pos = text.find(marker)?;
+    let mut new_text = String::with_capacity(text.len() - marker.len());
+    new_text.push_str(&text[..cursor_pos]);
+    new_text.push_str(&text[cursor_pos + marker.len()..]);
+    let cursor_pos = TextSize::from(cursor_pos as u32);
+    Some((cursor_pos, new_text))
+}
+
+/// Infallible version of `try_extract_range()`.
+pub fn extract_range(text: &str) -> (TextRange, String) {
+    match try_extract_range(text) {
+        None => panic!("text should contain cursor marker"),
+        Some(result) => result,
+    }
+}
+
+/// Returns `TextRange` between the first two markers `^...^` and the copy
+/// of `text` without both of these markers.
+fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
+    let (start, text) = try_extract_offset(text)?;
+    let (end, text) = try_extract_offset(&text)?;
+    Some((TextRange::new(start, end), text))
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum RangeOrOffset {
+    Range(TextRange),
+    Offset(TextSize),
+}
+
+impl RangeOrOffset {
+    pub fn expect_offset(self) -> TextSize {
+        match self {
+            RangeOrOffset::Offset(it) => it,
+            RangeOrOffset::Range(_) => panic!("expected an offset but got a range instead"),
+        }
+    }
+    pub fn expect_range(self) -> TextRange {
+        match self {
+            RangeOrOffset::Range(it) => it,
+            RangeOrOffset::Offset(_) => panic!("expected a range but got an offset"),
+        }
+    }
+}
+
+impl From<RangeOrOffset> for TextRange {
+    fn from(selection: RangeOrOffset) -> Self {
+        match selection {
+            RangeOrOffset::Range(it) => it,
+            RangeOrOffset::Offset(it) => TextRange::empty(it),
+        }
+    }
+}
+
+/// Extracts `TextRange` or `TextSize` depending on the amount of `^` markers
+/// found in `text`.
+///
+/// # Panics
+/// Panics if no `^` marker is present in the `text`.
+pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
+    if let Some((range, text)) = try_extract_range(text) {
+        return (RangeOrOffset::Range(range), text);
+    }
+    let (offset, text) = extract_offset(text);
+    (RangeOrOffset::Offset(offset), text)
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -449,6 +766,9 @@ mod tests {
     use paths::Utf8PathBuf;
 
     use super::FixtureWithProjectMeta;
+    use crate::test_fixture::contains_annotation;
+    use crate::test_fixture::extract_annotations;
+    use crate::test_fixture::remove_annotations;
 
     #[test]
     #[should_panic]
@@ -597,6 +917,289 @@ bar() -> ok.
                 is_test_target: None,
             }"#]]
         .assert_eq(format!("{:#?}", meta0.app_data).as_str());
+    }
+
+    #[test]
+    fn test_extract_annotations_1() {
+        let text = stdx::trim_indent(
+            r#"
+fn main() {
+    let (x,     y) = (9, 2);
+       %%^ def  ^ def
+    zoo + 1
+} %%^^^ type:
+  %%  | i32
+
+%% ^file
+    "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], ann))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            res[..3],
+            [
+                ("x", "def".into()),
+                ("y", "def".into()),
+                ("zoo", "type:\ni32".into())
+            ]
+        );
+        assert_eq!(res[3].0.len(), 115);
+    }
+
+    #[test]
+    fn test_extract_annotations_2() {
+        let text = stdx::trim_indent(
+            r#"
+fn main() {
+    (x,   y);
+   %%^ a
+      %%  ^ b
+  %%^^^^^^^^ c
+}"#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], ann))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            [
+                ("x", "a".into()),
+                ("y", "b".into()),
+                ("(x,   y)", "c".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_extract_annotations_3() {
+        let text = stdx::trim_indent(
+            r#"
+-module(foo).
+bar() -> ?FOO.
+       %% ^^^ error: unresolved macro `FOO`
+
+"#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (format!("{:?}", range), &text[range], ann))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            [
+                (
+                    "24..27".into(),
+                    "FOO",
+                    "error: unresolved macro `FOO`".into()
+                ),
+                // TODO: something weird here, this range does not tie in
+                // to what the diagnostic reports.  But it shows up correcly in VsCode.
+                // No time to look more deeply now.
+                // ("25..28".into(), "FOO", "error: unresolved macro `FOO`".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn extract_annotation_top_of_file_no_location() {
+        let text = stdx::trim_indent(
+            r#"
+          %% <<< top of file, location zero as it is not associated with anything particular
+            -module(main).
+            main() -> ok."#,
+        );
+        let res = extract_annotations(&text);
+
+        expect![[r#"
+            [
+                (
+                    0..0,
+                    "top of file, location zero as it is not associated with anything particular",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    #[should_panic]
+    fn extract_annotations_top_of_file_syntax_only_if_at_top_of_file() {
+        let text = stdx::trim_indent(
+            r#"
+            -module(main).
+          %% <<< NOT top of file, no annotation
+            main() -> ok."#,
+        );
+        let res = extract_annotations(&text);
+
+        expect![[r#"
+            []
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn test_remove_annotations() {
+        let text = stdx::trim_indent(
+            r#"
+-module(my_module).
+-export([meaning_of_life/0]).
+meaning_of_life() ->
+    Thoughts = thinking(),
+ %% ^^^^^^^^ 💡 L1268: variable 'Thoughts' is unused
+    42.
+"#,
+        );
+        expect![[r#"
+            -module(my_module).
+            -export([meaning_of_life/0]).
+            meaning_of_life() ->
+                Thoughts = thinking(),
+                42.
+        "#]]
+        .assert_eq(remove_annotations(None, &text).as_str());
+    }
+
+    #[test]
+    fn extract_annotations_continuation_1() {
+        let text = stdx::trim_indent(
+            r#"
+             fn main() {
+                 zoo + 1
+             } %%^^^ type:
+               %%  | i32
+                 "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], range, ann))
+            .collect::<Vec<_>>();
+
+        expect![[r#"
+            [
+                (
+                    "zoo",
+                    16..19,
+                    "type:\ni32",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn extract_annotations_continuation_2() {
+        let text = stdx::trim_indent(
+            r#"
+            -module(main).
+
+            foo(Node) ->
+                erlang:spawn(Node, fun() -> ok end).
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning:
+            %%                                    |
+            %%                                    | Production code blah
+            %%                                    | more
+            "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], range, ann))
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                (
+                    "erlang:spawn(Node, fun() -> ok end)",
+                    33..68,
+                    "warning:\n\nProduction code blah\nmore",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn extract_annotations_continuation_3() {
+        let text = stdx::trim_indent(
+            r#"
+            -module(main).
+
+            main() ->
+                 zoo + 1.
+               %%^^^ type:
+               %%  | i32
+
+            foo(Node) ->
+                erlang:spawn(Node, fun() -> ok end).
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning:
+            %%                                    | Production code blah
+            %%                                    | more
+            "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], range, ann))
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                (
+                    "zoo",
+                    31..34,
+                    "type:\ni32",
+                ),
+                (
+                    "erlang:spawn(Node, fun() -> ok end)",
+                    86..121,
+                    "warning:\nProduction code blah\nmore",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn extract_annotations_zero_offset() {
+        let text = stdx::trim_indent(
+            r#"
+            -module(main).
+
+            main() ->
+            %%<^^^
+                 zoo + 1.
+            "#,
+        );
+        let res = extract_annotations(&text)
+            .into_iter()
+            .map(|(range, ann)| (&text[range], range, ann))
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                (
+                    "main()",
+                    16..22,
+                    "",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn test_contains_annotation() {
+        assert!(contains_annotation("  %% ^^ blah"));
+        assert!(contains_annotation(
+            "  %%                | Rather use 'orelse'."
+        ));
+        assert!(contains_annotation("%%  ^^ 💡 warning: blah"));
+        assert!(!contains_annotation("%%  an ordinary comment"));
+        assert!(contains_annotation(
+            "%% <<< 💡 error: Top of file diagnostic"
+        ));
     }
 }
 

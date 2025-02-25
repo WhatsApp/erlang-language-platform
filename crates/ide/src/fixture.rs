@@ -10,10 +10,10 @@
 //! Utilities for creating `Analysis` instances for tests.
 
 use elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_ide_db::elp_base_db::fixture::CURSOR_MARKER;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide_db::elp_base_db::CURSOR_MARKER;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 

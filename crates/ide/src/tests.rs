@@ -12,9 +12,9 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::assert_eq_text;
-use elp_ide_db::elp_base_db::fixture::extract_annotations;
-use elp_ide_db::elp_base_db::fixture::remove_annotations;
+use elp_ide_db::elp_base_db::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;

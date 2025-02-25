@@ -208,7 +208,7 @@ pub(crate) fn inlay_hints(
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::elp_base_db::fixture::extract_annotations;
+    use elp_ide_db::elp_base_db::extract_annotations;
     use itertools::Itertools;
 
     use crate::fixture;

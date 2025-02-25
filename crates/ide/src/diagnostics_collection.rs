@@ -250,6 +250,7 @@ mod tests {
 
     use std::iter::once;
 
+    use elp_ide_db::elp_base_db::extract_annotations;
     use elp_ide_db::elp_base_db::FileId;
     use elp_syntax::label::Label;
     use fxhash::FxHashMap;
@@ -264,7 +265,6 @@ mod tests {
     use crate::diagnostics::Severity;
     use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
     use crate::diagnostics_collection::DiagnosticCollection;
-    use crate::elp_ide_db::elp_base_db::fixture::extract_annotations;
     use crate::elp_ide_db::elp_base_db::fixture::WithFixture;
     use crate::elp_ide_db::elp_base_db::FileLoader;
     use crate::elp_ide_db::RootDatabase;

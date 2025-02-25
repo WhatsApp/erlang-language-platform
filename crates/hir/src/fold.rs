@@ -1191,6 +1191,7 @@ impl<'a, T> FoldCtx<'a, T> {
 mod tests {
     use elp_base_db::fixture::WithFixture;
     use elp_base_db::FileId;
+    use elp_base_db::RangeOrOffset;
     use elp_syntax::algo;
     use elp_syntax::ast;
     use elp_syntax::AstNode;
@@ -1260,8 +1261,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;
@@ -1337,8 +1338,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;
@@ -1394,8 +1395,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;
@@ -1565,8 +1566,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;
@@ -1725,8 +1726,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;
@@ -1885,8 +1886,8 @@ bar() ->
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
-            elp_base_db::fixture::RangeOrOffset::Range(_) => panic!(),
-            elp_base_db::fixture::RangeOrOffset::Offset(o) => o,
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
         };
         let in_file = sema.parse(file_id);
         let source_file = in_file.value;

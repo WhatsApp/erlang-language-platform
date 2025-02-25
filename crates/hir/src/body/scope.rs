@@ -744,7 +744,7 @@ fn add_exported_scopes(
 #[cfg(test)]
 mod tests {
     use elp_base_db::assert_eq_text;
-    use elp_base_db::fixture::extract_offset;
+    use elp_base_db::extract_offset;
     use elp_base_db::fixture::WithFixture;
     use elp_base_db::FileId;
     use elp_base_db::SourceDatabase;

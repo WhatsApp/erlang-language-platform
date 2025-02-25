@@ -32,6 +32,11 @@ pub mod fixture;
 // @fb-only
 pub mod test_utils;
 pub use change::Change;
+pub use elp_project_model::test_fixture::extract_annotations;
+pub use elp_project_model::test_fixture::extract_offset;
+pub use elp_project_model::test_fixture::remove_annotations;
+pub use elp_project_model::test_fixture::RangeOrOffset;
+pub use elp_project_model::test_fixture::CURSOR_MARKER;
 pub use elp_project_model::AppType;
 pub use include::IncludeCtx;
 pub use input::AppData;
