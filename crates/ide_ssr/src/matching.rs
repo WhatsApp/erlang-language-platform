@@ -32,6 +32,7 @@ use hir::Atom;
 use hir::BinarySeg;
 use hir::Body;
 use hir::BodyOrigin;
+use hir::BodySourceMap;
 use hir::CRClause;
 use hir::CallTarget;
 use hir::ComprehensionBuilder;
@@ -106,6 +107,15 @@ impl Match {
     pub fn range(&self) -> TextRange {
         self.range.range
     }
+
+    /// Return any comments on the match
+    pub fn comments(&self, sema: &Semantic) -> Option<Vec<ast::Comment>> {
+        let (_body, body_map) = self.matched_node_body.get_body_and_map(sema)?;
+        match self.matched_node {
+            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(&body_map, any_expr_id),
+            _ => None,
+        }
+    }
 }
 
 /// Information about a placeholder bound in a match.
@@ -141,6 +151,14 @@ impl PlaceholderMatch {
                 .to_node(&sema.parse(body.origin.file_id()))?
                 .to_string(),
         )
+    }
+
+    /// Return any comments on the matched item
+    pub fn comments(&self, sema: &Semantic, body_map: &BodySourceMap) -> Option<Vec<ast::Comment>> {
+        match self.code_id {
+            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(&body_map, any_expr_id),
+            _ => None,
+        }
     }
 
     // Check if our `code_id` and the `other` represent equivalent

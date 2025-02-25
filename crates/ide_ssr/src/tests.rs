@@ -1294,3 +1294,75 @@ fn ssr_complex_match() {
         &["lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List)"],
     );
 }
+
+#[test]
+fn ssr_comments_in_match() {
+    let pattern = "ssr: << _@A, _@B>>.";
+    let code = r#"
+                 foo() ->
+                    <<{ % preceding comment
+                        3},
+                        { 3 % following comment
+                        >>.
+                "#;
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+
+    let (db, position, _selections) = single_file(code);
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(position.file_id));
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches = match_finder.matches().flattened();
+    let match_ = matches.matches[0].clone(); // Its a test, panic is fine.
+    expect![[r#"
+        Some(
+            [
+                Comment {
+                    syntax: COMMENT@16..35
+                      COMMENT@16..35 "% preceding comment"
+                    ,
+                },
+                Comment {
+                    syntax: COMMENT@58..77
+                      COMMENT@58..77 "% following comment"
+                    ,
+                },
+            ],
+        )
+    "#]]
+    .assert_debug_eq(&match_.comments(&sema));
+
+    let a_match = match_.get_placeholder_match(&sema, "_@A").unwrap();
+    let (_body, body_map) = match_.matched_node_body.get_body_and_map(&sema).unwrap();
+    expect![[r#"
+        Some(
+            [
+                Comment {
+                    syntax: COMMENT@16..35
+                      COMMENT@16..35 "% preceding comment"
+                    ,
+                },
+            ],
+        )
+    "#]]
+    .assert_debug_eq(&a_match.comments(&sema, &body_map));
+
+    let b_match = match_.get_placeholder_match(&sema, "_@B").unwrap();
+    expect![[r#"
+        Some(
+            [
+                Comment {
+                    syntax: COMMENT@58..77
+                      COMMENT@58..77 "% following comment"
+                    ,
+                },
+            ],
+        )
+    "#]]
+    .assert_debug_eq(&b_match.comments(&sema, &body_map));
+}

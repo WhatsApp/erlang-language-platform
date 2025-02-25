@@ -228,6 +228,19 @@ impl BodyOrigin {
             }
         }
     }
+
+    pub fn get_body_and_map(&self, sema: &Semantic) -> Option<(Arc<Body>, Arc<BodySourceMap>)> {
+        match self {
+            BodyOrigin::Invalid(_) => None,
+            BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(*file_id, *form_id),
+            BodyOrigin::Define { file_id, define_id } => {
+                let (body, body_map) = sema
+                    .db
+                    .define_body_with_source(InFile::new(*file_id, *define_id))?;
+                Some((body.body.clone(), body_map))
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

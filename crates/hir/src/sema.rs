@@ -21,6 +21,8 @@ use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
+use elp_syntax::NodeOrToken;
+use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_types_db::eqwalizer;
@@ -294,6 +296,27 @@ impl<'db> Semantic<'db> {
     pub fn form_edoc_comments(&self, form: InFileAstPtr<ast::Form>) -> Option<EdocHeader> {
         let file_edoc = self.file_edoc_comments(form.file_id())?;
         file_edoc.get(&form).cloned()
+    }
+
+    // Tested via ide_ssr::tests
+    pub fn any_expr_comments(
+        &self,
+        body_map: &BodySourceMap,
+        any_expr_id: AnyExprId,
+    ) -> Option<Vec<ast::Comment>> {
+        let ast_ptr = body_map.any(any_expr_id)?;
+        let ast_syntax_node = ast_ptr.to_ast(self.db.upcast());
+        let ast_syntax = ast_syntax_node.syntax();
+        let comments = ast_syntax
+            .descendants_with_tokens()
+            .filter_map(|elem| match elem {
+                NodeOrToken::Node(_) => None,
+                NodeOrToken::Token(tok) => Some(tok),
+            })
+            .filter(|token| token.kind() == SyntaxKind::COMMENT)
+            .filter_map(|token| ast::Comment::cast(token.parent()?))
+            .collect();
+        Some(comments)
     }
 
     pub fn resolve_var_to_pats(&self, var_in: InFile<&ast::Var>) -> Option<Vec<PatId>> {
