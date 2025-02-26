@@ -341,7 +341,7 @@ mod tests {
     #[track_caller]
     fn check_user(fixture: &str) {
         let (resolved, db, fixture) = resolve_macro(fixture);
-        let annos = fixture.annotations(&db);
+        let annos = fixture.annotations();
         assert_eq!(annos.len(), 1);
         let (expected_range, _) = annos[0];
 

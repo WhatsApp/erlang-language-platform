@@ -110,6 +110,7 @@ pub struct Fixture {
     pub tag: Option<String>,
     pub tags: Vec<(TextRange, Option<String>)>,
     pub annotations: Vec<(TextRange, String)>,
+    pub marker_pos: Option<RangeOrOffset>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -287,9 +288,12 @@ impl FixtureWithProjectMeta {
                 fixture.tags = tags;
                 fixture.text = text;
             }
-            let (mut annotations, _text_without_annotations) = extract_annotations(&fixture.text);
+            let (mut annotations, text_without_annotations) = extract_annotations(&fixture.text);
+            let (text, marker_pos) = get_text_and_pos(&text_without_annotations);
             annotations.sort_by_key(|(range, _content)| range.start());
             fixture.annotations = annotations;
+            fixture.text = text;
+            fixture.marker_pos = marker_pos;
         }
 
         FixtureWithProjectMeta {
@@ -399,6 +403,7 @@ impl FixtureWithProjectMeta {
             tag,
             tags: Vec::new(),
             annotations: Vec::new(),
+            marker_pos: None,
         }
     }
 }
@@ -507,60 +512,73 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
         let line_length = if let Some((prefix, suffix)) = line.split_once("%%") {
             let ss_len = TextSize::of("%%");
             let annotation_offset = TextSize::of(prefix) + ss_len;
-            for annotation in extract_line_annotations(suffix.trim_end_matches('\n')) {
-                match annotation {
-                    LineAnnotation::Annotation {
-                        mut range,
-                        zero_offset,
-                        content,
-                        file,
-                    } => {
-                        if zero_offset {
-                            range = TextRange::new(0.into(), range.end() + annotation_offset);
-                        } else {
-                            range += annotation_offset;
-                        };
-                        this_line_annotations.push((range.end(), res.len()));
-                        let range = if file {
-                            TextRange::up_to(TextSize::of(text))
-                        } else {
-                            let zero: TextSize = 0.into();
-                            let line_start = line_start_map
-                                .range(range.end()..)
-                                .next()
-                                .unwrap_or((&zero, &zero));
+            let annotations = extract_line_annotations(suffix.trim_end_matches('\n'));
+            if annotations.is_empty() {
+                TextSize::of(line)
+            } else {
+                for annotation in annotations {
+                    match annotation {
+                        LineAnnotation::Annotation {
+                            mut range,
+                            zero_offset,
+                            content,
+                            file,
+                        } => {
+                            if zero_offset {
+                                range = TextRange::new(0.into(), range.end() + annotation_offset);
+                            } else {
+                                range += annotation_offset;
+                            };
+                            this_line_annotations.push((range.end(), res.len()));
+                            let range = if file {
+                                TextRange::up_to(TextSize::of(&text_without_annotations))
+                            } else {
+                                let zero: TextSize = 0.into();
+                                let line_start = line_start_map
+                                    .range(range.end()..)
+                                    .next()
+                                    .unwrap_or((&zero, &zero));
 
-                            range + line_start.1
-                        };
-                        res.push((range, content))
-                    }
-                    LineAnnotation::Continuation {
-                        mut offset,
-                        content,
-                    } => {
-                        // Deal with "annotations" in files from otp
-                        if res.len() > 0 {
-                            offset += annotation_offset;
-                            this_line_annotations.push((offset, res.len() - 1));
-                            let &(_, idx) = prev_line_annotations
-                                .iter()
-                                .find(|&&(off, _idx)| off == offset)
-                                .unwrap();
-                            res[idx].1.push('\n');
-                            res[idx].1.push_str(&content);
+                                range + line_start.1
+                            };
+                            res.push((range, content))
+                        }
+                        LineAnnotation::Continuation {
+                            mut offset,
+                            content,
+                        } => {
+                            // Deal with "annotations" in files from otp
+                            if res.len() > 0 {
+                                offset += annotation_offset;
+                                this_line_annotations.push((offset, res.len() - 1));
+                                let &(_, idx) = prev_line_annotations
+                                    .iter()
+                                    .find(|&&(off, _idx)| off == offset)
+                                    .unwrap();
+                                res[idx].1.push('\n');
+                                res[idx].1.push_str(&content);
+                            }
                         }
                     }
                 }
+                TextSize::from(0)
             }
-            annotation_offset
         } else {
-            TextSize::of(line)
+            if line.contains(CURSOR_MARKER) {
+                if line.contains(ESCAPED_CURSOR_MARKER) {
+                    TextSize::of(line) - TextSize::of(ESCAPED_CURSOR_MARKER)
+                } else {
+                    TextSize::of(line) - TextSize::of(CURSOR_MARKER)
+                }
+            } else {
+                TextSize::of(line)
+            }
         };
 
         line_start_map = line_start_map.split_off(&line_length);
         line_start_map.insert(line_length, line_start);
 
-        line_start += TextSize::of(line);
+        line_start += line_length;
 
         if !this_line_annotations.is_empty() {
             prev_line_annotations = this_line_annotations;
@@ -579,7 +597,8 @@ const TOP_OF_FILE_MARKER: &str = "%% <<< ";
 /// Return a copy of the input text, with all `%% ^^^ 💡 some text` annotations removed
 pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
     let mut lines = Vec::new();
-    for line in text.split('\n') {
+    let mut prepend_cursor = false;
+    for (idx, line) in text.split('\n').enumerate() {
         if !contains_annotation(line) {
             if let Some(marker) = marker {
                 if let Some((_pos, clean_line)) = try_extract_marker(marker, line) {
@@ -590,15 +609,23 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
             } else {
                 lines.push(line.to_string())
             }
+        } else {
+            if (idx == 0) && line.starts_with(CURSOR_MARKER) {
+                prepend_cursor = true;
+            }
         }
     }
-    lines.join("\n")
+    if prepend_cursor {
+        CURSOR_MARKER.to_string() + &lines.join("\n")
+    } else {
+        lines.join("\n")
+    }
 }
 
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*~?%%( +\^+|[<\^]+| <<<| +\|) +💡?.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*~?%%( +\^+|[<\^]+| <<<| +\|)\s?💡?.*$").unwrap();
     }
     RE.is_match(line)
 }
@@ -964,10 +991,10 @@ fn main() {
 %% ^file
     "#,
         );
-        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let (annotations, text_without_annotations) = extract_annotations(&text);
         let res = annotations
             .into_iter()
-            .map(|(range, ann)| (&text[range], ann))
+            .map(|(range, ann)| (&text_without_annotations[range], ann))
             .collect::<Vec<_>>();
 
         assert_eq!(
@@ -978,7 +1005,7 @@ fn main() {
                 ("zoo", "type:\ni32".into())
             ]
         );
-        assert_eq!(res[3].0.len(), 115);
+        assert_eq!(res[3].0.len(), 72);
     }
 
     #[test]
@@ -992,10 +1019,10 @@ fn main() {
   %%^^^^^^^^ c
 }"#,
         );
-        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let (annotations, text_without_annotations) = extract_annotations(&text);
         let res = annotations
             .into_iter()
-            .map(|(range, ann)| (&text[range], ann))
+            .map(|(range, ann)| (&text_without_annotations[range], ann))
             .collect::<Vec<_>>();
 
         assert_eq!(
@@ -1177,10 +1204,10 @@ meaning_of_life() ->
             %%                                    | more
             "#,
         );
-        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let (annotations, text_without_annotations) = extract_annotations(&text);
         let res = annotations
             .into_iter()
-            .map(|(range, ann)| (&text[range], range, ann))
+            .map(|(range, ann)| (&text_without_annotations[range], range, ann))
             .collect::<Vec<_>>();
         expect![[r#"
             [
@@ -1191,7 +1218,7 @@ meaning_of_life() ->
                 ),
                 (
                     "erlang:spawn(Node, fun() -> ok end)",
-                    86..121,
+                    58..93,
                     "warning:\nProduction code blah\nmore",
                 ),
             ]

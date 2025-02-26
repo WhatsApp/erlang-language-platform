@@ -25,8 +25,6 @@ use elp_project_model::otp::OTP_ERLANG_APP;
 use elp_project_model::otp::OTP_ERLANG_MODULE;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
-use elp_project_model::test_fixture::extract_annotations;
-use elp_project_model::test_fixture::get_text_and_pos;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::test_fixture::RangeOrOffset;
@@ -101,6 +99,7 @@ pub struct ChangeFixture {
     pub files_by_path: FxHashMap<VfsPath, FileId>,
     pub diagnostics_enabled: DiagnosticsEnabled,
     pub tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>>,
+    pub annotations: FxHashMap<FileId, Vec<(TextRange, String)>>,
 }
 
 struct Builder {
@@ -187,10 +186,10 @@ impl ChangeFixture {
         let mut app_files = SourceRootMap::default();
         let mut files_by_path: FxHashMap<VfsPath, FileId> = FxHashMap::default();
         let mut tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>> = FxHashMap::default();
+        let mut annotations: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
 
         for entry in fixture.clone() {
-            let (text, file_pos) = get_text_and_pos(&entry.text);
-            if let Some(range) = file_pos {
+            if let Some(range) = entry.marker_pos {
                 assert!(file_position.is_none());
                 file_position = Some((file_id, range));
             }
@@ -206,7 +205,7 @@ impl ChangeFixture {
             }
             app_map.combine(entry.app_data);
 
-            change.change_file(file_id, Some(Arc::from(text)));
+            change.change_file(file_id, Some(Arc::from(entry.text)));
 
             let path = if diagnostics_enabled.needs_fixture_on_disk()
                 && entry.path.char_indices().nth(0) == Some((0, '/'))
@@ -222,6 +221,7 @@ impl ChangeFixture {
             files_by_path.insert(path, file_id);
             files.push(file_id);
             tags.insert(file_id, entry.tags);
+            annotations.insert(file_id, entry.annotations);
 
             inc_file_id(&mut file_id);
         }
@@ -258,10 +258,7 @@ impl ChangeFixture {
             // Dump a copy of the fixture into a temp dir
             let files: Vec<(String, String)> = fixture
                 .iter()
-                .map(|entry| {
-                    let (text, _file_pos) = get_text_and_pos(&entry.text);
-                    (entry.path.clone(), text)
-                })
+                .map(|entry| (entry.path.clone(), entry.text.clone()))
                 .collect();
             let project_dir_str = project_dir.as_os_str().to_str().unwrap();
 
@@ -345,23 +342,32 @@ impl ChangeFixture {
                 files_by_path,
                 diagnostics_enabled,
                 tags,
+                annotations,
             },
             change,
             project,
         )
     }
 
-    pub fn annotations(&self, db: &dyn SourceDatabaseExt) -> Vec<(FileRange, String)> {
-        self.files
+    pub fn annotations(&self) -> Vec<(FileRange, String)> {
+        self.annotations
             .iter()
-            .flat_map(|&file_id| {
-                let text = SourceDatabaseExt::file_text(db, file_id);
-                let (annotations, _text_without_annotations) = extract_annotations(&text);
-                annotations
-                    .into_iter()
-                    .map(move |(range, data)| (FileRange { file_id, range }, data))
+            .flat_map(|(&file_id, annotations)| {
+                annotations.iter().map(move |(range, content)| {
+                    (
+                        FileRange {
+                            file_id,
+                            range: *range,
+                        },
+                        content.clone(),
+                    )
+                })
             })
             .collect()
+    }
+
+    pub fn annotations_by_file_id(&self, file_id: &FileId) -> Vec<(TextRange, String)> {
+        self.annotations.get(file_id).cloned().unwrap_or_default()
     }
 
     #[track_caller]

@@ -1670,7 +1670,7 @@ mod tests {
     #[track_caller]
     fn check_bound_var_in_pattern(fixture: &str) {
         let (db, fixture) = TestDB::with_fixture(fixture);
-        let annotations = fixture.annotations(&db);
+        let annotations = fixture.annotations();
         let expected: Vec<_> = annotations
             .iter()
             .map(|(fr, _)| fr.range)

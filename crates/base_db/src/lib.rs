@@ -32,7 +32,6 @@ pub mod fixture;
 // @fb-only
 pub mod test_utils;
 pub use change::Change;
-pub use elp_project_model::test_fixture::extract_annotations;
 pub use elp_project_model::test_fixture::extract_offset;
 pub use elp_project_model::test_fixture::remove_annotations;
 pub use elp_project_model::test_fixture::RangeOrOffset;

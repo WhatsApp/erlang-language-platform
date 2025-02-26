@@ -208,7 +208,6 @@ pub(crate) fn inlay_hints(
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::elp_base_db::extract_annotations;
     use itertools::Itertools;
 
     use crate::fixture;
@@ -220,16 +219,15 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_with_config(config: InlayHintsConfig, fixture: &str) {
-        let (analysis, pos, _) = fixture::position(fixture);
-        let (mut expected, _text_without_annotations) =
-            extract_annotations(&analysis.file_text(pos.file_id).unwrap());
+        let (analysis, fixture) = fixture::with_fixture(fixture);
+        let pos = fixture.position();
+        let expected = fixture.annotations_by_file_id(&fixture.file_id());
         let inlay_hints = analysis.inlay_hints(&config, pos.file_id, None).unwrap();
         let actual = inlay_hints
             .into_iter()
             .map(|it| (it.range, it.label.to_string()))
             .sorted_by_key(|(range, _)| range.start())
             .collect::<Vec<_>>();
-        expected.sort_by_key(|(range, _)| range.start());
 
         assert_eq!(
             expected, actual,

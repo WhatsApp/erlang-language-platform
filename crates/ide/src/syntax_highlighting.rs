@@ -328,7 +328,7 @@ mod tests {
         } else {
             None
         };
-        let annotations = fixture.annotations(&db);
+        let annotations = fixture.annotations();
         let expected: Vec<_> = annotations
             .into_iter()
             .map(|(fr, tag)| (fr.range, tag))

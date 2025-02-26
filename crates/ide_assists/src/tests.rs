@@ -15,10 +15,8 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
-use elp_ide_db::elp_base_db::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
-use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::helpers::SnippetCap;
@@ -155,17 +153,13 @@ fn check(
     user_input: Option<&str>,
     user_task_id: Option<&str>,
 ) {
-    let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
-
-    let frange = FileRange {
-        file_id: file_with_caret_id,
-        range: range_or_offset.into(),
-    };
+    let (db, fixture) = RootDatabase::with_fixture(before);
+    let file_id = fixture.file_id();
+    let frange = fixture.range();
 
     let sema = &db;
     let config = TEST_CONFIG;
-    let (context_diagnostics, _text_without_annotations) =
-        extract_annotations(&db.file_text(file_with_caret_id));
+    let context_diagnostics = fixture.annotations_by_file_id(&file_id);
     let mut diagnostics = vec![];
     for (range, text) in &context_diagnostics {
         if let Some((code_and_bulb, message)) = text.split_once(':') {

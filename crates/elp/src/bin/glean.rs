@@ -1759,10 +1759,8 @@ mod tests {
 
     use elp::cli::Fake;
     use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
     use elp_ide::AnalysisHost;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
-    use elp_project_model::test_fixture::extract_annotations;
     use elp_project_model::test_fixture::DiagnosticsEnabled;
     use expect_test::expect_file;
     use fxhash::FxHashSet;
@@ -2025,8 +2023,8 @@ mod tests {
         %%  ^ glean_module6/B/14
         %%      ^^^ glean_module6/baz/2
             F = glean_module61:foo(B),
-        %%                         ^ glean_module6/B/113
-        %%  ^ glean_module6/F/90
+        %%                         ^ glean_module6/B/56
+        %%  ^ glean_module6/F/33
         %%      ^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
             0.
         baz(1, 2) ->
@@ -2120,7 +2118,7 @@ mod tests {
         %%        ^^^^^^^^^^^^^^^^^^^^^^^^ glean_module71/foo/1
         %%  ^^^ glean_module7/Foo/14
             Baz = fun baz/2.
-        %%  ^^^ glean_module7/Baz/135
+        %%  ^^^ glean_module7/Baz/50
         %%        ^^^^^^^^^ glean_module7/baz/2
         baz(1, 2) ->
             1 + 2."#;
@@ -2162,8 +2160,8 @@ mod tests {
         ) -> huuuge().
         %%   ^^^^^^ glean_module8/huuuge/0
         baz(A, B) ->
-        %%  ^ glean_module8/A/259
-        %%     ^ glean_module8/B/262
+        %%  ^ glean_module8/A/132
+        %%     ^ glean_module8/B/135
             1 + 2."#;
 
         xref_check(&spec);
@@ -2181,8 +2179,8 @@ mod tests {
         %%                ^^^^^^^ glean_module_parametrized/my_type/1
         %%                        ^^^^^^^^^^ glean_module_parametrized/my_integer/0
         my_function(X) -> X.
-        %%          ^ glean_module_parametrized/X/315
-        %%                ^ glean_module_parametrized/X/321
+        %%          ^ glean_module_parametrized/X/124
+        %%                ^ glean_module_parametrized/X/130
         "#;
 
         xref_check(&spec);
@@ -2298,7 +2296,7 @@ mod tests {
         %%  ^^^^^ glean_module11/Stats/35
             Stats#stats.count.
         %%       ^^^^^^ glean_module11/stats/99
-        %%  ^^^^^ glean_module11/Stats/83
+        %%  ^^^^^ glean_module11/Stats/49
         "#;
 
         xref_check(&spec);
@@ -2326,7 +2324,7 @@ mod tests {
         %%  ^^^^^ glean_module12/Stats/35
             Stats#stats{count = 1}.
         %%       ^^^^^^ glean_module12/stats/99
-        %%  ^^^^^ glean_module12/Stats/86
+        %%  ^^^^^ glean_module12/Stats/52
         "#;
 
         xref_check(&spec);
@@ -2353,9 +2351,9 @@ mod tests {
         baz(Stats) ->
         %%  ^^^^^ glean_module13/Stats/35
             #stats{count = Count, time = Time} = Stats.
-        %%                 ^^^^^ glean_module13/Count/98
-        %%                               ^^^^ glean_module13/Time/112
-        %%                                       ^^^^^ glean_module13/Stats/120
+        %%                 ^^^^^ glean_module13/Count/64
+        %%                               ^^^^ glean_module13/Time/78
+        %%                                       ^^^^^ glean_module13/Stats/86
         %%  ^^^^^^ glean_module13/stats/99
         "#;
 
@@ -2441,9 +2439,9 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
-        %%             ^^^ macro.erl/macro/TAU/161/no_ods/6.28
+        %%             ^^^ macro.erl/macro/TAU/117/no_ods/6.28
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/236/no_ods/if (N > 200) -> N; 'true' -> 200 end
+        %%             ^^^ macro.erl/macro/MAX/137/no_ods/if (N > 200) -> N; 'true' -> 200 end
 
         "#;
         xref_v2_check(&spec);
@@ -2527,7 +2525,7 @@ mod tests {
         DiagnosticsEnabled,
         FxHashMap<GleanFileId, String>,
     ) {
-        let (db, files, diag) = RootDatabase::with_many_files(spec);
+        let (db, fixture) = RootDatabase::with_fixture(spec);
         let project_id = ProjectId(0);
         let host = AnalysisHost::new(db);
         let glean = GleanIndexer {
@@ -2540,18 +2538,24 @@ mod tests {
         let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
         let mut file_names = HashMap::new();
         let db = host.raw_database();
-        for file_id in files {
+        for file_id in &fixture.files {
+            let file_id = file_id.clone();
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
             let path = source_root.path_for_file(&file_id).unwrap();
             let (name, ext) = path.name_and_extension().unwrap();
             let name = format!("{}.{}", name, ext.unwrap());
             file_names.insert(file_id.into(), name);
-            let text = db.file_text(file_id);
-            let (annotations, _text_without_annotations) = extract_annotations(&text);
+            let annotations = fixture.annotations_by_file_id(&file_id);
             expected_by_file.insert(file_id.into(), annotations);
         }
-        (facts, expected_by_file, file_names, diag, module_index)
+        (
+            facts,
+            expected_by_file,
+            file_names,
+            fixture.diagnostics_enabled,
+            module_index,
+        )
     }
 
     fn xref_check(spec: &str) {

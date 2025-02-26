@@ -12,7 +12,6 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::assert_eq_text;
-use elp_ide_db::elp_base_db::extract_annotations;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::FileId;
@@ -274,18 +273,19 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
 ) {
     let trimmed_fixture_before = trim_indent(fixture_before);
-    let (analysis, pos, diagnostics_enabled) = fixture::position(&trimmed_fixture_before);
+    let (analysis, fixture) = fixture::with_fixture(&trimmed_fixture_before);
+    let file_id = fixture.file_id();
+    let pos = fixture.position();
     let diagnostics = fixture::diagnostics_for(
         &analysis,
-        pos.file_id,
+        file_id,
         &config,
         adhoc_semantic_diagnostics,
-        &diagnostics_enabled,
+        &fixture.diagnostics_enabled,
     );
-    let diagnostics = diagnostics.diagnostics_for(pos.file_id);
+    let diagnostics = diagnostics.diagnostics_for(file_id);
 
-    let (expected, _text_without_annotations) =
-        extract_annotations(&analysis.db.file_text(pos.file_id));
+    let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
     assert_eq!(expected, actual);
 
@@ -380,15 +380,19 @@ fn convert_diagnostic_message(d: &Diagnostic) -> String {
 
 #[track_caller]
 pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
-    let (analysis, pos, diagnostics_enabled) = fixture::position(elp_fixture);
-    diagnostics_enabled.assert_ct_enabled();
-    let file_id = pos.file_id;
+    let (analysis, fixture) = fixture::with_fixture(elp_fixture);
+    fixture.diagnostics_enabled.assert_ct_enabled();
+    let file_id = fixture.file_id();
     let config = DiagnosticsConfig::default();
-    let diagnostics =
-        fixture::diagnostics_for(&analysis, file_id, &config, &vec![], &diagnostics_enabled);
+    let diagnostics = fixture::diagnostics_for(
+        &analysis,
+        file_id,
+        &config,
+        &vec![],
+        &fixture.diagnostics_enabled,
+    );
     let diagnostics = diagnostics.diagnostics_for(file_id);
-    let (expected, _text_without_annotations) =
-        extract_annotations(&analysis.db.file_text(file_id));
+    let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics);
     assert_eq!(expected, actual);
 }
@@ -404,22 +408,21 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
     adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     elp_fixture: &str,
 ) {
-    let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in files {
+    for file_id in &fixture.files {
+        let file_id = file_id.clone();
         let diagnostics = fixture::diagnostics_for(
             &analysis,
             file_id,
             &config,
             adhoc_semantic_diagnostics,
-            &diagnostics_enabled,
+            &fixture.diagnostics_enabled,
         );
         let diagnostics = diagnostics.diagnostics_for(file_id);
 
-        let (mut expected, _text_without_annotations) =
-            extract_annotations(&analysis.db.file_text(file_id));
-        expected.sort_by_key(|(r1, _)| r1.start());
+        let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
     }
@@ -438,25 +441,24 @@ pub(crate) fn check_filtered_diagnostics_with_config(
     elp_fixture: &str,
     filter: &dyn Fn(&Diagnostic) -> bool,
 ) {
-    let (db, files, diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in files {
+    for file_id in &fixture.files {
+        let file_id = file_id.clone();
         let diagnostics = fixture::diagnostics_for(
             &analysis,
             file_id,
             &config,
             adhoc_semantic_diagnostics,
-            &diagnostics_enabled,
+            &fixture.diagnostics_enabled,
         );
         let diagnostics = diagnostics
             .diagnostics_for(file_id)
             .into_iter()
             .filter(filter)
             .collect();
-        let (mut expected, _text_without_annotations) =
-            extract_annotations(&analysis.db.file_text(file_id));
-        expected.sort_by_key(|(r1, _)| r1.start());
+        let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
     }
@@ -468,16 +470,15 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     extra_diags: &LabeledDiagnostics,
     elp_fixture: &str,
 ) {
-    let (db, files, _diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
+    let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in files {
+    for file_id in &fixture.files {
+        let file_id = file_id.clone();
         let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, &vec![], file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
 
-        let (mut expected, _text_without_annotations) =
-            extract_annotations(&analysis.db.file_text(file_id));
-        expected.sort_by_key(|(r1, _)| r1.start());
+        let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
     }

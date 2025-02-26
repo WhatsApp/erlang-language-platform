@@ -594,8 +594,8 @@ foo() -> ok.
             r#"
 //- /src/main.erl
 -module(main).
-  -incl~ude("header.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+-incl~ude("header.hrl").
+%%<^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
 
 foo() -> ok.
 

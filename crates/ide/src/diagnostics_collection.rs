@@ -250,7 +250,6 @@ mod tests {
 
     use std::iter::once;
 
-    use elp_ide_db::elp_base_db::extract_annotations;
     use elp_ide_db::elp_base_db::FileId;
     use elp_syntax::label::Label;
     use fxhash::FxHashMap;
@@ -266,7 +265,6 @@ mod tests {
     use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
     use crate::diagnostics_collection::DiagnosticCollection;
     use crate::elp_ide_db::elp_base_db::fixture::WithFixture;
-    use crate::elp_ide_db::elp_base_db::FileLoader;
     use crate::elp_ide_db::RootDatabase;
     use crate::DiagnosticsConfig;
 
@@ -330,12 +328,13 @@ mod tests {
         extra_diags: &LabeledDiagnostics,
         elp_fixture: &str,
     ) {
-        let (db, files, _diagnostics_enabled) = RootDatabase::with_many_files(elp_fixture);
-        for file_id in files {
+        let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
+        for file_id in &fixture.files {
+            let file_id = file_id.clone();
             let diagnostics = diagnostics::native_diagnostics(&db, &config, &vec![], file_id);
 
             let combined = attach_related_diagnostics(diagnostics, extra_diags.clone());
-            let (expected, _text_without_annotations) = extract_annotations(&db.file_text(file_id));
+            let expected = fixture.annotations_by_file_id(&file_id);
             let mut actual = combined
                 .into_iter()
                 .map(|d| {

@@ -9,6 +9,7 @@
 
 //! Utilities for creating `Analysis` instances for tests.
 
+use elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
@@ -24,6 +25,14 @@ use crate::diagnostics_collection::DiagnosticCollection;
 use crate::Analysis;
 use crate::AnalysisHost;
 use crate::FilePosition;
+
+/// Creates analysis from a single file fixture
+#[track_caller]
+pub fn with_fixture(fixture: &str) -> (Analysis, ChangeFixture) {
+    let (db, fixture) = RootDatabase::with_fixture(fixture);
+    let host = AnalysisHost { db };
+    (host.analysis(), fixture)
+}
 
 /// Creates analysis from a single file fixture, returns the file id
 #[track_caller]
@@ -82,7 +91,7 @@ pub fn db_annotations(
         .expect(&format!("expected a marker ({})", CURSOR_MARKER));
     let offset = range_or_offset.expect_offset();
 
-    let annotations = fixture.annotations(&db);
+    let annotations = fixture.annotations();
     (
         db,
         FilePosition { file_id, offset },
