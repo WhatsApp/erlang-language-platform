@@ -30,8 +30,9 @@ Context expected type: 'ok'
    │                      
 
 Because in the expression's type:
-  Here the type is:     #{}
-  Context expects type: 'ok'
+  Here the type is a union type with some valid candidates: 'ok'
+  However the following candidate: #{}
+  Differs from the expected type:  'ok'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -51,6 +52,8 @@ Context expected type: #{b := number()}
    │                      
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: none()
+  However, the following candidate doesn't match:
   Here the type is:     #{...}
   Context expects type: #{b := ..., ...}
   The type of the expression is missing the following required keys: b.

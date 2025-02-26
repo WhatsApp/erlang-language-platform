@@ -108,9 +108,9 @@ Context expected type: {'ok'} | 'a'
     │                  
 
 Because in the expression's type:
-  Here the type is:     opaque misc:o()
-  Context expects type: {'ok'} | 'a'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'a'
+  However the following candidate: opaque misc:o()
+  Differs from the expected type:  {'ok'} | 'a'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -132,8 +132,9 @@ Context expected type: misc:o()
     │                  
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: opaque misc:o()
+  Here the type is a union type with some valid candidates: misc:o()
+  However the following candidate: 'a'
+  Differs from the expected type:  opaque misc:o()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -153,8 +154,9 @@ Context expected type: misc:o()
     │                  
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: opaque misc:o()
+  Here the type is a union type with some valid candidates: misc:o()
+  However the following candidate: 'a'
+  Differs from the expected type:  opaque misc:o()
 
 ------------------------------ Detailed message ------------------------------
 

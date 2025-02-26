@@ -34,8 +34,9 @@ Context expected type: none()
    │   
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: none()
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: number()
+  Differs from the expected type:  none()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -63,8 +64,9 @@ Context expected type: 'ok'
    │   
 
 Because in the expression's type:
-  Here the type is:     string()
-  Context expects type: 'ok'
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: string()
+  Differs from the expected type:  'ok'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -100,8 +102,9 @@ Context expected type: number()
     │         
 
 Because in the expression's type:
-  Here the type is:     'three'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'three'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 

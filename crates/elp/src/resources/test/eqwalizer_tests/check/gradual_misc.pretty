@@ -34,9 +34,9 @@ Context expected type: 'a' | {none()}
    │                                         
 
 Because in the expression's type:
-  Here the type is:     {'b', 'c'}
-  Context expects type: 'a' | {none()}
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: none()
+  However the following candidate: {'b', 'c'}
+  Differs from the expected type:  'a' | {none()}
 
 ------------------------------ Detailed message ------------------------------
 

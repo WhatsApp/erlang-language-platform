@@ -75,8 +75,9 @@ Context expected type: ref_contravariant_ab()
 
 Because in the expression's type:
   fun((
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   ) -> 'ok')
 
 ------------------------------ Detailed message ------------------------------

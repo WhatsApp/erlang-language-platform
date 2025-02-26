@@ -18,8 +18,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     []
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: 'error'
+  However the following candidate: []
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 

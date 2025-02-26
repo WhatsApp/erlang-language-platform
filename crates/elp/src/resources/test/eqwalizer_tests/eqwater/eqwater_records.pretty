@@ -10,8 +10,9 @@ Context expected type: number()
    │                
 
 Because in the expression's type:
-  Here the type is:     #rec1{}
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: #rec1{}
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -33,8 +34,9 @@ Context expected type: number()
    │                
 
 Because in the expression's type:
-  Here the type is:     #rec1{}
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: #rec1{}
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -56,8 +58,9 @@ Context expected type: number()
    │           
 
 Because in the expression's type:
-  Here the type is:     #rec1{}
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: #rec1{}
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -79,6 +82,8 @@ Context expected type: {#rec1{}, #rec2{}}
     │                         
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
+  However, the following candidate doesn't match:
   { 
     Here the type is:     #rec2{}
     Context expects type: #rec1{}
@@ -105,6 +110,8 @@ Context expected type: {#rec1{}, #rec2{}}
     │                         
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
+  However, the following candidate doesn't match:
   { 
     Here the type is:     #rec2{}
     Context expects type: #rec1{}

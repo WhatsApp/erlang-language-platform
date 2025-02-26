@@ -88,8 +88,9 @@ Context expected type: number()
     │       
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: 'a'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -179,8 +180,9 @@ Context expected type: number()
     │                   
 
 Because in the expression's type:
-  Here the type is:     'undefined'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -200,8 +202,9 @@ Context expected type: number()
     │                   
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -221,8 +224,9 @@ Context expected type: number()
     │                   
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number() | dynamic()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -242,8 +246,9 @@ Context expected type: number()
     │                   
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number() | dynamic()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -269,9 +274,9 @@ Context expected type: 'foo' | 'bar' | binary()
     │             
 
 Because in the expression's type:
-  Here the type is:     'undefined'
-  Context expects type: 'foo' | 'bar' | binary()
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'bar' | 'foo'
+  However the following candidate: 'undefined'
+  Differs from the expected type:  'foo' | 'bar' | binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -293,8 +298,9 @@ Context expected type: 'foo'
     │   
 
 Because in the expression's type:
-  Here the type is:     'bar'
-  Context expects type: 'foo'
+  Here the type is a union type with some valid candidates: 'foo'
+  However the following candidate: 'bar'
+  Differs from the expected type:  'foo'
 
 ------------------------------ Detailed message ------------------------------
 

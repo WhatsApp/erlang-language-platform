@@ -220,8 +220,9 @@ Context expected type: 'a'
     │     
 
 Because in the expression's type:
-  Here the type is:     'b'
-  Context expects type: 'a'
+  Here the type is a union type with some valid candidates: 'a'
+  However the following candidate: 'b'
+  Differs from the expected type:  'a'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -249,8 +250,9 @@ Context expected type: 'a'
     │     
 
 Because in the expression's type:
-  Here the type is:     'b'
-  Context expects type: 'a'
+  Here the type is a union type with some valid candidates: 'a'
+  However the following candidate: 'b'
+  Differs from the expected type:  'a'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -270,8 +272,9 @@ Context expected type: 'b'
     │     
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b'
+  Here the type is a union type with some valid candidates: 'b'
+  However the following candidate: 'a'
+  Differs from the expected type:  'b'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -330,8 +333,9 @@ Context expected type: 'first'
     │     
 
 Because in the expression's type:
-  Here the type is:     Last
-  Context expects type: 'first'
+  Here the type is a union type with some valid candidates: 'first'
+  However the following candidate: Last
+  Differs from the expected type:  'first'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -351,8 +355,9 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is:     T
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: T
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -540,8 +545,9 @@ Context expected type: contravar(contravar('a'))
 Because in the expression's type:
   fun((
     fun((
-      Here the type is:     'b'
-      Context expects type: 'a'
+      Here the type is a union type with some valid candidates: 'a'
+      However the following candidate: 'b'
+      Differs from the expected type:  'a'
     ) -> 'ok')
   ) -> 'ok')
 
@@ -685,8 +691,9 @@ Context expected type: fun(('a' | 'b') -> 'a' | 'b')
 
 Because in the expression's type:
   fun((
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   ) -> 'a')
 
 ------------------------------ Detailed message ------------------------------

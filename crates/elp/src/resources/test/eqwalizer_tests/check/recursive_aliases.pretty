@@ -10,6 +10,8 @@ Context expected type: chainB()
    │                    
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: 'nil'
+  However, the following candidate doesn't match:
   { 
     Here the type is:     'a'
     Context expects type: 'b'
@@ -37,6 +39,8 @@ Context expected type: chainA()
    │                    
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: 'nil'
+  However, the following candidate doesn't match:
   { 
     Here the type is:     'b'
     Context expects type: 'a'
@@ -64,6 +68,8 @@ Context expected type: chainA()
    │                    
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: 'nil' | {'a', chainAB()}
+  However, the following candidate doesn't match:
   { 
     Here the type is:     'b'
     Context expects type: 'a'
@@ -91,6 +97,8 @@ Context expected type: chainB()
    │                    
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: 'nil' | {'b', chainAB()}
+  However, the following candidate doesn't match:
   { 
     Here the type is:     'a'
     Context expects type: 'b'
@@ -131,9 +139,9 @@ Context expected type: pchainAB(atom())
    │                      
 
 Because in the expression's type:
-  Here the type is:     {'a', atom(), pchainA(atom())}
-  Context expects type: 'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'nil'
+  However the following candidate: {'a', atom(), pchainA(atom())}
+  Differs from the expected type:  'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -158,9 +166,9 @@ Context expected type: mChainA()
     │                       
 
 Because in the expression's type:
-  Here the type is:     #{b := mChainB()}
-  Context expects type: 'nil' | #{a := mChainA()}
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'nil'
+  However the following candidate: #{b := mChainB()}
+  Differs from the expected type:  'nil' | #{a := mChainA()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -192,6 +200,8 @@ Context expected type: pchainA('b' | 'c')
     │                     
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: 'nil'
+  However, the following candidate doesn't match:
   { 'a', 
     Here the type is:     'a'
     Context expects type: 'b' | 'c'

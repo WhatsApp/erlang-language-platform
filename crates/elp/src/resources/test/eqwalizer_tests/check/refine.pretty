@@ -185,8 +185,9 @@ Context expected type: ['a']
 
 Because in the expression's type:
   [
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -218,8 +219,9 @@ Context expected type: ['a']
 
 Because in the expression's type:
   [
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -463,8 +465,9 @@ Context expected type: number()
     │                
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -484,8 +487,9 @@ Context expected type: {'my_rec', term(), term()}
     │             
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: {'my_rec', term(), term()}
+  Here the type is a union type with some valid candidates: #my_rec{}
+  However the following candidate: 'a'
+  Differs from the expected type:  {'my_rec', term(), term()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -505,8 +509,9 @@ Context expected type: binary()
     │     
 
 Because in the expression's type:
-  Here the type is:     'undefined'
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 

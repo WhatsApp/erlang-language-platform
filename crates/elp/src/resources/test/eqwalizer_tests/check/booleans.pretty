@@ -18,8 +18,9 @@ Context expected type: 'true'
    │   
 
 Because in the expression's type:
-  Here the type is:     'false'
-  Context expects type: 'true'
+  Here the type is a union type with some valid candidates: 'true'
+  However the following candidate: 'false'
+  Differs from the expected type:  'true'
 
 ------------------------------ Detailed message ------------------------------
 

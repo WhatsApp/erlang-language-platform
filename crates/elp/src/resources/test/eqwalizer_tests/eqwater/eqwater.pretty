@@ -10,8 +10,9 @@ Context expected type: binary()
     │       
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -31,8 +32,9 @@ Context expected type: binary()
     │                      
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -52,8 +54,9 @@ Context expected type: binary()
     │       
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -73,8 +76,9 @@ Context expected type: atom()
     │             
 
 Because in the expression's type:
-  Here the type is:     #ab_rec{}
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: #ab_rec{}
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -94,8 +98,9 @@ Context expected type: atom()
     │                
 
 Because in the expression's type:
-  Here the type is:     #ab_rec{}
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: #ab_rec{}
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -123,8 +128,9 @@ Context expected type: number()
     │                     
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -144,8 +150,9 @@ Context expected type: number()
     │                         
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -165,8 +172,9 @@ Context expected type: number()
     │                         
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -186,8 +194,9 @@ Context expected type: binary()
     │   
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: none()
+  However the following candidate: atom()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -208,8 +217,9 @@ Context expected type: {'union_field', atom()}
 
 Because in the expression's type:
   { 'union_field', 
-    Here the type is:     binary()
-    Context expects type: atom()
+    Here the type is a union type with some valid candidates: none()
+    However the following candidate: binary()
+    Differs from the expected type:  atom()
   }
 
 ------------------------------ Detailed message ------------------------------
@@ -233,8 +243,9 @@ Context expected type: number()
     │                                                  
 
 Because in the expression's type:
-  Here the type is:     'ok'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'ok'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -254,8 +265,9 @@ Context expected type: #b{}
     │        
 
 Because in the expression's type:
-  Here the type is:     #a{}
-  Context expects type: #b{}
+  Here the type is a union type with some valid candidates: #b{}
+  However the following candidate: #a{}
+  Differs from the expected type:  #b{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -275,8 +287,9 @@ Context expected type: B
     │                           
 
 Because in the expression's type:
-  Here the type is:     A
-  Context expects type: B
+  Here the type is a union type with some valid candidates: B
+  However the following candidate: A
+  Differs from the expected type:  B
 
 ------------------------------ Detailed message ------------------------------
 
@@ -296,8 +309,9 @@ Context expected type: {term()}
     │                 
 
 Because in the expression's type:
-  Here the type is:     fun()
-  Context expects type: {term()}
+  Here the type is a union type with some valid candidates: {term()}
+  However the following candidate: fun()
+  Differs from the expected type:  {term()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -317,8 +331,9 @@ Context expected type: atom()
     │                 
 
 Because in the expression's type:
-  Here the type is:     tuple()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: tuple()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -338,8 +353,9 @@ Context expected type: #one_field{}
     │                  
 
 Because in the expression's type:
-  Here the type is:     #two_fields1{}
-  Context expects type: #one_field{}
+  Here the type is a union type with some valid candidates: #one_field{}
+  However the following candidate: #two_fields1{}
+  Differs from the expected type:  #one_field{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -359,8 +375,9 @@ Context expected type: number()
     │                           
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -396,8 +413,9 @@ Context expected type: number()
      │                    
 
 Because in the expression's type:
-  Here the type is:     'undefined'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -417,6 +435,8 @@ Context expected type: [atom()]
      │              
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: [atom()]
+  However, the following candidate doesn't match:
   [
     Here the type is:     [atom()]
     Context expects type: atom()
@@ -442,6 +462,8 @@ Context expected type: [atom()]
      │               
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: [atom()]
+  However, the following candidate doesn't match:
   [
     Here the type is:     [atom()]
     Context expects type: atom()
@@ -467,8 +489,9 @@ Context expected type: binary()
      │       
 
 Because in the expression's type:
-  Here the type is:     string()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: string()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -488,8 +511,9 @@ Context expected type: binary()
      │       
 
 Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: atom()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -509,8 +533,9 @@ Context expected type: binary()
      │                                                            
 
 Because in the expression's type:
-  Here the type is:     'ok'
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: 'ok'
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -530,8 +555,9 @@ Context expected type: 'ok'
      │                              
 
 Because in the expression's type:
-  Here the type is:     binary()
-  Context expects type: 'ok'
+  Here the type is a union type with some valid candidates: 'ok'
+  However the following candidate: binary()
+  Differs from the expected type:  'ok'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -551,8 +577,9 @@ Context expected type: number()
      │              
 
 Because in the expression's type:
-  Here the type is:     {term(), my_list()}
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: {term(), my_list()}
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -580,8 +607,9 @@ Context expected type: 'b'
      │                             
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b'
+  Here the type is a union type with some valid candidates: 'b'
+  However the following candidate: 'a'
+  Differs from the expected type:  'b'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -601,8 +629,9 @@ Context expected type: 'b'
      │     
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b'
+  Here the type is a union type with some valid candidates: none()
+  However the following candidate: 'a'
+  Differs from the expected type:  'b'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -622,9 +651,9 @@ Context expected type: 'a' | 'b'
      │                                                            
 
 Because in the expression's type:
-  Here the type is:     'c'
-  Context expects type: 'a' | 'b'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: none()
+  However the following candidate: 'c'
+  Differs from the expected type:  'a' | 'b'
 
 ------------------------------ Detailed message ------------------------------
 

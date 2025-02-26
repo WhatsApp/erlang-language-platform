@@ -88,8 +88,9 @@ Context expected type: 'ok'
     │                            
 
 Because in the expression's type:
-  Here the type is:     'error'
-  Context expects type: 'ok'
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: 'error'
+  Differs from the expected type:  'ok'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -117,8 +118,9 @@ Context expected type: 'ok'
     │                                
 
 Because in the expression's type:
-  Here the type is:     'err'
-  Context expects type: 'ok'
+  Here the type is a union type with some valid candidates: dyn_alias()
+  However the following candidate: 'err'
+  Differs from the expected type:  'ok'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -139,8 +141,9 @@ Context expected type: {'ok'}
 
 Because in the expression's type:
   { 
-    Here the type is:     'err'
-    Context expects type: 'ok'
+    Here the type is a union type with some valid candidates: dyn_alias()
+    However the following candidate: 'err'
+    Differs from the expected type:  'ok'
   }
 
 ------------------------------ Detailed message ------------------------------

@@ -26,9 +26,9 @@ Context expected type: number() | atom()
    │                    
 
 Because in the expression's type:
-  Here the type is:     pid()
-  Context expects type: number() | atom()
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: number() | atom()
+  However the following candidate: pid()
+  Differs from the expected type:  number() | atom()
 
 ------------------------------ Detailed message ------------------------------
 

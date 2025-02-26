@@ -10,8 +10,9 @@ Context expected type: 'c'
    │                     
 
 Because in the expression's type:
-  Here the type is:     'b'
-  Context expects type: 'c'
+  Here the type is a union type with some valid candidates: dyn('a')
+  However the following candidate: 'b'
+  Differs from the expected type:  'c'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -74,8 +75,9 @@ Context expected type: number()
    │     
 
 Because in the expression's type:
-  Here the type is:     'test'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'test'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -95,8 +97,9 @@ Context expected type: number()
    │     
 
 Because in the expression's type:
-  Here the type is:     'test'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: dyn(number())
+  However the following candidate: 'test'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 

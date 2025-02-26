@@ -34,8 +34,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     term()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: 'undefined'
+  However the following candidate: term()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -55,8 +56,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     term()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: 'undefined'
+  However the following candidate: term()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 

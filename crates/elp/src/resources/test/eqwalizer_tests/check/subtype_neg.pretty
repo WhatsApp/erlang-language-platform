@@ -49,9 +49,9 @@ Context expected type: 'a' | 'b'
    │           
 
 Because in the expression's type:
-  Here the type is:     'c'
-  Context expects type: 'a' | 'b'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'a' | 'b'
+  However the following candidate: 'c'
+  Differs from the expected type:  'a' | 'b'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -82,8 +82,9 @@ Context expected type: {'a', 'b'} | {'b', 'a'}
 
 Because in the expression's type:
   { 
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   , 'a' | 'b'}
 
 ------------------------------ Detailed message ------------------------------
@@ -110,8 +111,9 @@ Context expected type: pair_diff_elems()
 
 Because in the expression's type:
   { 
-    Here the type is:     'b'
-    Context expects type: 'a'
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
   , ab()}
 
 ------------------------------ Detailed message ------------------------------
@@ -373,6 +375,8 @@ Context expected type: []
    │             
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: [none()]
+  However, the following candidate doesn't match:
   [
     Here the type is:     'a'
     Context expects type: none()

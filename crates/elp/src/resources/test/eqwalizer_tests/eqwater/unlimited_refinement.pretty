@@ -10,8 +10,9 @@ Context expected type: number()
    │              
 
 Because in the expression's type:
-  Here the type is:     binary()
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: binary()
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 

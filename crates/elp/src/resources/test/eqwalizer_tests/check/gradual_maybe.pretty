@@ -50,9 +50,9 @@ Context expected type: 'b' | 'c'
     │                  
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b' | 'c'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'b' | 'c'
+  However the following candidate: 'a'
+  Differs from the expected type:  'b' | 'c'
 
 ------------------------------ Detailed message ------------------------------
 

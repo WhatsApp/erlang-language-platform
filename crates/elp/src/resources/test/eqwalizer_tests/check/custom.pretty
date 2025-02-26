@@ -33,8 +33,9 @@ Context expected type: tuple()
    │                
 
 Because in the expression's type:
-  Here the type is:     [dynamic()]
-  Context expects type: tuple()
+  Here the type is a union type with some valid candidates: {atom(), string()}
+  However the following candidate: [dynamic()]
+  Differs from the expected type:  tuple()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -69,8 +70,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: number()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -90,8 +92,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: number()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -111,8 +114,9 @@ Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is:     string()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: 'error' | 'foo' | 'ok'
+  However the following candidate: string()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -180,8 +184,9 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: number()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -201,8 +206,9 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: number()
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -224,8 +230,9 @@ Context expected type: {atom(), number()}
 
 Because in the expression's type:
   { atom(), 
-    Here the type is:     'undefined'
-    Context expects type: number()
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: 'undefined'
+    Differs from the expected type:  number()
   }
 
 ------------------------------ Detailed message ------------------------------
@@ -249,9 +256,9 @@ Context expected type: 'a_v' | 'b_v'
     │                           
 
 Because in the expression's type:
-  Here the type is:     'c_v'
-  Context expects type: 'a_v' | 'b_v'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'a_v'
+  However the following candidate: 'c_v'
+  Differs from the expected type:  'a_v' | 'b_v'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -273,9 +280,9 @@ Context expected type: 'a_v' | 'b_v' | 'undefined'
     │                           
 
 Because in the expression's type:
-  Here the type is:     'c_v'
-  Context expects type: 'a_v' | 'b_v' | 'undefined'
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: 'undefined' | 'a_v'
+  However the following candidate: 'c_v'
+  Differs from the expected type:  'a_v' | 'b_v' | 'undefined'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -337,8 +344,9 @@ Context expected type: #{term() => term()}
     │                                     
 
 Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: #{term() => term()}
+  Here the type is a union type with some valid candidates: #{K => V}
+  However the following candidate: 'a'
+  Differs from the expected type:  #{term() => term()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -495,8 +503,9 @@ Context expected type: atom()
     │   ╰─────' 
 
 Because in the expression's type:
-  Here the type is:     []
-  Context expects type: atom()
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: []
+  Differs from the expected type:  atom()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -537,8 +546,9 @@ Context expected type: [binary()] | [number()] | [atom()]
 
 Because in the expression's type:
   [
-    Here the type is:     number()
-    Context expects type: binary()
+    Here the type is a union type with some valid candidates: binary()
+    However the following candidate: number()
+    Differs from the expected type:  binary()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -714,9 +724,9 @@ Context expected type: boolean() | {'true', term()}
     │                 
 
 Because in the expression's type:
-  Here the type is:     'wrong_ret'
-  Context expects type: boolean() | {'true', term()}
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: {'true', 'a'}
+  However the following candidate: 'wrong_ret'
+  Differs from the expected type:  boolean() | {'true', term()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -739,9 +749,9 @@ Context expected type: fun(('a' | 'b') -> boolean() | ['a' | 'b'])
 
 Because in the expression's type:
   fun(('a' | 'b') ->
-    Here the type is:     'wrong_ret'
-    Context expects type: boolean() | ['a' | 'b']
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: ['a'] | 'true'
+    However the following candidate: 'wrong_ret'
+    Differs from the expected type:  boolean() | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -795,9 +805,9 @@ Context expected type: fun(('a' | 'b') -> boolean() | ['a' | 'b'])
 
 Because in the expression's type:
   fun(('a' | 'b') ->
-    Here the type is:     {'true', 'a'}
-    Context expects type: boolean() | ['a' | 'b']
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: ['a'] | 'false'
+    However the following candidate: {'true', 'a'}
+    Differs from the expected type:  boolean() | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -827,9 +837,9 @@ Context expected type: fun(('a' | 'b') -> boolean() | ['a' | 'b'])
 
 Because in the expression's type:
   fun(('a' | 'b') ->
-    Here the type is:     'wrong_ret'
-    Context expects type: boolean() | ['a' | 'b']
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: ['a']
+    However the following candidate: 'wrong_ret'
+    Differs from the expected type:  boolean() | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -1036,8 +1046,9 @@ Context expected type: [number()]
 
 Because in the expression's type:
   [
-    Here the type is:     'a'
-    Context expects type: number()
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: 'a'
+    Differs from the expected type:  number()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -1411,8 +1422,9 @@ Context expected type: {'b', 'true'}
      │ 
 
 Because in the expression's type:
-  Here the type is:     'none'
-  Context expects type: {'b', 'true'}
+  Here the type is a union type with some valid candidates: tuple()
+  However the following candidate: 'none'
+  Differs from the expected type:  {'b', 'true'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1229:25
@@ -1434,8 +1446,9 @@ Context expected type: 'none'
      │     
 
 Because in the expression's type:
-  Here the type is:     tuple()
-  Context expects type: 'none'
+  Here the type is a union type with some valid candidates: 'none'
+  However the following candidate: tuple()
+  Differs from the expected type:  'none'
 
 ------------------------------ Detailed message ------------------------------
 
@@ -1651,8 +1664,9 @@ Context expected type: [number()]
 
 Because in the expression's type:
   [
-    Here the type is:     string()
-    Context expects type: number()
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: string()
+    Differs from the expected type:  number()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -1935,8 +1949,9 @@ Context expected type: {atom(), number()}
 
 Because in the expression's type:
   { atom(), 
-    Here the type is:     pid()
-    Context expects type: number()
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: pid()
+    Differs from the expected type:  number()
   }
 
 ------------------------------ Detailed message ------------------------------
@@ -2029,8 +2044,9 @@ Context expected type: binary()
      │     
 
 Because in the expression's type:
-  Here the type is:     string()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: string()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -2053,9 +2069,9 @@ Context expected type: [file:name_all()]
 
 Because in the expression's type:
   [
-    Here the type is:     pid()
-    Context expects type: string() | atom() | file:deep_list() | binary()
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: binary()
+    However the following candidate: pid()
+    Differs from the expected type:  string() | atom() | file:deep_list() | binary()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -2149,8 +2165,9 @@ Context expected type: binary()
      │     
 
 Because in the expression's type:
-  Here the type is:     string()
-  Context expects type: binary()
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: string()
+  Differs from the expected type:  binary()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -2198,8 +2215,9 @@ Context expected type: queue:queue(number())
 
 Because in the expression's type:
   Opaque queue:queue/1(
-    Here the type is:     atom()
-    Context expects type: number()
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: atom()
+    Differs from the expected type:  number()
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -2222,6 +2240,8 @@ Context expected type: state1()
      │     
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: #{count := number(), module := 'foo'}
+  However, the following candidate doesn't match:
   Here the type is:     #{...}
   Context expects type: #{count := ..., ...}
   The type of the expression is missing the following required keys: count.

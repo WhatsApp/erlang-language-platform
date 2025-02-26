@@ -11,8 +11,9 @@ Context expected type: {T, U}
 
 Because in the expression's type:
   { 
-    Here the type is:     U
-    Context expects type: T
+    Here the type is a union type with some valid candidates: T
+    However the following candidate: U
+    Differs from the expected type:  T
   , T | U}
 
 ------------------------------ Detailed message ------------------------------
@@ -87,8 +88,9 @@ Context expected type: T
     │                 
 
 Because in the expression's type:
-  Here the type is:     [T]
-  Context expects type: T
+  Here the type is a union type with some valid candidates: T
+  However the following candidate: [T]
+  Differs from the expected type:  T
 
 ------------------------------ Detailed message ------------------------------
 
@@ -132,6 +134,8 @@ Context expected type: [K]
     │                             
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: [K]
+  However, the following candidate doesn't match:
   [
     Here the type is:     [K]
     Context expects type: K

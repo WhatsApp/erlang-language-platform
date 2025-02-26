@@ -11,8 +11,9 @@ Context expected type: [atom()] | [binary()]
 
 Because in the expression's type:
   [
-    Here the type is:     binary()
-    Context expects type: atom()
+    Here the type is a union type with some valid candidates: atom()
+    However the following candidate: binary()
+    Differs from the expected type:  atom()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -38,8 +39,9 @@ Context expected type: [atom()] | [binary()]
 
 Because in the expression's type:
   [
-    Here the type is:     binary()
-    Context expects type: atom()
+    Here the type is a union type with some valid candidates: atom()
+    However the following candidate: binary()
+    Differs from the expected type:  atom()
   ]
 
 ------------------------------ Detailed message ------------------------------

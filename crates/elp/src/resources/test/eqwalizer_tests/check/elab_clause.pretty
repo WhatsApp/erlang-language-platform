@@ -26,8 +26,9 @@ Context expected type: number()
    │     
 
 Because in the expression's type:
-  Here the type is:     'error'
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'error'
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 
@@ -47,8 +48,9 @@ Context expected type: number()
    │     
 
 Because in the expression's type:
-  Here the type is:     [dynamic()]
-  Context expects type: number()
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: [dynamic()]
+  Differs from the expected type:  number()
 
 ------------------------------ Detailed message ------------------------------
 

@@ -10,8 +10,9 @@ Context expected type: r1()
    │   
 
 Because in the expression's type:
-  Here the type is:     #r2{}
-  Context expects type: #r1{}
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -33,8 +34,9 @@ Context expected type: r1()
    │   
 
 Because in the expression's type:
-  Here the type is:     #r2{}
-  Context expects type: #r1{}
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -56,8 +58,9 @@ Context expected type: r1()
    │   
 
 Because in the expression's type:
-  Here the type is:     #r2{}
-  Context expects type: #r1{}
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -79,8 +82,9 @@ Context expected type: r1()
    │   
 
 Because in the expression's type:
-  Here the type is:     #r2{}
-  Context expects type: #r1{}
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -102,8 +106,9 @@ Context expected type: r1()
    │   
 
 Because in the expression's type:
-  Here the type is:     #r2{}
-  Context expects type: #r1{}
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
 
 ------------------------------ Detailed message ------------------------------
 

@@ -367,8 +367,9 @@ Context expected type: {[atom()], [number()]}
 Because in the expression's type:
   { 
     [
-      Here the type is:     number()
-      Context expects type: atom()
+      Here the type is a union type with some valid candidates: atom()
+      However the following candidate: number()
+      Differs from the expected type:  atom()
     ]
   , [atom() | number()]}
 
@@ -397,8 +398,9 @@ Context expected type: {[atom()] | [number()], [atom()] | [number()]}
 Because in the expression's type:
   { 
     [
-      Here the type is:     number()
-      Context expects type: atom()
+      Here the type is a union type with some valid candidates: atom()
+      However the following candidate: number()
+      Differs from the expected type:  atom()
     ]
   , [atom() | number()]}
 
@@ -482,9 +484,9 @@ Context expected type: [atom() | number()]
 
 Because in the expression's type:
   [
-    Here the type is:     binary()
-    Context expects type: atom() | number()
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: atom()
+    However the following candidate: binary()
+    Differs from the expected type:  atom() | number()
   ]
 
 ------------------------------ Detailed message ------------------------------
@@ -636,9 +638,9 @@ Context expected type: v1_op()
     │     
 
 Because in the expression's type:
-  Here the type is:     'v2_op'
-  Context expects type: 'v1_op1' | 'v1_op2' | stuff() | v0_op()
-  No candidate matches in the expected union.
+  Here the type is a union type with some valid candidates: v1_op()
+  However the following candidate: 'v2_op'
+  Differs from the expected type:  'v1_op1' | 'v1_op2' | stuff() | v0_op()
 
 ------------------------------ Detailed message ------------------------------
 

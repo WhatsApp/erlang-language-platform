@@ -11,8 +11,9 @@ Context expected type: t5()
 
 Because in the expression's type:
   { 'msg', 
-    Here the type is:     'err'
-    Context expects type: 'ok'
+    Here the type is a union type with some valid candidates: 'ok'
+    However the following candidate: 'err'
+    Differs from the expected type:  'ok'
   , 'arg' | 'nil'}
 
 ------------------------------ Detailed message ------------------------------
@@ -38,6 +39,8 @@ Context expected type: tree1()
    │                          
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: {'leaf', atom()}
+  However, the following candidate doesn't match:
   { 
     Here the type is:     'b1' | 'b2' | 'b3'
     Context expects type: 'leaf'

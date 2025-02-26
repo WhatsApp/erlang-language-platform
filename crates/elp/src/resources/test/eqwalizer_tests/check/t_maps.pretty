@@ -35,8 +35,9 @@ Context expected type: #{number() => atom()}
 
 Because in the expression's type:
   #{ number() =>
-    Here the type is:     number()
-    Context expects type: atom()
+    Here the type is a union type with some valid candidates: 'zero'
+    However the following candidate: number()
+    Differs from the expected type:  atom()
   , ... }
 
 ------------------------------ Detailed message ------------------------------
@@ -373,9 +374,9 @@ Context expected type: kv(K1 | K2, V1 | V2)
 
 Because in the expression's type:
   #{ map domains are incompatible:
-    Here the type is:     V2
-    Context expects type: K1 | K2
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: K1
+    However the following candidate: V2
+    Differs from the expected type:  K1 | K2
   , ... }
 
 ------------------------------ Detailed message ------------------------------
@@ -501,6 +502,8 @@ Context expected type: #{a() | n() => a()}
     │                         
 
 Because in the expression's type:
+  The type is a union type with some valid candidates: #{n() => a()} | #{id => 'id' | 'no_id'}
+  However, the following candidate doesn't match:
   #{ a() =>
     Here the type is:     number()
     Context expects type: atom()
@@ -577,9 +580,9 @@ Context expected type: #{a => 'b' | 'c'}
 
 Because in the expression's type:
   #{ a =>
-    Here the type is:     'a'
-    Context expects type: 'b' | 'c'
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: 'b' | 'c'
+    However the following candidate: 'a'
+    Differs from the expected type:  'b' | 'c'
   , ... }
 
 ------------------------------ Detailed message ------------------------------
@@ -631,9 +634,9 @@ Context expected type: 'a' | #{item := 'a' | #{item := 'a' | gen_shape('a')}}
 
 Because in the expression's type:
   #{ item =>
-    Here the type is:     'b'
-    Context expects type: 'a' | #{item := 'a' | gen_shape('a')}
-    No candidate matches in the expected union.
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a' | #{item := 'a' | gen_shape('a')}
   , ... }
 
 ------------------------------ Detailed message ------------------------------
