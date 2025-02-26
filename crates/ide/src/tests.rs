@@ -536,9 +536,13 @@ pub fn check_call_hierarchy(prepare_fixture: &str, incoming_fixture: &str, outgo
 
 fn check_call_hierarchy_prepare(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, mut annotations) =
-        fixture::annotations(trimmed_fixture.as_str());
-    let mut navs = analysis.call_hierarchy_prepare(pos).unwrap().unwrap().info;
+    let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
+    let mut annotations = fixture.annotations();
+    let mut navs = analysis
+        .call_hierarchy_prepare(fixture.position())
+        .unwrap()
+        .unwrap()
+        .info;
     assert_eq!(navs.len(), 1);
     assert_eq!(annotations.len(), 1);
     let nav = navs.pop().unwrap();
@@ -552,9 +556,12 @@ fn check_call_hierarchy_prepare(fixture: &str) {
 
 fn check_call_hierarchy_incoming_calls(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, mut expected) =
-        fixture::annotations(trimmed_fixture.as_str());
-    let incoming_calls = analysis.incoming_calls(pos).unwrap().unwrap();
+    let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
+    let expected = fixture.annotations();
+    let incoming_calls = analysis
+        .incoming_calls(fixture.position())
+        .unwrap()
+        .unwrap();
     let mut actual = Vec::new();
     for call in incoming_calls {
         actual.push((
@@ -577,15 +584,17 @@ fn check_call_hierarchy_incoming_calls(fixture: &str) {
     let cmp =
         |(frange, text): &(FileRange, String)| (frange.file_id, frange.range.start(), text.clone());
     actual.sort_by_key(cmp);
-    expected.sort_by_key(cmp);
     assert_eq!(actual, expected);
 }
 
 fn check_call_hierarchy_outgoing_calls(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
-    let (analysis, pos, _diagnostics_enabled, mut expected) =
-        fixture::annotations(trimmed_fixture.as_str());
-    let outgoing_calls = analysis.outgoing_calls(pos).unwrap().unwrap();
+    let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
+    let expected = fixture.annotations();
+    let outgoing_calls = analysis
+        .outgoing_calls(fixture.position())
+        .unwrap()
+        .unwrap();
     let mut actual = Vec::new();
     for call in outgoing_calls {
         actual.push((
@@ -598,7 +607,7 @@ fn check_call_hierarchy_outgoing_calls(fixture: &str) {
         for range in call.ranges {
             actual.push((
                 FileRange {
-                    file_id: pos.file_id,
+                    file_id: fixture.file_id(),
                     range,
                 },
                 format!("from_range: {}", call.target.name),
@@ -608,6 +617,5 @@ fn check_call_hierarchy_outgoing_calls(fixture: &str) {
     let cmp =
         |(frange, text): &(FileRange, String)| (frange.file_id, frange.range.start(), text.clone());
     actual.sort_by_key(cmp);
-    expected.sort_by_key(cmp);
     assert_eq!(actual, expected);
 }

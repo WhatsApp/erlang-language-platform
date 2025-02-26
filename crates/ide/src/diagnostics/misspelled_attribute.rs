@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_can_ignore_valid_spelling() {
-        let (analysis, position, _, _) = fixture::annotations(
+        let (analysis, fixture) = fixture::with_fixture(
             r#"
     -module(main).
     -di~alyzer({nowarn_function, f/0}).
@@ -184,7 +184,7 @@ mod tests {
         );
         let config = DiagnosticsConfig::default();
         let diags = analysis
-            .native_diagnostics(&config, &vec![], position.file_id)
+            .native_diagnostics(&config, &vec![], fixture.file_id())
             .unwrap();
         assert!(
             diags.is_empty(),
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_does_not_consider_the_names_of_records() {
-        let (analysis, position, _, _) = fixture::annotations(
+        let (analysis, fixture) = fixture::with_fixture(
             r#"
     -module(main).
     -re~cord(dyalizer, {field = "foo"}).
@@ -205,7 +205,7 @@ mod tests {
         );
         let config = DiagnosticsConfig::default();
         let diags = analysis
-            .native_diagnostics(&config, &vec![], position.file_id)
+            .native_diagnostics(&config, &vec![], fixture.file_id())
             .unwrap();
         assert!(
             diags.is_empty(),

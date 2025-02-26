@@ -135,10 +135,14 @@ mod tests {
 
     #[track_caller]
     fn check(fixture_str: &str) {
-        let (analysis, pos, _diagnostics_enabled, annotations) = fixture::annotations(fixture_str);
-        fixture::check_no_parse_errors(&analysis, pos.file_id);
+        let (analysis, fixture) = fixture::with_fixture(fixture_str);
+        let annotations = fixture.annotations();
+        fixture::check_no_parse_errors(&analysis, fixture.file_id());
 
-        let hls = analysis.highlight_related(pos).unwrap().unwrap_or_default();
+        let hls = analysis
+            .highlight_related(fixture.position())
+            .unwrap()
+            .unwrap_or_default();
 
         let mut expected = annotations
             .into_iter()

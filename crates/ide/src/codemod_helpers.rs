@@ -600,8 +600,10 @@ pub(crate) fn find_call_in_function<T, U>(
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::SourceDatabase;
+    use elp_ide_db::RootDatabase;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
@@ -952,7 +954,9 @@ mod tests {
 
     #[track_caller]
     fn check_type(fixture: &str) {
-        let (db, position, _diagnostics_enabled, expected) = fixture::db_annotations(fixture);
+        let (db, fixture) = RootDatabase::with_fixture(fixture);
+        let expected = fixture.annotations();
+        let file_id = fixture.file_id();
         let host = AnalysisHost { db };
         let sema = Semantic::new(&host.db);
         if expected.len() != 1 {
@@ -962,19 +966,19 @@ mod tests {
         let analysis = host.analysis();
         let diagnostics = fixture::diagnostics_for(
             &analysis,
-            position.file_id,
+            file_id,
             &DiagnosticsConfig::default(),
             &vec![],
-            &_diagnostics_enabled,
+            &fixture.diagnostics_enabled,
         );
         assert!(diagnostics.is_empty());
-        let file_syntax = host.db.parse(position.file_id).syntax_node();
-        let val: ast::Expr = find_node_at_offset(&file_syntax, position.offset).unwrap();
+        let file_syntax = host.db.parse(file_id).syntax_node();
+        let val: ast::Expr = find_node_at_offset(&file_syntax, fixture.position().offset).unwrap();
         let type_info = sema
-            .to_expr(InFile::new(position.file_id, &val))
+            .to_expr(InFile::new(file_id, &val))
             .map(|in_clause| sema.expr_type(&in_clause.body(), &in_clause.value).unwrap())
             .or_else(|| {
-                sema.to_pat(InFile::new(position.file_id, &val))
+                sema.to_pat(InFile::new(file_id, &val))
                     .map(|in_clause| sema.pat_type(&in_clause.body(), &in_clause.value).unwrap())
             });
         if let Some(type_info) = type_info {

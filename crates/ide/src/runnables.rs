@@ -209,9 +209,9 @@ mod tests {
     #[track_caller]
     fn check_runnables(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
-        let (analysis, pos, _diagnostics_enabled, mut annotations) =
-            fixture::annotations(&trimmed_fixture.as_str());
-        let runnables = analysis.runnables(pos.file_id).unwrap();
+        let (analysis, fixture) = fixture::with_fixture(&trimmed_fixture.as_str());
+        let annotations = fixture.annotations();
+        let runnables = analysis.runnables(fixture.file_id()).unwrap();
         let mut actual = Vec::new();
         for runnable in runnables {
             let file_id = runnable.nav.file_id;
@@ -229,7 +229,6 @@ mod tests {
             (frange.file_id, frange.range.start(), text.clone())
         };
         actual.sort_by_key(cmp);
-        annotations.sort_by_key(cmp);
         assert_eq!(actual, annotations);
     }
 

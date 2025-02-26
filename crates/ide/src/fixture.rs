@@ -12,9 +12,7 @@
 use elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide_db::elp_base_db::CURSOR_MARKER;
 use elp_ide_db::RootDatabase;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 
@@ -58,46 +56,6 @@ pub(crate) fn multi_file(fixture: &str) -> Analysis {
     let (db, _fixture) = RootDatabase::with_fixture(fixture);
     let host = AnalysisHost { db };
     host.analysis()
-}
-
-/// Creates analysis from a multi-file fixture, returns first position marked with [`CURSOR_MARKER`]
-/// and annotations marked with sequence of %% ^^^
-pub fn annotations(
-    fixture: &str,
-) -> (
-    Analysis,
-    FilePosition,
-    DiagnosticsEnabled,
-    Vec<(FileRange, String)>,
-) {
-    let (db, position, diagnostics_enabled, annotations) = db_annotations(fixture);
-    let analysis = AnalysisHost { db }.analysis();
-    (analysis, position, diagnostics_enabled, annotations)
-}
-
-/// Creates db from a multi-file fixture, returns first position marked with [`CURSOR_MARKER`]
-/// and annotations marked with sequence of %% ^^^
-pub fn db_annotations(
-    fixture: &str,
-) -> (
-    RootDatabase,
-    FilePosition,
-    DiagnosticsEnabled,
-    Vec<(FileRange, String)>,
-) {
-    let (db, fixture) = RootDatabase::with_fixture(fixture);
-    let (file_id, range_or_offset) = fixture
-        .file_position
-        .expect(&format!("expected a marker ({})", CURSOR_MARKER));
-    let offset = range_or_offset.expect_offset();
-
-    let annotations = fixture.annotations();
-    (
-        db,
-        FilePosition { file_id, offset },
-        fixture.diagnostics_enabled,
-        annotations,
-    )
 }
 
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) -> Option<()> {

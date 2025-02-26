@@ -66,13 +66,14 @@ mod tests {
 
     #[track_caller]
     fn check_worker(fixture: &str, check_parse_error: bool) {
-        let (analysis, position, _diagnostics_enabled, expected) = fixture::annotations(fixture);
+        let (analysis, fixture) = fixture::with_fixture(fixture);
+        let expected = fixture.annotations();
         if check_parse_error {
-            check_no_parse_errors(&analysis, position.file_id);
+            check_no_parse_errors(&analysis, fixture.file_id());
         }
 
         let navs = analysis
-            .goto_type_definition(position)
+            .goto_type_definition(fixture.position())
             .unwrap()
             .expect("no type definition found")
             .info;

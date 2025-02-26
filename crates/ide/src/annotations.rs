@@ -82,10 +82,9 @@ mod tests {
     #[track_caller]
     fn check(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
-        let (analysis, pos, _diagnostics_enabled, mut annotations) =
-            fixture::annotations(trimmed_fixture.as_str());
+        let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
         let mut actual = Vec::new();
-        for annotation in analysis.annotations(pos.file_id).unwrap() {
+        for annotation in analysis.annotations(fixture.file_id()).unwrap() {
             match annotation.kind {
                 AnnotationKind::Runnable(runnable) => {
                     let file_id = runnable.nav.file_id;
@@ -100,8 +99,7 @@ mod tests {
             (frange.file_id, frange.range.start(), text.clone())
         };
         actual.sort_by_key(cmp);
-        annotations.sort_by_key(cmp);
-        assert_eq!(actual, annotations);
+        assert_eq!(actual, fixture.annotations());
     }
 
     #[test]

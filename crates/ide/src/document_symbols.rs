@@ -218,8 +218,10 @@ mod tests {
     use crate::fixture;
 
     fn check(fixture: &str) {
-        let (analysis, pos, _diagnostics_enabled, mut expected) = fixture::annotations(fixture);
-        let file_id = pos.file_id;
+        let (analysis, fixture) = fixture::with_fixture(fixture);
+        let file_id = fixture.file_id();
+        let expected = fixture.annotations();
+
         let symbols = analysis.document_symbols(file_id).unwrap();
 
         let mut actual = Vec::new();
@@ -244,7 +246,6 @@ mod tests {
             }
         }
         actual.sort_by_key(|(file_range, _)| file_range.range.start());
-        expected.sort_by_key(|(file_range, _)| file_range.range.start());
 
         assert_eq!(
             expected, actual,

@@ -96,8 +96,9 @@ mod tests {
     use crate::tests::check_file_ranges;
 
     fn check(fixture: &str) {
-        let (analysis, pos, _diagnostics_enabled, mut annos) = fixture::annotations(fixture);
-        if let Ok(Some(resolved)) = analysis.find_all_refs(pos) {
+        let (analysis, fixture) = fixture::with_fixture(fixture);
+        let mut annos = &mut fixture.annotations();
+        if let Ok(Some(resolved)) = analysis.find_all_refs(fixture.position()) {
             for res in resolved {
                 let def_name = match annos
                     .iter()
