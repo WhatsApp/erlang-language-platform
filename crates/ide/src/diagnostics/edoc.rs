@@ -59,6 +59,35 @@ mod tests {
     }
 
     #[test]
+    fn test_module_doc() {
+        check_diagnostics(
+            r#"
+    %% Copyright (c) Meta Platforms, Inc. and affiliates.
+    %%
+    %% This is some license text.
+    %%%-------------------------------------------------------------------
+    %% @doc This is the module documentation.
+    %%<^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Old EDoc syntax
+    %%      With some more text.
+    %%<^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Old EDoc syntax
+    %%      And some more lines.
+    %%<^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Old EDoc syntax
+    %% @end
+    %%%-------------------------------------------------------------------
+    %%<^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: Old EDoc syntax
+    %%% % @format
+    %%<^^^^^^^^^^ warning: Old EDoc syntax
+    -module(main).
+
+    main() ->
+      dep().
+
+    dep() -> ok.
+        "#,
+        )
+    }
+
+    #[test]
     fn test_function_doc() {
         check_diagnostics(
             r#"

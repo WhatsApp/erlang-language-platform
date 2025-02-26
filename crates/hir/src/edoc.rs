@@ -421,4 +421,29 @@ mod tests {
             "#]],
         )
     }
+
+    #[test]
+    fn edoc_end() {
+        check(
+            r#"
+                %% @doc First line
+                %%      Second line
+                %% @end
+                %% ---------
+                %% % @format
+                -module(main).
+                f() -> ok.
+"#,
+            expect![[r#"
+                SyntaxNodePtr { range: 73..87, kind: MODULE_ATTRIBUTE }
+                  doc
+                    0..18: "%% @doc First line"
+                    19..38: "%%      Second line"
+                    47..59: "%% ---------"
+                    60..72: "%% % @format"
+                  end
+                    39..46: "%% @end"
+            "#]],
+        )
+    }
 }
