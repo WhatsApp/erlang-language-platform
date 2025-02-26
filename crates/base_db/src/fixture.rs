@@ -356,7 +356,8 @@ impl ChangeFixture {
             .iter()
             .flat_map(|&file_id| {
                 let text = SourceDatabaseExt::file_text(db, file_id);
-                extract_annotations(&text)
+                let (annotations, _text_without_annotations) = extract_annotations(&text);
+                annotations
                     .into_iter()
                     .map(move |(range, data)| (FileRange { file_id, range }, data))
             })

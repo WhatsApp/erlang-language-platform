@@ -109,6 +109,7 @@ pub struct Fixture {
     pub otp: Option<Otp>,
     pub tag: Option<String>,
     pub tags: Vec<(TextRange, Option<String>)>,
+    pub annotations: Vec<(TextRange, String)>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -286,6 +287,9 @@ impl FixtureWithProjectMeta {
                 fixture.tags = tags;
                 fixture.text = text;
             }
+            let (mut annotations, _text_without_annotations) = extract_annotations(&fixture.text);
+            annotations.sort_by_key(|(range, _content)| range.start());
+            fixture.annotations = annotations;
         }
 
         FixtureWithProjectMeta {
@@ -394,6 +398,7 @@ impl FixtureWithProjectMeta {
             otp,
             tag,
             tags: Vec::new(),
+            annotations: Vec::new(),
         }
     }
 }
@@ -469,17 +474,26 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
 /// %% ^^^^^ 'stuff'
 /// %%              ^^^^^^^^^^^ 'other stuff'
 /// ```
-pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
+pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
+    let text_without_annotations = remove_annotations(None, text);
     let mut res = Vec::new();
     // map from line length to beginning of last line that had that length
     let mut line_start_map = BTreeMap::new();
     let mut line_start: TextSize = 0.into();
     let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
     for (idx, line) in text.split_inclusive('\n').enumerate() {
-        if idx == 0 && line.starts_with(TOP_OF_FILE_MARKER) {
+        if idx == 0 {
             // First line, look for header marker
-            if let Some(anno) = line.strip_prefix(TOP_OF_FILE_MARKER) {
-                res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
+            if line.starts_with(TOP_OF_FILE_MARKER) {
+                if let Some(anno) = line.strip_prefix(TOP_OF_FILE_MARKER) {
+                    res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
+                }
+            } else if line.starts_with(&(CURSOR_MARKER.to_string() + TOP_OF_FILE_MARKER)) {
+                if let Some(anno) =
+                    line.strip_prefix(&(CURSOR_MARKER.to_string() + TOP_OF_FILE_MARKER))
+                {
+                    res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
+                }
             }
         } else if line.contains(TOP_OF_FILE_MARKER) {
             panic!(
@@ -553,7 +567,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
         }
     }
 
-    res
+    (res, text_without_annotations)
 }
 
 lazy_static! {
@@ -584,7 +598,7 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*%%( +\^+|[<\^]+| <<<| +\|) +💡?.*$").unwrap();
+        static ref RE: Regex = Regex::new(r"^\s*~?%%( +\^+|[<\^]+| <<<| +\|) +💡?.*$").unwrap();
     }
     RE.is_match(line)
 }
@@ -715,7 +729,7 @@ fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     Some((TextRange::new(start, end), text))
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RangeOrOffset {
     Range(TextRange),
     Offset(TextSize),
@@ -950,7 +964,8 @@ fn main() {
 %% ^file
     "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], ann))
             .collect::<Vec<_>>();
@@ -977,7 +992,8 @@ fn main() {
   %%^^^^^^^^ c
 }"#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], ann))
             .collect::<Vec<_>>();
@@ -1002,7 +1018,8 @@ bar() -> ?FOO.
 
 "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (format!("{:?}", range), &text[range], ann))
             .collect::<Vec<_>>();
@@ -1031,7 +1048,7 @@ bar() -> ?FOO.
             -module(main).
             main() -> ok."#,
         );
-        let res = extract_annotations(&text);
+        let (res, _text_without_annotations) = extract_annotations(&text);
 
         expect![[r#"
             [
@@ -1053,7 +1070,7 @@ bar() -> ?FOO.
           %% <<< NOT top of file, no annotation
             main() -> ok."#,
         );
-        let res = extract_annotations(&text);
+        let (res, _text_without_annotations) = extract_annotations(&text);
 
         expect![[r#"
             []
@@ -1093,7 +1110,8 @@ meaning_of_life() ->
                %%  | i32
                  "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], range, ann))
             .collect::<Vec<_>>();
@@ -1124,7 +1142,8 @@ meaning_of_life() ->
             %%                                    | more
             "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], range, ann))
             .collect::<Vec<_>>();
@@ -1158,7 +1177,8 @@ meaning_of_life() ->
             %%                                    | more
             "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], range, ann))
             .collect::<Vec<_>>();
@@ -1190,7 +1210,8 @@ meaning_of_life() ->
                  zoo + 1.
             "#,
         );
-        let res = extract_annotations(&text)
+        let (annotations, _text_without_annotations) = extract_annotations(&text);
+        let res = annotations
             .into_iter()
             .map(|(range, ann)| (&text[range], range, ann))
             .collect::<Vec<_>>();

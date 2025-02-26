@@ -2548,7 +2548,7 @@ mod tests {
             let name = format!("{}.{}", name, ext.unwrap());
             file_names.insert(file_id.into(), name);
             let text = db.file_text(file_id);
-            let annotations: Vec<_> = extract_annotations(&text);
+            let (annotations, _text_without_annotations) = extract_annotations(&text);
             expected_by_file.insert(file_id.into(), annotations);
         }
         (facts, expected_by_file, file_names, diag, module_index)

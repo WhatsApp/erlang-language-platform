@@ -164,7 +164,8 @@ fn check(
 
     let sema = &db;
     let config = TEST_CONFIG;
-    let context_diagnostics = extract_annotations(&db.file_text(file_with_caret_id));
+    let (context_diagnostics, _text_without_annotations) =
+        extract_annotations(&db.file_text(file_with_caret_id));
     let mut diagnostics = vec![];
     for (range, text) in &context_diagnostics {
         if let Some((code_and_bulb, message)) = text.split_once(':') {

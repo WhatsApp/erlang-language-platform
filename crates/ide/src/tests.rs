@@ -284,7 +284,8 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     );
     let diagnostics = diagnostics.diagnostics_for(pos.file_id);
 
-    let expected = extract_annotations(&analysis.db.file_text(pos.file_id));
+    let (expected, _text_without_annotations) =
+        extract_annotations(&analysis.db.file_text(pos.file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
     assert_eq!(expected, actual);
 
@@ -386,7 +387,8 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let diagnostics =
         fixture::diagnostics_for(&analysis, file_id, &config, &vec![], &diagnostics_enabled);
     let diagnostics = diagnostics.diagnostics_for(file_id);
-    let expected = extract_annotations(&analysis.db.file_text(file_id));
+    let (expected, _text_without_annotations) =
+        extract_annotations(&analysis.db.file_text(file_id));
     let actual = convert_diagnostics_to_annotations(diagnostics);
     assert_eq!(expected, actual);
 }
@@ -415,7 +417,8 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
         );
         let diagnostics = diagnostics.diagnostics_for(file_id);
 
-        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
+        let (mut expected, _text_without_annotations) =
+            extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
@@ -451,7 +454,8 @@ pub(crate) fn check_filtered_diagnostics_with_config(
             .into_iter()
             .filter(filter)
             .collect();
-        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
+        let (mut expected, _text_without_annotations) =
+            extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);
@@ -471,7 +475,8 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
         let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, &vec![], file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
 
-        let mut expected = extract_annotations(&analysis.db.file_text(file_id));
+        let (mut expected, _text_without_annotations) =
+            extract_annotations(&analysis.db.file_text(file_id));
         expected.sort_by_key(|(r1, _)| r1.start());
         let actual = convert_diagnostics_to_annotations(diagnostics);
         assert_eq!(expected, actual);

@@ -335,7 +335,7 @@ mod tests {
             let diagnostics = diagnostics::native_diagnostics(&db, &config, &vec![], file_id);
 
             let combined = attach_related_diagnostics(diagnostics, extra_diags.clone());
-            let expected = extract_annotations(&db.file_text(file_id));
+            let (expected, _text_without_annotations) = extract_annotations(&db.file_text(file_id));
             let mut actual = combined
                 .into_iter()
                 .map(|d| {
