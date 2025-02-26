@@ -84,6 +84,7 @@ mod boolean_precedence;
 mod cross_node_eval;
 mod dependent_header;
 mod deprecated_function;
+mod edoc;
 mod effect_free_statement;
 mod eqwalizer_assists;
 mod expression_can_be_simplified;
@@ -884,6 +885,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &boolean_precedence::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
         &unspecific_include::DESCRIPTOR,
+        &edoc::DESCRIPTOR,
     ]
 }
 

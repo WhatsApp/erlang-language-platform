@@ -71,6 +71,10 @@ impl EdocHeader {
         self.tags.iter().flat_map(|tag| tag.comments()).collect()
     }
 
+    pub fn doc(&self) -> impl Iterator<Item = &EdocTag> {
+        return self.tags.iter().filter(|tag| tag.name == "doc");
+    }
+
     pub fn params(&self) -> FxHashMap<String, String> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"^%+\s+@param ([^\s]+)\s+(.*)$").unwrap();
@@ -87,6 +91,14 @@ impl EdocHeader {
     }
 
     pub fn sources_by_tag(&self, name: String) -> Vec<String> {
+        self.tags
+            .iter()
+            .filter(|tag| tag.name == name)
+            .flat_map(|tag| tag.sources())
+            .collect()
+    }
+
+    pub fn function_tags(&self, name: String) -> Vec<String> {
         self.tags
             .iter()
             .filter(|tag| tag.name == name)
