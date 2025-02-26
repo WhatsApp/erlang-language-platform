@@ -22,7 +22,7 @@
 //!    declarations, and not on the same line as any program text. All the
 //!    following text - including consecutive comment lines - up until the
 //!    end of the comment or the next tagged line, is taken as the content of
-//!    the tag.
+//!    the tag. The @end tag is used to explicitly mark the end of a comment.
 
 //!    Tags are associated with the nearest following program construct "of
 //!    significance" (the module name declaration and function
@@ -151,6 +151,7 @@ fn edoc_from_comments(
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
+    let mut end_tag = false;
     let tags = comments
         .iter()
         .skip_while(|c| contains_edoc_tag(&c.syntax().text().to_string()).is_none())
@@ -165,17 +166,22 @@ fn edoc_from_comments(
             )
         })
         .fold(Vec::default(), |mut acc, (tag, comment)| {
-            if let Some(name) = tag {
-                acc.push(EdocTag {
-                    name,
-                    comments: vec![comment],
-                });
-            } else if !&acc.is_empty() {
-                let mut t = acc[0].clone();
-                t.comments.push(comment);
-                acc[0] = EdocTag {
-                    name: t.name,
-                    comments: t.comments,
+            if !end_tag {
+                if let Some(name) = tag {
+                    if name == "end" {
+                        end_tag = true;
+                    }
+                    acc.push(EdocTag {
+                        name,
+                        comments: vec![comment],
+                    });
+                } else if !&acc.is_empty() {
+                    let mut t = acc[0].clone();
+                    t.comments.push(comment);
+                    acc[0] = EdocTag {
+                        name: t.name,
+                        comments: t.comments,
+                    }
                 }
             }
             acc
@@ -439,8 +445,6 @@ mod tests {
                   doc
                     0..18: "%% @doc First line"
                     19..38: "%%      Second line"
-                    47..59: "%% ---------"
-                    60..72: "%% % @format"
                   end
                     39..46: "%% @end"
             "#]],
