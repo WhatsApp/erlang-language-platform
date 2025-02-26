@@ -731,16 +731,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ fault_tolerance/src/fault_tolerance.erl:263:3
     │
 263 │   Res.
-    │   ^^^
-    │   │
-    │   Res.
+    │   ^^^ Res.
 Expression has type:   number() | []
 Context expected type: atom()
-    │   
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:273:10

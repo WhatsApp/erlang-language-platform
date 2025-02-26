@@ -39,8 +39,9 @@ Context expected type: tree1()
 
 Because in the expression's type:
   { 
-    Here the type is:     'b1'
+    Here the type is:     'b1' | 'b2' | 'b3'
     Context expects type: 'leaf'
+    No candidate of the expression's type matches the expected type.
   , tree2()}
 
 ------------------------------ Detailed message ------------------------------

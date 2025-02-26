@@ -10,17 +10,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/elab_clause.erl:48:5
    │
 48 │     Res.
-   │     ^^^
-   │     │
-   │     Res.
+   │     ^^^ Res.
 Expression has type:   atom() | {number()}
 Context expected type: {atom()} | number()
-   │     
-
-Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: {atom()} | number()
-  No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:76:5
@@ -68,16 +60,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/elab_clause.erl:93:17
    │
 93 │         A:_  -> A
-   │                 ^
-   │                 │
-   │                 A.
+   │                 ^ A.
 Expression has type:   'error' | 'exit' | 'throw'
 Context expected type: number()
-   │                 
-
-Because in the expression's type:
-  Here the type is:     'error'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/elab_clause.erl:101:27

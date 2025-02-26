@@ -159,31 +159,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/numbers.erl:552:3
     │
 552 │   U1 div U2 / (U2 bsl U1).
-    │   ^^
-    │   │
-    │   U1.
+    │   ^^ U1.
 Expression has type:   'a' | 'b'
 Context expected type: number()
-    │   
-
-Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:559:3
     │
 559 │   U1 * U2 / (U2 + U1).
-    │   ^^
-    │   │
-    │   U1.
+    │   ^^ U1.
 Expression has type:   'a' | 'b'
 Context expected type: number()
-    │   
-
-Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:577:3

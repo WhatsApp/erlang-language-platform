@@ -50,31 +50,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/guards_simple.erl:74:36
    │
 74 │ float_neg(X) when is_boolean(X) -> X.
-   │                                    ^
-   │                                    │
-   │                                    X.
+   │                                    ^ X.
 Expression has type:   'false' | 'true'
 Context expected type: number()
-   │                                    
-
-Because in the expression's type:
-  Here the type is:     'false'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_simple.erl:80:38
    │
 80 │ integer_neg(X) when is_boolean(X) -> X.
-   │                                      ^
-   │                                      │
-   │                                      X.
+   │                                      ^ X.
 Expression has type:   'false' | 'true'
 Context expected type: number()
-   │                                      
-
-Because in the expression's type:
-  Here the type is:     'false'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_simple.erl:86:33

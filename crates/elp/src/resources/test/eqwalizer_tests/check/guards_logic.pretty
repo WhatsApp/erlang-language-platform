@@ -66,15 +66,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/guards_logic.erl:101:46
     │
 101 │ test21_neg(X) when (X =:= a) or (X =:= b) -> X.
-    │                                              ^
-    │                                              │
-    │                                              X.
+    │                                              ^ X.
 Expression has type:   'a' | 'b'
 Context expected type: 'c'
-    │                                              
-
-Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'c'
 
 5 ERRORS

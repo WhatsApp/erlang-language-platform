@@ -530,8 +530,9 @@ Context expected type: {n(), a()}
 
 Because in the expression's type:
   { 
-    Here the type is:     'b'
+    Here the type is:     'b' | 'a'
     Context expects type: number()
+    No candidate of the expression's type matches the expected type.
   , a()}
 
 ------------------------------ Detailed message ------------------------------
