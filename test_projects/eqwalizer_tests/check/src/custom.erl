@@ -2614,3 +2614,19 @@ is_char_list(T) ->
         true -> T;
         false -> ""
     end.
+
+-spec maps_fold_5(#{a => atom(), b => binary()}) -> [binary()].
+maps_fold_5(M) ->
+maps:fold(
+    fun(a, A, Acc) -> [atom_to_binary(A) | Acc]; (b, B, Acc) -> [B | Acc] end,
+    [],
+    M
+).
+
+-spec maps_fold_6(#{a => atom(), b => binary()}) -> [binary()].
+maps_fold_6(M) ->
+maps:fold(
+    fun(a, _, Acc) -> Acc; (b, B, Acc) -> [B | Acc] end,
+    [],
+    M
+).
