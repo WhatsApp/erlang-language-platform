@@ -2630,3 +2630,11 @@ maps:fold(
     [],
     M
 ).
+
+-spec maps_fold_7(#{a => atom(), b => binary()}) -> [binary()].
+maps_fold_7(M) ->
+maps:fold(
+    fun(b, B, Acc) -> [B | Acc]; (_, _, Acc) -> Acc end,
+    [],
+    M
+).
