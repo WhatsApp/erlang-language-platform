@@ -56,16 +56,14 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
             .collect::<Vec<_>>();
     }
 
-    sema.def_map(file_id)
+    sema.def_map_local(file_id)
         .get_functions()
         .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                let is_relevant;
-                // @fb-only
-                is_relevant = true; // @oss-only
-                if is_relevant {
-                    check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
-                }
+            let is_relevant;
+            // @fb-only
+            is_relevant = true; // @oss-only
+            if is_relevant {
+                check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
             }
         });
 }
