@@ -82,12 +82,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'a', term()} | {'b', {'a', term()}}
 Context expected type: 'err'
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_maybe.erl:167:24
-    │
-167 │         binary_to_atom(T)
-    │                        ^ T.
-Expression has type:   term()
-Context expected type: binary()
-
-9 ERRORS
+8 ERRORS
