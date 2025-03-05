@@ -159,3 +159,11 @@ maybe_14_neg(T) ->
                 C ?= V
             end
     end.
+
+-spec maybe_15(term()) -> ok.
+maybe_15(T) ->
+    maybe
+        true ?= is_binary(T),
+        binary_to_atom(T)
+    end,
+    ok.
