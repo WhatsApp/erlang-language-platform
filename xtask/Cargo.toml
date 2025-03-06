@@ -1,3 +1,7 @@
+[lints.rust]
+# This is needed for the cmd! macro
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(trick_rust_analyzer_into_highlighting_interpolated_bits)'] }
+
 [package]
 name = "xtask"
 edition.workspace = true
