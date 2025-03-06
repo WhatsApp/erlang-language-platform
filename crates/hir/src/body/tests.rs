@@ -150,6 +150,25 @@ foo(10#42) ->
 }
 
 #[test]
+fn very_large_integer_with_base() {
+    check(
+        r#"
+foo() ->
+  { 16#1000000000000000000000000000000000000,
+    1000000000000000000000000000000000000000
+  }.
+"#,
+        expect![[r#"
+            foo() ->
+                {
+                    [missing],
+                    [missing]
+                }.
+        "#]],
+    );
+}
+
+#[test]
 fn string() {
     check(
         r#"

@@ -3033,7 +3033,10 @@ fn parse_based(base: u32, str: &str) -> Option<i128> {
     str.chars().fold(Some(0), |acc, c| {
         let r = acc?;
         let val = c.to_digit(base)?;
-        Some(r * acc_base + val as i128)
+        // Erlang allows arbitrary length strings.  Fail conversion if
+        // it would overflow.
+        let shifted = r.checked_mul(acc_base)?;
+        Some(shifted + val as i128)
     })
 }
 
