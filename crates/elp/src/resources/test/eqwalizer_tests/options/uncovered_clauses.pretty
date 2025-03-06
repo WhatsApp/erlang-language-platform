@@ -28,4 +28,10 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 32 │ uncovered_6(#{a := V}) when is_integer(V) -> V;
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
-5 ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ options/src/uncovered_clauses.erl:46:1
+   │
+46 │ uncovered_single(#{a_typo := A}) -> A.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+6 ERRORS
