@@ -41,3 +41,6 @@ uncovered_number(A) -> A.
 uncovered_number_2(F) when is_float(F) -> ok;
 uncovered_number_2(I) when is_integer(I) -> ok;
 uncovered_number_2(A) -> A.
+
+-spec uncovered_single(#{a => atom()}) -> atom().
+uncovered_single(#{a_typo := A}) -> A.
