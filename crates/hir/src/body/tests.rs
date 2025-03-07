@@ -2720,6 +2720,54 @@ fn tree_print_type_body() {
 }
 
 #[test]
+fn tree_print_spec_or_callback() {
+    check_ast(
+        r#"
+        -spec new(string() | binary()) -> pid().
+        -callback foo() -> ok.
+        "#,
+        expect![[r#"
+            -spec new
+                (
+                    TypeExpr::Union {
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('string'))
+                                }
+                            args
+                                ()
+                        },
+                        TypeExpr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Literal(Atom('erlang'))
+                                    Literal(Atom('binary'))
+                                }
+                            args
+                                ()
+                        },
+                    }
+                ) ->
+                    TypeExpr::Call {
+                        target
+                            CallTarget::Remote {
+                                Literal(Atom('erlang'))
+                                Literal(Atom('pid'))
+                            }
+                        args
+                            ()
+                    }.
+
+            -callback foo
+                () ->
+                    Literal(Atom('ok')).
+        "#]],
+    );
+}
+
+#[test]
 fn tree_print_record() {
     check_ast(
         r#"
