@@ -32,7 +32,6 @@ use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
-use crate::form_list::DocAttributeId;
 use crate::known;
 use crate::module_data::SpecDef;
 use crate::name::erlang_funs;
