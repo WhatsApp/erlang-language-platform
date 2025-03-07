@@ -370,4 +370,34 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_params() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A is a param
+%% @param B is another param
+%% @end
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+@param A is a param
+@param B is another param
+""".
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }

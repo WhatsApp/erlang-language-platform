@@ -86,6 +86,9 @@ impl EdocHeader {
                     )));
                 }
             }
+            for (_name, param) in &self.params {
+                res.push(format!("@param {} {}", param.name, param.description));
+            }
             res.push("\"\"\".".to_string());
         }
         res.join("\n")
