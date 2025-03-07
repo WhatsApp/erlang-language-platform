@@ -30,6 +30,7 @@ use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
 use crate::fold::default_fold_body;
+use crate::fold::fold_body;
 use crate::fold::AnyCallBack;
 use crate::fold::Constructor;
 use crate::fold::MacroStrategy;
@@ -310,6 +311,14 @@ impl Body {
                 Some(body_map)
             }
         }
+    }
+
+    /// We have smart indexing available on a body, which controls the
+    /// visibility of features like parens and macros. The default
+    /// indexing on `Body` keeps both invisible. If they need to be
+    /// seen, make a `FoldBody` with the appropriate strategy.
+    pub fn index_with_strategy(&self, strategy: Strategy) -> FoldBody {
+        fold_body(strategy, &self)
     }
 
     pub fn range_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<TextRange> {

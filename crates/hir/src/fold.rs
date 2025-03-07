@@ -60,8 +60,8 @@ use crate::TypeExprId;
 
 // ---------------------------------------------------------------------
 
-/// Choose the appropriate `FoldBody` to ensure macros are visible or
-/// not according to the chosen strategy.
+/// Choose the appropriate `FoldBody` to ensure macros and parens are
+/// visible or not according to the chosen strategy.
 pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     match strategy.macros {
         MacroStrategy::DoNotExpand | MacroStrategy::ExpandButIncludeMacroCall => FoldBody {
