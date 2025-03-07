@@ -292,4 +292,56 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_empty_doc_slogan() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is some doc
+%% @end
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is some doc
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_empty_doc_slogan_trailing_spaces() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc   
+%% This is some doc
+%% @end
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is some doc
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }

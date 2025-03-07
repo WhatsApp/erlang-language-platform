@@ -227,9 +227,14 @@ fn parse_edoc(
                 }
                 match tag.as_str() {
                     "doc" => {
+                        let text = if text.trim().is_empty() {
+                            None
+                        } else {
+                            Some(text)
+                        };
                         parsing_doc = true;
                         doc_lines.push(EdocDocLine {
-                            text: Some(text),
+                            text,
                             syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
                         });
                     }
