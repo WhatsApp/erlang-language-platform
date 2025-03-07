@@ -39,6 +39,7 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
+use htmlentity::entity::ICodedDataTrait;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -80,12 +81,22 @@ impl EdocHeader {
             res.push(format!("{prefix} \"\"\""));
             for line in &doc.lines {
                 if let Some(text) = &line.text {
-                    res.push(convert_single_quotes(&convert_triple_quotes(text)));
+                    res.push(convert_single_quotes(&convert_triple_quotes(
+                        &decode_html_entities(text),
+                    )));
                 }
             }
             res.push("\"\"\".".to_string());
         }
         res.join("\n")
+    }
+}
+
+fn decode_html_entities(text: &str) -> String {
+    let decoded = htmlentity::entity::decode(text.as_bytes()).to_string();
+    match decoded {
+        Ok(decoded) => decoded,
+        Err(_) => text.to_string(),
     }
 }
 

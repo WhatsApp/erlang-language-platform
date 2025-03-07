@@ -344,4 +344,30 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_html_entities() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% In Erlang &lt;&lt;&gt;&gt; represents an empty binary.
+%% @end
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+In Erlang <<>> represents an empty binary.
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }

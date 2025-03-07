@@ -11,6 +11,7 @@ elp_types_db.workspace = true
 triple_accel.workspace = true
 either.workspace = true
 fxhash.workspace = true
+htmlentity.workspace = true
 itertools.workspace = true
 la-arena.workspace = true
 lazy_static.workspace = true
