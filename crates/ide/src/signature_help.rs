@@ -206,7 +206,7 @@ fn build_signature_help(
     fun_name: &Name,
 ) -> SignatureHelp {
     let function_doc = get_function_doc(db, sema, file_id, def);
-    let parameters_doc = get_parameters_doc(db, def);
+    let parameters_doc = def.get_parameters_doc(db);
     let mut help = SignatureHelp {
         function_doc,
         parameters_doc,
@@ -227,20 +227,9 @@ fn build_signature_help(
         for parameter in parameters {
             help.push_param(&parameter);
         }
-    }
+    };
     help.signature.push(')');
     help
-}
-
-fn get_parameters_doc(db: &RootDatabase, def: &FunctionDef) -> FxHashMap<String, String> {
-    match def.edoc_comments(db) {
-        Some(edoc_header) => edoc_header
-            .params
-            .into_iter()
-            .map(|(name, param)| (name, param.description))
-            .collect(),
-        None => FxHashMap::default(),
-    }
 }
 
 fn get_function_doc(
@@ -680,6 +669,79 @@ main() ->
                 ```erlang
                 -spec add(integer(), integer(), integer()) -> integer().
                 ```
+                ------
+                main:add(This, That, Extra)
+                         ----  ^^^^  -----
+                ------
+                Extra: Something more
+                That: The second thing
+                This: The first thing
+                ======
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_doc_eep59() {
+        check(
+            r#"
+-module(main).
+
+-compile(export_all).
+
+-doc """
+Add This to That
+@param This The first thing
+@param That The second thing
+@returns The sum of This and That plus 0
+""".
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-doc """
+Add This to That, including an extra
+@param This The first thing
+@param That The second thing
+@param Extra Something more
+@returns The sum of This and That plus the Extra
+""".
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+main() ->
+  main:add(This, ~)
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+
+                -----
+
+                Add This to That
+                @param This The first thing
+                @param That The second thing
+                @returns The sum of This and That plus 0
+                ------
+                main:add(This, That)
+                         ----  ^^^^
+                ------
+                That: The second thing
+                This: The first thing
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
+
+                -----
+
+                Add This to That, including an extra
+                @param This The first thing
+                @param That The second thing
+                @param Extra Something more
+                @returns The sum of This and That plus the Extra
                 ------
                 main:add(This, That, Extra)
                          ----  ^^^^  -----

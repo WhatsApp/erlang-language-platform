@@ -20,12 +20,16 @@ use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use fxhash::FxHashMap;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
+use crate::form_list::DocAttributeId;
 use crate::Callback;
 use crate::DefMap;
 use crate::Define;
@@ -109,6 +113,7 @@ pub struct FunctionClauseDef {
     pub module: Option<ModuleName>,
     pub function_clause: FunctionClause,
     pub function_clause_id: FunctionClauseId,
+    pub doc_id: Option<DocAttributeId>,
 }
 
 impl FunctionClauseDef {
@@ -155,6 +160,7 @@ pub struct FunctionDef {
     pub function_clause_ids: Vec<FunctionClauseId>,
     pub function_id: FunctionDefId,
     pub spec: Option<SpecDef>,
+    pub doc_id: Option<DocAttributeId>,
 }
 
 impl FunctionDef {
@@ -241,6 +247,50 @@ impl FunctionDef {
             },
             None => self.first_clause_arg_names(),
         }
+    }
+
+    pub fn get_parameters_doc(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
+        let parameters = self.parameters_doc_from_doc_attribute(db);
+        if !parameters.is_empty() {
+            parameters
+        } else {
+            self.parameters_doc_from_edoc(db)
+        }
+    }
+
+    fn parameters_doc_from_edoc(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
+        match self.edoc_comments(db) {
+            Some(edoc_header) => edoc_header
+                .params
+                .into_iter()
+                .map(|(name, param)| (name, param.description))
+                .collect(),
+            None => FxHashMap::default(),
+        }
+    }
+
+    fn parameters_doc_from_doc_attribute(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^\s*@param ([^\s]+)\s+(.*)$").unwrap();
+        }
+        let mut res = FxHashMap::default();
+        if let Some(doc_id) = self.doc_id {
+            let file_id = self.file.file_id;
+            let form_list = db.file_form_list(file_id);
+            let doc = &form_list[doc_id];
+            let ast = doc.form_id.get_ast(db, file_id);
+            if let Some(expr) = ast.value() {
+                let text = expr.syntax().text().to_string();
+                for line in text.split("\n") {
+                    if let Some(captures) = RE.captures(&line) {
+                        if captures.len() == 3 {
+                            res.insert(captures[1].to_string(), captures[2].to_string());
+                        }
+                    }
+                }
+            };
+        }
+        res
     }
 }
 
