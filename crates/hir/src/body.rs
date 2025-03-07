@@ -58,6 +58,7 @@ use crate::Name;
 use crate::NameArity;
 use crate::Pat;
 use crate::PatId;
+use crate::Record;
 use crate::RecordFieldBody;
 use crate::RecordId;
 use crate::ResolvedMacro;
@@ -850,6 +851,10 @@ impl RecordBody {
     ) -> String {
         let form = &form_list[record_id];
         pretty::print_record(db, self, form, form_list)
+    }
+
+    pub fn tree_print(&self, db: &dyn InternDatabase, form: &Record) -> String {
+        tree_print::print_record(db, self, form)
     }
 }
 

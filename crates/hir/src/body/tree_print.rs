@@ -14,6 +14,7 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::str;
 
+use super::RecordBody;
 use super::SpecBody;
 use super::SpecOrCallback;
 use crate::db::InternDatabase;
@@ -39,6 +40,9 @@ use crate::ListType;
 use crate::Literal;
 use crate::Pat;
 use crate::PatId;
+use crate::Record;
+use crate::RecordFieldBody;
+use crate::RecordFieldId;
 use crate::SsrBody;
 use crate::Term;
 use crate::TermId;
@@ -67,6 +71,20 @@ pub(crate) fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -
 pub(crate) fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_term(&term);
+    printer.to_string()
+}
+
+pub(crate) fn print_record(db: &dyn InternDatabase, body: &RecordBody, record: &Record) -> String {
+    let mut printer = Printer::new(db, &body.body);
+
+    writeln!(printer, "-record({},", record.name).unwrap();
+    printer.indent();
+    printer.print_labelled("fields", false, &mut |this| {
+        this.print_record_fields(&body.fields);
+    });
+    printer.dedent();
+    write!(printer, ").").ok();
+
     printer.to_string()
 }
 
@@ -1245,6 +1263,37 @@ impl<'a> Printer<'a> {
         write!(self, "SsrPlaceholder {{").ok();
         write!(self, "var: {}, ", self.db.lookup_var(ssr.var)).ok();
         write!(self, "}}").ok();
+    }
+
+    fn print_record_fields(&mut self, fields: &[RecordFieldBody]) {
+        for field in fields {
+            self.print_record_field_body(field);
+            writeln!(self, ",").ok();
+        }
+    }
+
+    fn print_record_field_body(&mut self, field: &RecordFieldBody) {
+        self.print_herald("RecordFieldBody", &mut |this| {
+            this.print_labelled("field_id", true, &mut |this| {
+                this.print_record_field(&field.field_id);
+            });
+            this.print_labelled("expr", false, &mut |this| {
+                field.expr.map(|expr| {
+                    this.print_expr(&expr);
+                    writeln!(this, ",").ok();
+                });
+            });
+            this.print_labelled("ty", false, &mut |this| {
+                field.ty.map(|ty| {
+                    this.print_type(&ty);
+                    writeln!(this, ",").ok();
+                });
+            });
+        });
+    }
+
+    fn print_record_field(&mut self, field: &RecordFieldId) {
+        write!(self, "{:?}", field).ok();
     }
 }
 

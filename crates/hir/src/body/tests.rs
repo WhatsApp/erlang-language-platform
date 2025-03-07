@@ -79,6 +79,65 @@ fn check(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(pretty.trim_start());
 }
 
+#[track_caller]
+fn check_ast(ra_fixture: &str, expect: Expect) {
+    let (db, file_ids, _) = TestDB::with_many_files(ra_fixture);
+    let file_id = file_ids[0];
+    let form_list = db.file_form_list(file_id);
+    let pretty = form_list
+        .forms()
+        .iter()
+        .flat_map(|&form_idx| match form_idx {
+            FormIdx::FunctionClause(function_id) => {
+                // We now have only one clause per function, with the
+                // FunctionDefId derived from the FunctionId of the
+                // first one. So print the whole thing when we have a
+                // valid FunctionDefid.
+                let def_map = db.def_map(file_id);
+                let function_def_id = InFile::new(file_id, FunctionDefId::new(function_id));
+                if let Some(_fun_def) = def_map.get_by_function_id(&function_def_id) {
+                    let body = db.function_body(function_def_id);
+                    Some(body.tree_print(&db))
+                } else {
+                    None
+                }
+            }
+            FormIdx::TypeAlias(type_alias_id) => {
+                let type_alias = &form_list[type_alias_id];
+                let body = db.type_body(InFile::new(file_id, type_alias_id));
+                Some(body.tree_print(&db, type_alias))
+            }
+            FormIdx::Spec(spec_id) => {
+                let spec = SpecOrCallback::Spec(form_list[spec_id].clone());
+                let body = db.spec_body(InFile::new(file_id, spec_id));
+                Some(body.tree_print(&db, spec))
+            }
+            FormIdx::Callback(callback_id) => {
+                let spec = SpecOrCallback::Callback(form_list[callback_id].clone());
+                let body = db.callback_body(InFile::new(file_id, callback_id));
+                Some(body.tree_print(&db, spec))
+            }
+            FormIdx::Record(record_id) => {
+                let body = db.record_body(InFile::new(file_id, record_id));
+                Some(body.tree_print(&db, &form_list[record_id]))
+            }
+            FormIdx::Attribute(attribute_id) => {
+                let attribute = AnyAttribute::Attribute(form_list[attribute_id].clone());
+                let body = db.attribute_body(InFile::new(file_id, attribute_id));
+                Some(body.tree_print(&db, attribute))
+            }
+            FormIdx::CompileOption(attribute_id) => {
+                let attribute = AnyAttribute::CompileOption(form_list[attribute_id].clone());
+                let body = db.compile_body(InFile::new(file_id, attribute_id));
+                Some(body.tree_print(&db, attribute))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    expect.assert_eq(pretty.trim_start());
+}
+
 #[test]
 fn simple() {
     check(
@@ -2601,6 +2660,85 @@ fn lowering_with_error_nodes() {
         expect![[r#"
             f('a') ->
                 'ok'.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_record() {
+    check_ast(
+        r#"
+         -record(foo, {}).
+         -record(foo, {field}).
+         -record(foo, {field1, field2}).
+         -record(foo, {field = value}).
+         -record(foo, {field :: type}).
+         -record(foo, {field = value :: type}).
+        "#,
+        expect![[r#"
+            -record(foo,
+                fields
+            ).
+
+            -record(foo,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(0)
+                        expr
+                        ty
+                    },
+            ).
+
+            -record(foo,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(1)
+                        expr
+                        ty
+                    },
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(2)
+                        expr
+                        ty
+                    },
+            ).
+
+            -record(foo,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(3)
+                        expr
+                            Expr<0>:Literal(Atom('value')),
+                        ty
+                    },
+            ).
+
+            -record(foo,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(4)
+                        expr
+                        ty
+                            Literal(Atom('type')),
+                    },
+            ).
+
+            -record(foo,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(5)
+                        expr
+                            Expr<0>:Literal(Atom('value')),
+                        ty
+                            Literal(Atom('type')),
+                    },
+            ).
         "#]],
     );
 }
