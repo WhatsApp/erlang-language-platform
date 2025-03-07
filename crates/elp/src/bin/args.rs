@@ -102,8 +102,6 @@ pub struct Eqwalize {
     pub format: Option<String>,
     /// Run with rebar
     pub rebar: bool,
-    /// Use experimental clause coverage checker
-    pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// Eqwalize specified modules
@@ -134,8 +132,6 @@ pub struct EqwalizeAll {
     pub rebar: bool,
     /// Also eqwalize opted-in generated modules from project
     pub include_generated: bool,
-    /// Use experimental clause coverage checker
-    pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// Print statistics when done
@@ -151,8 +147,6 @@ pub struct EqwalizeTarget {
     pub project: PathBuf,
     /// Also eqwalize opted-in generated modules from application
     pub include_generated: bool,
-    /// Use experimental clause coverage checker
-    pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// target, like //erl/chatd/...
@@ -172,8 +166,6 @@ pub struct EqwalizeApp {
     pub include_generated: bool,
     /// Run with rebar
     pub rebar: bool,
-    /// Use experimental clause coverage checker
-    pub clause_coverage: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// app name

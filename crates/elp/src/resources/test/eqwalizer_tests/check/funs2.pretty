@@ -35,13 +35,11 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [dynamic()]
 Context expected type: number()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs2.erl:95:24
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/funs2.erl:95:1
    │
 95 │ generic({}, {}, {}) -> nok.
-   │                        ^^^ 'nok'.
-Expression has type:   'nok'
-Context expected type: T
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs2.erl:101:9

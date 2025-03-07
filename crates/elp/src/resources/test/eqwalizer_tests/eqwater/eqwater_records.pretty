@@ -70,33 +70,12 @@ Because in the expression's type:
   because
   #rec1{} is not compatible with number()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_records.erl:106:25
-    │
-106 │ normalize_neg1(Pair) -> Pair.
-    │                         ^^^^
-    │                         │
-    │                         Pair.
-Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
-Context expected type: {#rec1{}, #rec2{}}
-    │                         
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     #rec2{}
-    Context expects type: #rec1{}
-  , #rec1{}}
-
------------------------------- Detailed message ------------------------------
-
-  {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  at tuple index 1:
-  {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  #rec2{} is not compatible with #rec1{}
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ eqwater/src/eqwater_records.erl:104:1
+    │  
+104 │ ╭ normalize_neg1({R = #rec2{}, R}) ->
+105 │ │   {R, R};
+    │ ╰────────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater_records.erl:115:25

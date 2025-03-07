@@ -133,6 +133,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{dynamic() => dynamic()}
 Context expected type: 'wrong_ret'
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/gradual_custom.erl:166:1
+    │  
+166 │ ╭ maps_without_3_neg(None) ->
+167 │ │   maps:without(
+168 │ │     [a, b],
+169 │ │     None
+170 │ │   ).
+    │ ╰───^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:185:3
     │  
@@ -143,6 +153,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │ ╰───^ maps:with(['a'], Dyn).
 Expression has type:   #{a := dynamic()}
 Context expected type: 'wrong_ret'
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/gradual_custom.erl:193:1
+    │  
+193 │ ╭ maps_with_3(None) ->
+194 │ │   maps:with(
+195 │ │     [a, b],
+196 │ │     None
+197 │ │   ).
+    │ ╰───^ Clause is not covered by spec
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:203:25
@@ -308,4 +328,4 @@ Because in the expression's type:
   because
   'bar' is not compatible with 'foo'
 
-28 ERRORS
+30 ERRORS

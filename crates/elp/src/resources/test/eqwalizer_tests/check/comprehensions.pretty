@@ -124,38 +124,53 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   binary()
 Context expected type: [term()]
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/comprehensions.erl:156:5
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:147:1
+    │
+147 │ test26(X) -> [Y || Y <- X].
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:150:1
     │  
-156 │ ╭     << Y ||
+150 │ ╭ test27(X) ->
+151 │ │     Res = [Y || Y <- X],
+152 │ │     Res.
+    │ ╰───────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:155:1
+    │  
+155 │ ╭ test28(X) ->
+156 │ │     << Y ||
 157 │ │         <<Y>> <= X >>.
-    │ ╰─────────────────────^ << || >>.
-Expression has type:   binary()
-Context expected type: number()
+    │ ╰─────────────────────^ Clause is not covered by spec
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/comprehensions.erl:161:14
-    │
-161 │     Res = << Y ||
-    │              ^ Y.
-Expression has type:   number()
-Context expected type: binary()
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:160:1
+    │  
+160 │ ╭ test29(X) ->
+161 │ │     Res = << Y ||
+162 │ │         <<Y>> <= X >>,
+163 │ │     Res.
+    │ ╰───────^ Clause is not covered by spec
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/comprehensions.erl:167:8
-    │
-167 │     << Y ||
-    │        ^ Y.
-Expression has type:   number()
-Context expected type: binary()
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:166:1
+    │  
+166 │ ╭ test30(X) ->
+167 │ │     << Y ||
+168 │ │         <<Y>> <= X >>.
+    │ ╰─────────────────────^ Clause is not covered by spec
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/comprehensions.erl:172:14
-    │
-172 │     Res = << Y ||
-    │              ^ Y.
-Expression has type:   number()
-Context expected type: binary()
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/comprehensions.erl:171:1
+    │  
+171 │ ╭ test31(X) ->
+172 │ │     Res = << Y ||
+173 │ │         <<Y>> <= X >>,
+174 │ │     Res.
+    │ ╰───────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/comprehensions.erl:184:5
@@ -283,4 +298,4 @@ error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
 Expected fun type with arity 0
 Got: fun(() -> atom()) | fun((number()) -> atom())
 
-22 ERRORS
+24 ERRORS

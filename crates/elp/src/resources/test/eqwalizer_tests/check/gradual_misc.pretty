@@ -22,6 +22,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   binary()
 Context expected type: 'ok'
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/gradual_misc.erl:41:1
+   │  
+41 │ ╭ fuzz03([_ | {}]) -> 
+42 │ │     ok.
+   │ ╰──────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_misc.erl:46:41
    │
@@ -45,4 +52,4 @@ Because in the expression's type:
   {'b', 'c'} is not compatible with 'a' | {none()}
   expected union does not contain any tuple type of size 2
 
-4 ERRORS
+5 ERRORS

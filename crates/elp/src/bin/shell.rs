@@ -134,12 +134,10 @@ impl ShellCommand {
             match *cmd {
                 "help" => return Ok(Some(ShellCommand::Help)),
                 "eqwalize" => {
-                    let clause_coverage = options.contains(&"--clause-coverage");
-                    if let Some(other) = options.into_iter().find(|&opt| opt != "--clause-coverage")
-                    {
+                    if let [option, ..] = options[..] {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize".into(),
-                            other.into(),
+                            option.into(),
                         ));
                     }
                     if args.len() >= 1 {
@@ -149,18 +147,16 @@ impl ShellCommand {
                             format: None,
                             rebar,
                             modules: args.iter().map(|s| s.to_string()).collect(),
-                            clause_coverage,
                             bail_on_error: false,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize".into()));
                 }
                 "eqwalize-app" => {
-                    let clause_coverage = options.contains(&"--clause-coverage");
                     let include_generated = options.contains(&"--include-generated");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated" && opt != "--clause-coverage")
+                        .find(|&opt| opt != "--include-generated")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-app".into(),
@@ -177,18 +173,16 @@ impl ShellCommand {
                             rebar,
                             app: app.into(),
                             include_generated,
-                            clause_coverage,
                             bail_on_error: false,
                         })));
                     }
                     return Err(ShellError::MissingArg("eqwalize-app".into()));
                 }
                 "eqwalize-all" => {
-                    let clause_coverage = options.contains(&"--clause-coverage");
                     let include_generated = options.contains(&"--include-generated");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated" && opt != "--clause-coverage")
+                        .find(|&opt| opt != "--include-generated")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-all".into(),
@@ -204,7 +198,6 @@ impl ShellCommand {
                         rebar,
                         format: None,
                         include_generated,
-                        clause_coverage,
                         bail_on_error: false,
                         stats: false,
                         list_modules: false,

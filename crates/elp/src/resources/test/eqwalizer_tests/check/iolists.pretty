@@ -1,3 +1,10 @@
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/iolists.erl:18:1
+   │  
+18 │ ╭ first(IoList)
+19 │ │     when is_binary(IoList) -> IoList;
+   │ ╰────────────────────────────────────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:50:18
    │
@@ -75,4 +82,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   iolist()
 Context expected type: 'wrong_ret'
 
-4 ERRORS
+5 ERRORS

@@ -282,6 +282,30 @@ Because in the expression's type:
   because
   'a' is not compatible with 'b'
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/generic_fun_application.erl:226:1
+    │  
+226 │ ╭ test31_pos(Any, None) ->
+227 │ │     X = ttt(Any, None),
+228 │ │     X.
+    │ ╰─────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/generic_fun_application.erl:242:1
+    │  
+242 │ ╭ test33_pos(None, Pid) ->
+243 │ │     X = ttt(None, Pid),
+244 │ │     X.
+    │ ╰─────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/generic_fun_application.erl:249:1
+    │  
+249 │ ╭ test34_pos(None) ->
+250 │ │     X=lmap(fun atom_to_pid/1, [None, a]),
+251 │ │     X.
+    │ ╰─────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:258:23
     │
@@ -634,6 +658,18 @@ Because in the expression's type:
   because
   'a' is not compatible with fun(('a') -> 'a')
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/generic_fun_application.erl:625:1
+    │
+625 │ stuff_1(0) -> erlang:self().
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/generic_fun_application.erl:633:1
+    │
+633 │ stuff_2(0) -> erlang:self().
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/generic_fun_application.erl:645:5
     │
@@ -712,4 +748,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {}
 Context expected type: [A]
 
-44 ERRORS
+49 ERRORS

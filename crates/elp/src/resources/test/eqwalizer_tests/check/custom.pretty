@@ -124,6 +124,20 @@ Because in the expression's type:
   because
   string() is not compatible with atom()
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/custom.erl:91:1
+   │  
+91 │ ╭ element_2_none_1(Tup) ->
+92 │ │     element(42, Tup).
+   │ ╰────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/custom.erl:95:1
+   │  
+95 │ ╭ element_2_none_2(N, Tup) ->
+96 │ │     element(N, Tup).
+   │ ╰───────────────────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:108:5
     │
@@ -488,6 +502,28 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         ^^^^^^ 'non_kv'.
 Expression has type:   'non_kv'
 Context expected type: #{term() => term()}
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/custom.erl:560:1
+    │  
+560 │ ╭ maps_fold_3_6(None) ->
+561 │ │     maps:fold(
+562 │ │         None,
+563 │ │         #{},
+564 │ │         #{1 => 1}
+565 │ │     ).
+    │ ╰─────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/custom.erl:568:1
+    │  
+568 │ ╭ maps_fold_3_7(None) ->
+569 │ │     maps:fold(
+570 │ │         None,
+571 │ │         None,
+572 │ │         None
+573 │ │     ).
+    │ ╰─────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:578:5
@@ -947,28 +983,16 @@ Because in the expression's type:
   because
   string() is not compatible with boolean() | [atom()]
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:927:9
-    │
-927 │         fun atom_to_list/1,
-    │         ^^^^^^^^^^^^^^^^^^
-    │         │
-    │         erlang:atom_to_list/1.
-Expression has type:   fun((atom()) -> string())
-Context expected type: fun((atom()) -> boolean() | [atom()])
-    │         
-
-Because in the expression's type:
-  fun((atom()) ->
-    Here the type is:     string()
-    Context expects type: boolean() | [atom()]
-  )
-
------------------------------- Detailed message ------------------------------
-
-  fun((atom()) -> string()) is not compatible with fun((atom()) -> boolean() | [atom()])
-  because
-  string() is not compatible with boolean() | [atom()]
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/custom.erl:925:1
+    │  
+925 │ ╭ queue_filter_13_neg(Q) ->
+926 │ │     queue:filter(
+927 │ │         fun atom_to_list/1,
+928 │ │         Q
+929 │ │     ),
+930 │ │     ok.
+    │ ╰──────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:958:9
@@ -1008,6 +1032,28 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         ^^^^^^^^ 'non_list'.
 Expression has type:   'non_list'
 Context expected type: [tuple()]
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/custom.erl:983:1
+    │  
+983 │ ╭ keystore_7(None) ->
+984 │ │     lists:keystore(
+985 │ │         a, 1,
+986 │ │         None,
+987 │ │         {replacement}
+988 │ │     ).
+    │ ╰─────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/custom.erl:991:1
+    │  
+991 │ ╭ keystore_8(None) ->
+992 │ │     lists:keystore(
+993 │ │         a, 1,
+994 │ │         None,
+995 │ │         None
+996 │ │     ).
+    │ ╰─────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1011:25
@@ -1863,6 +1909,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'non_map'
 Context expected type: #{term() => term()}
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+     ┌─ check/src/custom.erl:1808:1
+     │  
+1808 │ ╭ maps_without_12_neg(None) ->
+1809 │ │     maps:without(
+1810 │ │         [a, b],
+1811 │ │         None
+1812 │ │     ).
+     │ ╰─────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1818:5
      │    
@@ -2613,4 +2669,4 @@ Because in the expression's type:
   because
   atom() is not compatible with binary()
 
-162 ERRORS
+169 ERRORS

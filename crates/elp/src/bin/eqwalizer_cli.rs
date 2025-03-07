@@ -89,7 +89,7 @@ pub fn do_eqwalize_module(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded, args.clause_coverage);
+    set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
     let mut file_ids = vec![];
     for module in &args.modules {
@@ -159,7 +159,7 @@ pub fn do_eqwalize_all(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded, args.clause_coverage);
+    set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated.into();
@@ -236,7 +236,7 @@ pub fn do_eqwalize_app(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded, args.clause_coverage);
+    set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated.into();
@@ -281,7 +281,7 @@ pub fn eqwalize_target(
         query_config,
     )?;
 
-    set_eqwalizer_config(&mut loaded, args.clause_coverage);
+    set_eqwalizer_config(&mut loaded);
 
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
@@ -569,11 +569,8 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
     pb.finish();
 }
 
-fn set_eqwalizer_config(loaded: &mut LoadResult, clause_coverage: bool) -> () {
-    let config = EqwalizerConfig {
-        clause_coverage: clause_coverage.then_some(true),
-        ..EqwalizerConfig::default()
-    };
+fn set_eqwalizer_config(loaded: &mut LoadResult) -> () {
+    let config = EqwalizerConfig::default();
     let db = loaded.analysis_host.raw_database_mut();
     if config != *db.eqwalizer_config() {
         db.set_eqwalizer_config(Arc::new(config));

@@ -349,6 +349,14 @@ Because in the expression's type:
   because
   atom() is not compatible with number()
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/refine.erl:245:1
+    │  
+245 │ ╭ tup_guard_record1(X)
+246 │ │     when is_record(X, my_rec) ->
+247 │ │     X * 2.
+    │ ╰─────────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:253:5
     │
@@ -525,4 +533,4 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 405 │     eqwalizer:reveal_type(Name),
     │                           ^^^^ atom()
 
-37 ERRORS
+38 ERRORS

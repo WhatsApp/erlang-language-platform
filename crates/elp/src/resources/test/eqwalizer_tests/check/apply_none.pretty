@@ -1,1 +1,24 @@
-NO ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/apply_none.erl:26:1
+   │  
+26 │ ╭ apply_none1(F)
+27 │ │     when is_function(F, 1),
+28 │ │     is_function(F, 2) ->
+29 │ │     F(a).
+   │ ╰────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/apply_none.erl:32:1
+   │
+32 │ apply_none2(F) -> F(ok).
+   │ ^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/apply_none.erl:35:1
+   │  
+35 │ ╭ apply_none3(F) ->
+36 │ │     Res = F(ok),
+37 │ │     Res.
+   │ ╰───────^ Clause is not covered by spec
+
+3 ERRORS

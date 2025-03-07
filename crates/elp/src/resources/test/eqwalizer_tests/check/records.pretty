@@ -145,6 +145,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/records.erl:200:1
+    │  
+200 │ ╭ field_gen_pat_neg(
+201 │ │     #mrec{id1 = 1, name1 = n, _ = A}
+202 │ │ ) ->
+203 │ │     % is both id2 (integer)
+204 │ │     % and name2 (atom)
+205 │ │     A.
+    │ ╰─────^ Clause is not covered by spec
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:217:5
     │
@@ -517,6 +528,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: #invalid{}
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/records.erl:433:1
+    │  
+433 │ ╭ unbound_update_neg(X) ->
+434 │ │     X#invalid{field = 2}.
+    │ ╰────────────────────────^ Clause is not covered by spec
+
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/records.erl:445:27
     │
@@ -544,6 +562,12 @@ Because in the expression's type:
   'my_record' | binary() is not compatible with binary()
   because
   'my_record' is not compatible with binary()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/records.erl:517:1
+    │
+517 │ narrow3({X, X}) -> X.
+    │ ^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:523:24
@@ -627,4 +651,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a := 'b', dynamic() => dynamic()}
 Context expected type: 'ok'
 
-46 ERRORS
+49 ERRORS

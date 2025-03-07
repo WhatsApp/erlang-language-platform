@@ -147,6 +147,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/funs.erl:155:1
+    │  
+155 │ ╭ x6(L, B) ->
+156 │ │     xmap(fun (_) -> B end, L).
+    │ ╰─────────────────────────────^ Clause is not covered by spec
+
 error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
     ┌─ check/src/funs.erl:195:5
     │
@@ -192,4 +199,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-16 ERRORS
+17 ERRORS
