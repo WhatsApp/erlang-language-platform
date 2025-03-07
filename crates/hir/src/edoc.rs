@@ -80,12 +80,11 @@ impl EdocHeader {
             res.push(format!("{prefix} \"\"\""));
             for line in &doc.lines {
                 if let Some(text) = &line.text {
-                    res.push(text.to_string());
+                    res.push(convert_single_quotes(&convert_triple_quotes(text)));
                 }
             }
             res.push("\"\"\".".to_string());
         }
-
         res.join("\n")
     }
 }
@@ -328,6 +327,20 @@ fn extract_edoc_tag(comment: &str) -> Option<String> {
         static ref RE: Regex = Regex::new(r"^%+\s+@([^\s]+).*$").unwrap();
     }
     RE.captures_iter(comment).next().map(|c| c[1].to_string())
+}
+
+fn convert_single_quotes(comment: &str) -> String {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"`([^']*)'").unwrap();
+    }
+    RE.replace_all(comment, "`$1`").to_string()
+}
+
+fn convert_triple_quotes(comment: &str) -> String {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"'''[']*").unwrap();
+    }
+    RE.replace_all(comment, "```").to_string()
 }
 
 #[cfg(test)]

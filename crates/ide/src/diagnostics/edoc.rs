@@ -208,4 +208,88 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_verbatim_quoting_single_quotes() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc This is about `Foo' and `Bar'.
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is about `Foo` and `Bar`.
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_verbatim_quoting_triple_quotes() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc This is some code:
+%% ```
+%%    awesome code here
+%% '''
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is some code:
+```
+awesome code here
+```
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_verbatim_quoting_combined_quotes() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc This is some `code':
+%% ```
+%%    awesome code here
+%% '''
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is some `code`:
+```
+awesome code here
+```
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }
