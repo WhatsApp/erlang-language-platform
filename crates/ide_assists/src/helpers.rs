@@ -50,6 +50,7 @@ use hir::NameArity;
 use hir::Semantic;
 use hir::Strategy;
 use hir::Var;
+use text_edit::TextEdit;
 use text_edit::TextSize;
 
 use crate::assist_context::AssistContext;
@@ -281,6 +282,15 @@ pub fn unwrap_parens(expr: &ast::Expr) -> Option<ast::Expr> {
         ast::Expr::ExprMax(ast::ExprMax::ParenExpr(expr)) => unwrap_parens(&expr.expr()?),
         _ => Some(expr.clone()),
     }
+}
+
+/// Generate an edit to insert parens around the given range
+pub fn add_parens_edit(range: &TextRange) -> TextEdit {
+    let mut builder = TextEdit::builder();
+    builder.insert(range.start(), "(".to_string());
+    builder.insert(range.end(), ")".to_string());
+    let edit = builder.finish();
+    edit
 }
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {

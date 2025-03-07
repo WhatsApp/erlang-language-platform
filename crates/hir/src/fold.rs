@@ -413,7 +413,13 @@ impl<'a> AnyCallBackCtx<'a> {
     }
 
     pub fn parent(&self) -> ParentId {
-        self.parents.last().copied().unwrap_or(ParentId::TopLevel)
+        // The last parent entry is for the current item. We want the next to last.
+        let mut i = self.parents.iter().rev();
+        if i.next().is_some() {
+            i.next().copied().unwrap_or(ParentId::TopLevel)
+        } else {
+            ParentId::TopLevel
+        }
     }
 }
 
@@ -2270,13 +2276,16 @@ bar() ->
                             .get_body_and_map(file_id, ctx.form_id().unwrap())
                             .unwrap();
                         ctx.parents.iter().any(|parent_id| match parent_id {
-                            ParentId::HirIdx(hir_idx) => match hir_idx.idx {
-                                AnyExprId::Expr(idx) => match body[idx] {
-                                    Expr::Closure { .. } => true,
-                                    _ => false,
-                                },
-                                _ => false,
-                            },
+                            ParentId::HirIdx(hir_idx) => {
+                                hir_idx.body_origin == ctx.body_origin
+                                    && match hir_idx.idx {
+                                        AnyExprId::Expr(idx) => match body[idx] {
+                                            Expr::Closure { .. } => true,
+                                            _ => false,
+                                        },
+                                        _ => false,
+                                    }
+                            }
                             _ => false,
                         })
                     } else {

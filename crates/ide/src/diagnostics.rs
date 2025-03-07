@@ -94,6 +94,7 @@ mod helpers;
 mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod inefficient_last;
+mod macro_precedence_suprise;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
 mod meck;
@@ -886,6 +887,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &record_tuple_match::DESCRIPTOR,
         &unspecific_include::DESCRIPTOR,
         &edoc::DESCRIPTOR,
+        &macro_precedence_suprise::DESCRIPTOR,
     ]
 }
 

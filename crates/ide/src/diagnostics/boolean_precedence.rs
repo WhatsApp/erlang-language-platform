@@ -17,6 +17,7 @@
 use std::fmt;
 use std::fmt::Display;
 
+use elp_ide_assists::helpers::add_parens_edit;
 use elp_ide_assists::helpers::expr_needs_parens;
 use elp_ide_assists::helpers::include_preceding_whitespace;
 use elp_ide_assists::helpers::unwrap_parens;
@@ -170,10 +171,7 @@ fn add_parens_fix(
         } else {
             let expr_range = expr.syntax().text_range();
             let assist_message = format!("Add parens to {}", where_str);
-            let mut builder = TextEdit::builder();
-            builder.insert(expr_range.start(), "(".to_string());
-            builder.insert(expr_range.end(), ")".to_string());
-            let edit = builder.finish();
+            let edit = add_parens_edit(&expr_range);
             diag.add_fix(fix(
                 "replace_boolean_operator_add_parens",
                 &assist_message,
@@ -249,10 +247,20 @@ fn make_diagnostic(
 #[cfg(test)]
 mod tests {
 
+    use elp_ide_db::DiagnosticCode;
     use expect_test::expect;
 
-    use crate::tests::check_diagnostics;
+    use crate::diagnostics::DiagnosticsConfig;
+    use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_specific_fix;
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::MacroPrecedenceEscape);
+        check_diagnostics_with_config(config, fixture)
+    }
 
     #[test]
     fn avoid_and() {
