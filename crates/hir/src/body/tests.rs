@@ -12,6 +12,8 @@ use expect_test::expect;
 use expect_test::Expect;
 
 use crate::db::DefDatabase;
+use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
 use crate::test_db::TestDB;
 use crate::AnyAttribute;
 use crate::FormIdx;
@@ -19,6 +21,7 @@ use crate::FunctionDefId;
 use crate::InFile;
 use crate::PPDirective;
 use crate::SpecOrCallback;
+use crate::Strategy;
 
 #[track_caller]
 fn check(ra_fixture: &str, expect: Expect) {
@@ -85,6 +88,10 @@ fn check_ast(ra_fixture: &str, expect: Expect) {
     let (db, file_ids, _) = TestDB::with_many_files(ra_fixture);
     let file_id = file_ids[0];
     let form_list = db.file_form_list(file_id);
+    let strategy = Strategy {
+        macros: MacroStrategy::ExpandButIncludeMacroCall,
+        parens: ParenStrategy::VisibleParens,
+    };
     let pretty = form_list
         .forms()
         .iter()
@@ -98,7 +105,7 @@ fn check_ast(ra_fixture: &str, expect: Expect) {
                 let function_def_id = InFile::new(file_id, FunctionDefId::new(function_id));
                 if let Some(_fun_def) = def_map.get_by_function_id(&function_def_id) {
                     let body = db.function_body(function_def_id);
-                    Some(body.tree_print(&db))
+                    Some(body.tree_print(&db, strategy))
                 } else {
                     None
                 }

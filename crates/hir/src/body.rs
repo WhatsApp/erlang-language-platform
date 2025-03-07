@@ -29,6 +29,7 @@ use crate::db::InternDatabase;
 use crate::def_map::FunctionDefId;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
+use crate::fold::default_fold_body;
 use crate::fold::AnyCallBack;
 use crate::fold::Constructor;
 use crate::fold::MacroStrategy;
@@ -334,11 +335,12 @@ impl Body {
     }
 
     pub fn tree_print_any_expr(&self, db: &dyn InternDatabase, expr: AnyExprId) -> String {
+        let fold_body = default_fold_body(self);
         match expr {
-            AnyExprId::Expr(expr_id) => tree_print::print_expr(db, self, expr_id),
-            AnyExprId::Pat(pat_id) => tree_print::print_pat(db, self, pat_id),
-            AnyExprId::TypeExpr(type_id) => tree_print::print_type(db, self, type_id),
-            AnyExprId::Term(term_id) => tree_print::print_term(db, self, term_id),
+            AnyExprId::Expr(expr_id) => tree_print::print_expr(db, &fold_body, expr_id),
+            AnyExprId::Pat(pat_id) => tree_print::print_pat(db, &fold_body, pat_id),
+            AnyExprId::TypeExpr(type_id) => tree_print::print_type(db, &fold_body, type_id),
+            AnyExprId::Term(term_id) => tree_print::print_term(db, &fold_body, term_id),
         }
     }
 
@@ -564,8 +566,8 @@ impl FunctionBody {
         pretty::print_function_clause(db, self, form)
     }
 
-    pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
-        tree_print::print_function(db, self)
+    pub fn tree_print(&self, db: &dyn InternDatabase, strategy: Strategy) -> String {
+        tree_print::print_function(db, self, strategy)
     }
 
     pub fn valid_clause_id(&self, ast_clause_id: AstClauseId) -> Option<ClauseId> {

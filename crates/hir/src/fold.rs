@@ -77,6 +77,16 @@ pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     }
 }
 
+pub fn default_fold_body(body: &Body) -> FoldBody {
+    fold_body(
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        body,
+    )
+}
+
 pub trait Fold {
     type Id;
 

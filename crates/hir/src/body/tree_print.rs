@@ -15,6 +15,7 @@ use std::fmt::Write as _;
 use std::str;
 
 use super::DefineBody;
+use super::FoldBody;
 use super::RecordBody;
 use super::SpecBody;
 use super::SpecOrCallback;
@@ -22,10 +23,11 @@ use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::SsrPlaceholder;
+use crate::fold::default_fold_body;
+use crate::fold::fold_body;
 use crate::AnyAttribute;
 use crate::AttributeBody;
 use crate::BinarySeg;
-use crate::Body;
 use crate::CRClause;
 use crate::CallTarget;
 use crate::CatchClause;
@@ -46,38 +48,40 @@ use crate::Record;
 use crate::RecordFieldBody;
 use crate::RecordFieldId;
 use crate::SsrBody;
+use crate::Strategy;
 use crate::Term;
 use crate::TermId;
 use crate::TypeAlias;
 use crate::TypeExpr;
 use crate::TypeExprId;
 
-pub(crate) fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> String {
+pub(crate) fn print_expr(db: &dyn InternDatabase, body: &FoldBody, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_expr(&expr);
     printer.to_string()
 }
 
-pub(crate) fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> String {
+pub(crate) fn print_pat(db: &dyn InternDatabase, body: &FoldBody, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_pat(&pat);
     printer.to_string()
 }
 
-pub(crate) fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -> String {
+pub(crate) fn print_type(db: &dyn InternDatabase, body: &FoldBody, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_type(&ty);
     printer.to_string()
 }
 
-pub(crate) fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
+pub(crate) fn print_term(db: &dyn InternDatabase, body: &FoldBody, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_term(&term);
     printer.to_string()
 }
 
 pub(crate) fn print_record(db: &dyn InternDatabase, body: &RecordBody, record: &Record) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
 
     writeln!(printer, "-record({},", record.name).unwrap();
     printer.indent();
@@ -95,7 +99,8 @@ pub(crate) fn print_attribute(
     body: &AttributeBody,
     form: &AnyAttribute,
 ) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
 
     match form {
         AnyAttribute::CompileOption(_) => writeln!(printer, "-compile(").unwrap(),
@@ -111,7 +116,11 @@ pub(crate) fn print_attribute(
     printer.to_string()
 }
 
-pub(crate) fn print_function(db: &dyn InternDatabase, body: &FunctionBody) -> String {
+pub(crate) fn print_function(
+    db: &dyn InternDatabase,
+    body: &FunctionBody,
+    strategy: Strategy,
+) -> String {
     let mut out = String::new();
 
     body.clauses.iter().next().map(|(_, clause)| {
@@ -123,7 +132,8 @@ pub(crate) fn print_function(db: &dyn InternDatabase, body: &FunctionBody) -> St
     for (_idx, clause) in body.clauses.iter() {
         write!(out, "{}", sep).unwrap();
         sep = ";";
-        let mut printer = Printer::new(db, &clause.body);
+        let fold_body = fold_body(strategy, &clause.body);
+        let mut printer = Printer::new(db, &fold_body);
         printer.print_clause(&clause.clause);
         write!(out, "{}", printer.to_string_raw()).unwrap();
     }
@@ -138,7 +148,8 @@ pub(crate) fn print_function_clause(
 ) -> String {
     let mut out = String::new();
 
-    let mut printer = Printer::new(db, &clause.body);
+    let fold_body = default_fold_body(&clause.body);
+    let mut printer = Printer::new(db, &fold_body);
     printer.print_clause(&clause.clause);
     write!(out, "{}", printer.to_string_raw()).unwrap();
     write!(out, "\n").unwrap();
@@ -151,7 +162,8 @@ pub(crate) fn print_type_alias(
     body: &crate::TypeBody,
     form: &crate::TypeAlias,
 ) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
 
     match form {
         TypeAlias::Regular { .. } => write!(printer, "-type ").unwrap(),
@@ -173,7 +185,8 @@ pub(crate) fn print_spec(
     body: &SpecBody,
     form: &SpecOrCallback,
 ) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
 
     match form {
         SpecOrCallback::Spec(spec) => writeln!(printer, "-spec {}", spec.name.name()).unwrap(),
@@ -227,7 +240,8 @@ pub(crate) fn print_spec(
 }
 
 pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &Define) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
     writeln!(printer, "-define({},", define.name).ok();
     printer.indent();
     printer.print_expr(&body.expr);
@@ -239,7 +253,8 @@ pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &
 }
 
 pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
-    let mut printer = Printer::new(db, &body.body);
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
 
     printer.print_herald("SsrBody", &mut |this| {
         this.print_labelled("lhs", true, &mut |this| {
@@ -265,7 +280,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
 
 struct Printer<'a> {
     db: &'a dyn InternDatabase,
-    body: &'a Body,
+    body: &'a FoldBody<'a>,
     buf: String,
     indent_level: usize,
     needs_indent: bool,
@@ -273,7 +288,7 @@ struct Printer<'a> {
 }
 
 impl<'a> Printer<'a> {
-    fn new(db: &'a dyn InternDatabase, body: &'a Body) -> Self {
+    fn new(db: &'a dyn InternDatabase, body: &'a FoldBody) -> Self {
         Printer {
             db,
             body,
@@ -1344,17 +1359,24 @@ mod tests {
     use expect_test::Expect;
 
     use crate::db::DefDatabase;
+    use crate::fold::MacroStrategy;
+    use crate::fold::ParenStrategy;
     use crate::test_db::TestDB;
     use crate::AnyAttribute;
     use crate::FormIdx;
     use crate::FunctionDefId;
     use crate::InFile;
     use crate::SpecOrCallback;
+    use crate::Strategy;
 
     #[track_caller]
     fn check(fixture: &str, expect: Expect) {
         let (db, file_id) = TestDB::with_single_file(fixture);
         let form_list = db.file_form_list(file_id);
+        let strategy = Strategy {
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::VisibleParens,
+        };
         let pretty = form_list
             .forms()
             .iter()
@@ -1363,7 +1385,7 @@ mod tests {
                     FormIdx::FunctionClause(function_id) => {
                         let body =
                             db.function_body(InFile::new(file_id, FunctionDefId::new(function_id)));
-                        Some(body.tree_print(&db))
+                        Some(body.tree_print(&db, strategy))
                     }
                     FormIdx::TypeAlias(type_alias_id) => {
                         let type_alias = &form_list[type_alias_id];
@@ -1801,7 +1823,6 @@ mod tests {
 
     #[test]
     fn expr_via_fun_macrocall() {
-        // TODO: set optional with/without MacroCall printing.
         check(
             r#"
             -define(EXPR(X), 1 + X).
@@ -1813,13 +1834,18 @@ mod tests {
                     pats
                     guards
                     exprs
-                        Expr<5>:Expr::BinaryOp {
-                            lhs
-                                Expr<1>:Literal(Integer(1))
-                            rhs
-                                Expr<2>:Literal(Integer(2))
-                            op
-                                ArithOp(Add),
+                        Expr<5>:Expr::MacroCall {
+                            args
+                                Expr<4>:Literal(Integer(2)),
+                            expansion
+                                Expr<3>:Expr::BinaryOp {
+                                    lhs
+                                        Expr<1>:Literal(Integer(1))
+                                    rhs
+                                        Expr<2>:Literal(Integer(2))
+                                    op
+                                        ArithOp(Add),
+                                }
                         },
                 }.
             "#]],
