@@ -112,6 +112,11 @@ pub(crate) fn print_attribute(
 pub(crate) fn print_function(db: &dyn InternDatabase, body: &FunctionBody) -> String {
     let mut out = String::new();
 
+    body.clauses.iter().next().map(|(_, clause)| {
+        clause.name.clone().map(|na| {
+            write!(out, "function: {}", na).ok();
+        });
+    });
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
         write!(out, "{}", sep).unwrap();
@@ -1497,6 +1502,7 @@ mod tests {
             foo() -> {a, 1}.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1517,6 +1523,7 @@ mod tests {
             foo() -> A = $b.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1539,6 +1546,7 @@ mod tests {
             foo() -> [A, b | 2.1].
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1562,6 +1570,7 @@ mod tests {
             foo() -> <<+1/integer-little-unit:8>>.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1594,6 +1603,7 @@ mod tests {
             foo() -> #record{field = 3, bar = 5 }.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1618,6 +1628,7 @@ mod tests {
             foo() -> Name#record{field = undefined}.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1642,6 +1653,7 @@ mod tests {
             foo() -> #rec.name.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1662,6 +1674,7 @@ mod tests {
             foo() -> Name#record.field.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1684,6 +1697,7 @@ mod tests {
             foo() -> #{ foo => a + 3, bar => $v }.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1717,6 +1731,7 @@ mod tests {
             foo() -> #{a => b}#{a := b, c => d}.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1749,6 +1764,7 @@ mod tests {
             foo() -> catch 1 + 2.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1778,6 +1794,7 @@ mod tests {
             foo() -> ?EXPR(2).
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1802,6 +1819,7 @@ mod tests {
             foo() -> baz:bar(3,X).
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1828,6 +1846,7 @@ mod tests {
             foo() -> bar(3,X).
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1854,6 +1873,7 @@ mod tests {
                 [X || X <- List, X >= 5].
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1892,6 +1912,7 @@ mod tests {
                 << Byte || <<Byte>> <= Bytes, Byte >= 5>>.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1939,6 +1960,7 @@ mod tests {
               #{KK => VV || KK := VV <- Map}.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1969,6 +1991,7 @@ mod tests {
             foo() -> begin 1, 2 end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -1992,6 +2015,7 @@ mod tests {
                 end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2036,6 +2060,7 @@ mod tests {
                  end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2109,6 +2134,7 @@ mod tests {
                  end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2158,6 +2184,7 @@ mod tests {
                  end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2215,6 +2242,7 @@ mod tests {
                  fun Mod:Foo/Arity.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2261,6 +2289,7 @@ mod tests {
                  fun Named() -> Named() end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2320,6 +2349,7 @@ mod tests {
                end.
             "#,
             expect![[r#"
+                function: foo/0
                 Clause {
                     pats
                     guards
@@ -2396,6 +2426,7 @@ mod tests {
              foo(a:b) -> a:b.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<2>:Pat::Missing,
@@ -2414,6 +2445,7 @@ mod tests {
              foo(A = 4) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<2>:Pat::Match {
@@ -2437,6 +2469,7 @@ mod tests {
              foo([A,4|X]) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<3>:Pat::List {
@@ -2461,6 +2494,7 @@ mod tests {
              foo(X = +1) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<3>:Pat::Match {
@@ -2487,6 +2521,7 @@ mod tests {
              foo(X + 4) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<2>:Pat::BinaryOp {
@@ -2512,6 +2547,7 @@ mod tests {
              foo(#rec{f=X, g=Y}) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<2>:Pat::Record {
@@ -2537,6 +2573,7 @@ mod tests {
              foo(#rec.f) -> ok.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<0>:Pat::RecordIndex {
@@ -2558,6 +2595,7 @@ mod tests {
              foo(#{1 + 2 := 3 + 4}) -> #{a => b}.
             "#,
             expect![[r#"
+                function: foo/1
                 Clause {
                     pats
                         Pat<3>:Pat::Map {

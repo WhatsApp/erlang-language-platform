@@ -2663,6 +2663,34 @@ fn lowering_with_error_nodes() {
         "#]],
     );
 }
+// ---------------------------------------------------------------------
+// Tree printing starts
+#[test]
+fn tree_print_function() {
+    check_ast(
+        r#"
+        foo(0) -> ok;
+        foo(_) -> error.
+        "#,
+        expect![[r#"
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Literal(Integer(0)),
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('ok')),
+            };
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(_),
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('error')),
+            }.
+        "#]],
+    );
+}
 
 #[test]
 fn tree_print_record() {
@@ -2742,3 +2770,6 @@ fn tree_print_record() {
         "#]],
     );
 }
+
+// Tree printing ends
+// ---------------------------------------------------------------------
