@@ -390,8 +390,8 @@ dep() -> ok.
 -module(main).
 -doc """
 This is the main doc
-@param A is a param
-@param B is another param
+  - @param A is a param
+  - @param B is another param
 """.
 main(A, B) ->
     dep().
