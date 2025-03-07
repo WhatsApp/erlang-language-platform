@@ -2665,6 +2665,7 @@ fn lowering_with_error_nodes() {
 }
 // ---------------------------------------------------------------------
 // Tree printing starts
+
 #[test]
 fn tree_print_function() {
     check_ast(
@@ -2687,6 +2688,32 @@ fn tree_print_function() {
                 guards
                 exprs
                     Expr<1>:Literal(Atom('error')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_type_body() {
+    check_ast(
+        r#"
+        -type foo() :: ok | error.
+        -opaque foo() :: term().
+        "#,
+        expect![[r#"
+            -type foo() :: TypeExpr::Union {
+                Literal(Atom('ok')),
+                Literal(Atom('error')),
+            }.
+
+            -opaque foo() :: TypeExpr::Call {
+                target
+                    CallTarget::Remote {
+                        Literal(Atom('erlang'))
+                        Literal(Atom('term'))
+                    }
+                args
+                    ()
             }.
         "#]],
     );
