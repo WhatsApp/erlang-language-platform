@@ -17,6 +17,7 @@ use crate::AnyAttribute;
 use crate::FormIdx;
 use crate::FunctionDefId;
 use crate::InFile;
+use crate::PPDirective;
 use crate::SpecOrCallback;
 
 #[track_caller]
@@ -131,6 +132,14 @@ fn check_ast(ra_fixture: &str, expect: Expect) {
                 let body = db.compile_body(InFile::new(file_id, attribute_id));
                 Some(body.tree_print(&db, attribute))
             }
+            FormIdx::PPDirective(idx) => match &form_list[idx] {
+                PPDirective::Define(define_id) => {
+                    let define = &form_list[*define_id];
+                    let body = db.define_body(InFile::new(file_id, *define_id))?;
+                    Some(body.tree_print(&db, define))
+                }
+                _ => None,
+            },
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -2881,6 +2890,20 @@ fn tree_print_attribute() {
                     Term::Missing,
                     Term::Missing,
                 }
+            ).
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_define_expr() {
+    check_ast(
+        r#"
+         -define(FOO, ok).
+        "#,
+        expect![[r#"
+            -define(FOO,
+                Expr<0>:Literal(Atom('ok'))
             ).
         "#]],
     );

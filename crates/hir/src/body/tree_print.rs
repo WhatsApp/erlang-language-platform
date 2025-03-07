@@ -14,6 +14,7 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::str;
 
+use super::DefineBody;
 use super::RecordBody;
 use super::SpecBody;
 use super::SpecOrCallback;
@@ -31,6 +32,7 @@ use crate::CatchClause;
 use crate::Clause;
 use crate::ComprehensionBuilder;
 use crate::ComprehensionExpr;
+use crate::Define;
 use crate::Expr;
 use crate::ExprId;
 use crate::FunType;
@@ -221,6 +223,18 @@ pub(crate) fn print_spec(
         }
     });
     write!(printer, ".").unwrap();
+    printer.to_string()
+}
+
+pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &Define) -> String {
+    let mut printer = Printer::new(db, &body.body);
+    writeln!(printer, "-define({},", define.name).ok();
+    printer.indent();
+    printer.print_expr(&body.expr);
+    writeln!(printer).ok();
+    printer.dedent();
+    write!(printer, ").").ok();
+
     printer.to_string()
 }
 

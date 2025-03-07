@@ -44,6 +44,7 @@ use crate::CallbackId;
 use crate::Clause;
 use crate::CompileOption;
 use crate::CompileOptionId;
+use crate::Define;
 use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
@@ -731,6 +732,10 @@ impl DefineBody {
         )
         .lower_define(&define_ast)?;
         Some((Arc::new(body), Arc::new(source_map)))
+    }
+
+    pub fn tree_print(&self, db: &dyn InternDatabase, form: &Define) -> String {
+        tree_print::print_define(db, self, form)
     }
 }
 
