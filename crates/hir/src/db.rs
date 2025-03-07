@@ -114,7 +114,7 @@ pub trait DefDatabase:
     fn define_body_with_source(
         &self,
         define_id: InFile<DefineId>,
-    ) -> Option<(Arc<DefineBody>, Arc<BodySourceMap>)>;
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
 
     #[salsa::invoke(SsrBody::ssr_body_with_source_query)]
     fn ssr_body_with_source(
@@ -134,7 +134,7 @@ pub trait DefDatabase:
     fn record_body(&self, record_id: InFile<RecordId>) -> Arc<RecordBody>;
     fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody>;
     fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody>;
-    fn define_body(&self, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>>;
+    fn define_body(&self, define_id: InFile<DefineId>) -> Arc<DefineBody>;
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
 
     #[salsa::invoke(FunctionScopes::function_scopes_query)]
@@ -205,9 +205,8 @@ fn compile_body(db: &dyn DefDatabase, attribute_id: InFile<CompileOptionId>) -> 
     db.compile_body_with_source(attribute_id).0
 }
 
-fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Option<Arc<DefineBody>> {
-    db.define_body_with_source(define_id)
-        .map(|(body, _source)| body)
+fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineBody> {
+    db.define_body_with_source(define_id).0
 }
 
 fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {

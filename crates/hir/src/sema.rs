@@ -411,10 +411,12 @@ impl<'db> Semantic<'db> {
             FormIdx::PPDirective(pp) => {
                 let form_list = self.db.file_form_list(file_id);
                 match form_list[pp] {
-                    PPDirective::Define(define) => self
-                        .db
-                        .define_body_with_source(InFile::new(file_id, define))
-                        .map(|(body, map)| (body.body.clone(), map)),
+                    PPDirective::Define(define) => {
+                        let (body, map) = self
+                            .db
+                            .define_body_with_source(InFile::new(file_id, define));
+                        Some((body.body.clone(), map))
+                    }
                     _ => None,
                 }
             }

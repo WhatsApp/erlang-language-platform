@@ -392,15 +392,19 @@ impl<'a> Ctx<'a> {
         (AttributeBody { body, value }, source_map)
     }
 
-    pub fn lower_define(mut self, define: &ast::PpDefine) -> Option<(DefineBody, BodySourceMap)> {
-        let replacement = define.replacement()?;
+    pub fn lower_define(mut self, define: &ast::PpDefine) -> (DefineBody, BodySourceMap) {
+        let replacement = define.replacement();
         match replacement {
-            MacroDefReplacement::Expr(expr) => {
+            Some(MacroDefReplacement::Expr(expr)) => {
                 let expr = self.lower_expr(&expr);
                 let (body, source_map) = self.finish();
-                Some((DefineBody { body, expr }, source_map))
+                (DefineBody { body, expr }, source_map)
             }
-            _ => None,
+            _ => {
+                let expr = self.alloc_expr(Expr::Missing, None);
+                let (body, source_map) = self.finish();
+                (DefineBody { body, expr }, source_map)
+            }
         }
     }
 

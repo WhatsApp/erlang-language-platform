@@ -227,7 +227,7 @@ impl BodyOrigin {
             BodyOrigin::Define { file_id, define_id } => {
                 let (body, _body_map) = sema
                     .db
-                    .define_body_with_source(InFile::new(*file_id, *define_id))?;
+                    .define_body_with_source(InFile::new(*file_id, *define_id));
                 Some(body.body.clone())
             }
         }
@@ -240,7 +240,7 @@ impl BodyOrigin {
             BodyOrigin::Define { file_id, define_id } => {
                 let (body, body_map) = sema
                     .db
-                    .define_body_with_source(InFile::new(*file_id, *define_id))?;
+                    .define_body_with_source(InFile::new(*file_id, *define_id));
                 Some((body.body.clone(), body_map))
             }
         }
@@ -307,7 +307,7 @@ impl Body {
             BodyOrigin::Define { file_id, define_id } => {
                 let (_, body_map) = sema
                     .db
-                    .define_body_with_source(InFile::new(file_id, define_id))?;
+                    .define_body_with_source(InFile::new(file_id, define_id));
                 Some(body_map)
             }
         }
@@ -729,7 +729,7 @@ impl DefineBody {
     pub(crate) fn define_body_with_source_query(
         db: &dyn DefDatabase,
         define_id: InFile<DefineId>,
-    ) -> Option<(Arc<DefineBody>, Arc<BodySourceMap>)> {
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(define_id.file_id);
         let source = define_id.file_syntax(db.upcast());
         let define = &form_list[define_id.value];
@@ -741,8 +741,8 @@ impl DefineBody {
                 define_id: define_id.value,
             },
         )
-        .lower_define(&define_ast)?;
-        Some((Arc::new(body), Arc::new(source_map)))
+        .lower_define(&define_ast);
+        (Arc::new(body), Arc::new(source_map))
     }
 
     pub fn tree_print(&self, db: &dyn InternDatabase, form: &Define) -> String {

@@ -205,11 +205,8 @@ impl Fold for Define {
         initial: T,
         callback: AnyCallBack<'a, T>,
     ) -> T {
-        if let Some(body) = sema.db.define_body(id) {
-            FoldCtx::fold_expr(strategy, &body.body, body.expr, initial, callback)
-        } else {
-            initial
-        }
+        let body = sema.db.define_body(id);
+        FoldCtx::fold_expr(strategy, &body.body, body.expr, initial, callback)
     }
 }
 
@@ -360,7 +357,7 @@ impl<'a> AnyCallBackCtx<'a> {
             BodyOrigin::Define { file_id, define_id } => {
                 let (define_body, body_map) = sema
                     .db
-                    .define_body_with_source(InFile::new(file_id, define_id))?;
+                    .define_body_with_source(InFile::new(file_id, define_id));
                 Some((define_body.body.clone(), body_map))
             }
         }?;

@@ -142,7 +142,7 @@ fn check_ast(ra_fixture: &str, expect: Expect) {
             FormIdx::PPDirective(idx) => match &form_list[idx] {
                 PPDirective::Define(define_id) => {
                     let define = &form_list[*define_id];
-                    let body = db.define_body(InFile::new(file_id, *define_id))?;
+                    let body = db.define_body(InFile::new(file_id, *define_id));
                     Some(body.tree_print(&db, define))
                 }
                 _ => None,
@@ -2911,6 +2911,20 @@ fn tree_print_define_expr() {
         expect![[r#"
             -define(FOO,
                 Expr<0>:Literal(Atom('ok'))
+            ).
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_define_missing() {
+    check_ast(
+        r#"
+         -define(FOO(X), is_integer(X), X > 1).
+        "#,
+        expect![[r#"
+            -define(FOO/1,
+                Expr<0>:Expr::Missing
             ).
         "#]],
     );
