@@ -2846,5 +2846,45 @@ fn tree_print_record() {
     );
 }
 
+#[test]
+fn tree_print_attribute() {
+    check_ast(
+        r#"
+         -wild(foo, []).
+         -compile({inline, [foo/1]}).
+         -compile({a/a, 1/1}).
+        "#,
+        expect![[r#"
+            -wild(
+                Term::List {
+                    exprs
+                    tail
+                }
+            ).
+
+            -compile(
+                Term::Tuple {
+                    Literal(Atom('inline')),
+                    Term::List {
+                        exprs
+                            Term::Tuple {
+                                Literal(Atom('foo')),
+                                Literal(Integer(1)),
+                            },
+                        tail
+                    },
+                }
+            ).
+
+            -compile(
+                Term::Tuple {
+                    Term::Missing,
+                    Term::Missing,
+                }
+            ).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
