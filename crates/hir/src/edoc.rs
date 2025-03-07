@@ -30,12 +30,14 @@
 //! End Quote
 
 use elp_base_db::FileId;
+use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -45,81 +47,121 @@ use crate::InFileAstPtr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
+    pub kind: EdocHeaderKind,
     form: InFileAstPtr<ast::Form>,
-    tags: Vec<EdocTag>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EdocTag {
-    name: String,
-    comments: Vec<EdocComment>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EdocComment {
-    range: TextRange,
-    source: String,
-    syntax: InFileAstPtr<ast::Comment>,
+    pub doc: Option<Doc>,
+    pub params: FxHashMap<String, Param>,
+    pub returns: Option<Returns>,
+    pub range: TextRange,
 }
 
 impl EdocHeader {
-    pub fn text_ranges(&self) -> Vec<TextRange> {
-        self.tags.iter().flat_map(|tag| tag.text_ranges()).collect()
-    }
-
     pub fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>> {
-        self.tags.iter().flat_map(|tag| tag.comments()).collect()
-    }
-
-    pub fn doc(&self) -> impl Iterator<Item = &EdocTag> {
-        return self.tags.iter().filter(|tag| tag.name == "doc");
-    }
-
-    pub fn params(&self) -> FxHashMap<String, String> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^%+\s+@param ([^\s]+)\s+(.*)$").unwrap();
+        let mut res = vec![];
+        if let Some(doc) = &self.doc {
+            res.extend(doc.comments());
         }
-        let mut res = FxHashMap::default();
-        for source in self.sources_by_tag("param".to_string()) {
-            if let Some(captures) = RE.captures(&source) {
-                if captures.len() == 3 {
-                    res.insert(captures[1].to_string(), captures[2].to_string());
-                }
-            }
+        for (_name, param) in &self.params {
+            res.extend(param.comments());
+        }
+        if let Some(returns) = &self.returns {
+            res.extend(returns.comments());
         }
         res
     }
 
-    pub fn sources_by_tag(&self, name: String) -> Vec<String> {
-        self.tags
-            .iter()
-            .filter(|tag| tag.name == name)
-            .flat_map(|tag| tag.sources())
-            .collect()
-    }
+    pub fn to_markdown(&self) -> String {
+        let mut res = vec![];
+        if let Some(doc) = &self.doc {
+            let prefix = match self.kind {
+                EdocHeaderKind::Module => "\n-moduledoc",
+                EdocHeaderKind::Function => "-doc",
+            };
+            res.push(format!("{prefix} \"\"\""));
+            for line in &doc.lines {
+                if let Some(text) = &line.text {
+                    res.push(text.to_string());
+                }
+            }
+            res.push("\"\"\".".to_string());
+        }
 
-    pub fn function_tags(&self, name: String) -> Vec<String> {
-        self.tags
-            .iter()
-            .filter(|tag| tag.name == name)
-            .flat_map(|tag| tag.sources())
-            .collect()
+        res.join("\n")
     }
 }
 
-impl EdocTag {
-    pub fn text_ranges(&self) -> Vec<TextRange> {
-        self.comments.iter().map(|comment| comment.range).collect()
+pub trait Tag {
+    fn tag(&self) -> String;
+    fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>>;
+    fn tag_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        let tag = self.tag();
+        let comment = self.comments().first()?.to_ast(db);
+        let text = comment.syntax().text().to_string();
+        let start = TextSize::new(text.find(&tag)? as u32);
+        let end = start + TextSize::new(tag.len() as u32);
+        let offset = comment.syntax().text_range().start();
+        Some(TextRange::new(offset + start, offset + end))
     }
-    pub fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>> {
-        self.comments.iter().map(|comment| comment.syntax).collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EdocHeaderKind {
+    Module,
+    Function,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Doc {
+    pub lines: Vec<EdocDocLine>,
+}
+
+impl Tag for Doc {
+    fn tag(&self) -> String {
+        "@doc".to_string()
     }
-    pub fn sources(&self) -> Vec<String> {
-        self.comments
-            .iter()
-            .map(|comment| comment.source.clone())
-            .collect()
+
+    fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>> {
+        self.lines.iter().map(|line| line.syntax.clone()).collect()
     }
+}
+
+impl Tag for Param {
+    fn tag(&self) -> String {
+        "@param".to_string()
+    }
+
+    fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>> {
+        vec![self.syntax]
+    }
+}
+
+impl Tag for Returns {
+    fn tag(&self) -> String {
+        "@returns".to_string()
+    }
+
+    fn comments(&self) -> Vec<InFileAstPtr<ast::Comment>> {
+        vec![self.syntax]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EdocDocLine {
+    pub text: Option<String>,
+    pub syntax: InFileAstPtr<ast::Comment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Param {
+    pub name: String,
+    pub description: String,
+    pub syntax: InFileAstPtr<ast::Comment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Returns {
+    text: String,
+    syntax: InFileAstPtr<ast::Comment>,
 }
 
 pub fn file_edoc_comments_query(
@@ -129,7 +171,7 @@ pub fn file_edoc_comments_query(
     let source = db.parse(file_id).tree();
     let mut res = FxHashMap::default();
     source.forms().for_each(|f| {
-        if is_significant(f.syntax()) {
+        if let Some(kind) = edoc_header_kind(f.syntax()) {
             let mut comments: Vec<_> = prev_form_nodes(f.syntax())
                 .filter(|syntax| {
                     syntax.kind() == elp_syntax::SyntaxKind::COMMENT && only_comment_on_line(syntax)
@@ -137,9 +179,13 @@ pub fn file_edoc_comments_query(
                 .filter_map(ast::Comment::cast)
                 .collect();
             comments.reverse();
-            if let Some(edoc) =
-                edoc_from_comments(InFileAstPtr::new(file_id, AstPtr::new(&f)), &comments)
-            {
+            let comments: Vec<&ast::Comment> = comments
+                .iter()
+                .skip_while(|c| extract_edoc_tag(&c.syntax().text().to_string()).is_none())
+                .collect();
+            if let Some(comment) = comments.last() {
+                let form = InFileAstPtr::new(file_id, AstPtr::new(&f));
+                let edoc = parse_edoc(kind, form, &comments, comment.syntax().text_range());
                 res.insert(edoc.form, edoc);
             }
         }
@@ -147,49 +193,89 @@ pub fn file_edoc_comments_query(
     Some(res)
 }
 
-fn edoc_from_comments(
+fn parse_edoc(
+    kind: EdocHeaderKind,
     form: InFileAstPtr<ast::Form>,
-    comments: &[ast::Comment],
-) -> Option<EdocHeader> {
-    let mut end_tag = false;
-    let tags = comments
-        .iter()
-        .skip_while(|c| contains_edoc_tag(&c.syntax().text().to_string()).is_none())
-        .map(|c| {
-            (
-                contains_edoc_tag(&c.syntax().text().to_string()),
-                EdocComment {
-                    range: c.syntax().text_range(),
-                    source: c.syntax().text().to_string(),
-                    syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(c)),
-                },
-            )
-        })
-        .fold(Vec::default(), |mut acc, (tag, comment)| {
-            if !end_tag {
-                if let Some(name) = tag {
-                    if name == "end" {
-                        end_tag = true;
-                    }
-                    acc.push(EdocTag {
-                        name,
-                        comments: vec![comment],
+    comments: &Vec<&ast::Comment>,
+    range: TextRange,
+) -> EdocHeader {
+    let mut parsing_doc = false;
+    let mut doc_lines = vec![];
+    let mut params = FxHashMap::default();
+    let mut returns = None;
+    let mut range = range.clone();
+    for comment in comments {
+        let mut text = comment.syntax().text().to_string();
+        range = range.cover(comment.syntax().text_range());
+        let tag = extract_edoc_tag(&text);
+        match tag {
+            None => {
+                if parsing_doc {
+                    let text = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
+                    doc_lines.push(EdocDocLine {
+                        text: Some(text.to_string()),
+                        syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
                     });
-                } else if !&acc.is_empty() {
-                    let mut t = acc[0].clone();
-                    t.comments.push(comment);
-                    acc[0] = EdocTag {
-                        name: t.name,
-                        comments: t.comments,
-                    }
                 }
             }
-            acc
-        });
-    if tags.is_empty() {
+            Some(tag) => {
+                if let Some(start) = text.find(&tag) {
+                    if text.len() > start + tag.len() {
+                        text = text[start + tag.len() + 1..].to_string();
+                    } else {
+                        text = "".to_string();
+                    }
+                }
+                match tag.as_str() {
+                    "doc" => {
+                        parsing_doc = true;
+                        doc_lines.push(EdocDocLine {
+                            text: Some(text),
+                            syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
+                        });
+                    }
+                    "end" => {
+                        parsing_doc = false;
+                        doc_lines.push(EdocDocLine {
+                            text: None,
+                            syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
+                        });
+                    }
+                    "param" => {
+                        if let Some((name, description)) = text.split_once(" ") {
+                            params.insert(
+                                name.to_string(),
+                                Param {
+                                    name: name.to_string(),
+                                    description: description.to_string(),
+                                    syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
+                                },
+                            );
+                        }
+                    }
+                    "returns" => {
+                        returns = Some(Returns {
+                            text,
+                            syntax: InFileAstPtr::new(form.file_id(), AstPtr::new(comment)),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    let doc = if doc_lines.is_empty() {
         None
     } else {
-        Some(EdocHeader { form, tags })
+        Some(Doc { lines: doc_lines })
+    };
+    EdocHeader {
+        kind,
+        form,
+        range,
+        doc,
+        params,
+        returns,
     }
 }
 
@@ -223,18 +309,21 @@ fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
         .siblings_with_tokens(elp_syntax::Direction::Prev)
         .skip(1) // Starts with itself
         .filter_map(|node_or_token| node_or_token.into_node())
-        .take_while(|node| !is_significant(node))
+        .take_while(|node| !edoc_header_kind(node).is_some())
 }
 
-/// Significant forms for edoc are functions and module declarations.
-fn is_significant(node: &SyntaxNode) -> bool {
-    node.kind() == SyntaxKind::FUN_DECL || node.kind() == SyntaxKind::MODULE_ATTRIBUTE
+fn edoc_header_kind(node: &SyntaxNode) -> Option<EdocHeaderKind> {
+    match node.kind() {
+        SyntaxKind::FUN_DECL => Some(EdocHeaderKind::Function),
+        SyntaxKind::MODULE_ATTRIBUTE => Some(EdocHeaderKind::Module),
+        _ => None,
+    }
 }
 
 /// Check if the given comment starts with an edoc tag.
 ///    A tag must be the first thing on a comment line, except for leading
 ///    '%' characters and whitespace.
-fn contains_edoc_tag(comment: &str) -> Option<String> {
+fn extract_edoc_tag(comment: &str) -> Option<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^%+\s+@([^\s]+).*$").unwrap();
     }
@@ -249,31 +338,68 @@ mod tests {
     use expect_test::Expect;
     use fxhash::FxHashMap;
 
-    use super::contains_edoc_tag;
+    use super::extract_edoc_tag;
     use super::file_edoc_comments_query;
-    use super::EdocComment;
     use super::EdocHeader;
-    use super::EdocTag;
+    use crate::edoc::Param;
+    use crate::edoc::Returns;
     use crate::test_db::TestDB;
     use crate::InFileAstPtr;
 
     fn test_print(edoc: FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>) -> String {
         let mut buf = String::default();
-        edoc.iter().for_each(|(_k, EdocHeader { form, tags })| {
-            buf.push_str(format!("{}\n", form.syntax_ptr_string()).as_str());
-            tags.iter().for_each(|EdocTag { name, comments }| {
-                buf.push_str(format!("  {}\n", name).as_str());
-                comments.iter().for_each(
-                    |EdocComment {
-                         range,
-                         source,
-                         syntax: _,
-                     }| {
-                        buf.push_str(format!("    {:?}: \"{}\"\n", range, source).as_str());
-                    },
-                );
-            });
-        });
+        edoc.iter().for_each(
+            |(
+                _k,
+                EdocHeader {
+                    kind,
+                    range,
+                    form,
+                    doc,
+                    params,
+                    returns,
+                },
+            )| {
+                buf.push_str(format!("{}\n", form.syntax_ptr_string()).as_str());
+                buf.push_str(format!("{:?}:{:?}\n", kind, range).as_str());
+                if let Some(doc) = doc {
+                    if !doc.lines.is_empty() {
+                        buf.push_str(format!("  doc\n").as_str());
+                        doc.lines.iter().for_each(|line| {
+                            if let Some(text) = &line.text {
+                                buf.push_str(
+                                    format!("    {:?}: \"{}\"\n", line.syntax.range(), text)
+                                        .as_str(),
+                                );
+                            }
+                        });
+                    }
+                }
+                if !params.is_empty() {
+                    buf.push_str(format!("  params\n").as_str());
+                    params.iter().for_each(
+                        |(
+                            _name,
+                            Param {
+                                name,
+                                description,
+                                syntax,
+                            },
+                        )| {
+                            buf.push_str(format!("    {}\n", name).as_str());
+                            buf.push_str(
+                                format!("      {:?}: \"{}\"\n", syntax.range(), description)
+                                    .as_str(),
+                            );
+                        },
+                    );
+                }
+                if let Some(Returns { text, syntax }) = returns {
+                    buf.push_str(format!("  returns\n").as_str());
+                    buf.push_str(format!("    {:?}: \"{}\"\n", syntax.range(), text).as_str());
+                }
+            },
+        );
         buf
     }
 
@@ -292,7 +418,7 @@ mod tests {
                 "foo",
             )
         "#]]
-        .assert_debug_eq(&contains_edoc_tag("%% @foo bar"));
+        .assert_debug_eq(&extract_edoc_tag("%% @foo bar"));
     }
 
     #[test]
@@ -307,14 +433,16 @@ mod tests {
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 130..156, kind: FUN_DECL }
+                Function:0..129
                   doc
-                    0..12: "%% @doc blah"
-                  param
-                    13..52: "%% @param Foo ${2:Argument description}"
-                  param
-                    53..93: "%% @param Arg2 ${3:Argument description}"
+                    0..12: "blah"
+                  params
+                    Foo
+                      13..52: "${2:Argument description}"
+                    Arg2
+                      53..93: "${3:Argument description}"
                   returns
-                    94..129: "%% @returns ${4:Return description}"
+                    94..129: "${4:Return description}"
             "#]],
         )
     }
@@ -331,11 +459,12 @@ mod tests {
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 124..150, kind: FUN_DECL }
-                  param
-                    25..64: "%% @param Foo ${2:Argument description}"
-                    65..87: "%% Does not have a tag"
+                Function:25..123
+                  params
+                    Foo
+                      25..64: "${2:Argument description}"
                   returns
-                    88..123: "%% @returns ${4:Return description}"
+                    88..123: "${4:Return description}"
             "#]],
         )
     }
@@ -345,13 +474,15 @@ mod tests {
         check(
             r#"
                 bar() -> ok. %% @doc not an edoc comment
-                %% @tag is an edoc comment
+                %% @param Foo This is a valid edoc comment
                 foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                SyntaxNodePtr { range: 68..94, kind: FUN_DECL }
-                  tag
-                    41..67: "%% @tag is an edoc comment"
+                SyntaxNodePtr { range: 84..110, kind: FUN_DECL }
+                Function:41..83
+                  params
+                    Foo
+                      41..83: "This is a valid edoc comment"
             "#]],
         )
     }
@@ -360,7 +491,7 @@ mod tests {
     fn edoc_ignores_insignificant_forms() {
         check(
             r#"
-                %% @tag is an edoc comment
+                %% @doc is an edoc comment
                 -compile(warn_missing_spec).
                 -include_lib("stdlib/include/assert.hrl").
                 -define(X,3).
@@ -381,9 +512,10 @@ mod tests {
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 474..500, kind: FUN_DECL }
-                  tag
-                    0..26: "%% @tag is an edoc comment"
-                    449..473: "%% Part of the same edoc"
+                Function:0..473
+                  doc
+                    0..26: "is an edoc comment"
+                    449..473: "Part of the same edoc"
             "#]],
         )
     }
@@ -392,13 +524,14 @@ mod tests {
     fn edoc_module_attribute() {
         check(
             r#"
-                %% @tag is an edoc comment
+                %% @doc is an edoc comment
                 -module(foo).
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 27..40, kind: MODULE_ATTRIBUTE }
-                  tag
-                    0..26: "%% @tag is an edoc comment"
+                Module:0..26
+                  doc
+                    0..26: "is an edoc comment"
             "#]],
         )
     }
@@ -407,7 +540,7 @@ mod tests {
     fn edoc_multiple() {
         check(
             r#"
-                %% @foo is an edoc comment
+                %% @doc is an edoc comment
                 -module(foo).
 
                 %% @doc fff is ...
@@ -419,11 +552,13 @@ mod tests {
             // may change.
             expect![[r#"
                 SyntaxNodePtr { range: 27..40, kind: MODULE_ATTRIBUTE }
-                  foo
-                    0..26: "%% @foo is an edoc comment"
-                SyntaxNodePtr { range: 61..73, kind: FUN_DECL }
+                Module:0..26
                   doc
-                    42..60: "%% @doc fff is ..."
+                    0..26: "is an edoc comment"
+                SyntaxNodePtr { range: 61..73, kind: FUN_DECL }
+                Function:42..60
+                  doc
+                    42..60: "fff is ..."
             "#]],
         )
     }
@@ -442,11 +577,30 @@ mod tests {
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 73..87, kind: MODULE_ATTRIBUTE }
+                Module:0..72
                   doc
-                    0..18: "%% @doc First line"
-                    19..38: "%%      Second line"
-                  end
-                    39..46: "%% @end"
+                    0..18: "First line"
+                    19..38: "Second line"
+            "#]],
+        )
+    }
+
+    #[test]
+    fn edoc_solid() {
+        check(
+            r#"
+                %% Foo
+                %% @doc Bar
+                %% Baz
+                -module(main).
+                f() -> ok.
+"#,
+            expect![[r#"
+                SyntaxNodePtr { range: 26..40, kind: MODULE_ATTRIBUTE }
+                Module:7..25
+                  doc
+                    7..18: "Bar"
+                    19..25: "Baz"
             "#]],
         )
     }

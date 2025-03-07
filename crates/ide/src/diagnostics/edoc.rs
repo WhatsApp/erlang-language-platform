@@ -9,9 +9,13 @@
 
 // Diagnostic: edoc
 
-use elp_ide_assists::Assist;
+use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_syntax::AstNode;
+use hir::edoc::EdocHeader;
+use hir::edoc::EdocHeaderKind;
+use hir::edoc::Tag;
 use hir::Semantic;
 use text_edit::TextRange;
 
@@ -42,26 +46,55 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     if let Some(comments) = sema.file_edoc_comments(file_id) {
         for (_form, header) in comments {
-            if let Some(doc_tag) = header.doc().next() {
-                for range in doc_tag.text_ranges() {
-                    diagnostics.push(old_edoc_syntax_diagnostic(file_id, range));
+            if let Some(doc) = &header.doc {
+                if let Some(show_range) = doc.tag_range(sema.db.upcast()) {
+                    diagnostics.push(old_edoc_syntax_diagnostic(
+                        sema, file_id, show_range, &header,
+                    ));
                 }
             }
         }
     }
 }
 
-fn old_edoc_syntax_diagnostic(file_id: FileId, range: TextRange) -> Diagnostic {
-    Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range)
+fn old_edoc_syntax_diagnostic(
+    sema: &Semantic,
+    file_id: FileId,
+    show_range: TextRange,
+    header: &EdocHeader,
+) -> Diagnostic {
+    let fix = match header.kind {
+        EdocHeaderKind::Module => {
+            let insert_offset =
+                if let Some(module_attribute) = sema.form_list(file_id).module_attribute() {
+                    let source = sema.parse(file_id);
+                    module_attribute
+                        .form_id
+                        .get(&source.value)
+                        .syntax()
+                        .text_range()
+                        .end()
+                } else {
+                    header.range.end()
+                };
+            let mut builder = SourceChangeBuilder::new(file_id);
+            for comment in header.comments() {
+                builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
+            }
+            builder.insert(insert_offset, header.to_markdown());
+            let source_change = builder.finish();
+            crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range)
+        }
+        EdocHeaderKind::Function => {
+            let mut builder = SourceChangeBuilder::new(file_id);
+            builder.replace(header.range, header.to_markdown());
+            let source_change = builder.finish();
+            crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range)
+        }
+    };
+    Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
         .with_severity(DIAGNOSTIC_SEVERITY)
-        .with_fixes(Some(vec![fix_convert_to_markdown(file_id, range)]))
-}
-
-fn fix_convert_to_markdown(file_id: FileId, range: TextRange) -> Assist {
-    let mut builder = SourceChangeBuilder::new(file_id);
-    builder.replace(range, "todo");
-    let source_change = builder.finish();
-    crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, range)
+        .with_fixes(Some(vec![fix]))
 }
 
 #[cfg(test)]
@@ -95,11 +128,9 @@ mod tests {
     %% This is some license text.
     %%%-------------------------------------------------------------------
     %% @doc This is the module documentation.
-    %%<^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %%      With some more text.
-    %%<^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %%      And some more lines.
-    %%<^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %% @end
     %%%-------------------------------------------------------------------
     %%% % @format
@@ -119,7 +150,7 @@ mod tests {
             r#"
     -module(main).
     %% @doc This is the main function documentation.
-    %%<^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
 
@@ -129,24 +160,52 @@ mod tests {
     }
 
     #[test]
+    fn test_module_doc_fix() {
+        check_fix(
+            r#"
+%% @d~oc This is the module documentation.
+%%       With an extra line.
+-module(main).
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-moduledoc """
+This is the module documentation.
+With an extra line.
+""".
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_fix() {
         check_fix(
             r#"
-    -module(main).
-    %% @doc This is the main f~unction documentation.
-    main() ->
-      dep().
+-module(main).
+%% @d~oc This is the main function documentation.
+main() ->
+    dep().
 
-    dep() -> ok.
-        "#,
+dep() -> ok.
+"#,
             expect![[r#"
-    -module(main).
-    todo
-    main() ->
-      dep().
+-module(main).
+-doc """
+This is the main function documentation.
+""".
+main() ->
+    dep().
 
-    dep() -> ok.
-        "#]],
+dep() -> ok.
+"#]],
         )
     }
 }

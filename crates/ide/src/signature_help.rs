@@ -234,7 +234,11 @@ fn build_signature_help(
 
 fn get_parameters_doc(db: &RootDatabase, def: &FunctionDef) -> FxHashMap<String, String> {
     match def.edoc_comments(db) {
-        Some(edoc_header) => edoc_header.params(),
+        Some(edoc_header) => edoc_header
+            .params
+            .into_iter()
+            .map(|(name, param)| (name, param.description))
+            .collect(),
         None => FxHashMap::default(),
     }
 }
@@ -265,6 +269,7 @@ mod tests {
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use expect_test::expect;
     use expect_test::Expect;
+    use itertools::Itertools;
     use stdx::format_to;
 
     use crate::RootDatabase;
@@ -301,7 +306,7 @@ mod tests {
                     }
                     if !sh.parameters_doc.is_empty() {
                         format_to!(rendered, "------\n");
-                        for (param_name, param_desc) in &sh.parameters_doc {
+                        for (param_name, param_desc) in sh.parameters_doc.iter().sorted() {
                             format_to!(rendered, "{param_name}: {param_desc}\n");
                         }
                     }
