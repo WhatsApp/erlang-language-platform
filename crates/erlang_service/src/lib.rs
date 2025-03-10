@@ -610,7 +610,7 @@ impl Connection {
                 })
             })
             .map_err(|error| {
-                log::info!("Failed to fetch CT Info for {}: {:?}", module.name, error);
+                log::warn!("Failed to fetch CT Info for {}: {:?}", module.name, error);
                 format!("Failed to fetch CT Info for {:?}", module.name)
             })
     }
