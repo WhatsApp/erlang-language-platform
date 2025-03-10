@@ -718,7 +718,11 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Expr::Paren { expr } => self.print_expr(expr),
+            Expr::Paren { expr } => {
+                self.print_herald("Expr::Paren", &mut |this| {
+                    this.print_expr(expr);
+                });
+            }
             Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
@@ -839,7 +843,11 @@ impl<'a> Printer<'a> {
                     this.print_labelled("expansion", true, &mut |this| this.print_pat(expansion));
                 });
             }
-            Pat::Paren { pat } => self.print_pat(pat),
+            Pat::Paren { pat } => {
+                self.print_herald("Pat::Paren", &mut |this| {
+                    this.print_pat(pat);
+                });
+            }
             Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
@@ -1371,12 +1379,17 @@ mod tests {
 
     #[track_caller]
     fn check(fixture: &str, expect: Expect) {
-        let (db, file_id) = TestDB::with_single_file(fixture);
-        let form_list = db.file_form_list(file_id);
         let strategy = Strategy {
             macros: MacroStrategy::ExpandButIncludeMacroCall,
             parens: ParenStrategy::VisibleParens,
         };
+        check_with_strategy(strategy, fixture, expect);
+    }
+
+    #[track_caller]
+    fn check_with_strategy(strategy: Strategy, fixture: &str, expect: Expect) {
+        let (db, file_id) = TestDB::with_single_file(fixture);
+        let form_list = db.file_form_list(file_id);
         let pretty = form_list
             .forms()
             .iter()
@@ -3074,6 +3087,100 @@ mod tests {
                                 args
                                     ()
                             }.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn parens_top_level() {
+        let fixture = r#"
+             foo(((A))) -> ((3)).
+            "#;
+        check_with_strategy(
+            Strategy {
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            fixture,
+            expect![[r#"
+                function: foo/1
+                Clause {
+                    pats
+                        Pat<2>:Pat::Var(A),
+                    guards
+                    exprs
+                        Expr<3>:Literal(Integer(3)),
+                }.
+            "#]],
+        );
+
+        check_with_strategy(
+            Strategy {
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
+                parens: ParenStrategy::VisibleParens,
+            },
+            fixture,
+            expect![[r#"
+                function: foo/1
+                Clause {
+                    pats
+                        Pat<2>:Pat::Paren {
+                            Pat<1>:Pat::Paren {
+                                Pat<0>:Pat::Var(A)}},
+                    guards
+                    exprs
+                        Expr<3>:Expr::Paren {
+                            Expr<2>:Expr::Paren {
+                                Expr<1>:Literal(Integer(3))}},
+                }.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn parens() {
+        let fixture = r#"
+             foo(A) -> {((3))}.
+            "#;
+        check_with_strategy(
+            Strategy {
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            fixture,
+            expect![[r#"
+                function: foo/1
+                Clause {
+                    pats
+                        Pat<0>:Pat::Var(A),
+                    guards
+                    exprs
+                        Expr<4>:Expr::Tuple {
+                            Expr<3>:Literal(Integer(3)),
+                        },
+                }.
+            "#]],
+        );
+
+        check_with_strategy(
+            Strategy {
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
+                parens: ParenStrategy::VisibleParens,
+            },
+            fixture,
+            expect![[r#"
+                function: foo/1
+                Clause {
+                    pats
+                        Pat<0>:Pat::Var(A),
+                    guards
+                    exprs
+                        Expr<4>:Expr::Tuple {
+                            Expr<3>:Expr::Paren {
+                                Expr<2>:Expr::Paren {
+                                    Expr<1>:Literal(Integer(3))}},
+                        },
+                }.
             "#]],
         );
     }
