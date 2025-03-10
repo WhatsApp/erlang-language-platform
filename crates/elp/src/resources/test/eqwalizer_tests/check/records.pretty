@@ -44,6 +44,14 @@ Expression has type:   #foo_def{}
 Context expected type: #foo{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/records.erl:73:5
+   │
+73 │     Foo#foo_def{name = default, id = 0}.
+   │     ^^^ Foo.
+Expression has type:   #foo{}
+Context expected type: #foo_def{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:86:5
    │
 86 │     #foo.name.
@@ -319,6 +327,14 @@ Because in the expression's type:
   only_int_box() is not compatible with #any_box{}
   because
   #int_bool_box{inner :: number()} is not compatible with #any_box{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/records.erl:319:5
+    │
+319 │     R#any_box.inner.
+    │     ^^^^^^^^^^^^^^^ ...#any_box.inner.
+Expression has type:   term()
+Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:324:5
@@ -651,4 +667,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a := 'b', dynamic() => dynamic()}
 Context expected type: 'ok'
 
-49 ERRORS
+51 ERRORS

@@ -52,4 +52,25 @@ Because in the expression's type:
   because
   #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [T]
 
-4 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/strict_complex_types.erl:48:16
+   │
+48 │   lists:nth(7, Map).
+   │                ^^^
+   │                │
+   │                Map.
+Expression has type:   complex_map()
+Context expected type: [dynamic()]
+   │                
+
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: [dynamic()]
+
+------------------------------ Detailed message ------------------------------
+
+  complex_map() is not compatible with [dynamic()]
+  because
+  #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [dynamic()]
+
+5 ERRORS

@@ -7,6 +7,14 @@ Expression has type:   'ok'
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/fun_stats.erl:36:3
+   │
+36 │   wn_ey_sy() + 3.
+   │   ^^^^^^^^^^^^^^ _ + _.
+Expression has type:   number()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/fun_stats.erl:43:3
    │
 43 │   wy_ey_sy() + 3.
@@ -30,4 +38,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'ok'
 Context expected type: number()
 
-4 ERRORS
+5 ERRORS

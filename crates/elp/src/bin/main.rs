@@ -1701,7 +1701,6 @@ mod tests {
             "options",
             buck,
             EqwalizerConfig {
-                fault_tolerance: Some(true),
                 report_bad_maps: Some(true),
                 report_dynamic_lambdas: Some(true),
                 ..EqwalizerConfig::default_test()
@@ -1716,10 +1715,7 @@ mod tests {
             "eqwalizer_tests",
             "fault_tolerance",
             buck,
-            EqwalizerConfig {
-                fault_tolerance: Some(true),
-                ..EqwalizerConfig::default_test()
-            },
+            EqwalizerConfig::default_test(),
         );
     }
 

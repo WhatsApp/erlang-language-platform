@@ -26,4 +26,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   tuple()
 Context expected type: number()
 
-4 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guards.erl:89:25
+   │
+89 │ guard_element_neg(T) -> T + 1.
+   │                         ^^^^^ _ + _.
+Expression has type:   number()
+Context expected type: tuple()
+
+5 ERRORS

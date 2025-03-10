@@ -91,6 +91,36 @@ Expression has type:   {dynamic()}
 Context expected type: X
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:108:3
+    │    
+108 │ ╭ ╭   lists:map(
+109 │ │ │     fun
+110 │ │ │       Fib(N) when N < 2
+111 │ │ │         -> 1;
+    · │ │
+117 │ │ │     [1, 2, 3]
+118 │ │ │   ).
+    │ ╰─│───^ lists:map(fun, [1, 2, 3]).
+Expression has type:   [number() | 'three']
+Context expected type: [number()]
+    │   ╰───' 
+
+Because in the expression's type:
+  [
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: 'three'
+    Differs from the expected type:  number()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [number() | 'three'] is not compatible with [number()]
+  because
+  number() | 'three' is not compatible with number()
+  because
+  'three' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:9
     │
 115 │         Fib(N - 2) + Fib(N - 1)
@@ -100,6 +130,28 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number() | 'three'
 Context expected type: number()
     │         
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'three'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'three' is not compatible with number()
+  because
+  'three' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:115:22
+    │
+115 │         Fib(N - 2) + Fib(N - 1)
+    │                      ^^^^^^^^^^
+    │                      │
+    │                      Fib(_ - _).
+Expression has type:   number() | 'three'
+Context expected type: number()
+    │                      
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -126,4 +178,4 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
     │                                               ^^^^^^^^^^^^ dynamic() | 'undef'
 
-11 ERRORS
+13 ERRORS

@@ -39,6 +39,14 @@ Expression has type:   'ok'
 Context expected type: 'err'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_maybe.erl:93:14
+   │
+93 │         _ -> ok
+   │              ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: 'err'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_maybe.erl:123:18
     │
 123 │         a = A ?= T,
@@ -82,4 +90,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'a', term()} | {'b', {'a', term()}}
 Context expected type: 'err'
 
-8 ERRORS
+9 ERRORS

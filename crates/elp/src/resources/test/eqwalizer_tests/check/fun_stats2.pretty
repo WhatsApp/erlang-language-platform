@@ -6,4 +6,20 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-1 ERROR
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/fun_stats2.erl:16:22
+   │
+16 │   _ = binary_to_atom(Atom),
+   │                      ^^^^ Atom.
+Expression has type:   atom()
+Context expected type: binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/fun_stats2.erl:17:13
+   │
+17 │   _ = "" ++ Atom,
+   │             ^^^^ Atom.
+Expression has type:   atom()
+Context expected type: [term()]
+
+3 ERRORS

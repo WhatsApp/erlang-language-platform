@@ -7,6 +7,54 @@ Expression has type:   term()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:13:27
+   │
+13 │     {true, true} -> aa(X, Y);
+   │                           ^ Y.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:14:20
+   │
+14 │     {true, _} -> a(X);
+   │                    ^ X.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:15:20
+   │
+15 │     {_, true} -> a(Y);
+   │                    ^ Y.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:16:10
+   │
+16 │     _ -> not-ok
+   │          ^^^^^^ not _.
+Expression has type:   boolean()
+Context expected type: 'ok' | 'not_ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:16:13
+   │
+16 │     _ -> not-ok
+   │             ^^^ - _.
+Expression has type:   number()
+Context expected type: boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/case_predicates.erl:16:14
+   │
+16 │     _ -> not-ok
+   │              ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:124:14
     │
 124 │     false -> {p, X}
@@ -81,4 +129,26 @@ Because in the expression's type:
   because
   #{dynamic() => dynamic()} is not compatible with [T]
 
-4 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/case_predicates.erl:174:16
+    │
+174 │   lists:nth(1, L).
+    │                ^
+    │                │
+    │                L.
+Expression has type:   #{dynamic() => dynamic()} | none()
+Context expected type: [dynamic()]
+    │                
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: none()
+  However the following candidate: #{dynamic() => dynamic()}
+  Differs from the expected type:  [dynamic()]
+
+------------------------------ Detailed message ------------------------------
+
+  #{dynamic() => dynamic()} | none() is not compatible with [dynamic()]
+  because
+  #{dynamic() => dynamic()} is not compatible with [dynamic()]
+
+11 ERRORS

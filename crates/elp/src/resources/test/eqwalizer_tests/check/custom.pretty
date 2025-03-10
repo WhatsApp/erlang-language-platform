@@ -467,6 +467,34 @@ error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch
 fun with arity 2 used as fun with 3 arguments
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:544:5
+    │    
+544 │ ╭ ╭     maps:fold(
+545 │ │ │         fun (_, _, Acc) -> [Acc] end,
+546 │ │ │         [],
+547 │ │ │         M
+548 │ │ │     ).
+    │ ╰─│─────^ maps:fold(fun, [], M).
+Expression has type:   [[[]]]
+Context expected type: [number() | 'a' | 'b']
+    │   ╰─────' 
+
+Because in the expression's type:
+  [
+    Here the type is:     [[]]
+    Context expects type: number() | 'a' | 'b'
+    No candidate matches in the expected union.
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [[[]]] is not compatible with [number() | 'a' | 'b']
+  because
+  [[]] is not compatible with number() | 'a' | 'b'
+  because
+  [[]] is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:545:28
     │
 545 │         fun (_, _, Acc) -> [Acc] end,
@@ -494,6 +522,18 @@ Because in the expression's type:
   [[[]]] is not compatible with [[]]
   because
   [[]] is not compatible with []
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:552:5
+    │  
+552 │ ╭     maps:fold(
+553 │ │         fun (_, _, Acc) -> Acc end,
+554 │ │         [],
+555 │ │         non_kv
+556 │ │     ).
+    │ ╰─────^ maps:fold(fun, [], 'non_kv').
+Expression has type:   []
+Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:555:9
@@ -563,6 +603,38 @@ Context expected type: fun((number(), 'a', []) -> term()) with 0 type parameters
 Because in the expression's type:
   Here the type is:     fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
   Context expects type: fun((number(), 'a', []) -> term()) with 0 type parameters
+  The number of type parameters doesn't match.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:601:9
+    │
+601 │         fun folder_bad/3,
+    │         ^^^^^^^^^^^^^^^^
+    │         │
+    │         folder_bad/3.
+Expression has type:   fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
+Context expected type: fun((number(), 'a', [] | dynamic()) -> term()) with 0 type parameters
+    │         
+
+Because in the expression's type:
+  Here the type is:     fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
+  Context expects type: fun()/3 with 0 type parameters
+  The number of type parameters doesn't match.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:601:9
+    │
+601 │         fun folder_bad/3,
+    │         ^^^^^^^^^^^^^^^^
+    │         │
+    │         folder_bad/3.
+Expression has type:   fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
+Context expected type: fun((number(), 'a', [] | dynamic()) -> [] | dynamic()) with 0 type parameters
+    │         
+
+Because in the expression's type:
+  Here the type is:     fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
+  Context expects type: fun()/3 with 0 type parameters
   The number of type parameters doesn't match.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -801,6 +873,63 @@ Because in the expression's type:
   'wrong_ret' is not compatible with boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:829:20
+    │
+829 │             (c) -> wrong_ret end,
+    │                    ^^^^^^^^^
+    │                    │
+    │                    'wrong_ret'.
+Expression has type:   'wrong_ret'
+Context expected type: boolean() | ['a' | 'b']
+    │                    
+
+  'wrong_ret' is not compatible with boolean() | ['a' | 'b']
+  because
+  'wrong_ret' is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:837:9
+    │    
+837 │ ╭ ╭         fun (1) -> {true, a};
+838 │ │ │             (2) -> true end,
+    │ ╰─│───────────────────────────^ fun.
+Expression has type:   fun((dynamic()) -> {'true', 'a'} | 'true')
+Context expected type: fun((Item) -> boolean() | [Item])
+    │   ╰───────────────────────────' 
+
+Because in the expression's type:
+  fun((dynamic()) ->
+    Here the type is a union type with some valid candidates: 'true'
+    However the following candidate: {'true', 'a'}
+    Differs from the expected type:  boolean() | [Item]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((dynamic()) -> {'true', 'a'} | 'true') is not compatible with fun((Item) -> boolean() | [Item])
+  because
+  {'true', 'a'} | 'true' is not compatible with boolean() | [Item]
+  because
+  {'true', 'a'} is not compatible with boolean() | [Item]
+  because
+  {'true', 'a'} is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:837:20
+    │
+837 │         fun (1) -> {true, a};
+    │                    ^^^^^^^^^
+    │                    │
+    │                    {'true', 'a'}.
+Expression has type:   {'true', 'a'}
+Context expected type: boolean() | [dynamic()]
+    │                    
+
+  {'true', 'a'} is not compatible with boolean() | [dynamic()]
+  because
+  {'true', 'a'} is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:839:9
     │
 839 │         not_a_queue
@@ -814,6 +943,21 @@ Context expected type: queue:queue(Item)
 Because in the expression's type:
   Here the type is:     'not_a_queue'
   Context expects type: opaque queue:queue(Item)
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:839:9
+    │
+839 │         not_a_queue
+    │         ^^^^^^^^^^^
+    │         │
+    │         'not_a_queue'.
+Expression has type:   'not_a_queue'
+Context expected type: queue:queue(dynamic())
+    │         
+
+Because in the expression's type:
+  Here the type is:     'not_a_queue'
+  Context expects type: opaque queue:queue(dynamic())
 
 error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
     ┌─ check/src/custom.erl:846:9
@@ -857,6 +1001,21 @@ Because in the expression's type:
   {'true', 'a'} is not compatible with boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:857:20
+    │
+857 │         fun (1) -> {true, a};
+    │                    ^^^^^^^^^
+    │                    │
+    │                    {'true', 'a'}.
+Expression has type:   {'true', 'a'}
+Context expected type: boolean() | ['a' | 'b']
+    │                    
+
+  {'true', 'a'} is not compatible with boolean() | ['a' | 'b']
+  because
+  {'true', 'a'} is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:873:9
     │    
 873 │ ╭ ╭         fun (a) -> [a];
@@ -882,6 +1041,30 @@ Because in the expression's type:
 
   fun(('a' | 'b') -> ['a'] | 'wrong_ret') is not compatible with fun(('a' | 'b') -> boolean() | ['a' | 'b'])
   because
+  ['a'] | 'wrong_ret' is not compatible with boolean() | ['a' | 'b']
+  because
+  'wrong_ret' is not compatible with boolean() | ['a' | 'b']
+  because
+  'wrong_ret' is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:881:17
+    │
+881 │                 Res
+    │                 ^^^
+    │                 │
+    │                 Res.
+Expression has type:   ['a'] | 'wrong_ret'
+Context expected type: boolean() | ['a' | 'b']
+    │                 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: ['a']
+  However the following candidate: 'wrong_ret'
+  Differs from the expected type:  boolean() | ['a' | 'b']
+
+------------------------------ Detailed message ------------------------------
+
   ['a'] | 'wrong_ret' is not compatible with boolean() | ['a' | 'b']
   because
   'wrong_ret' is not compatible with boolean() | ['a' | 'b']
@@ -915,9 +1098,81 @@ Because in the expression's type:
   atom() is not compatible with boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:891:9
+    │
+891 │         fun list_to_atom/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:list_to_atom/1.
+Expression has type:   fun((string()) -> atom())
+Context expected type: fun(('a' | 'b') -> boolean() | ['a' | 'b'])
+    │         
+
+Because in the expression's type:
+  fun((string()) ->
+    Here the type is:     atom()
+    Context expects type: boolean() | ['a' | 'b']
+    No candidate matches in the expected union.
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((string()) -> atom()) is not compatible with fun(('a' | 'b') -> boolean() | ['a' | 'b'])
+  because
+  atom() is not compatible with boolean() | ['a' | 'b']
+  because
+  atom() is not compatible with boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:900:9
     │
 900 │         fun atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((atom()) -> boolean() | [atom()])
+    │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: boolean() | [atom()]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((atom()) -> boolean() | [atom()])
+  because
+  string() is not compatible with boolean() | [atom()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:900:9
+    │
+900 │         fun atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+    │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: boolean() | [dynamic(atom())]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+  because
+  string() is not compatible with boolean() | [dynamic(atom())]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:909:9
+    │
+909 │         fun atom_to_list/1,
     │         ^^^^^^^^^^^^^^^^^^
     │         │
     │         erlang:atom_to_list/1.
@@ -945,20 +1200,20 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
-Context expected type: fun((atom()) -> boolean() | [atom()])
+Context expected type: fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
     │         
 
 Because in the expression's type:
   fun((atom()) ->
     Here the type is:     string()
-    Context expects type: boolean() | [atom()]
+    Context expects type: boolean() | [dynamic(atom())]
   )
 
 ------------------------------ Detailed message ------------------------------
 
-  fun((atom()) -> string()) is not compatible with fun((atom()) -> boolean() | [atom()])
+  fun((atom()) -> string()) is not compatible with fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
   because
-  string() is not compatible with boolean() | [atom()]
+  string() is not compatible with boolean() | [dynamic(atom())]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:919:9
@@ -983,6 +1238,29 @@ Because in the expression's type:
   because
   string() is not compatible with boolean() | [atom()]
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:919:9
+    │
+919 │         fun atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+    │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: boolean() | [dynamic(atom())]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+  because
+  string() is not compatible with boolean() | [dynamic(atom())]
+
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/custom.erl:925:1
     │  
@@ -995,12 +1273,82 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
     │ ╰──────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:927:9
+    │
+927 │         fun atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((atom()) -> boolean() | [atom()])
+    │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: boolean() | [atom()]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((atom()) -> boolean() | [atom()])
+  because
+  string() is not compatible with boolean() | [atom()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:927:9
+    │
+927 │         fun atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+    │         
+
+Because in the expression's type:
+  fun((atom()) ->
+    Here the type is:     string()
+    Context expects type: boolean() | [dynamic(atom())]
+  )
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((dynamic(atom())) -> boolean() | [dynamic(atom())])
+  because
+  string() is not compatible with boolean() | [dynamic(atom())]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:955:5
+    │  
+955 │ ╭     lists:keystore(
+956 │ │         a, 1,
+957 │ │         [{foo, b}, {c, d}],
+958 │ │         non_tuple
+959 │ │     ).
+    │ ╰─────^ lists:keystore('a', 1, [{'foo', 'b'}, {'c', 'd'}], 'non_tuple').
+Expression has type:   [{'foo', 'b'} | {'c', 'd'} | dynamic()]
+Context expected type: 'nok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:958:9
     │
 958 │         non_tuple
     │         ^^^^^^^^^ 'non_tuple'.
 Expression has type:   'non_tuple'
 Context expected type: tuple()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:966:5
+    │  
+966 │ ╭     lists:keystore(
+967 │ │         a, 1,
+968 │ │         [non_tuple],
+969 │ │         {replacement}
+970 │ │     ).
+    │ ╰─────^ lists:keystore('a', 1, ['non_tuple'], {'replacement'}).
+Expression has type:   [dynamic() | {'replacement'}]
+Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:968:9
@@ -1024,6 +1372,18 @@ Because in the expression's type:
   ['non_tuple'] is not compatible with [tuple()]
   because
   'non_tuple' is not compatible with tuple()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/custom.erl:975:5
+    │  
+975 │ ╭     lists:keystore(
+976 │ │         a, 1,
+977 │ │         non_list,
+978 │ │         {replacement}
+979 │ │     ).
+    │ ╰─────^ lists:keystore('a', 1, 'non_list', {'replacement'}).
+Expression has type:   [dynamic() | {'replacement'}]
+Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:977:9
@@ -1064,12 +1424,28 @@ Expression has type:   'non_tup'
 Context expected type: [Tuple]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1011:25
+     │
+1011 │     lists:keytake(a, 1, non_tup),
+     │                         ^^^^^^^ 'non_tup'.
+Expression has type:   'non_tup'
+Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1016:25
      │
 1016 │     lists:keytake(a, 1, non_list),
      │                         ^^^^^^^^ 'non_list'.
 Expression has type:   'non_list'
 Context expected type: [Tuple]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1016:25
+     │
+1016 │     lists:keytake(a, 1, non_list),
+     │                         ^^^^^^^^ 'non_list'.
+Expression has type:   'non_list'
+Context expected type: [dynamic()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1021:22
@@ -1122,12 +1498,28 @@ Expression has type:   'not_a_list'
 Context expected type: [T]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1062:15
+     │
+1062 │     lists:max(not_a_list).
+     │               ^^^^^^^^^^ 'not_a_list'.
+Expression has type:   'not_a_list'
+Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1082:15
      │
 1082 │     lists:min(not_a_list).
      │               ^^^^^^^^^^ 'not_a_list'.
 Expression has type:   'not_a_list'
 Context expected type: [T]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1082:15
+     │
+1082 │     lists:min(not_a_list).
+     │               ^^^^^^^^^^ 'not_a_list'.
+Expression has type:   'not_a_list'
+Context expected type: [dynamic()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1100:5
@@ -1338,6 +1730,23 @@ Because in the expression's type:
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1181:5
+     │
+1181 │     proplists:get_all_values(k, b).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     proplists:get_all_values('k', 'b').
+Expression has type:   [term()]
+Context expected type: []
+     │     
+
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: none()
+  ]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1181:33
      │
 1181 │     proplists:get_all_values(k, b).
@@ -1449,6 +1858,21 @@ Context expected type: 'a' | pid()
   term() is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1220:5
+     │
+1220 │     proplists:get_value(k, b).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     proplists:get_value('k', 'b').
+Expression has type:   term()
+Context expected type: 'a' | pid()
+     │     
+
+  term() is not compatible with 'a' | pid()
+  because
+  term() is not compatible with 'a'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1220:28
      │
 1220 │     proplists:get_value(k, b).
@@ -1545,6 +1969,14 @@ Expression has type:   'b'
 Context expected type: [A]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1295:25
+     │
+1295 │     proplists:delete(k, b).
+     │                         ^ 'b'.
+Expression has type:   'b'
+Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1311:5
      │
 1311 │     proplists:split(L, Ks).
@@ -1608,6 +2040,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                        ^ 'b'.
 Expression has type:   'b'
 Context expected type: #{K => V}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1358:24
+     │
+1358 │     proplists:from_map(b).
+     │                        ^ 'b'.
+Expression has type:   'b'
+Context expected type: #{dynamic() => dynamic()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1363:5
@@ -1808,6 +2248,14 @@ Expression has type:   [dynamic()]
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1639:5
+     │
+1639 │     ets:lookup("not atom", Any).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ets:lookup(string_lit, Any).
+Expression has type:   [dynamic()]
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1639:16
      │
 1639 │     ets:lookup("not atom", Any).
@@ -1927,6 +2375,27 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1820 │ │ │         #{a => self(), b => self()}
 1821 │ │ │     ).
      │ ╰─│─────^ maps:without(Keys, #{..}).
+Expression has type:   #{a => pid(), b => pid()}
+Context expected type: #{b := pid()}
+     │   ╰─────' 
+
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+------------------------------ Detailed message ------------------------------
+
+key `b` is declared as required in the latter but not in the former
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1826:5
+     │    
+1826 │ ╭ ╭     maps:without(
+1827 │ │ │         [a | improper_tail],
+1828 │ │ │         #{a => self(), b => self()}
+1829 │ │ │     ).
+     │ ╰─│─────^ maps:without(['a' | 'improper_tail'], #{..}).
 Expression has type:   #{a => pid(), b => pid()}
 Context expected type: #{b := pid()}
      │   ╰─────' 
@@ -2406,6 +2875,31 @@ Context expected type: boolean() | {'true', term()}
   'err' is not compatible with boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:2362:5
+     │    
+2362 │ ╭ ╭     maps:filtermap(
+2363 │ │ │         fun (_, V) -> {true, atom_to_binary(V)} end,
+2364 │ │ │         M
+2365 │ │ │     ).
+     │ ╰─│─────^ maps:filtermap(fun, M).
+Expression has type:   #{atom() => binary()}
+Context expected type: #{atom() => atom()}
+     │   ╰─────' 
+
+Because in the expression's type:
+  #{ atom() =>
+    Here the type is:     binary()
+    Context expects type: atom()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
+  #{atom() => binary()} is not compatible with #{atom() => atom()}
+  the default associations are not compatible
+  because
+  binary() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2363:45
      │
 2363 │         fun (_, V) -> {true, atom_to_binary(V)} end,
@@ -2449,6 +2943,14 @@ Because in the expression's type:
   atom() is not compatible with iodata() | unicode:charlist()
   because
   atom() is not compatible with iodata()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:2386:5
+     │
+2386 │     Res.
+     │     ^^^ Res.
+Expression has type:   string()
+Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2390:38
@@ -2669,4 +3171,4 @@ Because in the expression's type:
   because
   atom() is not compatible with binary()
 
-169 ERRORS
+200 ERRORS

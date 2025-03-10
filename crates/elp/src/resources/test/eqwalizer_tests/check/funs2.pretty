@@ -42,6 +42,14 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs2.erl:95:24
+   │
+95 │ generic({}, {}, {}) -> nok.
+   │                        ^^^ 'nok'.
+Expression has type:   'nok'
+Context expected type: T
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs2.erl:101:9
     │
 101 │         fun erlang:atom_to_list/1,
@@ -65,6 +73,58 @@ Because in the expression's type:
   string() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs2.erl:101:9
+    │
+101 │         fun erlang:atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((dynamic() | fun((string()) -> atom())) -> dynamic() | fun((string()) -> atom()))
+    │         
+
+Because in the expression's type:
+  fun((
+    Here the type is a union type with some valid candidates: dynamic()
+    However the following candidate: fun((string()) -> atom())
+    Differs from the expected type:  atom()
+  ) -> string())
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((dynamic() | fun((string()) -> atom())) -> dynamic() | fun((string()) -> atom()))
+  because
+  dynamic() | fun((string()) -> atom()) is not compatible with atom()
+  because
+  fun((string()) -> atom()) is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs2.erl:101:9
+    │
+101 │         fun erlang:atom_to_list/1,
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^
+    │         │
+    │         erlang:atom_to_list/1.
+Expression has type:   fun((atom()) -> string())
+Context expected type: fun((dynamic() | string() | fun((string()) -> atom())) -> dynamic() | string() | fun((string()) -> atom()))
+    │         
+
+Because in the expression's type:
+  fun((
+    Here the type is a union type with some valid candidates: dynamic()
+    However the following candidate: string()
+    Differs from the expected type:  atom()
+  ) -> string())
+
+------------------------------ Detailed message ------------------------------
+
+  fun((atom()) -> string()) is not compatible with fun((dynamic() | string() | fun((string()) -> atom())) -> dynamic() | string() | fun((string()) -> atom()))
+  because
+  dynamic() | string() | fun((string()) -> atom()) is not compatible with atom()
+  because
+  string() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs2.erl:152:27
     │
 152 │             (X, X) -> X + A
@@ -72,4 +132,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   atom()
 Context expected type: number()
 
-5 ERRORS
+8 ERRORS

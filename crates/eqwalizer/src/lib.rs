@@ -62,15 +62,12 @@ impl Mode {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EqwalizerConfig {
-    pub fault_tolerance: Option<bool>,
     pub report_bad_maps: Option<bool>,
     pub overloaded_spec_dynamic_result: Option<bool>,
     pub report_dynamic_lambdas: Option<bool>,
 }
 impl EqwalizerConfig {
     fn set_cmd_env(&self, cmd: &mut Command) {
-        self.fault_tolerance
-            .map(|cfg| cmd.env("EQWALIZER_TOLERATE_ERRORS", cfg.to_string()));
         self.report_bad_maps
             .map(|cfg| cmd.env("EQWALIZER_REPORT_BAD_MAPS", cfg.to_string()));
         self.overloaded_spec_dynamic_result
@@ -81,7 +78,6 @@ impl EqwalizerConfig {
 
     pub fn default_test() -> EqwalizerConfig {
         EqwalizerConfig {
-            fault_tolerance: Some(false),
             report_bad_maps: Some(false),
             overloaded_spec_dynamic_result: Some(false),
             report_dynamic_lambdas: Some(false),

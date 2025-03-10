@@ -77,6 +77,14 @@ Expression has type:   number()
 Context expected type: 'anything'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:108:3
+    │
+108 │   abs(N).
+    │   ^^^^^^ erlang:abs(N).
+Expression has type:   number()
+Context expected type: 'anything'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:108:7
     │
 108 │   abs(N).
@@ -103,6 +111,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 120 │   ets:lookup(tab, Any).
     │   ^^^^^^^^^^^^^^^^^^^^ ets:lookup('tab', Any).
+Expression has type:   [dynamic()]
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:124:3
+    │
+124 │   ets:lookup("not atom", Any).
+    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ets:lookup(string_lit, Any).
 Expression has type:   [dynamic()]
 Context expected type: pid()
 
@@ -170,11 +186,55 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 203 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:204:3
+    │
+204 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:210:25
     │
 210 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:211:3
+    │
+211 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:217:25
@@ -182,11 +242,55 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 217 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:218:3
+    │
+218 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:224:25
     │
 224 │   eqwalizer:reveal_type(Res),
     │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:225:3
+    │
+225 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:245:19
@@ -283,6 +387,28 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     │                         ^ dynamic() | {none()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:278:3
+    │
+278 │   Y.
+    │   ^
+    │   │
+    │   Y.
+Expression has type:   dynamic() | {none()}
+Context expected type: number()
+    │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: {none()}
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  dynamic() | {none()} is not compatible with number()
+  because
+  {none()} is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:325:13
     │
 325 │     true -> Atom;
@@ -328,4 +454,4 @@ Because in the expression's type:
   because
   'bar' is not compatible with 'foo'
 
-30 ERRORS
+37 ERRORS

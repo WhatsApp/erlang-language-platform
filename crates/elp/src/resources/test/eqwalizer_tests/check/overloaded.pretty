@@ -69,12 +69,28 @@ Expression has type:   number()
 Context expected type: {T}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/overloaded.erl:204:22
+    │
+204 │ overlap_neg_2(_X) -> 1.
+    │                      ^ 1.
+Expression has type:   number()
+Context expected type: {T}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:246:23
     │
 246 │ take_ok_or_any(ok) -> ok;
     │                       ^^ 'ok'.
 Expression has type:   'ok'
 Context expected type: 'error'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/overloaded.erl:247:22
+    │
+247 │ take_ok_or_any(_) -> error.
+    │                      ^^^^^ 'error'.
+Expression has type:   'error'
+Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:259:21
@@ -142,4 +158,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'b'
 Context expected type: 'a'
 
-13 ERRORS
+15 ERRORS

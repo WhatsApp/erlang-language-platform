@@ -71,6 +71,14 @@ Expression has type:   term()
 Context expected type: boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/misc.erl:85:26
+   │
+85 │ test13_neg(X, Y) -> X or Y.
+   │                          ^ Y.
+Expression has type:   term()
+Context expected type: boolean()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/misc.erl:97:21
    │
 97 │ test16_neg(X, Y) -> X or Y.
@@ -601,6 +609,30 @@ Expression has type:   {}
 Context expected type: fun((A) -> B)
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:648:21
+    │
+648 │     catch lists:map({}, {}).
+    │                     ^^ {}.
+Expression has type:   {}
+Context expected type: fun((dynamic()) -> dynamic())
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:648:25
+    │
+648 │     catch lists:map({}, {}).
+    │                         ^^ {}.
+Expression has type:   {}
+Context expected type: [A]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:648:25
+    │
+648 │     catch lists:map({}, {}).
+    │                         ^^ {}.
+Expression has type:   {}
+Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:652:26
     │
 652 │     X = (catch lists:map({}, {})),
@@ -609,12 +641,52 @@ Expression has type:   {}
 Context expected type: fun((A) -> B)
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:652:26
+    │
+652 │     X = (catch lists:map({}, {})),
+    │                          ^^ {}.
+Expression has type:   {}
+Context expected type: fun((dynamic()) -> dynamic())
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:652:30
+    │
+652 │     X = (catch lists:map({}, {})),
+    │                              ^^ {}.
+Expression has type:   {}
+Context expected type: [A]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:652:30
+    │
+652 │     X = (catch lists:map({}, {})),
+    │                              ^^ {}.
+Expression has type:   {}
+Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:671:5
+    │
+671 │     [X, 1, 2, 3 | Y].
+    │     ^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | Y].
+Expression has type:   [number() | dynamic()]
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:671:17
     │
 671 │     [X, 1, 2, 3 | Y].
     │                 ^^^^ Y.
 Expression has type:   number()
 Context expected type: [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:676:5
+    │
+676 │     [X, 1, 2, 3 | an_atom].
+    │     ^^^^^^^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | 'an_atom'].
+Expression has type:   [number() | dynamic()]
+Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:676:17
@@ -631,6 +703,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                       ^^^^^^^^^^ 'an_atom'.
 Expression has type:   'an_atom'
 Context expected type: [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:682:5
+    │
+682 │     Res.
+    │     ^^^ Res.
+Expression has type:   [number() | dynamic()]
+Context expected type: pid()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/misc.erl:685:1
@@ -659,6 +739,30 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 729 │ │     Res = {None, err},
 730 │ │     Res.
     │ ╰───────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/misc.erl:730:5
+    │
+730 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   {none(), 'err'}
+Context expected type: {'ok', 'ok'}
+    │     
+
+Because in the expression's type:
+  { none(), 
+    Here the type is:     'err'
+    Context expects type: 'ok'
+  }
+
+------------------------------ Detailed message ------------------------------
+
+  at tuple index 2:
+  {none(), 'err'} is not compatible with {'ok', 'ok'}
+  because
+  'err' is not compatible with 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:741:5
@@ -874,4 +978,4 @@ error: non_exported_id (See https://fb.me/eqwalizer_errors#non_exported_id)
 1011 │ -type non_exported_id_t() :: any_fun_type:f1().
      │                              ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
 
-78 ERRORS
+89 ERRORS

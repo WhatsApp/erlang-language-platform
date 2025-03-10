@@ -179,10 +179,58 @@ Expression has type:   'a' | 'b'
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:552:10
+    │
+552 │   U1 div U2 / (U2 bsl U1).
+    │          ^^ U2.
+Expression has type:   'c' | 'd'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:552:16
+    │
+552 │   U1 div U2 / (U2 bsl U1).
+    │                ^^ U2.
+Expression has type:   'c' | 'd'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:552:23
+    │
+552 │   U1 div U2 / (U2 bsl U1).
+    │                       ^^ U1.
+Expression has type:   'a' | 'b'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:559:3
     │
 559 │   U1 * U2 / (U2 + U1).
     │   ^^ U1.
+Expression has type:   'a' | 'b'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:559:8
+    │
+559 │   U1 * U2 / (U2 + U1).
+    │        ^^ U2.
+Expression has type:   'c' | 'd'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:559:14
+    │
+559 │   U1 * U2 / (U2 + U1).
+    │              ^^ U2.
+Expression has type:   'c' | 'd'
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:559:19
+    │
+559 │   U1 * U2 / (U2 + U1).
+    │                   ^^ U1.
 Expression has type:   'a' | 'b'
 Context expected type: number()
 
@@ -193,6 +241,14 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 577 │ │   -X.
     │ ╰────^ Clause is not covered by spec
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:577:3
+    │
+577 │   -X.
+    │   ^^ - _.
+Expression has type:   number()
+Context expected type: none()
+
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/numbers.erl:582:1
     │  
@@ -200,12 +256,28 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 583 │ │   bnot X.
     │ ╰────────^ Clause is not covered by spec
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:583:3
+    │
+583 │   bnot X.
+    │   ^^^^^^ bnot _.
+Expression has type:   number()
+Context expected type: none()
+
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/numbers.erl:588:1
     │  
 588 │ ╭ test_93_neg(X) ->
 589 │ │   5 * X.
     │ ╰───────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/numbers.erl:589:3
+    │
+589 │   5 * X.
+    │   ^^^^^ _ * _.
+Expression has type:   number()
+Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:644:3
@@ -243,4 +315,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: pid()
 
-27 ERRORS
+36 ERRORS

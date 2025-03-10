@@ -78,6 +78,12 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 80 │ │   Res.
    │ ╰─────^ Clause is not covered by spec
 
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/approx.erl:79:25
+   │
+79 │   eqwalizer:reveal_type(Res),
+   │                         ^^^ dynamic(number())
+
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
    ┌─ check/src/approx.erl:85:1
    │  
@@ -90,4 +96,10 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 91 │ │   Res.
    │ ╰─────^ Clause is not covered by spec
 
-9 ERRORS
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/approx.erl:90:25
+   │
+90 │   eqwalizer:reveal_type(Res),
+   │                         ^^^ dynamic(number())
+
+11 ERRORS

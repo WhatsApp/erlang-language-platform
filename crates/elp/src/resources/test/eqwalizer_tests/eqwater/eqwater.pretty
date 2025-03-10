@@ -136,6 +136,28 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 414 │ │   when is_atom(A1) and is_atom(A2) -> 1;
     │ ╰───────────────────────────────────────^ Clause is not covered by spec
 
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:415:21
+    │
+415 │ get_int6({_, I}) -> I.
+    │                     ^
+    │                     │
+    │                     I.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:419:1
     │  
@@ -143,6 +165,28 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 420 │ │   % A is none()
 421 │ │   when is_atom(A) -> 0;
     │ ╰──────────────────────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:422:25
+    │
+422 │ get_int7_neg({_, I}) -> I.
+    │                         ^
+    │                         │
+    │                         I.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                         
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:429:25
@@ -392,6 +436,28 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1091:20
+     │
+1091 │ occ53_neg(_, I) -> I.
+     │                    ^
+     │                    │
+     │                    I.
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+     │                    
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1122:14
      │
 1122 │         A -> [A]
@@ -639,4 +705,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: 'ok'
 
-35 ERRORS
+38 ERRORS

@@ -77,6 +77,28 @@ Expression has type:   term()
 Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/generics_with_unions.erl:218:17
+    │
+218 │ overlap_1(T) -> T.
+    │                 ^
+    │                 │
+    │                 T.
+Expression has type:   [T] | T
+Context expected type: T
+    │                 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: T
+  However the following candidate: [T]
+  Differs from the expected type:  T
+
+------------------------------ Detailed message ------------------------------
+
+  [T] | T is not compatible with T
+  because
+  [T] is not compatible with T
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:221:17
     │
 221 │ overlap_2(T) -> T;
@@ -97,6 +119,14 @@ Because in the expression's type:
   T | [T] is not compatible with T
   because
   [T] is not compatible with T
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/generics_with_unions.erl:222:19
+    │
+222 │ overlap_2([T]) -> T.
+    │                   ^ T.
+Expression has type:   term()
+Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:230:5
@@ -216,4 +246,4 @@ Because in the expression's type:
   at tuple index 2:
   {'a', number()} is not compatible with {'a', atom()}
 
-14 ERRORS
+16 ERRORS

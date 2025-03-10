@@ -20,4 +20,26 @@ Because in the expression's type:
   because
   fun((X) -> X) with 1 type parameter is not compatible with fun((T1) -> Ret) with 0 type parameters
 
-1 ERROR
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/kp_01.erl:27:22
+   │
+27 │     Res = transform1(fun id/1, A),
+   │                      ^^^^^^^^
+   │                      │
+   │                      id/1.
+Expression has type:   fun((X) -> X)
+Context expected type: pure(fun((atom()) -> dynamic()))
+   │                      
+
+Because in the expression's type:
+  Here the type is:     fun((X) -> X) with 1 type parameter
+  Context expects type: fun((atom()) -> dynamic()) with 0 type parameters
+  The number of type parameters doesn't match.
+
+------------------------------ Detailed message ------------------------------
+
+  fun((X) -> X) is not compatible with pure(fun((atom()) -> dynamic()))
+  because
+  fun((X) -> X) with 1 type parameter is not compatible with fun((atom()) -> dynamic()) with 0 type parameters
+
+2 ERRORS

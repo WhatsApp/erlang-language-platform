@@ -74,4 +74,10 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 57 │ │     error(none).
    │ ╰───────────────^ Clause is not covered by spec
 
-7 ERRORS
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:56:27
+   │
+56 │     eqwalizer:reveal_type(X),
+   │                           ^ none()
+
+8 ERRORS

@@ -32,12 +32,31 @@ Expression has type:   #r{}
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_overloaded.erl:119:5
+    │  
+119 │ ╭     rec_each(
+120 │ │         fun(I) -> I + 1 end,
+121 │ │         Rec
+122 │ │     ).
+    │ ╰─────^ rec_each(fun, Rec).
+Expression has type:   #r{}
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_overloaded.erl:120:19
     │
 120 │         fun(I) -> I + 1 end,
     │                   ^ I.
 Expression has type:   #r{}
 Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_overloaded.erl:120:19
+    │
+120 │         fun(I) -> I + 1 end,
+    │                   ^^^^^ _ + _.
+Expression has type:   number()
+Context expected type: #r{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_overloaded.erl:128:19
@@ -47,4 +66,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #r{}
 Context expected type: number()
 
-6 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_overloaded.erl:128:19
+    │
+128 │         fun(I) -> I + 1 end,
+    │                   ^^^^^ _ + _.
+Expression has type:   number()
+Context expected type: #r{}
+
+9 ERRORS
