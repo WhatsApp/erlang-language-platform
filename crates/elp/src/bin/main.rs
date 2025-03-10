@@ -1701,7 +1701,6 @@ mod tests {
             "options",
             buck,
             EqwalizerConfig {
-                report_bad_maps: Some(true),
                 report_dynamic_lambdas: Some(true),
                 ..EqwalizerConfig::default_test()
             },

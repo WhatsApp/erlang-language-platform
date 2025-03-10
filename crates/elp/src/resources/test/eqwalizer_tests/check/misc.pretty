@@ -592,6 +592,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
+error: bad_map_key (See https://fb.me/eqwalizer_errors#bad_map_key)
+    ┌─ check/src/misc.erl:641:5
+    │
+641 │     atom() := atom(),
+    │     ^^^^^^^^^^^^^^ Map type will be approximated to #{dynamic() => dynamic()}, suppressing potential errors.
+Use => instead of := here. Required map key should always be composed of statically defined atoms or tuples.
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:644:15
     │
@@ -978,4 +985,4 @@ error: non_exported_id (See https://fb.me/eqwalizer_errors#non_exported_id)
 1011 │ -type non_exported_id_t() :: any_fun_type:f1().
      │                              ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
 
-89 ERRORS
+90 ERRORS
