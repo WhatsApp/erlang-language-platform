@@ -18,7 +18,6 @@ use std::fmt;
 use std::fmt::Display;
 
 use elp_ide_assists::helpers::add_parens_edit;
-use elp_ide_assists::helpers::expr_needs_parens;
 use elp_ide_assists::helpers::include_preceding_whitespace;
 use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
@@ -27,14 +26,13 @@ use elp_ide_db::DiagnosticCode;
 use elp_syntax::ast;
 use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::LogicOp;
-use elp_syntax::AstNode;
-use elp_syntax::Parse;
-use elp_syntax::SourceFile;
 use hir::fold::AnyCallBackCtx;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
+use hir::fold::ParentId;
 use hir::AnyExpr;
-use hir::BodySourceMap;
+use hir::AnyExprId;
+use hir::AnyExprRef;
 use hir::ClauseId;
 use hir::Expr;
 use hir::ExprId;
@@ -115,71 +113,75 @@ fn report(
     binop: (Op, ExprId, ExprId),
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<()> {
-    let (op, lhs, rhs) = binop;
+    /*
+    we have (inserting parens for tree)
+      (A and B) > C
+    We need to turn it into
+      A and (B > C)
+    OR
+      A andalso B > C
+    */
+    let (binop, b_lhs, b_rhs) = binop;
     let body = def_fb.body(clause_id);
-    let lhs_complex = expr_needs_parens(&body, lhs);
-    let rhs_complex = expr_needs_parens(&body, rhs);
-    if !lhs_complex && !rhs_complex {
-        return None;
-    }
-    let map = def_fb.get_body_map(clause_id);
-    let source = sema.db.parse(file_id);
-    let lhs_expr = expr_ast(&source, &map, file_id, lhs)?;
-    let rhs_expr = expr_ast(&source, &map, file_id, rhs)?;
-    let expr_source = map.any(ctx.item_id)?;
-    let source = sema.db.parse(file_id).tree();
-    if let Some(ast::Expr::BinaryOpExpr(binop_ast)) =
-        unwrap_parens(&expr_source.to_node(&InFile::new(file_id, source))?)
-    {
-        let (_op, token) = binop_ast.op()?;
-        let range = token.text_range();
-        let preceding_ws_range = include_preceding_whitespace(&token);
-        let mut d = make_diagnostic(file_id, range, preceding_ws_range, op)
-            .with_ignore_fix(sema, def_fb.file_id());
-        if lhs_complex {
-            add_parens_fix(file_id, &range, &lhs_expr, "LHS", &mut d);
-        }
-        if rhs_complex {
-            add_parens_fix(file_id, &range, &rhs_expr, "RHS", &mut d);
-        }
-        diagnostics.push(d);
-    }
+    match ctx.parent() {
+        ParentId::HirIdx(hir_idx) => match &body.get_any(hir_idx.idx) {
+            AnyExprRef::Expr(Expr::BinaryOp { lhs, rhs, op: _ }) => {
+                let lhs_complex = AnyExprId::Expr(*rhs) == ctx.item_id;
+                let rhs_complex = AnyExprId::Expr(*lhs) == ctx.item_id;
+                if !lhs_complex && !rhs_complex {
+                    return None;
+                }
+                let map = def_fb.get_body_map(clause_id);
+                let add_parens_range = if rhs_complex {
+                    let b_rhs_ast_ptr = map.expr(b_rhs)?;
+                    let rhs_ast_ptr = map.expr(*rhs)?;
+                    TextRange::new(b_rhs_ast_ptr.range().start(), rhs_ast_ptr.range().end())
+                } else {
+                    let lhs_ast_ptr = map.expr(*lhs)?;
+                    let b_lhs_ast_ptr = map.expr(b_lhs)?;
+                    TextRange::new(lhs_ast_ptr.range().start(), b_lhs_ast_ptr.range().end())
+                };
+                let expr_source = map.any(ctx.item_id)?;
+                let source = sema.db.parse(file_id).tree();
+                if let Some(ast::Expr::BinaryOpExpr(binop_ast)) =
+                    unwrap_parens(&expr_source.to_node(&InFile::new(file_id, source))?)
+                {
+                    let (_op, token) = binop_ast.op()?;
+                    let range = token.text_range();
+                    let preceding_ws_range = include_preceding_whitespace(&token);
+                    let mut d = make_diagnostic(file_id, range, preceding_ws_range, binop)
+                        .with_ignore_fix(sema, def_fb.file_id());
+                    if lhs_complex {
+                        add_parens_fix(file_id, &range, add_parens_range, "LHS", &mut d);
+                    }
+                    if rhs_complex {
+                        add_parens_fix(file_id, &range, add_parens_range, "RHS", &mut d);
+                    }
+                    diagnostics.push(d);
+                }
+            }
+            _ => {}
+        },
+        _ => {}
+    };
     Some(())
-}
-
-fn expr_ast(
-    source: &Parse<SourceFile>,
-    map: &BodySourceMap,
-    file_id: FileId,
-    expr: ExprId,
-) -> Option<ast::Expr> {
-    let expr_source = map.expr(expr)?;
-    expr_source.to_node(&InFile::new(file_id, source.tree()))
 }
 
 fn add_parens_fix(
     file_id: FileId,
     range: &TextRange,
-    expr: &ast::Expr,
+    expr_range: TextRange,
     where_str: &str,
     diag: &mut Diagnostic,
 ) {
-    // We have a complex expression. Add parens, if the parent does not already have them.
-    if let Some(parent) = expr.syntax().parent() {
-        if let Some(ast::Expr::ExprMax(ast::ExprMax::ParenExpr(_))) = ast::Expr::cast(parent) {
-            // Already has parens, do nothing.
-        } else {
-            let expr_range = expr.syntax().text_range();
-            let assist_message = format!("Add parens to {}", where_str);
-            let edit = add_parens_edit(&expr_range);
-            diag.add_fix(fix(
-                "replace_boolean_operator_add_parens",
-                &assist_message,
-                SourceChange::from_text_edit(file_id, edit.clone()),
-                range.clone(),
-            ));
-        }
-    }
+    let assist_message = format!("Add parens to {}", where_str);
+    let edit = add_parens_edit(&expr_range);
+    diag.add_fix(fix(
+        "replace_boolean_operator_add_parens",
+        &assist_message,
+        SourceChange::from_text_edit(file_id, edit.clone()),
+        range.clone(),
+    ));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -294,21 +296,6 @@ mod tests {
     }
 
     #[test]
-    fn avoid_or_for_unsafe_macro_call() {
-        check_diagnostics(
-            r#"
-            -module(main).
-            -define(MM(X), X > 3).
-            foo(S,P) ->
-                S or ?MM(P).
-          %%      ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
-          %%       | Or add parentheses to avoid potential ambiguity.
-
-                      "#,
-        )
-    }
-
-    #[test]
     fn or_ok_for_safe_macro_call() {
         check_diagnostics(
             r#"
@@ -340,9 +327,8 @@ mod tests {
         check_diagnostics(
             r#"
             -module(main).
-            -define(COND(X), X > 3).
             foo(S,P) ->
-                (S or ?COND(P)).
+                (S or P > 3).
           %%       ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%        | Or add parentheses to avoid potential ambiguity.
                       "#,
@@ -354,9 +340,8 @@ mod tests {
         check_diagnostics(
             r#"
             -module(main).
-            -define(COND(X), X > 3).
             foo(S,P) ->
-                ((S or ?COND(P))).
+                ((S or P > 3)).
           %%        ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%         | Or add parentheses to avoid potential ambiguity.
                       "#,
