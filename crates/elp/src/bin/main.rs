@@ -1717,7 +1717,6 @@ mod tests {
             "fault_tolerance",
             buck,
             EqwalizerConfig {
-                occurrence_typing: Some(true),
                 fault_tolerance: Some(true),
                 ..EqwalizerConfig::default_test()
             },
