@@ -244,20 +244,20 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │        ^
     │        │
     │        B.
-Expression has type:   #a{} | #b{} | #c{}
+Expression has type:   none() | #b{} | #c{}
 Context expected type: #b{}
     │        
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #b{}
-  However the following candidate: #a{}
+  However the following candidate: #c{}
   Differs from the expected type:  #b{}
 
 ------------------------------ Detailed message ------------------------------
 
-  #a{} | #b{} | #c{} is not compatible with #b{}
+  none() | #b{} | #c{} is not compatible with #b{}
   because
-  #a{} is not compatible with #b{}
+  #c{} is not compatible with #b{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:631:27

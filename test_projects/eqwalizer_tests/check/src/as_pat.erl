@@ -33,7 +33,7 @@ unbox_n(#box_n{n = N}) -> N.
 box_b(B) -> #box_b{b = B}.
 
 -spec unbox_b(#box_b{}) -> binary().
-unbox_b({b, B}) -> B.
+unbox_b({box_b, B}) -> B.
 
 -spec unbox(box()) -> abn().
 unbox(#box_a{a = A}) -> A;

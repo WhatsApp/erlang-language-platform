@@ -1,9 +1,3 @@
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/as_pat.erl:36:1
-   │
-36 │ unbox_b({b, B}) -> B.
-   │ ^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/as_pat.erl:51:38
    │
@@ -20,4 +14,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #box_n{}
 Context expected type: #box_b{}
 
-3 ERRORS
+2 ERRORS
