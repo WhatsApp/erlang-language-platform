@@ -1266,6 +1266,10 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
     pub fn range_for_pat(&mut self, clause_id: ClauseId, pat_id: PatId) -> Option<TextRange> {
         self.in_clause(clause_id).range_for_pat(pat_id)
     }
+
+    pub fn tree_print(&self, db: &dyn DefDatabase, strategy: Strategy) -> String {
+        self.body.tree_print(db.upcast(), strategy)
+    }
 }
 
 impl<'a, T> Index<ClauseId> for InFunctionBody<'a, T> {
