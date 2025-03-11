@@ -35,6 +35,7 @@ use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MakeDiagCtx;
+// @fb-only
 use crate::fix;
 use crate::FunctionMatch;
 
@@ -51,12 +52,19 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn undefined_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    let check_for_unexported = true; // @oss-only
+    // @fb-only
     sema.def_map_local(file_id)
         .get_functions()
-        .for_each(|(_arity, def)| check_function(diagnostics, sema, def));
+        .for_each(|(_arity, def)| check_function(diagnostics, sema, def, check_for_unexported));
 }
 
-fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+fn check_function(
+    diags: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    def: &FunctionDef,
+    check_for_unexported: bool,
+) {
     let matcher = FunctionMatch::any();
     find_call_in_function(
         diags,
@@ -108,15 +116,15 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
             }
         },
         &move |ctx @ MakeDiagCtx { sema, extra, .. }| {
-            let diag = make_diagnostic(
+            make_diagnostic(
                 sema,
                 def.file.file_id,
                 ctx.range_mf_only(),
                 &extra.0,
                 extra.2,
                 extra.3.clone(),
-            );
-            Some(diag)
+                check_for_unexported,
+            )
         },
     );
 }
@@ -154,47 +162,54 @@ fn make_diagnostic(
     function_name: &str,
     is_private: bool,
     maybe_function_def: Option<FunctionDef>,
-) -> Diagnostic {
+    check_for_unexported: bool,
+) -> Option<Diagnostic> {
     if is_private {
-        let maybe_fix = maybe_function_def.map(|function_def| {
-            let mut builder = SourceChangeBuilder::new(function_def.file.file_id);
-            helpers::ExportBuilder::new(
-                sema,
-                function_def.file.file_id,
-                ExportForm::Functions,
-                &[function_def.name],
-                &mut builder,
-            )
-            .finish();
+        if check_for_unexported {
+            let maybe_fix = maybe_function_def.map(|function_def| {
+                let mut builder = SourceChangeBuilder::new(function_def.file.file_id);
+                helpers::ExportBuilder::new(
+                    sema,
+                    function_def.file.file_id,
+                    ExportForm::Functions,
+                    &[function_def.name],
+                    &mut builder,
+                )
+                .finish();
 
-            fix(
-                "export_function",
-                format!("Export the function `{function_name}`").as_str(),
-                builder.finish(),
+                fix(
+                    "export_function",
+                    format!("Export the function `{function_name}`").as_str(),
+                    builder.finish(),
+                    range,
+                )
+            });
+            let mut diagnostic = Diagnostic::new(
+                DiagnosticCode::UnexportedFunction,
+                format!("Function '{}' is not exported.", function_name),
                 range,
             )
-        });
-        let mut diagnostic = Diagnostic::new(
-            DiagnosticCode::UnexportedFunction,
-            format!("Function '{}' is not exported.", function_name),
-            range,
-        )
-        .with_severity(Severity::Warning)
-        .with_ignore_fix(sema, file_id);
+            .with_severity(Severity::Warning)
+            .with_ignore_fix(sema, file_id);
 
-        maybe_fix.inspect(|fix| {
-            diagnostic.add_fix(fix.clone());
-        });
+            maybe_fix.inspect(|fix| {
+                diagnostic.add_fix(fix.clone());
+            });
 
-        return diagnostic;
+            Some(diagnostic)
+        } else {
+            None
+        }
     } else {
-        return Diagnostic::new(
-            DiagnosticCode::UndefinedFunction,
-            format!("Function '{}' is undefined.", function_name),
-            range,
+        Some(
+            Diagnostic::new(
+                DiagnosticCode::UndefinedFunction,
+                format!("Function '{}' is undefined.", function_name),
+                range,
+            )
+            .with_severity(Severity::Warning)
+            .with_ignore_fix(sema, file_id),
         )
-        .with_severity(Severity::Warning)
-        .with_ignore_fix(sema, file_id);
     }
 }
 
