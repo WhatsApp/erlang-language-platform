@@ -51,13 +51,9 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn undefined_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id)
+    sema.def_map_local(file_id)
         .get_functions()
-        .for_each(|(_arity, def)| {
-            if def.file.file_id == file_id {
-                check_function(diagnostics, sema, def)
-            }
-        });
+        .for_each(|(_arity, def)| check_function(diagnostics, sema, def));
 }
 
 fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
