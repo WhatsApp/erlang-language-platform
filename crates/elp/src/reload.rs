@@ -69,8 +69,8 @@ impl ProjectFolders {
                 format!("{}/**/BUCK", root),
                 format!("{}/**/TARGETS", root),
                 format!("{}/**/TARGETS.v2", root),
-                format!("{}/.elp.toml", root),
-                format!("{}/.elp_lint.toml", root),
+                format!("{}/**/.elp.toml", root),
+                format!("{}/**/.elp_lint.toml", root),
                 format!("{}/**/rebar.{{config,config.script,lock}}", root),
             ]);
         }
