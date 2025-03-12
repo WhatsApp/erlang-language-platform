@@ -36,7 +36,6 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::diagnostics::Diagnostic;
 use crate::FileId;
 
 // Given an expression that represents a statement, return a text range that covers
@@ -517,13 +516,13 @@ pub enum UseRange {
     NameOnly,
 }
 
-pub(crate) fn find_call_in_function<T, U>(
-    diags: &mut Vec<Diagnostic>,
+pub(crate) fn find_call_in_function<T, U, V>(
+    res: &mut Vec<V>,
     sema: &Semantic,
     def: &FunctionDef,
     mfas: &[(&FunctionMatch, T)],
     check_call: CheckCall<T, U>,
-    make_diag: Make<U, Diagnostic>,
+    make: Make<U, V>,
 ) -> Option<()> {
     let def_fb = def.in_function_body(sema, def);
     let matcher = FunctionMatcher::new(mfas);
@@ -575,7 +574,7 @@ pub(crate) fn find_call_in_function<T, U>(
                                 // We need to rather use the full range, of the macro
                                 None
                             };
-                            if let Some(diag) = make_diag(MatchCtx {
+                            if let Some(diag) = make(MatchCtx {
                                 sema,
                                 def_fb: in_clause,
                                 target: &target,
@@ -584,7 +583,7 @@ pub(crate) fn find_call_in_function<T, U>(
                                 range_mf_only,
                                 range: *range,
                             }) {
-                                diags.push(diag)
+                                res.push(diag)
                             }
                         }
                     }
