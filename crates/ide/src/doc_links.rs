@@ -15,6 +15,8 @@ use hir::InFile;
 use hir::Semantic;
 
 // @fb-only
+
+// @fb-only
 mod otp_links;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,16 +37,17 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
     let mut doc_links = Vec::new();
     let in_file_token = InFile::new(file_id, token);
     if let Some(class) = SymbolClass::classify(&sema, in_file_token.clone()) {
-        class
-            .iter()
-            .for_each(|def| otp_links::links(&mut doc_links, &sema, &def));
+        class.iter().for_each(|def| {
+            otp_links::links(&mut doc_links, &sema, &def);
+            // @fb-only
+        });
     }
     // @fb-only
     Some(doc_links)
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use crate::fixture;
 
     pub(crate) fn check_links(fixture: &str, expected_links: Vec<&str>) {

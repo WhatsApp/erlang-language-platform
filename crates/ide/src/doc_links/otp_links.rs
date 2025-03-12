@@ -70,24 +70,6 @@ mod tests {
     }
 
     #[test]
-    fn non_otp_module_doc_links() {
-        check_links(
-            r#"
- //- /src/one.erl
- -module(one).
- -export([reverse/1]).
- reverse([]) -> [].
-
- //- /src/two.erl
- -module(two).
- a() ->
-   on~e:reverse([]).
-         "#,
-            vec![],
-        )
-    }
-
-    #[test]
     fn otp_function_doc_links() {
         check_links(
             r#"
@@ -102,24 +84,6 @@ mod tests {
    lists:rev~erse([]).
          "#,
             vec!["https://erlang.org/doc/man/lists.html#reverse/1"],
-        )
-    }
-
-    #[test]
-    fn non_otp_function_doc_links() {
-        check_links(
-            r#"
- //- /src/one.erl
- -module(one).
- -export([reverse/1]).
- reverse([]) -> [].
-
- //- /src/two.erl
- -module(two).
- a() ->
-   one:rev~erse([]).
-         "#,
-            vec![],
         )
     }
 }
