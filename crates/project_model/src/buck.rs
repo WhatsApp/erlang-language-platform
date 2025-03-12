@@ -1582,22 +1582,6 @@ mod tests {
         if BUCK_TESTS_ENABLED {
             check_buck_bxl_query(expect![[r#"
                 {
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a_target": {
-                    "name": "app_a_target",
-                    "app_name": "app_a",
-                    "suite": null,
-                    "srcs": [
-                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
-                    ],
-                    "includes": [],
-                    "labels": [],
-                    "deps": [],
-                    "apps": [
-                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a"
-                    ],
-                    "included_apps": [],
-                    "origin": "app"
-                  },
                   "prelude//erlang/common_test/common:common": {
                     "name": "common",
                     "app_name": null,
@@ -1792,6 +1776,22 @@ mod tests {
                     ],
                     "included_apps": [],
                     "origin": "prelude"
+                  },
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a_target": {
+                    "name": "app_a_target",
+                    "app_name": "app_a",
+                    "suite": null,
+                    "srcs": [
+                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
+                    ],
+                    "includes": [],
+                    "labels": [],
+                    "deps": [],
+                    "apps": [
+                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a"
+                    ],
+                    "included_apps": [],
+                    "origin": "app"
                   }
                 }
             "#]]);
