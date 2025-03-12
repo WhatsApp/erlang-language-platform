@@ -21,7 +21,7 @@ use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 // @fb-only
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -86,12 +86,12 @@ fn process_badmatches(
             Some(m) => Some(*m),
             None => Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
         },
-        &move |ctx @ MakeDiagCtx {
+        &move |ctx @ MatchCtx {
                    sema,
                    def_fb,
                    extra,
                    ..
-               }: MakeDiagCtx<'_, &str>| {
+               }: MatchCtx<'_, &str>| {
             let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, *extra, ctx.range_mf_only())
                 .with_severity(Severity::Error)
                 .with_ignore_fix(sema, def_fb.file_id());

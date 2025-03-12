@@ -481,7 +481,7 @@ impl Args {
 /// diagnostic and fix if needed.
 pub type CheckCall<'a, T, U> = &'a dyn Fn(CheckCallCtx<T>) -> Option<U>;
 
-pub struct MakeDiagCtx<'a, U> {
+pub struct MatchCtx<'a, U> {
     pub sema: &'a Semantic<'a>,
     pub def_fb: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
     pub target: &'a CallTarget<ExprId>,
@@ -493,7 +493,7 @@ pub struct MakeDiagCtx<'a, U> {
     pub extra: &'a U,
 }
 
-impl<'a, U> MakeDiagCtx<'a, U> {
+impl<'a, U> MatchCtx<'a, U> {
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
     pub fn range_mf_only(&self) -> TextRange {
@@ -508,7 +508,7 @@ impl<'a, U> MakeDiagCtx<'a, U> {
     }
 }
 
-pub type MakeDiag<'a, T> = &'a dyn Fn(MakeDiagCtx<T>) -> Option<Diagnostic>;
+pub type MakeDiag<'a, T> = &'a dyn Fn(MatchCtx<T>) -> Option<Diagnostic>;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum UseRange {
@@ -575,7 +575,7 @@ pub(crate) fn find_call_in_function<T, U>(
                                 // We need to rather use the full range, of the macro
                                 None
                             };
-                            if let Some(diag) = make_diag(MakeDiagCtx {
+                            if let Some(diag) = make_diag(MatchCtx {
                                 sema,
                                 def_fb: in_clause,
                                 target: &target,
@@ -615,7 +615,7 @@ mod tests {
 
     use super::find_call_in_function;
     use super::FunctionMatch;
-    use super::MakeDiagCtx;
+    use super::MatchCtx;
     use super::UseRange;
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
@@ -667,13 +667,13 @@ mod tests {
             def,
             &mfas,
             &move |_ctx| Some("Diagnostic Message"),
-            &move |ctx @ MakeDiagCtx {
+            &move |ctx @ MatchCtx {
                        sema,
                        def_fb,
                        extra,
                        range,
                        ..
-                   }: MakeDiagCtx<'_, &str>| {
+                   }: MatchCtx<'_, &str>| {
                 let diag_range = match use_range {
                     UseRange::WithArgs => range,
                     UseRange::NameOnly => ctx.range_mf_only(),

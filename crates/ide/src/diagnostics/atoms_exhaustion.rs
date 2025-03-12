@@ -17,7 +17,7 @@ use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 // @fb-only
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
@@ -103,7 +103,7 @@ fn check_function(
                 None
             }
         },
-        &move |MakeDiagCtx { sema, range, .. }| {
+        &move |MatchCtx { sema, range, .. }| {
             let diag = make_diagnostic(sema, def.file.file_id, range);
             Some(diag)
         },

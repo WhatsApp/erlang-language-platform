@@ -26,7 +26,7 @@ use super::DiagnosticDescriptor;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 // @fb-only
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -184,13 +184,13 @@ fn process_badmatches(
                 }
             }
         },
-        &move |MakeDiagCtx {
+        &move |MatchCtx {
                    sema,
                    def_fb,
                    extra,
                    range,
                    ..
-               }: MakeDiagCtx<'_, String>|
+               }: MatchCtx<'_, String>|
               -> Option<Diagnostic> {
             let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra, range)
                 .with_severity(Severity::Warning)

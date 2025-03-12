@@ -34,7 +34,7 @@ use super::DiagnosticDescriptor;
 use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 // @fb-only
 use crate::fix;
 use crate::FunctionMatch;
@@ -115,7 +115,7 @@ fn check_function(
                 hir::CallTarget::Local { .. } => None,
             }
         },
-        &move |ctx @ MakeDiagCtx { sema, extra, .. }| {
+        &move |ctx @ MatchCtx { sema, extra, .. }| {
             make_diagnostic(
                 sema,
                 def.file.file_id,

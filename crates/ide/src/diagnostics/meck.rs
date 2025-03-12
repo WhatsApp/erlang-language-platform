@@ -22,7 +22,7 @@ use text_edit::TextSize;
 
 use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
@@ -88,7 +88,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                 _ => None,
             }
         },
-        &move |MakeDiagCtx {
+        &move |MatchCtx {
                    sema,
                    def_fb,
                    args,

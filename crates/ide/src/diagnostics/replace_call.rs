@@ -40,7 +40,7 @@ use crate::codemod_helpers::CheckCall;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::MFA;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
@@ -82,7 +82,7 @@ pub fn replace_call_site_if_args_match(
             def,
             &[(fm, ())],
             &args_match,
-            &move |MakeDiagCtx {
+            &move |MatchCtx {
                        sema,
                        def_fb,
                        target,
@@ -90,7 +90,7 @@ pub fn replace_call_site_if_args_match(
                        extra,
                        range,
                        ..
-                   }: MakeDiagCtx<'_, (String, String)>| {
+                   }: MatchCtx<'_, (String, String)>| {
                 let mfa =
                     MFA::from_call_target(target, args.arity(), sema, &def_fb.body(), file_id)?;
                 let mfa_str = mfa.label();

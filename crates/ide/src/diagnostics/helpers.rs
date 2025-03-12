@@ -17,7 +17,7 @@ use hir::Semantic;
 use super::Diagnostic;
 use super::Severity;
 use crate::codemod_helpers::find_call_in_function;
-use crate::codemod_helpers::MakeDiagCtx;
+use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::UseRange;
 use crate::FunctionMatch;
 
@@ -67,12 +67,12 @@ pub(crate) fn check_function_with_diagnostic_template(
         def,
         mfas,
         &move |ctx| Some(*ctx.t),
-        &move |ctx @ MakeDiagCtx {
+        &move |ctx @ MatchCtx {
                    sema,
                    def_fb,
                    extra,
                    ..
-               }: MakeDiagCtx<'_, &DiagnosticTemplate>| {
+               }: MatchCtx<'_, &DiagnosticTemplate>| {
             let diag = Diagnostic::new(
                 extra.code.clone(),
                 extra.message.clone(),
