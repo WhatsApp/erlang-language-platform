@@ -508,7 +508,7 @@ impl<'a, U> MatchCtx<'a, U> {
     }
 }
 
-pub type Make<'a, T> = &'a dyn Fn(MatchCtx<T>) -> Option<Diagnostic>;
+pub type Make<'a, T, U> = &'a dyn Fn(MatchCtx<T>) -> Option<U>;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum UseRange {
@@ -523,7 +523,7 @@ pub(crate) fn find_call_in_function<T, U>(
     def: &FunctionDef,
     mfas: &[(&FunctionMatch, T)],
     check_call: CheckCall<T, U>,
-    make_diag: Make<U>,
+    make_diag: Make<U, Diagnostic>,
 ) -> Option<()> {
     let def_fb = def.in_function_body(sema, def);
     let matcher = FunctionMatcher::new(mfas);
