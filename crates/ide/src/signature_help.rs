@@ -256,6 +256,7 @@ mod tests {
     use std::iter;
 
     use elp_ide_db::elp_base_db::fixture::WithFixture;
+    use elp_project_model::otp::supports_eep59_doc_attributes;
     use expect_test::expect;
     use expect_test::Expect;
     use itertools::Itertools;
@@ -683,8 +684,9 @@ main() ->
 
     #[test]
     fn test_fn_signature_doc_eep59() {
-        check(
-            r#"
+        if supports_eep59_doc_attributes() {
+            check(
+                r#"
 -module(main).
 
 -compile(export_all).
@@ -713,7 +715,7 @@ add(This, That, Extra) ->
 main() ->
   main:add(This, ~)
 "#,
-            expect![[r#"
+                expect![[r#"
                 ```erlang
                 -spec add(integer(), integer()) -> integer().
                 ```
@@ -751,7 +753,8 @@ main() ->
                 This: The first thing
                 ======
             "#]],
-        );
+            );
+        }
     }
 
     #[test]
