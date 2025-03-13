@@ -360,7 +360,7 @@ impl TransitiveChecker<'_> {
 
     fn collect_invalid_references(
         &mut self,
-        refs: &mut FxHashSet<Ref>,
+        invalids: &mut FxHashSet<Ref>,
         module: &SmolStr,
         ty: &Type,
         parent_ref: Option<&Ref>,
@@ -368,11 +368,11 @@ impl TransitiveChecker<'_> {
         match ty {
             Type::RemoteType(rt) => {
                 for arg in rt.arg_tys.iter() {
-                    self.collect_invalid_references(refs, module, arg, parent_ref)?;
+                    self.collect_invalid_references(invalids, module, arg, parent_ref)?;
                 }
                 let rref = Ref::RidRef(rt.id.clone());
                 if !self.is_maybe_valid(&rref, parent_ref)? {
-                    refs.insert(rref);
+                    invalids.insert(rref);
                 }
             }
             Type::OpaqueType(_) => {
@@ -381,21 +381,21 @@ impl TransitiveChecker<'_> {
             Type::RecordType(rt) => {
                 let rref = Ref::RecRef(module.clone(), rt.name.clone());
                 if !self.is_maybe_valid(&rref, parent_ref)? {
-                    refs.insert(rref);
+                    invalids.insert(rref);
                 }
             }
             Type::RefinedRecordType(rt) => {
                 let rref = Ref::RecRef(module.clone(), rt.rec_type.name.clone());
                 for (_, ty) in rt.fields.iter() {
-                    self.collect_invalid_references(refs, module, ty, parent_ref)?;
+                    self.collect_invalid_references(invalids, module, ty, parent_ref)?;
                 }
                 if !self.is_maybe_valid(&rref, parent_ref)? {
-                    refs.insert(rref);
+                    invalids.insert(rref);
                 }
             }
-            ty => {
-                ty.walk(&mut |ty| self.collect_invalid_references(refs, module, ty, parent_ref))?
-            }
+            ty => ty.walk(&mut |ty| {
+                self.collect_invalid_references(invalids, module, ty, parent_ref)
+            })?,
         }
         Ok(())
     }
