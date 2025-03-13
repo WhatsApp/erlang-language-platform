@@ -32,18 +32,28 @@ pub trait EqwalizerErlASTStorage {
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
+
+    fn converted_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error> {
+        let ast = self.get_erl_ast_bytes(project_id, module)?;
+        super::from_bytes(&ast, false).map(Arc::new)
+    }
+
+    fn converted_ast_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+    ) -> Result<Arc<Vec<u8>>, Error> {
+        self.converted_ast(project_id, module).map(|ast| {
+            Arc::new(super::to_bytes(
+                &ast.iter().filter(is_non_stub_form).collect(),
+            ))
+        })
+    }
 }
 
 #[salsa::query_group(EqwalizerASTDatabaseStorage)]
 pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
     fn from_beam(&self, project_id: ProjectId, module: ModuleName) -> bool;
-
-    fn converted_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
-    fn converted_ast_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
     fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
 
     fn type_ids(
@@ -96,27 +106,6 @@ fn from_beam(db: &dyn EqwalizerASTDatabase, project_id: ProjectId, module: Modul
         }
     }
     false
-}
-
-fn converted_ast(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<AST>, Error> {
-    let ast = db.get_erl_ast_bytes(project_id, module)?;
-    super::from_bytes(&ast, false).map(Arc::new)
-}
-
-fn converted_ast_bytes(
-    db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
-    db.converted_ast(project_id, module).map(|ast| {
-        Arc::new(super::to_bytes(
-            &ast.iter().filter(is_non_stub_form).collect(),
-        ))
-    })
 }
 
 fn is_non_stub_form(form: &&ExternalForm) -> bool {
