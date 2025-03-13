@@ -76,7 +76,7 @@ impl VarianceChecker<'_> {
         if let Some((ty_var, expansion)) = self.expands_to_contravariant(t)? {
             let invalid = self.to_invalid(t, &ty_var, expansion);
             stub.invalid_forms.push(invalid);
-            stub.private_opaques.remove(&t.id);
+            stub.opaques.remove(&t.id);
         }
         Ok(())
     }
@@ -396,7 +396,7 @@ impl VarianceChecker<'_> {
 
     pub fn check(&self, stub: &ModuleStub) -> Result<ModuleStub, VarianceCheckError> {
         let mut stub_result = stub.clone();
-        stub.private_opaques
+        stub.opaques
             .values()
             .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;

@@ -131,7 +131,7 @@ impl TransitiveChecker<'_> {
                 name: t.id.to_string().into(),
                 references: invalids,
             });
-            stub.private_opaques.remove(&t.id);
+            stub.opaques.remove(&t.id);
             stub.invalid_forms
                 .push(InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
                     location: t.location.clone(),
@@ -317,7 +317,7 @@ impl TransitiveChecker<'_> {
                             &tdecl.body,
                             Some(rref),
                         )?,
-                        None => match stub.private_opaques.get(&id) {
+                        None => match stub.opaques.get(&id) {
                             Some(tdecl) => self.collect_invalid_references(
                                 &mut invalids,
                                 &rid.module,
@@ -420,7 +420,7 @@ impl TransitiveChecker<'_> {
             .values()
             .map(|decl| self.check_type_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
-        stub.private_opaques
+        stub.opaques
             .values()
             .map(|decl| self.check_private_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;

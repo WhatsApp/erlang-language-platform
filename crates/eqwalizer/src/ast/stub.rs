@@ -26,7 +26,7 @@ pub struct ModuleStub {
     pub exports: FxHashSet<Id>,
     pub imports: FxHashMap<Id, SmolStr>,
     pub export_types: FxHashSet<Id>,
-    pub private_opaques: FxHashMap<Id, TypeDecl>,
+    pub opaques: FxHashMap<Id, TypeDecl>,
     pub types: FxHashMap<Id, TypeDecl>,
     pub specs: FxHashMap<Id, FunSpec>,
     pub overloaded_specs: FxHashMap<Id, OverloadedFunSpec>,

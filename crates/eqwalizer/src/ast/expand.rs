@@ -679,7 +679,7 @@ impl StubExpander<'_> {
             Ok(decl) => {
                 let opaque_decl = self.type_converter.convert_opaque_private(decl)?;
                 self.stub
-                    .private_opaques
+                    .opaques
                     .insert(opaque_decl.id.clone(), opaque_decl);
             }
             Err(invalid) => {

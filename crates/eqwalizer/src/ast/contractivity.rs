@@ -219,7 +219,7 @@ impl StubContractivityChecker<'_> {
         t: &TypeDecl,
     ) -> Result<(), ContractivityCheckError> {
         if !self.is_contractive(&t.body)? {
-            stub.private_opaques.remove(&t.id);
+            stub.opaques.remove(&t.id);
             stub.invalid_forms.push(self.to_invalid(t));
         }
         Ok(())
@@ -342,7 +342,7 @@ impl StubContractivityChecker<'_> {
             .get(&local_id)
             .map(|t| subst(t, args))
             .or_else(|| {
-                stub.private_opaques.get(&local_id).map(|t| {
+                stub.opaques.get(&local_id).map(|t| {
                     if self.module == id.module {
                         subst(t, args)
                     } else {
@@ -361,7 +361,7 @@ impl StubContractivityChecker<'_> {
             .values()
             .map(|decl| self.check_type_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
-        stub.private_opaques
+        stub.opaques
             .values()
             .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
