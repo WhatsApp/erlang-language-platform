@@ -11,7 +11,6 @@ use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::InvalidForm;
-use elp_types_db::eqwalizer::form::OpaqueTypeDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -28,7 +27,6 @@ pub struct ModuleStub {
     pub imports: FxHashMap<Id, SmolStr>,
     pub export_types: FxHashSet<Id>,
     pub private_opaques: FxHashMap<Id, TypeDecl>,
-    pub public_opaques: FxHashMap<Id, OpaqueTypeDecl>,
     pub types: FxHashMap<Id, TypeDecl>,
     pub specs: FxHashMap<Id, FunSpec>,
     pub overloaded_specs: FxHashMap<Id, OverloadedFunSpec>,

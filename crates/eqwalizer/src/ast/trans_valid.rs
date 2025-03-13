@@ -22,7 +22,6 @@ use elp_types_db::eqwalizer::form::InvalidForm;
 use elp_types_db::eqwalizer::form::InvalidFunSpec;
 use elp_types_db::eqwalizer::form::InvalidRecDecl;
 use elp_types_db::eqwalizer::form::InvalidTypeDecl;
-use elp_types_db::eqwalizer::form::OpaqueTypeDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -139,22 +138,6 @@ impl TransitiveChecker<'_> {
                     id: t.id.clone(),
                     te: diag,
                 }))
-        }
-        Ok(())
-    }
-
-    fn check_public_opaque_decl(
-        &mut self,
-        stub: &mut ModuleStub,
-        t: &OpaqueTypeDecl,
-    ) -> Result<(), TransitiveCheckError> {
-        let rref = Ref::RidRef(RemoteId {
-            module: self.module.clone(),
-            name: t.id.name.clone(),
-            arity: t.id.arity,
-        });
-        if !self.is_valid(&rref)? {
-            stub.public_opaques.remove(&t.id);
         }
         Ok(())
     }
@@ -440,10 +423,6 @@ impl TransitiveChecker<'_> {
         stub.private_opaques
             .values()
             .map(|decl| self.check_private_opaque_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.public_opaques
-            .values()
-            .map(|decl| self.check_public_opaque_decl(&mut stub_result, decl))
             .collect::<Result<Vec<()>, _>>()?;
         stub.records
             .values()

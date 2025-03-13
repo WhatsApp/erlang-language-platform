@@ -168,13 +168,6 @@ pub struct RecField {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct OpaqueTypeDecl {
-    pub location: eqwalizer::Pos,
-    pub id: eqwalizer::Id,
-    pub file: Option<SmolStr>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TypeDecl {
     pub location: eqwalizer::Pos,
     pub id: eqwalizer::Id,

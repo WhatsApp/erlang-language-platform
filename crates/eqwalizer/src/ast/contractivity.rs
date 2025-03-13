@@ -220,7 +220,6 @@ impl StubContractivityChecker<'_> {
     ) -> Result<(), ContractivityCheckError> {
         if !self.is_contractive(&t.body)? {
             stub.private_opaques.remove(&t.id);
-            stub.public_opaques.remove(&t.id);
             stub.invalid_forms.push(self.to_invalid(t));
         }
         Ok(())
@@ -343,16 +342,16 @@ impl StubContractivityChecker<'_> {
             .get(&local_id)
             .map(|t| subst(t, args))
             .or_else(|| {
-                if self.module == id.module {
-                    stub.private_opaques.get(&local_id).map(|t| subst(t, args))
-                } else {
-                    stub.public_opaques.get(&local_id).map(|_| {
+                stub.private_opaques.get(&local_id).map(|t| {
+                    if self.module == id.module {
+                        subst(t, args)
+                    } else {
                         Type::OpaqueType(OpaqueType {
                             id: id.clone(),
                             arg_tys: args.to_owned(),
                         })
-                    })
-                }
+                    }
+                })
             }))
     }
 

@@ -677,10 +677,6 @@ impl StubExpander<'_> {
     fn add_opaque_decl(&mut self, t: ExternalOpaqueDecl) -> Result<(), TypeConversionError> {
         match self.expander.expand_opaque_decl(t) {
             Ok(decl) => {
-                let public_decl = self.type_converter.convert_opaque_decl_public(decl.clone());
-                self.stub
-                    .public_opaques
-                    .insert(public_decl.id.clone(), public_decl);
                 let opaque_decl = self.type_converter.convert_opaque_private(decl)?;
                 self.stub
                     .private_opaques

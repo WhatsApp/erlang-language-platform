@@ -21,7 +21,6 @@ use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::InvalidConvertTypeInRecDecl;
-use elp_types_db::eqwalizer::form::OpaqueTypeDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::RecField;
@@ -194,14 +193,6 @@ impl TypeConverter {
             location: decl.location,
             file: decl.file,
         })
-    }
-
-    pub fn convert_opaque_decl_public(&self, decl: ExternalOpaqueDecl) -> OpaqueTypeDecl {
-        OpaqueTypeDecl {
-            location: decl.location,
-            id: decl.id,
-            file: decl.file,
-        }
     }
 
     pub fn convert_opaque_private(
