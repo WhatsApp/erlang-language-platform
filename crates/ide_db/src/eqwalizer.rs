@@ -365,7 +365,7 @@ pub fn type_references(
 }
 
 impl EqwalizerErlASTStorage for crate::RootDatabase {
-    fn get_erl_ast_bytes(
+    fn erl_ast_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,

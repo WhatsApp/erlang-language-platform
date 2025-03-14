@@ -33,7 +33,7 @@ pub fn compute_eqwalizer_stats(
     module: ModuleName,
 ) -> Arc<Vec<EqwalizerDiagnostic>> {
     let mut diagnostics = vec![];
-    if let Ok(ast) = db.converted_ast(project_id, module) {
+    if let Ok(ast) = db.eqwalizer_ast(project_id, module) {
         escape_hatches::escape_hatches(&mut diagnostics, &ast);
         overloaded_specs::overloaded_specs(&mut diagnostics, &ast);
     }

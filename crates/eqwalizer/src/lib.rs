@@ -371,7 +371,7 @@ fn get_module_diagnostics(
                 let ast = {
                     match format {
                         EqWAlizerASTFormat::ConvertedForms => {
-                            db.converted_ast_bytes(project_id, module_name)
+                            db.eqwalizer_ast_bytes(project_id, module_name)
                         }
                         EqWAlizerASTFormat::TransitiveStub => {
                             db.transitive_stub_bytes(project_id, module_name)

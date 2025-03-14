@@ -27,23 +27,23 @@ use super::Id;
 use super::AST;
 
 pub trait EqwalizerErlASTStorage {
-    fn get_erl_ast_bytes(
+    fn erl_ast_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
 
-    fn converted_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error> {
-        let ast = self.get_erl_ast_bytes(project_id, module)?;
+    fn eqwalizer_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error> {
+        let ast = self.erl_ast_bytes(project_id, module)?;
         super::from_bytes(&ast, false).map(Arc::new)
     }
 
-    fn converted_ast_bytes(
+    fn eqwalizer_ast_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
-        self.converted_ast(project_id, module).map(|ast| {
+        self.eqwalizer_ast(project_id, module).map(|ast| {
             Arc::new(super::to_bytes(
                 &ast.iter().filter(is_non_stub_form).collect(),
             ))
@@ -137,7 +137,7 @@ fn converted_stub(
             Err(Error::ModuleNotFound(module.as_str().into()))
         }
     } else {
-        let ast = db.get_erl_ast_bytes(project_id, module)?;
+        let ast = db.erl_ast_bytes(project_id, module)?;
         super::from_bytes(&ast, true).map(Arc::new)
     }
 }
