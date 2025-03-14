@@ -16,7 +16,6 @@ use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
-use elp_base_db::SourceRootId;
 use elp_base_db::VfsPath;
 use elp_eqwalizer::analyses::EqwalizerAnalysesDatabase;
 use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
@@ -90,7 +89,6 @@ pub trait EqwalizerDatabase:
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
     fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
-    fn has_eqwalizer_app_marker(&self, source_root_id: SourceRootId) -> bool;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
     fn is_eqwalizer_enabled(&self, file_id: FileId, include_generated: IncludeGenerated) -> bool;
@@ -180,7 +178,6 @@ fn is_eqwalizer_enabled(
 
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {:?}", file_id));
-    let source_root = db.file_source_root(file_id);
     let app_data = if let Some(app_data) = db.file_app_data(file_id) {
         app_data
     } else {
@@ -191,19 +188,10 @@ fn is_eqwalizer_enabled(
     let eqwalizer_config = &project.eqwalizer_config;
     let module_index = db.module_index(project_id);
     let is_src = module_index.file_source_for_file(file_id) == Some(FileSource::Src);
-    let app_or_global_opt_in =
-        eqwalizer_config.enable_all || db.has_eqwalizer_app_marker(source_root);
-    let opt_in = (app_or_global_opt_in && is_src) || db.has_eqwalizer_module_marker(file_id);
+    let global_opt_in = eqwalizer_config.enable_all;
+    let opt_in = (global_opt_in && is_src) || db.has_eqwalizer_module_marker(file_id);
     let ignored = db.has_eqwalizer_ignore_marker(file_id);
     opt_in && !ignored
-}
-
-fn has_eqwalizer_app_marker(db: &dyn EqwalizerDatabase, source_root_id: SourceRootId) -> bool {
-    if let Some(app_data) = db.app_data(source_root_id) {
-        let source_root = db.source_root(source_root_id);
-        return source_root.has_eqwalizer_marker(&app_data);
-    }
-    false
 }
 
 fn has_eqwalizer_module_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
@@ -491,30 +479,6 @@ mod tests {
         );
 
         assert!(db.has_eqwalizer_module_marker(file_id));
-    }
-
-    #[test]
-    fn test_has_eqwalizer_app_marker() {
-        let (db, file_ids, _) = RootDatabase::with_many_files(
-            r#"
-//- /src/test.erl
--module(test).
-"#,
-        );
-
-        let source_root = db.file_source_root(file_ids[0]);
-        assert!(!db.has_eqwalizer_app_marker(source_root));
-
-        let (db, file_ids, _) = RootDatabase::with_many_files(
-            r#"
-//- /src/test.erl
--module(test).
-//- /.eqwalizer
-"#,
-        );
-
-        let source_root = db.file_source_root(file_ids[0]);
-        assert!(db.has_eqwalizer_app_marker(source_root));
     }
 
     #[test]

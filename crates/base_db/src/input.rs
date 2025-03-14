@@ -97,14 +97,6 @@ impl SourceRoot {
             None
         }
     }
-
-    pub fn has_eqwalizer_marker<'a>(&'a self, app_data: &'a AppData) -> bool {
-        self.iter().any(|file_id| {
-            self.path_for_file(&file_id)
-                .iter()
-                .any(|p| app_data.is_eqwalizer_marker(p))
-        })
-    }
 }
 
 /// Source roots (apps) are grouped into projects that share some
@@ -164,14 +156,6 @@ impl AppData {
                     .iter()
                     .any(|src_dir| parent == Path::new(src_dir));
             }
-        }
-        false
-    }
-
-    fn is_eqwalizer_marker(&self, path: &VfsPath) -> bool {
-        if let Some(path) = self.local_file_path(path) {
-            let path: &Utf8Path = path.as_ref();
-            return path == Utf8Path::new(".eqwalizer");
         }
         false
     }

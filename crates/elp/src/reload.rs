@@ -11,7 +11,6 @@ use std::cmp;
 use std::iter;
 
 use elp_ide::elp_ide_db::elp_base_db::loader;
-use elp_ide::elp_ide_db::elp_base_db::AppType;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -98,9 +97,6 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     let mut files = FxHashSet::default();
     project_apps.all_apps.iter().for_each(|(_, app)| {
         app_dirs.extend(app.all_source_dirs());
-        if app.app_type == AppType::App {
-            files.insert(app.dir.join(".eqwalizer"));
-        }
         app.applicable_files.as_ref().map(|applicable_files| {
             files.extend(applicable_files.clone());
         });
