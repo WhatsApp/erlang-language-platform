@@ -270,7 +270,7 @@ lambda_app() ->
             Fib(N - 2) + Fib(N - 1)
     end)(4),
     Res.
-    
+
 -type getter(A) :: fun((atom()) -> A).
 
 -spec getter1
@@ -300,35 +300,35 @@ getter4_neg(F) ->
     fun(A) ->
         F(A)
     end.
-    
+
 -spec getter5_neg
     (fun((atom()) -> A)) -> ((fun ((term()) -> ok)) | (fun((atom()) -> A))) .
 getter5_neg(F) ->
     fun(A) ->
         F(A)
     end.
-    
+
 -spec getter6_neg
     (fun((atom()) -> _)) -> ((fun()) | (fun ((term()) -> ok))).
 getter6_neg(F) ->
     fun(A) ->
         F(A)
     end.
-    
+
 -spec getter7
     (fun((atom()) -> A)) -> ok | (fun ((atom()) -> A)).
 getter7(F) ->
     fun(A) ->
         F(A)
     end.
-    
+
 -spec getter8_neg
     (fun((atom()) -> _)) -> ok | getter(other).
 getter8_neg(F) ->
     fun(A) ->
         F(A)
     end.
-    
+
 -spec getter9_neg
     (fun((atom()) -> A)) -> a | ((fun ((term(), term()) -> ok)) | (fun((term()) -> A))).
 getter9_neg(F) ->
@@ -356,3 +356,13 @@ hd_invariant([F | _]) -> F.
 
 -spec test_invariant() -> (fun((atom()) -> atom())).
 test_invariant() -> hd_invariant([]).
+
+-spec nullary_fun_neg1() -> ok.
+nullary_fun_neg1() ->
+    {Fun} = {fun() -> no_ok end},
+    Fun().
+
+-spec nullary_fun_neg2() -> ok.
+nullary_fun_neg2() ->
+    Fun = fun() -> no_ok end,
+    Fun().

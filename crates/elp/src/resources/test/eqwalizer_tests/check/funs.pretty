@@ -346,4 +346,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: atom()
 
-24 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:363:5
+    │
+363 │     Fun().
+    │     ^^^^^ Fun().
+Expression has type:   'no_ok'
+Context expected type: 'ok'
+
+25 ERRORS
