@@ -183,27 +183,35 @@ pub fn file_edoc_comments_query(
 ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>> {
     let source = db.parse(file_id).tree();
     let mut res = FxHashMap::default();
-    source.forms().for_each(|f| {
-        if let Some(kind) = edoc_header_kind(f.syntax()) {
-            let mut comments: Vec<_> = prev_form_nodes(f.syntax())
-                .filter(|syntax| {
-                    syntax.kind() == elp_syntax::SyntaxKind::COMMENT && only_comment_on_line(syntax)
-                })
-                .filter_map(ast::Comment::cast)
-                .collect();
-            comments.reverse();
-            let comments: Vec<&ast::Comment> = comments
-                .iter()
-                .skip_while(|c| extract_edoc_tag(&c.syntax().text().to_string()).is_none())
-                .collect();
-            if let Some(comment) = comments.last() {
-                let form = InFileAstPtr::new(file_id, AstPtr::new(&f));
-                let edoc = parse_edoc(kind, form, &comments, comment.syntax().text_range());
-                res.insert(edoc.form, edoc);
-            }
+    for form in source.forms() {
+        if let Some(edoc) = edoc_header(file_id, form) {
+            res.insert(edoc.form, edoc);
         }
-    });
+    }
     Some(res)
+}
+
+fn edoc_header(file_id: FileId, form: ast::Form) -> Option<EdocHeader> {
+    let kind = edoc_header_kind(form.syntax())?;
+    let mut comments: Vec<_> = prev_form_nodes(form.syntax())
+        .filter(|syntax| {
+            syntax.kind() == elp_syntax::SyntaxKind::COMMENT && only_comment_on_line(syntax)
+        })
+        .filter_map(ast::Comment::cast)
+        .collect();
+    comments.reverse();
+    let comments: Vec<&ast::Comment> = comments
+        .iter()
+        .skip_while(|c| extract_edoc_tag(&c.syntax().text().to_string()).is_none())
+        .collect();
+    let comment = comments.last()?;
+    let form = InFileAstPtr::new(file_id, AstPtr::new(&form));
+    Some(parse_edoc(
+        kind,
+        form,
+        &comments,
+        comment.syntax().text_range(),
+    ))
 }
 
 fn parse_edoc(
