@@ -44,6 +44,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::db::DefDatabase;
+use crate::FunctionDef;
 use crate::InFileAstPtr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -181,17 +182,43 @@ pub fn file_edoc_comments_query(
     db: &dyn DefDatabase,
     file_id: FileId,
 ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>> {
-    let source = db.parse(file_id).tree();
     let mut res = FxHashMap::default();
-    for form in source.forms() {
-        if let Some(edoc) = edoc_header(file_id, form) {
-            res.insert(edoc.form, edoc);
+    if let Some((form, header)) = module_doc_header(db, file_id) {
+        res.insert(form, header);
+    }
+    let def_map = db.def_map_local(file_id);
+    for (_name_arity, def) in def_map.get_functions() {
+        if let Some((form, header)) = function_doc_header(db, file_id, def) {
+            res.insert(form, header);
         }
     }
     Some(res)
 }
 
-fn edoc_header(file_id: FileId, form: ast::Form) -> Option<EdocHeader> {
+fn module_doc_header(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
+    let form_list = db.file_form_list(file_id);
+    let module_attribute = form_list.module_attribute()?;
+    let ast = module_attribute.form_id.get_ast(db, file_id);
+    let syntax = ast.syntax();
+    let form = ast::Form::cast(syntax.clone())?;
+    edoc_header(file_id, &form)
+}
+
+fn function_doc_header(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    def: &FunctionDef,
+) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
+    let decls = def.source(db.upcast());
+    let decl = decls.first()?;
+    let form = ast::Form::cast(decl.syntax().clone())?;
+    edoc_header(file_id, &form)
+}
+
+fn edoc_header(file_id: FileId, form: &ast::Form) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let kind = edoc_header_kind(form.syntax())?;
     let mut comments: Vec<_> = prev_form_nodes(form.syntax())
         .filter(|syntax| {
@@ -205,12 +232,10 @@ fn edoc_header(file_id: FileId, form: ast::Form) -> Option<EdocHeader> {
         .skip_while(|c| extract_edoc_tag(&c.syntax().text().to_string()).is_none())
         .collect();
     let comment = comments.last()?;
-    let form = InFileAstPtr::new(file_id, AstPtr::new(&form));
-    Some(parse_edoc(
-        kind,
+    let form = InFileAstPtr::new(file_id, AstPtr::new(form));
+    Some((
         form,
-        &comments,
-        comment.syntax().text_range(),
+        parse_edoc(kind, form, &comments, comment.syntax().text_range()),
     ))
 }
 
