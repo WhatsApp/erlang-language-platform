@@ -400,4 +400,33 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_spec_in_between() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+
+-spec main(any(), any()) -> ok.
+%% These are some extra lines of doc
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+These are some extra lines of doc
+""".
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }
