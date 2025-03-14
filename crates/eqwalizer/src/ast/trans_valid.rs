@@ -33,6 +33,7 @@ use fxhash::FxHashSet;
 
 use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
+use super::stub::VStub;
 use super::Id;
 use super::RemoteId;
 use super::TransitiveCheckError;
@@ -236,31 +237,26 @@ impl TransitiveChecker<'_> {
         Ok(())
     }
 
-    fn check_callback(
-        &mut self,
-        stub: &mut ModuleStub,
-        cb: &Callback,
-    ) -> Result<(), TransitiveCheckError> {
+    fn normalize_callback(&mut self, cb: Callback) -> Result<Callback, TransitiveCheckError> {
         let mut filtered_tys = vec![];
-        for ty in cb.tys.iter() {
+        for ty in cb.tys.into_iter() {
             let mut invalids = FxHashSet::default();
             self.collect_invalid_references(
                 &mut invalids,
                 &self.module.clone(),
-                &Type::FunType(ty.to_owned()),
+                &Type::FunType(ty.clone()),
                 None,
             )?;
             if invalids.is_empty() {
-                filtered_tys.push(ty.clone())
+                filtered_tys.push(ty)
             }
         }
         let new_cb = Callback {
-            location: cb.location.clone(),
-            id: cb.id.clone(),
+            location: cb.location,
+            id: cb.id,
             tys: filtered_tys,
         };
-        stub.callbacks.push(new_cb);
-        Ok(())
+        Ok(new_cb)
     }
 
     fn is_valid(&mut self, rref: &Ref) -> Result<bool, TransitiveCheckError> {
@@ -304,20 +300,20 @@ impl TransitiveChecker<'_> {
             .db
             .covariant_stub(self.project_id, ModuleName::new(rref.module().as_str()))
         {
-            Ok(stub) => match rref {
+            Ok(v_stub) => match rref {
                 Ref::RidRef(rid) => {
                     let id = Id {
                         name: rid.name.clone(),
                         arity: rid.arity,
                     };
-                    match stub.types.get(&id) {
+                    match v_stub.get_type(&id) {
                         Some(tdecl) => self.collect_invalid_references(
                             &mut invalids,
                             &rid.module,
                             &tdecl.body,
                             Some(rref),
                         )?,
-                        None => match stub.opaques.get(&id) {
+                        None => match v_stub.get_opaque(&id) {
                             Some(tdecl) => self.collect_invalid_references(
                                 &mut invalids,
                                 &rid.module,
@@ -330,7 +326,7 @@ impl TransitiveChecker<'_> {
                         },
                     }
                 }
-                Ref::RecRef(module, rec_name) => match stub.records.get(rec_name) {
+                Ref::RecRef(module, rec_name) => match v_stub.get_record(rec_name) {
                     Some(rdecl) => {
                         for field in rdecl.fields.iter() {
                             if let Some(ty) = &field.tp {
@@ -348,7 +344,7 @@ impl TransitiveChecker<'_> {
                     }
                 },
             },
-            Err(_) => {
+            _ => {
                 invalids.insert(rref.clone());
             }
         };
@@ -413,33 +409,31 @@ impl TransitiveChecker<'_> {
         }
     }
 
-    pub fn check(&mut self, stub: &ModuleStub) -> Result<ModuleStub, TransitiveCheckError> {
-        let mut stub_result = stub.clone();
-        stub_result.callbacks = vec![];
-        stub.types
-            .values()
-            .map(|decl| self.check_type_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.opaques
-            .values()
-            .map(|decl| self.check_private_opaque_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.records
-            .values()
-            .map(|decl| self.check_record_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.specs
-            .values()
-            .map(|spec| self.check_spec(&mut stub_result, spec))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.overloaded_specs
-            .values()
-            .map(|spec| self.check_overloaded_spec(&mut stub_result, spec))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.callbacks
-            .iter()
-            .map(|cb| self.check_callback(&mut stub_result, cb))
-            .collect::<Result<Vec<()>, _>>()?;
+    pub fn check(&mut self, v_stub: &VStub) -> Result<ModuleStub, TransitiveCheckError> {
+        let mut stub_result = v_stub.into_normalized_stub();
+
+        for decl in v_stub.types() {
+            self.check_type_decl(&mut stub_result, decl)?
+        }
+        for decl in v_stub.opaques() {
+            self.check_private_opaque_decl(&mut stub_result, decl)?
+        }
+        for decl in v_stub.records() {
+            self.check_record_decl(&mut stub_result, decl)?
+        }
+        for spec in v_stub.specs() {
+            self.check_spec(&mut stub_result, spec)?
+        }
+        for spec in v_stub.overloaded_specs() {
+            self.check_overloaded_spec(&mut stub_result, spec)?
+        }
+
+        stub_result.callbacks = stub_result
+            .callbacks
+            .into_iter()
+            .map(|cb| self.normalize_callback(cb))
+            .collect::<Result<Vec<_>, _>>()?;
+
         Ok(stub_result)
     }
 }

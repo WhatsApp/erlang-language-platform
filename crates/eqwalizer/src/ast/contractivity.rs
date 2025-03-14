@@ -37,6 +37,8 @@
 //!
 //! Algorithm design by @ilyaklyuchnikov, see D30779530 for more information.
 
+use std::sync::Arc;
+
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
@@ -54,6 +56,7 @@ use itertools::Itertools;
 
 use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
+use super::stub::VStub;
 use super::subst::Subst;
 use super::ContractivityCheckError;
 use super::Id;
@@ -201,25 +204,9 @@ impl StubContractivityChecker<'_> {
         }
     }
 
-    fn check_type_decl(
-        &self,
-        stub: &mut ModuleStub,
-        t: &TypeDecl,
-    ) -> Result<(), ContractivityCheckError> {
+    fn check_decl(&self, stub: &mut VStub, t: &TypeDecl) -> Result<(), ContractivityCheckError> {
         if !self.is_contractive(&t.body)? {
-            stub.types.remove(&t.id);
-            stub.invalid_forms.push(self.to_invalid(t));
-        }
-        Ok(())
-    }
-
-    fn check_opaque_decl(
-        &self,
-        stub: &mut ModuleStub,
-        t: &TypeDecl,
-    ) -> Result<(), ContractivityCheckError> {
-        if !self.is_contractive(&t.body)? {
-            stub.opaques.remove(&t.id);
+            stub.invalid_ids.insert(t.id.clone());
             stub.invalid_forms.push(self.to_invalid(t));
         }
         Ok(())
@@ -355,16 +342,14 @@ impl StubContractivityChecker<'_> {
             }))
     }
 
-    pub fn check(&self, stub: &ModuleStub) -> Result<ModuleStub, ContractivityCheckError> {
-        let mut stub_result = stub.clone();
-        stub.types
-            .values()
-            .map(|decl| self.check_type_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        stub.opaques
-            .values()
-            .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        Ok(stub_result)
+    pub fn check(&self, stub: Arc<ModuleStub>) -> Result<VStub, ContractivityCheckError> {
+        let mut v_stub = VStub::new(stub.clone());
+        for decl in stub.types.values() {
+            self.check_decl(&mut v_stub, decl)?
+        }
+        for decl in stub.opaques.values() {
+            self.check_decl(&mut v_stub, decl)?
+        }
+        Ok(v_stub)
     }
 }

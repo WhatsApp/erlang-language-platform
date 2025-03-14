@@ -52,7 +52,7 @@ use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
 
 use super::db::EqwalizerASTDatabase;
-use super::stub::ModuleStub;
+use super::stub::VStub;
 use super::subst::Subst;
 use super::Id;
 use super::RemoteId;
@@ -70,13 +70,13 @@ impl VarianceChecker<'_> {
 
     fn check_opaque_decl(
         &self,
-        stub: &mut ModuleStub,
+        v_stub: &mut VStub,
         t: &TypeDecl,
     ) -> Result<(), VarianceCheckError> {
         if let Some((ty_var, expansion)) = self.expands_to_contravariant(t)? {
             let invalid = self.to_invalid(t, &ty_var, expansion);
-            stub.invalid_forms.push(invalid);
-            stub.opaques.remove(&t.id);
+            v_stub.invalid_forms.push(invalid);
+            v_stub.invalid_ids.insert(t.id.clone());
         }
         Ok(())
     }
@@ -378,7 +378,7 @@ impl VarianceChecker<'_> {
             name: id.name.clone(),
             arity: id.arity,
         };
-        let stub = self
+        let v_stub = self
             .db
             .contractive_stub(self.project_id, ModuleName::new(id.module.as_str()))
             .map_err(|err| VarianceCheckError::ErrorExpandingID(id.clone(), Box::new(err)))?;
@@ -391,15 +391,14 @@ impl VarianceChecker<'_> {
                 Subst { sub }.apply(decl.body.clone())
             }
         }
-        Ok(stub.types.get(&local_id).map(|t| subst(t, args)))
+        Ok(v_stub.get_type(&local_id).map(|t| subst(t, args)))
     }
 
-    pub fn check(&self, stub: &ModuleStub) -> Result<ModuleStub, VarianceCheckError> {
-        let mut stub_result = stub.clone();
-        stub.opaques
-            .values()
-            .map(|decl| self.check_opaque_decl(&mut stub_result, decl))
-            .collect::<Result<Vec<()>, _>>()?;
-        Ok(stub_result)
+    pub fn check(&self, stub: &VStub) -> Result<VStub, VarianceCheckError> {
+        let mut result = stub.clone();
+        for decl in stub.opaques() {
+            self.check_opaque_decl(&mut result, decl)?
+        }
+        Ok(result)
     }
 }

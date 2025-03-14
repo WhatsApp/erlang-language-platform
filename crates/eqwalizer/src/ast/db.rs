@@ -20,6 +20,7 @@ use fxhash::FxHashSet;
 use super::contractivity::StubContractivityChecker;
 use super::expand::StubExpander;
 use super::stub::ModuleStub;
+use super::stub::VStub;
 use super::trans_valid::TransitiveChecker;
 use super::variance_check::VarianceChecker;
 use super::Error;
@@ -77,13 +78,13 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
         &self,
         project_id: ProjectId,
         module: ModuleName,
-    ) -> Result<Arc<ModuleStub>, Error>;
+    ) -> Result<Arc<VStub>, Error>;
 
     fn covariant_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
-    ) -> Result<Arc<ModuleStub>, Error>;
+    ) -> Result<Arc<VStub>, Error>;
 
     fn transitive_stub(
         &self,
@@ -191,11 +192,11 @@ fn contractive_stub(
     db: &dyn EqwalizerASTDatabase,
     project_id: ProjectId,
     module: ModuleName,
-) -> Result<Arc<ModuleStub>, Error> {
+) -> Result<Arc<VStub>, Error> {
     let stub = db.expanded_stub(project_id, module.clone())?;
     let checker = StubContractivityChecker::new(db, project_id, module.as_str().into());
     checker
-        .check(&stub)
+        .check(stub)
         .map(Arc::new)
         .map_err(Error::ContractivityError)
 }
@@ -204,11 +205,11 @@ fn covariant_stub(
     db: &dyn EqwalizerASTDatabase,
     project_id: ProjectId,
     module: ModuleName,
-) -> Result<Arc<ModuleStub>, Error> {
-    let stub = db.contractive_stub(project_id, module)?;
+) -> Result<Arc<VStub>, Error> {
+    let v_stub = db.contractive_stub(project_id, module)?;
     let checker = VarianceChecker::new(db, project_id);
     checker
-        .check(&stub)
+        .check(&v_stub)
         .map(Arc::new)
         .map_err(Error::VarianceCheckError)
 }
@@ -218,10 +219,10 @@ fn transitive_stub(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let stub = db.covariant_stub(project_id, module.clone())?;
+    let v_stub = db.covariant_stub(project_id, module.clone())?;
     let mut checker = TransitiveChecker::new(db, project_id, module.as_str().into());
     checker
-        .check(&stub)
+        .check(&v_stub)
         .map(Arc::new)
         .map_err(Error::TransitiveCheckError)
 }
