@@ -335,11 +335,12 @@ fn app_data_id_by_file(db: &dyn SourceDatabase, file_id: FileId) -> Option<AppDa
     app_data_index.map.get(&file_id).copied()
 }
 
-pub fn set_app_data_id_by_file(db: &dyn SourceDatabase, id: FileId, app_data_id: AppDataId) {
+pub fn set_app_data_id_by_file(db: &mut dyn SourceDatabase, id: FileId, app_data_id: AppDataId) {
     let mut app_data_index: Arc<AppDataIndex> = db.app_index();
     Arc::make_mut(&mut app_data_index)
         .map
         .insert(id, app_data_id);
+    db.set_app_index(app_data_index);
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<SourceFile> {
