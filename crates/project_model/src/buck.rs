@@ -1030,13 +1030,7 @@ fn targets_to_project_data_bxl(
             parse_transforms: vec![],
             app_type: target.app_type(),
             include_path: includes.into_iter().collect(),
-            applicable_files: Some(FxHashSet::from_iter(
-                target
-                    .src_files
-                    .clone()
-                    .into_iter()
-                    .chain(target.include_files.clone()),
-            )),
+            applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
         };
         result.push(project_app_data);
