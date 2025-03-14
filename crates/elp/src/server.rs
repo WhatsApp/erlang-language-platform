@@ -36,6 +36,7 @@ use elp_ide::elp_ide_db::elp_base_db::set_app_data_id_by_file;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::AppDataId;
+use elp_ide::elp_ide_db::elp_base_db::AppDataIndex;
 use elp_ide::elp_ide_db::elp_base_db::ChangedFile;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
@@ -240,6 +241,7 @@ pub struct Server {
     project_loader: Arc<Mutex<ProjectLoader>>,
     reload_manager: Arc<Mutex<ReloadManager>>,
     unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
+    update_app_data_ids: bool,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
@@ -303,6 +305,7 @@ impl Server {
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
+            update_app_data_ids: false,
             reset_source_roots: false,
             native_diagnostics_requested: false,
             eqwalizer_and_erlang_service_diagnostics_requested: false,
@@ -1008,6 +1011,32 @@ impl Server {
             };
         }
 
+        if self.update_app_data_ids {
+            // We process the changes for files opened before project
+            // discovery is complete, so cannot update their app_data_id (for
+            // Buck projects). When the information *is* available, update
+            // any missing ones.
+            let vfs = self.vfs.read();
+            let mut app_data_index: Arc<AppDataIndex> = raw_database.app_index();
+            let mut paths_to_remove = vec![];
+            self.unresolved_app_id_paths
+                .iter()
+                .for_each(|(path, app_data_id)| {
+                    let vfs_path = VfsPath::from(path.clone());
+                    if let Some(file_id) = vfs.file_id(&vfs_path) {
+                        paths_to_remove.push(path.clone());
+                        Arc::make_mut(&mut app_data_index)
+                            .map
+                            .insert(file_id, *app_data_id);
+                    }
+                });
+            raw_database.set_app_index(app_data_index);
+            for remove in paths_to_remove {
+                Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&remove);
+            }
+            self.update_app_data_ids = false;
+        }
+
         if self.reset_source_roots
             || changed_files
                 .into_values()
@@ -1298,6 +1327,7 @@ impl Server {
         self.projects = Arc::new(projects);
         self.project_loader.lock().load_completed();
         self.reset_source_roots = true;
+        self.update_app_data_ids = true;
         Ok(())
     }
 
