@@ -61,18 +61,13 @@ impl Runnable {
             RunnableKind::Suite { .. } => "".to_string(),
         }
     }
+
     pub fn regex(&self) -> String {
         match &self.kind {
-            RunnableKind::Test {
-                app_name,
-                suite,
-                case,
-                group,
-                ..
-            } => {
+            RunnableKind::Test { case, group, .. } => {
                 let escaped_group = regex::escape(&group.name());
                 let escaped_case = regex::escape(case);
-                format!("{app_name}:{suite} - {escaped_group}.{escaped_case}$")
+                format!("{escaped_group}.{escaped_case}$")
             }
             RunnableKind::Suite { .. } => "".to_string(),
         }
