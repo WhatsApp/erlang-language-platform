@@ -13,10 +13,15 @@ use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
+use fxhash::FxHashSet;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
 use hir::edoc::Tag;
+use hir::known;
+use hir::Attribute;
+use hir::Name;
 use hir::Semantic;
+use lazy_static::lazy_static;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
@@ -66,7 +71,8 @@ fn old_edoc_syntax_diagnostic(
 ) -> Diagnostic {
     let fix = match header.kind {
         EdocHeaderKind::Module => {
-            let insert_offset = insert_offset(sema, file_id).unwrap_or(header.range.end());
+            let insert_offset =
+                module_doc_insert_offset(sema, file_id).unwrap_or(header.range.end());
             let mut builder = SourceChangeBuilder::new(file_id);
             for comment in header.comments() {
                 builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
@@ -87,17 +93,32 @@ fn old_edoc_syntax_diagnostic(
         .with_fixes(Some(vec![fix]))
 }
 
-fn insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
+fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
     let form_list = sema.form_list(file_id);
     let module_attribute = form_list.module_attribute()?;
     let source = sema.parse(file_id);
-    let offset = module_attribute
-        .form_id
-        .get(&source.value)
-        .syntax()
-        .text_range()
-        .end();
-    Some(offset)
+    let syntax = match last_significant_attribute(sema, file_id) {
+        Some(attribute) => attribute.form_id.get(&source.value).syntax().clone(),
+        None => module_attribute.form_id.get(&source.value).syntax().clone(),
+    };
+    Some(syntax.text_range().end())
+}
+
+lazy_static! {
+    static ref SIGNIFICANT_ATTRIBUTES: FxHashSet<Name> =
+        FxHashSet::from_iter([known::author, known::compile, known::oncall]);
+}
+
+fn last_significant_attribute(sema: &Semantic, file_id: FileId) -> Option<Attribute> {
+    sema.form_list(file_id)
+        .attributes()
+        .take_while(|(_idx, attr)| is_significant_attribute(attr))
+        .last()
+        .map(|(_idx, attr)| attr.clone())
+}
+
+fn is_significant_attribute(attribute: &Attribute) -> bool {
+    SIGNIFICANT_ATTRIBUTES.contains(&attribute.name)
 }
 
 #[cfg(test)]
@@ -180,6 +201,42 @@ dep() -> ok.
 This is the module documentation.
 With an extra line.
 """.
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_fix_significant_attributes() {
+        check_fix(
+            r#"
+%% @d~oc This is the module documentation.
+%%       With an extra line.
+-module(main).
+-oncall(my_oncall).
+-author(my_author).
+
+-export([main/0]).
+
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-oncall(my_oncall).
+-author(my_author).
+-moduledoc """
+This is the module documentation.
+With an extra line.
+""".
+
+-export([main/0]).
+
 main() ->
     dep().
 
