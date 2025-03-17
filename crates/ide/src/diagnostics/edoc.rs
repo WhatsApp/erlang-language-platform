@@ -18,6 +18,7 @@ use hir::edoc::EdocHeaderKind;
 use hir::edoc::Tag;
 use hir::Semantic;
 use text_edit::TextRange;
+use text_edit::TextSize;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
@@ -65,18 +66,7 @@ fn old_edoc_syntax_diagnostic(
 ) -> Diagnostic {
     let fix = match header.kind {
         EdocHeaderKind::Module => {
-            let insert_offset =
-                if let Some(module_attribute) = sema.form_list(file_id).module_attribute() {
-                    let source = sema.parse(file_id);
-                    module_attribute
-                        .form_id
-                        .get(&source.value)
-                        .syntax()
-                        .text_range()
-                        .end()
-                } else {
-                    header.range.end()
-                };
+            let insert_offset = insert_offset(sema, file_id).unwrap_or(header.range.end());
             let mut builder = SourceChangeBuilder::new(file_id);
             for comment in header.comments() {
                 builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
@@ -95,6 +85,19 @@ fn old_edoc_syntax_diagnostic(
     Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
         .with_severity(DIAGNOSTIC_SEVERITY)
         .with_fixes(Some(vec![fix]))
+}
+
+fn insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
+    let form_list = sema.form_list(file_id);
+    let module_attribute = form_list.module_attribute()?;
+    let source = sema.parse(file_id);
+    let offset = module_attribute
+        .form_id
+        .get(&source.value)
+        .syntax()
+        .text_range()
+        .end();
+    Some(offset)
 }
 
 #[cfg(test)]
