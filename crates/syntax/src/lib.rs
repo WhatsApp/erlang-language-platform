@@ -347,6 +347,10 @@ impl SourceFile {
             Either::Right(self.forms_only())
         }
     }
+
+    pub fn is_erlang_config_file(&self) -> bool {
+        self.exprs().next().is_some()
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -955,5 +959,41 @@ mod tests {
         .assert_debug_eq(&parse.errors().iter().collect::<Vec<_>>());
         expect!["SourceFile { syntax: SOURCE_FILE@0..194 }"]
             .assert_eq(format!("{:?}", parse.tree()).as_str());
+    }
+
+    #[test]
+    fn identify_non_form_code() {
+        // We can now parse a file containing only expressions at the top level, typically used for `consult`.
+        // Check that we can distinguish them from normal files
+        let source_code = r#"
+             {deps, []}.
+
+             {escript_incl_apps, [erlang_service]}.
+             {escript_main_app, erlang_service}.
+             {escript_name, erlang_service}.
+             {escript_emu_args, "%%! +sbtu +A0 +sbwt none +sbwtdcpu none +sbwtdio none -noinput -mode minimal -escript main erlang_service -enable-feature maybe_expr\n"}.
+
+             {base_dir, "../../../../buck-out/elp/erlang_service"}.
+
+             %% Profiles
+             {profiles, [
+                 {debug, [{erl_opts, [debug_info, {d, 'DEBUG'}]}]},
+                 {release, [{erl_opts, [no_debug_info, deterministic]}]}
+             ]}.
+             "#;
+        let parse = ast::SourceFile::parse_text(source_code);
+        assert_eq!(true, parse.tree().is_erlang_config_file());
+    }
+
+    #[test]
+    fn identify_form_code() {
+        // We can now parse a file containing only expressions at the top level, typically used for `consult`.
+        // Check that we can distinguish them from normal files
+        let source_code = r#"
+             -module(main).
+             foo() -> ok.
+             "#;
+        let parse = ast::SourceFile::parse_text(source_code);
+        assert_eq!(false, parse.tree().is_erlang_config_file());
     }
 }

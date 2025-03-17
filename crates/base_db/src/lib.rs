@@ -182,6 +182,10 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
 
     fn is_generated(&self, file_id: FileId) -> bool;
 
+    /// The top level items are expressions, not forms.  Typically
+    /// when parsing e.g. a `rebar.config` file.
+    fn is_erlang_config_file(&self, file_id: FileId) -> bool;
+
     fn is_otp(&self, file_id: FileId) -> Option<bool>;
 
     fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool>;
@@ -364,6 +368,11 @@ fn is_generated(db: &dyn SourceDatabase, file_id: FileId) -> bool {
     }
     let contents = db.file_text(file_id);
     RE.is_match(&contents.as_bytes()[0..(2001.min(contents.len()))])
+}
+
+fn is_erlang_config_file(db: &dyn SourceDatabase, file_id: FileId) -> bool {
+    let parse = db.parse(file_id);
+    parse.tree().is_erlang_config_file()
 }
 
 fn is_otp(db: &dyn SourceDatabase, file_id: FileId) -> Option<bool> {
