@@ -241,7 +241,9 @@ fn module_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<ModuleInd
                     source_root.file_info(file_id, &app_data)
                 {
                     if let Some((name, Some("erl"))) = path.name_and_extension() {
-                        builder.insert(file_id, file_source, ModuleName::new(name));
+                        if !db.is_erlang_config_file(file_id) && db.file_kind(file_id).is_module() {
+                            builder.insert(file_id, file_source, ModuleName::new(name));
+                        }
                     }
                 }
             }
@@ -427,6 +429,7 @@ pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleNam
 lazy_static! {
 static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![
+       vec![ Regex::new(r"^.*_SUITE_data/.+$").unwrap()],
         //ignore sources goes here
         // @fb-only
     ];
@@ -449,7 +452,7 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
         .unwrap_or(false);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_kind: {:?}", file_id));
-    if ignored_path {
+    if ignored_path || db.is_erlang_config_file(file_id) {
         // not part of the known project model, and on list of ignored
         // sources, do not process
         FileKind::OutsideProjectModel
