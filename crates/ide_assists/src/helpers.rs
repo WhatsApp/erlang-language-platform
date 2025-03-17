@@ -379,23 +379,20 @@ pub(crate) fn ranges_for_delete_function(
     let fun_asts = function_def.source(ctx.sema.db.upcast());
     let fun_range = function_def.range(ctx.sema.db.upcast())?;
 
-    let edoc_comments: Vec<InFileAstPtr<ast::Comment>> = if let Some(file_edoc) =
-        ctx.sema.form_edoc_comments(InFileAstPtr::new(
-            ctx.file_id(),
-            AstPtr::new(&ast::Form::FunDecl(ast_fun.clone())),
-        )) {
-        file_edoc.comments()
+    let edoc = if let Some(file_edoc) = ctx.sema.form_edoc_comments(InFileAstPtr::new(
+        ctx.file_id(),
+        AstPtr::new(&ast::Form::FunDecl(ast_fun.clone())),
+    )) {
+        file_edoc
+            .comments()
+            .filter_map(|c| {
+                let comment = ctx.ast_ptr_get(*c)?;
+                Some(extend_form_range_for_delete(comment.syntax()))
+            })
+            .collect()
     } else {
         vec![]
     };
-
-    let edoc = edoc_comments
-        .iter()
-        .filter_map(|c| {
-            let comment = ctx.ast_ptr_get(*c)?;
-            Some(extend_form_range_for_delete(comment.syntax()))
-        })
-        .collect();
 
     let spec_range = function_def.spec.and_then(|spec| {
         let ast_spec = ctx.form_ast(InFile::new(spec.file.file_id, spec.spec.form_id));

@@ -289,7 +289,7 @@ impl<'db> Semantic<'db> {
     pub fn file_edoc_comments(
         &self,
         file_id: FileId,
-    ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>> {
+    ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>> {
         self.db.file_edoc_comments(file_id)
     }
 

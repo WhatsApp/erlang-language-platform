@@ -1105,11 +1105,6 @@ impl<T: AstNode> InFileAstPtr<T> {
     pub fn range(&self) -> TextRange {
         self.0.value.syntax_node_ptr().range()
     }
-
-    #[cfg(test)]
-    pub(crate) fn syntax_ptr_string(&self) -> String {
-        format!("{:?}", self.0.value.syntax_node_ptr())
-    }
 }
 
 /// A form body together with the mapping from syntax nodes to HIR expression

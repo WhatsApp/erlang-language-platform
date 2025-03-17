@@ -8,6 +8,7 @@
  */
 
 // Diagnostic: edoc
+use std::sync::LazyLock;
 
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
@@ -16,12 +17,11 @@ use elp_syntax::AstNode;
 use fxhash::FxHashSet;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
-use hir::edoc::Tag;
 use hir::known;
 use hir::Attribute;
+use hir::FormList;
 use hir::Name;
 use hir::Semantic;
-use lazy_static::lazy_static;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
@@ -51,13 +51,14 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 
 fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     if let Some(comments) = sema.file_edoc_comments(file_id) {
-        for (_form, header) in comments {
+        for header in comments.values() {
             if let Some(doc) = &header.doc {
-                if let Some(show_range) = doc.tag_range(sema.db.upcast()) {
-                    diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema, file_id, show_range, &header,
-                    ));
-                }
+                diagnostics.push(old_edoc_syntax_diagnostic(
+                    sema,
+                    file_id,
+                    doc.tag_range,
+                    &header,
+                ));
             }
         }
     }
@@ -96,29 +97,22 @@ fn old_edoc_syntax_diagnostic(
 fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
     let form_list = sema.form_list(file_id);
     let module_attribute = form_list.module_attribute()?;
-    let source = sema.parse(file_id);
-    let syntax = match last_significant_attribute(sema, file_id) {
-        Some(attribute) => attribute.form_id.get(&source.value).syntax().clone(),
-        None => module_attribute.form_id.get(&source.value).syntax().clone(),
+    let range = match last_significant_attribute(&form_list) {
+        Some(attribute) => attribute.form_id.range(sema.db, file_id),
+        None => module_attribute.form_id.range(sema.db, file_id),
     };
-    Some(syntax.text_range().end())
+    Some(range.end())
 }
 
-lazy_static! {
-    static ref SIGNIFICANT_ATTRIBUTES: FxHashSet<Name> =
-        FxHashSet::from_iter([known::author, known::compile, known::oncall]);
-}
+fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
+    static SIGNIFICANT_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
+        LazyLock::new(|| FxHashSet::from_iter([known::author, known::compile, known::oncall]));
 
-fn last_significant_attribute(sema: &Semantic, file_id: FileId) -> Option<Attribute> {
-    sema.form_list(file_id)
+    form_list
         .attributes()
-        .take_while(|(_idx, attr)| is_significant_attribute(attr))
+        .take_while(|(_idx, attr)| SIGNIFICANT_ATTRIBUTES.contains(&attr.name))
         .last()
-        .map(|(_idx, attr)| attr.clone())
-}
-
-fn is_significant_attribute(attribute: &Attribute) -> bool {
-    SIGNIFICANT_ATTRIBUTES.contains(&attribute.name)
+        .map(|(_idx, attr)| attr)
 }
 
 #[cfg(test)]

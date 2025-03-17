@@ -153,7 +153,7 @@ pub trait DefDatabase:
     fn file_edoc_comments(
         &self,
         file_id: FileId,
-    ) -> Option<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>;
+    ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
     // Helper query to run the recursive resolution algorithm
     #[salsa::cycle(macro_exp::recover_cycle)]
