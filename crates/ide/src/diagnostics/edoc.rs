@@ -480,8 +480,10 @@ dep() -> ok.
 -module(main).
 -doc """
 This is the main doc
-These are some extra lines of doc
 """.
+
+-spec main(any(), any()) -> ok.
+%% These are some extra lines of doc
 main(A, B) ->
     dep().
 

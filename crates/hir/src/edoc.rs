@@ -32,6 +32,7 @@
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
+use elp_syntax::ast::Form;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SyntaxKind;
@@ -204,7 +205,7 @@ fn module_doc_header(
     let ast = module_attribute.form_id.get_ast(db, file_id);
     let syntax = ast.syntax();
     let form = ast::Form::cast(syntax.clone())?;
-    edoc_header(file_id, &form)
+    edoc_header(file_id, &form, &syntax, EdocHeaderKind::Module)
 }
 
 fn function_doc_header(
@@ -215,12 +216,34 @@ fn function_doc_header(
     let decls = def.source(db.upcast());
     let decl = decls.first()?;
     let form = ast::Form::cast(decl.syntax().clone())?;
-    edoc_header(file_id, &form)
+    let syntax = form.syntax();
+    spec_doc_header(db, file_id, &def, &form).or(edoc_header(
+        file_id,
+        &form,
+        syntax,
+        EdocHeaderKind::Function,
+    ))
 }
 
-fn edoc_header(file_id: FileId, form: &ast::Form) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
-    let kind = edoc_header_kind(form.syntax())?;
-    let mut comments: Vec<_> = prev_form_nodes(form.syntax())
+fn spec_doc_header(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    def: &FunctionDef,
+    form: &Form,
+) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
+    let spec_def = def.spec.clone()?;
+    let spec = spec_def.source(db.upcast());
+    let spec_syntax = spec.syntax();
+    edoc_header(file_id, &form, spec_syntax, EdocHeaderKind::Function)
+}
+
+fn edoc_header(
+    file_id: FileId,
+    form: &ast::Form,
+    syntax: &SyntaxNode,
+    kind: EdocHeaderKind,
+) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
+    let mut comments: Vec<_> = prev_form_nodes(syntax)
         .filter(|syntax| {
             syntax.kind() == elp_syntax::SyntaxKind::COMMENT && only_comment_on_line(syntax)
         })
@@ -577,10 +600,9 @@ mod tests {
 "#,
             expect![[r#"
                 SyntaxNodePtr { range: 474..500, kind: FUN_DECL }
-                Function:0..473
+                Function:0..26
                   doc
                     0..26: "is an edoc comment"
-                    449..473: "Part of the same edoc"
             "#]],
         )
     }
