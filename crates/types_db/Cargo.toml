@@ -10,6 +10,7 @@ elp_syntax.workspace = true
 fxhash.workspace = true
 serde.workspace = true
 serde_with.workspace = true
+itertools.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true

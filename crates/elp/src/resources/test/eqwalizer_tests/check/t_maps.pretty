@@ -545,13 +545,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      ^^^^^^
     │                      │
     │                      {K, V}.
-Expression has type:   {'b' | 'a', a()}
+Expression has type:   {'a' | 'b', a()}
 Context expected type: {n(), a()}
     │                      
 
 Because in the expression's type:
   { 
-    Here the type is:     'b' | 'a'
+    Here the type is:     'a' | 'b'
     Context expects type: number()
     No candidate of the expression's type matches the expected type.
   , a()}
@@ -559,11 +559,11 @@ Because in the expression's type:
 ------------------------------ Detailed message ------------------------------
 
   at tuple index 1:
-  {'b' | 'a', a()} is not compatible with {n(), a()}
+  {'a' | 'b', a()} is not compatible with {n(), a()}
   because
-  'b' | 'a' is not compatible with n()
+  'a' | 'b' is not compatible with n()
   because
-  'b' | 'a' is not compatible with number()
+  'a' | 'b' is not compatible with number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/t_maps.erl:429:1

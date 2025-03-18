@@ -684,23 +684,21 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         ^^^^^^^^^^^^^^^^^^
     │                         │
     │                         maps:merge(M1, M2).
-Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
 Context expected type: #{a => string(), b => number(), c => atom()}
     │                         
 
 Because in the expression's type:
-  Here the type is:     #{'a' | 'b' | 'c' => string() | number() | atom()}
+  Here the type is:     #{'b' | 'a' | 'c' => number() | string() | atom()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
 
 ------------------------------ Detailed message ------------------------------
 
-  #{'a' | 'b' | 'c' => string() | number() | atom()} is not compatible with #{a => string(), b => number(), c => atom()}
-  key b is not present in the former map but is incompatible with its default association
+  #{'b' | 'a' | 'c' => number() | string() | atom()} is not compatible with #{a => string(), b => number(), c => atom()}
+  key a is not present in the former map but is incompatible with its default association
   because
-  string() | number() | atom() is not compatible with number()
-  because
-  string() is not compatible with number()
+  number() | string() | atom() is not compatible with string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:679:25
@@ -709,23 +707,21 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         ^^^^^^^^^^^^^^^^^^
     │                         │
     │                         maps:merge(M1, M2).
-Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
 Context expected type: #{a => string(), b => number() | boolean(), c => atom()}
     │                         
 
 Because in the expression's type:
-  Here the type is:     #{'a' | 'b' | 'c' => string() | number() | atom()}
+  Here the type is:     #{'b' | 'a' | 'c' => number() | string() | atom()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
 
 ------------------------------ Detailed message ------------------------------
 
-  #{'a' | 'b' | 'c' => string() | number() | atom()} is not compatible with #{a => string(), b => number() | boolean(), c => atom()}
-  key b is not present in the former map but is incompatible with its default association
+  #{'b' | 'a' | 'c' => number() | string() | atom()} is not compatible with #{a => string(), b => number() | boolean(), c => atom()}
+  key a is not present in the former map but is incompatible with its default association
   because
-  string() | number() | atom() is not compatible with number() | boolean()
-  because
-  string() is not compatible with number() | boolean()
+  number() | string() | atom() is not compatible with string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:683:25
@@ -734,14 +730,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         ^^^^^^^^^^^^^^^^^^
     │                         │
     │                         maps:merge(M1, M2).
-Expression has type:   #{'a' | 'b' | 'c' => string() | number() | atom()}
+Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
 Context expected type: #{a := string(), b := boolean(), c => atom()}
     │                         
 
 Because in the expression's type:
   Here the type is:     #{...}
-  Context expects type: #{b := ..., a := ..., ...}
-  The type of the expression is missing the following required keys: b, a.
+  Context expects type: #{a := ..., b := ..., ...}
+  The type of the expression is missing the following required keys: a, b.
 
 ------------------------------ Detailed message ------------------------------
 
@@ -2824,9 +2820,9 @@ Context expected type: #{a := atom(), b := binary()}
      │   ╰─────' 
 
 Because in the expression's type:
-  Here the type is:     #{b => ..., a => ..., ...}
-  Context expects type: #{b := ..., a := ..., ...}
-  The type of the expression is missing the following required keys: b, a.
+  Here the type is:     #{a => ..., b => ..., ...}
+  Context expects type: #{a := ..., b := ..., ...}
+  The type of the expression is missing the following required keys: a, b.
 
 ------------------------------ Detailed message ------------------------------
 
@@ -3152,7 +3148,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 2639 │ │ │     M
 2640 │ │ │ ).
      │ ╰─│─^ maps:fold(fun, [], M).
-Expression has type:   [binary() | atom()]
+Expression has type:   [atom() | binary()]
 Context expected type: [binary()]
      │   ╰─' 
 
@@ -3165,9 +3161,9 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  [binary() | atom()] is not compatible with [binary()]
+  [atom() | binary()] is not compatible with [binary()]
   because
-  binary() | atom() is not compatible with binary()
+  atom() | binary() is not compatible with binary()
   because
   atom() is not compatible with binary()
 

@@ -710,6 +710,7 @@ dependencies = [
  "elp_syntax",
  "expect-test",
  "fxhash",
+ "itertools 0.10.5",
  "serde",
  "serde_with",
 ]

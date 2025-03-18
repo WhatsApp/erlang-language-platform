@@ -63,8 +63,8 @@ Because in the expression's type:
   #{ b =>
     #{ c =>
       Here the type is:     #{d => ..., ...}
-      Context expects type: #{e := ..., d := ..., ...}
-      The type of the expression is missing the following required keys: e, d.
+      Context expects type: #{d := ..., e := ..., ...}
+      The type of the expression is missing the following required keys: d, e.
     , ... }
   , ... }
 
@@ -93,7 +93,7 @@ Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}
 Because in the expression's type:
   #{ b =>
     #{ c =>
-      #{ e =>
+      #{ d =>
         Here the type is:     pid()
         Context expects type: atom()
       , ... }
