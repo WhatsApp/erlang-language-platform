@@ -120,7 +120,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 81 │ ╭ -spec test_use_tup_w_unbound_contra_neg2(
 82 │ │     tup_w_unbound(a | b)) ->
 83 │ │     tup_w_unbound(a) | w_unbound_var().
-   │ ╰────────────────────────────────────^ test_use_tup_w_unbound_contra_neg2/1 references types with invalid definitions: w_unbound_var/0, tup_w_unbound/1
+   │ ╰────────────────────────────────────^ test_use_tup_w_unbound_contra_neg2/1 references types with invalid definitions: tup_w_unbound/1, w_unbound_var/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ check/src/type_aliases.erl:87:1

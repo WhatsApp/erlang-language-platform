@@ -79,10 +79,21 @@ pub struct NonProductiveRecursiveTypeAlias {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TransitiveInvalid {
-    pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    location: eqwalizer::Pos,
+    name: SmolStr,
     #[serde(default)]
-    pub references: Vec<SmolStr>,
+    references: Vec<SmolStr>,
+}
+
+impl TransitiveInvalid {
+    pub fn new(location: eqwalizer::Pos, name: SmolStr, mut references: Vec<SmolStr>) -> Self {
+        references.sort_unstable();
+        Self {
+            location,
+            name,
+            references,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

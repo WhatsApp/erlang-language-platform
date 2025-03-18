@@ -281,14 +281,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 301 │ ╭ -spec to_mu_bad3_neg(mu_bad2()) ->
 302 │ │     mu_bad3().
-    │ ╰───────────^ to_mu_bad3_neg/1 references types with invalid definitions: mu_bad3/0, mu_bad2/0
+    │ ╰───────────^ to_mu_bad3_neg/1 references types with invalid definitions: mu_bad2/0, mu_bad3/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:305:1
     │  
 305 │ ╭ -spec to_mu_bad2b_neg(mu_bad2()) ->
 306 │ │   mu_bad2b().
-    │ ╰──────────^ to_mu_bad2b_neg/1 references types with invalid definitions: mu_bad2b/0, mu_bad2/0
+    │ ╰──────────^ to_mu_bad2b_neg/1 references types with invalid definitions: mu_bad2/0, mu_bad2b/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:309:1
@@ -341,7 +341,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 345 │ ╭ -spec test_mu_bad5(
 346 │ │     mu_bad5()
 347 │ │ ) -> mu_bad5b().
-    │ ╰─────────────^ test_mu_bad5/1 references types with invalid definitions: mu_bad5b/0, mu_bad5/0
+    │ ╰─────────────^ test_mu_bad5/1 references types with invalid definitions: mu_bad5/0, mu_bad5b/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:392:1
