@@ -38,6 +38,7 @@ use crossbeam_channel::Sender;
 use eetf::pattern;
 use eetf::Term;
 use elp_base_db::FileId;
+use elp_base_db::ModuleName;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -160,9 +161,6 @@ pub struct DocRequest {
 
 #[derive(Debug, Clone)]
 pub struct CTInfoRequest {
-    pub module: eetf::Atom,
-    pub src_path: PathBuf,
-    pub compile_options: Vec<CompileOption>,
     pub should_request_groups: bool,
     pub file_abstract_forms: Arc<Vec<u8>>,
 }
@@ -583,10 +581,10 @@ impl Connection {
 
     pub fn ct_info(
         &self,
+        module: Option<&ModuleName>,
         request: CTInfoRequest,
         unwind: impl Fn(),
     ) -> Result<CTInfoResult, String> {
-        let module = request.module.clone();
         let tag = request.tag();
         let request = request.encode();
         let reply = self.request_reply(tag, request, unwind);
@@ -610,8 +608,8 @@ impl Connection {
                 })
             })
             .map_err(|error| {
-                log::warn!("Failed to fetch CT Info for {}: {:?}", module.name, error);
-                format!("Failed to fetch CT Info for {:?}", module.name)
+                log::warn!("Failed to fetch CT Info for {:?}: {:?}", module, error);
+                format!("Failed to fetch CT Info for {:?}", module)
             })
     }
 
@@ -866,21 +864,11 @@ impl CTInfoRequest {
     }
 
     fn encode(self) -> Vec<u8> {
-        let compile_options = self
-            .compile_options
-            .into_iter()
-            .map(|option| option.into())
-            .collect::<Vec<eetf::Term>>();
         let should_request_groups = match self.should_request_groups {
             true => eetf::Atom::from("true").into(),
             false => eetf::Atom::from("false").into(),
         };
-        let list = eetf::List::from(vec![
-            self.module.into(),
-            path_into_list(self.src_path).into(),
-            eetf::List::from(compile_options).into(),
-            should_request_groups,
-        ]);
+        let list = eetf::List::from(vec![should_request_groups]);
         let mut buf = Vec::new();
         // We first pass the length-preceded abstract forms, then the options.
         buf.write_u32::<BigEndian>(self.file_abstract_forms.len() as u32)
@@ -1044,7 +1032,6 @@ mod tests {
     #[test]
     fn ct_info() {
         expect_ct_info(
-            "ct_info_SUITE".into(),
             "fixtures/ct_info_SUITE.erl".into(),
             expect_file!["../fixtures/ct_info_SUITE.expected"],
         );
@@ -1053,7 +1040,6 @@ mod tests {
     #[test]
     fn ct_info_exception() {
         expect_ct_info(
-            "ct_info_exception_SUITE".into(),
             "fixtures/ct_info_exception_SUITE.erl".into(),
             expect_file!["../fixtures/ct_info_exception_SUITE.expected"],
         );
@@ -1062,7 +1048,6 @@ mod tests {
     #[test]
     fn ct_info_incomplete() {
         expect_ct_info(
-            "ct_info_incomplete_SUITE".into(),
             "fixtures/ct_info_incomplete_SUITE.erl".into(),
             expect_file!["../fixtures/ct_info_incomplete_SUITE.expected"],
         );
@@ -1071,7 +1056,6 @@ mod tests {
     #[test]
     fn ct_info_dynamic_all() {
         expect_ct_info(
-            "ct_info_dynamic_SUITE".into(),
             "fixtures/ct_info_dynamic_SUITE.erl".into(),
             expect_file!["../fixtures/ct_info_dynamic_SUITE.expected"],
         );
@@ -1080,7 +1064,6 @@ mod tests {
     #[test]
     fn ct_info_infinite_loop() {
         expect_ct_info(
-            "ct_info_infinite_loop_SUITE".into(),
             "fixtures/ct_info_infinite_loop_SUITE.erl".into(),
             expect_file!["../fixtures/ct_info_infinite_loop_SUITE.expected"],
         );
@@ -1197,7 +1180,7 @@ mod tests {
         expected.assert_eq(&actual);
     }
 
-    fn expect_ct_info(module: String, path: PathBuf, expected: ExpectFile) {
+    fn expect_ct_info(path: PathBuf, expected: ExpectFile) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
@@ -1215,14 +1198,12 @@ mod tests {
         };
         let module_ast = CONN.request_parse(req, || (), &|_, _, _| None);
 
+        let name = ModuleName::new(&path.file_stem().unwrap().to_string_lossy());
         let request = CTInfoRequest {
-            module: eetf::Atom::from(module),
-            src_path: path,
-            compile_options: vec![],
             should_request_groups: true,
             file_abstract_forms: module_ast.ast.clone(),
         };
-        let actual = match CONN.ct_info(request, || ()) {
+        let actual = match CONN.ct_info(Some(&name), request, || ()) {
             Ok(response) => {
                 format!(
                     "CT_INFO_ALL\n{}\n\nCT_INFO_GROUPS\n{}",

@@ -1499,14 +1499,6 @@ pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
         return Arc::new(CommonTestInfo::Skipped);
     }
 
-    // If the file cannot be parsed, return early.
-    // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
-    let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, vec![], vec![]);
-    if !ast.is_ok() {
-        return Arc::new(CommonTestInfo::BadAST);
-    }
-
     db.ct_info(file_id)
 }
 
