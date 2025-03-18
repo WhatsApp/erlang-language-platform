@@ -551,7 +551,7 @@ fn load_buck_targets_orig(
 }
 
 fn compute_target_type(name: &TargetFullName, target: &BuckTarget) -> TargetType {
-    if name.contains("//third-party") {
+    if target.origin == BuckTargetOrigin::Prelude || name.contains("//third-party") {
         TargetType::ThirdParty
     } else {
         let test_utils = target.labels.contains("test_utils");
