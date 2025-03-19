@@ -53,12 +53,15 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     if let Some(comments) = sema.file_edoc_comments(file_id) {
         for header in comments.values() {
             if let Some(doc) = &header.doc {
-                diagnostics.push(old_edoc_syntax_diagnostic(
-                    sema,
-                    file_id,
-                    doc.tag_range,
-                    &header,
-                ));
+                if let Some(doc_start) = header.start() {
+                    diagnostics.push(old_edoc_syntax_diagnostic(
+                        sema,
+                        file_id,
+                        doc.tag_range,
+                        &header,
+                        doc_start,
+                    ));
+                }
             }
         }
     }
@@ -69,26 +72,19 @@ fn old_edoc_syntax_diagnostic(
     file_id: FileId,
     show_range: TextRange,
     header: &EdocHeader,
+    start_offset: TextSize,
 ) -> Diagnostic {
-    let fix = match header.kind {
-        EdocHeaderKind::Module => {
-            let insert_offset =
-                module_doc_insert_offset(sema, file_id).unwrap_or(header.range.end());
-            let mut builder = SourceChangeBuilder::new(file_id);
-            for comment in header.comments() {
-                builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
-            }
-            builder.insert(insert_offset, header.to_markdown());
-            let source_change = builder.finish();
-            crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range)
-        }
-        EdocHeaderKind::Function => {
-            let mut builder = SourceChangeBuilder::new(file_id);
-            builder.replace(header.range, header.to_markdown());
-            let source_change = builder.finish();
-            crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range)
-        }
+    let insert_offset = match header.kind {
+        EdocHeaderKind::Module => module_doc_insert_offset(sema, file_id).unwrap_or(start_offset),
+        EdocHeaderKind::Function => start_offset,
     };
+    let mut builder = SourceChangeBuilder::new(file_id);
+    for comment in header.comments() {
+        builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
+    }
+    builder.insert(insert_offset, header.to_markdown());
+    let source_change = builder.finish();
+    let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
     Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
         .with_severity(DIAGNOSTIC_SEVERITY)
         .with_fixes(Some(vec![fix]))
@@ -171,6 +167,53 @@ mod tests {
     %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
+
+    dep() -> ok.
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_incorrect_type_doc() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([main/2]).
+    -export_type([my_integer/0]).
+
+    %% @doc This is an incorrect type doc
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    -type my_integer() :: integer().
+
+    -type my_integer2() :: integer().
+
+    -spec main(any(), any()) -> ok.
+    main(A, B) ->
+        dep().
+
+    dep() -> ok.
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_incorrect_type_doc_followed_by_function_docs() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([main/2]).
+    -export_type([my_integer/0]).
+
+    %% @doc This is an incorrect type doc
+    -type my_integer() :: integer().
+
+    -type my_integer2() :: integer().
+
+    %% @doc These are docs for the main function
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    -spec main(any(), any()) -> ok.
+    main(A, B) ->
+        dep().
 
     dep() -> ok.
         "#,
@@ -506,6 +549,88 @@ dep() -> ok.
 This is the main function
 *Returns:* ok
 """.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_incorrect_type_docs() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+-export_type([my_integer/0]).
+
+%% @d~oc This is an incorrect type doc
+-type my_integer() :: integer().
+
+-type my_integer2() :: integer().
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+-export_type([my_integer/0]).
+
+-doc """
+This is an incorrect type doc
+""".
+-type my_integer() :: integer().
+
+-type my_integer2() :: integer().
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_incorrect_type_docs_with_function_docs() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+-export_type([my_integer/0]).
+
+%% @doc This is an incorrect type doc
+-type my_integer() :: integer().
+
+-type my_integer2() :: integer().
+
+%% @d~oc These are docs for the main function
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+-export_type([my_integer/0]).
+
+-doc """
+This is an incorrect type doc
+These are docs for the main function
+""".
+-type my_integer() :: integer().
+
+-type my_integer2() :: integer().
+
+-spec main(any(), any()) -> ok.
 main(A, B) ->
     dep().
 

@@ -56,10 +56,14 @@ pub struct EdocHeader {
     pub doc: Option<Doc>,
     pub params: FxHashMap<String, Param>,
     pub returns: Option<Returns>,
-    pub range: TextRange,
+    pub ranges: Vec<TextRange>,
 }
 
 impl EdocHeader {
+    pub fn start(&self) -> Option<TextSize> {
+        self.ranges.first().map(|range| range.start())
+    }
+
     pub fn comments(&self) -> impl Iterator<Item = &InFileAstPtr<ast::Comment>> {
         self.doc
             .iter()
@@ -90,7 +94,11 @@ impl EdocHeader {
             if let Some(returns) = &self.returns {
                 res.push_str(&format!("*Returns:* {}\n", returns.text));
             }
-            res.push_str("\"\"\".");
+            let suffix = match self.kind {
+                EdocHeaderKind::Module => "",
+                EdocHeaderKind::Function => "\n",
+            };
+            res.push_str(&format!("\"\"\".{suffix}"));
         }
         res
     }
@@ -208,26 +216,21 @@ fn edoc_header(
         .collect();
     comments.reverse();
 
-    let comment = comments.last()?;
     let form = InFileAstPtr::new(file_id, AstPtr::new(form));
-    Some((
-        form,
-        parse_edoc(kind, form, &comments, comment.syntax().text_range())?,
-    ))
+    Some((form, parse_edoc(kind, form, &comments)?))
 }
 
 fn parse_edoc(
     kind: EdocHeaderKind,
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
-    range: TextRange,
 ) -> Option<EdocHeader> {
     let mut parsing_doc = false;
     let mut doc_tag_range = None;
     let mut doc_lines = vec![];
     let mut params = FxHashMap::default();
     let mut returns = None;
-    let mut range = range.clone();
+    let mut ranges = vec![];
     for comment in comments {
         let text = comment.syntax().text().to_string();
         let syntax = InFileAstPtr::new(form.file_id(), AstPtr::new(comment));
@@ -235,7 +238,7 @@ fn parse_edoc(
         match extracted {
             None => {
                 if parsing_doc {
-                    range = range.cover(comment.syntax().text_range());
+                    ranges.push(comment.syntax().text_range());
                     let text = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
                     doc_lines.push(EdocDocLine {
                         text: Some(text.to_string()),
@@ -244,7 +247,7 @@ fn parse_edoc(
                 }
             }
             Some((tag_range, tag, text)) => {
-                range = range.cover(comment.syntax().text_range());
+                ranges.push(comment.syntax().text_range());
                 match tag {
                     "doc" => {
                         let text = if text.trim().is_empty() {
@@ -300,7 +303,7 @@ fn parse_edoc(
     };
     Some(EdocHeader {
         kind,
-        range,
+        ranges,
         doc,
         params,
         returns,
@@ -387,13 +390,13 @@ mod tests {
                 _k,
                 EdocHeader {
                     kind,
-                    range,
                     doc,
                     params,
                     returns,
+                    ..
                 },
             )| {
-                buf.push_str(&format!("{:?}:{:?}\n", kind, range));
+                buf.push_str(&format!("{:?}\n", kind));
                 if let Some(doc) = doc {
                     if !doc.lines.is_empty() {
                         buf.push_str("  doc\n");
@@ -461,7 +464,7 @@ mod tests {
                 foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                Function:0..129
+                Function
                   doc
                     0..12: "blah"
                   params
@@ -486,7 +489,7 @@ mod tests {
                 foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                Function:25..123
+                Function
                   params
                     Foo
                       25..64: "${2:Argument description}"
@@ -505,7 +508,7 @@ mod tests {
                 foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                Function:41..83
+                Function
                   params
                     Foo
                       41..83: "This is a valid edoc comment"
@@ -521,7 +524,7 @@ mod tests {
                 bar() -> ok.
 "#,
             expect![[r#"
-                Function:0..7
+                Function
                   doc
             "#]],
         )
@@ -551,7 +554,7 @@ mod tests {
                 foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                Function:0..26
+                Function
                   doc
                     0..26: "is an edoc comment"
             "#]],
@@ -566,7 +569,7 @@ mod tests {
                 -module(foo).
 "#,
             expect![[r#"
-                Module:0..26
+                Module
                   doc
                     0..26: "is an edoc comment"
             "#]],
@@ -588,10 +591,10 @@ mod tests {
             // Note: if you update the grammar, the order of these nodes
             // may change.
             expect![[r#"
-                Module:0..26
+                Module
                   doc
                     0..26: "is an edoc comment"
-                Function:42..60
+                Function
                   doc
                     42..60: "fff is ..."
             "#]],
@@ -611,7 +614,7 @@ mod tests {
                 f() -> ok.
 "#,
             expect![[r#"
-                Module:0..72
+                Module
                   doc
                     0..18: "First line"
                     19..38: "Second line"
@@ -630,10 +633,39 @@ mod tests {
                 f() -> ok.
 "#,
             expect![[r#"
-                Module:7..25
+                Module
                   doc
                     7..18: "Bar"
                     19..25: "Baz"
+            "#]],
+        )
+    }
+
+    #[test]
+    fn edoc_incorrect_usage_on_type() {
+        check(
+            r#"
+                -module(main).
+                -export([main/2]).
+                -export_type([my_integer/0]).
+
+                %% @d~oc This is an incorrect type doc
+                -type my_integer() :: integer().
+
+                -type my_integer2() :: integer().
+
+                %% @doc These are docs for the main function
+                -spec main(any(), any()) -> ok.
+                main(A, B) ->
+                    dep().
+
+                dep() -> ok.
+"#,
+            expect![[r#"
+                Function
+                  doc
+                    65..102: "This is an incorrect type doc"
+                    172..216: "These are docs for the main function"
             "#]],
         )
     }
