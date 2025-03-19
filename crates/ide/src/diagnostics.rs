@@ -61,7 +61,6 @@ use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
-use erlang_service::CompileOption;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::db::DefDatabase;
@@ -536,8 +535,6 @@ pub struct DiagnosticsConfig {
     pub include_suppressed: bool,
     pub include_otp: bool,
     pub include_edoc: bool,
-    pub compile_options: Vec<CompileOption>,
-    pub override_compile_options: Vec<CompileOption>,
     /// Used in `elp lint` to request erlang service diagnostics if
     /// needed.
     pub request_erlang_service_diagnostics: bool,
@@ -619,11 +616,6 @@ impl DiagnosticsConfig {
     pub fn set_include_edoc(mut self, value: bool) -> DiagnosticsConfig {
         self.include_edoc = value;
         self.enabled.set_edoc(value);
-        self
-    }
-
-    pub fn set_compile_options(mut self, options: Vec<CompileOption>) -> DiagnosticsConfig {
-        self.compile_options = options;
         self
     }
 
@@ -1167,12 +1159,7 @@ pub fn erlang_service_diagnostics(
         // Use the same format as eqwalizer, so we can re-use the salsa cache entry
         let format = erlang_service::Format::OffsetEtf;
 
-        let res = db.module_ast(
-            file_id,
-            format,
-            config.compile_options.clone(),
-            config.override_compile_options.clone(),
-        );
+        let res = db.module_ast(file_id, format);
 
         // We use a BTreeSet of a tuple because neither ParseError nor
         // Diagnostic nor TextRange has an Ord instance
@@ -1404,7 +1391,7 @@ pub fn edoc_diagnostics(
     // so let's return early.
     // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
     let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format, vec![], vec![]);
+    let ast = db.module_ast(file_id, format);
     if !ast.is_ok() {
         return vec![];
     };

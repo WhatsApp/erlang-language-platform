@@ -103,7 +103,7 @@ init(noargs) ->
     State = #{io => Port, requests => [], own_requests => []},
     {ok, State}.
 
--spec handle_call({request, id(), any()}, any(), state())
+-spec handle_call({request, id(), any()}, gen_server:from(), state())
    -> {noreply, state()} | {stop|reply, any(), state()}.
 handle_call({request, ReqId, Data}, From,
             #{io := IO, requests := Requests, own_requests := OwnRequests} = State) ->

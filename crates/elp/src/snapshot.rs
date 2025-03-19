@@ -173,12 +173,9 @@ impl Snapshot {
         if optimize_for_eqwalizer {
             let should_eqwalize = self.analysis.should_eqwalize(file_id, include_generated)?;
             if should_eqwalize {
-                let _ = self.analysis.module_ast(
-                    file_id,
-                    erlang_service::Format::OffsetEtf,
-                    vec![],
-                    vec![],
-                )?;
+                let _ = self
+                    .analysis
+                    .module_ast(file_id, erlang_service::Format::OffsetEtf)?;
             }
         }
         Ok(())

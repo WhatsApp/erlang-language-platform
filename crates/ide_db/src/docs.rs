@@ -359,7 +359,7 @@ impl DocLoader for crate::RootDatabase {
         let src_path = path.to_path_buf().into();
         let doc_request = match doc_origin {
             DocOrigin::Edoc => {
-                let parse_result = self.module_ast(file_id, format, vec![], vec![]);
+                let parse_result = self.module_ast(file_id, format);
                 let ast = &parse_result.ast;
                 DocRequest {
                     src_path,

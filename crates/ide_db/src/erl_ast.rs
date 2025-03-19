@@ -38,8 +38,6 @@ pub trait AstLoader {
         path: &AbsPath,
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
-        compile_options: Vec<CompileOption>,
-        override_compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult;
@@ -53,28 +51,18 @@ impl AstLoader for crate::RootDatabase {
         path: &AbsPath,
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
-        compile_options: Vec<CompileOption>,
-        override_compile_options: Vec<CompileOption>,
         elp_metadata: eetf::Term,
         format: Format,
     ) -> ParseResult {
-        let mut options = vec![
+        let options = vec![
             CompileOption::Macros(macros.to_vec()),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
-        let mut override_options = vec![];
-        for option in compile_options {
-            options.push(option.clone());
-        }
-        for option in override_compile_options {
-            override_options.push(option.clone());
-        }
         let path: PathBuf = path.to_path_buf().into();
         let file_text = self.file_text(file_id);
         let req = ParseRequest {
             options,
-            override_options,
             file_id,
             path: path.clone(),
             format,
@@ -107,23 +95,11 @@ fn resolve_include(
 
 #[salsa::query_group(ErlAstDatabaseStorage)]
 pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
-    fn module_ast(
-        &self,
-        file_id: FileId,
-        format: Format,
-        compile_options: Vec<CompileOption>,
-        override_compile_options: Vec<CompileOption>,
-    ) -> Arc<ParseResult>;
+    fn module_ast(&self, file_id: FileId, format: Format) -> Arc<ParseResult>;
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
 
-fn module_ast(
-    db: &dyn ErlAstDatabase,
-    file_id: FileId,
-    format: Format,
-    compile_options: Vec<CompileOption>,
-    override_compile_options: Vec<CompileOption>,
-) -> Arc<ParseResult> {
+fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<ParseResult> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
@@ -146,8 +122,6 @@ fn module_ast(
         path,
         &app_data.macros,
         &app_data.parse_transforms,
-        compile_options,
-        override_compile_options,
         metadata.into(),
         format,
     ))

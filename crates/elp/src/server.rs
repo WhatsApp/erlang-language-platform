@@ -50,7 +50,6 @@ use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::erlang_service::CompileOption;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_log::telemetry;
@@ -252,7 +251,6 @@ pub struct Server {
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
     eqwalize_all_completed: bool,
     logger: Logger,
-    compile_options: Vec<CompileOption>,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -317,7 +315,6 @@ impl Server {
             eqwalize_all_completed: false,
             logger,
             vfs_config_version: 0,
-            compile_options: vec![],
         };
 
         // Run config-based initialisation
@@ -1406,7 +1403,6 @@ impl Server {
     fn make_diagnostics_config(&self) -> DiagnosticsConfig {
         self.config
             .diagnostics_config(self.lint_config.clone(), INCLUDE_GENERATED)
-            .set_compile_options(self.compile_options.clone())
     }
 
     fn transition(&mut self, status: Status) {

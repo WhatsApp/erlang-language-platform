@@ -124,7 +124,6 @@ pub enum Format {
 #[derive(Debug, Clone)]
 pub struct ParseRequest {
     pub options: Vec<CompileOption>,
-    pub override_options: Vec<CompileOption>,
     pub file_id: FileId,
     pub path: PathBuf,
     pub format: Format,
@@ -809,18 +808,12 @@ impl ParseRequest {
             .into_iter()
             .map(|option| option.into())
             .collect::<Vec<eetf::Term>>();
-        let override_options = self
-            .override_options
-            .into_iter()
-            .map(|option| option.into())
-            .collect::<Vec<eetf::Term>>();
         let list = eetf::List::from(vec![
             path_into_list(self.path).into(),
             eetf::Term::FixInteger(eetf::FixInteger {
                 value: self.file_id.index() as i32,
             }),
             eetf::List::from(options).into(),
-            eetf::List::from(override_options).into(),
         ]);
         let mut buf = Vec::new();
         // We first pass a length-preceded text buffer, then the options.
@@ -902,7 +895,6 @@ mod tests {
         expect_module(
             "fixtures/regular.erl".into(),
             expect_file!["../fixtures/regular.expected"],
-            vec![],
         );
     }
 
@@ -911,7 +903,6 @@ mod tests {
         expect_module_filtered_error(
             "fixtures/unsupported_extension.yrl".into(),
             expect_file!["../fixtures/unsupported_extension.expected"],
-            vec![],
         );
     }
 
@@ -920,7 +911,6 @@ mod tests {
         expect_module(
             "fixtures/structured_comment.erl".into(),
             expect_file!["../fixtures/structured_comment.expected"],
-            vec![],
         );
     }
 
@@ -929,13 +919,11 @@ mod tests {
         expect_module(
             "fixtures/error.erl".into(),
             expect_file!["../fixtures/error.expected"],
-            vec![],
         );
 
         expect_module(
             "fixtures/misplaced_comment_error.erl".into(),
             expect_file!["../fixtures/misplaced_comment_error.expected"],
-            vec![],
         );
     }
 
@@ -944,7 +932,6 @@ mod tests {
         expect_module(
             "fixtures/error_attr.erl".into(),
             expect_file!["../fixtures/error_attr.expected"],
-            vec![],
         );
     }
 
@@ -953,7 +940,6 @@ mod tests {
         expect_module(
             "fixtures/unused_record.erl".into(),
             expect_file!["../fixtures/unused_record.expected"],
-            vec![],
         );
     }
 
@@ -962,7 +948,6 @@ mod tests {
         expect_module(
             "fixtures/unused_record_in_header.hrl".into(),
             expect_file!["../fixtures/unused_record_in_header.expected"],
-            vec![],
         );
     }
 
@@ -1061,11 +1046,10 @@ mod tests {
         expect_module(
             "fixtures/doc_attributes_stripped.erl".into(),
             expect_file!["../fixtures/doc_attributes_stripped.expected"],
-            vec![],
         );
     }
 
-    fn expect_module(path: PathBuf, expected: ExpectFile, override_options: Vec<CompileOption>) {
+    fn expect_module_with_opts(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
@@ -1073,8 +1057,7 @@ mod tests {
             fs::read_to_string(path.clone()).expect("Should have been able to read the file"),
         );
         let request = ParseRequest {
-            options: vec![],
-            override_options,
+            options,
             file_id: FileId::from_raw(0),
             path,
             file_text,
@@ -1089,11 +1072,11 @@ mod tests {
         expected.assert_eq(&actual);
     }
 
-    fn expect_module_filtered_error(
-        path: PathBuf,
-        expected: ExpectFile,
-        override_options: Vec<CompileOption>,
-    ) {
+    fn expect_module(path: PathBuf, expected: ExpectFile) {
+        expect_module_with_opts(path, expected, vec![]);
+    }
+
+    fn expect_module_filtered_error(path: PathBuf, expected: ExpectFile) {
         lazy_static! {
             static ref CONN: Connection = Connection::start().unwrap();
         }
@@ -1102,7 +1085,6 @@ mod tests {
         );
         let request = ParseRequest {
             options: vec![],
-            override_options,
             file_id: FileId::from_raw(0),
             path,
             file_text,
@@ -1147,7 +1129,6 @@ mod tests {
         );
         let request = ParseRequest {
             options: vec![],
-            override_options: vec![],
             file_id: FileId::from_raw(0),
             path: path.clone(),
             file_text,
@@ -1177,7 +1158,6 @@ mod tests {
         );
         let req = ParseRequest {
             options: vec![],
-            override_options: vec![],
             file_id,
             path: path.clone(),
             format: Format::OffsetEtf,

@@ -9,13 +9,13 @@
 
 -export([run/2]).
 
-run(Id, [FileName, FileId, Options0, OverrideOptions, FileText, PostProcess, Deterministic]) ->
+run(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
     Options = parse_options(FileName, Options0, Deterministic),
     case extract_forms(Id, FileName, FileId, FileText, Options) of
         {ok, Forms0} ->
             AST = ast(Forms0, Options),
             ResultAST = PostProcess(AST, FileName),
-            case lint_file(AST, FileName, Options, OverrideOptions) of
+            case lint_file(AST, FileName, Options) of
                 {ok, []} ->
                     {ok, [
                         {<<"AST">>, ResultAST}
@@ -78,7 +78,7 @@ ast(Forms0, Options) ->
             elp_metadata:insert_metadata(ElpMetadata, Forms2)
     end.
 
-lint_file(Forms, FileName, Options0, OverrideOptions) ->
+lint_file(Forms, FileName, Options0) ->
     Options =
         case filename:extension(FileName) of
             ".hrl" ->
@@ -86,7 +86,7 @@ lint_file(Forms, FileName, Options0, OverrideOptions) ->
             _ ->
                 Options0
         end,
-    elp_lint:module(Forms, FileName, Options, OverrideOptions).
+    elp_lint:module(Forms, FileName, Options).
 
 collect_parse_transforms([], Forms, Transforms) ->
     {Transforms, lists:reverse(Forms)};

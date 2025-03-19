@@ -65,7 +65,6 @@ use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::IncludeGenerated;
-use erlang_service::CompileOption;
 use expand_macro::ExpandedMacro;
 use handlers::get_docs;
 use handlers::goto_definition;
@@ -382,10 +381,8 @@ impl Analysis {
         &self,
         file_id: FileId,
         format: erlang_service::Format,
-        compile_options: Vec<CompileOption>,
-        override_compile_options: Vec<CompileOption>,
     ) -> Cancellable<Arc<ParseResult>> {
-        self.with_db(|db| db.module_ast(file_id, format, compile_options, override_compile_options))
+        self.with_db(|db| db.module_ast(file_id, format))
     }
 
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {

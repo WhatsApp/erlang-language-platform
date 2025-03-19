@@ -25,7 +25,7 @@
 -module(elp_lint).
 -feature(maybe_expr, enable).
 
--export([module/1,module/2,module/4,format_error/1]).
+-export([module/1,module/2,module/3,format_error/1]).
 -export([exprs/2,exprs_opt/3,used_vars/2]). % Used from erl_eval.erl.
 -export([is_pattern_expr/1,is_guard_test/1,is_guard_test/2,is_guard_test/3]).
 -export([is_guard_expr/1]).
@@ -602,22 +602,21 @@ module(Forms, FileName) ->
     St = forms(Forms, start(FileName, Opts)),
     return_status(St).
 
--spec(module(AbsForms, FileName, CompileOptions, OverrideCompileOptions) ->
+-spec(module(AbsForms, FileName, CompileOptions) ->
              {ok, Warnings} | {error, Errors, Warnings} when
       AbsForms :: [erl_parse:abstract_form() | erl_parse:form_info()],
       FileName :: atom() | string(),
       CompileOptions :: [compile:option()],
-      OverrideCompileOptions :: [compile:option()],
       Warnings :: [{SourceFile,[ErrorInfo]}],
       Errors :: [{SourceFile,[ErrorInfo]}],
       SourceFile :: file:filename(),
       ErrorInfo :: error_info()).
 
-module(Forms, FileName, Opts0, OverrideOptions) ->
+module(Forms, FileName, Opts0) ->
     %% FIXME Hmm, this is not coherent with the semantics of features
     %% We want the options given on the command line to take
     %% precedence over options in the module.
-    Opts = Opts0 ++ compiler_options(Forms) ++ OverrideOptions,
+    Opts = Opts0 ++ compiler_options(Forms),
     St = forms(Forms, start(FileName, Opts)),
     return_status(St).
 
