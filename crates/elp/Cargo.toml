@@ -59,6 +59,7 @@ vfs-notify.workspace = true
 vfs.workspace = true
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemalloc-ctl.workspace = true
 jemallocator.workspace = true
 
 [dev-dependencies]

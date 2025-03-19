@@ -35,6 +35,7 @@ mod handlers;
 pub mod line_endings;
 pub mod lsp_ext;
 mod mem_docs;
+pub mod memory_usage;
 // @fb-only
 mod op_queue;
 mod project_loader;

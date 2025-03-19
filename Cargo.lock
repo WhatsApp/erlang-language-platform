@@ -427,6 +427,7 @@ dependencies = [
  "test-case",
  "text-edit",
  "threadpool",
+ "tikv-jemalloc-ctl",
  "tikv-jemallocator",
  "time",
  "timeout-readwrite",
