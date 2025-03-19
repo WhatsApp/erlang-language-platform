@@ -701,25 +701,6 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn parse_all_diagnostics_force_missing_spec_all(buck: bool) {
-        simple_snapshot(
-            args_vec![
-                "parse-elp",
-                "--module",
-                "erlang_diagnostics_force_warn_missing_spec_all",
-                "--force-warn-missing-spec-all"
-            ],
-            "diagnostics",
-            expect_file!(
-                "../resources/test/diagnostics/parse_all_diagnostics_force_warn_missing_spec_all.jsonl"
-            ),
-            buck,
-            None,
-        );
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_related(buck: bool) {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "cascading",],

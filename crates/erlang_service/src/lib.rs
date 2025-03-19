@@ -93,7 +93,6 @@ pub enum CompileOption {
     Macros(Vec<eetf::Term>),
     ParseTransforms(Vec<eetf::Term>),
     ElpMetadata(eetf::Term),
-    ForceWarnMissingSpecAll,
 }
 
 impl From<CompileOption> for eetf::Term {
@@ -111,9 +110,6 @@ impl From<CompileOption> for eetf::Term {
             CompileOption::ElpMetadata(elp_metadata) => {
                 let label = eetf::Atom::from("elp_metadata");
                 eetf::Tuple::from(vec![label.into(), elp_metadata]).into()
-            }
-            CompileOption::ForceWarnMissingSpecAll => {
-                eetf::Atom::from("warn_missing_spec_all").into()
             }
         }
     }
@@ -967,15 +963,6 @@ mod tests {
             "fixtures/unused_record_in_header.hrl".into(),
             expect_file!["../fixtures/unused_record_in_header.expected"],
             vec![],
-        );
-    }
-
-    #[test]
-    fn override_warn_missing_spec_all() {
-        expect_module(
-            "fixtures/override_warn_missing_spec_all.erl".into(),
-            expect_file!["../fixtures/override_warn_missing_spec_all.expected"],
-            vec![CompileOption::ForceWarnMissingSpecAll],
         );
     }
 
