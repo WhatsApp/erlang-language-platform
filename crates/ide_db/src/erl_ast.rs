@@ -39,7 +39,6 @@ pub trait AstLoader {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         elp_metadata: eetf::Term,
-        format: Format,
     ) -> ParseResult;
 }
 
@@ -52,7 +51,6 @@ impl AstLoader for crate::RootDatabase {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         elp_metadata: eetf::Term,
-        format: Format,
     ) -> ParseResult {
         let options = vec![
             CompileOption::Macros(macros.to_vec()),
@@ -65,7 +63,7 @@ impl AstLoader for crate::RootDatabase {
             options,
             file_id,
             path: path.clone(),
-            format,
+            format: Format::OffsetEtf,
             file_text,
         };
         let erlang_service = self.erlang_service_for(project_id);
@@ -95,11 +93,11 @@ fn resolve_include(
 
 #[salsa::query_group(ErlAstDatabaseStorage)]
 pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
-    fn module_ast(&self, file_id: FileId, format: Format) -> Arc<ParseResult>;
+    fn module_ast(&self, file_id: FileId) -> Arc<ParseResult>;
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
 
-fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<ParseResult> {
+fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
     let root_id = db.file_source_root(file_id);
@@ -123,7 +121,6 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId, format: Format) -> Arc<P
         &app_data.macros,
         &app_data.parse_transforms,
         metadata.into(),
-        format,
     ))
 }
 

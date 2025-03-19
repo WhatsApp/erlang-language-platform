@@ -18,7 +18,6 @@ use elp_erlang_service::common_test::ConversionError;
 use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::common_test::TestDef;
 use elp_erlang_service::CTInfoRequest;
-use elp_erlang_service::Format;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -67,7 +66,7 @@ impl CommonTestLoader for crate::RootDatabase {
         let erlang_service = self.erlang_service_for(project_id);
         let should_request_groups =
             def_map.is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
-        let module_ast = self.module_ast(file_id, Format::OffsetEtf);
+        let module_ast = self.module_ast(file_id);
         if !module_ast.is_ok() {
             return CommonTestInfo::BadAST;
         }

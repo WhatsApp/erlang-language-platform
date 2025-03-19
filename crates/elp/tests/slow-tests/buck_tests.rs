@@ -17,7 +17,6 @@ mod tests {
     use elp_eqwalizer::IncludeGenerated;
     use elp_ide::elp_ide_db::elp_base_db::AbsPath;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-    use elp_ide::erlang_service::Format;
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::to_abs_path_buf;
     use elp_project_model::AppType;
@@ -66,7 +65,7 @@ mod tests {
             let prj_id = analysis.project_id(file_id).unwrap();
             let prj_id = prj_id.expect(&format!("Can't find project id for {module}"));
             assert_eq!(prj_id, project_id);
-            let ast = analysis.module_ast(file_id, Format::OffsetEtf).unwrap();
+            let ast = analysis.module_ast(file_id).unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analysis
                 .is_eqwalizer_enabled(file_id, IncludeGenerated::No)

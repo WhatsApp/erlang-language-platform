@@ -30,7 +30,6 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
-use elp_ide_db::erlang_service;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -1156,10 +1155,7 @@ pub fn erlang_service_diagnostics(
     let report_diagnostics = EXTENSIONS.contains(&file_kind);
 
     if report_diagnostics && (config.include_generated || !db.is_generated(file_id)) {
-        // Use the same format as eqwalizer, so we can re-use the salsa cache entry
-        let format = erlang_service::Format::OffsetEtf;
-
-        let res = db.module_ast(file_id, format);
+        let res = db.module_ast(file_id);
 
         // We use a BTreeSet of a tuple because neither ParseError nor
         // Diagnostic nor TextRange has an Ord instance
@@ -1389,9 +1385,7 @@ pub fn edoc_diagnostics(
 
     // If the file cannot be parsed, it does not really make sense to run EDoc,
     // so let's return early.
-    // Use the same format as eqwalizer, so we can re-use the salsa cache entry.
-    let format = erlang_service::Format::OffsetEtf;
-    let ast = db.module_ast(file_id, format);
+    let ast = db.module_ast(file_id);
     if !ast.is_ok() {
         return vec![];
     };

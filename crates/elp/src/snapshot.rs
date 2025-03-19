@@ -25,7 +25,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
-use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
@@ -173,9 +172,7 @@ impl Snapshot {
         if optimize_for_eqwalizer {
             let should_eqwalize = self.analysis.should_eqwalize(file_id, include_generated)?;
             if should_eqwalize {
-                let _ = self
-                    .analysis
-                    .module_ast(file_id, erlang_service::Format::OffsetEtf)?;
+                let _ = self.analysis.module_ast(file_id)?;
             }
         }
         Ok(())

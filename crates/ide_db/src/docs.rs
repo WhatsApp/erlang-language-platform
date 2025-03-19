@@ -355,11 +355,10 @@ impl DocLoader for crate::RootDatabase {
         let project_id = app_data.project_id;
         let erlang_service = self.erlang_service_for(project_id);
         let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
-        let format = elp_erlang_service::Format::OffsetEtf;
         let src_path = path.to_path_buf().into();
         let doc_request = match doc_origin {
             DocOrigin::Edoc => {
-                let parse_result = self.module_ast(file_id, format);
+                let parse_result = self.module_ast(file_id);
                 let ast = &parse_result.ast;
                 DocRequest {
                     src_path,

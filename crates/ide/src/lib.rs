@@ -377,12 +377,8 @@ impl Analysis {
     }
 
     /// ETF for the module's abstract forms
-    pub fn module_ast(
-        &self,
-        file_id: FileId,
-        format: erlang_service::Format,
-    ) -> Cancellable<Arc<ParseResult>> {
-        self.with_db(|db| db.module_ast(file_id, format))
+    pub fn module_ast(&self, file_id: FileId) -> Cancellable<Arc<ParseResult>> {
+        self.with_db(|db| db.module_ast(file_id))
     }
 
     pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {

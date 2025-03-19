@@ -23,7 +23,6 @@ use elp::otp_file_to_ignore;
 use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::erlang_service;
 use elp_ide::erlang_service::DiagnosticLocation;
 use elp_ide::Analysis;
 use elp_log::timeit;
@@ -51,9 +50,8 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
     )?;
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;
-    let format = erlang_service::Format::OffsetEtf;
 
-    let parse_diagnostics = do_parse_all(cli, &loaded, &args.to, format, &args.module, args.buck)?;
+    let parse_diagnostics = do_parse_all(cli, &loaded, &args.to, &args.module, args.buck)?;
     if args.stats {
         dump_stats(cli, args.list_modules);
     }
@@ -73,7 +71,6 @@ pub fn do_parse_all(
     cli: &dyn Cli,
     loaded: &LoadResult,
     to: &Path,
-    format: erlang_service::Format,
     module: &Option<String>,
     buck: bool,
 ) -> Result<Vec<ParseDiagnostic>> {
@@ -103,7 +100,7 @@ pub fn do_parse_all(
                     return empty;
                 }
 
-                do_parse_one(db, Some((name, to)), file_id, format)
+                do_parse_one(db, Some((name, to)), file_id)
                     .with_context(|| format!("Failed to parse module {}", name.as_str()))
             },
         )
@@ -119,11 +116,7 @@ pub fn do_parse_one(
     db: &Analysis,
     to: Option<(&str, &Path)>,
     file_id: FileId,
-    format: erlang_service::Format,
 ) -> Result<Vec<ParseDiagnostic>> {
-    if format == erlang_service::Format::Text {
-        panic!("text format is for test purposes only!")
-    }
     if let Some((name, _to)) = to {
         add_stat(name.to_string());
     }
@@ -132,7 +125,7 @@ pub fn do_parse_one(
         return Ok(vec![]);
     }
 
-    let result = db.module_ast(file_id, format)?;
+    let result = db.module_ast(file_id)?;
     if result.is_ok() {
         if let Some((name, to)) = to {
             let to_path = to.join(format!("{}.etf", name));

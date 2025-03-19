@@ -35,7 +35,6 @@ use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
-use elp_ide::erlang_service;
 use elp_ide::Analysis;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppName;
@@ -564,7 +563,7 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
         .par_iter()
         .progress_with(pb.clone())
         .for_each_with(analysis, |analysis, &file_id| {
-            let _ = analysis.module_ast(file_id, erlang_service::Format::OffsetEtf);
+            let _ = analysis.module_ast(file_id);
         });
     pb.finish();
 }
