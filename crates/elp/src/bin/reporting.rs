@@ -26,6 +26,7 @@ use elp::arc_types;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp::memory_usage::MemoryUsage;
 use elp_eqwalizer::IncludeGenerated;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -362,6 +363,8 @@ pub(crate) fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
         });
     }
     writeln!(cli, "{} modules processed", stats.len()).ok();
+    let mem_usage = MemoryUsage::now();
+    writeln!(cli, "{}", mem_usage).ok();
 }
 
 lazy_static! {
