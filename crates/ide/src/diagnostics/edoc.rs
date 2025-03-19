@@ -504,6 +504,7 @@ dep() -> ok.
 
 -doc """
 This is the main function
+*Returns:* ok
 """.
 main(A, B) ->
     dep().

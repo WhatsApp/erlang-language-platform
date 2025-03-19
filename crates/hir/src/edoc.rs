@@ -87,6 +87,9 @@ impl EdocHeader {
             for (name, param) in &self.params {
                 res.push_str(&format!("  - @param {} {}\n", name, param.description));
             }
+            if let Some(returns) = &self.returns {
+                res.push_str(&format!("*Returns:* {}\n", returns.text));
+            }
             res.push_str("\"\"\".");
         }
         res
