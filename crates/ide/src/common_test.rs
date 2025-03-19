@@ -122,8 +122,8 @@ fn eval_error_diagnostic(
 pub fn runnable_names(
     sema: &Semantic,
     file_id: FileId,
-    all: FxHashSet<TestDef>,
-    groups: FxHashMap<SmolStr, GroupDef>,
+    all: &FxHashSet<TestDef>,
+    groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Result<FxHashSet<NameArity>, ()> {
     runnables(sema, file_id, all, groups).map(|runnables| {
         runnables
@@ -170,8 +170,8 @@ lazy_static! {
 pub fn runnables(
     sema: &Semantic,
     file_id: FileId,
-    all: FxHashSet<TestDef>,
-    groups: FxHashMap<SmolStr, GroupDef>,
+    all: &FxHashSet<TestDef>,
+    groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
     if let Some(module_name) = sema.module_name(file_id) {
@@ -180,26 +180,24 @@ pub fn runnables(
             if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
                 res.push(suite_runnable);
             }
-            // Then produce the list of runnables
-            let test_defs = Vec::from_iter(all);
             runnables_for_test_defs(
                 &mut res,
                 sema,
                 file_id,
-                &test_defs,
+                all.iter(),
                 FxHashSet::default(),
-                &groups,
+                groups,
             );
         }
     }
     Ok(res)
 }
 
-fn runnables_for_test_defs(
+fn runnables_for_test_defs<'a>(
     res: &mut Vec<Runnable>,
     sema: &Semantic,
     file_id: FileId,
-    test_defs: &Vec<TestDef>,
+    test_defs: impl Iterator<Item = &'a TestDef>,
     group_names: FxHashSet<GroupName>,
     group_defs: &FxHashMap<SmolStr, GroupDef>,
 ) {
@@ -248,7 +246,7 @@ fn runnables_for_test_defs(
                         res,
                         sema,
                         file_id,
-                        group_test_defs,
+                        group_test_defs.iter(),
                         new_group_names,
                         group_defs,
                     )
@@ -269,7 +267,14 @@ fn runnables_for_group_def(
     if let Some(GroupDef { name, content }) = group_defs.get(group_name) {
         let mut new_group_names = group_names;
         new_group_names.insert(GroupName::Name(Name::from_erlang_service(name)));
-        runnables_for_test_defs(res, sema, file_id, content, new_group_names, group_defs)
+        runnables_for_test_defs(
+            res,
+            sema,
+            file_id,
+            content.iter(),
+            new_group_names,
+            group_defs,
+        )
     }
 }
 
@@ -308,12 +313,13 @@ fn def_to_runnable(sema: &Semantic, def: &FunctionDef, group: GroupName) -> Opti
     let nav = def.to_nav(sema.db);
     let app_name = sema.db.file_app_name(def.file.file_id)?;
     let suite = sema.module_name(def.file.file_id)?.to_string();
+    let case = def.name.name().to_string();
     let name = def.name.clone();
     let kind = RunnableKind::Test {
-        name: name.clone(),
+        name,
         app_name,
         suite,
-        case: name.name().to_string(),
+        case,
         group,
     };
     Some(Runnable { nav, kind })

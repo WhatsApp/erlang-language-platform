@@ -53,8 +53,8 @@ pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation>
 pub(crate) fn ct_annotations(
     db: &RootDatabase,
     file_id: FileId,
-    all: FxHashSet<TestDef>,
-    groups: FxHashMap<SmolStr, GroupDef>,
+    all: &FxHashSet<TestDef>,
+    groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Vec<Annotation> {
     let mut ct_annotations = Vec::default();
 

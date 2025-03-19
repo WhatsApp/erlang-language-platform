@@ -1515,8 +1515,7 @@ pub fn ct_diagnostics(
 
     match &*ct_info(db, file_id) {
         CommonTestInfo::Result { all, groups } => {
-            let testcases =
-                common_test::runnable_names(&sema, file_id, all.clone(), groups.clone()).ok();
+            let testcases = common_test::runnable_names(&sema, file_id, all, groups).ok();
             common_test::unreachable_test(&mut res, &sema, file_id, &testcases);
             // @fb-only
         }

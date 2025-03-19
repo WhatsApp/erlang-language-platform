@@ -183,8 +183,8 @@ impl Runnable {
 pub(crate) fn runnables(
     db: &RootDatabase,
     file_id: FileId,
-    all: FxHashSet<TestDef>,
-    groups: FxHashMap<SmolStr, GroupDef>,
+    all: &FxHashSet<TestDef>,
+    groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Vec<Runnable> {
     let sema = Semantic::new(db);
     match common_test::runnables(&sema, file_id, all, groups) {

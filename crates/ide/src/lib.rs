@@ -726,7 +726,7 @@ impl Analysis {
     pub fn annotations(&self, file_id: FileId) -> Cancellable<Vec<Annotation>> {
         self.with_db(|db| match &*diagnostics::ct_info(db, file_id) {
             CommonTestInfo::Result { all, groups } => {
-                annotations::ct_annotations(db, file_id, all.clone(), groups.clone())
+                annotations::ct_annotations(db, file_id, all, groups)
             }
             _ => annotations::annotations(db, file_id),
         })
@@ -735,7 +735,7 @@ impl Analysis {
     pub fn runnables(&self, file_id: FileId) -> Cancellable<Vec<Runnable>> {
         self.with_db(|db| match &*diagnostics::ct_info(db, file_id) {
             CommonTestInfo::Result { all, groups } => {
-                runnables::runnables(db, file_id, all.clone(), groups.clone())
+                runnables::runnables(db, file_id, all, groups)
             }
             _ => Vec::new(),
         })
