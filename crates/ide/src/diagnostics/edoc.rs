@@ -485,4 +485,31 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_fix_return() {
+        check_fix(
+            r#"
+-module(main).
+
+%% @d~oc This is the main function
+%% @returns ok
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+
+-doc """
+This is the main function
+""".
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }
