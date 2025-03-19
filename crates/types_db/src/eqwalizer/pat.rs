@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -14,7 +15,6 @@ use crate::eqwalizer;
 use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::guard;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Pat {
@@ -37,7 +37,7 @@ pub enum Pat {
 }
 
 impl Pat {
-    pub fn pat_var(location: eqwalizer::Pos, n: StringId) -> Self {
+    pub fn pat_var(location: eqwalizer::Pos, n: SmolStr) -> Self {
         Pat::PatVar(PatVar { location, n })
     }
 }
@@ -91,19 +91,19 @@ pub struct PatNumber {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatAtom {
     pub location: eqwalizer::Pos,
-    pub s: StringId,
+    pub s: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatVar {
     pub location: eqwalizer::Pos,
-    pub n: StringId,
+    pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatRecord {
     pub location: eqwalizer::Pos,
-    pub rec_name: StringId,
+    pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<PatRecordFieldNamed>,
     pub gen: Option<Box<Pat>>,
@@ -112,21 +112,21 @@ pub struct PatRecord {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatRecordIndex {
     pub location: eqwalizer::Pos,
-    pub rec_name: StringId,
-    pub field_name: StringId,
+    pub rec_name: SmolStr,
+    pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatUnOp {
     pub location: eqwalizer::Pos,
-    pub op: StringId,
+    pub op: SmolStr,
     pub arg: Box<Pat>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatBinOp {
     pub location: eqwalizer::Pos,
-    pub op: StringId,
+    pub op: SmolStr,
     pub arg_1: Box<Pat>,
     pub arg_2: Box<Pat>,
 }
@@ -148,7 +148,7 @@ pub struct PatBinaryElem {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatRecordFieldNamed {
-    pub name: StringId,
+    pub name: SmolStr,
     pub pat: Pat,
 }
 

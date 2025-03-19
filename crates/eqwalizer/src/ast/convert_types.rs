@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
 use elp_types_db::eqwalizer::ext_types::ExtProp;
 use elp_types_db::eqwalizer::ext_types::ExtType;
@@ -40,19 +41,18 @@ use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
-use elp_types_db::StringId;
 use fxhash::FxHashMap;
 
 use super::TypeConversionError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeConverter {
-    module: StringId,
+    module: SmolStr,
     in_rec_decl: bool,
 }
 
 impl TypeConverter {
-    pub fn new(module: StringId) -> Self {
+    pub fn new(module: SmolStr) -> Self {
         TypeConverter {
             module,
             in_rec_decl: false,
@@ -61,7 +61,7 @@ impl TypeConverter {
 
     fn enter_rec_decl(&self) -> Self {
         TypeConverter {
-            module: self.module,
+            module: self.module.clone(),
             in_rec_decl: true,
         }
     }
@@ -213,26 +213,26 @@ impl TypeConverter {
         })
     }
 
-    fn collect_substitution(&self, vars: &[StringId]) -> FxHashMap<StringId, u32> {
+    fn collect_substitution(&self, vars: &[SmolStr]) -> FxHashMap<SmolStr, u32> {
         vars.iter()
             .enumerate()
-            .map(|(n, name)| (*name, n as u32))
+            .map(|(n, name)| (name.clone(), n as u32))
             .collect()
     }
 
-    fn collect_vars(&self, vars: &[StringId]) -> Vec<VarType> {
+    fn collect_vars(&self, vars: &[SmolStr]) -> Vec<VarType> {
         vars.iter()
             .enumerate()
             .map(|(n, name)| VarType {
                 n: n as u32,
-                name: *name,
+                name: name.clone(),
             })
             .collect()
     }
 
     fn convert_fun_type(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<SmolStr, u32>,
         ty: FunExtType,
     ) -> Result<Result<FunType, Invalid>, TypeConversionError> {
         let args_conv = self.convert_types(sub, ty.arg_tys)?;
@@ -248,7 +248,7 @@ impl TypeConverter {
 
     fn convert_types(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<SmolStr, u32>,
         tys: Vec<ExtType>,
     ) -> Result<Result<Vec<Type>, Invalid>, TypeConversionError> {
         tys.into_iter()
@@ -258,7 +258,7 @@ impl TypeConverter {
 
     fn convert_type(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<SmolStr, u32>,
         ty: ExtType,
     ) -> Result<Result<Type, Invalid>, TypeConversionError> {
         match ty {
@@ -303,19 +303,19 @@ impl TypeConverter {
                 None if self.in_rec_decl => {
                     Ok(Err(Invalid::TypeVarInRecordField(TypeVarInRecordField {
                         location: var.location,
-                        name: var.name.into(),
+                        name: var.name,
                     })))
                 }
-                None => Err(TypeConversionError::UnexpectedVariable(var.name.into())),
+                None => Err(TypeConversionError::UnexpectedVariable(var.name)),
             },
             ExtType::RecordExtType(ty) => Ok(Ok(Type::RecordType(RecordType {
                 name: ty.name,
-                module: self.module,
+                module: self.module.clone(),
             }))),
             ExtType::RecordRefinedExtType(ty) => {
                 let rec_type = RecordType {
                     name: ty.name,
-                    module: self.module,
+                    module: self.module.clone(),
                 };
                 let fields = ty
                     .refined_fields
@@ -369,7 +369,7 @@ impl TypeConverter {
 
     fn to_shape_prop(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<SmolStr, u32>,
         prop: ExtProp,
     ) -> Result<Result<(Key, Prop), Invalid>, TypeConversionError> {
         let req = prop.required();
@@ -392,7 +392,7 @@ impl TypeConverter {
         )))
     }
 
-    fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> Vec<StringId> {
+    fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> Vec<SmolStr> {
         [
             self.collect_var_names(&ty.res_ty),
             self.collect_all_var_names(&ty.arg_tys),
@@ -400,9 +400,9 @@ impl TypeConverter {
         .concat()
     }
 
-    fn collect_var_names(&self, ty: &ExtType) -> Vec<StringId> {
+    fn collect_var_names(&self, ty: &ExtType) -> Vec<SmolStr> {
         match ty {
-            ExtType::VarExtType(var) => vec![var.name],
+            ExtType::VarExtType(var) => vec![var.name.clone()],
             ExtType::FunExtType(ft) => self.collect_var_names_in_fun_type(ft),
             ExtType::AnyArityFunExtType(ft) => self.collect_var_names(&ft.res_ty),
             ExtType::TupleExtType(ty) => self.collect_all_var_names(ty.arg_tys.as_ref()),
@@ -437,7 +437,7 @@ impl TypeConverter {
         }
     }
 
-    fn collect_all_var_names(&self, tys: &[ExtType]) -> Vec<StringId> {
+    fn collect_all_var_names(&self, tys: &[ExtType]) -> Vec<SmolStr> {
         tys.iter()
             .flat_map(|ty| self.collect_var_names(ty))
             .collect()

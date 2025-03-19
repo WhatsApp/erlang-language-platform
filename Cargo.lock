@@ -714,7 +714,6 @@ dependencies = [
  "itertools 0.10.5",
  "serde",
  "serde_with",
- "ustr",
 ]
 
 [[package]]
@@ -2422,19 +2421,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
-]
-
-[[package]]
-name = "ustr"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18b19e258aa08450f93369cf56dd78063586adf19e92a75b338a800f799a0208"
-dependencies = [
- "ahash",
- "byteorder",
- "lazy_static",
- "parking_lot 0.12.3",
  "serde",
 ]
 

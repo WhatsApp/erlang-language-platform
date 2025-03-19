@@ -19,11 +19,11 @@
 //! without running heavyweight processes.
 
 pub mod eqwalizer;
+
 use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
-pub use ustr::Ustr as StringId;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IncludeGenerated {

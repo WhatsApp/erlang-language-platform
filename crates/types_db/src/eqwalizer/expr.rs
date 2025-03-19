@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -15,7 +16,6 @@ use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::guard;
 use crate::eqwalizer::pat;
 use crate::eqwalizer::Pos;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -65,14 +65,14 @@ impl Expr {
     pub fn atom_true(location: Pos) -> Self {
         Expr::AtomLit(AtomLit {
             location,
-            s: StringId::from("true"),
+            s: SmolStr::new_inline("true"),
         })
     }
 
     pub fn atom_false(location: Pos) -> Self {
         Expr::AtomLit(AtomLit {
             location,
-            s: StringId::from("false"),
+            s: SmolStr::new_inline("false"),
         })
     }
 }
@@ -80,13 +80,13 @@ impl Expr {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Var {
     pub location: Pos,
-    pub n: StringId,
+    pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLit {
     pub location: Pos,
-    pub s: StringId,
+    pub s: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -215,20 +215,20 @@ pub struct Lambda {
     pub location: Pos,
     #[serde(default)]
     pub clauses: Vec<Clause>,
-    pub name: Option<StringId>,
+    pub name: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnOp {
     pub location: Pos,
-    pub op: StringId,
+    pub op: SmolStr,
     pub arg: Box<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BinOp {
     pub location: Pos,
-    pub op: StringId,
+    pub op: SmolStr,
     pub arg_1: Box<Expr>,
     pub arg_2: Box<Expr>,
 }
@@ -310,7 +310,7 @@ pub struct ReceiveWithTimeout {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordCreate {
     pub location: Pos,
-    pub rec_name: StringId,
+    pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<RecordField>,
 }
@@ -319,7 +319,7 @@ pub struct RecordCreate {
 pub struct RecordUpdate {
     pub location: Pos,
     pub expr: Box<Expr>,
-    pub rec_name: StringId,
+    pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<RecordFieldNamed>,
 }
@@ -328,15 +328,15 @@ pub struct RecordUpdate {
 pub struct RecordSelect {
     pub location: Pos,
     pub expr: Box<Expr>,
-    pub rec_name: StringId,
-    pub field_name: StringId,
+    pub rec_name: SmolStr,
+    pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordIndex {
     pub location: Pos,
-    pub rec_name: StringId,
-    pub field_name: StringId,
+    pub rec_name: SmolStr,
+    pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -380,7 +380,7 @@ pub enum RecordField {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordFieldNamed {
-    pub name: StringId,
+    pub name: SmolStr,
     pub value: Expr,
 }
 

@@ -7,10 +7,9 @@
  * of this source tree.
  */
 
-use std::sync::LazyLock;
-
 use eetf;
 use eetf::Term;
+use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::binary_specifier::Specifier;
 use elp_types_db::eqwalizer::expr::AtomLit;
 use elp_types_db::eqwalizer::expr::BComprehension;
@@ -155,7 +154,6 @@ use elp_types_db::eqwalizer::pat::PatWild;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::LineAndColumn;
 use elp_types_db::eqwalizer::TextRange;
-use elp_types_db::StringId;
 use fxhash::FxHashSet;
 
 use super::auto_import;
@@ -165,14 +163,12 @@ use super::Id;
 use super::RemoteId;
 use crate::ast;
 
-const ERLANG: LazyLock<StringId> = LazyLock::new(|| StringId::from("erlang"));
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Converter {
     no_auto_imports: FxHashSet<ast::Id>,
     from_beam: bool,
     filter_stub: bool,
-    current_file: Option<StringId>,
+    current_file: Option<SmolStr>,
 }
 
 fn get_specifier(name: &str) -> Option<Specifier> {
@@ -241,13 +237,13 @@ impl Converter {
         if let Term::Tuple(tup) = id {
             if let [Term::Atom(name), Term::FixInteger(arity)] = &tup.elements[..] {
                 return Ok(ast::Id {
-                    name: StringId::from(&name.name),
+                    name: name.name.clone().into(),
                     arity: arity.value as u32,
                 });
             }
             if let [Term::Atom(_), Term::Atom(name), Term::FixInteger(arity)] = &tup.elements[..] {
                 return Ok(ast::Id {
-                    name: StringId::from(&name.name),
+                    name: name.name.clone().into(),
                     arity: arity.value as u32,
                 });
             }
@@ -259,20 +255,20 @@ impl Converter {
         ids.elements.iter().map(|id| self.convert_id(id)).collect()
     }
 
-    fn convert_varname(&self, v: &eetf::Term) -> Result<StringId, ConversionError> {
+    fn convert_varname(&self, v: &eetf::Term) -> Result<SmolStr, ConversionError> {
         if let Term::Tuple(var) = v {
             if let [Term::Atom(v), _, Term::Atom(name)] = &var.elements[..] {
                 if v.name == "var" {
-                    return Ok(StringId::from(&name.name));
+                    return Ok(name.name.clone().into());
                 }
             }
         }
         Err(ConversionError::InvalidVarName)
     }
 
-    fn convert_name(&self, t: &eetf::Term) -> Result<StringId, ConversionError> {
+    fn convert_name(&self, t: &eetf::Term) -> Result<SmolStr, ConversionError> {
         if let Term::Atom(atom) = t {
-            return Ok(StringId::from(&atom.name));
+            return Ok(atom.name.clone().into());
         }
         Err(ConversionError::InvalidName)
     }
@@ -286,7 +282,7 @@ impl Converter {
         match (kind.name.as_str(), args) {
             ("module", Term::Atom(name)) => {
                 return Ok(Some(ExternalForm::Module(ModuleAttr {
-                    name: StringId::from(&name.name),
+                    name: name.name.clone().into(),
                     location,
                 })));
             }
@@ -299,7 +295,7 @@ impl Converter {
             ("import", Term::Tuple(imports)) => {
                 if let [Term::Atom(m), Term::List(ids)] = &imports.elements[..] {
                     return Ok(Some(ExternalForm::Import(ImportAttr {
-                        module: StringId::from(&m.name),
+                        module: m.name.clone().into(),
                         funs: self.convert_ids(ids)?,
                         location,
                     })));
@@ -315,24 +311,25 @@ impl Converter {
             ("record", Term::Tuple(rec)) => {
                 if let [Term::Atom(name), Term::List(fields)] = &rec.elements[..] {
                     return Ok(Some(ExternalForm::ExternalRecDecl(ExternalRecDecl {
-                        name: StringId::from(&name.name),
+                        name: name.name.clone().into(),
                         fields: fields
                             .elements
                             .iter()
                             .map(|f| self.convert_rec_field_form(f))
                             .collect::<Result<Vec<_>, _>>()?,
                         location,
-                        file: self.current_file,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
             ("file", Term::Tuple(file)) => {
                 if let [Term::ByteList(name), line] = &file.elements[..] {
                     if let Some(line) = self.convert_line(line) {
-                        let filename = std::str::from_utf8(&name.bytes)
-                            .map_err(|_| ConversionError::InvalidFile)?
-                            .into();
-                        self.current_file = Some(filename);
+                        let filename = SmolStr::new(
+                            std::str::from_utf8(&name.bytes)
+                                .map_err(|_| ConversionError::InvalidFile)?,
+                        );
+                        self.current_file = Some(filename.clone());
                         return Ok(Some(ExternalForm::File(FileAttr {
                             file: filename,
                             start: line,
@@ -363,13 +360,13 @@ impl Converter {
             ("behaviour" | "behavior", Term::Atom(name)) => {
                 return Ok(Some(ExternalForm::Behaviour(BehaviourAttr {
                     location,
-                    name: StringId::from(&name.name),
+                    name: name.name.clone().into(),
                 })));
             }
             ("type", Term::Tuple(decl)) => {
                 if let [Term::Atom(n), body, Term::List(vs)] = &decl.elements[..] {
                     let id = ast::Id {
-                        name: StringId::from(&n.name),
+                        name: n.name.clone().into(),
                         arity: vs.elements.len() as u32,
                     };
                     let body = self.convert_type(body)?;
@@ -383,14 +380,14 @@ impl Converter {
                         id,
                         params,
                         body,
-                        file: self.current_file,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
             ("opaque", Term::Tuple(decl)) => {
                 if let [Term::Atom(n), body, Term::List(vs)] = &decl.elements[..] {
                     let id = ast::Id {
-                        name: StringId::from(&n.name),
+                        name: n.name.clone().into(),
                         arity: vs.elements.len() as u32,
                     };
                     let body = self.convert_type(body)?;
@@ -404,7 +401,7 @@ impl Converter {
                         id,
                         params,
                         body,
-                        file: self.current_file,
+                        file: self.current_file.clone(),
                     })));
                 }
             }
@@ -534,7 +531,7 @@ impl Converter {
         location: ast::Pos,
     ) -> Result<ExternalForm, ConversionError> {
         let id = ast::Id {
-            name: StringId::from(&name.name),
+            name: name.name.clone().into(),
             arity,
         };
         let clauses = clauses
@@ -629,11 +626,11 @@ impl Converter {
         Err(ConversionError::InvalidRecordField)
     }
 
-    fn convert_atom_lit(&self, atom: &eetf::Term) -> Result<StringId, ConversionError> {
+    fn convert_atom_lit(&self, atom: &eetf::Term) -> Result<SmolStr, ConversionError> {
         if let Term::Tuple(data) = atom {
             if let [Term::Atom(kind), _, Term::Atom(val)] = &data.elements[..] {
                 if kind.name == "atom" {
-                    return Ok(StringId::from(&val.name));
+                    return Ok(val.name.clone().into());
                 }
             }
         }
@@ -707,7 +704,7 @@ impl Converter {
                     ("var", [Term::Atom(name)]) => {
                         return Ok(Expr::Var(Var {
                             location,
-                            n: StringId::from(&name.name),
+                            n: name.name.clone().into(),
                         }));
                     }
                     ("tuple", [Term::List(exps)]) => {
@@ -733,7 +730,7 @@ impl Converter {
                         let arg_2 = self.convert_expr(e2)?;
                         return Ok(Expr::BinOp(BinOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg_1: Box::new(arg_1),
                             arg_2: Box::new(arg_2),
                         }));
@@ -742,14 +739,14 @@ impl Converter {
                         let arg = self.convert_expr(e)?;
                         return Ok(Expr::UnOp(UnOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg: Box::new(arg),
                         }));
                     }
                     ("record", [Term::Atom(name), Term::List(fields)]) => {
                         return Ok(Expr::RecordCreate(RecordCreate {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             fields: fields
                                 .elements
                                 .iter()
@@ -761,7 +758,7 @@ impl Converter {
                         return Ok(Expr::RecordUpdate(RecordUpdate {
                             location,
                             expr: Box::new(self.convert_expr(expr)?),
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             fields: fields
                                 .elements
                                 .iter()
@@ -775,7 +772,7 @@ impl Converter {
                     ("record_index", [Term::Atom(name), field]) => {
                         return Ok(Expr::RecordIndex(RecordIndex {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field)?,
                         }));
                     }
@@ -783,7 +780,7 @@ impl Converter {
                         return Ok(Expr::RecordSelect(RecordSelect {
                             location,
                             expr: Box::new(self.convert_expr(expr)?),
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field)?,
                         }));
                     }
@@ -838,13 +835,13 @@ impl Converter {
                                 }
                                 [Term::Atom(atom), _, Term::Atom(fname)] if atom.name == "atom" => {
                                     let local_id = Id {
-                                        name: StringId::from(&fname.name),
+                                        name: fname.name.clone().into(),
                                         arity,
                                     };
                                     if compiler_macro::is_compiler_macro(&local_id) {
                                         let remote_id = RemoteId {
-                                            module: *compiler_macro::FAKE_MODULE,
-                                            name: StringId::from(&fname.name),
+                                            module: compiler_macro::FAKE_MODULE.into(),
+                                            name: fname.name.clone().into(),
                                             arity,
                                         };
                                         return Ok(Expr::RemoteCall(RemoteCall {
@@ -856,8 +853,8 @@ impl Converter {
                                         && !self.no_auto_imports.contains(&local_id)
                                     {
                                         let remote_id = RemoteId {
-                                            module: *ERLANG,
-                                            name: StringId::from(&fname.name),
+                                            module: "erlang".into(),
+                                            name: fname.name.clone().into(),
                                             arity,
                                         };
                                         return Ok(Expr::RemoteCall(RemoteCall {
@@ -1004,17 +1001,16 @@ impl Converter {
                         [Term::Atom(kind), Term::Atom(name), Term::FixInteger(arity)]
                             if kind.name == "function" =>
                         {
-                            let name = StringId::from(&name.name);
                             let local_id = Id {
-                                name,
+                                name: name.name.clone().into(),
                                 arity: arity.value as u32,
                             };
                             if auto_import::is_auto_imported(&local_id)
                                 && !self.no_auto_imports.contains(&local_id)
                             {
                                 let remote_id = RemoteId {
-                                    module: *ERLANG,
-                                    name,
+                                    module: "erlang".into(),
+                                    name: name.name.clone().into(),
                                     arity: arity.value as u32,
                                 };
                                 return Ok(Expr::RemoteFun(RemoteFun {
@@ -1061,13 +1057,13 @@ impl Converter {
                         return Ok(Expr::Lambda(Lambda {
                             location,
                             clauses: self.convert_clauses(clauses)?,
-                            name: Some(StringId::from(&name.name)),
+                            name: Some(name.name.clone().into()),
                         }));
                     }
                     ("atom", [Term::Atom(value)]) => {
                         return Ok(Expr::AtomLit(AtomLit {
                             location,
-                            s: StringId::from(&value.name),
+                            s: value.name.clone().into(),
                         }));
                     }
                     ("float", [Term::Float(_)]) => {
@@ -1186,11 +1182,11 @@ impl Converter {
     fn convert_rec_field_name(
         &self,
         term: &eetf::Term,
-    ) -> Result<Option<StringId>, ConversionError> {
+    ) -> Result<Option<SmolStr>, ConversionError> {
         if let Term::Tuple(field) = term {
             match &field.elements[..] {
                 [Term::Atom(atom), _, Term::Atom(val)] if atom.name == "atom" => {
-                    return Ok(Some(StringId::from(&val.name)));
+                    return Ok(Some(val.name.clone().into()));
                 }
                 [Term::Atom(var), _, Term::Atom(val)] if var.name == "var" && val.name == "_" => {
                     return Ok(None);
@@ -1243,7 +1239,7 @@ impl Converter {
                     ("var", [Term::Atom(v)]) => {
                         return Ok(Pat::PatVar(PatVar {
                             location,
-                            n: StringId::from(&v.name),
+                            n: v.name.clone().into(),
                         }));
                     }
                     ("tuple", [Term::List(pats)]) => {
@@ -1269,7 +1265,7 @@ impl Converter {
                     ("atom", [Term::Atom(v)]) => {
                         return Ok(Pat::PatAtom(PatAtom {
                             location,
-                            s: StringId::from(&v.name),
+                            s: v.name.clone().into(),
                         }));
                     }
                     ("float", [_]) => {
@@ -1297,7 +1293,7 @@ impl Converter {
                     ("op", [Term::Atom(op), pat1, pat2]) => {
                         return Ok(Pat::PatBinOp(PatBinOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg_1: Box::new(self.convert_pat(pat1)?),
                             arg_2: Box::new(self.convert_pat(pat2)?),
                         }));
@@ -1305,7 +1301,7 @@ impl Converter {
                     ("op", [Term::Atom(op), pat]) => {
                         return Ok(Pat::PatUnOp(PatUnOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg: Box::new(self.convert_pat(pat)?),
                         }));
                     }
@@ -1329,7 +1325,7 @@ impl Converter {
                             .map(Box::new);
                         return Ok(Pat::PatRecord(PatRecord {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             fields: fields_named,
                             gen,
                         }));
@@ -1337,7 +1333,7 @@ impl Converter {
                     ("record_index", [Term::Atom(name), field_name]) => {
                         return Ok(Pat::PatRecordIndex(PatRecordIndex {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field_name)?,
                         }));
                     }
@@ -1457,7 +1453,7 @@ impl Converter {
                     ("var", [Term::Atom(name)]) => {
                         return Ok(Test::TestVar(TestVar {
                             location,
-                            v: StringId::from(&name.name),
+                            v: name.name.clone().into(),
                         }));
                     }
                     ("tuple", [Term::List(tests)]) => {
@@ -1487,7 +1483,7 @@ impl Converter {
                     ("op", [Term::Atom(op), arg1, arg2]) => {
                         return Ok(Test::TestBinOp(TestBinOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg_1: Box::new(self.convert_test(arg1)?),
                             arg_2: Box::new(self.convert_test(arg2)?),
                         }));
@@ -1495,7 +1491,7 @@ impl Converter {
                     ("op", [Term::Atom(op), arg1]) => {
                         return Ok(Test::TestUnOp(TestUnOp {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                             arg: Box::new(self.convert_test(arg1)?),
                         }));
                     }
@@ -1507,7 +1503,7 @@ impl Converter {
                             .collect::<Result<Vec<_>, _>>()?;
                         return Ok(Test::TestRecordCreate(TestRecordCreate {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             fields: tests,
                         }));
                     }
@@ -1515,7 +1511,7 @@ impl Converter {
                         let field_name = self.convert_atom_lit(field)?;
                         return Ok(Test::TestRecordIndex(TestRecordIndex {
                             location,
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             field_name,
                         }));
                     }
@@ -1525,7 +1521,7 @@ impl Converter {
                         return Ok(Test::TestRecordSelect(TestRecordSelect {
                             location,
                             rec: Box::new(test),
-                            rec_name: StringId::from(&name.name),
+                            rec_name: name.name.clone().into(),
                             field_name,
                         }));
                     }
@@ -1557,7 +1553,7 @@ impl Converter {
                         if let [Term::Atom(remote), _, module, fname] = &expr.elements[..] {
                             if remote.name == "remote" {
                                 let module = self.convert_atom_lit(module)?;
-                                if module == *ERLANG {
+                                if module == "erlang" {
                                     let fname = self.convert_atom_lit(fname)?;
                                     let id = Id {
                                         name: fname,
@@ -1575,7 +1571,7 @@ impl Converter {
                         if let [Term::Atom(atom), _, Term::Atom(fname)] = &expr.elements[..] {
                             if atom.name == "atom" {
                                 let id = Id {
-                                    name: StringId::from(&fname.name),
+                                    name: fname.name.clone().into(),
                                     arity: args.elements.len() as u32,
                                 };
                                 let args = args
@@ -1590,7 +1586,7 @@ impl Converter {
                     ("atom", [Term::Atom(value)]) => {
                         return Ok(Test::TestAtom(TestAtom {
                             location,
-                            s: StringId::from(&value.name),
+                            s: value.name.clone().into(),
                         }));
                     }
                     ("float", [_]) => {
@@ -1888,7 +1884,7 @@ impl Converter {
                     ("atom", [Term::Atom(val)]) => {
                         return Ok(ExtType::AtomLitExtType(AtomLitExtType {
                             location,
-                            atom: StringId::from(&val.name),
+                            atom: val.name.clone().into(),
                         }));
                     }
                     ("type", [Term::Atom(fun), Term::List(ty)])
@@ -1996,7 +1992,7 @@ impl Converter {
                     }
                     ("user_type", [Term::Atom(name), Term::List(params)]) => {
                         let id = Id {
-                            name: StringId::from(&name.name),
+                            name: name.name.clone().into(),
                             arity: params.elements.len() as u32,
                         };
                         let args = params
@@ -2021,13 +2017,13 @@ impl Converter {
                     ("op", [Term::Atom(op), _]) => {
                         return Ok(ExtType::UnOpType(UnOpType {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                         }));
                     }
                     ("op", [Term::Atom(op), _, _]) => {
                         return Ok(ExtType::BinOpType(BinOpType {
                             location,
-                            op: StringId::from(&op.name),
+                            op: op.name.clone().into(),
                         }));
                     }
                     ("type", [Term::Atom(kind), Term::Atom(param)])
@@ -2057,7 +2053,7 @@ impl Converter {
                     ("var", [Term::Atom(var)]) => {
                         return Ok(ExtType::VarExtType(VarExtType {
                             location,
-                            name: StringId::from(&var.name),
+                            name: var.name.clone().into(),
                         }));
                     }
                     ("type", [Term::Atom(kind), Term::List(args)])
@@ -2086,13 +2082,13 @@ impl Converter {
                         }));
                     }
                     ("type", [Term::Atom(kind), Term::List(args)]) if args.is_nil() => {
-                        let builtin = Type::builtin_type(&kind.name);
+                        let builtin = Type::builtin_type(kind.name.as_str());
                         if builtin.is_none() {
                             return Err(ConversionError::UnknownBuiltin(kind.name.clone(), 0));
                         } else {
                             return Ok(ExtType::BuiltinExtType(BuiltinExtType {
                                 location,
-                                name: StringId::from(&kind.name),
+                                name: kind.name.clone().into(),
                             }));
                         }
                     }

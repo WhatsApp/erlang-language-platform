@@ -7,21 +7,24 @@
  * of this source tree.
  */
 
-use std::sync::LazyLock;
+use std::collections::HashSet;
 
-use elp_types_db::StringId;
-use fxhash::FxHashSet;
+use lazy_static::lazy_static;
 
 use crate::ast;
 
-pub const FAKE_MODULE: LazyLock<StringId> = LazyLock::new(|| StringId::from("$compiler_macro"));
+pub static FAKE_MODULE: &str = "$compiler_macro";
 
-pub const FUNS: LazyLock<FxHashSet<ast::Id>> = LazyLock::new(|| {
-    FxHashSet::from_iter([ast::Id {
-        name: StringId::from("record_info"),
-        arity: 2,
-    }])
-});
+lazy_static! {
+    static ref FUNS: HashSet<ast::Id> = {
+        vec![ast::Id {
+            name: "record_info".into(),
+            arity: 2,
+        }]
+        .into_iter()
+        .collect()
+    };
+}
 
 pub fn is_compiler_macro(id: &ast::Id) -> bool {
     FUNS.contains(id)

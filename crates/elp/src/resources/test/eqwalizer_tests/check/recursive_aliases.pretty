@@ -422,7 +422,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 510 │ ╭ -type invalid_rec() ::
 511 │ │   invalid_ty() | invalid_transitive().
-    │ ╰───────────────────────────────────^ invalid_rec/0 references types with invalid definitions: invalid_transitive/0, invalid_ty/0
+    │ ╰───────────────────────────────────^ invalid_rec/0 references type with invalid definition: invalid_ty/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:513:1

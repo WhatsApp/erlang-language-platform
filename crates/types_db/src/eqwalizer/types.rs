@@ -9,9 +9,8 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::LazyLock;
-use std::vec;
 
+use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use serde::ser::SerializeMap;
@@ -21,7 +20,6 @@ use serde_with::DeserializeFromStr;
 use serde_with::SerializeDisplay;
 
 use crate::eqwalizer::RemoteId;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -52,15 +50,13 @@ pub enum Type {
     NumberType,
 }
 impl Type {
-    pub const fn atom_lit_type(lit: StringId) -> Type {
+    pub const fn atom_lit_type(lit: SmolStr) -> Type {
         Type::AtomLitType(AtomLitType { atom: lit })
     }
 
-    pub const FALSE_TYPE: LazyLock<Type> =
-        LazyLock::new(|| Type::atom_lit_type(StringId::from("false")));
+    pub const FALSE_TYPE: Type = Type::atom_lit_type(SmolStr::new_inline("false"));
 
-    pub const TRUE_TYPE: LazyLock<Type> =
-        LazyLock::new(|| Type::atom_lit_type(StringId::from("true")));
+    pub const TRUE_TYPE: Type = Type::atom_lit_type(SmolStr::new_inline("true"));
 
     pub const CHAR_TYPE: Type = Type::NumberType;
 
@@ -68,55 +64,45 @@ impl Type {
 
     pub const FLOAT_TYPE: Type = Type::NumberType;
 
-    pub const UNDEFINED: LazyLock<Type> =
-        LazyLock::new(|| Type::atom_lit_type(StringId::from("undefined")));
+    pub const UNDEFINED: Type = Type::atom_lit_type(SmolStr::new_inline("undefined"));
 
     pub fn exn_class_type() -> Type {
-        const TYPE: LazyLock<Type> = LazyLock::new(|| {
-            Type::UnionType(UnionType {
-                tys: vec![
-                    Type::atom_lit_type(StringId::from("error")),
-                    Type::atom_lit_type(StringId::from("exit")),
-                    Type::atom_lit_type(StringId::from("throw")),
-                ],
-            })
-        });
-        TYPE.clone()
+        Type::UnionType(UnionType {
+            tys: vec![
+                Type::atom_lit_type(SmolStr::new_inline("error")),
+                Type::atom_lit_type(SmolStr::new_inline("exit")),
+                Type::atom_lit_type(SmolStr::new_inline("throw")),
+            ],
+        })
     }
 
     pub fn cls_exn_stack_type() -> Type {
-        const TYPE: LazyLock<Type> = LazyLock::new(|| {
-            Type::UnionType(UnionType {
-                tys: vec![
-                    Type::exn_class_type(),
-                    Type::AnyType,
-                    Type::ListType(ListType {
-                        t: Box::new(Type::AnyType),
-                    }),
-                ],
-            })
-        });
-        TYPE.clone()
+        Type::UnionType(UnionType {
+            tys: vec![
+                Type::exn_class_type(),
+                Type::AnyType,
+                Type::ListType(ListType {
+                    t: Box::new(Type::AnyType),
+                }),
+            ],
+        })
     }
 
     pub fn cls_exn_stack_type_dynamic() -> Type {
-        const TYPE: LazyLock<Type> = LazyLock::new(|| {
-            Type::UnionType(UnionType {
-                tys: vec![
-                    Type::exn_class_type(),
-                    Type::DynamicType,
-                    Type::ListType(ListType {
-                        t: Box::new(Type::DynamicType),
-                    }),
-                ],
-            })
-        });
-        TYPE.clone()
+        Type::UnionType(UnionType {
+            tys: vec![
+                Type::exn_class_type(),
+                Type::DynamicType,
+                Type::ListType(ListType {
+                    t: Box::new(Type::DynamicType),
+                }),
+            ],
+        })
     }
 
-    pub fn builtin_type_aliases(module: &str) -> impl Iterator<Item = StringId> {
-        static ERLANG_ALIASES: LazyLock<Vec<StringId>> = LazyLock::new(|| {
-            vec![
+    pub fn builtin_type_aliases(module: &str) -> Vec<SmolStr> {
+        match module {
+            "erlang" => vec![
                 "string".into(),
                 "boolean".into(),
                 "timeout".into(),
@@ -124,12 +110,8 @@ impl Type {
                 "mfa".into(),
                 "iolist".into(),
                 "iodata".into(),
-            ]
-        });
-        static EMPTY: LazyLock<Vec<StringId>> = LazyLock::new(|| vec![]);
-        match module {
-            "erlang" => ERLANG_ALIASES.iter().cloned(),
-            _ => EMPTY.iter().cloned(),
+            ],
+            _ => vec![],
         }
     }
 
@@ -156,7 +138,7 @@ impl Type {
                 t: Box::new(Type::CHAR_TYPE),
             })),
             "boolean" => Some(Type::UnionType(UnionType {
-                tys: vec![Type::FALSE_TYPE.clone(), Type::TRUE_TYPE.clone()],
+                tys: vec![Type::FALSE_TYPE, Type::TRUE_TYPE],
             })),
             "timeout" => Some(Type::UnionType(UnionType {
                 tys: vec![
@@ -375,7 +357,7 @@ impl fmt::Display for Type {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLitType {
-    pub atom: StringId,
+    pub atom: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -426,20 +408,20 @@ pub struct OpaqueType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VarType {
     pub n: u32,
-    pub name: StringId,
+    pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordType {
-    pub name: StringId,
-    pub module: StringId,
+    pub name: SmolStr,
+    pub module: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedRecordType {
     pub rec_type: RecordType,
     #[serde(default, serialize_with = "serialize_sorted_map")]
-    pub fields: FxHashMap<StringId, Type>,
+    pub fields: FxHashMap<SmolStr, Type>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -473,7 +455,7 @@ pub struct TupleKey {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct AtomKey {
-    pub name: StringId,
+    pub name: SmolStr,
 }
 
 impl std::str::FromStr for Key {
