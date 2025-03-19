@@ -9,11 +9,12 @@
 
 use std::fmt;
 
-use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_with::DeserializeFromStr;
 use serde_with::SerializeDisplay;
+
+use crate::StringId;
 
 pub mod binary_specifier;
 pub mod expr;
@@ -81,8 +82,8 @@ where
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteId {
-    pub module: SmolStr,
-    pub name: SmolStr,
+    pub module: StringId,
+    pub name: StringId,
     pub arity: u32,
 }
 
@@ -102,7 +103,7 @@ impl fmt::Display for RemoteId {
     Hash
 )]
 pub struct Id {
-    pub name: SmolStr,
+    pub name: StringId,
     pub arity: u32,
 }
 

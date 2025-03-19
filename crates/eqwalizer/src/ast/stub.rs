@@ -9,13 +9,13 @@
 
 use std::sync::Arc;
 
-use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::InvalidForm;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
+use elp_types_db::StringId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use serde::Serialize;
@@ -24,15 +24,15 @@ use super::Id;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModuleStub {
-    pub module: SmolStr,
+    pub module: StringId,
     pub exports: FxHashSet<Id>,
-    pub imports: FxHashMap<Id, SmolStr>,
+    pub imports: FxHashMap<Id, StringId>,
     pub export_types: FxHashSet<Id>,
     pub opaques: FxHashMap<Id, TypeDecl>,
     pub types: FxHashMap<Id, TypeDecl>,
     pub specs: FxHashMap<Id, FunSpec>,
     pub overloaded_specs: FxHashMap<Id, OverloadedFunSpec>,
-    pub records: FxHashMap<SmolStr, RecDecl>,
+    pub records: FxHashMap<StringId, RecDecl>,
     pub callbacks: Vec<Callback>,
     pub optional_callbacks: FxHashSet<Id>,
     pub invalid_forms: Vec<InvalidForm>,
@@ -85,8 +85,8 @@ impl VStub {
             .filter(|decl| !self.invalid_ids.contains(&decl.id))
     }
 
-    pub fn get_record(&self, name: &SmolStr) -> Option<&RecDecl> {
-        self.stub.records.get(name)
+    pub fn get_record(&self, name: StringId) -> Option<&RecDecl> {
+        self.stub.records.get(&name)
     }
 
     pub fn records(&self) -> impl Iterator<Item = &RecDecl> {

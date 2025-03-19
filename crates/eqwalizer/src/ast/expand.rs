@@ -17,7 +17,6 @@
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::ext_types::AnyArityFunExtType;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
 use elp_types_db::eqwalizer::ext_types::ExtProp;
@@ -55,6 +54,7 @@ use elp_types_db::eqwalizer::invalid_diagnostics::TyVarWithMultipleConstraints;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnboundTyVarInTyDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnknownId;
 use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::StringId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
@@ -68,7 +68,7 @@ use super::AST;
 use crate::ast;
 
 struct Expander<'d> {
-    module: SmolStr,
+    module: StringId,
     project_id: ProjectId,
     invalids: Vec<InvalidForm>,
     db: &'d dyn EqwalizerASTDatabase,
@@ -102,7 +102,7 @@ impl Expander<'_> {
                 cft.ty
             } else {
                 self.check_multiply_constrained_type_var(&cft)?;
-                let subst: FxHashMap<SmolStr, ExtType> = cft
+                let subst: FxHashMap<StringId, ExtType> = cft
                     .constraints
                     .into_iter()
                     .map(|c| (c.t_var, c.ty))
@@ -188,7 +188,7 @@ impl Expander<'_> {
         &mut self,
         pos: &ast::Pos,
         body: &ExtType,
-        params: &Vec<SmolStr>,
+        params: &[StringId],
     ) -> Result<(), Invalid> {
         self.check_repeated_type_param(pos, params)?;
         body.traverse(&mut |ty| match ty {
@@ -201,14 +201,14 @@ impl Expander<'_> {
     fn check_repeated_type_param(
         &mut self,
         pos: &ast::Pos,
-        params: &Vec<SmolStr>,
+        params: &[StringId],
     ) -> Result<(), Invalid> {
         let mut names = FxHashSet::default();
         for name in params {
             if names.contains(name) {
                 return Err(Invalid::RepeatedTyVarInTyDecl(RepeatedTyVarInTyDecl {
                     location: pos.clone(),
-                    name: name.clone(),
+                    name: name.into(),
                 }));
             }
             names.insert(name);
@@ -221,13 +221,13 @@ impl Expander<'_> {
         cft: &ConstrainedFunType,
     ) -> Result<(), Invalid> {
         let mut names = FxHashSet::default();
-        let vars: Vec<&SmolStr> = cft.constraints.iter().map(|c| &c.t_var).collect();
+        let vars: Vec<StringId> = cft.constraints.iter().map(|c| c.t_var).collect();
         for name in vars {
-            if names.contains(name) {
+            if names.contains(&name) {
                 return Err(Invalid::TyVarWithMultipleConstraints(
                     TyVarWithMultipleConstraints {
                         location: cft.location.clone(),
-                        n: name.clone(),
+                        n: name.into(),
                     },
                 ));
             }
@@ -239,13 +239,13 @@ impl Expander<'_> {
     fn check_unbound_type_var(
         &mut self,
         pos: &ast::Pos,
-        params: &[SmolStr],
+        params: &[StringId],
         ty_var: &VarExtType,
     ) -> Result<(), Invalid> {
         if !params.contains(&ty_var.name) {
             Err(Invalid::UnboundTyVarInTyDecl(UnboundTyVarInTyDecl {
                 location: pos.clone(),
-                name: ty_var.name.clone(),
+                name: ty_var.name.into(),
             }))
         } else {
             Ok(())
@@ -279,7 +279,7 @@ impl Expander<'_> {
         match t {
             ExtType::LocalExtType(ty) => {
                 let id = RemoteId {
-                    module: self.module.clone(),
+                    module: self.module,
                     name: ty.id.name,
                     arity: ty.id.arity,
                 };
@@ -292,7 +292,7 @@ impl Expander<'_> {
             }
             ExtType::RemoteExtType(ty) => {
                 let local_id = Id {
-                    name: ty.id.name.clone(),
+                    name: ty.id.name,
                     arity: ty.id.arity,
                 };
                 let is_defined = self
@@ -443,8 +443,8 @@ impl Expander<'_> {
     fn expand_all_constraints(
         &mut self,
         ts: Vec<ExtType>,
-        sub: &FxHashMap<SmolStr, ExtType>,
-        stack: &FxHashSet<SmolStr>,
+        sub: &FxHashMap<StringId, ExtType>,
+        stack: &FxHashSet<StringId>,
     ) -> Result<Vec<ExtType>, Invalid> {
         ts.into_iter()
             .map(|t| self.expand_constraints(t, sub, stack))
@@ -454,8 +454,8 @@ impl Expander<'_> {
     fn expand_constraints(
         &mut self,
         t: ExtType,
-        sub: &FxHashMap<SmolStr, ExtType>,
-        stack: &FxHashSet<SmolStr>,
+        sub: &FxHashMap<StringId, ExtType>,
+        stack: &FxHashSet<StringId>,
     ) -> Result<ExtType, Invalid> {
         match t {
             ExtType::LocalExtType(ty) => {
@@ -545,7 +545,7 @@ impl Expander<'_> {
                 if stack.contains(&ty.name) {
                     Err(Invalid::RecursiveConstraint(RecursiveConstraint {
                         location: ty.location,
-                        n: ty.name,
+                        n: ty.name.into(),
                     }))
                 } else if let Some(tp) = sub.get(&ty.name) {
                     let mut stack2 = stack.clone();
@@ -569,8 +569,8 @@ impl Expander<'_> {
     fn expand_prop_constraint(
         &mut self,
         prop: ExtProp,
-        sub: &FxHashMap<SmolStr, ExtType>,
-        stack: &FxHashSet<SmolStr>,
+        sub: &FxHashMap<StringId, ExtType>,
+        stack: &FxHashSet<StringId>,
     ) -> Result<ExtProp, Invalid> {
         match prop {
             ExtProp::ReqExtProp(prop) => Ok(ExtProp::ReqExtProp(ReqExtProp {
@@ -593,8 +593,8 @@ impl Expander<'_> {
     fn expand_refined_record_field_constraint(
         &mut self,
         field: RefinedField,
-        sub: &FxHashMap<SmolStr, ExtType>,
-        stack: &FxHashSet<SmolStr>,
+        sub: &FxHashMap<StringId, ExtType>,
+        stack: &FxHashSet<StringId>,
     ) -> Result<RefinedField, Invalid> {
         Ok(RefinedField {
             label: field.label,
@@ -618,15 +618,15 @@ pub struct StubExpander<'d> {
     expander: Expander<'d>,
     type_converter: TypeConverter,
     pub stub: ModuleStub,
-    module_file: SmolStr,
-    current_file: SmolStr,
+    module_file: StringId,
+    current_file: StringId,
 }
 
 impl StubExpander<'_> {
     pub fn new<'d>(
         db: &'d dyn EqwalizerASTDatabase,
         project_id: ProjectId,
-        module: SmolStr,
+        module: StringId,
         ast: &AST,
     ) -> StubExpander<'d> {
         let expander = Expander {
@@ -697,7 +697,7 @@ impl StubExpander<'_> {
         match self.expander.expand_rec_decl(t) {
             Ok(decl) => match self.type_converter.convert_rec_decl(decl)? {
                 Ok(decl) => {
-                    self.stub.records.insert(decl.name.clone(), decl);
+                    self.stub.records.insert(decl.name, decl);
                 }
                 Err(invalid) => {
                     if self.current_file == self.module_file {
@@ -770,20 +770,18 @@ impl StubExpander<'_> {
                     elp_types_db::eqwalizer::TextRange::fake().into()
                 }
             };
-            Type::builtin_type_aliases("erlang")
-                .into_iter()
-                .for_each(|name| {
-                    let body = Type::builtin_type_alias_body(&name).unwrap();
-                    let id = ast::Id { name, arity: 0 };
-                    let decl = TypeDecl {
-                        location: pos.clone(),
-                        id: id.clone(),
-                        params: vec![],
-                        body,
-                        file: None,
-                    };
-                    self.stub.types.insert(id, decl);
-                })
+            Type::builtin_type_aliases("erlang").for_each(|name| {
+                let body = Type::builtin_type_alias_body(&name).unwrap();
+                let id = ast::Id { name, arity: 0 };
+                let decl = TypeDecl {
+                    location: pos.clone(),
+                    id: id.clone(),
+                    params: vec![],
+                    body,
+                    file: None,
+                };
+                self.stub.types.insert(id, decl);
+            })
         }
     }
 
@@ -799,7 +797,7 @@ impl StubExpander<'_> {
             }
             ExternalForm::Import(i) => {
                 i.funs.into_iter().for_each(|id| {
-                    self.stub.imports.insert(id, i.module.clone());
+                    self.stub.imports.insert(id, i.module);
                 });
                 Ok(())
             }

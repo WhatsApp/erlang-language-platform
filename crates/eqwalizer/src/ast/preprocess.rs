@@ -7,7 +7,8 @@
  * of this source tree.
  */
 
-use elp_syntax::SmolStr;
+use std::sync::LazyLock;
+
 use elp_types_db::eqwalizer::expr::Body;
 use elp_types_db::eqwalizer::expr::Clause;
 use elp_types_db::eqwalizer::expr::Expr;
@@ -30,6 +31,7 @@ use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::Pos;
 use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::AST;
+use elp_types_db::StringId;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 
@@ -112,24 +114,19 @@ lazy_static! {
     };
 }
 
-lazy_static! {
-    static ref BINOP: FxHashSet<SmolStr> = {
-        vec![
+const BINOP: LazyLock<FxHashSet<StringId>> = LazyLock::new(|| {
+    FxHashSet::from_iter(
+        [
             "/", "*", "-", "+", "div", "rem", "band", "bor", "bxor", "bsl", "bsr", "or", "xor",
             "and", ">=", ">", "=<", "<", "/=", "=/=", "==", "=:=", "andalso", "orelse",
         ]
         .into_iter()
-        .map(|s| s.into())
-        .collect()
-    };
-}
+        .map(|s| s.into()),
+    )
+});
 
-lazy_static! {
-    static ref UNOP: FxHashSet<SmolStr> = vec!["bnot", "+", "-", "not"]
-        .into_iter()
-        .map(|s| s.into())
-        .collect();
-}
+const UNOP: LazyLock<FxHashSet<StringId>> =
+    LazyLock::new(|| FxHashSet::from_iter(["bnot".into(), "+".into(), "-".into(), "not".into()]));
 
 fn as_test(expr: Expr) -> Option<Test> {
     match expr {
@@ -188,22 +185,22 @@ struct Preprocessor {
 }
 
 impl Preprocessor {
-    fn fresh_var(&mut self) -> SmolStr {
+    fn fresh_var(&mut self) -> StringId {
         let var = self.var;
         self.var += 1;
         format!("$pp{}", var).into()
     }
 
-    fn eta_expand_unary_predicate(&mut self, location: &Pos, name: SmolStr) -> Lambda {
+    fn eta_expand_unary_predicate(&mut self, location: &Pos, name: StringId) -> Lambda {
         let var_name = self.fresh_var();
         let test_call = Test::TestCall(TestCall {
             location: location.clone(),
             id: Id { name, arity: 1 },
-            args: vec![Test::test_var(location.clone(), var_name.clone())],
+            args: vec![Test::test_var(location.clone(), var_name)],
         });
         let clause_pos = Clause {
             location: location.clone(),
-            pats: vec![Pat::pat_var(location.clone(), var_name.clone())],
+            pats: vec![Pat::pat_var(location.clone(), var_name)],
             guards: vec![Guard {
                 tests: vec![test_call],
             }],
@@ -213,7 +210,7 @@ impl Preprocessor {
         };
         let clause_neg = Clause {
             location: location.clone(),
-            pats: vec![Pat::pat_var(location.clone(), var_name.clone())],
+            pats: vec![Pat::pat_var(location.clone(), var_name)],
             guards: vec![],
             body: Body {
                 exprs: vec![Expr::atom_false(location.clone())],
@@ -231,7 +228,7 @@ impl Preprocessor {
             Expr::RemoteFun(rfun)
                 if PREDICATES.contains(&rfun.id.clone().into()) && rfun.id.arity == 1 =>
             {
-                Expr::Lambda(self.eta_expand_unary_predicate(location, rfun.id.name.clone()))
+                Expr::Lambda(self.eta_expand_unary_predicate(location, rfun.id.name))
             }
             Expr::Lambda(lambda) if lambda.clauses.len() == 1 => {
                 let clause = &lambda.clauses[0];
@@ -240,7 +237,7 @@ impl Preprocessor {
                         if let Some(test) = as_test(body.clone()) {
                             return Expr::Lambda(Lambda {
                                 location: lambda.location.clone(),
-                                name: lambda.name.clone(),
+                                name: lambda.name,
                                 clauses: vec![
                                     Clause {
                                         location: clause.location.clone(),

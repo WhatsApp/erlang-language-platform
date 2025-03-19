@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -19,6 +18,7 @@ use crate::eqwalizer::types::FunType;
 use crate::eqwalizer::types::Type;
 use crate::eqwalizer::types::VarType;
 use crate::eqwalizer::TextRange;
+use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExternalForm {
@@ -54,7 +54,7 @@ pub enum InvalidForm {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModuleAttr {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -67,7 +67,7 @@ pub struct ExportAttr {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ImportAttr {
     pub location: eqwalizer::Pos,
-    pub module: SmolStr,
+    pub module: StringId,
     #[serde(default)]
     pub funs: Vec<eqwalizer::Id>,
 }
@@ -90,7 +90,7 @@ pub struct FunDecl {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileAttr {
     pub location: eqwalizer::Pos,
-    pub file: SmolStr,
+    pub file: StringId,
     pub start: u32,
 }
 
@@ -111,7 +111,7 @@ pub struct Fixme {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BehaviourAttr {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -152,16 +152,16 @@ pub struct Callback {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecDecl {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     #[serde(default)]
     pub fields: Vec<RecField>,
     pub refinable: bool,
-    pub file: Option<SmolStr>,
+    pub file: Option<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecField {
-    pub name: SmolStr,
+    pub name: StringId,
     pub tp: Option<Type>,
     pub default_value: Option<expr::Expr>,
     pub refinable: bool,
@@ -174,7 +174,7 @@ pub struct TypeDecl {
     #[serde(default)]
     pub params: Vec<VarType>,
     pub body: Type,
-    pub file: Option<SmolStr>,
+    pub file: Option<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -186,7 +186,7 @@ pub struct CompileExportAllAttr {
 pub struct TypingAttribute {
     pub location: eqwalizer::Pos,
     #[serde(default)]
-    pub names: Vec<SmolStr>,
+    pub names: Vec<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -194,9 +194,9 @@ pub struct ExternalTypeDecl {
     pub location: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
-    pub params: Vec<SmolStr>,
+    pub params: Vec<StringId>,
     pub body: ext_types::ExtType,
-    pub file: Option<SmolStr>,
+    pub file: Option<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -204,9 +204,9 @@ pub struct ExternalOpaqueDecl {
     pub location: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
-    pub params: Vec<SmolStr>,
+    pub params: Vec<StringId>,
     pub body: ext_types::ExtType,
-    pub file: Option<SmolStr>,
+    pub file: Option<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -235,15 +235,15 @@ pub struct ExternalOptionalCallbacks {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalRecDecl {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     #[serde(default)]
     pub fields: Vec<ExternalRecField>,
-    pub file: Option<SmolStr>,
+    pub file: Option<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalRecField {
-    pub name: SmolStr,
+    pub name: StringId,
     pub tp: Option<ext_types::ExtType>,
     pub default_value: Option<expr::Expr>,
 }
@@ -265,14 +265,14 @@ pub struct InvalidFunSpec {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InvalidRecDecl {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     pub te: Invalid,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InvalidConvertTypeInRecDecl {
     pub location: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     pub te: Invalid,
 }
 
