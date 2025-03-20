@@ -13,7 +13,12 @@ use std::sync::LazyLock;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_syntax::algo;
 use elp_syntax::AstNode;
+use elp_syntax::Direction;
+use elp_syntax::NodeOrToken;
+use elp_syntax::SyntaxKind;
+use elp_syntax::SyntaxNode;
 use fxhash::FxHashSet;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
@@ -22,6 +27,7 @@ use hir::Attribute;
 use hir::FormList;
 use hir::Name;
 use hir::Semantic;
+use regex::Regex;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
@@ -82,6 +88,13 @@ fn old_edoc_syntax_diagnostic(
     for comment in header.comments() {
         builder.delete(extend_range(comment.to_ast(sema.db.upcast()).syntax()));
     }
+    if let Some(last_comment) = header.comments().last() {
+        if let Some(separator_range) =
+            separator_range(last_comment.to_ast(sema.db.upcast()).syntax())
+        {
+            builder.delete(separator_range);
+        }
+    }
     builder.insert(insert_offset, header.to_markdown());
     let source_change = builder.finish();
     let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
@@ -109,6 +122,20 @@ fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
         .take_while(|(_idx, attr)| SIGNIFICANT_ATTRIBUTES.contains(&attr.name))
         .last()
         .map(|(_idx, attr)| attr)
+}
+
+fn separator_range(syntax: &SyntaxNode) -> Option<TextRange> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%+\s*(-|=)*$").unwrap());
+    if let Some(NodeOrToken::Node(node)) =
+        algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), Direction::Next)
+    {
+        if node.kind() == SyntaxKind::COMMENT {
+            if RE.is_match(&node.text().to_string()) {
+                return Some(extend_range(&node));
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -629,6 +656,52 @@ These are docs for the main function
 -type my_integer() :: integer().
 
 -type my_integer2() :: integer().
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_separator() {
+        check_fix(
+            r#"
+%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%
+%% Some license info
+%%%------------------------------------------------------------------
+%% @d~oc Some docs
+%%      with some more text.
+%% @end
+%%%------------------------------------------------------------------
+%%% % @format
+-module(main).
+-export([main/2]).
+-export_type([my_integer/0]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%
+%% Some license info
+%%%------------------------------------------------------------------
+%%% % @format
+-module(main).
+-moduledoc """
+Some docs
+with some more text.
+""".
+-export([main/2]).
+-export_type([my_integer/0]).
 
 -spec main(any(), any()) -> ok.
 main(A, B) ->
