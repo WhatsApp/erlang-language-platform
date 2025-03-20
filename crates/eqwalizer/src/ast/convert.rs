@@ -277,19 +277,19 @@ impl Converter {
         &mut self,
         kind: &eetf::Atom,
         args: &eetf::Term,
-        location: ast::Pos,
+        pos: ast::Pos,
     ) -> Result<Option<ExternalForm>, ConversionError> {
         match (kind.name.as_str(), args) {
             ("module", Term::Atom(name)) => {
                 return Ok(Some(ExternalForm::Module(ModuleAttr {
                     name: name.name.clone().into(),
-                    location,
+                    pos,
                 })));
             }
             ("export", Term::List(ids)) => {
                 return Ok(Some(ExternalForm::Export(ExportAttr {
                     funs: self.convert_ids(ids)?,
-                    location,
+                    pos,
                 })));
             }
             ("import", Term::Tuple(imports)) => {
@@ -297,7 +297,7 @@ impl Converter {
                     return Ok(Some(ExternalForm::Import(ImportAttr {
                         module: m.name.clone().into(),
                         funs: self.convert_ids(ids)?,
-                        location,
+                        pos,
                     })));
                 }
                 return Ok(None);
@@ -305,7 +305,7 @@ impl Converter {
             ("export_type", Term::List(ids)) => {
                 return Ok(Some(ExternalForm::ExportType(ExportTypeAttr {
                     types: self.convert_ids(ids)?,
-                    location,
+                    pos,
                 })));
             }
             ("record", Term::Tuple(rec)) => {
@@ -317,7 +317,7 @@ impl Converter {
                             .iter()
                             .map(|f| self.convert_rec_field_form(f))
                             .collect::<Result<Vec<_>, _>>()?,
-                        location,
+                        pos,
                         file: self.current_file.clone(),
                     })));
                 }
@@ -333,7 +333,7 @@ impl Converter {
                         return Ok(Some(ExternalForm::File(FileAttr {
                             file: filename,
                             start: line,
-                            location,
+                            pos,
                         })));
                     }
                 }
@@ -349,7 +349,7 @@ impl Converter {
                                     .map(|f| self.convert_fixme(f))
                                     .collect::<Result<Vec<_>, _>>()?;
                                 return Ok(Some(ExternalForm::ElpMetadata(ElpMetadataAttr {
-                                    location,
+                                    pos,
                                     fixmes,
                                 })));
                             }
@@ -359,7 +359,7 @@ impl Converter {
             }
             ("behaviour" | "behavior", Term::Atom(name)) => {
                 return Ok(Some(ExternalForm::Behaviour(BehaviourAttr {
-                    location,
+                    pos,
                     name: name.name.clone().into(),
                 })));
             }
@@ -376,7 +376,7 @@ impl Converter {
                         .map(|v| self.convert_varname(v))
                         .collect::<Result<Vec<_>, _>>()?;
                     return Ok(Some(ExternalForm::ExternalTypeDecl(ExternalTypeDecl {
-                        location,
+                        pos,
                         id,
                         params,
                         body,
@@ -397,7 +397,7 @@ impl Converter {
                         .map(|v| self.convert_varname(v))
                         .collect::<Result<Vec<_>, _>>()?;
                     return Ok(Some(ExternalForm::ExternalOpaqueDecl(ExternalOpaqueDecl {
-                        location,
+                        pos,
                         id,
                         params,
                         body,
@@ -414,7 +414,7 @@ impl Converter {
                         .map(|s| self.convert_fun_spec(s))
                         .collect::<Result<Vec<_>, _>>()?;
                     return Ok(Some(ExternalForm::ExternalFunSpec(ExternalFunSpec {
-                        location,
+                        pos,
                         id,
                         types,
                     })));
@@ -429,7 +429,7 @@ impl Converter {
                         .map(|s| self.convert_fun_spec(s))
                         .collect::<Result<Vec<_>, _>>()?;
                     return Ok(Some(ExternalForm::ExternalCallback(ExternalCallback {
-                        location,
+                        pos,
                         id,
                         types,
                     })));
@@ -438,20 +438,20 @@ impl Converter {
             ("optional_callbacks", Term::List(ids)) => {
                 let ids = self.convert_ids(ids)?;
                 return Ok(Some(ExternalForm::ExternalOptionalCallbacks(
-                    ExternalOptionalCallbacks { location, ids },
+                    ExternalOptionalCallbacks { pos, ids },
                 )));
             }
             ("compile", Term::List(flags)) => {
                 if flags.elements.iter().any(|f| self.is_export_all(f)) {
                     return Ok(Some(ExternalForm::CompileExportAll(CompileExportAllAttr {
-                        location,
+                        pos,
                     })));
                 }
             }
             ("compile", Term::Atom(flag)) => {
                 if flag.name == "export_all" {
                     return Ok(Some(ExternalForm::CompileExportAll(CompileExportAllAttr {
-                        location,
+                        pos,
                     })));
                 }
             }
@@ -462,7 +462,7 @@ impl Converter {
                     .map(|elem| self.convert_name(elem))
                     .collect::<Result<Vec<_>, _>>()?;
                 return Ok(Some(ExternalForm::TypingAttribute(TypingAttribute {
-                    location,
+                    pos,
                     names,
                 })));
             }
@@ -471,13 +471,13 @@ impl Converter {
                     if pragma.name == "nowarn_function" {
                         let id = self.convert_id(args)?;
                         return Ok(Some(ExternalForm::EqwalizerNowarnFunction(
-                            EqwalizerNowarnFunctionAttr { location, id },
+                            EqwalizerNowarnFunctionAttr { pos, id },
                         )));
                     }
                     if pragma.name == "unlimited_refinement" {
                         let id = self.convert_id(args)?;
                         return Ok(Some(ExternalForm::EqwalizerUnlimitedRefinement(
-                            EqwalizerUnlimitedRefinementAttr { location, id },
+                            EqwalizerUnlimitedRefinementAttr { pos, id },
                         )));
                     }
                 }
@@ -528,7 +528,7 @@ impl Converter {
         name: &eetf::Atom,
         arity: u32,
         clauses: &eetf::List,
-        location: ast::Pos,
+        pos: ast::Pos,
     ) -> Result<ExternalForm, ConversionError> {
         let id = ast::Id {
             name: name.name.clone().into(),
@@ -539,11 +539,7 @@ impl Converter {
             .iter()
             .map(|c| self.convert_clause(c))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(ExternalForm::FunDecl(FunDecl {
-            id,
-            clauses,
-            location,
-        }))
+        Ok(ExternalForm::FunDecl(FunDecl { id, clauses, pos }))
     }
 
     fn convert_clauses(&self, clauses: &eetf::List) -> Result<Vec<Clause>, ConversionError> {
@@ -565,7 +561,7 @@ impl Converter {
             ] = &cl.elements[..]
             {
                 if tag.name == "clause" {
-                    let location = self.convert_pos(pos)?;
+                    let pos = self.convert_pos(pos)?;
                     let pats = pats
                         .elements
                         .iter()
@@ -581,7 +577,7 @@ impl Converter {
                         pats,
                         guards,
                         body: Body { exprs },
-                        location,
+                        pos,
                     });
                 }
             }
@@ -656,17 +652,17 @@ impl Converter {
                 if let [Term::Atom(kind), pos, args @ ..] = &tuple.elements[..] {
                     match (kind.name.as_str(), args) {
                         ("cons", [he, te]) => {
-                            let location = self.convert_pos(pos)?;
+                            let pos = self.convert_pos(pos)?;
                             let h = self.convert_expr(he)?;
                             expr = te;
-                            exprs.push((location, h));
+                            exprs.push((pos, h));
                             continue;
                         }
                         _ => {
                             let end = self.convert_expr(expr)?;
-                            return Ok(exprs.into_iter().rev().fold(end, |t, (location, h)| {
+                            return Ok(exprs.into_iter().rev().fold(end, |t, (pos, h)| {
                                 Expr::Cons(Cons {
-                                    location,
+                                    pos,
                                     h: Box::new(h),
                                     t: Box::new(t),
                                 })
@@ -690,29 +686,29 @@ impl Converter {
     fn convert_expr(&self, expr: &eetf::Term) -> Result<Expr, ConversionError> {
         if let Term::Tuple(tuple) = expr {
             if let [Term::Atom(kind), pos, args @ ..] = &tuple.elements[..] {
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 match (kind.name.as_str(), args) {
                     ("match", [pat, exp]) => {
                         let pat = self.convert_pat(pat)?;
                         let expr = self.convert_expr(exp)?;
                         return Ok(Expr::Match(Match {
-                            location,
+                            pos,
                             pat,
                             expr: Box::new(expr),
                         }));
                     }
                     ("var", [Term::Atom(name)]) => {
                         return Ok(Expr::Var(Var {
-                            location,
+                            pos,
                             n: name.name.clone().into(),
                         }));
                     }
                     ("tuple", [Term::List(exps)]) => {
                         let elems = self.convert_exprs(exps)?;
-                        return Ok(Expr::Tuple(Tuple { location, elems }));
+                        return Ok(Expr::Tuple(Tuple { pos, elems }));
                     }
                     ("nil", []) => {
-                        return Ok(Expr::NilLit(NilLit { location }));
+                        return Ok(Expr::NilLit(NilLit { pos }));
                     }
                     ("cons", _) => {
                         return self.convert_cons(expr);
@@ -723,13 +719,13 @@ impl Converter {
                             .iter()
                             .map(|e| self.convert_binary_elem(e))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(Expr::Binary(Binary { location, elems }));
+                        return Ok(Expr::Binary(Binary { pos, elems }));
                     }
                     ("op", [Term::Atom(op), e1, e2]) => {
                         let arg_1 = self.convert_expr(e1)?;
                         let arg_2 = self.convert_expr(e2)?;
                         return Ok(Expr::BinOp(BinOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg_1: Box::new(arg_1),
                             arg_2: Box::new(arg_2),
@@ -738,14 +734,14 @@ impl Converter {
                     ("op", [Term::Atom(op), e]) => {
                         let arg = self.convert_expr(e)?;
                         return Ok(Expr::UnOp(UnOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg: Box::new(arg),
                         }));
                     }
                     ("record", [Term::Atom(name), Term::List(fields)]) => {
                         return Ok(Expr::RecordCreate(RecordCreate {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             fields: fields
                                 .elements
@@ -756,7 +752,7 @@ impl Converter {
                     }
                     ("record", [expr, Term::Atom(name), Term::List(fields)]) => {
                         return Ok(Expr::RecordUpdate(RecordUpdate {
-                            location,
+                            pos,
                             expr: Box::new(self.convert_expr(expr)?),
                             rec_name: name.name.clone().into(),
                             fields: fields
@@ -771,14 +767,14 @@ impl Converter {
                     }
                     ("record_index", [Term::Atom(name), field]) => {
                         return Ok(Expr::RecordIndex(RecordIndex {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field)?,
                         }));
                     }
                     ("record_field", [expr, Term::Atom(name), field]) => {
                         return Ok(Expr::RecordSelect(RecordSelect {
-                            location,
+                            pos,
                             expr: Box::new(self.convert_expr(expr)?),
                             rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field)?,
@@ -786,7 +782,7 @@ impl Converter {
                     }
                     ("map", [Term::List(assocs)]) => {
                         return Ok(Expr::MapCreate(MapCreate {
-                            location,
+                            pos,
                             kvs: assocs
                                 .elements
                                 .iter()
@@ -797,7 +793,7 @@ impl Converter {
                     ("map", [expr, Term::List(assocs)]) => {
                         let map = self.convert_expr(expr)?;
                         return Ok(Expr::MapUpdate(MapUpdate {
-                            location,
+                            pos,
                             map: Box::new(map),
                             kvs: assocs
                                 .elements
@@ -808,7 +804,7 @@ impl Converter {
                     }
                     ("catch", [expr]) => {
                         return Ok(Expr::Catch(Catch {
-                            location,
+                            pos,
                             expr: Box::new(self.convert_expr(expr)?),
                         }));
                     }
@@ -826,11 +822,7 @@ impl Converter {
                                             name: f,
                                             arity,
                                         };
-                                        return Ok(Expr::RemoteCall(RemoteCall {
-                                            location,
-                                            id,
-                                            args,
-                                        }));
+                                        return Ok(Expr::RemoteCall(RemoteCall { pos, id, args }));
                                     }
                                 }
                                 [Term::Atom(atom), _, Term::Atom(fname)] if atom.name == "atom" => {
@@ -845,7 +837,7 @@ impl Converter {
                                             arity,
                                         };
                                         return Ok(Expr::RemoteCall(RemoteCall {
-                                            location,
+                                            pos,
                                             id: remote_id,
                                             args,
                                         }));
@@ -858,13 +850,13 @@ impl Converter {
                                             arity,
                                         };
                                         return Ok(Expr::RemoteCall(RemoteCall {
-                                            location,
+                                            pos,
                                             id: remote_id,
                                             args,
                                         }));
                                     } else {
                                         return Ok(Expr::LocalCall(LocalCall {
-                                            location,
+                                            pos,
                                             id: local_id,
                                             args,
                                         }));
@@ -874,14 +866,14 @@ impl Converter {
                             }
                         }
                         return Ok(Expr::DynCall(DynCall {
-                            location,
+                            pos,
                             f: Box::new(self.convert_expr(expr)?),
                             args,
                         }));
                     }
                     ("lc", [template, Term::List(qualifiers)]) => {
                         return Ok(Expr::LComprehension(LComprehension {
-                            location,
+                            pos,
                             template: Box::new(self.convert_expr(template)?),
                             qualifiers: qualifiers
                                 .elements
@@ -892,7 +884,7 @@ impl Converter {
                     }
                     ("bc", [template, Term::List(qualifiers)]) => {
                         return Ok(Expr::BComprehension(BComprehension {
-                            location,
+                            pos,
                             template: Box::new(self.convert_expr(template)?),
                             qualifiers: qualifiers
                                 .elements
@@ -904,7 +896,7 @@ impl Converter {
                     ("mc", [template, Term::List(qualifiers)]) => {
                         let (k_template, v_template) = self.convert_create_kv(template)?;
                         return Ok(Expr::MComprehension(MComprehension {
-                            location,
+                            pos,
                             k_template: Box::new(k_template),
                             v_template: Box::new(v_template),
                             qualifiers: qualifiers
@@ -916,7 +908,7 @@ impl Converter {
                     }
                     ("block", [Term::List(exps)]) => {
                         return Ok(Expr::Block(Block {
-                            location,
+                            pos,
                             body: Body {
                                 exprs: self.convert_exprs(exps)?,
                             },
@@ -924,13 +916,13 @@ impl Converter {
                     }
                     ("if", [Term::List(clauses)]) => {
                         return Ok(Expr::If(If {
-                            location,
+                            pos,
                             clauses: self.convert_clauses(clauses)?,
                         }));
                     }
                     ("case", [expr, Term::List(clauses)]) => {
                         return Ok(Expr::Case(Case {
-                            location,
+                            pos,
                             expr: Box::new(self.convert_expr(expr)?),
                             clauses: self.convert_clauses(clauses)?,
                         }));
@@ -957,14 +949,14 @@ impl Converter {
                         };
                         if try_clauses.is_empty() {
                             return Ok(Expr::TryCatchExpr(TryCatchExpr {
-                                location,
+                                pos,
                                 try_body,
                                 catch_clauses,
                                 after_body,
                             }));
                         } else {
                             return Ok(Expr::TryOfCatchExpr(TryOfCatchExpr {
-                                location,
+                                pos,
                                 try_clauses,
                                 try_body,
                                 catch_clauses,
@@ -974,7 +966,7 @@ impl Converter {
                     }
                     ("receive", [Term::List(clauses)]) => {
                         return Ok(Expr::Receive(Receive {
-                            location,
+                            pos,
                             clauses: self.convert_clauses(clauses)?,
                         }));
                     }
@@ -984,7 +976,7 @@ impl Converter {
                             exprs: timeout_exprs,
                         };
                         return Ok(Expr::ReceiveWithTimeout(ReceiveWithTimeout {
-                            location,
+                            pos,
                             clauses: self.convert_clauses(clauses)?,
                             timeout: Box::new(self.convert_expr(timeout)?),
                             timeout_body,
@@ -993,7 +985,7 @@ impl Converter {
                     ("fun", [Term::Tuple(decl)]) => match &decl.elements[..] {
                         [Term::Atom(kind), Term::List(clauses)] if kind.name == "clauses" => {
                             return Ok(Expr::Lambda(Lambda {
-                                location,
+                                pos,
                                 clauses: self.convert_clauses(clauses)?,
                                 name: None,
                             }));
@@ -1013,15 +1005,9 @@ impl Converter {
                                     name: name.name.clone().into(),
                                     arity: arity.value as u32,
                                 };
-                                return Ok(Expr::RemoteFun(RemoteFun {
-                                    location,
-                                    id: remote_id,
-                                }));
+                                return Ok(Expr::RemoteFun(RemoteFun { pos, id: remote_id }));
                             } else {
-                                return Ok(Expr::LocalFun(LocalFun {
-                                    location,
-                                    id: local_id,
-                                }));
+                                return Ok(Expr::LocalFun(LocalFun { pos, id: local_id }));
                             }
                         }
                         [Term::Atom(kind), module, name, arity] if kind.name == "function" => {
@@ -1036,14 +1022,11 @@ impl Converter {
                                         name,
                                         arity: arity as u32,
                                     };
-                                    return Ok(Expr::RemoteFun(RemoteFun {
-                                        location,
-                                        id: remote_id,
-                                    }));
+                                    return Ok(Expr::RemoteFun(RemoteFun { pos, id: remote_id }));
                                 }
                                 _ => {
                                     return Ok(Expr::DynRemoteFunArity(DynRemoteFunArity {
-                                        location,
+                                        pos,
                                         module: Box::new(self.convert_expr(module)?),
                                         name: Box::new(self.convert_expr(name)?),
                                         arity: Box::new(self.convert_expr(arity)?),
@@ -1055,54 +1038,45 @@ impl Converter {
                     },
                     ("named_fun", [Term::Atom(name), Term::List(clauses)]) => {
                         return Ok(Expr::Lambda(Lambda {
-                            location,
+                            pos,
                             clauses: self.convert_clauses(clauses)?,
                             name: Some(name.name.clone().into()),
                         }));
                     }
                     ("atom", [Term::Atom(value)]) => {
                         return Ok(Expr::AtomLit(AtomLit {
-                            location,
+                            pos,
                             s: value.name.clone().into(),
                         }));
                     }
                     ("float", [Term::Float(_)]) => {
-                        return Ok(Expr::FloatLit(FloatLit { location }));
+                        return Ok(Expr::FloatLit(FloatLit { pos }));
                     }
                     ("char" | "integer", [Term::BigInteger(_)]) => {
-                        return Ok(Expr::IntLit(IntLit {
-                            location,
-                            value: None,
-                        }));
+                        return Ok(Expr::IntLit(IntLit { pos, value: None }));
                     }
                     ("char" | "integer", [Term::FixInteger(value)]) => {
                         return Ok(Expr::IntLit(IntLit {
-                            location,
+                            pos,
                             value: Some(value.value),
                         }));
                     }
                     ("string", [Term::List(elems)]) if elems.is_nil() => {
-                        return Ok(Expr::StringLit(StringLit {
-                            location,
-                            empty: true,
-                        }));
+                        return Ok(Expr::StringLit(StringLit { pos, empty: true }));
                     }
                     ("string", [_]) => {
-                        return Ok(Expr::StringLit(StringLit {
-                            location,
-                            empty: false,
-                        }));
+                        return Ok(Expr::StringLit(StringLit { pos, empty: false }));
                     }
                     ("remote", [module, name]) => {
                         return Ok(Expr::DynRemoteFun(DynRemoteFun {
-                            location,
+                            pos,
                             module: Box::new(self.convert_expr(module)?),
                             name: Box::new(self.convert_expr(name)?),
                         }));
                     }
                     ("maybe", [Term::List(exprs)]) => {
                         return Ok(Expr::Maybe(Maybe {
-                            location,
+                            pos,
                             body: Body {
                                 exprs: self.convert_exprs(exprs)?,
                             },
@@ -1113,7 +1087,7 @@ impl Converter {
                         {
                             if at_else.name == "else" {
                                 return Ok(Expr::MaybeElse(MaybeElse {
-                                    location,
+                                    pos,
                                     body: Body {
                                         exprs: self.convert_exprs(exprs)?,
                                     },
@@ -1124,7 +1098,7 @@ impl Converter {
                     }
                     ("maybe_match", [exp1, exp2]) => {
                         return Ok(Expr::MaybeMatch(MaybeMatch {
-                            location,
+                            pos,
                             pat: self.convert_pat(exp1)?,
                             arg: Box::new(self.convert_expr(exp2)?),
                         }));
@@ -1200,7 +1174,7 @@ impl Converter {
     fn convert_binary_elem(&self, elem: &eetf::Term) -> Result<BinaryElem, ConversionError> {
         if let Term::Tuple(be) = elem {
             if let [Term::Atom(atom_be), pos, elem, size, spec] = &be.elements[..] {
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 let specifier = self.convert_specifier(spec);
                 let size = {
                     match size {
@@ -1210,7 +1184,7 @@ impl Converter {
                 };
                 if atom_be.name == "bin_element" {
                     return Ok(BinaryElem {
-                        location,
+                        pos,
                         size,
                         specifier,
                         expr: self.convert_expr(elem)?,
@@ -1224,27 +1198,27 @@ impl Converter {
     fn convert_pat(&self, pat: &eetf::Term) -> Result<Pat, ConversionError> {
         if let Term::Tuple(pat) = pat {
             if let [Term::Atom(kind), pos, args @ ..] = &pat.elements[..] {
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 match (kind.name.as_str(), args) {
                     ("match", [pat1, pat2]) => {
                         return Ok(Pat::PatMatch(PatMatch {
-                            location,
+                            pos,
                             pat: Box::new(self.convert_pat(pat1)?),
                             arg: Box::new(self.convert_pat(pat2)?),
                         }));
                     }
                     ("var", [Term::Atom(v)]) if v.name == "_" => {
-                        return Ok(Pat::PatWild(PatWild { location }));
+                        return Ok(Pat::PatWild(PatWild { pos }));
                     }
                     ("var", [Term::Atom(v)]) => {
                         return Ok(Pat::PatVar(PatVar {
-                            location,
+                            pos,
                             n: v.name.clone().into(),
                         }));
                     }
                     ("tuple", [Term::List(pats)]) => {
                         return Ok(Pat::PatTuple(PatTuple {
-                            location,
+                            pos,
                             elems: pats
                                 .elements
                                 .iter()
@@ -1253,36 +1227,36 @@ impl Converter {
                         }));
                     }
                     ("nil", []) => {
-                        return Ok(Pat::PatNil(PatNil { location }));
+                        return Ok(Pat::PatNil(PatNil { pos }));
                     }
                     ("cons", [hpat, tpat]) => {
                         return Ok(Pat::PatCons(PatCons {
-                            location,
+                            pos,
                             h: Box::new(self.convert_pat(hpat)?),
                             t: Box::new(self.convert_pat(tpat)?),
                         }));
                     }
                     ("atom", [Term::Atom(v)]) => {
                         return Ok(Pat::PatAtom(PatAtom {
-                            location,
+                            pos,
                             s: v.name.clone().into(),
                         }));
                     }
                     ("float", [_]) => {
-                        return Ok(Pat::PatNumber(PatNumber { location }));
+                        return Ok(Pat::PatNumber(PatNumber { pos }));
                     }
                     ("char" | "integer", [Term::BigInteger(_)]) => {
-                        return Ok(Pat::PatInt(PatInt { location }));
+                        return Ok(Pat::PatInt(PatInt { pos }));
                     }
                     ("char" | "integer", [Term::FixInteger(_)]) => {
-                        return Ok(Pat::PatInt(PatInt { location }));
+                        return Ok(Pat::PatInt(PatInt { pos }));
                     }
                     ("string", [_]) => {
-                        return Ok(Pat::PatString(PatString { location }));
+                        return Ok(Pat::PatString(PatString { pos }));
                     }
                     ("bin", [Term::List(bin_elems)]) => {
                         return Ok(Pat::PatBinary(PatBinary {
-                            location,
+                            pos,
                             elems: bin_elems
                                 .elements
                                 .iter()
@@ -1292,7 +1266,7 @@ impl Converter {
                     }
                     ("op", [Term::Atom(op), pat1, pat2]) => {
                         return Ok(Pat::PatBinOp(PatBinOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg_1: Box::new(self.convert_pat(pat1)?),
                             arg_2: Box::new(self.convert_pat(pat2)?),
@@ -1300,7 +1274,7 @@ impl Converter {
                     }
                     ("op", [Term::Atom(op), pat]) => {
                         return Ok(Pat::PatUnOp(PatUnOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg: Box::new(self.convert_pat(pat)?),
                         }));
@@ -1324,7 +1298,7 @@ impl Converter {
                             .next()
                             .map(Box::new);
                         return Ok(Pat::PatRecord(PatRecord {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             fields: fields_named,
                             gen,
@@ -1332,14 +1306,14 @@ impl Converter {
                     }
                     ("record_index", [Term::Atom(name), field_name]) => {
                         return Ok(Pat::PatRecordIndex(PatRecordIndex {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             field_name: self.convert_atom_lit(field_name)?,
                         }));
                     }
                     ("map", [Term::List(kvs)]) => {
                         return Ok(Pat::PatMap(PatMap {
-                            location,
+                            pos,
                             kvs: kvs
                                 .elements
                                 .iter()
@@ -1367,9 +1341,9 @@ impl Converter {
                         }
                     };
                     let specifier = self.convert_specifier(specifier);
-                    let location = self.convert_pos(pos)?;
+                    let pos = self.convert_pos(pos)?;
                     return Ok(PatBinaryElem {
-                        location,
+                        pos,
                         pat: self.convert_pat(elem)?,
                         size,
                         specifier,
@@ -1448,11 +1422,11 @@ impl Converter {
     fn convert_test(&self, test: &eetf::Term) -> Result<Test, ConversionError> {
         if let Term::Tuple(elems) = test {
             if let [Term::Atom(kind), pos, args @ ..] = &elems.elements[..] {
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 match (kind.name.as_str(), args) {
                     ("var", [Term::Atom(name)]) => {
                         return Ok(Test::TestVar(TestVar {
-                            location,
+                            pos,
                             v: name.name.clone().into(),
                         }));
                     }
@@ -1462,27 +1436,24 @@ impl Converter {
                             .iter()
                             .map(|t| self.convert_test(t))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(Test::TestTuple(TestTuple {
-                            location,
-                            elems: tests,
-                        }));
+                        return Ok(Test::TestTuple(TestTuple { pos, elems: tests }));
                     }
                     ("nil", []) => {
-                        return Ok(Test::TestNil(TestNil { location }));
+                        return Ok(Test::TestNil(TestNil { pos }));
                     }
                     ("cons", [h, t]) => {
                         return Ok(Test::TestCons(TestCons {
-                            location,
+                            pos,
                             h: Box::new(self.convert_test(h)?),
                             t: Box::new(self.convert_test(t)?),
                         }));
                     }
                     ("bin", [_]) => {
-                        return Ok(Test::TestBinaryLit(TestBinaryLit { location }));
+                        return Ok(Test::TestBinaryLit(TestBinaryLit { pos }));
                     }
                     ("op", [Term::Atom(op), arg1, arg2]) => {
                         return Ok(Test::TestBinOp(TestBinOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg_1: Box::new(self.convert_test(arg1)?),
                             arg_2: Box::new(self.convert_test(arg2)?),
@@ -1490,7 +1461,7 @@ impl Converter {
                     }
                     ("op", [Term::Atom(op), arg1]) => {
                         return Ok(Test::TestUnOp(TestUnOp {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                             arg: Box::new(self.convert_test(arg1)?),
                         }));
@@ -1502,7 +1473,7 @@ impl Converter {
                             .map(|f| self.convert_test_record_field(f))
                             .collect::<Result<Vec<_>, _>>()?;
                         return Ok(Test::TestRecordCreate(TestRecordCreate {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             fields: tests,
                         }));
@@ -1510,7 +1481,7 @@ impl Converter {
                     ("record_index", [Term::Atom(name), field]) => {
                         let field_name = self.convert_atom_lit(field)?;
                         return Ok(Test::TestRecordIndex(TestRecordIndex {
-                            location,
+                            pos,
                             rec_name: name.name.clone().into(),
                             field_name,
                         }));
@@ -1519,7 +1490,7 @@ impl Converter {
                         let field_name = self.convert_atom_lit(field)?;
                         let test = self.convert_test(test)?;
                         return Ok(Test::TestRecordSelect(TestRecordSelect {
-                            location,
+                            pos,
                             rec: Box::new(test),
                             rec_name: name.name.clone().into(),
                             field_name,
@@ -1531,10 +1502,7 @@ impl Converter {
                             .iter()
                             .map(|kv| self.convert_test_kv(kv))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(Test::TestMapCreate(TestMapCreate {
-                            location,
-                            kvs: tests,
-                        }));
+                        return Ok(Test::TestMapCreate(TestMapCreate { pos, kvs: tests }));
                     }
                     ("map", [t, Term::List(kvs)]) => {
                         let map = self.convert_test(t)?;
@@ -1544,7 +1512,7 @@ impl Converter {
                             .map(|kv| self.convert_test_kv(kv))
                             .collect::<Result<Vec<_>, _>>()?;
                         return Ok(Test::TestMapUpdate(TestMapUpdate {
-                            location,
+                            pos,
                             map: Box::new(map),
                             kvs,
                         }));
@@ -1564,7 +1532,7 @@ impl Converter {
                                         .iter()
                                         .map(|t| self.convert_test(t))
                                         .collect::<Result<Vec<_>, _>>()?;
-                                    return Ok(Test::TestCall(TestCall { location, id, args }));
+                                    return Ok(Test::TestCall(TestCall { pos, id, args }));
                                 }
                             }
                         }
@@ -1579,36 +1547,30 @@ impl Converter {
                                     .iter()
                                     .map(|t| self.convert_test(t))
                                     .collect::<Result<Vec<_>, _>>()?;
-                                return Ok(Test::TestCall(TestCall { location, id, args }));
+                                return Ok(Test::TestCall(TestCall { pos, id, args }));
                             }
                         }
                     }
                     ("atom", [Term::Atom(value)]) => {
                         return Ok(Test::TestAtom(TestAtom {
-                            location,
+                            pos,
                             s: value.name.clone().into(),
                         }));
                     }
                     ("float", [_]) => {
-                        return Ok(Test::TestNumber(TestNumber {
-                            location,
-                            lit: None,
-                        }));
+                        return Ok(Test::TestNumber(TestNumber { pos, lit: None }));
                     }
                     ("char" | "integer", [Term::BigInteger(_)]) => {
-                        return Ok(Test::TestNumber(TestNumber {
-                            location,
-                            lit: None,
-                        }));
+                        return Ok(Test::TestNumber(TestNumber { pos, lit: None }));
                     }
                     ("char" | "integer", [Term::FixInteger(v)]) => {
                         return Ok(Test::TestNumber(TestNumber {
-                            location,
+                            pos,
                             lit: Some(v.value),
                         }));
                     }
                     ("string", [_]) => {
-                        return Ok(Test::TestString(TestString { location }));
+                        return Ok(Test::TestString(TestString { pos }));
                     }
                     _ => (),
                 }
@@ -1733,7 +1695,7 @@ impl Converter {
                             if ty.name != "type" || kind.name != "product" {
                                 return Err(ConversionError::InvalidFunSpec);
                             }
-                            let location = self.convert_pos(pos)?;
+                            let pos = self.convert_pos(pos)?;
                             let res_ty = self.convert_type(result)?;
                             let arg_tys = args
                                 .elements
@@ -1741,19 +1703,19 @@ impl Converter {
                                 .map(|t| self.convert_type(t))
                                 .collect::<Result<Vec<_>, _>>()?;
                             let ty = FunExtType {
-                                location: location.clone(),
+                                pos: pos.clone(),
                                 arg_tys,
                                 res_ty: Box::new(res_ty),
                             };
                             return Ok(ConstrainedFunType {
-                                location,
+                                pos,
                                 ty,
                                 constraints: vec![],
                             });
                         }
                     }
                 } else if kind.name == "bounded_fun" {
-                    let location = self.convert_pos(pos)?;
+                    let pos = self.convert_pos(pos)?;
                     if let [ft, Term::List(constraints)] = &decl.elements[..] {
                         let fun_type = self.convert_type(ft)?;
                         let constraints = constraints
@@ -1763,7 +1725,7 @@ impl Converter {
                             .collect::<Result<Vec<_>, _>>()?;
                         if let ExtType::FunExtType(ty) = fun_type {
                             return Ok(ConstrainedFunType {
-                                location,
+                                pos,
                                 ty,
                                 constraints,
                             });
@@ -1784,14 +1746,10 @@ impl Converter {
                             && cs.name == "constraint"
                             && self.convert_atom_lit(is_sub)? == "is_subtype"
                         {
-                            let location = self.convert_pos(pos)?;
+                            let pos = self.convert_pos(pos)?;
                             let t_var = self.convert_varname(v)?;
                             let ty = self.convert_type(t)?;
-                            return Ok(Constraint {
-                                location,
-                                t_var,
-                                ty,
-                            });
+                            return Ok(Constraint { pos, t_var, ty });
                         }
                     }
                 }
@@ -1810,20 +1768,20 @@ impl Converter {
                 if ty.name != "type" {
                     return Err(ConversionError::InvalidPropType);
                 }
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 if let [kt, vt] = &kv.elements[..] {
                     let key_type = self.convert_type(kt)?;
                     let val_type = self.convert_type(vt)?;
                     if kind.name == "map_field_assoc" {
                         if key_type.is_key() || allow_dict {
                             return Ok(ExtProp::OptExtProp(OptExtProp {
-                                location,
+                                pos,
                                 key: key_type,
                                 tp: val_type,
                             }));
                         } else {
                             return Ok(ExtProp::OptBadExtProp(OptBadExtProp {
-                                location,
+                                pos,
                                 key: key_type,
                                 tp: val_type,
                             }));
@@ -1831,13 +1789,13 @@ impl Converter {
                     } else if kind.name == "map_field_exact" {
                         if key_type.is_key() {
                             return Ok(ExtProp::ReqExtProp(ReqExtProp {
-                                location,
+                                pos,
                                 key: key_type,
                                 tp: val_type,
                             }));
                         } else {
                             return Ok(ExtProp::ReqBadExtProp(ReqBadExtProp {
-                                location,
+                                pos,
                                 key: key_type,
                                 tp: val_type,
                             }));
@@ -1874,7 +1832,7 @@ impl Converter {
     fn convert_type(&self, ty: &eetf::Term) -> Result<ExtType, ConversionError> {
         if let Term::Tuple(ty) = ty {
             if let [Term::Atom(kind), pos, def @ ..] = &ty.elements[..] {
-                let location = self.convert_pos(pos)?;
+                let pos = self.convert_pos(pos)?;
                 match (kind.name.as_str(), def) {
                     ("ann_type", [Term::List(ty)]) => {
                         if let [_, tp] = &ty.elements[..] {
@@ -1883,7 +1841,7 @@ impl Converter {
                     }
                     ("atom", [Term::Atom(val)]) => {
                         return Ok(ExtType::AtomLitExtType(AtomLitExtType {
-                            location,
+                            pos,
                             atom: val.name.clone().into(),
                         }));
                     }
@@ -1897,7 +1855,7 @@ impl Converter {
                             {
                                 if dom_ty.name == "type" && dom_kind.name == "any" {
                                     return Ok(ExtType::AnyArityFunExtType(AnyArityFunExtType {
-                                        location,
+                                        pos,
                                         res_ty: Box::new(res_ty),
                                     }));
                                 }
@@ -1909,7 +1867,7 @@ impl Converter {
                                             .map(|a| self.convert_type(a))
                                             .collect::<Result<Vec<_>, _>>()?;
                                         return Ok(ExtType::FunExtType(FunExtType {
-                                            location,
+                                            pos,
                                             arg_tys,
                                             res_ty: Box::new(res_ty),
                                         }));
@@ -1920,17 +1878,17 @@ impl Converter {
                     }
                     ("type", [Term::Atom(kind), Term::List(range)]) if kind.name == "range" => {
                         if let [_range_first, _range_last] = &range.elements[..] {
-                            return Ok(ExtType::int_ext_type(location));
+                            return Ok(ExtType::int_ext_type(pos));
                         }
                     }
                     ("type", [Term::Atom(kind), def]) if kind.name == "map" => match def {
                         Term::Atom(a) if a.name == "any" => {
-                            return Ok(ExtType::AnyMapExtType(AnyMapExtType { location }));
+                            return Ok(ExtType::AnyMapExtType(AnyMapExtType { pos }));
                         }
                         Term::List(assoc) if assoc.elements.is_empty() => {
                             return Ok(ExtType::MapExtType(MapExtType {
                                 props: Vec::new(),
-                                location,
+                                pos,
                             }));
                         }
                         Term::List(assoc) => {
@@ -1944,7 +1902,7 @@ impl Converter {
                                 }
                                 props.push(converted_prop);
                             }
-                            return Ok(ExtType::MapExtType(MapExtType { props, location }));
+                            return Ok(ExtType::MapExtType(MapExtType { props, pos }));
                         }
                         _ => (),
                     },
@@ -1953,7 +1911,7 @@ impl Converter {
                             let record_name = self.convert_atom_lit(record_name)?;
                             if field_tys.is_empty() {
                                 return Ok(ExtType::RecordExtType(RecordExtType {
-                                    location,
+                                    pos,
                                     name: record_name,
                                 }));
                             } else {
@@ -1962,7 +1920,7 @@ impl Converter {
                                     .map(|ty| self.convert_refined_field(ty))
                                     .collect::<Result<Vec<_>, _>>()?;
                                 return Ok(ExtType::RecordRefinedExtType(RecordRefinedExtType {
-                                    location,
+                                    pos,
                                     name: record_name,
                                     refined_fields,
                                 }));
@@ -1983,11 +1941,7 @@ impl Converter {
                                 .iter()
                                 .map(|ty| self.convert_type(ty))
                                 .collect::<Result<Vec<_>, _>>()?;
-                            return Ok(ExtType::RemoteExtType(RemoteExtType {
-                                location,
-                                id,
-                                args,
-                            }));
+                            return Ok(ExtType::RemoteExtType(RemoteExtType { pos, id, args }));
                         }
                     }
                     ("user_type", [Term::Atom(name), Term::List(params)]) => {
@@ -2000,36 +1954,36 @@ impl Converter {
                             .iter()
                             .map(|ty| self.convert_type(ty))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(ExtType::LocalExtType(LocalExtType { location, id, args }));
+                        return Ok(ExtType::LocalExtType(LocalExtType { pos, id, args }));
                     }
                     ("integer", [Term::BigInteger(_)]) => {
-                        return Ok(ExtType::IntLitExtType(IntLitExtType { location }));
+                        return Ok(ExtType::IntLitExtType(IntLitExtType { pos }));
                     }
                     ("char", [Term::BigInteger(_)]) => {
-                        return Ok(ExtType::char_ext_type(location));
+                        return Ok(ExtType::char_ext_type(pos));
                     }
                     ("integer", [Term::FixInteger(_)]) => {
-                        return Ok(ExtType::IntLitExtType(IntLitExtType { location }));
+                        return Ok(ExtType::IntLitExtType(IntLitExtType { pos }));
                     }
                     ("char", [Term::FixInteger(_)]) => {
-                        return Ok(ExtType::char_ext_type(location));
+                        return Ok(ExtType::char_ext_type(pos));
                     }
                     ("op", [Term::Atom(op), _]) => {
                         return Ok(ExtType::UnOpType(UnOpType {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                         }));
                     }
                     ("op", [Term::Atom(op), _, _]) => {
                         return Ok(ExtType::BinOpType(BinOpType {
-                            location,
+                            pos,
                             op: op.name.clone().into(),
                         }));
                     }
                     ("type", [Term::Atom(kind), Term::Atom(param)])
                         if kind.name == "tuple" && param.name == "any" =>
                     {
-                        return Ok(ExtType::tuple_ext_type(location));
+                        return Ok(ExtType::tuple_ext_type(pos));
                     }
                     ("type", [Term::Atom(kind), Term::List(params)]) if kind.name == "tuple" => {
                         let arg_tys = params
@@ -2037,7 +1991,7 @@ impl Converter {
                             .iter()
                             .map(|ty| self.convert_type(ty))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(ExtType::TupleExtType(TupleExtType { location, arg_tys }));
+                        return Ok(ExtType::TupleExtType(TupleExtType { pos, arg_tys }));
                     }
                     ("type", [Term::Atom(kind), Term::List(params)]) if kind.name == "union" => {
                         let tys = params
@@ -2045,14 +1999,14 @@ impl Converter {
                             .iter()
                             .map(|ty| self.convert_type(ty))
                             .collect::<Result<Vec<_>, _>>()?;
-                        return Ok(ExtType::UnionExtType(UnionExtType { location, tys }));
+                        return Ok(ExtType::UnionExtType(UnionExtType { pos, tys }));
                     }
                     ("var", [Term::Atom(var)]) if var.name == "_" => {
-                        return Ok(ExtType::any_ext_type(location));
+                        return Ok(ExtType::any_ext_type(pos));
                     }
                     ("var", [Term::Atom(var)]) => {
                         return Ok(ExtType::VarExtType(VarExtType {
-                            location,
+                            pos,
                             name: var.name.clone().into(),
                         }));
                     }
@@ -2060,11 +2014,11 @@ impl Converter {
                         if (kind.name == "list" || kind.name == "nonempty_list") =>
                     {
                         if args.is_nil() {
-                            return Ok(ExtType::AnyListExtType(AnyListExtType { location }));
+                            return Ok(ExtType::AnyListExtType(AnyListExtType { pos }));
                         } else if args.elements.len() == 1 {
                             let t = self.convert_type(args.elements.first().unwrap())?;
                             return Ok(ExtType::ListExtType(ListExtType {
-                                location,
+                                pos,
                                 t: Box::new(t),
                             }));
                         }
@@ -2077,7 +2031,7 @@ impl Converter {
                     {
                         let t = self.convert_type(args.elements.first().unwrap())?;
                         return Ok(ExtType::ListExtType(ListExtType {
-                            location,
+                            pos,
                             t: Box::new(t),
                         }));
                     }
@@ -2087,14 +2041,14 @@ impl Converter {
                             return Err(ConversionError::UnknownBuiltin(kind.name.clone(), 0));
                         } else {
                             return Ok(ExtType::BuiltinExtType(BuiltinExtType {
-                                location,
+                                pos,
                                 name: kind.name.clone().into(),
                             }));
                         }
                     }
                     ("type", [Term::Atom(kind), Term::List(params)]) if kind.name == "binary" => {
                         if params.elements.len() == 1 || params.elements.len() == 2 {
-                            return Ok(ExtType::binary_ext_type(location));
+                            return Ok(ExtType::binary_ext_type(pos));
                         }
                     }
                     ("type", [Term::Atom(name), Term::List(params)]) => {

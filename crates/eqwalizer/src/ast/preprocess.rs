@@ -135,34 +135,34 @@ fn as_test(expr: Expr) -> Option<Test> {
     match expr {
         Expr::Var(var) => Some(Test::TestVar(TestVar {
             v: var.n,
-            location: var.location,
+            pos: var.pos,
         })),
         Expr::AtomLit(atom) => Some(Test::TestAtom(TestAtom {
             s: atom.s,
-            location: atom.location,
+            pos: atom.pos,
         })),
         Expr::IntLit(lit) => Some(Test::TestNumber(TestNumber {
-            location: lit.location,
+            pos: lit.pos,
             lit: lit.value,
         })),
         Expr::RemoteCall(rcall) if PREDICATES.contains(&rcall.id.clone().into()) => {
             Some(Test::TestCall(TestCall {
-                location: rcall.location,
+                pos: rcall.pos,
                 id: rcall.id.into(),
                 args: as_tests(rcall.args)?,
             }))
         }
         Expr::Tuple(tuple) => Some(Test::TestTuple(TestTuple {
-            location: tuple.location,
+            pos: tuple.pos,
             elems: as_tests(tuple.elems)?,
         })),
         Expr::UnOp(unop) if UNOP.contains(&unop.op) => Some(Test::TestUnOp(TestUnOp {
-            location: unop.location,
+            pos: unop.pos,
             op: unop.op,
             arg: Box::new(as_test(*unop.arg)?),
         })),
         Expr::BinOp(binop) if BINOP.contains(&binop.op) => Some(Test::TestBinOp(TestBinOp {
-            location: binop.location,
+            pos: binop.pos,
             op: binop.op,
             arg_1: Box::new(as_test(*binop.arg_1)?),
             arg_2: Box::new(as_test(*binop.arg_2)?),
@@ -197,12 +197,12 @@ impl Preprocessor {
     fn eta_expand_unary_predicate(&mut self, location: &Pos, name: SmolStr) -> Lambda {
         let var_name = self.fresh_var();
         let test_call = Test::TestCall(TestCall {
-            location: location.clone(),
+            pos: location.clone(),
             id: Id { name, arity: 1 },
             args: vec![Test::test_var(location.clone(), var_name.clone())],
         });
         let clause_pos = Clause {
-            location: location.clone(),
+            pos: location.clone(),
             pats: vec![Pat::pat_var(location.clone(), var_name.clone())],
             guards: vec![Guard {
                 tests: vec![test_call],
@@ -212,7 +212,7 @@ impl Preprocessor {
             },
         };
         let clause_neg = Clause {
-            location: location.clone(),
+            pos: location.clone(),
             pats: vec![Pat::pat_var(location.clone(), var_name.clone())],
             guards: vec![],
             body: Body {
@@ -220,7 +220,7 @@ impl Preprocessor {
             },
         };
         Lambda {
-            location: location.clone(),
+            pos: location.clone(),
             name: None,
             clauses: vec![clause_pos, clause_neg],
         }
@@ -239,26 +239,26 @@ impl Preprocessor {
                     if let [pat] = &clause.pats[..] {
                         if let Some(test) = as_test(body.clone()) {
                             return Expr::Lambda(Lambda {
-                                location: lambda.location.clone(),
+                                pos: lambda.pos.clone(),
                                 name: lambda.name.clone(),
                                 clauses: vec![
                                     Clause {
-                                        location: clause.location.clone(),
+                                        pos: clause.pos.clone(),
                                         pats: vec![pat.clone()],
                                         guards: vec![Guard { tests: vec![test] }],
                                         body: Body {
-                                            exprs: vec![Expr::atom_true(clause.location.clone())],
+                                            exprs: vec![Expr::atom_true(clause.pos.clone())],
                                         },
                                     },
                                     Clause {
-                                        location: clause.location.clone(),
+                                        pos: clause.pos.clone(),
                                         pats: vec![Pat::PatVar(PatVar {
-                                            location: clause.location.clone(),
+                                            pos: clause.pos.clone(),
                                             n: self.fresh_var(),
                                         })],
                                         guards: vec![],
                                         body: Body {
-                                            exprs: vec![Expr::atom_false(clause.location.clone())],
+                                            exprs: vec![Expr::atom_false(clause.pos.clone())],
                                         },
                                     },
                                 ],
@@ -277,7 +277,7 @@ impl Transformer<()> for Preprocessor {
     fn transform_expr(&mut self, expr: Expr) -> Result<Expr, ()> {
         match expr {
             Expr::RemoteCall(RemoteCall {
-                location,
+                pos: location,
                 id:
                     RemoteId {
                         module,
@@ -289,7 +289,7 @@ impl Transformer<()> for Preprocessor {
                 let [arg_fun, arg_list] = args.try_into().unwrap();
                 let arg_trans = self.preprocess_lists_partition_arg_fun(&location, arg_fun);
                 Ok(Expr::RemoteCall(RemoteCall {
-                    location,
+                    pos: location,
                     id: RemoteId {
                         module: "lists".into(),
                         name: "partition".into(),

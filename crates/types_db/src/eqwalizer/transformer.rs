@@ -149,7 +149,7 @@ pub fn walk_clause<T, V: Transformer<T>>(transformer: &mut V, clause: Clause) ->
         .collect::<Result<Vec<_>, _>>()?;
     let body = transformer.transform_body(clause.body)?;
     Ok(Clause {
-        location: clause.location,
+        pos: clause.pos,
         pats,
         guards,
         body,
@@ -185,7 +185,7 @@ pub fn walk_binary_elem<T, V: Transformer<T>>(
     elem: BinaryElem,
 ) -> Result<BinaryElem, T> {
     Ok(BinaryElem {
-        location: elem.location,
+        pos: elem.pos,
         specifier: elem.specifier,
         expr: transformer.transform_expr(elem.expr)?,
         size: elem
@@ -214,16 +214,16 @@ fn walk_cons<T, V: Transformer<T>>(transformer: &mut V, c: Cons) -> Result<Expr,
     let mut transformed_elems = vec![];
     loop {
         let h = Box::new(transformer.transform_expr(*cons.h)?);
-        transformed_elems.push((cons.location, h));
+        transformed_elems.push((cons.pos, h));
         match *cons.t {
             Expr::Cons(c) => cons = c,
             exp => {
                 let transformed_t = transformer.transform_expr(exp)?;
                 return Ok(transformed_elems.into_iter().rev().fold(
                     transformed_t,
-                    |t, (location, h)| {
+                    |t, (pos, h)| {
                         Expr::Cons(Cons {
-                            location,
+                            pos,
                             h,
                             t: Box::new(t),
                         })
@@ -241,16 +241,16 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
         Expr::IntLit(i) => Ok(Expr::IntLit(i)),
         Expr::FloatLit(f) => Ok(Expr::FloatLit(f)),
         Expr::Block(b) => Ok(Expr::Block(Block {
-            location: b.location,
+            pos: b.pos,
             body: transformer.transform_body(b.body)?,
         })),
         Expr::Match(m) => Ok(Expr::Match(Match {
-            location: m.location,
+            pos: m.pos,
             pat: transformer.transform_pat(m.pat)?,
             expr: Box::new(transformer.transform_expr(*m.expr)?),
         })),
         Expr::Tuple(t) => Ok(Expr::Tuple(Tuple {
-            location: t.location,
+            pos: t.pos,
             elems: t
                 .elems
                 .into_iter()
@@ -261,7 +261,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
         Expr::NilLit(n) => Ok(Expr::NilLit(n)),
         Expr::Cons(c) => walk_cons(transformer, c),
         Expr::Case(c) => Ok(Expr::Case(Case {
-            location: c.location,
+            pos: c.pos,
             expr: Box::new(transformer.transform_expr(*c.expr)?),
             clauses: c
                 .clauses
@@ -270,7 +270,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::If(i) => Ok(Expr::If(If {
-            location: i.location,
+            pos: i.pos,
             clauses: i
                 .clauses
                 .into_iter()
@@ -278,7 +278,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::LocalCall(c) => Ok(Expr::LocalCall(LocalCall {
-            location: c.location,
+            pos: c.pos,
             id: c.id,
             args: c
                 .args
@@ -287,7 +287,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::DynCall(c) => Ok(Expr::DynCall(DynCall {
-            location: c.location,
+            pos: c.pos,
             f: Box::new(transformer.transform_expr(*c.f)?),
             args: c
                 .args
@@ -296,7 +296,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::RemoteCall(c) => Ok(Expr::RemoteCall(RemoteCall {
-            location: c.location,
+            pos: c.pos,
             id: c.id,
             args: c
                 .args
@@ -307,18 +307,18 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
         Expr::LocalFun(f) => Ok(Expr::LocalFun(f)),
         Expr::RemoteFun(f) => Ok(Expr::RemoteFun(f)),
         Expr::DynRemoteFun(f) => Ok(Expr::DynRemoteFun(DynRemoteFun {
-            location: f.location,
+            pos: f.pos,
             module: Box::new(transformer.transform_expr(*f.module)?),
             name: Box::new(transformer.transform_expr(*f.name)?),
         })),
         Expr::DynRemoteFunArity(f) => Ok(Expr::DynRemoteFunArity(DynRemoteFunArity {
-            location: f.location,
+            pos: f.pos,
             module: Box::new(transformer.transform_expr(*f.module)?),
             name: Box::new(transformer.transform_expr(*f.name)?),
             arity: Box::new(transformer.transform_expr(*f.arity)?),
         })),
         Expr::Lambda(l) => Ok(Expr::Lambda(Lambda {
-            location: l.location,
+            pos: l.pos,
             clauses: l
                 .clauses
                 .into_iter()
@@ -327,18 +327,18 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
             name: l.name,
         })),
         Expr::UnOp(o) => Ok(Expr::UnOp(UnOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg: Box::new(transformer.transform_expr(*o.arg)?),
         })),
         Expr::BinOp(o) => Ok(Expr::BinOp(BinOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg_1: Box::new(transformer.transform_expr(*o.arg_1)?),
             arg_2: Box::new(transformer.transform_expr(*o.arg_2)?),
         })),
         Expr::LComprehension(c) => Ok(Expr::LComprehension(LComprehension {
-            location: c.location,
+            pos: c.pos,
             template: Box::new(transformer.transform_expr(*c.template)?),
             qualifiers: c
                 .qualifiers
@@ -347,7 +347,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::BComprehension(c) => Ok(Expr::BComprehension(BComprehension {
-            location: c.location,
+            pos: c.pos,
             template: Box::new(transformer.transform_expr(*c.template)?),
             qualifiers: c
                 .qualifiers
@@ -356,7 +356,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::MComprehension(c) => Ok(Expr::MComprehension(MComprehension {
-            location: c.location,
+            pos: c.pos,
             k_template: Box::new(transformer.transform_expr(*c.k_template)?),
             v_template: Box::new(transformer.transform_expr(*c.v_template)?),
             qualifiers: c
@@ -366,7 +366,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::Binary(b) => Ok(Expr::Binary(Binary {
-            location: b.location,
+            pos: b.pos,
             elems: b
                 .elems
                 .into_iter()
@@ -374,11 +374,11 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::Catch(c) => Ok(Expr::Catch(Catch {
-            location: c.location,
+            pos: c.pos,
             expr: Box::new(transformer.transform_expr(*c.expr)?),
         })),
         Expr::TryCatchExpr(e) => Ok(Expr::TryCatchExpr(TryCatchExpr {
-            location: e.location,
+            pos: e.pos,
             try_body: transformer.transform_body(e.try_body)?,
             catch_clauses: e
                 .catch_clauses
@@ -390,7 +390,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .map_or(Ok(None), |b| transformer.transform_body(b).map(Some))?,
         })),
         Expr::TryOfCatchExpr(e) => Ok(Expr::TryOfCatchExpr(TryOfCatchExpr {
-            location: e.location,
+            pos: e.pos,
             try_body: transformer.transform_body(e.try_body)?,
             try_clauses: e
                 .try_clauses
@@ -407,7 +407,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .map_or(Ok(None), |b| transformer.transform_body(b).map(Some))?,
         })),
         Expr::Receive(r) => Ok(Expr::Receive(Receive {
-            location: r.location,
+            pos: r.pos,
             clauses: r
                 .clauses
                 .into_iter()
@@ -415,7 +415,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::ReceiveWithTimeout(r) => Ok(Expr::ReceiveWithTimeout(ReceiveWithTimeout {
-            location: r.location,
+            pos: r.pos,
             clauses: r
                 .clauses
                 .into_iter()
@@ -425,7 +425,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
             timeout_body: transformer.transform_body(r.timeout_body)?,
         })),
         Expr::RecordCreate(r) => Ok(Expr::RecordCreate(RecordCreate {
-            location: r.location,
+            pos: r.pos,
             rec_name: r.rec_name,
             fields: r
                 .fields
@@ -434,7 +434,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::RecordUpdate(r) => Ok(Expr::RecordUpdate(RecordUpdate {
-            location: r.location,
+            pos: r.pos,
             rec_name: r.rec_name,
             expr: Box::new(transformer.transform_expr(*r.expr)?),
             fields: r
@@ -451,14 +451,14 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::RecordSelect(r) => Ok(Expr::RecordSelect(RecordSelect {
-            location: r.location,
+            pos: r.pos,
             rec_name: r.rec_name,
             field_name: r.field_name,
             expr: Box::new(transformer.transform_expr(*r.expr)?),
         })),
         Expr::RecordIndex(r) => Ok(Expr::RecordIndex(r)),
         Expr::MapCreate(m) => Ok(Expr::MapCreate(MapCreate {
-            location: m.location,
+            pos: m.pos,
             kvs: m
                 .kvs
                 .into_iter()
@@ -472,7 +472,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::MapUpdate(m) => Ok(Expr::MapUpdate(MapUpdate {
-            location: m.location,
+            pos: m.pos,
             map: Box::new(transformer.transform_expr(*m.map)?),
             kvs: m
                 .kvs
@@ -487,11 +487,11 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::Maybe(m) => Ok(Expr::Maybe(Maybe {
-            location: m.location,
+            pos: m.pos,
             body: transformer.transform_body(m.body)?,
         })),
         Expr::MaybeElse(m) => Ok(Expr::MaybeElse(MaybeElse {
-            location: m.location,
+            pos: m.pos,
             body: transformer.transform_body(m.body)?,
             else_clauses: m
                 .else_clauses
@@ -500,7 +500,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Expr::MaybeMatch(m) => Ok(Expr::MaybeMatch(MaybeMatch {
-            location: m.location,
+            pos: m.pos,
             pat: transformer.transform_pat(m.pat)?,
             arg: Box::new(transformer.transform_expr(*m.arg)?),
         })),
@@ -518,7 +518,7 @@ pub fn walk_pat_binary_elem<T, V: Transformer<T>>(
     Ok(PatBinaryElem {
         pat,
         size,
-        location: elem.location,
+        pos: elem.pos,
         specifier: elem.specifier,
     })
 }
@@ -529,10 +529,10 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
         Pat::PatMatch(m) => Ok(Pat::PatMatch(PatMatch {
             pat: Box::new(transformer.transform_pat(*m.pat)?),
             arg: Box::new(transformer.transform_pat(*m.arg)?),
-            location: m.location,
+            pos: m.pos,
         })),
         Pat::PatTuple(t) => Ok(Pat::PatTuple(PatTuple {
-            location: t.location,
+            pos: t.pos,
             elems: t
                 .elems
                 .into_iter()
@@ -542,7 +542,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
         Pat::PatString(s) => Ok(Pat::PatString(s)),
         Pat::PatNil(n) => Ok(Pat::PatNil(n)),
         Pat::PatCons(c) => Ok(Pat::PatCons(PatCons {
-            location: c.location,
+            pos: c.pos,
             h: Box::new(transformer.transform_pat(*c.h)?),
             t: Box::new(transformer.transform_pat(*c.t)?),
         })),
@@ -551,7 +551,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
         Pat::PatAtom(a) => Ok(Pat::PatAtom(a)),
         Pat::PatVar(v) => Ok(Pat::PatVar(v)),
         Pat::PatRecord(r) => Ok(Pat::PatRecord(PatRecord {
-            location: r.location,
+            pos: r.pos,
             rec_name: r.rec_name,
             fields: r
                 .fields
@@ -568,18 +568,18 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
         })),
         Pat::PatRecordIndex(r) => Ok(Pat::PatRecordIndex(r)),
         Pat::PatUnOp(o) => Ok(Pat::PatUnOp(PatUnOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg: Box::new(transformer.transform_pat(*o.arg)?),
         })),
         Pat::PatBinOp(o) => Ok(Pat::PatBinOp(PatBinOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg_1: Box::new(transformer.transform_pat(*o.arg_1)?),
             arg_2: Box::new(transformer.transform_pat(*o.arg_2)?),
         })),
         Pat::PatBinary(b) => Ok(Pat::PatBinary(PatBinary {
-            location: b.location,
+            pos: b.pos,
             elems: b
                 .elems
                 .into_iter()
@@ -587,7 +587,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Pat::PatMap(m) => Ok(Pat::PatMap(PatMap {
-            location: m.location,
+            pos: m.pos,
             kvs: m
                 .kvs
                 .into_iter()
@@ -638,7 +638,7 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
         Test::TestAtom(a) => Ok(Test::TestAtom(a)),
         Test::TestNumber(n) => Ok(Test::TestNumber(n)),
         Test::TestTuple(t) => Ok(Test::TestTuple(TestTuple {
-            location: t.location,
+            pos: t.pos,
             elems: t
                 .elems
                 .into_iter()
@@ -648,12 +648,12 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
         Test::TestString(s) => Ok(Test::TestString(s)),
         Test::TestNil(n) => Ok(Test::TestNil(n)),
         Test::TestCons(c) => Ok(Test::TestCons(TestCons {
-            location: c.location,
+            pos: c.pos,
             h: Box::new(transformer.transform_test(*c.h)?),
             t: Box::new(transformer.transform_test(*c.t)?),
         })),
         Test::TestCall(c) => Ok(Test::TestCall(TestCall {
-            location: c.location,
+            pos: c.pos,
             id: c.id,
             args: c
                 .args
@@ -662,7 +662,7 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Test::TestRecordCreate(r) => Ok(Test::TestRecordCreate(TestRecordCreate {
-            location: r.location,
+            pos: r.pos,
             rec_name: r.rec_name,
             fields: r
                 .fields
@@ -671,14 +671,14 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Test::TestRecordSelect(r) => Ok(Test::TestRecordSelect(TestRecordSelect {
-            location: r.location,
+            pos: r.pos,
             rec: Box::new(transformer.transform_test(*r.rec)?),
             rec_name: r.rec_name,
             field_name: r.field_name,
         })),
         Test::TestRecordIndex(r) => Ok(Test::TestRecordIndex(r)),
         Test::TestMapCreate(m) => Ok(Test::TestMapCreate(TestMapCreate {
-            location: m.location,
+            pos: m.pos,
             kvs: m
                 .kvs
                 .into_iter()
@@ -692,7 +692,7 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Test::TestMapUpdate(m) => Ok(Test::TestMapUpdate(TestMapUpdate {
-            location: m.location,
+            pos: m.pos,
             map: Box::new(transformer.transform_test(*m.map)?),
             kvs: m
                 .kvs
@@ -707,12 +707,12 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                 .collect::<Result<Vec<_>, _>>()?,
         })),
         Test::TestUnOp(o) => Ok(Test::TestUnOp(TestUnOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg: Box::new(transformer.transform_test(*o.arg)?),
         })),
         Test::TestBinOp(o) => Ok(Test::TestBinOp(TestBinOp {
-            location: o.location,
+            pos: o.pos,
             op: o.op,
             arg_1: Box::new(transformer.transform_test(*o.arg_1)?),
             arg_2: Box::new(transformer.transform_test(*o.arg_2)?),
@@ -732,7 +732,7 @@ pub fn walk_form<T, V: Transformer<T>>(
         ExternalForm::Import(i) => Ok(ExternalForm::Import(i)),
         ExternalForm::ExportType(e) => Ok(ExternalForm::ExportType(e)),
         ExternalForm::FunDecl(decl) => Ok(ExternalForm::FunDecl(FunDecl {
-            location: decl.location,
+            pos: decl.pos,
             id: decl.id,
             clauses: decl
                 .clauses
@@ -756,7 +756,7 @@ pub fn walk_form<T, V: Transformer<T>>(
             Ok(ExternalForm::ExternalOptionalCallbacks(cb))
         }
         ExternalForm::ExternalRecDecl(decl) => Ok(ExternalForm::ExternalRecDecl(ExternalRecDecl {
-            location: decl.location,
+            pos: decl.pos,
             name: decl.name,
             file: decl.file,
             fields: decl

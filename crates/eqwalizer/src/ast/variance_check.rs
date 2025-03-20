@@ -358,12 +358,12 @@ impl VarianceChecker<'_> {
     fn to_invalid(&self, t: &TypeDecl, ty_var: &VarType, expansion: Vec<Type>) -> InvalidForm {
         let diagnostics = Invalid::AliasWithNonCovariantParam(AliasWithNonCovariantParam {
             type_var: ty_var.name.clone(),
-            location: t.location.clone(),
+            pos: t.pos.clone(),
             name: t.id.to_string().into(),
             exps: expansion,
         });
         InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-            location: t.location.clone(),
+            pos: t.pos.clone(),
             id: t.id.clone(),
             te: diagnostics,
         })

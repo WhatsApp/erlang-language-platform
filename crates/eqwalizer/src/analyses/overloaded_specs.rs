@@ -21,7 +21,7 @@ impl<'a> Visitor<'a, ()> for OverloadedSpecVisitor<'a> {
     fn visit_form(&mut self, form: &'a ExternalForm) -> Result<(), ()> {
         match form {
             ExternalForm::ExternalFunSpec(spec) if spec.types.len() > 1 => {
-                overloaded_spec_diagnostic(&spec.location).map(|d| self.diagnostics.push(d));
+                overloaded_spec_diagnostic(&spec.pos).map(|d| self.diagnostics.push(d));
             }
             _ => (),
         }

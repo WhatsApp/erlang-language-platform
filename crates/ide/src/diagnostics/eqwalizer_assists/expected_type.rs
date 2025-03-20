@@ -41,7 +41,7 @@ pub fn expected_type(
     diagnostic: &mut Diagnostic,
 ) {
     if let Some(StructuredDiagnostic::TypeError(TypeError::ExpectedSubtype(ExpectedSubtype {
-        location: _,
+        pos: _,
         expected,
         got,
     }))) = &d.diagnostic

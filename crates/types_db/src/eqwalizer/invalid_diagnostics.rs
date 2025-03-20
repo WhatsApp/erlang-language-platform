@@ -31,55 +31,55 @@ pub enum Invalid {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnknownId {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub id: eqwalizer::RemoteId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonExportedId {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub id: eqwalizer::RemoteId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecursiveConstraint {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TyVarWithMultipleConstraints {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TypeVarInRecordField {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnboundTyVarInTyDecl {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RepeatedTyVarInTyDecl {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonProductiveRecursiveTypeAlias {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TransitiveInvalid {
-    location: eqwalizer::Pos,
+    pos: eqwalizer::Pos,
     name: SmolStr,
     #[serde(default)]
     references: Vec<SmolStr>,
@@ -89,7 +89,7 @@ impl TransitiveInvalid {
     pub fn new(location: eqwalizer::Pos, name: SmolStr, mut references: Vec<SmolStr>) -> Self {
         references.sort_unstable();
         Self {
-            location,
+            pos: location,
             name,
             references,
         }
@@ -98,7 +98,7 @@ impl TransitiveInvalid {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AliasWithNonCovariantParam {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
     pub type_var: SmolStr,
     #[serde(default)]
@@ -107,6 +107,6 @@ pub struct AliasWithNonCovariantParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BadMapKey {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub required: bool,
 }

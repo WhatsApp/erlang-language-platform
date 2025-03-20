@@ -31,7 +31,7 @@ pub fn unexported_type(
     diagnostic: &mut Diagnostic,
 ) {
     if let Some(StructuredDiagnostic::InvalidForm(Invalid::NonExportedId(NonExportedId {
-        location: _,
+        pos: _,
         id: RemoteId {
             module,
             name,

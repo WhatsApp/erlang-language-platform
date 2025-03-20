@@ -82,7 +82,7 @@ impl Expander<'_> {
         match self.expand_cfts(fun_spec.types) {
             Ok(types) => Ok(ExternalFunSpec { types, ..fun_spec }),
             Err(te) => Err(InvalidFunSpec {
-                location: fun_spec.location,
+                pos: fun_spec.pos,
                 id: fun_spec.id,
                 te,
             }),
@@ -118,7 +118,7 @@ impl Expander<'_> {
                 FunExtType {
                     arg_tys,
                     res_ty: Box::new(res_ty),
-                    location: cft.ty.location,
+                    pos: cft.ty.pos,
                 }
             }
         };
@@ -127,10 +127,10 @@ impl Expander<'_> {
         let exp_ft = FunExtType {
             arg_tys,
             res_ty,
-            location: ft.location,
+            pos: ft.pos,
         };
         Ok(ConstrainedFunType {
-            location: cft.location,
+            pos: cft.pos,
             ty: exp_ft,
             constraints: vec![],
         })
@@ -143,7 +143,7 @@ impl Expander<'_> {
         match self.expand_cfts(cb.types) {
             Ok(types) => Ok(ExternalCallback { types, ..cb }),
             Err(te) => Err(InvalidFunSpec {
-                location: cb.location,
+                pos: cb.pos,
                 id: cb.id,
                 te,
             }),
@@ -155,14 +155,14 @@ impl Expander<'_> {
         decl: ExternalTypeDecl,
     ) -> Result<ExternalTypeDecl, InvalidTypeDecl> {
         let result = self
-            .validate_type_vars(&decl.location, &decl.body, &decl.params)
+            .validate_type_vars(&decl.pos, &decl.body, &decl.params)
             .and_then(|()| self.expand_type(decl.body));
         match result {
             Ok(body) => Ok(ExternalTypeDecl { body, ..decl }),
             Err(te) => Err(InvalidTypeDecl {
                 id: decl.id,
                 te,
-                location: decl.location,
+                pos: decl.pos,
             }),
         }
     }
@@ -172,14 +172,14 @@ impl Expander<'_> {
         decl: ExternalOpaqueDecl,
     ) -> Result<ExternalOpaqueDecl, InvalidTypeDecl> {
         let result = self
-            .validate_type_vars(&decl.location, &decl.body, &decl.params)
+            .validate_type_vars(&decl.pos, &decl.body, &decl.params)
             .and_then(|()| self.expand_type(decl.body));
         match result {
             Ok(body) => Ok(ExternalOpaqueDecl { body, ..decl }),
             Err(te) => Err(InvalidTypeDecl {
                 id: decl.id,
                 te,
-                location: decl.location,
+                pos: decl.pos,
             }),
         }
     }
@@ -207,7 +207,7 @@ impl Expander<'_> {
         for name in params {
             if names.contains(name) {
                 return Err(Invalid::RepeatedTyVarInTyDecl(RepeatedTyVarInTyDecl {
-                    location: pos.clone(),
+                    pos: pos.clone(),
                     name: name.clone(),
                 }));
             }
@@ -226,7 +226,7 @@ impl Expander<'_> {
             if names.contains(name) {
                 return Err(Invalid::TyVarWithMultipleConstraints(
                     TyVarWithMultipleConstraints {
-                        location: cft.location.clone(),
+                        pos: cft.pos.clone(),
                         n: name.clone(),
                     },
                 ));
@@ -244,7 +244,7 @@ impl Expander<'_> {
     ) -> Result<(), Invalid> {
         if !params.contains(&ty_var.name) {
             Err(Invalid::UnboundTyVarInTyDecl(UnboundTyVarInTyDecl {
-                location: pos.clone(),
+                pos: pos.clone(),
                 name: ty_var.name.clone(),
             }))
         } else {
@@ -264,7 +264,7 @@ impl Expander<'_> {
         match fields {
             Ok(fields) => Ok(ExternalRecDecl { fields, ..decl }),
             Err(te) => Err(InvalidRecDecl {
-                location: decl.location,
+                pos: decl.pos,
                 name: decl.name,
                 te,
             }),
@@ -287,7 +287,7 @@ impl Expander<'_> {
                 Ok(ExtType::RemoteExtType(RemoteExtType {
                     id,
                     args: expanded_params,
-                    location: ty.location,
+                    pos: ty.pos,
                 }))
             }
             ExtType::RemoteExtType(ty) => {
@@ -307,12 +307,12 @@ impl Expander<'_> {
                     .unwrap_or(false);
                 if !is_defined {
                     Err(Invalid::UnknownId(UnknownId {
-                        location: ty.location,
+                        pos: ty.pos,
                         id: ty.id,
                     }))
                 } else if ty.id.module != self.module && !is_exported {
                     Err(Invalid::NonExportedId(NonExportedId {
-                        location: ty.location,
+                        pos: ty.pos,
                         id: ty.id,
                     }))
                 } else {
@@ -320,54 +320,54 @@ impl Expander<'_> {
                     Ok(ExtType::RemoteExtType(RemoteExtType {
                         id: ty.id,
                         args: expanded_params,
-                        location: ty.location,
+                        pos: ty.pos,
                     }))
                 }
             }
             ExtType::FunExtType(ty) => Ok(ExtType::FunExtType(FunExtType {
-                location: ty.location,
+                pos: ty.pos,
                 arg_tys: self.expand_types(ty.arg_tys)?,
                 res_ty: Box::new(self.expand_type(*ty.res_ty)?),
             })),
             ExtType::AnyArityFunExtType(ty) => {
                 Ok(ExtType::AnyArityFunExtType(AnyArityFunExtType {
-                    location: ty.location,
+                    pos: ty.pos,
                     res_ty: Box::new(self.expand_type(*ty.res_ty)?),
                 }))
             }
             ExtType::TupleExtType(ty) => Ok(ExtType::TupleExtType(TupleExtType {
-                location: ty.location,
+                pos: ty.pos,
                 arg_tys: self.expand_types(ty.arg_tys)?,
             })),
             ExtType::ListExtType(ty) => Ok(ExtType::ListExtType(ListExtType {
-                location: ty.location,
+                pos: ty.pos,
                 t: Box::new(self.expand_type(*ty.t)?),
             })),
             ExtType::AnyListExtType(ty) => Ok(ExtType::ListExtType(ListExtType {
-                location: ty.location.clone(),
-                t: Box::new(ExtType::dynamic_ext_type(ty.location)),
+                pos: ty.pos.clone(),
+                t: Box::new(ExtType::dynamic_ext_type(ty.pos)),
             })),
             ExtType::UnionExtType(ty) => Ok(ExtType::UnionExtType(UnionExtType {
-                location: ty.location,
+                pos: ty.pos,
                 tys: self.expand_types(ty.tys)?,
             })),
             ExtType::MapExtType(ty) => {
                 if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
-                    let location = invalid_prop.location().clone();
+                    let pos = invalid_prop.pos().clone();
                     let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
-                        location: location.clone(),
+                        pos: pos.clone(),
                         te: Invalid::BadMapKey(BadMapKey {
-                            location,
+                            pos,
                             required: invalid_prop.required(),
                         }),
                     });
                     self.invalids.push(invalid_form);
                     Ok(ExtType::MapExtType(MapExtType {
-                        location: ty.location.clone(),
+                        pos: ty.pos.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
-                            location: ty.location.clone(),
-                            key: ExtType::dynamic_ext_type(ty.location.clone()),
-                            tp: ExtType::dynamic_ext_type(ty.location),
+                            pos: ty.pos.clone(),
+                            key: ExtType::dynamic_ext_type(ty.pos.clone()),
+                            tp: ExtType::dynamic_ext_type(ty.pos),
                         })],
                     }))
                 } else {
@@ -376,23 +376,20 @@ impl Expander<'_> {
                         .into_iter()
                         .map(|prop| self.expand_prop(prop))
                         .collect::<Result<Vec<_>, _>>()?;
-                    Ok(ExtType::MapExtType(MapExtType {
-                        location: ty.location,
-                        props,
-                    }))
+                    Ok(ExtType::MapExtType(MapExtType { pos: ty.pos, props }))
                 }
             }
             ExtType::AnyMapExtType(ty) => Ok(ExtType::MapExtType(MapExtType {
-                location: ty.location.clone(),
+                pos: ty.pos.clone(),
                 props: vec![ExtProp::OptExtProp(OptExtProp {
-                    location: ty.location.clone(),
-                    key: ExtType::dynamic_ext_type(ty.location.clone()),
-                    tp: ExtType::dynamic_ext_type(ty.location),
+                    pos: ty.pos.clone(),
+                    key: ExtType::dynamic_ext_type(ty.pos.clone()),
+                    tp: ExtType::dynamic_ext_type(ty.pos),
                 })],
             })),
             ExtType::RecordRefinedExtType(ty) => {
                 Ok(ExtType::RecordRefinedExtType(RecordRefinedExtType {
-                    location: ty.location,
+                    pos: ty.pos,
                     name: ty.name,
                     refined_fields: ty
                         .refined_fields
@@ -414,17 +411,17 @@ impl Expander<'_> {
     fn expand_prop(&mut self, prop: ExtProp) -> Result<ExtProp, Invalid> {
         match prop {
             ExtProp::ReqExtProp(prop) => Ok(ExtProp::ReqExtProp(ReqExtProp {
-                location: prop.location,
+                pos: prop.pos,
                 key: self.expand_type(prop.key)?,
                 tp: self.expand_type(prop.tp)?,
             })),
             ExtProp::OptExtProp(prop) => Ok(ExtProp::OptExtProp(OptExtProp {
-                location: prop.location,
+                pos: prop.pos,
                 key: self.expand_type(prop.key)?,
                 tp: self.expand_type(prop.tp)?,
             })),
             prop => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location().clone(),
+                pos: prop.pos().clone(),
                 required: prop.required(),
             })),
         }
@@ -468,54 +465,54 @@ impl Expander<'_> {
                 Ok(ExtType::RemoteExtType(RemoteExtType {
                     id,
                     args: expanded_params,
-                    location: ty.location,
+                    pos: ty.pos,
                 }))
             }
             ExtType::RemoteExtType(ty) => Ok(ExtType::RemoteExtType(RemoteExtType {
-                location: ty.location,
+                pos: ty.pos,
                 id: ty.id,
                 args: self.expand_all_constraints(ty.args, sub, stack)?,
             })),
             ExtType::FunExtType(ty) => Ok(ExtType::FunExtType(FunExtType {
-                location: ty.location,
+                pos: ty.pos,
                 arg_tys: self.expand_all_constraints(ty.arg_tys, sub, stack)?,
                 res_ty: Box::new(self.expand_constraints(*ty.res_ty, sub, stack)?),
             })),
             ExtType::AnyArityFunExtType(ty) => {
                 Ok(ExtType::AnyArityFunExtType(AnyArityFunExtType {
-                    location: ty.location,
+                    pos: ty.pos,
                     res_ty: Box::new(self.expand_constraints(*ty.res_ty, sub, stack)?),
                 }))
             }
             ExtType::TupleExtType(ty) => Ok(ExtType::TupleExtType(TupleExtType {
-                location: ty.location,
+                pos: ty.pos,
                 arg_tys: self.expand_all_constraints(ty.arg_tys, sub, stack)?,
             })),
             ExtType::ListExtType(ty) => Ok(ExtType::ListExtType(ListExtType {
-                location: ty.location,
+                pos: ty.pos,
                 t: Box::new(self.expand_constraints(*ty.t, sub, stack)?),
             })),
             ExtType::UnionExtType(ty) => Ok(ExtType::UnionExtType(UnionExtType {
-                location: ty.location,
+                pos: ty.pos,
                 tys: self.expand_all_constraints(ty.tys, sub, stack)?,
             })),
             ExtType::MapExtType(ty) => {
                 if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
-                    let location = invalid_prop.location().clone();
+                    let pos = invalid_prop.pos().clone();
                     let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
-                        location: location.clone(),
+                        pos: pos.clone(),
                         te: Invalid::BadMapKey(BadMapKey {
-                            location,
+                            pos,
                             required: invalid_prop.required(),
                         }),
                     });
                     self.invalids.push(invalid_form);
                     Ok(ExtType::MapExtType(MapExtType {
-                        location: ty.location.clone(),
+                        pos: ty.pos.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
-                            location: ty.location.clone(),
-                            key: ExtType::dynamic_ext_type(ty.location.clone()),
-                            tp: ExtType::dynamic_ext_type(ty.location),
+                            pos: ty.pos.clone(),
+                            key: ExtType::dynamic_ext_type(ty.pos.clone()),
+                            tp: ExtType::dynamic_ext_type(ty.pos),
                         })],
                     }))
                 } else {
@@ -524,15 +521,12 @@ impl Expander<'_> {
                         .into_iter()
                         .map(|prop| self.expand_prop_constraint(prop, sub, stack))
                         .collect::<Result<Vec<_>, _>>()?;
-                    Ok(ExtType::MapExtType(MapExtType {
-                        location: ty.location,
-                        props,
-                    }))
+                    Ok(ExtType::MapExtType(MapExtType { pos: ty.pos, props }))
                 }
             }
             ExtType::RecordRefinedExtType(ty) => {
                 Ok(ExtType::RecordRefinedExtType(RecordRefinedExtType {
-                    location: ty.location,
+                    pos: ty.pos,
                     name: ty.name,
                     refined_fields: ty
                         .refined_fields
@@ -544,7 +538,7 @@ impl Expander<'_> {
             ExtType::VarExtType(ty) => {
                 if stack.contains(&ty.name) {
                     Err(Invalid::RecursiveConstraint(RecursiveConstraint {
-                        location: ty.location,
+                        pos: ty.pos,
                         n: ty.name,
                     }))
                 } else if let Some(tp) = sub.get(&ty.name) {
@@ -574,17 +568,17 @@ impl Expander<'_> {
     ) -> Result<ExtProp, Invalid> {
         match prop {
             ExtProp::ReqExtProp(prop) => Ok(ExtProp::ReqExtProp(ReqExtProp {
-                location: prop.location,
+                pos: prop.pos,
                 key: self.expand_constraints(prop.key, sub, stack)?,
                 tp: self.expand_constraints(prop.tp, sub, stack)?,
             })),
             ExtProp::OptExtProp(prop) => Ok(ExtProp::OptExtProp(OptExtProp {
-                location: prop.location,
+                pos: prop.pos,
                 key: self.expand_constraints(prop.key, sub, stack)?,
                 tp: self.expand_constraints(prop.tp, sub, stack)?,
             })),
             prop => Err(Invalid::BadMapKey(BadMapKey {
-                location: prop.location().clone(),
+                pos: prop.pos().clone(),
                 required: prop.required(),
             })),
         }
@@ -776,7 +770,7 @@ impl StubExpander<'_> {
                     let body = Type::builtin_type_alias_body(&name).unwrap();
                     let id = ast::Id { name, arity: 0 };
                     let decl = TypeDecl {
-                        location: pos.clone(),
+                        pos: pos.clone(),
                         id: id.clone(),
                         params: vec![],
                         body,

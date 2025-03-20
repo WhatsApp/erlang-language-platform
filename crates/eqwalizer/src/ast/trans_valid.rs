@@ -100,14 +100,14 @@ impl TransitiveChecker<'_> {
         if !self.is_valid(&rref)? {
             let invalids = self.show_invalids(&rref);
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                t.location.clone(),
+                t.pos.clone(),
                 t.id.to_string().into(),
                 invalids,
             ));
             stub.types.remove(&t.id);
             stub.invalid_forms
                 .push(InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-                    location: t.location.clone(),
+                    pos: t.pos.clone(),
                     id: t.id.clone(),
                     te: diag,
                 }))
@@ -128,14 +128,14 @@ impl TransitiveChecker<'_> {
         if !self.is_valid(&rref)? {
             let invalids = self.show_invalids(&rref);
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                t.location.clone(),
+                t.pos.clone(),
                 t.id.to_string().into(),
                 invalids,
             ));
             stub.opaques.remove(&t.id);
             stub.invalid_forms
                 .push(InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-                    location: t.location.clone(),
+                    pos: t.pos.clone(),
                     id: t.id.clone(),
                     te: diag,
                 }))
@@ -158,14 +158,14 @@ impl TransitiveChecker<'_> {
         if !invalids.is_empty() {
             let references = invalids.iter().map(|rref| self.show(rref)).collect();
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                spec.location.clone(),
+                spec.pos.clone(),
                 spec.id.to_string().into(),
                 references,
             ));
             stub.specs.remove(&spec.id);
             stub.invalid_forms
                 .push(InvalidForm::InvalidFunSpec(InvalidFunSpec {
-                    location: spec.location.clone(),
+                    pos: spec.pos.clone(),
                     id: spec.id.clone(),
                     te: diag,
                 }))
@@ -182,7 +182,7 @@ impl TransitiveChecker<'_> {
         if !self.is_valid(&rref)? {
             let invalids = self.show_invalids(&rref);
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                t.location.clone(),
+                t.pos.clone(),
                 t.name.clone(),
                 invalids,
             ));
@@ -197,7 +197,7 @@ impl TransitiveChecker<'_> {
             });
             stub.invalid_forms
                 .push(InvalidForm::InvalidRecDecl(InvalidRecDecl {
-                    location: t.location.clone(),
+                    pos: t.pos.clone(),
                     name: t.name.clone(),
                     te: diag,
                 }))
@@ -222,14 +222,14 @@ impl TransitiveChecker<'_> {
         if !invalids.is_empty() {
             let references = invalids.iter().map(|rref| self.show(rref)).collect();
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                spec.location.clone(),
+                spec.pos.clone(),
                 spec.id.to_string().into(),
                 references,
             ));
             stub.overloaded_specs.remove(&spec.id);
             stub.invalid_forms
                 .push(InvalidForm::InvalidFunSpec(InvalidFunSpec {
-                    location: spec.location.clone(),
+                    pos: spec.pos.clone(),
                     id: spec.id.clone(),
                     te: diag,
                 }))
@@ -252,7 +252,7 @@ impl TransitiveChecker<'_> {
             }
         }
         let new_cb = Callback {
-            location: cb.location,
+            pos: cb.pos,
             id: cb.id,
             tys: filtered_tys,
         };

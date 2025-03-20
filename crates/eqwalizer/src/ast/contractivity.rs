@@ -215,11 +215,11 @@ impl StubContractivityChecker<'_> {
     fn to_invalid(&self, t: &TypeDecl) -> InvalidForm {
         let diagnostics =
             Invalid::NonProductiveRecursiveTypeAlias(NonProductiveRecursiveTypeAlias {
-                location: t.location.clone(),
+                pos: t.pos.clone(),
                 name: t.id.to_string().into(),
             });
         InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-            location: t.location.clone(),
+            pos: t.pos.clone(),
             id: t.id.clone(),
             te: diagnostics,
         })

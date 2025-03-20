@@ -41,89 +41,89 @@ pub enum TypeError {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedSubtype {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub expected: Type,
     pub got: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedFunType {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub expected_arity: u32,
     pub got: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NoDynamicRemoteFun {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NoSpecialType {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DynamicLambda {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LambdaArityMismatch {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub lambda_arity: u32,
     pub args_arity: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IndexOutOfBounds {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub index: u32,
     pub tuple_arity: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NotSupportedLambdaInOverloadedCall {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UndefinedField {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnboundVar {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnboundRecord {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonexistentBehaviour {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MissingCallback {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub behaviour_name: SmolStr,
     pub callback: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IncorrectCallbackReturn {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub behaviour_name: SmolStr,
     pub callback: SmolStr,
     pub expected: Type,
@@ -132,7 +132,7 @@ pub struct IncorrectCallbackReturn {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IncorrectCallbackParams {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub behaviour_name: SmolStr,
     pub callback: SmolStr,
     pub param_index: u32,
@@ -142,23 +142,23 @@ pub struct IncorrectCallbackParams {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RevealTypeHint {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub t: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RedundantFixme {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RedundantNowarnFunction {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RedundantGuard {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub variable: SmolStr,
     pub test: Type,
     pub got: Type,
@@ -166,12 +166,12 @@ pub struct RedundantGuard {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AmbiguousUnion {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub expected: Type,
     pub got: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ClauseNotCovered {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }

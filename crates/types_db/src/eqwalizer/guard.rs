@@ -40,56 +40,56 @@ pub enum Test {
 }
 
 impl Test {
-    pub fn test_var(location: eqwalizer::Pos, v: SmolStr) -> Self {
-        Test::TestVar(TestVar { location, v })
+    pub fn test_var(pos: eqwalizer::Pos, v: SmolStr) -> Self {
+        Test::TestVar(TestVar { pos, v })
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestVar {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub v: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestAtom {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub s: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestNumber {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub lit: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestTuple {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub elems: Vec<Test>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestString {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestNil {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestCons {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub h: Box<Test>,
     pub t: Box<Test>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestCall {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
     pub args: Vec<Test>,
@@ -97,7 +97,7 @@ pub struct TestCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordCreate {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<TestRecordField>,
@@ -105,7 +105,7 @@ pub struct TestRecordCreate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordSelect {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec: Box<Test>,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
@@ -113,21 +113,21 @@ pub struct TestRecordSelect {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordIndex {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestMapCreate {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub kvs: Vec<(Test, Test)>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestMapUpdate {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub map: Box<Test>,
     #[serde(default)]
     pub kvs: Vec<(Test, Test)>,
@@ -135,14 +135,14 @@ pub struct TestMapUpdate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestUnOp {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub op: SmolStr,
     pub arg: Box<Test>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestBinOp {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub op: SmolStr,
     pub arg_1: Box<Test>,
     pub arg_2: Box<Test>,
@@ -150,7 +150,7 @@ pub struct TestBinOp {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestBinaryLit {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

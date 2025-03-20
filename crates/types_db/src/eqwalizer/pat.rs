@@ -38,71 +38,71 @@ pub enum Pat {
 
 impl Pat {
     pub fn pat_var(location: eqwalizer::Pos, n: SmolStr) -> Self {
-        Pat::PatVar(PatVar { location, n })
+        Pat::PatVar(PatVar { pos: location, n })
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatWild {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatMatch {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub pat: Box<Pat>,
     pub arg: Box<Pat>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatTuple {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub elems: Vec<Pat>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatString {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatNil {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatCons {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub h: Box<Pat>,
     pub t: Box<Pat>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatInt {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatNumber {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatAtom {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub s: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatVar {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub n: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatRecord {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec_name: SmolStr,
     #[serde(default)]
     pub fields: Vec<PatRecordFieldNamed>,
@@ -111,21 +111,21 @@ pub struct PatRecord {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatRecordIndex {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub rec_name: SmolStr,
     pub field_name: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatUnOp {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub op: SmolStr,
     pub arg: Box<Pat>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatBinOp {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub op: SmolStr,
     pub arg_1: Box<Pat>,
     pub arg_2: Box<Pat>,
@@ -133,14 +133,14 @@ pub struct PatBinOp {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatBinary {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub elems: Vec<PatBinaryElem>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatBinaryElem {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     pub pat: Pat,
     pub size: Option<expr::Expr>,
     pub specifier: binary_specifier::Specifier,
@@ -154,7 +154,7 @@ pub struct PatRecordFieldNamed {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PatMap {
-    pub location: eqwalizer::Pos,
+    pub pos: eqwalizer::Pos,
     #[serde(default)]
     pub kvs: Vec<(guard::Test, Pat)>,
 }

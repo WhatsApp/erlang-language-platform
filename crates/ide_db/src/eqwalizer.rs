@@ -299,7 +299,7 @@ fn id_name_and_location(
     let module = ModuleName::new(type_id.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.types.get(&type_id.to_owned().into())?;
-    let loc = decl_location(db, project_id, module, &decl.location)?;
+    let loc = decl_location(db, project_id, module, &decl.pos)?;
     Some((type_id.to_string().into(), loc))
 }
 
@@ -311,7 +311,7 @@ fn record_name_and_location(
     let module = ModuleName::new(record.module.as_str());
     let stub = db.transitive_stub(project_id, module.clone()).ok()?;
     let decl = stub.records.get(&record.name)?;
-    let loc = decl_location(db, project_id, module, &decl.location)?;
+    let loc = decl_location(db, project_id, module, &decl.pos)?;
     Some((format!("#{}:{}", record.module, record.name).into(), loc))
 }
 

@@ -69,7 +69,7 @@ impl TypeConverter {
     pub fn convert_spec(&self, spec: ExternalFunSpec) -> Result<FunSpec, TypeConversionError> {
         let ty = self.convert_cft(spec.types.into_iter().next().unwrap())?;
         Ok(FunSpec {
-            location: spec.location,
+            pos: spec.pos,
             id: spec.id,
             ty,
         })
@@ -85,7 +85,7 @@ impl TypeConverter {
             .map(|ty| self.convert_cft(ty))
             .collect::<Result<_, _>>()?;
         Ok(OverloadedFunSpec {
-            location: spec.location,
+            pos: spec.pos,
             id: spec.id,
             tys,
         })
@@ -98,7 +98,7 @@ impl TypeConverter {
             .map(|ty| self.convert_cft(ty))
             .collect::<Result<_, _>>()?;
         Ok(Callback {
-            location: cb.location,
+            pos: cb.pos,
             id: cb.id,
             tys,
         })
@@ -134,14 +134,14 @@ impl TypeConverter {
                     name: decl.name,
                     fields,
                     refinable,
-                    location: decl.location,
+                    pos: decl.pos,
                     file: decl.file,
                 }))
             }
             Err(e) => Ok(Err(InvalidConvertTypeInRecDecl {
                 name: decl.name,
                 te: e,
-                location: decl.location,
+                pos: decl.pos,
             })),
         }
     }
@@ -190,7 +190,7 @@ impl TypeConverter {
             id: decl.id,
             params,
             body,
-            location: decl.location,
+            pos: decl.pos,
             file: decl.file,
         })
     }
@@ -208,7 +208,7 @@ impl TypeConverter {
             id: decl.id,
             params,
             body,
-            location: decl.location,
+            pos: decl.pos,
             file: decl.file,
         })
     }
@@ -302,7 +302,7 @@ impl TypeConverter {
                 }))),
                 None if self.in_rec_decl => {
                     Ok(Err(Invalid::TypeVarInRecordField(TypeVarInRecordField {
-                        location: var.location,
+                        pos: var.pos,
                         name: var.name,
                     })))
                 }
