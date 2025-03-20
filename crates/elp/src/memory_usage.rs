@@ -17,7 +17,7 @@ use std::fmt;
 
 use serde::Serialize;
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone, Serialize, Debug)]
 pub struct MemoryUsage {
     pub allocated: Bytes,
     pub active: Bytes,
@@ -66,7 +66,9 @@ impl MemoryUsage {
     }
 }
 
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Serialize)]
+#[derive(
+    Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Serialize, Debug
+)]
 pub struct Bytes(isize);
 
 impl Bytes {
