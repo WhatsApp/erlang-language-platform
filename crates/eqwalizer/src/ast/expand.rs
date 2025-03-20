@@ -66,6 +66,7 @@ use super::RemoteId;
 use super::TypeConversionError;
 use super::AST;
 use crate::ast;
+use crate::ast::Visibility;
 
 struct Expander<'d> {
     module: SmolStr,
@@ -295,32 +296,30 @@ impl Expander<'_> {
                     name: ty.id.name.clone(),
                     arity: ty.id.arity,
                 };
-                let is_defined = self
+                let module = ModuleName::new(&ty.id.module);
+                if let Some(visibility) = self
                     .db
-                    .type_ids(self.project_id, ModuleName::new(ty.id.module.as_str()))
-                    .map(|ids| ids.contains(&local_id))
-                    .unwrap_or(false);
-                let is_exported = self
-                    .db
-                    .exported_type_ids(self.project_id, ModuleName::new(ty.id.module.as_str()))
-                    .map(|ids| ids.contains(&local_id))
-                    .unwrap_or(false);
-                if !is_defined {
+                    .type_ids(self.project_id, module)
+                    .ok()
+                    .and_then(|ids| ids.get(&local_id).copied())
+                {
+                    if visibility == Visibility::Public || ty.id.module == self.module {
+                        let expanded_params = self.expand_types(ty.args)?;
+                        Ok(ExtType::RemoteExtType(RemoteExtType {
+                            id: ty.id,
+                            args: expanded_params,
+                            pos: ty.pos,
+                        }))
+                    } else {
+                        Err(Invalid::NonExportedId(NonExportedId {
+                            pos: ty.pos,
+                            id: ty.id,
+                        }))
+                    }
+                } else {
                     Err(Invalid::UnknownId(UnknownId {
                         pos: ty.pos,
                         id: ty.id,
-                    }))
-                } else if ty.id.module != self.module && !is_exported {
-                    Err(Invalid::NonExportedId(NonExportedId {
-                        pos: ty.pos,
-                        id: ty.id,
-                    }))
-                } else {
-                    let expanded_params = self.expand_types(ty.args)?;
-                    Ok(ExtType::RemoteExtType(RemoteExtType {
-                        id: ty.id,
-                        args: expanded_params,
-                        pos: ty.pos,
                     }))
                 }
             }

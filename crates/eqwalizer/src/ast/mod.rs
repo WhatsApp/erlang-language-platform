@@ -22,7 +22,7 @@ pub use elp_types_db::eqwalizer::Id;
 pub use elp_types_db::eqwalizer::Pos;
 pub use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::AST;
-use fxhash::FxHashSet;
+use fxhash::FxHashMap;
 
 pub mod auto_import;
 pub mod compiler_macro;
@@ -49,6 +49,12 @@ pub enum Error {
     ContractivityError(ContractivityCheckError),
     VarianceCheckError(VarianceCheckError),
     TransitiveCheckError(TransitiveCheckError),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Visibility {
+    Public,
+    Private,
 }
 
 impl From<eetf::DecodeError> for Error {
@@ -250,25 +256,25 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
     Err(Error::InvalidBEAM)
 }
 
-pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
-    ast.forms
-        .iter()
-        .filter_map(|form| match form {
-            ExternalForm::ExternalTypeDecl(d) => Some(d.id.clone()),
-            ExternalForm::ExternalOpaqueDecl(d) => Some(d.id.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
-pub fn exported_type_ids(ast: &AST) -> FxHashSet<Id> {
-    ast.forms
-        .iter()
-        .flat_map(|form| match form {
-            ExternalForm::ExportType(tys) => tys.types.clone(),
-            _ => vec![],
-        })
-        .collect()
+pub fn type_ids(ast: &AST) -> FxHashMap<Id, Visibility> {
+    let mut type_ids = FxHashMap::default();
+    for form in &ast.forms {
+        match form {
+            ExternalForm::ExportType(tys) => {
+                for ty in &tys.types {
+                    type_ids.insert(ty.clone(), Visibility::Public);
+                }
+            }
+            ExternalForm::ExternalTypeDecl(d) => {
+                type_ids.entry(d.id.clone()).or_insert(Visibility::Private);
+            }
+            ExternalForm::ExternalOpaqueDecl(d) => {
+                type_ids.entry(d.id.clone()).or_insert(Visibility::Private);
+            }
+            _ => {}
+        }
+    }
+    type_ids
 }
 
 pub fn to_bytes(ast: &Vec<&ExternalForm>) -> Vec<u8> {
