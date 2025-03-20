@@ -781,44 +781,41 @@ impl StubExpander<'_> {
         }
     }
 
-    pub fn expand(&mut self, ast: AST) -> Result<(), TypeConversionError> {
-        ast.into_iter().try_for_each(|form| match form {
-            ExternalForm::File(f) => {
-                self.current_file = f.file;
-                Ok(())
+    pub fn expand(&mut self, forms: &[ExternalForm]) -> Result<(), TypeConversionError> {
+        for form in forms {
+            match form {
+                ExternalForm::File(f) => {
+                    self.current_file = f.file.clone();
+                }
+                ExternalForm::Export(e) => {
+                    self.stub.exports.extend(e.funs.iter().cloned());
+                }
+                ExternalForm::Import(i) => {
+                    self.stub
+                        .imports
+                        .extend(i.funs.iter().map(|id| (id.clone(), i.module.clone())));
+                }
+                ExternalForm::ExportType(e) => {
+                    self.stub.export_types.extend(e.types.iter().cloned());
+                }
+                ExternalForm::ExternalOptionalCallbacks(ocb) => {
+                    self.stub.optional_callbacks.extend(ocb.ids.iter().cloned());
+                }
+                ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d.clone())?,
+                ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d.clone())?,
+                ExternalForm::ExternalFunSpec(s) => self.add_spec(s.clone())?,
+                ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r.clone())?,
+                ExternalForm::ExternalCallback(cb) => self.add_callback(cb.clone())?,
+                ExternalForm::Module(_)
+                | ExternalForm::Behaviour(_)
+                | ExternalForm::CompileExportAll(_)
+                | ExternalForm::FunDecl(_)
+                | ExternalForm::ElpMetadata(_)
+                | ExternalForm::EqwalizerUnlimitedRefinement(_)
+                | ExternalForm::EqwalizerNowarnFunction(_)
+                | ExternalForm::TypingAttribute(_) => (),
             }
-            ExternalForm::Export(e) => {
-                self.stub.exports.extend(e.funs);
-                Ok(())
-            }
-            ExternalForm::Import(i) => {
-                i.funs.into_iter().for_each(|id| {
-                    self.stub.imports.insert(id, i.module.clone());
-                });
-                Ok(())
-            }
-            ExternalForm::ExportType(e) => {
-                self.stub.export_types.extend(e.types);
-                Ok(())
-            }
-            ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d),
-            ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d),
-            ExternalForm::ExternalFunSpec(s) => self.add_spec(s),
-            ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r),
-            ExternalForm::Behaviour(_) => Ok(()),
-            ExternalForm::ExternalCallback(cb) => self.add_callback(cb),
-            ExternalForm::ExternalOptionalCallbacks(ocb) => {
-                self.stub.optional_callbacks.extend(ocb.ids);
-                Ok(())
-            }
-            ExternalForm::Module(_)
-            | ExternalForm::CompileExportAll(_)
-            | ExternalForm::FunDecl(_)
-            | ExternalForm::ElpMetadata(_)
-            | ExternalForm::EqwalizerUnlimitedRefinement(_)
-            | ExternalForm::EqwalizerNowarnFunction(_)
-            | ExternalForm::TypingAttribute(_) => Ok(()),
-        })?;
+        }
         self.add_extra_types();
         self.stub.invalid_forms.append(&mut self.expander.invalids);
         Ok(())
