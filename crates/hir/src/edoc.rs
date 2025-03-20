@@ -76,7 +76,7 @@ impl EdocHeader {
         let mut res = String::new();
         if let Some(doc) = &self.doc {
             let prefix = match self.kind {
-                EdocHeaderKind::Module => "\n-moduledoc",
+                EdocHeaderKind::Module => "-moduledoc",
                 EdocHeaderKind::Function => "-doc",
             };
             res.push_str(&format!("{prefix} \"\"\"\n"));
@@ -94,11 +94,7 @@ impl EdocHeader {
             if let Some(returns) = &self.returns {
                 res.push_str(&format!("*Returns:* {}\n", returns.text));
             }
-            let suffix = match self.kind {
-                EdocHeaderKind::Module => "",
-                EdocHeaderKind::Function => "\n",
-            };
-            res.push_str(&format!("\"\"\".{suffix}"));
+            res.push_str(&format!("\"\"\".\n"));
         }
         res
     }

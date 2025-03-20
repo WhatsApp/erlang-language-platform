@@ -11,6 +11,7 @@
 use std::sync::LazyLock;
 
 use elp_ide_assists::helpers::extend_range;
+use elp_ide_assists::helpers::extend_range_to_adjacent_newline;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::algo;
@@ -107,8 +108,12 @@ fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize
     let form_list = sema.form_list(file_id);
     let module_attribute = form_list.module_attribute()?;
     let range = match last_significant_attribute(&form_list) {
-        Some(attribute) => attribute.form_id.range(sema.db, file_id),
-        None => module_attribute.form_id.range(sema.db, file_id),
+        Some(attribute) => {
+            extend_range_to_adjacent_newline(attribute.form_id.get_ast(sema.db, file_id).syntax())
+        }
+        None => extend_range_to_adjacent_newline(
+            module_attribute.form_id.get_ast(sema.db, file_id).syntax(),
+        ),
     };
     Some(range.end())
 }
