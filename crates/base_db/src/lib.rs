@@ -429,13 +429,7 @@ pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleNam
 lazy_static! {
 static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![
-        vec![
-          Regex::new(r"^.*_SUITE_data/.+$").unwrap(),
-          // 2025-03-19
-          // Temporarily exclude common test modules until our bxl updates are complete
-          // Based on CI errors for D71318797
-          Regex::new(r"^.*buck2/prelude/erlang/.*.+$").unwrap()
-        ],
+        vec![Regex::new(r"^.*_SUITE_data/.+$").unwrap()],
         //ignore sources goes here
         // @fb-only
     ];

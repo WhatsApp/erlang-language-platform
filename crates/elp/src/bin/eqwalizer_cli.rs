@@ -20,6 +20,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp::otp_file_to_ignore;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::Mode;
@@ -171,6 +172,7 @@ pub fn do_eqwalize_all(
             if analysis
                 .should_eqwalize(file_id, include_generated)
                 .unwrap()
+                && !otp_file_to_ignore(&analysis, file_id)
             {
                 if args.stats {
                     add_stat(name.to_string());
@@ -246,6 +248,7 @@ pub fn do_eqwalize_app(
                 && analysis
                     .should_eqwalize(file_id, include_generated)
                     .unwrap()
+                && !otp_file_to_ignore(&analysis, file_id)
             {
                 Some(file_id)
             } else {
@@ -310,6 +313,7 @@ pub fn eqwalize_target(
                     if analysis
                         .should_eqwalize(file_id, include_generated)
                         .unwrap()
+                        && !otp_file_to_ignore(&analysis, file_id)
                     {
                         file_ids.push(file_id);
                     }
@@ -373,6 +377,7 @@ pub fn eqwalize_stats(
             if analysis
                 .should_eqwalize(file_id, include_generated)
                 .expect("cancelled")
+                && !otp_file_to_ignore(&analysis, file_id)
             {
                 analysis
                     .eqwalizer_stats(project_id, file_id)
