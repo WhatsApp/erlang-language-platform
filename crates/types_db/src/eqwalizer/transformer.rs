@@ -83,9 +83,12 @@ use crate::eqwalizer::expr::RecordFieldNamed;
 
 pub trait Transformer<T>: Sized {
     fn transform_ast(&mut self, ast: AST) -> Result<AST, T> {
-        ast.into_iter()
+        let forms = ast
+            .forms
+            .into_iter()
             .map(|form| self.transform_form(form))
-            .collect::<Result<Vec<_>, _>>()
+            .collect::<Result<_, _>>()?;
+        Ok(AST { forms, ..ast })
     }
     fn transform_expr(&mut self, expr: Expr) -> Result<Expr, T> {
         walk_expr(self, expr)

@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use elp_base_db::AbsPathBuf;
 use elp_base_db::AppType;
+use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
@@ -46,7 +47,7 @@ pub trait EqwalizerErlASTStorage {
     ) -> Result<Arc<Vec<u8>>, Error> {
         self.eqwalizer_ast(project_id, module).map(|ast| {
             Arc::new(super::to_bytes(
-                &ast.iter().filter(is_non_stub_form).collect(),
+                &ast.forms.iter().filter(is_non_stub_form).collect(),
             ))
         })
     }
@@ -54,7 +55,6 @@ pub trait EqwalizerErlASTStorage {
 
 #[salsa::query_group(EqwalizerASTDatabaseStorage)]
 pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
-    fn from_beam(&self, project_id: ProjectId, module: ModuleName) -> bool;
     fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
 
     fn type_ids(
@@ -98,17 +98,6 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
     ) -> Result<Arc<Vec<u8>>, Error>;
 }
 
-fn from_beam(db: &dyn EqwalizerASTDatabase, project_id: ProjectId, module: ModuleName) -> bool {
-    if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
-        // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nfrom_beam: {:?}", file_id));
-        if let Some(app) = db.file_app_data(file_id) {
-            return app.app_type == AppType::Otp;
-        }
-    }
-    false
-}
-
 fn is_non_stub_form(form: &&ExternalForm) -> bool {
     match form {
         ExternalForm::Module(_) => true,
@@ -127,32 +116,33 @@ fn converted_stub(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<AST>, Error> {
-    if db.from_beam(project_id, module.to_owned()) {
-        if let Some(beam_path) = beam_path(db, project_id, module.to_owned()) {
+    if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
+        if let Some(beam_path) = from_beam_path(db, file_id, &module) {
             if let Ok(beam_contents) = std::fs::read(&beam_path) {
                 super::from_beam(&beam_contents).map(Arc::new)
             } else {
                 Err(Error::BEAMNotFound(beam_path.into()))
             }
         } else {
-            Err(Error::ModuleNotFound(module.as_str().into()))
+            let ast = db.erl_ast_bytes(project_id, module)?;
+            super::from_bytes(&ast, true).map(Arc::new)
         }
     } else {
-        let ast = db.erl_ast_bytes(project_id, module)?;
-        super::from_bytes(&ast, true).map(Arc::new)
+        Err(Error::ModuleNotFound(module.as_str().into()))
     }
 }
 
-fn beam_path(
+fn from_beam_path(
     db: &dyn EqwalizerASTDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
+    file_id: FileId,
+    module: &ModuleName,
 ) -> Option<AbsPathBuf> {
-    let file_id = db.module_index(project_id).file_for_module(&module)?;
-    // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nbeam_path: {:?}", file_id));
-    let app = db.file_app_data(file_id)?;
-    let ebin = app.ebin_path.as_ref()?;
+    let app_data = db.file_app_data(file_id)?;
+    if app_data.app_type != AppType::Otp {
+        // Only OTP modules are loaded from BEAM
+        return None;
+    }
+    let ebin = app_data.ebin_path.as_ref()?;
     let filename = format!("{}.beam", module.as_str());
     Some(ebin.join(filename))
 }
@@ -180,10 +170,10 @@ fn expanded_stub(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let stub = db.converted_stub(project_id, module.clone())?;
-    let mut expander = StubExpander::new(db, project_id, module.as_str().into(), &stub);
+    let ast = db.converted_stub(project_id, module.clone())?;
+    let mut expander = StubExpander::new(db, project_id, module.as_str().into(), &ast);
     expander
-        .expand(&stub)
+        .expand(&ast.forms)
         .map(|()| Arc::new(expander.stub))
         .map_err(Error::TypeConversionError)
 }

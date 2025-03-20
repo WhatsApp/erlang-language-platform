@@ -251,7 +251,8 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
 }
 
 pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
-    ast.iter()
+    ast.forms
+        .iter()
         .filter_map(|form| match form {
             ExternalForm::ExternalTypeDecl(d) => Some(d.id.clone()),
             ExternalForm::ExternalOpaqueDecl(d) => Some(d.id.clone()),
@@ -261,7 +262,8 @@ pub fn type_ids(ast: &AST) -> FxHashSet<Id> {
 }
 
 pub fn exported_type_ids(ast: &AST) -> FxHashSet<Id> {
-    ast.iter()
+    ast.forms
+        .iter()
         .flat_map(|form| match form {
             ExternalForm::ExportType(tys) => tys.types.clone(),
             _ => vec![],

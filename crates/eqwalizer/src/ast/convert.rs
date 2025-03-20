@@ -154,6 +154,7 @@ use elp_types_db::eqwalizer::pat::PatWild;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::LineAndColumn;
 use elp_types_db::eqwalizer::TextRange;
+use elp_types_db::eqwalizer::AST;
 use fxhash::FxHashSet;
 
 use super::auto_import;
@@ -2123,7 +2124,7 @@ pub fn convert_forms(
     term: &eetf::Term,
     from_beam: bool,
     filter_stub: bool,
-) -> Result<Vec<ExternalForm>, ConversionError> {
+) -> Result<AST, ConversionError> {
     if let Term::List(forms) = term {
         let dummy_converter = Converter {
             no_auto_imports: FxHashSet::default(),
@@ -2143,14 +2144,17 @@ pub fn convert_forms(
             filter_stub,
             current_file: None,
         };
-        return Ok(forms
-            .elements
-            .iter()
-            .map(|f| converter.convert_form(f))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect());
+        return Ok(AST {
+            from_beam,
+            forms: forms
+                .elements
+                .iter()
+                .map(|f| converter.convert_form(f))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
+        });
     }
     Err(ConversionError::InvalidForms)
 }

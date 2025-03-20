@@ -612,6 +612,7 @@ pub struct StubExpander<'d> {
     expander: Expander<'d>,
     type_converter: TypeConverter,
     pub stub: ModuleStub,
+    from_beam: bool,
     module_file: SmolStr,
     current_file: SmolStr,
 }
@@ -635,6 +636,7 @@ impl StubExpander<'_> {
             ..ModuleStub::default()
         };
         let module_file = ast
+            .forms
             .iter()
             .find_map(|form| match form {
                 ExternalForm::File(f) => Some(f.file.clone()),
@@ -643,6 +645,7 @@ impl StubExpander<'_> {
             .unwrap();
         let current_file = module_file.clone();
         StubExpander {
+            from_beam: ast.from_beam,
             expander,
             type_converter,
             stub,
@@ -754,11 +757,7 @@ impl StubExpander<'_> {
     fn add_extra_types(&mut self) {
         if let "erlang" = self.stub.module.as_str() {
             let pos: ast::Pos = {
-                if self
-                    .expander
-                    .db
-                    .from_beam(self.expander.project_id, ModuleName::new("erlang"))
-                {
+                if self.from_beam {
                     elp_types_db::eqwalizer::LineAndColumn::fake().into()
                 } else {
                     elp_types_db::eqwalizer::TextRange::fake().into()

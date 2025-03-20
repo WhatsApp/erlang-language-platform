@@ -25,7 +25,7 @@ use super::AST;
 
 pub trait Visitor<'a, T>: Sized {
     fn visit_ast(&mut self, ast: &'a AST) -> Result<(), T> {
-        ast.iter().try_for_each(|form| self.visit_form(form))
+        ast.forms.iter().try_for_each(|form| self.visit_form(form))
     }
     fn visit_expr(&mut self, expr: &'a Expr) -> Result<(), T> {
         walk_expr(self, expr)

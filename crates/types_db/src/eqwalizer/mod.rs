@@ -27,7 +27,11 @@ pub mod transformer;
 pub mod types;
 pub mod visitor;
 
-pub type AST = Vec<form::ExternalForm>;
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct AST {
+    pub from_beam: bool,
+    pub forms: Vec<form::ExternalForm>,
+}
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
