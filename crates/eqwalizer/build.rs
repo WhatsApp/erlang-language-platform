@@ -15,7 +15,7 @@ use std::process::Command;
 fn main() {
     let source_directory = Path::new("../../../eqwalizer/eqwalizer");
     let out_dir = env::var_os("OUT_DIR").unwrap();
-    let eqwalizer_out_dir = Path::new("../../../../../buck-out/eqwalizer/scala-2.13");
+    let eqwalizer_out_dir = Path::new("../../../../../buck-out/eqwalizer/scala-3.6.4");
     let dest_path = Path::new(&out_dir).join("eqwalizer");
     let extension;
 
