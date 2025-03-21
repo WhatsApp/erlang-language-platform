@@ -784,4 +784,42 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_generic_tag() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc These are docs for the main function
+%% @something First line
+%%            Second line
+%% @else Third line
+%%       Fourth line
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+These are docs for the main function
+  *Something:* First line
+  Second line
+  *Else:* Third line
+  Fourth line
+""".
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }

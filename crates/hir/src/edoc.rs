@@ -56,6 +56,7 @@ pub struct EdocHeader {
     pub doc: Option<Tag>,
     pub params: FxHashMap<String, Tag>,
     pub returns: Option<Tag>,
+    pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
 
@@ -69,6 +70,7 @@ impl EdocHeader {
             .iter()
             .chain(self.params.values())
             .chain(&self.returns)
+            .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
     }
 
@@ -102,10 +104,31 @@ impl EdocHeader {
                     res.push_str(&text);
                 }
             }
+            for (name, tag) in &self.unknown {
+                let name = capitalize_first_char(name).unwrap_or(name.to_string());
+                res.push_str(&format!("  *{}:* ", name));
+                if let Some((head, tail)) = &tag.lines.split_first() {
+                    if let Some(text) = &head.content {
+                        res.push_str(&format!("{text}\n"));
+                    }
+                    for line in tail.iter() {
+                        if let Some(text) = line.to_markdown() {
+                            res.push_str(&format!("  {}", text));
+                        }
+                    }
+                }
+            }
             res.push_str(&format!("\"\"\".\n"));
         }
         res
     }
+}
+
+fn capitalize_first_char(word: &str) -> Option<String> {
+    let mut chars = word.chars();
+    chars
+        .next()
+        .map(|char| char.to_uppercase().to_string() + &chars.as_str())
 }
 
 fn decode_html_entities(text: &str) -> Cow<str> {
@@ -177,6 +200,7 @@ pub enum TagKind {
     Doc,
     Returns,
     Param(String),
+    Unknown(String),
 }
 
 pub fn file_edoc_comments_query(
@@ -262,6 +286,7 @@ struct ParseContext {
     doc: Option<Tag>,
     returns: Option<Tag>,
     params: FxHashMap<String, Tag>,
+    unknown: Vec<(String, Tag)>,
 }
 
 impl ParseContext {
@@ -317,6 +342,15 @@ impl ParseContext {
                             },
                         );
                     }
+                    TagKind::Unknown(unknown) => {
+                        self.unknown.push((
+                            unknown.to_string(),
+                            Tag {
+                                lines: self.lines.clone(),
+                                range: tag_name.range,
+                            },
+                        ));
+                    }
                 }
                 self.current_tag = None;
                 self.lines = vec![];
@@ -325,7 +359,11 @@ impl ParseContext {
         }
     }
     fn to_edoc_header(self, kind: EdocHeaderKind) -> Option<EdocHeader> {
-        if self.doc.is_none() && self.returns.is_none() && self.params.is_empty() {
+        if self.doc.is_none()
+            && self.returns.is_none()
+            && self.params.is_empty()
+            && self.unknown.is_empty()
+        {
             return None;
         }
         Some(EdocHeader {
@@ -334,6 +372,7 @@ impl ParseContext {
             doc: self.doc,
             params: self.params,
             returns: self.returns,
+            unknown: self.unknown.clone(),
         })
     }
 }
@@ -394,7 +433,15 @@ fn parse_edoc(
                         context.end_tag(content, syntax);
                         context.process_tag();
                     }
-                    _ => {}
+                    unknown => {
+                        context.start_tag(
+                            TagKind::Unknown(unknown.to_string()),
+                            range,
+                            content,
+                            comment,
+                            syntax,
+                        );
+                    }
                 }
             }
         }
