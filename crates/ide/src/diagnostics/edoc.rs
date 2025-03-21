@@ -65,6 +65,16 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         sema, file_id, doc.range, &header, doc_start,
                     ));
                 }
+            } else if let Some(equiv) = &header.equiv {
+                if let Some(doc_start) = header.start() {
+                    diagnostics.push(old_edoc_syntax_diagnostic(
+                        sema,
+                        file_id,
+                        equiv.range,
+                        &header,
+                        doc_start,
+                    ));
+                }
             }
         }
     }
@@ -92,7 +102,7 @@ fn old_edoc_syntax_diagnostic(
             builder.delete(separator_range);
         }
     }
-    builder.insert(insert_offset, header.to_markdown());
+    builder.insert(insert_offset, header.to_eep59());
     let source_change = builder.finish();
     let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
     Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
@@ -816,6 +826,82 @@ These are docs for the main function
 """.
 -spec main(any(), any()) -> ok.
 main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_equiv() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @eq~uiv main(A, B, undefined)
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    main(A, B, undefined).
+
+-spec main(any(), any(), any()) -> ok.
+main(A, B, C) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc #{equiv => main(A, B, undefined)}.
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    main(A, B, undefined).
+
+-spec main(any(), any(), any()) -> ok.
+main(A, B, C) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_equiv_combined() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @do~c This is the main function
+%% @equiv main(A, B, undefined)
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    main(A, B, undefined).
+
+-spec main(any(), any(), any()) -> ok.
+main(A, B, C) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+This is the main function
+""".
+-doc #{equiv => main(A, B, undefined)}.
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    main(A, B, undefined).
+
+-spec main(any(), any(), any()) -> ok.
+main(A, B, C) ->
     dep().
 
 dep() -> ok.

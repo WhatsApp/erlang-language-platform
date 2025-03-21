@@ -56,6 +56,7 @@ pub struct EdocHeader {
     pub doc: Option<Tag>,
     pub params: FxHashMap<String, Tag>,
     pub returns: Option<Tag>,
+    pub equiv: Option<Tag>,
     pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
@@ -70,11 +71,12 @@ impl EdocHeader {
             .iter()
             .chain(self.params.values())
             .chain(&self.returns)
+            .chain(&self.equiv)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
     }
 
-    pub fn to_markdown(&self) -> String {
+    pub fn to_eep59(&self) -> String {
         let mut res = String::new();
         if let Some(doc) = &self.doc {
             let prefix = match self.kind {
@@ -119,6 +121,11 @@ impl EdocHeader {
                 }
             }
             res.push_str(&format!("\"\"\".\n"));
+        }
+        if let Some(equiv) = &self.equiv {
+            if let Some(equivalent_to) = equiv.to_markdown() {
+                res.push_str(&format!("-doc #{{equiv => {}}}.\n", equivalent_to.trim()));
+            }
         }
         res
     }
@@ -200,6 +207,7 @@ pub enum TagKind {
     Doc,
     Returns,
     Param(String),
+    Equiv,
     Unknown(String),
 }
 
@@ -286,6 +294,7 @@ struct ParseContext {
     doc: Option<Tag>,
     returns: Option<Tag>,
     params: FxHashMap<String, Tag>,
+    equiv: Option<Tag>,
     unknown: Vec<(String, Tag)>,
 }
 
@@ -342,6 +351,12 @@ impl ParseContext {
                             },
                         );
                     }
+                    TagKind::Equiv => {
+                        self.equiv = Some(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
                     TagKind::Unknown(unknown) => {
                         self.unknown.push((
                             unknown.to_string(),
@@ -362,6 +377,7 @@ impl ParseContext {
         if self.doc.is_none()
             && self.returns.is_none()
             && self.params.is_empty()
+            && self.equiv.is_none()
             && self.unknown.is_empty()
         {
             return None;
@@ -372,6 +388,7 @@ impl ParseContext {
             doc: self.doc,
             params: self.params,
             returns: self.returns,
+            equiv: self.equiv.clone(),
             unknown: self.unknown.clone(),
         })
     }
@@ -428,6 +445,9 @@ fn parse_edoc(
                                 syntax,
                             );
                         }
+                    }
+                    "equiv" => {
+                        context.start_tag(TagKind::Equiv, range, content, comment, syntax);
                     }
                     "end" => {
                         context.end_tag(content, syntax);
@@ -538,6 +558,7 @@ mod tests {
                     doc,
                     params,
                     returns,
+                    equiv,
                     ..
                 },
             )| {
@@ -576,6 +597,20 @@ mod tests {
                 if let Some(Tag { lines, .. }) = returns {
                     if !lines.is_empty() {
                         buf.push_str("  returns\n");
+                        lines.iter().for_each(|line| {
+                            if let Some(text) = &line.content {
+                                buf.push_str(&format!(
+                                    "    {:?}: \"{}\"\n",
+                                    line.syntax.range(),
+                                    text
+                                ));
+                            }
+                        });
+                    }
+                }
+                if let Some(Tag { lines, .. }) = equiv {
+                    if !lines.is_empty() {
+                        buf.push_str("  equiv\n");
                         lines.iter().for_each(|line| {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
