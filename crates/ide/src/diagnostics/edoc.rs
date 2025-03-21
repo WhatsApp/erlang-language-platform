@@ -11,7 +11,7 @@
 use std::sync::LazyLock;
 
 use elp_ide_assists::helpers::extend_range;
-use elp_ide_assists::helpers::extend_range_to_adjacent_newline;
+use elp_ide_assists::helpers::extend_range_to_adjacent_newline_skip_inline_comment;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::algo;
@@ -114,10 +114,10 @@ fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize
     let form_list = sema.form_list(file_id);
     let module_attribute = form_list.module_attribute()?;
     let range = match last_significant_attribute(&form_list) {
-        Some(attribute) => {
-            extend_range_to_adjacent_newline(attribute.form_id.get_ast(sema.db, file_id).syntax())
-        }
-        None => extend_range_to_adjacent_newline(
+        Some(attribute) => extend_range_to_adjacent_newline_skip_inline_comment(
+            attribute.form_id.get_ast(sema.db, file_id).syntax(),
+        ),
+        None => extend_range_to_adjacent_newline_skip_inline_comment(
             module_attribute.form_id.get_ast(sema.db, file_id).syntax(),
         ),
     };
@@ -305,6 +305,42 @@ dep() -> ok.
 -module(main).
 -oncall(my_oncall).
 -author(my_author).
+-moduledoc """
+This is the module documentation.
+With an extra line.
+""".
+
+-export([main/0]).
+
+main() ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_fix_significant_attributes_with_comment() {
+        check_fix(
+            r#"
+%% @d~oc This is the module documentation.
+%%       With an extra line.
+-module(main).
+-oncall(my_oncall).
+-author(my_author). %% And this is a comment
+
+-export([main/0]).
+
+main() ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-oncall(my_oncall).
+-author(my_author). %% And this is a comment
 -moduledoc """
 This is the module documentation.
 With an extra line.

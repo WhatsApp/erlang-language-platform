@@ -90,6 +90,17 @@ pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Op
     Some(token)
 }
 
+/// Skip inline comments, stopping as soon as a new line is encountered.
+pub fn skip_inline_comment(syntax: &SyntaxNode) -> Option<SyntaxToken> {
+    let mut token = syntax.last_token()?.next_token()?;
+    while token.kind() == SyntaxKind::COMMENT
+        || token.kind() == SyntaxKind::WHITESPACE && !token.text().starts_with("\n")
+    {
+        token = token.next_token()?;
+    }
+    Some(token)
+}
+
 /// Finds the first sibling in the given direction which is not `trivia`
 pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Option<SyntaxElement> {
     return match element {

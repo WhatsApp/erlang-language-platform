@@ -18,6 +18,7 @@ use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_syntax::algo;
+use elp_syntax::algo::skip_inline_comment;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
 use elp_syntax::AstNode;
@@ -435,6 +436,17 @@ pub fn extend_range_to_adjacent_newline(syntax: &SyntaxNode) -> TextRange {
     match adjacent_newline(syntax) {
         Some(_token) => TextRange::new(range.start(), range.end() + TextSize::from(1)),
         None => range,
+    }
+}
+
+pub fn extend_range_to_adjacent_newline_skip_inline_comment(syntax: &SyntaxNode) -> TextRange {
+    let range = syntax.text_range();
+    match skip_inline_comment(syntax) {
+        None => extend_range_to_adjacent_newline(syntax),
+        Some(token) => TextRange::new(
+            range.start(),
+            token.text_range().start() + TextSize::from(1),
+        ),
     }
 }
 
