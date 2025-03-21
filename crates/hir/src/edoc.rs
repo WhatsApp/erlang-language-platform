@@ -87,19 +87,6 @@ impl EdocHeader {
             if let Some(text) = doc.to_markdown() {
                 res.push_str(&text);
             }
-            for (name, param) in &self.params {
-                res.push_str(&format!("  - *{}:* ", name));
-                if let Some((head, tail)) = &param.lines.split_first() {
-                    if let Some(text) = &head.content {
-                        res.push_str(&format!("{text}\n"));
-                    }
-                    for line in tail.iter() {
-                        if let Some(text) = line.to_markdown() {
-                            res.push_str(&format!("    {}", text));
-                        }
-                    }
-                }
-            }
             if let Some(returns) = &self.returns {
                 res.push_str("*Returns:* ");
                 if let Some(text) = returns.to_markdown() {
@@ -122,10 +109,23 @@ impl EdocHeader {
             }
             res.push_str(&format!("\"\"\".\n"));
         }
+        let mut metadata = String::new();
+        for (name, param) in &self.params {
+            let mut description = String::new();
+            for line in &param.lines {
+                if let Some(content) = line.to_markdown() {
+                    description.push_str(&format!("{} ", &content.trim()));
+                }
+            }
+            metadata.push_str(&format!("\"{name}\" => \"{}\", ", description.trim()));
+        }
         if let Some(equiv) = &self.equiv {
             if let Some(equivalent_to) = equiv.to_markdown() {
-                res.push_str(&format!("-doc #{{equiv => {}}}.\n", equivalent_to.trim()));
+                metadata.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
             }
+        }
+        if !metadata.is_empty() {
+            res.push_str(&format!("-doc #{{{}}}.\n", metadata.trim_end_matches(", ")));
         }
         res
     }

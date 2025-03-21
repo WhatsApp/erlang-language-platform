@@ -525,9 +525,8 @@ dep() -> ok.
 -module(main).
 -doc """
 This is the main doc
-  - *A:* is a param
-  - *B:* is another param
 """.
+-doc #{"A" => "is a param", "B" => "is another param"}.
 main(A, B) ->
     dep().
 
@@ -781,11 +780,8 @@ dep() -> ok.
 
 -doc """
 These are docs for the main function
-  - *A:* Is a param
-    with a long explanation
-  - *B:* Is also a param
-    with a long explanation
 """.
+-doc #{"A" => "Is a param with a long explanation", "B" => "Is also a param with a long explanation"}.
 -spec main(any(), any()) -> ok.
 main(A, B) ->
     dep().
