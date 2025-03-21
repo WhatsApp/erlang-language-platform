@@ -263,7 +263,7 @@ impl FunctionDef {
             Some(edoc_header) => edoc_header
                 .params
                 .into_iter()
-                .map(|(name, param)| (name, param.description))
+                .map(|(name, param)| (name, param.description()))
                 .collect(),
             None => FxHashMap::default(),
         }

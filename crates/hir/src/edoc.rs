@@ -53,9 +53,9 @@ use crate::InFileAstPtr;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
     pub kind: EdocHeaderKind,
-    pub doc: Option<Doc>,
-    pub params: FxHashMap<String, Param>,
-    pub returns: Option<Returns>,
+    pub doc: Option<Tag>,
+    pub params: FxHashMap<String, Tag>,
+    pub returns: Option<Tag>,
     pub ranges: Vec<TextRange>,
 }
 
@@ -67,9 +67,9 @@ impl EdocHeader {
     pub fn comments(&self) -> impl Iterator<Item = &InFileAstPtr<ast::Comment>> {
         self.doc
             .iter()
-            .flat_map(|doc| doc.lines.iter().map(|line| &line.syntax))
-            .chain(self.params.values().map(|param| &param.syntax))
-            .chain(self.returns.iter().map(|returns| &returns.syntax))
+            .chain(self.params.values())
+            .chain(&self.returns)
+            .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
     }
 
     pub fn to_markdown(&self) -> String {
@@ -80,19 +80,27 @@ impl EdocHeader {
                 EdocHeaderKind::Function => "-doc",
             };
             res.push_str(&format!("{prefix} \"\"\"\n"));
-            for line in &doc.lines {
-                if let Some(text) = &line.text {
-                    res.push_str(&convert_single_quotes(&convert_triple_quotes(
-                        &decode_html_entities(text),
-                    )));
-                    res.push('\n');
-                }
+            if let Some(text) = doc.to_markdown() {
+                res.push_str(&text);
             }
             for (name, param) in &self.params {
-                res.push_str(&format!("  - @param {} {}\n", name, param.description));
+                res.push_str(&format!("  - *{}:* ", name));
+                if let Some((head, tail)) = &param.lines.split_first() {
+                    if let Some(text) = &head.content {
+                        res.push_str(&format!("{text}\n"));
+                    }
+                    for line in tail.iter() {
+                        if let Some(text) = line.to_markdown() {
+                            res.push_str(&format!("    {}", text));
+                        }
+                    }
+                }
             }
             if let Some(returns) = &self.returns {
-                res.push_str(&format!("*Returns:* {}\n", returns.text));
+                res.push_str("*Returns:* ");
+                if let Some(text) = returns.to_markdown() {
+                    res.push_str(&text);
+                }
             }
             res.push_str(&format!("\"\"\".\n"));
         }
@@ -119,27 +127,56 @@ pub enum EdocHeaderKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Doc {
-    pub lines: Vec<EdocDocLine>,
-    pub tag_range: TextRange,
+pub struct Tag {
+    pub lines: Vec<Line>,
+    pub range: TextRange,
+}
+
+impl Tag {
+    pub fn description(&self) -> String {
+        let mut res = String::new();
+        for line in &self.lines {
+            if let Some(content) = &line.content {
+                res.push_str(&format!("{}", content))
+            };
+        }
+        res
+    }
+    pub fn to_markdown(&self) -> Option<String> {
+        let mut res = String::new();
+        for line in &self.lines {
+            if let Some(text) = line.to_markdown() {
+                res.push_str(&text);
+            }
+        }
+        ensure_non_empty(&res)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EdocDocLine {
-    pub text: Option<String>,
+pub struct Line {
+    pub content: Option<String>,
     pub syntax: InFileAstPtr<ast::Comment>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Param {
-    pub description: String,
-    pub syntax: InFileAstPtr<ast::Comment>,
+impl Line {
+    pub fn to_markdown(&self) -> Option<String> {
+        let content = self.content.clone()?;
+        Some(format!("{}\n", convert_to_markdown(&content).to_string()))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Returns {
-    text: String,
-    syntax: InFileAstPtr<ast::Comment>,
+pub struct TagName {
+    kind: TagKind,
+    range: TextRange,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TagKind {
+    Doc,
+    Returns,
+    Param(String),
 }
 
 pub fn file_edoc_comments_query(
@@ -216,94 +253,155 @@ fn edoc_header(
     Some((form, parse_edoc(kind, form, &comments)?))
 }
 
+#[derive(Debug, Default)]
+struct ParseContext {
+    ranges: Vec<TextRange>,
+    current_tag: Option<TagName>,
+    lines: Vec<Line>,
+
+    doc: Option<Tag>,
+    returns: Option<Tag>,
+    params: FxHashMap<String, Tag>,
+}
+
+impl ParseContext {
+    fn add_line(&mut self, line: Line) {
+        self.lines.push(line);
+    }
+    fn start_tag(
+        &mut self,
+        kind: TagKind,
+        range: TextRange,
+        content: &str,
+        comment: &ast::Comment,
+        syntax: InFileAstPtr<ast::Comment>,
+    ) {
+        let tag = TagName {
+            kind,
+            range: range + comment.syntax().text_range().start(),
+        };
+        self.add_line(Line {
+            content: ensure_non_empty(content),
+            syntax,
+        });
+        self.current_tag = Some(tag);
+    }
+    fn end_tag(&mut self, content: &str, syntax: InFileAstPtr<ast::Comment>) {
+        self.add_line(Line {
+            content: ensure_non_empty(content),
+            syntax,
+        });
+    }
+    fn process_tag(&mut self) {
+        match &self.current_tag {
+            Some(tag_name) => {
+                match &tag_name.kind {
+                    TagKind::Doc => {
+                        self.doc = Some(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
+                    TagKind::Returns => {
+                        self.returns = Some(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
+                    TagKind::Param(name) => {
+                        self.params.insert(
+                            name.to_string(),
+                            Tag {
+                                lines: self.lines.clone(),
+                                range: tag_name.range,
+                            },
+                        );
+                    }
+                }
+                self.current_tag = None;
+                self.lines = vec![];
+            }
+            None => (),
+        }
+    }
+    fn to_edoc_header(self, kind: EdocHeaderKind) -> Option<EdocHeader> {
+        if self.doc.is_none() && self.returns.is_none() && self.params.is_empty() {
+            return None;
+        }
+        Some(EdocHeader {
+            kind,
+            ranges: self.ranges,
+            doc: self.doc,
+            params: self.params,
+            returns: self.returns,
+        })
+    }
+}
+
+fn ensure_non_empty(text: &str) -> Option<String> {
+    if text.trim().is_empty() {
+        None
+    } else {
+        Some(text.to_string())
+    }
+}
+
 fn parse_edoc(
     kind: EdocHeaderKind,
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
-    let mut parsing_doc = false;
-    let mut doc_tag_range = None;
-    let mut doc_lines = vec![];
-    let mut params = FxHashMap::default();
-    let mut returns = None;
-    let mut ranges = vec![];
+    let mut context = ParseContext::default();
+
     for comment in comments {
         let text = comment.syntax().text().to_string();
         let syntax = InFileAstPtr::new(form.file_id(), AstPtr::new(comment));
-        let extracted = extract_edoc_tag_and_content(&text);
-        match extracted {
+        match extract_edoc_tag_and_content(&text) {
             None => {
-                if parsing_doc {
-                    ranges.push(comment.syntax().text_range());
-                    let text = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
-                    doc_lines.push(EdocDocLine {
-                        text: Some(text.to_string()),
+                if let Some(_tag) = &context.current_tag {
+                    context.ranges.push(comment.syntax().text_range());
+                    let content = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
+                    context.add_line(Line {
+                        content: Some(content.to_string()),
                         syntax,
                     });
                 }
             }
-            Some((tag_range, tag, text)) => {
-                ranges.push(comment.syntax().text_range());
+            Some((range, tag, content)) => {
+                if tag != "end" {
+                    context.process_tag();
+                }
+                context.ranges.push(comment.syntax().text_range());
                 match tag {
                     "doc" => {
-                        let text = if text.trim().is_empty() {
-                            None
-                        } else {
-                            Some(text.to_string())
-                        };
-                        doc_tag_range = Some(tag_range + comment.syntax().text_range().start());
-                        parsing_doc = true;
-                        doc_lines.push(EdocDocLine { text, syntax });
+                        context.start_tag(TagKind::Doc, range, content, comment, syntax);
                     }
-                    "end" => {
-                        parsing_doc = false;
-                        doc_tag_range = doc_tag_range
-                            .or(Some(tag_range + comment.syntax().text_range().start()));
-                        doc_lines.push(EdocDocLine { text: None, syntax });
+                    "returns" => {
+                        context.start_tag(TagKind::Returns, range, content, comment, syntax);
                     }
                     "param" => {
-                        if let Some((name, description)) = text.split_once(" ") {
-                            params.insert(
-                                name.to_string(),
-                                Param {
-                                    description: description.to_string(),
-                                    syntax,
-                                },
+                        if let Some((name, content)) = content.split_once(" ") {
+                            context.start_tag(
+                                TagKind::Param(name.to_string()),
+                                range,
+                                content,
+                                comment,
+                                syntax,
                             );
                         }
                     }
-                    "returns" => {
-                        returns = Some(Returns {
-                            text: text.to_string(),
-                            syntax,
-                        });
+                    "end" => {
+                        context.end_tag(content, syntax);
+                        context.process_tag();
                     }
                     _ => {}
                 }
             }
         }
     }
+    context.process_tag();
 
-    // all the comments had no tags, so there's no edoc to consider
-    if doc_lines.is_empty() && params.is_empty() && returns.is_none() {
-        return None;
-    }
-
-    let doc = if doc_lines.is_empty() {
-        None
-    } else {
-        Some(Doc {
-            lines: doc_lines,
-            tag_range: doc_tag_range.expect("this has to be set if lines are non-empty"),
-        })
-    };
-    Some(EdocHeader {
-        kind,
-        ranges,
-        doc,
-        params,
-        returns,
-    })
+    context.to_edoc_header(kind)
 }
 
 /// An edoc comment must be alone on a line, it cannot come after
@@ -367,6 +465,10 @@ fn convert_triple_quotes(comment: &str) -> Cow<str> {
     RE.replace_all(comment, "```")
 }
 
+fn convert_to_markdown(text: &str) -> String {
+    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(text))).to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
@@ -397,7 +499,7 @@ mod tests {
                     if !doc.lines.is_empty() {
                         buf.push_str("  doc\n");
                         doc.lines.iter().for_each(|line| {
-                            if let Some(text) = &line.text {
+                            if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",
                                     line.syntax.range(),
@@ -411,16 +513,32 @@ mod tests {
                     buf.push_str("  params\n");
                     params.iter().for_each(|(name, param)| {
                         buf.push_str(&format!("    {name}\n"));
-                        buf.push_str(&format!(
-                            "      {:?}: \"{}\"\n",
-                            param.syntax.range(),
-                            param.description
-                        ));
+                        if !param.lines.is_empty() {
+                            param.lines.iter().for_each(|line| {
+                                if let Some(text) = &line.content {
+                                    buf.push_str(&format!(
+                                        "      {:?}: \"{}\"\n",
+                                        line.syntax.range(),
+                                        text
+                                    ));
+                                }
+                            });
+                        }
                     });
                 }
-                if let Some(Returns { text, syntax }) = returns {
-                    buf.push_str("  returns\n");
-                    buf.push_str(&format!("    {:?}: \"{}\"\n", syntax.range(), text));
+                if let Some(Tag { lines, .. }) = returns {
+                    if !lines.is_empty() {
+                        buf.push_str("  returns\n");
+                        lines.iter().for_each(|line| {
+                            if let Some(text) = &line.content {
+                                buf.push_str(&format!(
+                                    "    {:?}: \"{}\"\n",
+                                    line.syntax.range(),
+                                    text
+                                ));
+                            }
+                        });
+                    }
                 }
             },
         );
@@ -489,6 +607,7 @@ mod tests {
                   params
                     Foo
                       25..64: "${2:Argument description}"
+                      65..87: "Does not have a tag"
                   returns
                     88..123: "${4:Return description}"
             "#]],
@@ -519,10 +638,7 @@ mod tests {
                 %% @end
                 bar() -> ok.
 "#,
-            expect![[r#"
-                Function
-                  doc
-            "#]],
+            expect![""],
         )
     }
 
@@ -660,7 +776,6 @@ mod tests {
             expect![[r#"
                 Function
                   doc
-                    65..102: "This is an incorrect type doc"
                     172..216: "These are docs for the main function"
             "#]],
         )

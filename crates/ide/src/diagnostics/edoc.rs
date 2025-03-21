@@ -62,11 +62,7 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
             if let Some(doc) = &header.doc {
                 if let Some(doc_start) = header.start() {
                     diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema,
-                        file_id,
-                        doc.tag_range,
-                        &header,
-                        doc_start,
+                        sema, file_id, doc.range, &header, doc_start,
                     ));
                 }
             }
@@ -519,8 +515,8 @@ dep() -> ok.
 -module(main).
 -doc """
 This is the main doc
-  - @param A is a param
-  - @param B is another param
+  - *A:* is a param
+  - *B:* is another param
 """.
 main(A, B) ->
     dep().
@@ -655,9 +651,9 @@ dep() -> ok.
 -export_type([my_integer/0]).
 
 -doc """
-This is an incorrect type doc
 These are docs for the main function
 """.
+%% @doc This is an incorrect type doc
 -type my_integer() :: integer().
 
 -type my_integer2() :: integer().
@@ -708,6 +704,78 @@ with some more text.
 -export([main/2]).
 -export_type([my_integer/0]).
 
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_multi_line_returns() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc These are docs for the main function
+%% @returns Some multi line
+%%          explanation
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+These are docs for the main function
+*Returns:* Some multi line
+explanation
+""".
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_multi_line_params() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc These are docs for the main function
+%% @param A Is a param
+%%        with a long explanation
+%% @param B Is also a param
+%%        with a long explanation
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+These are docs for the main function
+  - *A:* Is a param
+    with a long explanation
+  - *B:* Is also a param
+    with a long explanation
+""".
 -spec main(any(), any()) -> ok.
 main(A, B) ->
     dep().
