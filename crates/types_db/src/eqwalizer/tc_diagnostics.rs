@@ -18,11 +18,9 @@ use crate::eqwalizer::types::Type;
 pub enum TypeError {
     ExpectedSubtype(ExpectedSubtype),
     ExpectedFunType(ExpectedFunType),
-    NoDynamicRemoteFun(NoDynamicRemoteFun),
     NoSpecialType(NoSpecialType),
     LambdaArityMismatch(LambdaArityMismatch),
     IndexOutOfBounds(IndexOutOfBounds),
-    NotSupportedLambdaInOverloadedCall(NotSupportedLambdaInOverloadedCall),
     UndefinedField(UndefinedField),
     UnboundVar(UnboundVar),
     UnboundRecord(UnboundRecord),
@@ -33,7 +31,6 @@ pub enum TypeError {
     RevealTypeHint(RevealTypeHint),
     RedundantFixme(RedundantFixme),
     RedundantNowarnFunction(RedundantNowarnFunction),
-    RedundantGuard(RedundantGuard),
     AmbiguousUnion(AmbiguousUnion),
     ClauseNotCovered(ClauseNotCovered),
     DynamicLambda(DynamicLambda),
@@ -51,11 +48,6 @@ pub struct ExpectedFunType {
     pub pos: eqwalizer::Pos,
     pub expected_arity: u32,
     pub got: Type,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct NoDynamicRemoteFun {
-    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -82,11 +74,6 @@ pub struct IndexOutOfBounds {
     pub pos: eqwalizer::Pos,
     pub index: u32,
     pub tuple_arity: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct NotSupportedLambdaInOverloadedCall {
-    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -154,14 +141,6 @@ pub struct RedundantFixme {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RedundantNowarnFunction {
     pub pos: eqwalizer::Pos,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct RedundantGuard {
-    pub pos: eqwalizer::Pos,
-    pub variable: SmolStr,
-    pub test: Type,
-    pub got: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
