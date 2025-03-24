@@ -940,4 +940,44 @@ dep() -> ok.
 "#]],
         )
     }
+
+    #[test]
+    fn test_module_doc_author() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author <some@email.com>
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
 }

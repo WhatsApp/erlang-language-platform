@@ -57,6 +57,7 @@ pub struct EdocHeader {
     pub params: FxHashMap<String, Tag>,
     pub returns: Option<Tag>,
     pub equiv: Option<Tag>,
+    pub authors: Vec<Tag>,
     pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
@@ -72,12 +73,16 @@ impl EdocHeader {
             .chain(self.params.values())
             .chain(&self.returns)
             .chain(&self.equiv)
+            .chain(&self.authors)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
     }
 
     pub fn to_eep59(&self) -> String {
         let mut res = String::new();
+        for author in &self.authors {
+            res.push_str(&format!("-author(\"{}\").\n", author.description()));
+        }
         if let Some(doc) = &self.doc {
             let prefix = match self.kind {
                 EdocHeaderKind::Module => "-moduledoc",
@@ -208,6 +213,7 @@ pub enum TagKind {
     Returns,
     Param(String),
     Equiv,
+    Author,
     Unknown(String),
 }
 
@@ -295,6 +301,7 @@ struct ParseContext {
     returns: Option<Tag>,
     params: FxHashMap<String, Tag>,
     equiv: Option<Tag>,
+    authors: Vec<Tag>,
     unknown: Vec<(String, Tag)>,
 }
 
@@ -357,6 +364,12 @@ impl ParseContext {
                             range: tag_name.range,
                         });
                     }
+                    TagKind::Author => {
+                        self.authors.push(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
                     TagKind::Unknown(unknown) => {
                         self.unknown.push((
                             unknown.to_string(),
@@ -388,8 +401,9 @@ impl ParseContext {
             doc: self.doc,
             params: self.params,
             returns: self.returns,
-            equiv: self.equiv.clone(),
-            unknown: self.unknown.clone(),
+            equiv: self.equiv,
+            authors: self.authors,
+            unknown: self.unknown,
         })
     }
 }
@@ -448,6 +462,9 @@ fn parse_edoc(
                     }
                     "equiv" => {
                         context.start_tag(TagKind::Equiv, range, content, comment, syntax);
+                    }
+                    "author" => {
+                        context.start_tag(TagKind::Author, range, content, comment, syntax);
                     }
                     "end" => {
                         context.end_tag(content, syntax);
