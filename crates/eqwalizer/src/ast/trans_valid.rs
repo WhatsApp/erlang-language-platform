@@ -189,11 +189,10 @@ impl TransitiveChecker<'_> {
             // we don't know at this point which fields are invalid,
             // so replacing all the fields with dynamic type
             stub.records.get_mut(&t.name).map(|rec_decl| {
-                rec_decl.fields.iter_mut().for_each(|field| {
-                    if field.tp.is_some() {
-                        field.tp = Some(Type::DynamicType)
-                    }
-                })
+                rec_decl
+                    .fields
+                    .iter_mut()
+                    .for_each(|field| field.tp = Type::DynamicType)
             });
             stub.invalid_forms
                 .push(InvalidForm::InvalidRecDecl(InvalidRecDecl {
@@ -329,14 +328,12 @@ impl TransitiveChecker<'_> {
                 Ref::RecRef(module, rec_name) => match v_stub.get_record(rec_name) {
                     Some(rdecl) => {
                         for field in rdecl.fields.iter() {
-                            if let Some(ty) = &field.tp {
-                                self.collect_invalid_references(
-                                    &mut invalids,
-                                    module,
-                                    ty,
-                                    Some(rref),
-                                )?;
-                            }
+                            self.collect_invalid_references(
+                                &mut invalids,
+                                module,
+                                &field.tp,
+                                Some(rref),
+                            )?;
                         }
                     }
                     None => {

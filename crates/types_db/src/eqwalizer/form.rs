@@ -162,7 +162,7 @@ pub struct RecDecl {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecField {
     pub name: SmolStr,
-    pub tp: Option<Type>,
+    pub tp: Type,
     pub default_value: Option<expr::Expr>,
     pub refinable: bool,
 }

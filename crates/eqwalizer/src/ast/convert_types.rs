@@ -162,11 +162,11 @@ impl TypeConverter {
         let tp = {
             if let Some(typ) = field.tp {
                 match self.convert_type(&FxHashMap::default(), typ)? {
-                    Ok(ty) => Some(ty),
+                    Ok(ty) => ty,
                     Err(invalid) => return Ok(Err(invalid)),
                 }
             } else {
-                None
+                Type::DynamicType
             }
         };
         Ok(Ok(RecField {
