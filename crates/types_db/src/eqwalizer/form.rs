@@ -156,7 +156,6 @@ pub struct RecDecl {
     #[serde(default)]
     pub fields: Vec<RecField>,
     pub refinable: bool,
-    pub file: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -174,7 +173,6 @@ pub struct TypeDecl {
     #[serde(default)]
     pub params: Vec<VarType>,
     pub body: Type,
-    pub file: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -196,7 +194,6 @@ pub struct ExternalTypeDecl {
     #[serde(default)]
     pub params: Vec<SmolStr>,
     pub body: ext_types::ExtType,
-    pub file: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -206,7 +203,6 @@ pub struct ExternalOpaqueDecl {
     #[serde(default)]
     pub params: Vec<SmolStr>,
     pub body: ext_types::ExtType,
-    pub file: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -238,7 +234,6 @@ pub struct ExternalRecDecl {
     pub name: SmolStr,
     #[serde(default)]
     pub fields: Vec<ExternalRecField>,
-    pub file: Option<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

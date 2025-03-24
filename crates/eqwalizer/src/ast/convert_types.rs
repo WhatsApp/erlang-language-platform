@@ -135,7 +135,6 @@ impl TypeConverter {
                     fields,
                     refinable,
                     pos: decl.pos,
-                    file: decl.file,
                 }))
             }
             Err(e) => Ok(Err(InvalidConvertTypeInRecDecl {
@@ -191,7 +190,6 @@ impl TypeConverter {
             params,
             body,
             pos: decl.pos,
-            file: decl.file,
         })
     }
 
@@ -209,7 +207,6 @@ impl TypeConverter {
             params,
             body,
             pos: decl.pos,
-            file: decl.file,
         })
     }
 

@@ -772,7 +772,6 @@ impl StubExpander<'_> {
                         id: id.clone(),
                         params: vec![],
                         body,
-                        file: None,
                     };
                     self.stub.types.insert(id, decl);
                 })

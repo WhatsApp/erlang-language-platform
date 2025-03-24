@@ -761,7 +761,6 @@ pub fn walk_form<T, V: Transformer<T>>(
         ExternalForm::ExternalRecDecl(decl) => Ok(ExternalForm::ExternalRecDecl(ExternalRecDecl {
             pos: decl.pos,
             name: decl.name,
-            file: decl.file,
             fields: decl
                 .fields
                 .into_iter()

@@ -319,7 +319,6 @@ impl Converter {
                             .map(|f| self.convert_rec_field_form(f))
                             .collect::<Result<Vec<_>, _>>()?,
                         pos,
-                        file: self.current_file.clone(),
                     })));
                 }
             }
@@ -381,7 +380,6 @@ impl Converter {
                         id,
                         params,
                         body,
-                        file: self.current_file.clone(),
                     })));
                 }
             }
@@ -402,7 +400,6 @@ impl Converter {
                         id,
                         params,
                         body,
-                        file: self.current_file.clone(),
                     })));
                 }
             }
