@@ -102,6 +102,9 @@ fn old_edoc_syntax_diagnostic(
             builder.delete(separator_range);
         }
     }
+    if let Some(copyright_comment) = header.copyright_comment() {
+        builder.insert(start_offset, copyright_comment);
+    }
     builder.insert(insert_offset, header.to_eep59());
     let source_change = builder.finish();
     let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
@@ -963,6 +966,91 @@ dep() -> ok.
 "#,
             expect![[r#"
 %%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_copyright() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author <some@email.com>
+%%% @copyright (c) WhatsApp Inc. and its affiliates. All rights reserved.
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) WhatsApp Inc. and its affiliates. All rights reserved.
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_copyright_redundant() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) WhatsApp Inc. and its affiliates. All rights reserved.
+%%% @author Some Author <some@email.com>
+%%% @copyright (c) WhatsApp Inc. and its affiliates. All rights reserved.
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) WhatsApp Inc. and its affiliates. All rights reserved.
 %%% Some extra info
 %%%-----------------------------------------------------------------------------
 -module(main).

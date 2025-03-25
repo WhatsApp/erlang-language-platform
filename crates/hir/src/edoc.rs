@@ -58,6 +58,9 @@ pub struct EdocHeader {
     pub returns: Option<Tag>,
     pub equiv: Option<Tag>,
     pub authors: Vec<Tag>,
+    pub copyright: Option<Tag>,
+    pub plaintext_copyright: Option<String>,
+    pub copyright_prefix: Option<String>,
     pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
@@ -74,8 +77,23 @@ impl EdocHeader {
             .chain(&self.returns)
             .chain(&self.equiv)
             .chain(&self.authors)
+            .chain(&self.copyright)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
+    }
+
+    pub fn copyright_comment(&self) -> Option<String> {
+        let copyright = self.copyright.clone()?;
+        let copyright_prefix = self.copyright_prefix.clone()?;
+        if let Some(plaintext_copyright) = &self.plaintext_copyright {
+            if plaintext_copyright.contains(&copyright.description()) {
+                return None;
+            }
+        }
+        Some(format!(
+            "{copyright_prefix} Copyright {}\n",
+            copyright.description()
+        ))
     }
 
     pub fn to_eep59(&self) -> String {
@@ -214,6 +232,7 @@ pub enum TagKind {
     Param(String),
     Equiv,
     Author,
+    Copyright,
     Unknown(String),
 }
 
@@ -296,12 +315,15 @@ struct ParseContext {
     ranges: Vec<TextRange>,
     current_tag: Option<TagName>,
     lines: Vec<Line>,
+    plaintext_copyright: Option<String>,
+    copyright_prefix: Option<String>,
 
     doc: Option<Tag>,
     returns: Option<Tag>,
     params: FxHashMap<String, Tag>,
     equiv: Option<Tag>,
     authors: Vec<Tag>,
+    copyright: Option<Tag>,
     unknown: Vec<(String, Tag)>,
 }
 
@@ -370,6 +392,12 @@ impl ParseContext {
                             range: tag_name.range,
                         });
                     }
+                    TagKind::Copyright => {
+                        self.copyright = Some(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
                     TagKind::Unknown(unknown) => {
                         self.unknown.push((
                             unknown.to_string(),
@@ -398,11 +426,14 @@ impl ParseContext {
         Some(EdocHeader {
             kind,
             ranges: self.ranges,
+            plaintext_copyright: self.plaintext_copyright,
             doc: self.doc,
             params: self.params,
             returns: self.returns,
             equiv: self.equiv,
             authors: self.authors,
+            copyright: self.copyright,
+            copyright_prefix: self.copyright_prefix,
             unknown: self.unknown,
         })
     }
@@ -423,11 +454,19 @@ fn parse_edoc(
 ) -> Option<EdocHeader> {
     let mut context = ParseContext::default();
 
+    static COPYRIGHT_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").unwrap());
+
     for comment in comments {
         let text = comment.syntax().text().to_string();
         let syntax = InFileAstPtr::new(form.file_id(), AstPtr::new(comment));
         match extract_edoc_tag_and_content(&text) {
             None => {
+                if let Some(captures) = COPYRIGHT_RE.captures(&text) {
+                    if let Some(content) = captures.get(1) {
+                        context.plaintext_copyright = Some(content.as_str().to_string());
+                    }
+                }
                 if let Some(_tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());
                     let content = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
@@ -437,7 +476,7 @@ fn parse_edoc(
                     });
                 }
             }
-            Some((range, tag, content)) => {
+            Some((range, prefix, tag, content)) => {
                 if tag != "end" {
                     context.process_tag();
                 }
@@ -465,6 +504,10 @@ fn parse_edoc(
                     }
                     "author" => {
                         context.start_tag(TagKind::Author, range, content, comment, syntax);
+                    }
+                    "copyright" => {
+                        context.copyright_prefix = Some(prefix.to_string());
+                        context.start_tag(TagKind::Copyright, range, content, comment, syntax);
                     }
                     "end" => {
                         context.end_tag(content, syntax);
@@ -529,14 +572,20 @@ fn edoc_header_kind(node: &SyntaxNode) -> Option<EdocHeaderKind> {
 /// Check if the given comment starts with an edoc tag.
 ///    A tag must be the first thing on a comment line, except for leading
 ///    '%' characters and whitespace.
-fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str)> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%+\s+@([^\s]+) ?(.*)$").unwrap());
+fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str, &str)> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(%+)\s+@([^\s]+) ?(.*)$").unwrap());
     let captures = RE.captures(comment)?;
-    let tag = captures.get(1)?;
+    let prefix = captures.get(1)?;
+    let tag = captures.get(2)?;
     // add the leading @ to the range
     let start = TextSize::new((tag.start() - 1) as u32);
     let range = TextRange::new(start, TextSize::new(tag.end() as u32));
-    Some((range, tag.as_str(), captures.get(2)?.as_str()))
+    Some((
+        range,
+        prefix.as_str(),
+        tag.as_str(),
+        captures.get(3)?.as_str(),
+    ))
 }
 
 fn convert_single_quotes(comment: &str) -> Cow<str> {
@@ -658,6 +707,7 @@ mod tests {
             Some(
                 (
                     3..7,
+                    "%%",
                     "foo",
                     "bar",
                 ),
