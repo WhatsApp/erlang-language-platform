@@ -94,6 +94,7 @@ use crate::Var;
 use crate::VarDef;
 
 mod find;
+// @fb-only
 pub mod to_def;
 
 pub struct ModuleIter(Arc<ModuleIndex>);

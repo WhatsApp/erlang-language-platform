@@ -246,6 +246,7 @@ pub mod known {
         get_stacktrace,
         graphql_parser,
         graphql_scanner,
+        handle,
         is_record,
         main,
         module_info,

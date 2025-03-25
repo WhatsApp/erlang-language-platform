@@ -18,6 +18,7 @@ use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::macro_exp::MacroExpCtx;
 use crate::resolver::Resolver;
+// @fb-only
 use crate::AnyExprRef;
 use crate::Body;
 use crate::CallTarget;
@@ -534,16 +535,6 @@ impl ToDef for ast::Var {
 
 // ---------------------------------------------------------------------
 
-pub(crate) fn resolve_module_expr(
-    sema: &Semantic<'_>,
-    body: &Body,
-    file_id: FileId,
-    expr_id: ExprId,
-) -> Option<Module> {
-    let name = sema.db.lookup_atom(body[expr_id].as_atom()?);
-    resolve_module_name(sema, file_id, &name)
-}
-
 pub fn resolve_module_name(sema: &Semantic<'_>, file_id: FileId, name: &str) -> Option<Module> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nresolve_module_name: {:?}", file_id));
@@ -564,17 +555,30 @@ pub fn resolve_call_target(
     file_id: FileId,
     body: &Body,
 ) -> Option<FunctionDef> {
-    let (file_id, fun_expr) = match target {
-        CallTarget::Local { name } => (file_id, *name),
-        CallTarget::Remote { module, name, .. } => (
-            resolve_module_expr(sema, body, file_id, *module)?
-                .file
-                .file_id,
-            *name,
-        ),
+    let (name, arity, file_id) = match target {
+        CallTarget::Local { name } => {
+            let name = sema.db.lookup_atom(body[*name].as_atom()?);
+            (name, arity, file_id)
+        }
+        CallTarget::Remote { module, name, .. } => {
+            let module_name = sema.db.lookup_atom(body[*module].as_atom()?);
+            let fn_name: Name = sema.db.lookup_atom(body[*name].as_atom()?);
+            let mo =
+                None // @oss-only
+                // @fb-only
+            if let Some(r) = mo {
+                r
+            } else {
+                (
+                    fn_name,
+                    arity,
+                    (resolve_module_name(sema, file_id, &module_name)?
+                        .file
+                        .file_id),
+                )
+            }
+        }
     };
-
-    let name = sema.db.lookup_atom(body[fun_expr].as_atom()?);
     match arity {
         None => sema
             .db
