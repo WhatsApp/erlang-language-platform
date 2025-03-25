@@ -87,9 +87,15 @@ fn old_edoc_syntax_diagnostic(
     header: &EdocHeader,
     start_offset: TextSize,
 ) -> Diagnostic {
-    let insert_offset = match header.kind {
+    let eep59_insert_offset = match header.kind {
         EdocHeaderKind::Module => module_doc_insert_offset(sema, file_id).unwrap_or(start_offset),
         EdocHeaderKind::Function => start_offset,
+    };
+    let authors_insert_offset = match header.kind {
+        EdocHeaderKind::Module => {
+            author_tags_insert_offset(sema, file_id).unwrap_or(eep59_insert_offset)
+        }
+        EdocHeaderKind::Function => eep59_insert_offset,
     };
     let mut builder = SourceChangeBuilder::new(file_id);
     for comment in header.comments() {
@@ -105,12 +111,65 @@ fn old_edoc_syntax_diagnostic(
     if let Some(copyright_comment) = header.copyright_comment() {
         builder.insert(start_offset, copyright_comment);
     }
-    builder.insert(insert_offset, header.to_eep59());
+    let existing_authors = existing_authors(sema, file_id);
+    for author in &header.authors {
+        let author_description = author.description();
+        if !author_exists(&author_description, &existing_authors) {
+            builder.insert(
+                authors_insert_offset,
+                format!("-author(\"{}\").\n", author_description),
+            );
+        }
+    }
+    builder.insert(eep59_insert_offset, header.to_eep59());
     let source_change = builder.finish();
     let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
     Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
         .with_severity(DIAGNOSTIC_SEVERITY)
         .with_fixes(Some(vec![fix]))
+}
+
+fn author_exists(author: &str, authors: &FxHashSet<String>) -> bool {
+    authors
+        .iter()
+        .any(|a| a.contains(author) || author.contains(a))
+}
+
+fn author_tags_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
+    let form_list = sema.form_list(file_id);
+    Some(
+        form_list
+            .attributes()
+            .skip_while(|(_idx, attr)| attr.name != known::author)
+            .map(|(_idx, attr)| attr)
+            .last()?
+            .form_id
+            .get_ast(sema.db, file_id)
+            .syntax()
+            .text_range()
+            .start(),
+    )
+}
+
+fn existing_authors(sema: &Semantic, file_id: FileId) -> FxHashSet<String> {
+    let form_list = sema.form_list(file_id);
+    form_list
+        .attributes()
+        .filter_map(|(_idx, attr)| {
+            if attr.name == known::author {
+                author_name(sema, file_id, attr)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn author_name(sema: &Semantic, file_id: FileId, attribute: &Attribute) -> Option<String> {
+    let wild_attribute = attribute.form_id.get_ast(sema.db, file_id);
+    let value = wild_attribute.value()?.syntax().text().to_string();
+    let value = value.trim_start_matches('(').trim_end_matches(')');
+    Some(value.trim_matches(|c| c == '"' || c == '\'').to_string())
 }
 
 fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
@@ -970,6 +1029,179 @@ dep() -> ok.
 %%%-----------------------------------------------------------------------------
 -module(main).
 -author("Some Author <some@email.com>").
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_author_existing_different() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Another Author <some@email.com>
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-oncall(something).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-author("Another Author <some@email.com>").
+-oncall(something).
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_author_existing_same() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author <some@email.com>
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-oncall(something).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-oncall(something).
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_author_existing_contains_one() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-oncall(something).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-oncall(something).
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_author_existing_contains_two() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author <some@email.com>
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author('some@email.com').
+-oncall(something).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author('some@email.com').
+-oncall(something).
 -moduledoc """
 Some description
 """.

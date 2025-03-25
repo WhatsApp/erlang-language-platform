@@ -98,9 +98,6 @@ impl EdocHeader {
 
     pub fn to_eep59(&self) -> String {
         let mut res = String::new();
-        for author in &self.authors {
-            res.push_str(&format!("-author(\"{}\").\n", author.description()));
-        }
         if let Some(doc) = &self.doc {
             let prefix = match self.kind {
                 EdocHeaderKind::Module => "-moduledoc",
