@@ -20,7 +20,6 @@ use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
 use elp_types_db::eqwalizer::form::FunSpec;
-use elp_types_db::eqwalizer::form::InvalidConvertTypeInRecDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::RecField;
@@ -120,7 +119,7 @@ impl TypeConverter {
     pub fn convert_rec_decl(
         &self,
         decl: ExternalRecDecl,
-    ) -> Result<Result<RecDecl, InvalidConvertTypeInRecDecl>, TypeConversionError> {
+    ) -> Result<Result<RecDecl, Invalid>, TypeConversionError> {
         let new_context = self.enter_rec_decl();
         let result = decl
             .fields
@@ -137,11 +136,7 @@ impl TypeConverter {
                     pos: decl.pos,
                 }))
             }
-            Err(e) => Ok(Err(InvalidConvertTypeInRecDecl {
-                name: decl.name,
-                te: e,
-                pos: decl.pos,
-            })),
+            Err(e) => Ok(Err(e)),
         }
     }
 

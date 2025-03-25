@@ -14,7 +14,6 @@ use serde::Serialize;
 use crate::eqwalizer;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::ext_types;
-use crate::eqwalizer::invalid_diagnostics::Invalid;
 use crate::eqwalizer::types::FunType;
 use crate::eqwalizer::types::Type;
 use crate::eqwalizer::types::VarType;
@@ -40,15 +39,6 @@ pub enum ExternalForm {
     ExternalCallback(ExternalCallback),
     ExternalOptionalCallbacks(ExternalOptionalCallbacks),
     ExternalRecDecl(ExternalRecDecl),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum InvalidForm {
-    InvalidTypeDecl(InvalidTypeDecl),
-    InvalidFunSpec(InvalidFunSpec),
-    InvalidRecDecl(InvalidRecDecl),
-    InvalidConvertTypeInRecDecl(InvalidConvertTypeInRecDecl),
-    InvalidMapType(InvalidMapType),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -241,38 +231,4 @@ pub struct ExternalRecField {
     pub name: SmolStr,
     pub tp: Option<ext_types::ExtType>,
     pub default_value: Option<expr::Expr>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InvalidTypeDecl {
-    pub pos: eqwalizer::Pos,
-    pub id: eqwalizer::Id,
-    pub te: Invalid,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InvalidFunSpec {
-    pub pos: eqwalizer::Pos,
-    pub id: eqwalizer::Id,
-    pub te: Invalid,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InvalidRecDecl {
-    pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
-    pub te: Invalid,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InvalidConvertTypeInRecDecl {
-    pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
-    pub te: Invalid,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InvalidMapType {
-    pub pos: eqwalizer::Pos,
-    pub te: Invalid,
 }

@@ -18,10 +18,6 @@ use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
-use elp_types_db::eqwalizer::form::InvalidForm;
-use elp_types_db::eqwalizer::form::InvalidFunSpec;
-use elp_types_db::eqwalizer::form::InvalidRecDecl;
-use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -105,12 +101,7 @@ impl TransitiveChecker<'_> {
                 invalids,
             ));
             stub.types.remove(&t.id);
-            stub.invalid_forms
-                .push(InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-                    pos: t.pos.clone(),
-                    id: t.id.clone(),
-                    te: diag,
-                }))
+            stub.invalids.push(diag);
         }
         Ok(())
     }
@@ -133,12 +124,7 @@ impl TransitiveChecker<'_> {
                 invalids,
             ));
             stub.opaques.remove(&t.id);
-            stub.invalid_forms
-                .push(InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-                    pos: t.pos.clone(),
-                    id: t.id.clone(),
-                    te: diag,
-                }))
+            stub.invalids.push(diag);
         }
         Ok(())
     }
@@ -163,12 +149,7 @@ impl TransitiveChecker<'_> {
                 references,
             ));
             stub.specs.remove(&spec.id);
-            stub.invalid_forms
-                .push(InvalidForm::InvalidFunSpec(InvalidFunSpec {
-                    pos: spec.pos.clone(),
-                    id: spec.id.clone(),
-                    te: diag,
-                }))
+            stub.invalids.push(diag);
         }
         Ok(())
     }
@@ -194,12 +175,7 @@ impl TransitiveChecker<'_> {
                     .iter_mut()
                     .for_each(|field| field.tp = Type::DynamicType)
             });
-            stub.invalid_forms
-                .push(InvalidForm::InvalidRecDecl(InvalidRecDecl {
-                    pos: t.pos.clone(),
-                    name: t.name.clone(),
-                    te: diag,
-                }))
+            stub.invalids.push(diag);
         }
         Ok(())
     }
@@ -226,12 +202,7 @@ impl TransitiveChecker<'_> {
                 references,
             ));
             stub.overloaded_specs.remove(&spec.id);
-            stub.invalid_forms
-                .push(InvalidForm::InvalidFunSpec(InvalidFunSpec {
-                    pos: spec.pos.clone(),
-                    id: spec.id.clone(),
-                    te: diag,
-                }))
+            stub.invalids.push(diag);
         }
         Ok(())
     }

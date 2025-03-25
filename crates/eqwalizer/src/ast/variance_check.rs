@@ -31,8 +31,6 @@
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_types_db::eqwalizer::form::InvalidForm;
-use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::AliasWithNonCovariantParam;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
@@ -75,7 +73,7 @@ impl VarianceChecker<'_> {
     ) -> Result<(), VarianceCheckError> {
         if let Some((ty_var, expansion)) = self.expands_to_contravariant(t)? {
             let invalid = self.to_invalid(t, &ty_var, expansion);
-            v_stub.invalid_forms.push(invalid);
+            v_stub.invalids.push(invalid);
             v_stub.invalid_ids.insert(t.id.clone());
         }
         Ok(())
@@ -355,17 +353,12 @@ impl VarianceChecker<'_> {
         }
     }
 
-    fn to_invalid(&self, t: &TypeDecl, ty_var: &VarType, expansion: Vec<Type>) -> InvalidForm {
-        let diagnostics = Invalid::AliasWithNonCovariantParam(AliasWithNonCovariantParam {
+    fn to_invalid(&self, t: &TypeDecl, ty_var: &VarType, expansion: Vec<Type>) -> Invalid {
+        Invalid::AliasWithNonCovariantParam(AliasWithNonCovariantParam {
             type_var: ty_var.name.clone(),
             pos: t.pos.clone(),
             name: t.id.to_string().into(),
             exps: expansion,
-        });
-        InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
-            pos: t.pos.clone(),
-            id: t.id.clone(),
-            te: diagnostics,
         })
     }
 

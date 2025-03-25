@@ -42,8 +42,6 @@ use std::sync::Arc;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
-use elp_types_db::eqwalizer::form::InvalidForm;
-use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
@@ -207,21 +205,15 @@ impl StubContractivityChecker<'_> {
     fn check_decl(&self, stub: &mut VStub, t: &TypeDecl) -> Result<(), ContractivityCheckError> {
         if !self.is_contractive(&t.body)? {
             stub.invalid_ids.insert(t.id.clone());
-            stub.invalid_forms.push(self.to_invalid(t));
+            stub.invalids.push(self.to_invalid(t));
         }
         Ok(())
     }
 
-    fn to_invalid(&self, t: &TypeDecl) -> InvalidForm {
-        let diagnostics =
-            Invalid::NonProductiveRecursiveTypeAlias(NonProductiveRecursiveTypeAlias {
-                pos: t.pos.clone(),
-                name: t.id.to_string().into(),
-            });
-        InvalidForm::InvalidTypeDecl(InvalidTypeDecl {
+    fn to_invalid(&self, t: &TypeDecl) -> Invalid {
+        Invalid::NonProductiveRecursiveTypeAlias(NonProductiveRecursiveTypeAlias {
             pos: t.pos.clone(),
-            id: t.id.clone(),
-            te: diagnostics,
+            name: t.id.to_string().into(),
         })
     }
 

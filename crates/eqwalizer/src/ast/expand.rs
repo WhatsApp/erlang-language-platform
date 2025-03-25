@@ -40,11 +40,6 @@ use elp_types_db::eqwalizer::form::ExternalOpaqueDecl;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
-use elp_types_db::eqwalizer::form::InvalidForm;
-use elp_types_db::eqwalizer::form::InvalidFunSpec;
-use elp_types_db::eqwalizer::form::InvalidMapType;
-use elp_types_db::eqwalizer::form::InvalidRecDecl;
-use elp_types_db::eqwalizer::form::InvalidTypeDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::BadMapKey;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
@@ -71,23 +66,14 @@ use crate::ast::Visibility;
 struct Expander<'d> {
     module: SmolStr,
     project_id: ProjectId,
-    invalids: Vec<InvalidForm>,
+    invalids: Vec<Invalid>,
     db: &'d dyn EqwalizerASTDatabase,
 }
 
 impl Expander<'_> {
-    fn expand_fun_spec(
-        &mut self,
-        fun_spec: ExternalFunSpec,
-    ) -> Result<ExternalFunSpec, InvalidFunSpec> {
-        match self.expand_cfts(fun_spec.types) {
-            Ok(types) => Ok(ExternalFunSpec { types, ..fun_spec }),
-            Err(te) => Err(InvalidFunSpec {
-                pos: fun_spec.pos,
-                id: fun_spec.id,
-                te,
-            }),
-        }
+    fn expand_fun_spec(&mut self, fun_spec: ExternalFunSpec) -> Result<ExternalFunSpec, Invalid> {
+        let types = self.expand_cfts(fun_spec.types)?;
+        Ok(ExternalFunSpec { types, ..fun_spec })
     }
 
     fn expand_cfts(
@@ -137,52 +123,26 @@ impl Expander<'_> {
         })
     }
 
-    fn expand_callback(
-        &mut self,
-        cb: ExternalCallback,
-    ) -> Result<ExternalCallback, InvalidFunSpec> {
-        match self.expand_cfts(cb.types) {
-            Ok(types) => Ok(ExternalCallback { types, ..cb }),
-            Err(te) => Err(InvalidFunSpec {
-                pos: cb.pos,
-                id: cb.id,
-                te,
-            }),
-        }
+    fn expand_callback(&mut self, cb: ExternalCallback) -> Result<ExternalCallback, Invalid> {
+        let types = self.expand_cfts(cb.types)?;
+        Ok(ExternalCallback { types, ..cb })
     }
 
-    fn expand_type_decl(
-        &mut self,
-        decl: ExternalTypeDecl,
-    ) -> Result<ExternalTypeDecl, InvalidTypeDecl> {
-        let result = self
+    fn expand_type_decl(&mut self, decl: ExternalTypeDecl) -> Result<ExternalTypeDecl, Invalid> {
+        let body = self
             .validate_type_vars(&decl.pos, &decl.body, &decl.params)
-            .and_then(|()| self.expand_type(decl.body));
-        match result {
-            Ok(body) => Ok(ExternalTypeDecl { body, ..decl }),
-            Err(te) => Err(InvalidTypeDecl {
-                id: decl.id,
-                te,
-                pos: decl.pos,
-            }),
-        }
+            .and_then(|()| self.expand_type(decl.body))?;
+        Ok(ExternalTypeDecl { body, ..decl })
     }
 
     fn expand_opaque_decl(
         &mut self,
         decl: ExternalOpaqueDecl,
-    ) -> Result<ExternalOpaqueDecl, InvalidTypeDecl> {
-        let result = self
+    ) -> Result<ExternalOpaqueDecl, Invalid> {
+        let body = self
             .validate_type_vars(&decl.pos, &decl.body, &decl.params)
-            .and_then(|()| self.expand_type(decl.body));
-        match result {
-            Ok(body) => Ok(ExternalOpaqueDecl { body, ..decl }),
-            Err(te) => Err(InvalidTypeDecl {
-                id: decl.id,
-                te,
-                pos: decl.pos,
-            }),
-        }
+            .and_then(|()| self.expand_type(decl.body))?;
+        Ok(ExternalOpaqueDecl { body, ..decl })
     }
 
     fn validate_type_vars(
@@ -253,23 +213,13 @@ impl Expander<'_> {
         }
     }
 
-    fn expand_rec_decl(
-        &mut self,
-        decl: ExternalRecDecl,
-    ) -> Result<ExternalRecDecl, InvalidRecDecl> {
+    fn expand_rec_decl(&mut self, decl: ExternalRecDecl) -> Result<ExternalRecDecl, Invalid> {
         let fields = decl
             .fields
             .into_iter()
             .map(|field| self.expand_rec_field(field))
-            .collect::<Result<Vec<_>, _>>();
-        match fields {
-            Ok(fields) => Ok(ExternalRecDecl { fields, ..decl }),
-            Err(te) => Err(InvalidRecDecl {
-                pos: decl.pos,
-                name: decl.name,
-                te,
-            }),
-        }
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ExternalRecDecl { fields, ..decl })
     }
 
     fn expand_types(&mut self, ts: Vec<ExtType>) -> Result<Vec<ExtType>, Invalid> {
@@ -353,14 +303,11 @@ impl Expander<'_> {
             ExtType::MapExtType(ty) => {
                 if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
                     let pos = invalid_prop.pos().clone();
-                    let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
-                        pos: pos.clone(),
-                        te: Invalid::BadMapKey(BadMapKey {
-                            pos,
-                            required: invalid_prop.required(),
-                        }),
+                    let invalid = Invalid::BadMapKey(BadMapKey {
+                        pos,
+                        required: invalid_prop.required(),
                     });
-                    self.invalids.push(invalid_form);
+                    self.invalids.push(invalid);
                     Ok(ExtType::MapExtType(MapExtType {
                         pos: ty.pos.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -498,14 +445,11 @@ impl Expander<'_> {
             ExtType::MapExtType(ty) => {
                 if let Some(invalid_prop) = ty.props.iter().find(|prop| !prop.is_ok()) {
                     let pos = invalid_prop.pos().clone();
-                    let invalid_form = InvalidForm::InvalidMapType(InvalidMapType {
-                        pos: pos.clone(),
-                        te: Invalid::BadMapKey(BadMapKey {
-                            pos,
-                            required: invalid_prop.required(),
-                        }),
+                    let invalid = Invalid::BadMapKey(BadMapKey {
+                        pos,
+                        required: invalid_prop.required(),
                     });
-                    self.invalids.push(invalid_form);
+                    self.invalids.push(invalid);
                     Ok(ExtType::MapExtType(MapExtType {
                         pos: ty.pos.clone(),
                         props: vec![ExtProp::OptExtProp(OptExtProp {
@@ -661,9 +605,7 @@ impl StubExpander<'_> {
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
-                    self.stub
-                        .invalid_forms
-                        .push(InvalidForm::InvalidTypeDecl(invalid));
+                    self.stub.invalids.push(invalid);
                 }
             }
         }
@@ -680,9 +622,7 @@ impl StubExpander<'_> {
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
-                    self.stub
-                        .invalid_forms
-                        .push(InvalidForm::InvalidTypeDecl(invalid));
+                    self.stub.invalids.push(invalid);
                 }
             }
         }
@@ -697,17 +637,13 @@ impl StubExpander<'_> {
                 }
                 Err(invalid) => {
                     if self.current_file == self.module_file {
-                        self.stub
-                            .invalid_forms
-                            .push(InvalidForm::InvalidConvertTypeInRecDecl(invalid));
+                        self.stub.invalids.push(invalid);
                     }
                 }
             },
             Err(invalid) => {
                 if self.current_file == self.module_file {
-                    self.stub
-                        .invalid_forms
-                        .push(InvalidForm::InvalidRecDecl(invalid));
+                    self.stub.invalids.push(invalid);
                 }
             }
         }
@@ -727,9 +663,7 @@ impl StubExpander<'_> {
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
-                    self.stub
-                        .invalid_forms
-                        .push(InvalidForm::InvalidFunSpec(invalid));
+                    self.stub.invalids.push(invalid);
                 }
             }
         }
@@ -744,9 +678,7 @@ impl StubExpander<'_> {
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
-                    self.stub
-                        .invalid_forms
-                        .push(InvalidForm::InvalidFunSpec(invalid));
+                    self.stub.invalids.push(invalid);
                 }
             }
         }
@@ -814,7 +746,7 @@ impl StubExpander<'_> {
             }
         }
         self.add_extra_types();
-        self.stub.invalid_forms.append(&mut self.expander.invalids);
+        self.stub.invalids.append(&mut self.expander.invalids);
         Ok(())
     }
 }

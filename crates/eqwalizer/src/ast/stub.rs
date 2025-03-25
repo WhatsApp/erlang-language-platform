@@ -12,10 +12,10 @@ use std::sync::Arc;
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
-use elp_types_db::eqwalizer::form::InvalidForm;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
+use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use serde::Serialize;
@@ -35,7 +35,7 @@ pub struct ModuleStub {
     pub records: FxHashMap<SmolStr, RecDecl>,
     pub callbacks: Vec<Callback>,
     pub optional_callbacks: FxHashSet<Id>,
-    pub invalid_forms: Vec<InvalidForm>,
+    pub invalids: Vec<Invalid>,
 }
 
 // The result of type validation checking:
@@ -44,7 +44,7 @@ pub struct ModuleStub {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct VStub {
     stub: Arc<ModuleStub>,
-    pub invalid_forms: Vec<InvalidForm>,
+    pub invalids: Vec<Invalid>,
     pub invalid_ids: FxHashSet<Id>,
 }
 
@@ -52,7 +52,7 @@ impl VStub {
     pub fn new(stub: Arc<ModuleStub>) -> Self {
         Self {
             stub,
-            invalid_forms: vec![],
+            invalids: vec![],
             invalid_ids: FxHashSet::default(),
         }
     }
@@ -103,7 +103,7 @@ impl VStub {
 
     pub fn into_normalized_stub(&self) -> ModuleStub {
         let mut stub = (*self.stub).clone();
-        stub.invalid_forms.extend_from_slice(&self.invalid_forms);
+        stub.invalids.extend_from_slice(&self.invalids);
         stub.types.retain(|id, _| !self.invalid_ids.contains(id));
         stub.opaques.retain(|id, _| !self.invalid_ids.contains(id));
         stub
