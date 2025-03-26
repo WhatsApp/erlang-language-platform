@@ -8,6 +8,7 @@
 -compile([export_all, nowarn_export_all]).
 -eqwalizer({nowarn_function, nowarn_bad/0}).
 -eqwalizer({nowarn_function, nowarn_redundant/0}).
+-eqwalizer({nowarn_function, nowarn_nonexist/0}).
 
 -spec good() ->
   integer().
