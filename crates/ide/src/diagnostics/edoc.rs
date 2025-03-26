@@ -75,6 +75,16 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         doc_start,
                     ));
                 }
+            } else if let Some(hidden) = &header.hidden {
+                if let Some(doc_start) = header.start() {
+                    diagnostics.push(old_edoc_syntax_diagnostic(
+                        sema,
+                        file_id,
+                        hidden.range,
+                        &header,
+                        doc_start,
+                    ));
+                }
             }
         }
     }
@@ -1292,6 +1302,180 @@ Some description
 """.
 -export([main/2]).
 
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_private() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc
+%% @private
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc hidden.
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_private_local() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+%% @d~oc
+%% @private
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_private() {
+        check_fix(
+            r#"
+%% @d~oc
+%% @private
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-moduledoc hidden.
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_hidden() {
+        check_fix(
+            r#"
+%% @d~oc
+%% @hidden
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-moduledoc hidden.
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_private_standalone() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @p~rivate
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc hidden.
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_unknown() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc
+%% @unknown Some unknown tag
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+  *Unknown:* Some unknown tag
+""".
 -spec main(any(), any()) -> ok.
 main(A, B) ->
   dep().

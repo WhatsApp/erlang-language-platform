@@ -53,6 +53,7 @@ use crate::InFileAstPtr;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
     pub kind: EdocHeaderKind,
+    pub exported: bool,
     pub doc: Option<Tag>,
     pub params: FxHashMap<String, Tag>,
     pub returns: Option<Tag>,
@@ -61,6 +62,7 @@ pub struct EdocHeader {
     pub copyright: Option<Tag>,
     pub plaintext_copyright: Option<String>,
     pub copyright_prefix: Option<String>,
+    pub hidden: Option<Tag>,
     pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
@@ -78,6 +80,7 @@ impl EdocHeader {
             .chain(&self.equiv)
             .chain(&self.authors)
             .chain(&self.copyright)
+            .chain(&self.hidden)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
     }
@@ -98,38 +101,84 @@ impl EdocHeader {
 
     pub fn to_eep59(&self) -> String {
         let mut res = String::new();
-        if let Some(doc) = &self.doc {
+        res.push_str(&self.doc_attribute());
+        res.push_str(&self.hidden_attribute());
+        res.push_str(&self.metadata_attribute());
+        res
+    }
+
+    pub fn doc_attribute(&self) -> String {
+        let mut res = String::new();
+        res.push_str(&self.doc_content());
+        res.push_str(&self.return_tag());
+        res.push_str(&self.unknown_tags());
+
+        if !res.is_empty() {
             let prefix = match self.kind {
                 EdocHeaderKind::Module => "-moduledoc",
                 EdocHeaderKind::Function => "-doc",
             };
-            res.push_str(&format!("{prefix} \"\"\"\n"));
-            if let Some(text) = doc.to_markdown() {
+            format!("{prefix} \"\"\"\n{res}\"\"\".\n")
+        } else {
+            res
+        }
+    }
+
+    pub fn doc_content(&self) -> String {
+        let mut res = String::new();
+        if let Some(doc) = &self.doc {
+            if let Some(markdown) = doc.to_markdown() {
+                res.push_str(&markdown);
+            }
+        }
+        res
+    }
+
+    pub fn return_tag(&self) -> String {
+        let mut res = String::new();
+        if let Some(returns) = &self.returns {
+            res.push_str("*Returns:* ");
+            if let Some(text) = returns.to_markdown() {
                 res.push_str(&text);
             }
-            if let Some(returns) = &self.returns {
-                res.push_str("*Returns:* ");
-                if let Some(text) = returns.to_markdown() {
-                    res.push_str(&text);
-                }
-            }
-            for (name, tag) in &self.unknown {
-                let name = capitalize_first_char(name).unwrap_or(name.to_string());
-                res.push_str(&format!("  *{}:* ", name));
-                if let Some((head, tail)) = &tag.lines.split_first() {
-                    if let Some(text) = &head.content {
-                        res.push_str(&format!("{text}\n"));
-                    }
-                    for line in tail.iter() {
-                        if let Some(text) = line.to_markdown() {
-                            res.push_str(&format!("  {}", text));
-                        }
-                    }
-                }
-            }
-            res.push_str(&format!("\"\"\".\n"));
         }
-        let mut metadata = String::new();
+        res
+    }
+
+    pub fn unknown_tags(&self) -> String {
+        let mut res = String::new();
+        for (name, tag) in &self.unknown {
+            let name = capitalize_first_char(name).unwrap_or(name.to_string());
+            res.push_str(&format!("  *{}:* ", name));
+            if let Some((head, tail)) = &tag.lines.split_first() {
+                if let Some(text) = &head.content {
+                    res.push_str(&format!("{text}"));
+                }
+                res.push_str("\n");
+                for line in tail.iter() {
+                    if let Some(text) = line.to_markdown() {
+                        res.push_str(&format!("  {}", text));
+                    }
+                }
+            }
+        }
+        res
+    }
+
+    pub fn hidden_attribute(&self) -> String {
+        let mut res = String::new();
+        if self.exported && self.hidden.is_some() {
+            let hidden_attribute = match self.kind {
+                EdocHeaderKind::Module => "-moduledoc hidden.",
+                EdocHeaderKind::Function => "-doc hidden.",
+            };
+            res.push_str(&format!("{hidden_attribute}\n"));
+        }
+        res
+    }
+
+    pub fn metadata_attribute(&self) -> String {
+        let mut res = String::new();
         for (name, param) in &self.params {
             let mut description = String::new();
             for line in &param.lines {
@@ -137,17 +186,18 @@ impl EdocHeader {
                     description.push_str(&format!("{} ", &content.trim()));
                 }
             }
-            metadata.push_str(&format!("\"{name}\" => \"{}\", ", description.trim()));
+            res.push_str(&format!("\"{name}\" => \"{}\", ", description.trim()));
         }
         if let Some(equiv) = &self.equiv {
             if let Some(equivalent_to) = equiv.to_markdown() {
-                metadata.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
+                res.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
             }
         }
-        if !metadata.is_empty() {
-            res.push_str(&format!("-doc #{{{}}}.\n", metadata.trim_end_matches(", ")));
+        if !res.is_empty() {
+            format!("-doc #{{{}}}.\n", res.trim_end_matches(", "))
+        } else {
+            res
         }
-        res
     }
 }
 
@@ -230,6 +280,7 @@ pub enum TagKind {
     Equiv,
     Author,
     Copyright,
+    Hidden,
     Unknown(String),
 }
 
@@ -259,7 +310,7 @@ fn module_doc_header(
     let ast = module_attribute.form_id.get_ast(db, file_id);
     let syntax = ast.syntax();
     let form = ast::Form::cast(syntax.clone())?;
-    edoc_header(file_id, &form, &syntax, EdocHeaderKind::Module)
+    edoc_header(file_id, &form, &syntax, EdocHeaderKind::Module, true)
 }
 
 fn function_doc_header(
@@ -271,11 +322,13 @@ fn function_doc_header(
     let decl = decls.first()?;
     let form = ast::Form::cast(decl.syntax().clone())?;
     let syntax = form.syntax();
-    spec_doc_header(db, file_id, &def, &form).or(edoc_header(
+    let exported = def.exported;
+    spec_doc_header(db, file_id, &def, &form, exported).or(edoc_header(
         file_id,
         &form,
         syntax,
         EdocHeaderKind::Function,
+        exported,
     ))
 }
 
@@ -284,11 +337,18 @@ fn spec_doc_header(
     file_id: FileId,
     def: &FunctionDef,
     form: &Form,
+    exported: bool,
 ) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let spec_def = def.spec.clone()?;
     let spec = spec_def.source(db.upcast());
     let spec_syntax = spec.syntax();
-    edoc_header(file_id, &form, spec_syntax, EdocHeaderKind::Function)
+    edoc_header(
+        file_id,
+        &form,
+        spec_syntax,
+        EdocHeaderKind::Function,
+        exported,
+    )
 }
 
 fn edoc_header(
@@ -296,6 +356,7 @@ fn edoc_header(
     form: &ast::Form,
     syntax: &SyntaxNode,
     kind: EdocHeaderKind,
+    exported: bool,
 ) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let mut comments: Vec<_> = prev_form_nodes(syntax)
         .filter_map(ast::Comment::cast)
@@ -304,11 +365,12 @@ fn edoc_header(
     comments.reverse();
 
     let form = InFileAstPtr::new(file_id, AstPtr::new(form));
-    Some((form, parse_edoc(kind, form, &comments)?))
+    Some((form, parse_edoc(kind, exported, form, &comments)?))
 }
 
 #[derive(Debug, Default)]
 struct ParseContext {
+    exported: bool,
     ranges: Vec<TextRange>,
     current_tag: Option<TagName>,
     lines: Vec<Line>,
@@ -321,6 +383,7 @@ struct ParseContext {
     equiv: Option<Tag>,
     authors: Vec<Tag>,
     copyright: Option<Tag>,
+    hidden: Option<Tag>,
     unknown: Vec<(String, Tag)>,
 }
 
@@ -395,6 +458,12 @@ impl ParseContext {
                             range: tag_name.range,
                         });
                     }
+                    TagKind::Hidden => {
+                        self.hidden = Some(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
                     TagKind::Unknown(unknown) => {
                         self.unknown.push((
                             unknown.to_string(),
@@ -416,12 +485,14 @@ impl ParseContext {
             && self.returns.is_none()
             && self.params.is_empty()
             && self.equiv.is_none()
+            && self.hidden.is_none()
             && self.unknown.is_empty()
         {
             return None;
         }
         Some(EdocHeader {
             kind,
+            exported: self.exported,
             ranges: self.ranges,
             plaintext_copyright: self.plaintext_copyright,
             doc: self.doc,
@@ -431,6 +502,7 @@ impl ParseContext {
             authors: self.authors,
             copyright: self.copyright,
             copyright_prefix: self.copyright_prefix,
+            hidden: self.hidden,
             unknown: self.unknown,
         })
     }
@@ -446,10 +518,12 @@ fn ensure_non_empty(text: &str) -> Option<String> {
 
 fn parse_edoc(
     kind: EdocHeaderKind,
+    exported: bool,
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
     let mut context = ParseContext::default();
+    context.exported = exported;
 
     static COPYRIGHT_RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").unwrap());
@@ -509,6 +583,9 @@ fn parse_edoc(
                     "end" => {
                         context.end_tag(content, syntax);
                         context.process_tag();
+                    }
+                    "hidden" | "private" => {
+                        context.start_tag(TagKind::Hidden, range, content, comment, syntax);
                     }
                     unknown => {
                         context.start_tag(
@@ -622,6 +699,7 @@ mod tests {
                     params,
                     returns,
                     equiv,
+                    hidden,
                     ..
                 },
             )| {
@@ -684,6 +762,9 @@ mod tests {
                             }
                         });
                     }
+                }
+                if let Some(Tag { .. }) = hidden {
+                    buf.push_str("  hidden\n");
                 }
             },
         );
