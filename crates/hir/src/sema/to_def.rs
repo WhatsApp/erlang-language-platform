@@ -564,7 +564,7 @@ pub fn resolve_call_target(
             let module_name = sema.db.lookup_atom(body[*module].as_atom()?);
             let fn_name: Name = sema.db.lookup_atom(body[*name].as_atom()?);
             let mo =
-                None // @oss-only
+                None; // @oss-only
                 // @fb-only
             if let Some(r) = mo {
                 r
