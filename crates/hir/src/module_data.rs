@@ -183,6 +183,18 @@ impl FunctionDef {
         Some(start.syntax().text_range().cover(end.syntax().text_range()))
     }
 
+    pub fn name_range(&self, db: &dyn DefDatabase) -> Option<TextRange> {
+        let range = self
+            .function_clauses
+            .first()?
+            .form_id
+            .get_ast(db, self.file.file_id)
+            .name()?
+            .syntax()
+            .text_range();
+        Some(range)
+    }
+
     pub fn in_function_body<'a, T>(
         &self,
         sema: &'a Semantic<'a>,

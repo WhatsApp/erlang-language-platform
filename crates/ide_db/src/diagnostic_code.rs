@@ -70,6 +70,7 @@ pub enum DiagnosticCode {
     UnspecificInclude,
     OldEdocSyntax,
     MacroPrecedenceEscape,
+    UndocumentedFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -207,6 +208,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnspecificInclude => "W0037".to_string(),
             DiagnosticCode::OldEdocSyntax => "W0038".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "W0039".to_string(),
+            DiagnosticCode::UndocumentedFunction => "W0040".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -283,6 +285,7 @@ impl DiagnosticCode {
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
+            DiagnosticCode::UndocumentedFunction => "undocumented_function".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -414,6 +417,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnspecificInclude => false,
             DiagnosticCode::OldEdocSyntax => false,
             DiagnosticCode::MacroPrecedenceEscape => false,
+            DiagnosticCode::UndocumentedFunction => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,

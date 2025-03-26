@@ -247,6 +247,7 @@ pub mod known {
         graphql_parser,
         graphql_scanner,
         handle,
+        hidden,
         is_record,
         main,
         module_info,

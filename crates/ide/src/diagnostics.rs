@@ -109,6 +109,7 @@ mod replace_in_spec;
 mod slow_functions;
 mod trivial_match;
 mod undefined_function;
+mod undocumented_function;
 mod unnecessary_fold_to_build_map;
 mod unnecessary_map_from_list_around_comprehension;
 mod unnecessary_map_to_list_in_comprehension;
@@ -879,6 +880,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unspecific_include::DESCRIPTOR,
         &edoc::DESCRIPTOR,
         &macro_precedence_suprise::DESCRIPTOR,
+        &undocumented_function::DESCRIPTOR,
     ]
 }
 
