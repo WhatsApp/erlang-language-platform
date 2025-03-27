@@ -167,10 +167,9 @@ impl BuckProject {
         report_progress: &impl Fn(&str),
     ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
-        let (otp_root, project_app_data, project) = if query_config == &BuckQueryConfig::Original {
-            load_from_config_orig(buck_conf, report_progress)?
-        } else {
-            load_from_config_bxl(buck_conf, report_progress)?
+        let (otp_root, project_app_data, project) = match query_config {
+            BuckQueryConfig::Original => load_from_config_orig(buck_conf, report_progress)?,
+            BuckQueryConfig::Bxl(build) => load_from_config_bxl(buck_conf, build, report_progress)?,
         };
         Ok((project, project_app_data, otp_root))
     }
@@ -197,9 +196,10 @@ fn load_from_config_orig(
 
 fn load_from_config_bxl(
     buck_conf: &BuckConfig,
+    build: &BuildGeneratedCode,
     report_progress: &impl Fn(&str),
 ) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
-    let target_info = load_buck_targets_bxl(buck_conf, report_progress)?;
+    let target_info = load_buck_targets_bxl(buck_conf, build, report_progress)?;
     report_progress("Making project app data");
     let otp_root = Otp::find_otp()?;
     let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
@@ -349,6 +349,7 @@ pub enum TargetType {
 
 fn load_buck_targets_bxl(
     buck_config: &BuckConfig,
+    build: &BuildGeneratedCode,
     report_progress: &impl Fn(&str),
 ) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
@@ -360,8 +361,13 @@ fn load_buck_targets_bxl(
     } else {
         FxHashMap::default()
     };
-    report_progress("Querying buck targets");
-    let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl)?;
+
+    match build {
+        BuildGeneratedCode::Yes => report_progress("Querying and generating buck targets"),
+        BuildGeneratedCode::No => report_progress("Querying buck targets"),
+    }
+
+    let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl(*build))?;
 
     report_progress("Making target info");
     let mut target_info = TargetInfo::default();
@@ -600,7 +606,13 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum BuckQueryConfig {
     Original,
-    Bxl,
+    Bxl(BuildGeneratedCode),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BuildGeneratedCode {
+    Yes,
+    No,
 }
 
 fn query_buck_targets(
@@ -635,7 +647,7 @@ pub fn query_buck_targets_raw(
 ) -> Result<FxHashMap<String, BuckTarget>> {
     match query_config {
         BuckQueryConfig::Original => query_buck_targets_orig(buck_config),
-        BuckQueryConfig::Bxl => query_buck_targets_bxl(buck_config),
+        BuckQueryConfig::Bxl(build) => query_buck_targets_bxl(buck_config, build),
     }
 }
 
@@ -699,7 +711,10 @@ fn query_buck_targets_orig(buck_config: &BuckConfig) -> Result<FxHashMap<String,
     Ok(result)
 }
 
-fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
+fn query_buck_targets_bxl(
+    buck_config: &BuckConfig,
+    build: &BuildGeneratedCode,
+) -> Result<FxHashMap<String, BuckTarget>> {
     let mut targets = Vec::default();
     for target in &buck_config.included_targets {
         targets.push("--included_targets");
@@ -709,11 +724,17 @@ fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, 
         targets.push("--deps_targets");
         targets.push(deps_target);
     }
+    let build_args = if build == &BuildGeneratedCode::Yes {
+        vec!["--build_generated_code", "true"]
+    } else {
+        vec![]
+    };
     let mut command = buck_config.buck_command();
     command
         .arg("bxl")
         .arg("--config=client.id=elp")
         .arg("prelude//erlang/elp.bxl:elp_config")
+        .args(build_args)
         .arg("--")
         .args(targets);
     let output = command.output()?;

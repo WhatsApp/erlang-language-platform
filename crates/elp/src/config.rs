@@ -20,6 +20,7 @@ use elp_ide::elp_ide_db::helpers::SnippetCap;
 use elp_ide::HoverActionsConfig;
 use elp_ide::InlayHintsConfig;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::BuildGeneratedCode;
 use fxhash::FxHashSet;
 use lsp_types::ClientCapabilities;
 use serde::de::DeserializeOwned;
@@ -327,7 +328,7 @@ impl Config {
 
     pub fn buck_query(&self) -> BuckQueryConfig {
         if self.data.buck_query_useBxl_enable {
-            BuckQueryConfig::Bxl
+            BuckQueryConfig::Bxl(BuildGeneratedCode::No)
         } else {
             BuckQueryConfig::Original
         }

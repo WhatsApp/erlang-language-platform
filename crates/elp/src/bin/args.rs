@@ -17,6 +17,7 @@ use bpaf::long;
 use bpaf::Bpaf;
 use bpaf::Parser;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::BuildGeneratedCode;
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -381,14 +382,21 @@ pub struct Args {
     /// Use BXL when querying for a buck project model
     pub buck_bxl: bool,
 
+    /// When using BXL to query for a buck project model, invoke a
+    /// build step for generated files. If present, forces `--buck-bxl`.
+    pub buck_generated: bool,
+
     #[bpaf(external(command))]
     pub command: Command,
 }
 
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
-        if self.buck_bxl {
-            BuckQueryConfig::Bxl
+        if self.buck_generated {
+            // buck forces BXL mode
+            BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
+        } else if self.buck_bxl {
+            BuckQueryConfig::Bxl(BuildGeneratedCode::No)
         } else {
             BuckQueryConfig::Original
         }

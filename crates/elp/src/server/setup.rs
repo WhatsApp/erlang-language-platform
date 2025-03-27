@@ -120,8 +120,9 @@ impl ServerSetup {
         }
 
         // Pass the --buck-bxl flag through if set
-        if self.query_config == BuckQueryConfig::Bxl {
-            config.set_buck_query_use_bxl();
+        match self.query_config {
+            BuckQueryConfig::Bxl(_build) => config.set_buck_query_use_bxl(),
+            _ => {}
         }
 
         Ok(config)
