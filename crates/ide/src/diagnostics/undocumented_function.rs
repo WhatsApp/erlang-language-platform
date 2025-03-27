@@ -92,7 +92,9 @@ mod tests {
     use crate::DiagnosticsConfig;
 
     fn config() -> DiagnosticsConfig {
-        DiagnosticsConfig::default().enable(DiagnosticCode::UndocumentedFunction)
+        DiagnosticsConfig::default()
+            .enable(DiagnosticCode::UndocumentedFunction)
+            .disable(DiagnosticCode::OldEdocSyntax)
     }
 
     fn check_diagnostics(fixture: &str) {
