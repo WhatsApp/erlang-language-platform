@@ -52,13 +52,13 @@ use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 
-use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
 use super::stub::VStub;
 use super::subst::Subst;
 use super::ContractivityCheckError;
 use super::Id;
 use super::RemoteId;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 fn is_he(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
     Ok(he_by_diving(s, t)? || he_by_coupling(s, t)?)
@@ -184,14 +184,14 @@ fn he_prop(s: &Prop, t: &Prop) -> Result<bool, ContractivityCheckError> {
 }
 
 pub struct StubContractivityChecker<'d> {
-    db: &'d dyn EqwalizerASTDatabase,
+    db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: SmolStr,
 }
 
 impl StubContractivityChecker<'_> {
     pub fn new(
-        db: &dyn EqwalizerASTDatabase,
+        db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
         module: SmolStr,
     ) -> StubContractivityChecker<'_> {

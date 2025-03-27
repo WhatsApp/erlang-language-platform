@@ -29,7 +29,6 @@ pub mod compiler_macro;
 pub mod contractivity;
 pub mod convert;
 pub mod convert_types;
-pub mod db;
 pub mod expand;
 pub mod preprocess;
 pub mod stub;

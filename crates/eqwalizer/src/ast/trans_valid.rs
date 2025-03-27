@@ -27,12 +27,12 @@ use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
-use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
 use super::stub::VStub;
 use super::Id;
 use super::RemoteId;
 use super::TransitiveCheckError;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Ref {
@@ -50,7 +50,7 @@ impl Ref {
 }
 
 pub struct TransitiveChecker<'d> {
-    db: &'d dyn EqwalizerASTDatabase,
+    db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: SmolStr,
     in_progress: FxHashSet<Ref>,
@@ -60,7 +60,7 @@ pub struct TransitiveChecker<'d> {
 
 impl TransitiveChecker<'_> {
     pub fn new(
-        db: &dyn EqwalizerASTDatabase,
+        db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
         module: SmolStr,
     ) -> TransitiveChecker<'_> {

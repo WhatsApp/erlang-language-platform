@@ -24,9 +24,9 @@ use elp_base_db::FileRange;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
+use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerConfig;
-use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::Mode;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
@@ -107,9 +107,8 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     elp_base_db::SourceDatabaseStorage,
     eqwalizer::EqwalizerDatabaseStorage,
     common_test::CommonTestDatabaseStorage,
-    elp_eqwalizer::ast::db::EqwalizerASTDatabaseStorage,
+    elp_eqwalizer::db::EqwalizerDiagnosticsDatabaseStorage,
     elp_eqwalizer::analyses::EqwalizerAnalysesDatabaseStorage,
-    elp_eqwalizer::EqwalizerDiagnosticsDatabaseStorage,
     erl_ast::ErlAstDatabaseStorage,
     hir::db::InternDatabaseStorage,
     hir::db::DefDatabaseStorage

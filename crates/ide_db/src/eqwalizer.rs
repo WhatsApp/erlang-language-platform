@@ -18,15 +18,14 @@ use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
 use elp_eqwalizer::analyses::EqwalizerAnalysesDatabase;
-use elp_eqwalizer::ast::db::EqwalizerASTDatabase;
-use elp_eqwalizer::ast::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::ast::RemoteId;
+use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+use elp_eqwalizer::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ipc::IpcHandle;
 use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_eqwalizer::EqwalizerDiagnostics;
-use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
 use elp_project_model::otp::otp_supported_by_eqwalizer;
 use elp_syntax::ast;
 use elp_syntax::SmolStr;
@@ -69,7 +68,6 @@ impl EqwalizerLoader for crate::RootDatabase {
 pub trait EqwalizerDatabase:
     EqwalizerDiagnosticsDatabase
     + EqwalizerAnalysesDatabase
-    + EqwalizerASTDatabase
     + SourceDatabase
     + EqwalizerLoader
     + ErlAstDatabase
@@ -383,7 +381,7 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
     }
 }
 
-impl elp_eqwalizer::DbApi for crate::RootDatabase {
+impl elp_eqwalizer::db::ELPDbApi for crate::RootDatabase {
     fn eqwalizing_start(&self, module: String) {
         if let Some(reporter) = self.eqwalizer_progress_reporter.lock().as_mut() {
             reporter.start_module(module)

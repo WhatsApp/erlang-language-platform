@@ -54,7 +54,6 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
 use super::convert_types::TypeConverter;
-use super::db::EqwalizerASTDatabase;
 use super::stub::ModuleStub;
 use super::Id;
 use super::RemoteId;
@@ -62,12 +61,13 @@ use super::TypeConversionError;
 use super::AST;
 use crate::ast;
 use crate::ast::Visibility;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 struct Expander<'d> {
     module: SmolStr,
     project_id: ProjectId,
     invalids: Vec<Invalid>,
-    db: &'d dyn EqwalizerASTDatabase,
+    db: &'d dyn EqwalizerDiagnosticsDatabase,
 }
 
 impl Expander<'_> {
@@ -562,7 +562,7 @@ pub struct StubExpander<'d> {
 
 impl StubExpander<'_> {
     pub fn new<'d>(
-        db: &'d dyn EqwalizerASTDatabase,
+        db: &'d dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
         module: SmolStr,
         ast: &AST,

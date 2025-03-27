@@ -49,20 +49,23 @@ use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
 
-use super::db::EqwalizerASTDatabase;
 use super::stub::VStub;
 use super::subst::Subst;
 use super::Id;
 use super::RemoteId;
 use super::VarianceCheckError;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 pub struct VarianceChecker<'d> {
-    db: &'d dyn EqwalizerASTDatabase,
+    db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
 }
 
 impl VarianceChecker<'_> {
-    pub fn new(db: &dyn EqwalizerASTDatabase, project_id: ProjectId) -> VarianceChecker<'_> {
+    pub fn new(
+        db: &dyn EqwalizerDiagnosticsDatabase,
+        project_id: ProjectId,
+    ) -> VarianceChecker<'_> {
         VarianceChecker { db, project_id }
     }
 

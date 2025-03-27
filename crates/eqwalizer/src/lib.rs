@@ -15,7 +15,6 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
-use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -32,11 +31,14 @@ use parking_lot::Mutex;
 use tempfile::Builder;
 use tempfile::TempPath;
 
+pub mod db;
+
 pub mod ipc;
 use ipc::IpcHandle;
 use ipc::MsgFromEqWAlizer;
 use ipc::MsgToEqWAlizer;
 
+use crate::db::EqwalizerDiagnosticsDatabase;
 use crate::ipc::EqWAlizerASTFormat;
 
 pub mod analyses;
@@ -148,25 +150,6 @@ impl EqwalizerDiagnostics {
             },
         }
     }
-}
-
-pub trait DbApi {
-    fn eqwalizing_start(&self, module: String);
-    fn eqwalizing_done(&self, module: String);
-    fn set_module_ipc_handle(&self, module: ModuleName, handle: Option<Arc<Mutex<IpcHandle>>>);
-    fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
-}
-
-#[salsa::query_group(EqwalizerDiagnosticsDatabaseStorage)]
-pub trait EqwalizerDiagnosticsDatabase: ast::db::EqwalizerASTDatabase + DbApi {
-    #[salsa::input]
-    fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
-
-    fn module_diagnostics(
-        &self,
-        project_id: ProjectId,
-        module: String,
-    ) -> (Arc<EqwalizerDiagnostics>, Instant);
 }
 
 impl Default for Eqwalizer {
@@ -317,31 +300,6 @@ fn do_typecheck(
                 )
             }
         }
-    }
-}
-
-fn module_diagnostics(
-    db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
-    module: String,
-) -> (Arc<EqwalizerDiagnostics>, Instant) {
-    // A timestamp is added to the return value to force Salsa to store new
-    // diagnostics, and not attempt to back-date them if they are equal to
-    // the memoized ones.
-    let timestamp = Instant::now();
-    // Dummy read eqWAlizer config for Salsa
-    // Ideally, the config should be passed per module to eqWAlizer instead
-    // of being set in the command's environment
-    let _ = db.eqwalizer_config();
-    match get_module_diagnostics(db, project_id, module.clone()) {
-        Ok(diag) => (Arc::new(diag), timestamp),
-        Err(err) => (
-            Arc::new(EqwalizerDiagnostics::Error(format!(
-                "eqWAlizing module {}:\n{}",
-                module, err
-            ))),
-            timestamp,
-        ),
     }
 }
 

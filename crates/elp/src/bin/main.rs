@@ -202,9 +202,9 @@ mod tests {
     use elp::build;
     use elp::build::load;
     use elp::cli::Fake;
+    use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
     use elp_eqwalizer::EqwalizerConfig;
     use elp_eqwalizer::EqwalizerDiagnostics;
-    use elp_eqwalizer::EqwalizerDiagnosticsDatabase;
     use elp_eqwalizer::Mode;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;

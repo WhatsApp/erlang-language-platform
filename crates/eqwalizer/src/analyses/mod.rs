@@ -13,13 +13,13 @@ use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 
-use crate::ast::db::EqwalizerASTDatabase;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 mod escape_hatches;
 mod overloaded_specs;
 
 #[salsa::query_group(EqwalizerAnalysesDatabaseStorage)]
-pub trait EqwalizerAnalysesDatabase: EqwalizerASTDatabase {
+pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
     fn compute_eqwalizer_stats(
         &self,
         project_id: ProjectId,

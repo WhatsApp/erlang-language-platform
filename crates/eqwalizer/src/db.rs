@@ -8,6 +8,7 @@
  */
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use elp_base_db::AbsPathBuf;
 use elp_base_db::AppType;
@@ -16,18 +17,24 @@ use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::Id;
+use elp_types_db::eqwalizer::AST;
 use fxhash::FxHashMap;
+use parking_lot::Mutex;
 
-use super::contractivity::StubContractivityChecker;
-use super::expand::StubExpander;
-use super::stub::ModuleStub;
-use super::stub::VStub;
-use super::trans_valid::TransitiveChecker;
-use super::variance_check::VarianceChecker;
-use super::Error;
-use super::Id;
-use super::AST;
+use crate::ast;
+use crate::ast::contractivity::StubContractivityChecker;
+use crate::ast::expand::StubExpander;
+use crate::ast::stub::ModuleStub;
+use crate::ast::stub::VStub;
+use crate::ast::trans_valid::TransitiveChecker;
+use crate::ast::variance_check::VarianceChecker;
+use crate::ast::Error;
 use crate::ast::Visibility;
+use crate::get_module_diagnostics;
+use crate::ipc::IpcHandle;
+use crate::EqwalizerConfig;
+use crate::EqwalizerDiagnostics;
 
 pub trait EqwalizerErlASTStorage {
     fn erl_ast_bytes(
@@ -38,7 +45,7 @@ pub trait EqwalizerErlASTStorage {
 
     fn eqwalizer_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error> {
         let ast = self.erl_ast_bytes(project_id, module)?;
-        super::from_bytes(&ast, false).map(Arc::new)
+        ast::from_bytes(&ast, false).map(Arc::new)
     }
 
     fn eqwalizer_ast_bytes(
@@ -47,15 +54,31 @@ pub trait EqwalizerErlASTStorage {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         self.eqwalizer_ast(project_id, module).map(|ast| {
-            Arc::new(super::to_bytes(
+            Arc::new(ast::to_bytes(
                 &ast.forms.iter().filter(is_non_stub_form).collect(),
             ))
         })
     }
 }
 
-#[salsa::query_group(EqwalizerASTDatabaseStorage)]
-pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
+pub trait ELPDbApi {
+    fn eqwalizing_start(&self, module: String);
+    fn eqwalizing_done(&self, module: String);
+    fn set_module_ipc_handle(&self, module: ModuleName, handle: Option<Arc<Mutex<IpcHandle>>>);
+    fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
+}
+
+#[salsa::query_group(EqwalizerDiagnosticsDatabaseStorage)]
+pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase + ELPDbApi {
+    #[salsa::input]
+    fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
+
+    fn module_diagnostics(
+        &self,
+        project_id: ProjectId,
+        module: String,
+    ) -> (Arc<EqwalizerDiagnostics>, Instant);
+
     fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
 
     fn type_ids(
@@ -94,6 +117,31 @@ pub trait EqwalizerASTDatabase: EqwalizerErlASTStorage + SourceDatabase {
     ) -> Result<Arc<Vec<u8>>, Error>;
 }
 
+fn module_diagnostics(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: String,
+) -> (Arc<EqwalizerDiagnostics>, Instant) {
+    // A timestamp is added to the return value to force Salsa to store new
+    // diagnostics, and not attempt to back-date them if they are equal to
+    // the memoized ones.
+    let timestamp = Instant::now();
+    // Dummy read eqWAlizer config for Salsa
+    // Ideally, the config should be passed per module to eqWAlizer instead
+    // of being set in the command's environment
+    let _ = db.eqwalizer_config();
+    match get_module_diagnostics(db, project_id, module.clone()) {
+        Ok(diag) => (Arc::new(diag), timestamp),
+        Err(err) => (
+            Arc::new(EqwalizerDiagnostics::Error(format!(
+                "eqWAlizing module {}:\n{}",
+                module, err
+            ))),
+            timestamp,
+        ),
+    }
+}
+
 fn is_non_stub_form(form: &&ExternalForm) -> bool {
     match form {
         ExternalForm::Module(_) => true,
@@ -108,20 +156,20 @@ fn is_non_stub_form(form: &&ExternalForm) -> bool {
 }
 
 fn converted_stub(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<AST>, Error> {
     if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
         if let Some(beam_path) = from_beam_path(db, file_id, &module) {
             if let Ok(beam_contents) = std::fs::read(&beam_path) {
-                super::from_beam(&beam_contents).map(Arc::new)
+                ast::from_beam(&beam_contents).map(Arc::new)
             } else {
                 Err(Error::BEAMNotFound(beam_path.into()))
             }
         } else {
             let ast = db.erl_ast_bytes(project_id, module)?;
-            super::from_bytes(&ast, true).map(Arc::new)
+            ast::from_bytes(&ast, true).map(Arc::new)
         }
     } else {
         Err(Error::ModuleNotFound(module.as_str().into()))
@@ -129,7 +177,7 @@ fn converted_stub(
 }
 
 fn from_beam_path(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     file_id: FileId,
     module: &ModuleName,
 ) -> Option<AbsPathBuf> {
@@ -144,16 +192,16 @@ fn from_beam_path(
 }
 
 fn type_ids(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<FxHashMap<Id, Visibility>>, Error> {
     db.converted_stub(project_id, module)
-        .map(|ast| Arc::new(super::type_ids(&ast)))
+        .map(|ast| Arc::new(ast::type_ids(&ast)))
 }
 
 fn expanded_stub(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
@@ -166,7 +214,7 @@ fn expanded_stub(
 }
 
 fn contractive_stub(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<VStub>, Error> {
@@ -179,7 +227,7 @@ fn contractive_stub(
 }
 
 fn covariant_stub(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<VStub>, Error> {
@@ -192,7 +240,7 @@ fn covariant_stub(
 }
 
 fn transitive_stub(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
@@ -205,7 +253,7 @@ fn transitive_stub(
 }
 
 fn transitive_stub_bytes(
-    db: &dyn EqwalizerASTDatabase,
+    db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<Vec<u8>>, Error> {
