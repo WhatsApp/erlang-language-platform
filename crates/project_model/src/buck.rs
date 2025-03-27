@@ -734,8 +734,8 @@ fn query_buck_targets_bxl(
         .arg("bxl")
         .arg("--config=client.id=elp")
         .arg("prelude//erlang/elp.bxl:elp_config")
-        .args(build_args)
         .arg("--")
+        .args(build_args)
         .args(targets);
     let output = command.output()?;
     if !output.status.success() {
@@ -1555,9 +1555,10 @@ mod tests {
     const BUCK_TESTS_ENABLED: bool = false; // @oss-only
 
     #[track_caller]
-    fn check_buck_bxl_query(expect: Expect) {
+    fn check_buck_bxl_query(build_generated: bool, expect: Expect) {
         if BUCK_TESTS_ENABLED {
             let buck_root = to_abs_path_buf(&std::env::current_dir().unwrap()).unwrap();
+            // We only need buck_config to get the buck command, everything but the buck root is ignored.
             let buck_config = BuckConfig {
                 config_path: None,
                 buck_root: Some(buck_root),
@@ -1565,19 +1566,23 @@ mod tests {
                 deps_target: None,
                 deps_targets: vec![],
                 build_deps: false,
-                included_targets: vec![
-                    "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...".to_string(),
-                ],
+                included_targets: vec![],
                 excluded_targets: vec![],
-                source_root: Some(PathBuf::from("whatsapp/elp/test_projects/buck_tests_2")),
+                source_root: None,
+            };
+            let generated_args = if build_generated {
+                vec!["--build_generated_code", "true"]
+            } else {
+                vec![]
             };
             let output = buck_config
                 .buck_command()
                 .arg("bxl")
                 .arg("prelude//erlang/elp.bxl:elp_config")
                 .arg("--")
+                .args(generated_args)
                 .arg("--included_targets")
-                .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...")
+                .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/...")
                 .output()
                 .unwrap();
             if !output.status.success() {
@@ -1596,21 +1601,39 @@ mod tests {
     #[test]
     fn build_info_buck_bxl_query() {
         if BUCK_TESTS_ENABLED {
-            check_buck_bxl_query(expect![[r#"
+            check_buck_bxl_query(
+                false,
+                expect![[r#"
                 {
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a:app_a_target": {
-                    "name": "app_a_target",
-                    "app_name": "app_a",
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                    "name": "auto_gen_a",
+                    "app_name": null,
                     "suite": null,
                     "srcs": [
-                      "/[..]/test_projects/buck_tests_2/util/app_a/src/app_a.erl"
+                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
                     ],
-                    "includes": [],
-                    "labels": [],
+                    "includes": [
+                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
+                    ],
+                    "labels": [
+                      "user_application"
+                    ],
                     "deps": [],
-                    "apps": [
-                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a"
+                    "apps": [],
+                    "included_apps": [],
+                    "origin": "app"
+                  },
+                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                    "name": "generated_srcs",
+                    "app_name": null,
+                    "suite": null,
+                    "srcs": [],
+                    "includes": [],
+                    "labels": [
+                      "user_application"
                     ],
+                    "deps": [],
+                    "apps": [],
                     "included_apps": [],
                     "origin": "app"
                   },
@@ -1733,25 +1756,180 @@ mod tests {
                       "prelude//erlang/common_test/test_exec:test_exec"
                     ],
                     "origin": "dep"
-                  },
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
-                    "name": "auto_gen_a",
-                    "app_name": null,
-                    "suite": null,
-                    "srcs": [
-                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
-                    ],
-                    "includes": [
-                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
-                    ],
-                    "labels": [],
-                    "deps": [],
-                    "apps": [],
-                    "included_apps": [],
-                    "origin": "dep"
                   }
                 }
-            "#]]);
+            "#]],
+            );
+        }
+    }
+
+    #[test]
+    fn build_info_buck_bxl_generated_query() {
+        if BUCK_TESTS_ENABLED {
+            // Note that there is now a value for `srcs` in the
+            // "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
+            // target
+            check_buck_bxl_query(
+                true,
+                expect![[r#"
+                    {
+                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                        "name": "auto_gen_a",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
+                        ],
+                        "includes": [
+                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
+                        ],
+                        "labels": [
+                          "user_application"
+                        ],
+                        "deps": [],
+                        "apps": [],
+                        "included_apps": [],
+                        "origin": "app"
+                      },
+                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                        "name": "generated_srcs",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/out/pretend_generated.erl"
+                        ],
+                        "includes": [],
+                        "labels": [
+                          "user_application"
+                        ],
+                        "deps": [],
+                        "apps": [],
+                        "included_apps": [],
+                        "origin": "app"
+                      },
+                      "prelude//erlang/common_test/cth_hooks:cth_hooks": {
+                        "name": "cth_hooks",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx.erl",
+                          "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_role.erl",
+                          "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_server.erl",
+                          "/[prelude]//erlang/common_test/cth_hooks/src/cth_tpx_test_tree.erl",
+                          "/[prelude]//erlang/common_test/cth_hooks/src/method_ids.hrl"
+                        ],
+                        "includes": [],
+                        "labels": [],
+                        "deps": [],
+                        "apps": [
+                          "prelude//erlang/applications:kernel",
+                          "prelude//erlang/applications:stdlib",
+                          "prelude//erlang/applications:common_test"
+                        ],
+                        "included_apps": [],
+                        "origin": "dep"
+                      },
+                      "prelude//erlang/common_test/common:common": {
+                        "name": "common",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[prelude]//erlang/common_test/common/src/artifact_annotations.erl",
+                          "/[prelude]//erlang/common_test/common/src/bounded_buffer.erl",
+                          "/[prelude]//erlang/common_test/common/src/buck_ct_parser.erl",
+                          "/[prelude]//erlang/common_test/common/src/buck_ct_provider.erl",
+                          "/[prelude]//erlang/common_test/common/src/ct_error_printer.erl",
+                          "/[prelude]//erlang/common_test/common/src/io_buffer.erl",
+                          "/[prelude]//erlang/common_test/common/src/test_artifact_directory.erl",
+                          "/[prelude]//erlang/common_test/common/src/test_logger.erl"
+                        ],
+                        "includes": [
+                          "/[prelude]//erlang/common_test/common/include"
+                        ],
+                        "labels": [],
+                        "deps": [],
+                        "apps": [
+                          "prelude//erlang/applications:kernel",
+                          "prelude//erlang/applications:stdlib"
+                        ],
+                        "included_apps": [],
+                        "origin": "dep"
+                      },
+                      "prelude//erlang/common_test/test_exec:test_exec": {
+                        "name": "test_exec",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_core.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_hooks.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_logger.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_node.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_printer.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_daemon_runner.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_executor.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/ct_runner.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/epmd_manager.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/test_exec.erl",
+                          "/[prelude]//erlang/common_test/test_exec/src/test_exec_sup.erl"
+                        ],
+                        "includes": [],
+                        "labels": [],
+                        "deps": [],
+                        "apps": [
+                          "prelude//erlang/applications:kernel",
+                          "prelude//erlang/applications:stdlib",
+                          "prelude//erlang/applications:debugger",
+                          "prelude//erlang/common_test/common:common",
+                          "prelude//erlang/common_test/cth_hooks:cth_hooks"
+                        ],
+                        "included_apps": [],
+                        "origin": "dep"
+                      },
+                      "prelude//erlang/toolchain:toolchain_json": {
+                        "name": "toolchain_json",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[prelude]//erlang/toolchain/json.erl"
+                        ],
+                        "includes": [],
+                        "labels": [
+                          "otp_compatibility_polyfill_application"
+                        ],
+                        "deps": [],
+                        "apps": [
+                          "prelude//erlang/applications:kernel",
+                          "prelude//erlang/applications:stdlib"
+                        ],
+                        "included_apps": [],
+                        "origin": "dep"
+                      },
+                      "prelude//erlang/shell:buck2_shell_utils": {
+                        "name": "buck2_shell_utils",
+                        "app_name": null,
+                        "suite": null,
+                        "srcs": [
+                          "/[prelude]//erlang/shell/src/shell_buck2_module_search.erl",
+                          "/[prelude]//erlang/shell/src/shell_buck2_utils.erl",
+                          "/[prelude]//erlang/shell/src/user_default.erl"
+                        ],
+                        "includes": [],
+                        "labels": [],
+                        "deps": [],
+                        "apps": [
+                          "prelude//erlang/applications:kernel",
+                          "prelude//erlang/applications:stdlib",
+                          "prelude//erlang/toolchain:toolchain_json"
+                        ],
+                        "included_apps": [
+                          "prelude//erlang/common_test/test_exec:test_exec"
+                        ],
+                        "origin": "dep"
+                      }
+                    }
+                "#]],
+            );
         }
     }
 
