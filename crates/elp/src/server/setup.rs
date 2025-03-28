@@ -9,13 +9,17 @@
 
 use std::convert::TryFrom;
 use std::env;
+use std::fs;
 
 use anyhow::Context;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::timeit_with_telemetry;
+use elp_log::Builder;
+use elp_log::FileLogger;
 use elp_log::Logger;
+use elp_log::ReconfigureLog;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::otp::Otp;
 use lsp_server::Connection;
@@ -27,6 +31,7 @@ use lsp_types::ServerInfo;
 use threadpool::ThreadPool;
 
 use super::logger::LspLogger;
+use super::FILE_WATCH_LOGGER_NAME;
 use crate::config::Config;
 use crate::from_json;
 use crate::server::capabilities;
@@ -132,6 +137,27 @@ impl ServerSetup {
         let sender = self.connection.sender.clone();
         let logger = LspLogger::new(sender, None);
         self.logger.register_logger(LOGGER_NAME, Box::new(logger));
+
+        // Set up a logger for tracking down why we are seeing stale
+        // results when branches are switched, as per T218973130
+        let log_dir = "/tmp/elp";
+        let _ = fs::create_dir_all(log_dir);
+        let log_file = format!(
+            "{}/elp_file_watch_reports-{}.log",
+            log_dir,
+            std::process::id()
+        );
+        if let Ok(file) = fs::File::create(log_file) {
+            let no_buffering = true;
+            let mut file_logger = FileLogger::new(Some(file), no_buffering, None);
+            let mut builder = Builder::new();
+            builder.filter(Some(FILE_WATCH_LOGGER_NAME), log::LevelFilter::Info);
+            file_logger.reconfigure(builder);
+            self.logger
+                .register_logger(FILE_WATCH_LOGGER_NAME, Box::new(file_logger));
+
+            log::info!(target: FILE_WATCH_LOGGER_NAME, "Server starting");
+        }
     }
 }
 

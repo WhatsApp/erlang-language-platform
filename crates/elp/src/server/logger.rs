@@ -85,7 +85,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn it_works3() {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
         let lsp_logger = LspLogger::new(sender, None);

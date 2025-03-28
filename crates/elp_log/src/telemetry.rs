@@ -95,7 +95,7 @@ mod tests {
     use expect_test::expect;
 
     #[test]
-    fn it_works() {
+    fn it_works2() {
         let typ = String::from("telemetry");
         let data = serde_json::to_value("Hello telemetry!").unwrap();
         super::send(typ, data);

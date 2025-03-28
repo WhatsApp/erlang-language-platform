@@ -7,6 +7,7 @@ version.workspace = true
 crossbeam-channel.workspace = true
 env_logger.workspace = true
 fxhash.workspace = true
+humantime.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
@@ -16,3 +17,4 @@ serde_json.workspace = true
 [dev-dependencies]
 expect-test.workspace = true
 tempfile.workspace = true
+regex.workspace = true

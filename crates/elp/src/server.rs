@@ -116,6 +116,7 @@ mod progress;
 pub mod setup;
 
 const LOGGER_NAME: &str = "lsp";
+const FILE_WATCH_LOGGER_NAME: &str = "watched_files";
 const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
     FileKind::SrcModule,
     FileKind::TestModule,
@@ -431,8 +432,8 @@ impl Server {
             },
             Event::Vfs(mut msg) => loop {
                 match msg {
-                    loader::Message::Loaded { files } => self.on_loader_loaded(files),
-                    loader::Message::Changed { files } => self.on_loader_loaded(files),
+                    loader::Message::Loaded { files } => self.on_loader_loaded(files, false),
+                    loader::Message::Changed { files } => self.on_loader_loaded(files, true),
                     loader::Message::Progress {
                         n_total,
                         n_done,
@@ -810,6 +811,7 @@ impl Server {
                         let opened = convert::vfs_path(&change.uri)
                             .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                             .unwrap_or(false);
+                        log::info!(target: FILE_WATCH_LOGGER_NAME, "DidChangeWatchedFiles:{}:{}", &opened, &path);
                         if !opened {
                             if this.should_reload_project_for_path(&path, change) {
                                 this.reload_manager.lock().add(path.clone());
@@ -914,11 +916,15 @@ impl Server {
         }
     }
 
-    fn on_loader_loaded(&mut self, files: Vec<(AbsPathBuf, Option<Vec<u8>>)>) {
+    fn on_loader_loaded(&mut self, files: Vec<(AbsPathBuf, Option<Vec<u8>>)>, changed: bool) {
         let mut vfs = self.vfs.write();
         for (path, contents) in files {
             let path = VfsPath::from(path);
-            if !self.mem_docs.read().contains(&path) {
+            let opened = self.mem_docs.read().contains(&path);
+            if changed {
+                log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", &opened, &path);
+            }
+            if !opened {
                 // This call will add the file to the changed_files, picked
                 // up in `process_changes`.
                 vfs.set_file_contents(path, contents);

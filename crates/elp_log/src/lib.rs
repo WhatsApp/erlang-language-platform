@@ -257,12 +257,21 @@ where
 mod tests {
     use std::io::Read;
 
+    use regex::Regex;
     use tempfile::NamedTempFile;
 
-    use super::*;
+    use crate::FileLogger;
+    use crate::Logger;
+
+    fn clean_timestamp(text: &str) -> String {
+        let pattern = Regex::new(r"^\[[^\]]+\]").unwrap();
+        let replacement = "[Timestamp]";
+        let result = pattern.replace_all(text, replacement);
+        result.to_string()
+    }
 
     #[test]
-    fn it_works() {
+    fn it_works1() {
         let mut file = NamedTempFile::new().unwrap();
         let log_file = file.reopen().unwrap();
 
@@ -279,6 +288,9 @@ mod tests {
         file.read_to_string(&mut buf).unwrap();
 
         let name = "elp_log";
-        assert_eq!(format!("[ERROR {name}::tests] This will be logged!\n"), buf);
+        assert_eq!(
+            format!("[Timestamp] [ERROR {name}::tests] This will be logged!\n"),
+            clean_timestamp(&buf)
+        );
     }
 }
