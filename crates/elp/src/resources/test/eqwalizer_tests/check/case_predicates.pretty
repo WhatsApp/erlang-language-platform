@@ -119,15 +119,8 @@ Context expected type: [T]
     │                
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: #{dynamic() => dynamic()}
-  Differs from the expected type:  [T]
-
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => dynamic()} | none() is not compatible with [T]
-  because
-  #{dynamic() => dynamic()} is not compatible with [T]
+  Here the type is:     #{dynamic() => dynamic()}
+  Context expects type: [T]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:174:16
@@ -141,14 +134,7 @@ Context expected type: [dynamic()]
     │                
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: #{dynamic() => dynamic()}
-  Differs from the expected type:  [dynamic()]
-
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => dynamic()} | none() is not compatible with [dynamic()]
-  because
-  #{dynamic() => dynamic()} is not compatible with [dynamic()]
+  Here the type is:     #{dynamic() => dynamic()}
+  Context expects type: [dynamic()]
 
 11 ERRORS

@@ -222,15 +222,8 @@ Context expected type: binary()
     │   
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  atom() | none() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
+  Here the type is:     atom()
+  Context expects type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:521:22
@@ -245,9 +238,8 @@ Context expected type: {'union_field', atom()}
 
 Because in the expression's type:
   { 'union_field', 
-    Here the type is a union type with some valid candidates: none()
-    However the following candidate: binary()
-    Differs from the expected type:  atom()
+    Here the type is:     binary()
+    Context expects type: atom()
   }
 
 ------------------------------ Detailed message ------------------------------
@@ -256,8 +248,6 @@ Because in the expression's type:
   {'union_field', none() | binary()} is not compatible with {'union_field', atom()}
   because
   none() | binary() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:559:50
@@ -663,15 +653,8 @@ Context expected type: 'b'
      │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: 'a'
-  Differs from the expected type:  'b'
-
------------------------------- Detailed message ------------------------------
-
-  'a' | none() is not compatible with 'b'
-  because
-  'a' is not compatible with 'b'
+  Here the type is:     'a'
+  Context expects type: 'b'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1286:60
@@ -685,17 +668,9 @@ Context expected type: 'a' | 'b'
      │                                                            
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: 'c'
-  Differs from the expected type:  'a' | 'b'
-
------------------------------- Detailed message ------------------------------
-
-  none() | 'c' is not compatible with 'a' | 'b'
-  because
-  'c' is not compatible with 'a' | 'b'
-  because
-  'c' is not compatible with 'a'
+  Here the type is:     'c'
+  Context expects type: 'a' | 'b'
+  No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1291:43

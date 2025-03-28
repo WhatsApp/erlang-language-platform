@@ -605,15 +605,8 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: number()
-  Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  number() | none() is not compatible with atom()
-  because
-  number() is not compatible with atom()
+  Here the type is:     number()
+  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:545:5
@@ -627,15 +620,8 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: term()
-  Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  term() | none() is not compatible with atom()
-  because
-  term() is not compatible with atom()
+  Here the type is:     term()
+  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:551:5
@@ -649,15 +635,8 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: term()
-  Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  term() | none() is not compatible with atom()
-  because
-  term() is not compatible with atom()
+  Here the type is:     term()
+  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:557:5

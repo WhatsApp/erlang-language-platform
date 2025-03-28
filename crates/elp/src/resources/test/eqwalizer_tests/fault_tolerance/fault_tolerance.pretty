@@ -26,15 +26,8 @@ Context expected type: number()
    │   
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: 'false'
-  Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  'false' | none() is not compatible with number()
-  because
-  'false' is not compatible with number()
+  Here the type is:     'false'
+  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ fault_tolerance/src/fault_tolerance.erl:37:3
@@ -56,15 +49,8 @@ Context expected type: number()
    │   
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: none()
-  However the following candidate: 'false'
-  Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  'false' | none() is not compatible with number()
-  because
-  'false' is not compatible with number()
+  Here the type is:     'false'
+  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ fault_tolerance/src/fault_tolerance.erl:44:3
