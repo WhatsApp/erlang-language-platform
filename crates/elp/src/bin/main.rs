@@ -1038,19 +1038,6 @@ mod tests {
                       }
                     },
                     {
-                      "name": "toolchain_json",
-                      "dir": "/[prelude]//erlang/toolchain",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    },
-                    {
                       "name": "buck2_shell_utils",
                       "dir": "/[prelude]//erlang/shell/src",
                       "src_dirs": [
@@ -1201,19 +1188,6 @@ mod tests {
                       "include_dirs": [
                         ""
                       ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    },
-                    {
-                      "name": "toolchain_json",
-                      "dir": "/[prelude]//erlang/toolchain",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
                       "macros": {
                         "COMMON_TEST": "true",
                         "TEST": "true"
