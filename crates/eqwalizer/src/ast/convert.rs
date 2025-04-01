@@ -2067,6 +2067,13 @@ impl Converter {
                     return Ok(None);
                 }
             }
+            if let [Term::Atom(atom), _] = &tuple.elements[..] {
+                // incorrect moduledoc may produce warnings
+                // we ignore them
+                if atom.name == "warning" {
+                    return Ok(None);
+                }
+            }
             if let [Term::Atom(attr), pos, Term::Atom(kind), args] = &tuple.elements[..] {
                 if attr.name == "attribute" {
                     let pos = self.convert_pos(pos)?;

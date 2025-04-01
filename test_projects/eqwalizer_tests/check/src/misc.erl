@@ -8,7 +8,7 @@
 %% The majority of these tests are just
 %% to get some code coverage.
 %% Many of them do not have any special meaning.
-
+-moduledoc({file, "../doc/src/misc.md"}). % warning for absent doc file is ignored
 -compile([export_all, nowarn_export_all]).
 
 -import(misc_lib, [boolean_id/1]).

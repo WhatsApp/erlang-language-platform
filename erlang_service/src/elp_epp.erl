@@ -1116,19 +1116,11 @@ scan_filedoc_content(
             end;
         {error, _} ->
             %% We are unable to load the specified include file for the doc contents.
-            %% The `erlang.erl` OTP file tries to include files not shipped. So skip them.
-            case maps:get('MODULE', St#epp.macs) of
-               {none, [{atom, _, erlang}]} ->
-                    Loc = DocLoc,
-                    epp_reply(
-                    From,
-                    {ok,
-                    [{'-', Loc}, {atom, Loc, Doc}] ++
-                        [{string, Loc, unicode:characters_to_list("**skipping**")}, {dot, Loc}]}
-                    );
-                _ ->
-                  epp_reply(From, {error, {DocLoc, elp_epp, {Doc, file, DocFilename}}})
-            end,
+            %% So skip them and produce a warning.
+            epp_reply(From, {ok,
+                             [{'-', DocLoc}, {atom, DocLoc, Doc}]
+                             ++ [{string, DocLoc, unicode:characters_to_list("**skipping**")}, {dot, DocLoc}]}),
+            epp_reply(From, {warning, {DocLoc, elp_epp, {Doc, file, DocFilename}}}),
             wait_req_scan(St)
     end.
 

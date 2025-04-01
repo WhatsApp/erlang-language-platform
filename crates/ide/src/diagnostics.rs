@@ -2485,7 +2485,7 @@ baz(1)->4.
     }
 
     #[test]
-    fn file_not_found_doc_attribute() {
+    fn file_not_found_doc_attribute_warning() {
         check_diagnostics(
             r#"
             //- erlang_service
@@ -2494,14 +2494,14 @@ baz(1)->4.
               -module(a_file).
 
               -doc {file,"../../doc/src/info.md"}.
-             %%          ^^^^^^^^^^^^^^^^^^^^^^^ error: can't find doc file "../../doc/src/info.md"
+             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: can't find doc file "../../doc/src/info.md"
 
             "#,
         );
     }
 
     #[test]
-    fn file_not_found_doc_attribute_ignored_in_erlang() {
+    fn file_not_found_doc_attribute_warning_in_erlang() {
         check_diagnostics(
             r#"
             //- erlang_service
@@ -2510,7 +2510,7 @@ baz(1)->4.
               -module(erlang).
 
               -doc {file,"../../doc/src/info.md"}.
-
+             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: can't find doc file "../../doc/src/info.md"
             "#,
         );
     }
