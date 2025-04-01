@@ -69,6 +69,7 @@ pub struct EdocHeader {
     pub plaintext_copyright: Option<String>,
     pub copyright_prefix: Option<String>,
     pub hidden: Option<Tag>,
+    pub sees: Vec<Tag>,
     pub unknown: Vec<(String, Tag)>,
     pub ranges: Vec<TextRange>,
 }
@@ -87,6 +88,7 @@ impl EdocHeader {
             .chain(&self.authors)
             .chain(&self.copyright)
             .chain(&self.hidden)
+            .chain(&self.sees)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
             .sorted_by(|a, b| a.range().start().cmp(&b.range().start()))
@@ -128,6 +130,7 @@ impl EdocHeader {
         let mut res = String::new();
         res.push_str(&self.doc_content());
         res.push_str(&self.return_tag());
+        res.push_str(&self.see_tags());
         res.push_str(&self.unknown_tags());
 
         if !res.is_empty() {
@@ -157,6 +160,23 @@ impl EdocHeader {
             res.push_str("### Returns\n");
             if let Some(text) = returns.to_markdown() {
                 res.push_str(&text);
+            }
+        }
+        res
+    }
+
+    pub fn see_tags(&self) -> String {
+        let mut res = String::new();
+        for tag in &self.sees {
+            if let Some(text) = tag.to_markdown() {
+                match text.split_once(' ') {
+                    Some((reference, rest)) => {
+                        res.push_str(&format!("See `{reference}` {rest}"));
+                    }
+                    None => {
+                        res.push_str(&format!("See `{text}`"));
+                    }
+                }
             }
         }
         res
@@ -306,6 +326,7 @@ pub enum TagKind {
     Author,
     Copyright,
     Hidden,
+    See,
     Unknown(String),
 }
 
@@ -409,6 +430,7 @@ struct ParseContext {
     authors: Vec<Tag>,
     copyright: Option<Tag>,
     hidden: Option<Tag>,
+    sees: Vec<Tag>,
     unknown: Vec<(String, Tag)>,
 }
 
@@ -489,6 +511,12 @@ impl ParseContext {
                             range: tag_name.range,
                         });
                     }
+                    TagKind::See => {
+                        self.sees.push(Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        });
+                    }
                     TagKind::Unknown(unknown) => {
                         self.unknown.push((
                             unknown.to_string(),
@@ -511,6 +539,7 @@ impl ParseContext {
             && self.params.is_empty()
             && self.equiv.is_none()
             && self.hidden.is_none()
+            && self.sees.is_empty()
             && self.unknown.is_empty()
         {
             return None;
@@ -528,6 +557,7 @@ impl ParseContext {
             copyright: self.copyright,
             copyright_prefix: self.copyright_prefix,
             hidden: self.hidden,
+            sees: self.sees,
             unknown: self.unknown,
         })
     }
@@ -611,6 +641,9 @@ fn parse_edoc(
                     }
                     "hidden" | "private" => {
                         context.start_tag(TagKind::Hidden, range, content, comment, syntax);
+                    }
+                    "see" => {
+                        context.start_tag(TagKind::See, range, content, comment, syntax);
                     }
                     unknown => {
                         context.start_tag(

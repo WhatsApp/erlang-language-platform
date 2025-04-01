@@ -263,6 +263,29 @@ mod tests {
     }
 
     #[test]
+    fn test_function_doc_different_arities() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([main/0, main/2]).
+
+    %% @doc This is the main function documentation.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% @see main/2 for more information.
+    -spec main() -> tuple().
+    main() ->
+      main([], []).
+
+    %% @doc This is the main function with two arguments documentation.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    -spec main(any(), any()) -> tuple().
+    main(A, B) ->
+      {A, B}.
+        "#,
+        )
+    }
+
+    #[test]
     fn test_incorrect_type_doc() {
         check_diagnostics(
             r#"
@@ -1494,6 +1517,43 @@ main(A, B) ->
   dep().
 
 dep() -> ok.
+"#]],
+        )
+    }
+    #[test]
+    fn test_function_doc_see() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0, main/2]).
+
+%% @d~oc This is the main function documentation.
+%% @see main/2 for more information.
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0, main/2]).
+
+-doc """
+This is the main function documentation.
+See `main/2` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
 "#]],
         )
     }
