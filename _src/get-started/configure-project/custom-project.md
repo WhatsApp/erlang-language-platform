@@ -13,7 +13,7 @@ If your project is not using `rebar3` or `buck2` as a build system, you can stil
 You can generate an example to customize for your own configuration by using the following command on a configured `rebar3` project, in the directory where the `rebar.config` file exists.
 
 ```
-elp build-info --project . --json --to build_info.json
+elp build-info --project . --to build_info.json
 ```
 
 :::
