@@ -87,3 +87,7 @@ bd_generics_03(N) ->
     -> number().
 bd_generics_04_neg(N) ->
     bd_generic_fun(test, N).
+
+-spec as_list(dyn(atom()), [term()]) -> [term()].
+as_list(X, Y) ->
+    X ++ Y.
