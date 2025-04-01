@@ -827,7 +827,6 @@ mod tests {
             "build-info",
             "--to",
             tmp_file.clone(),
-            "--json",
             "--project",
             path_str
         ];
@@ -883,7 +882,6 @@ mod tests {
                 "build-info",
                 "--to",
                 tmp_file.clone(),
-                "--json",
                 "--project",
                 path_str
             ];
@@ -940,7 +938,6 @@ mod tests {
                 "--buck-bxl",
                 "--to",
                 tmp_file.clone(),
-                "--json",
                 "--project",
                 path_str
             ];
@@ -1096,7 +1093,6 @@ mod tests {
                 "--buck-generated",
                 "--to",
                 tmp_file.clone(),
-                "--json",
                 "--project",
                 path_str
             ];

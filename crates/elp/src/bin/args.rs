@@ -194,13 +194,9 @@ pub struct BuildInfo {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
-    /// Path to a directory where to dump wa.build_info
+    /// Path to a (JSON) file to write the build information
     #[bpaf(argument("TO"))]
     pub to: PathBuf,
-    /// Generate JSON output rather than Erlang terms.
-    ///   DEPRECATED: we now always generate JSON output
-    #[allow(unused)]
-    pub json: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -457,7 +453,7 @@ pub fn command() -> impl Parser<Command> {
         .map(Command::BuildInfo)
         .to_options()
         .command("build-info")
-        .help("Generate build info file");
+        .help("Generate build info JSON file");
 
     let generate_completions = generate_completions()
         .map(Command::GenerateCompletions)
