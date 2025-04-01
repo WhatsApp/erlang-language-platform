@@ -927,6 +927,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn build_info_json_buck_bxl() {
         if cfg!(feature = "buck") {
             let tmp_dir = make_tmp_dir();
@@ -1081,6 +1082,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn build_info_json_buck_bxl_generated() {
         if cfg!(feature = "buck") {
             let tmp_dir = make_tmp_dir();

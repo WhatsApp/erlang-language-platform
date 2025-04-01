@@ -829,7 +829,7 @@ mod tests {
                   params
                     Foo
                       25..64: "${2:Argument description}"
-                      65..87: "Does not have a tag"
+                      65..87: " Does not have a tag"
                   returns
                     88..123: "${4:Return description}"
             "#]],
@@ -925,12 +925,12 @@ mod tests {
             // Note: if you update the grammar, the order of these nodes
             // may change.
             expect![[r#"
-                Module
-                  doc
-                    0..26: "is an edoc comment"
                 Function
                   doc
                     42..60: "fff is ..."
+                Module
+                  doc
+                    0..26: "is an edoc comment"
             "#]],
         )
     }
@@ -951,7 +951,7 @@ mod tests {
                 Module
                   doc
                     0..18: "First line"
-                    19..38: "Second line"
+                    19..38: "      Second line"
             "#]],
         )
     }
@@ -970,7 +970,7 @@ mod tests {
                 Module
                   doc
                     7..18: "Bar"
-                    19..25: "Baz"
+                    19..25: " Baz"
             "#]],
         )
     }

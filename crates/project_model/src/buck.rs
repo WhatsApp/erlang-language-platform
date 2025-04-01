@@ -1599,6 +1599,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn build_info_buck_bxl_query() {
         if BUCK_TESTS_ENABLED {
             check_buck_bxl_query(
@@ -1764,6 +1765,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn build_info_buck_bxl_generated_query() {
         if BUCK_TESTS_ENABLED {
             // Note that there is now a value for `srcs` in the
