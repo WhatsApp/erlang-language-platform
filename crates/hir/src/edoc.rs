@@ -45,6 +45,7 @@ use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use htmlentity::entity::ICodedDataTrait;
 use regex::Regex;
+use stdx::trim_indent;
 
 use crate::db::DefDatabase;
 use crate::FunctionDef;
@@ -137,7 +138,7 @@ impl EdocHeader {
     pub fn return_tag(&self) -> String {
         let mut res = String::new();
         if let Some(returns) = &self.returns {
-            res.push_str("*Returns:* ");
+            res.push_str("### Returns\n");
             if let Some(text) = returns.to_markdown() {
                 res.push_str(&text);
             }
@@ -149,17 +150,9 @@ impl EdocHeader {
         let mut res = String::new();
         for (name, tag) in &self.unknown {
             let name = capitalize_first_char(name).unwrap_or(name.to_string());
-            res.push_str(&format!("  *{}:* ", name));
-            if let Some((head, tail)) = &tag.lines.split_first() {
-                if let Some(text) = &head.content {
-                    res.push_str(&format!("{text}"));
-                }
-                res.push_str("\n");
-                for line in tail.iter() {
-                    if let Some(text) = line.to_markdown() {
-                        res.push_str(&format!("  {}", text));
-                    }
-                }
+            res.push_str(&format!("### {name}\n"));
+            if let Some(text) = tag.to_markdown() {
+                res.push_str(&text);
             }
         }
         res
@@ -244,12 +237,14 @@ impl Tag {
     }
     pub fn to_markdown(&self) -> Option<String> {
         let mut res = String::new();
-        for line in &self.lines {
+        let (head, tail) = self.lines.split_first()?;
+        let head = head.to_markdown().unwrap_or("".to_string());
+        for line in tail {
             if let Some(text) = line.to_markdown() {
-                res.push_str(&text);
+                res.push_str(&format!("{}", &text));
             }
         }
-        ensure_non_empty(&res)
+        ensure_non_empty(&format!("{}{}", &head, &trim_indent(&res)))
     }
 }
 
@@ -540,7 +535,7 @@ fn parse_edoc(
                 }
                 if let Some(_tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());
-                    let content = text.trim_start_matches(|c: char| c == '%' || c.is_whitespace());
+                    let content = text.trim_start_matches(|c: char| c == '%');
                     context.add_line(Line {
                         content: Some(content.to_string()),
                         syntax,
@@ -673,7 +668,7 @@ fn convert_triple_quotes(comment: &str) -> Cow<str> {
 }
 
 fn convert_to_markdown(text: &str) -> String {
-    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(text))).to_string()
+    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(&text))).to_string()
 }
 
 #[cfg(test)]

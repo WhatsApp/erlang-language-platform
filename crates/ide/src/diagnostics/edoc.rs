@@ -495,7 +495,7 @@ dep() -> ok.
 -doc """
 This is some code:
 ```
-awesome code here
+   awesome code here
 ```
 """.
 main() ->
@@ -525,7 +525,7 @@ dep() -> ok.
 -doc """
 This is some `code`:
 ```
-awesome code here
+   awesome code here
 ```
 """.
 main() ->
@@ -692,7 +692,8 @@ dep() -> ok.
 
 -doc """
 This is the main function
-*Returns:* ok
+### Returns
+ok
 """.
 main(A, B) ->
     dep().
@@ -852,7 +853,8 @@ dep() -> ok.
 
 -doc """
 These are docs for the main function
-*Returns:* Some multi line
+### Returns
+Some multi line
 explanation
 """.
 -spec main(any(), any()) -> ok.
@@ -923,10 +925,12 @@ dep() -> ok.
 
 -doc """
 These are docs for the main function
-  *Something:* First line
-  Second line
-  *Else:* Third line
-  Fourth line
+### Something
+First line
+Second line
+### Else
+Third line
+Fourth line
 """.
 -spec main(any(), any()) -> ok.
 main(A, B) ->
@@ -1474,7 +1478,44 @@ dep() -> ok.
 -export([main/2]).
 
 -doc """
-  *Unknown:* Some unknown tag
+### Unknown
+Some unknown tag
+""".
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_ascii_art() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc This is a test
+%%   +---+
+%%    \ /
+%%     +
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+This is a test
++---+
+ \ /
+  +
 """.
 -spec main(any(), any()) -> ok.
 main(A, B) ->
