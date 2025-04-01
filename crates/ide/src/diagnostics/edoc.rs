@@ -1520,6 +1520,7 @@ dep() -> ok.
 "#]],
         )
     }
+
     #[test]
     fn test_function_doc_see() {
         check_fix(
@@ -1554,6 +1555,69 @@ main() ->
 -spec main(any(), any()) -> tuple().
 main(A, B) ->
     {A, B}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_last_comment_is_divider() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%%--------------------------------------------------------------------
+%% @d~oc
+%% Handling cast messages
+%%--------------------------------------------------------------------
+-spec main() -> tuple().
+main() ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+Handling cast messages
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_big_divider() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%%====================================================================
+%% API
+%%====================================================================
+%% @d~oc
+%% The main function
+%%--------------------------------------------------------------------
+-spec main() -> tuple().
+main() ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+%%====================================================================
+%% API
+%%====================================================================
+-doc """
+The main function
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
 "#]],
         )
     }

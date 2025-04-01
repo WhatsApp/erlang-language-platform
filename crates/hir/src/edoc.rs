@@ -249,13 +249,17 @@ fn decode_html_entities(text: &str) -> Cow<str> {
     }
 }
 
+fn is_divider(text: &str) -> bool {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%*\s*-*$").unwrap());
+    RE.is_match(text)
+}
+
 fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%+\s*(-|=)*$").unwrap());
     if let Some(NodeOrToken::Node(node)) =
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
     {
         if node.kind() == SyntaxKind::COMMENT {
-            if RE.is_match(&node.text().to_string()) {
+            if is_divider(&node.text().to_string()) {
                 return Some(node);
             }
         }
@@ -463,6 +467,13 @@ impl ParseContext {
         });
     }
     fn process_tag(&mut self) {
+        if let Some(last_comment) = self.lines.last() {
+            if let Some(content) = &last_comment.content {
+                if is_divider(&content) {
+                    _ = self.lines.pop();
+                }
+            }
+        }
         match &self.current_tag {
             Some(tag_name) => {
                 match &tag_name.kind {
