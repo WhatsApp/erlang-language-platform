@@ -34,16 +34,21 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 use elp_base_db::FileId;
+use elp_base_db::SourceDatabase;
+use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::ast::Form;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
+use elp_syntax::Direction;
+use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use htmlentity::entity::ICodedDataTrait;
+use itertools::Itertools;
 use regex::Regex;
 use stdx::trim_indent;
 
@@ -84,6 +89,7 @@ impl EdocHeader {
             .chain(&self.hidden)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
+            .sorted_by(|a, b| a.range().start().cmp(&b.range().start()))
     }
 
     pub fn copyright_comment(&self) -> Option<String> {
@@ -98,6 +104,16 @@ impl EdocHeader {
             "{copyright_prefix} Copyright {}\n",
             copyright.description()
         ))
+    }
+
+    pub fn prev_divider(&self, db: &dyn SourceDatabase) -> Option<SyntaxNode> {
+        let first_comment = self.comments().next()?;
+        divider(first_comment.to_ast(db).syntax(), Direction::Prev)
+    }
+
+    pub fn next_divider(&self, db: &dyn SourceDatabase) -> Option<SyntaxNode> {
+        let last_comment = self.comments().last()?;
+        divider(last_comment.to_ast(db).syntax(), Direction::Next)
     }
 
     pub fn to_eep59(&self) -> String {
@@ -211,6 +227,20 @@ fn decode_html_entities(text: &str) -> Cow<str> {
             Err(_) => Cow::Borrowed(text),
         }
     }
+}
+
+fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%+\s*(-|=)*$").unwrap());
+    if let Some(NodeOrToken::Node(node)) =
+        algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
+    {
+        if node.kind() == SyntaxKind::COMMENT {
+            if RE.is_match(&node.text().to_string()) {
+                return Some(node);
+            }
+        }
+    }
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
