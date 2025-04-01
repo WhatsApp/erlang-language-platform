@@ -685,7 +685,9 @@ mod tests {
 
     fn test_print(edoc: &FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>) -> String {
         let mut buf = String::default();
-        edoc.iter().for_each(
+        let mut edocs: Vec<_> = edoc.iter().collect();
+        edocs.sort_by_key(|(k, _)| k.range().start());
+        edocs.iter().for_each(
             |(
                 _k,
                 EdocHeader {
@@ -925,12 +927,12 @@ mod tests {
             // Note: if you update the grammar, the order of these nodes
             // may change.
             expect![[r#"
-                Function
-                  doc
-                    42..60: "fff is ..."
                 Module
                   doc
                     0..26: "is an edoc comment"
+                Function
+                  doc
+                    42..60: "fff is ..."
             "#]],
         )
     }
