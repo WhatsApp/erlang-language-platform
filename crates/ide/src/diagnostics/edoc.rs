@@ -333,6 +333,30 @@ mod tests {
     }
 
     #[test]
+    fn test_function_doc_with_multiline_tag() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([main/0, main/2]).
+
+    %% @doc This is the main function documentation.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% @see main/2 which is a great function to look at
+    %% with a very long description that goes on and on
+    -spec main() -> tuple().
+    main() ->
+        main([], []).
+
+    %% @doc This is the main function with two arguments documentation.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    -spec main(any(), any()) -> tuple().
+    main(A, B) ->
+        {A, B}.
+        "#,
+        )
+    }
+
+    #[test]
     fn test_module_doc_fix() {
         check_fix(
             r#"
@@ -1552,6 +1576,83 @@ main() ->
     main([], []).
 
 %% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_see_end() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0, main/2]).
+
+%% @d~oc This is the main function documentation.
+%% @see main/2
+%% @end
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0, main/2]).
+
+-doc """
+This is the main function documentation.
+See `main/2`
+""".
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_see_multiline() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0, main/2]).
+
+%% @d~oc This is the main function documentation.
+%% @see main/2 which is a great function to look at
+%% with a very long description that goes on and on
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0, main/2]).
+
+-doc """
+This is the main function documentation.
+See `main/2` which is a great function to look at
+with a very long description that goes on and on
+""".
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
 -spec main(any(), any()) -> tuple().
 main(A, B) ->
     {A, B}.

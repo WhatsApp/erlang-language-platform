@@ -169,13 +169,9 @@ impl EdocHeader {
         let mut res = String::new();
         for tag in &self.sees {
             if let Some(text) = tag.to_markdown() {
-                match text.split_once(' ') {
-                    Some((reference, rest)) => {
-                        res.push_str(&format!("See `{reference}` {rest}"));
-                    }
-                    None => {
-                        res.push_str(&format!("See `{text}`"));
-                    }
+                match wrap_reference_in_backquotes(&text) {
+                    Some(wrapped) => res.push_str(&format!("See {wrapped}")),
+                    None => res.push_str(&format!("See `{text}`")),
                 }
             }
         }
@@ -265,6 +261,14 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
         }
     }
     None
+}
+
+fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\s]+)").unwrap());
+    let captures = RE.captures(&text)?;
+    let reference = captures.get(1)?;
+    let rest = &text[reference.end()..];
+    Some(format!("`{}`{}", reference.as_str(), rest))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
