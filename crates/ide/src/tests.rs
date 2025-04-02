@@ -15,6 +15,7 @@ use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::RootDatabase;
@@ -206,17 +207,21 @@ pub(crate) fn check_nth_fix(
         &adhoc_semantic_diagnostics,
         &diagnostics_enabled,
     );
-    let diagnostic = diagnostics
+    let fix = diagnostics
         .diagnostics_for(pos.file_id)
         .into_iter()
+        .filter_map(|d| {
+            let fixes = get_fixes(&analysis, include_assists, pos, d);
+            let fix = fixes.get(nth)?;
+            if fix.target.contains_inclusive(pos.offset) {
+                Some(fix.clone())
+            } else {
+                None
+            }
+        })
         .last()
         .expect("no diagnostics")
         .clone();
-    let fixes = match include_assists {
-        IncludeCodeActionAssists::Yes => diagnostic.get_diagnostic_fixes(&analysis.db, pos.file_id),
-        IncludeCodeActionAssists::No => diagnostic.fixes.expect("diagnostic misses fixes"),
-    };
-    let fix = &fixes[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
@@ -235,6 +240,19 @@ pub(crate) fn check_nth_fix(
         pos.offset
     );
     fixture_after.assert_eq(&actual);
+}
+
+fn get_fixes(
+    analysis: &Analysis,
+    include_assists: IncludeCodeActionAssists,
+    pos: FilePosition,
+    diagnostic: Diagnostic,
+) -> Vec<Assist> {
+    let fixes = match include_assists {
+        IncludeCodeActionAssists::Yes => diagnostic.get_diagnostic_fixes(&analysis.db, pos.file_id),
+        IncludeCodeActionAssists::No => diagnostic.fixes.unwrap_or_default(),
+    };
+    fixes
 }
 
 /// Takes a multi-file input fixture with annotated cursor positions,
