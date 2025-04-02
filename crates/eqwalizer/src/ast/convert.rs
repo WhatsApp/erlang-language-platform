@@ -363,7 +363,7 @@ impl Converter {
                     name: name.name.clone().into(),
                 })));
             }
-            ("type", Term::Tuple(decl)) => {
+            ("type" | "nominal", Term::Tuple(decl)) => {
                 if let [Term::Atom(n), body, Term::List(vs)] = &decl.elements[..] {
                     let id = ast::Id {
                         name: n.name.clone().into(),

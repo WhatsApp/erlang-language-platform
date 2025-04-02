@@ -134,8 +134,8 @@ value_option(Flag, Default, On, OnVal, Off, OffVal, Opts) ->
                    :: #{atom() => {anno(),Fields :: term()}},
                locals=gb_sets:empty()     %All defined functions (prescanned)
                    :: gb_sets:set(fa()),
-               no_auto=gb_sets:empty() %Functions explicitly not autoimported
-                   :: gb_sets:set(fa()) | 'all',
+               no_auto={set,gb_sets:empty()} %Functions explicitly not autoimported
+                   :: {set, gb_sets:set(fa())} | 'all',
                defined=gb_sets:empty()          %Defined fuctions
                    :: gb_sets:set(fa()),
 	       on_load=[] :: [fa()],		%On-load function
@@ -931,6 +931,9 @@ attribute_state({attribute,A,type,{TypeName,TypeDef,Args}}, St) ->
 attribute_state({attribute,A,opaque,{TypeName,TypeDef,Args}}, St) ->
     St1 = untrack_doc({type, TypeName, length(Args)}, St),
     type_def(opaque, A, TypeName, TypeDef, Args, St1);
+attribute_state({attribute,A,nominal,{TypeName,TypeDef,Args}}, St) ->
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(nominal, A, TypeName, TypeDef, Args, St1);
 attribute_state({attribute,A,spec,{Fun,Types}}, St) ->
     spec_decl(A, Fun, Types, St);
 attribute_state({attribute,A,callback,{Fun,Types}}, St) ->
@@ -1012,6 +1015,9 @@ function_state({attribute,A,type,{TypeName,TypeDef,Args}}, St) ->
 function_state({attribute,A,opaque,{TypeName,TypeDef,Args}}, St) ->
     St1 = untrack_doc({type, TypeName, length(Args)}, St),
     type_def(opaque, A, TypeName, TypeDef, Args, St1);
+function_state({attribute,A,nominal,{TypeName,TypeDef,Args}}, St) ->
+    St1 = untrack_doc({type, TypeName, length(Args)}, St),
+    type_def(nominal, A, TypeName, TypeDef, Args, St1);
 function_state({attribute,A,spec,{Fun,Types}}, St) ->
     spec_decl(A, Fun, Types, St);
 function_state({attribute,_A,doc,_Val}=AST, St) ->
@@ -3409,6 +3415,8 @@ check_local_opaque_types(St) ->
     FoldFun =
         fun(_Type, #typeinfo{attr = type}, AccSt) ->
                 AccSt;
+           (_Type, #typeinfo{attr = nominal}, AccSt) ->
+                AccSt;
            (Type, #typeinfo{attr = opaque, anno = Anno}, AccSt) ->
                 case gb_sets:is_element(Type, ExpTs) of
                     true -> AccSt;
@@ -3472,7 +3480,8 @@ is_module_dialyzer_option(Option) ->
                   error_handling,race_conditions,no_missing_calls,
                   specdiffs,overspecs,underspecs,unknown,
                   no_underspecs,extra_return,no_extra_return,
-                  missing_return,no_missing_return,overlapping_contract
+                  missing_return,no_missing_return,overlapping_contract,
+                  opaque_union,no_opaque_union
                  ]).
 
 %% try_catch_clauses(Scs, Ccs, In, ImportVarTable, State) ->
@@ -4575,12 +4584,12 @@ auto_import_suppressed(CompileFlags) ->
         false ->
             L0 = [ X || {no_auto_import,X} <- CompileFlags ],
             L1 = [ {Y,Z} || {Y,Z} <- lists:flatten(L0), is_atom(Y), is_integer(Z) ],
-            gb_sets:from_list(L1)
+            {set, gb_sets:from_list(L1)}
     end.
 %% Predicate to find out if autoimport is explicitly suppressed for a function
 is_autoimport_suppressed(all,{_Func,_Arity}) ->
     true;
-is_autoimport_suppressed(NoAutoSet,{Func,Arity}) ->
+is_autoimport_suppressed({set,NoAutoSet},{Func,Arity}) ->
     gb_sets:is_element({Func,Arity},NoAutoSet).
 %% Predicate to find out if a function specific bif-clash suppression (old deprecated) is present
 bif_clash_specifically_disabled(St,{F,A}) ->

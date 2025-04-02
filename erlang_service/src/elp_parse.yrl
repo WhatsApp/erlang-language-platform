@@ -660,7 +660,7 @@ Erlang code.
 -type af_type_decl() ::
     {'attribute', anno(), type_attr(), {type_name(), abstract_type(), [af_variable()]}}.
 
--type type_attr() :: 'opaque' | 'type'.
+-type type_attr() :: 'nominal' | 'opaque' | 'type'.
 
 -type af_function_spec() ::
     {'attribute', anno(), spec_attr(), {{function_name(), arity()}, af_function_type_list()}}
@@ -1149,6 +1149,7 @@ parse_exprs(Tokens) ->
     | 'file'
     | 'import'
     | 'module'
+    | 'nominal'
     | 'opaque'
     | 'record'
     | 'type'.
@@ -1164,7 +1165,7 @@ build_typed_attribute(
     {type_def, _Anno, {call, _, {atom, _, TypeName}, Args}, Type},
     Anno
 ) when
-    Attr =:= 'type'; Attr =:= 'opaque'
+    Attr =:= 'type'; Attr =:= 'opaque'; Attr =:= 'nominal'
 ->
     lists:foreach(
         fun
@@ -1185,6 +1186,7 @@ build_typed_attribute({atom, Aa, Attr} = Abstr, _, _Anno) ->
     case Attr of
         record -> error_bad_decl(Abstr, record);
         type -> error_bad_decl(Abstr, type);
+        nominal -> error_bad_decl(Abstr, nominal);
         opaque -> error_bad_decl(Abstr, opaque);
         _ -> ret_err(Aa, "bad attribute")
     end.
@@ -1932,6 +1934,11 @@ modify_anno1({attribute, A, opaque, {TypeName, TypeDef, Args}}, Ac, Mf) ->
     {TypeDef1, Ac2} = modify_anno1(TypeDef, Ac1, Mf),
     {Args1, Ac3} = modify_anno1(Args, Ac2, Mf),
     {{attribute, A1, opaque, {TypeName, TypeDef1, Args1}}, Ac3};
+modify_anno1({attribute, A, nominal, {TypeName, TypeDef, Args}}, Ac, Mf) ->
+    {A1, Ac1} = Mf(A, Ac),
+    {TypeDef1, Ac2} = modify_anno1(TypeDef, Ac1, Mf),
+    {Args1, Ac3} = modify_anno1(Args, Ac2, Mf),
+    {{attribute, A1, nominal, {TypeName, TypeDef1, Args1}}, Ac3};
 modify_anno1({attribute, A, Attr, Val}, Ac, Mf) ->
     {A1, Ac1} = Mf(A, Ac),
     {{attribute, A1, Attr, Val}, Ac1};
