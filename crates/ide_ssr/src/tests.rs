@@ -849,7 +849,7 @@ fn ssr_expr_parens() {
         invisible_parens,
         "ssr: ((_@AA)).",
         "bar(X) -> X = ((3)),X = (4).",
-        &["X", "X = ((3))", "X", "((3))", "X", "X = (4)", "(4)"],
+        &["X", "X", "X = ((3))", "((3))", "X = (4)", "X", "(4)"],
     );
     assert_matches_with_strategy(
         invisible_parens,
@@ -989,7 +989,7 @@ fn ssr_pat_binary_op() {
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(Y) -> {X + 1 + 2} = Y.",
-        &["X + 1", "X + 1 + 2"],
+        &["X + 1 + 2", "X + 1"],
     );
 }
 
@@ -1292,6 +1292,18 @@ fn ssr_complex_match() {
          fn(List) -> lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List).
          "#,
         &["lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List)"],
+    );
+}
+
+#[test]
+fn ssr_matches_in_multiple_forms() {
+    assert_matches(
+        "ssr: {_@A, 3}.",
+        r#"
+         fn({a, 3}) -> ok;
+         fn({b, 3}) -> ok.
+         "#,
+        &["{a, 3}", "{b, 3}"],
     );
 }
 

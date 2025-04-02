@@ -19,6 +19,7 @@
 //! middle match would take the second `foo` from the outer match.
 
 use fxhash::FxHashMap;
+use hir::BodyOrigin;
 use hir::Semantic;
 
 use crate::matching::Match;
@@ -43,9 +44,9 @@ pub(crate) fn nest_and_remove_collisions(mut matches: Vec<Match>, sema: &Semanti
     collector.into()
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct MatchCollector {
-    matches_by_node: FxHashMap<SubId, Match>,
+    matches_by_node: FxHashMap<(BodyOrigin, SubId), Match>,
 }
 
 impl MatchCollector {
@@ -54,7 +55,7 @@ impl MatchCollector {
     /// a placeholder of an existing match, then it is added as a
     /// child match of the existing match.
     fn add_match(&mut self, m: Match, _sema: &Semantic) {
-        let matched_node = m.matched_node.clone();
+        let matched_node = (m.matched_node_body, m.matched_node.clone());
         self.matches_by_node.insert(matched_node, m);
     }
 }

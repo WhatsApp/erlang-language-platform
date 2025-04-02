@@ -169,7 +169,7 @@ pub struct DefineBody {
     pub expr: ExprId,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum BodyOrigin {
     Invalid(FileId),
     FormIdx {
