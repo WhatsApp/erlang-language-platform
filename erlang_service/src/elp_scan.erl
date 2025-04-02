@@ -333,6 +333,12 @@ scan1(".." ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '..', 2);
 scan1("." = Cs, St, Off, Toks) ->
     {more, {Cs, St, Off, Toks, [], fun scan/5}};
+scan1("&&" ++ Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, '&&', 2);
+scan1("&" = Cs, St, Off, Toks) ->
+    {more, {Cs, St, Off, Toks, [], fun scan/5}};
+scan1("&" ++ Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, '&', 1);
 scan1([$. | Cs], St, Off, Toks) ->
     scan_dot(Cs, St, Off, Toks, 1);
 %' Emacs
@@ -464,8 +470,6 @@ scan1([$` | Cs], St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '`', 1);
 scan1([$~ | Cs], St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '~', 1);
-scan1([$& | Cs], St, Off, Toks) ->
-    tok2(Cs, St, Off, Toks, '&', 1);
 %% End of optimization.
 scan1([C | Cs], St, Off, Toks) when ?UNI255(C) ->
     tok2(Cs, St, Off, Toks, list_to_atom([C]), char_byte_size(C));

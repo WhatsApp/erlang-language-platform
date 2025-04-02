@@ -397,6 +397,7 @@ pub enum Qualifier {
     BGenerateStrict(BGenerateStrict),
     MGenerate(MGenerate),
     MGenerateStrict(MGenerateStrict),
+    Zip(Zip),
     Filter(Filter),
 }
 
@@ -436,6 +437,11 @@ pub struct MGenerateStrict {
     pub k_pat: pat::Pat,
     pub v_pat: pat::Pat,
     pub expr: Expr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Zip {
+    pub generators: Vec<Qualifier>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

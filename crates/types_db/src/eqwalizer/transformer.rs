@@ -52,6 +52,7 @@ use super::expr::TryCatchExpr;
 use super::expr::TryOfCatchExpr;
 use super::expr::Tuple;
 use super::expr::UnOp;
+use super::expr::Zip;
 use super::form::ExternalForm;
 use super::form::ExternalRecDecl;
 use super::form::ExternalRecField;
@@ -192,6 +193,13 @@ pub fn walk_qualifier<T, V: Transformer<T>>(
             k_pat: transformer.transform_pat(g.k_pat)?,
             v_pat: transformer.transform_pat(g.v_pat)?,
             expr: transformer.transform_expr(g.expr)?,
+        })),
+        Qualifier::Zip(zip) => Ok(Qualifier::Zip(Zip {
+            generators: zip
+                .generators
+                .into_iter()
+                .map(|q| transformer.transform_qualifier(q))
+                .collect::<Result<Vec<_>, _>>()?,
         })),
         Qualifier::Filter(f) => Ok(Qualifier::Filter(Filter {
             expr: transformer.transform_expr(f.expr)?,

@@ -50,3 +50,27 @@ strict_comp_5(L) ->
     [#{atom() => pid()}].
 strict_comp_6_neg(L) ->
     #{K => Bin || {K, {ok, Bin}} <:- L}.
+
+-spec zip_gen_1([atom()], [binary()]) -> [{atom(), binary()}].
+zip_gen_1(As, Bs) ->
+    [{A, B} || A <- As && B <- Bs].
+
+-spec zip_gen_2_neg([atom()], [binary()]) -> [{atom(), atom()}].
+zip_gen_2_neg(As, Bs) ->
+    [{A, B} || A <- As && B <- Bs].
+
+-spec zip_gen_3([atom()], [binary()]) -> #{atom() => binary()}.
+zip_gen_3(As, Bs) ->
+    #{A => B || A <- As && B <- Bs}.
+
+-spec zip_gen_4_neg([atom()], [binary()]) -> #{atom() => atom()}.
+zip_gen_4_neg(As, Bs) ->
+    #{A => B || A <- As && B <- Bs}.
+
+-spec zip_gen_5([atom()], [binary()], #{atom() => binary()}) -> [{atom(), binary(), atom(), binary()}].
+zip_gen_5(As, Bs, M) ->
+    [{A, B, K, V} || A <- As && B <- Bs && K := V <- M].
+
+-spec zip_gen_6_neg([atom()], [binary()], #{atom() => binary()}) -> [{atom(), binary(), atom(), binary()}].
+zip_gen_6_neg(As, Bs, M) ->
+    [{A, B, V, K} || A <- As && B <- Bs && K := V <- M].

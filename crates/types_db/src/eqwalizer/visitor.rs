@@ -115,6 +115,10 @@ pub fn walk_qualifier<'a, T, V: Visitor<'a, T>>(
             visitor.visit_pat(&g.v_pat)?;
             visitor.visit_expr(&g.expr)
         }
+        Qualifier::Zip(zip) => zip
+            .generators
+            .iter()
+            .try_for_each(|q| visitor.visit_qualifier(q)),
         Qualifier::Filter(f) => visitor.visit_expr(&f.expr),
     }
 }

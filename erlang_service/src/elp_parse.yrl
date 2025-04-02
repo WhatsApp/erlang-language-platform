@@ -31,6 +31,7 @@ pat_expr pat_expr_max map_pat_expr record_pat_expr
 pat_argument_list pat_exprs
 list tail
 list_comprehension lc_expr lc_exprs
+zc_exprs
 map_comprehension
 binary_comprehension
 tuple
@@ -55,7 +56,7 @@ maybe_expr maybe_match_exprs maybe_match.
 Terminals
 char integer float atom sigil_prefix string sigil_suffix var
 
-'(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' '<:-' ';' ':' '#' '.'
+'(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' '<:-' ';' ':' '#' '.' '&&'
 'after' 'begin' 'case' 'try' 'catch' 'end' 'fun' 'if' 'of' 'receive' 'when'
 'maybe' 'else'
 'andalso' 'orelse'
@@ -335,6 +336,11 @@ binary_comprehension -> '<<' expr_max '||' lc_exprs '>>' :
 	{bc,?anno('$1','$5'),'$2','$4'}.
 lc_exprs -> lc_expr : ['$1'].
 lc_exprs -> lc_expr ',' lc_exprs : ['$1'|'$3'].
+lc_exprs -> zc_exprs : [{zip, ?anno(hd('$1'), lists:last('$1')), '$1'}].
+lc_exprs -> zc_exprs ',' lc_exprs : [{zip, ?anno(hd('$1'), lists:last('$1')), '$1'}|'$3'].
+
+zc_exprs -> lc_expr '&&' lc_expr : ['$1','$3'].
+zc_exprs -> lc_expr '&&' zc_exprs : ['$1'|'$3'].
 
 lc_expr -> expr : '$1'.
 lc_expr -> map_field_exact '<-' expr : {m_generate, ?anno('$1', '$3'), '$1', '$3'}.
@@ -593,7 +599,7 @@ Erlang code.
     error_info/0
 ]).
 %% The following types are exported because they are used by syntax_tools
--export_type([af_binelement/1, af_generator/0, af_remote_function/0]).
+-export_type([af_binelement/1, af_generator/0, af_zip_generator/0, af_remote_function/0]).
 %% The following type is used by PropEr
 -export_type([af_field_decl/0]).
 
@@ -745,7 +751,10 @@ Erlang code.
     | {'m_generate', anno(), af_assoc_exact(af_pattern()), abstract_expr()}
     | {'m_generate_strict', anno(), af_assoc_exact(af_pattern()), abstract_expr()}
     | {'b_generate', anno(), af_pattern(), abstract_expr()}
-    | {'b_generate_strict', anno(), af_pattern(), abstract_expr()}.
+    | {'b_generate_strict', anno(), af_pattern(), abstract_expr()}
+    | af_zip_generator().
+
+-type af_zip_generator() :: [af_generator(), ...].
 
 -type af_filter() :: abstract_expr().
 

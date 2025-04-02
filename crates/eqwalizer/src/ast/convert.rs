@@ -66,6 +66,7 @@ use elp_types_db::eqwalizer::expr::TryOfCatchExpr;
 use elp_types_db::eqwalizer::expr::Tuple;
 use elp_types_db::eqwalizer::expr::UnOp;
 use elp_types_db::eqwalizer::expr::Var;
+use elp_types_db::eqwalizer::expr::Zip;
 use elp_types_db::eqwalizer::ext_types::AnyArityFunExtType;
 use elp_types_db::eqwalizer::ext_types::AnyListExtType;
 use elp_types_db::eqwalizer::ext_types::AnyMapExtType;
@@ -1667,6 +1668,15 @@ impl Converter {
                             }));
                         }
                     }
+                }
+                [Term::Atom(kind), _, Term::List(generators)] if kind.name == "zip" => {
+                    return Ok(Qualifier::Zip(Zip {
+                        generators: generators
+                            .elements
+                            .iter()
+                            .map(|q| self.convert_qualifier(q))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    }));
                 }
                 _ => (),
             }
