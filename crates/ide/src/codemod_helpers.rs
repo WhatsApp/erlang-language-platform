@@ -476,11 +476,10 @@ impl Args {
     }
 }
 
-/// Check a specific call instance, and return extra info for a
-/// diagnostic and fix if needed.
-pub type CheckCall<'a, T, U> = &'a dyn Fn(CheckCallCtx<T>) -> Option<U>;
+/// Check a specific call instance, and return extra info for the call
+pub type CheckCall<'a, Ctx, Res> = &'a dyn Fn(CheckCallCtx<Ctx>) -> Option<Res>;
 
-pub struct MatchCtx<'a, U> {
+pub struct MatchCtx<'a, Extra> {
     pub sema: &'a Semantic<'a>,
     pub def_fb: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
     pub target: &'a CallTarget<ExprId>,
@@ -489,7 +488,7 @@ pub struct MatchCtx<'a, U> {
     /// macro, in which case the macro call location is used.
     pub range_mf_only: Option<TextRange>,
     pub range: TextRange,
-    pub extra: &'a U,
+    pub extra: &'a Extra,
 }
 
 impl<'a, U> MatchCtx<'a, U> {
@@ -507,7 +506,7 @@ impl<'a, U> MatchCtx<'a, U> {
     }
 }
 
-pub type Make<'a, T, U> = &'a dyn Fn(MatchCtx<T>) -> Option<U>;
+pub type Make<'a, Ctx, Res> = &'a dyn Fn(MatchCtx<Ctx>) -> Option<Res>;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum UseRange {
@@ -516,13 +515,13 @@ pub enum UseRange {
     NameOnly,
 }
 
-pub(crate) fn find_call_in_function<T, U, V>(
-    res: &mut Vec<V>,
+pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
+    res: &mut Vec<Res>,
     sema: &Semantic,
     def: &FunctionDef,
-    mfas: &[(&FunctionMatch, T)],
-    check_call: CheckCall<T, U>,
-    make: Make<U, V>,
+    mfas: &[(&FunctionMatch, CallCtx)],
+    check_call: CheckCall<CallCtx, MakeCtx>,
+    make: Make<MakeCtx, Res>,
 ) -> Option<()> {
     let def_fb = def.in_function_body(sema, def);
     let matcher = FunctionMatcher::new(mfas);
