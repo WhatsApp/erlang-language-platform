@@ -192,12 +192,26 @@ impl EdocHeader {
 
     pub fn hidden_attribute(&self) -> String {
         let mut res = String::new();
+        let mut bug_9672 = false;
         if self.exported && self.hidden.is_some() {
             let hidden_attribute = match self.kind {
                 EdocHeaderKind::Module => "-moduledoc hidden.",
                 EdocHeaderKind::Function => "-doc hidden.",
             };
-            res.push_str(&format!("{hidden_attribute}\n"));
+            if let Some(doc) = &self.doc {
+                if doc.to_markdown().is_some() {
+                    bug_9672 = true;
+                }
+            }
+            if bug_9672 {
+                // Due to a bug in OTP, we cannot add the hidden attribute if there's actual documentation
+                // https://github.com/erlang/otp/issues/9672
+                // If that's the case, add the tag as a comment instead, and link to the bug
+                let bug_url = "https://github.com/erlang/otp/issues/9672";
+                res.push_str(&format!("%% {hidden_attribute} {bug_url}\n"));
+            } else {
+                res.push_str(&format!("{hidden_attribute}\n"));
+            }
         }
         res
     }

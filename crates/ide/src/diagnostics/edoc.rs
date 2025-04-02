@@ -1478,6 +1478,38 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_function_doc_private_with_doc() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc This function has some documentation
+%% @private
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+This function has some documentation
+""".
+%% -doc hidden. https://github.com/erlang/otp/issues/9672
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_unknown() {
         check_fix(
             r#"
