@@ -14,6 +14,7 @@ use elp_types_db::eqwalizer::binary_specifier::Specifier;
 use elp_types_db::eqwalizer::expr::AtomLit;
 use elp_types_db::eqwalizer::expr::BComprehension;
 use elp_types_db::eqwalizer::expr::BGenerate;
+use elp_types_db::eqwalizer::expr::BGenerateStrict;
 use elp_types_db::eqwalizer::expr::BinOp;
 use elp_types_db::eqwalizer::expr::Binary;
 use elp_types_db::eqwalizer::expr::BinaryElem;
@@ -33,11 +34,13 @@ use elp_types_db::eqwalizer::expr::If;
 use elp_types_db::eqwalizer::expr::IntLit;
 use elp_types_db::eqwalizer::expr::LComprehension;
 use elp_types_db::eqwalizer::expr::LGenerate;
+use elp_types_db::eqwalizer::expr::LGenerateStrict;
 use elp_types_db::eqwalizer::expr::Lambda;
 use elp_types_db::eqwalizer::expr::LocalCall;
 use elp_types_db::eqwalizer::expr::LocalFun;
 use elp_types_db::eqwalizer::expr::MComprehension;
 use elp_types_db::eqwalizer::expr::MGenerate;
+use elp_types_db::eqwalizer::expr::MGenerateStrict;
 use elp_types_db::eqwalizer::expr::MapCreate;
 use elp_types_db::eqwalizer::expr::MapUpdate;
 use elp_types_db::eqwalizer::expr::Match;
@@ -1623,8 +1626,20 @@ impl Converter {
                         expr: self.convert_expr(exp)?,
                     }));
                 }
+                [Term::Atom(kind), _, pat, exp] if kind.name == "generate_strict" => {
+                    return Ok(Qualifier::LGenerateStrict(LGenerateStrict {
+                        pat: self.convert_pat(pat)?,
+                        expr: self.convert_expr(exp)?,
+                    }));
+                }
                 [Term::Atom(kind), _, pat, exp] if kind.name == "b_generate" => {
                     return Ok(Qualifier::BGenerate(BGenerate {
+                        pat: self.convert_pat(pat)?,
+                        expr: self.convert_expr(exp)?,
+                    }));
+                }
+                [Term::Atom(kind), _, pat, exp] if kind.name == "b_generate_strict" => {
+                    return Ok(Qualifier::BGenerateStrict(BGenerateStrict {
                         pat: self.convert_pat(pat)?,
                         expr: self.convert_expr(exp)?,
                     }));
@@ -1633,6 +1648,19 @@ impl Converter {
                     if let [Term::Atom(m_kind), _, k_pat, v_pat] = &m_elems.elements[..] {
                         if m_kind.name == "map_field_exact" {
                             return Ok(Qualifier::MGenerate(MGenerate {
+                                k_pat: self.convert_pat(k_pat)?,
+                                v_pat: self.convert_pat(v_pat)?,
+                                expr: self.convert_expr(exp)?,
+                            }));
+                        }
+                    }
+                }
+                [Term::Atom(kind), _, Term::Tuple(m_elems), exp]
+                    if kind.name == "m_generate_strict" =>
+                {
+                    if let [Term::Atom(m_kind), _, k_pat, v_pat] = &m_elems.elements[..] {
+                        if m_kind.name == "map_field_exact" {
+                            return Ok(Qualifier::MGenerateStrict(MGenerateStrict {
                                 k_pat: self.convert_pat(k_pat)?,
                                 v_pat: self.convert_pat(v_pat)?,
                                 expr: self.convert_expr(exp)?,

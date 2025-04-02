@@ -93,11 +93,24 @@ pub fn walk_qualifier<'a, T, V: Visitor<'a, T>>(
             visitor.visit_pat(&g.pat)?;
             visitor.visit_expr(&g.expr)
         }
+        Qualifier::LGenerateStrict(g) => {
+            visitor.visit_pat(&g.pat)?;
+            visitor.visit_expr(&g.expr)
+        }
         Qualifier::BGenerate(g) => {
             visitor.visit_pat(&g.pat)?;
             visitor.visit_expr(&g.expr)
         }
+        Qualifier::BGenerateStrict(g) => {
+            visitor.visit_pat(&g.pat)?;
+            visitor.visit_expr(&g.expr)
+        }
         Qualifier::MGenerate(g) => {
+            visitor.visit_pat(&g.k_pat)?;
+            visitor.visit_pat(&g.v_pat)?;
+            visitor.visit_expr(&g.expr)
+        }
+        Qualifier::MGenerateStrict(g) => {
             visitor.visit_pat(&g.k_pat)?;
             visitor.visit_pat(&g.v_pat)?;
             visitor.visit_expr(&g.expr)

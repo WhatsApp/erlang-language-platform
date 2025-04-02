@@ -9,6 +9,7 @@
 
 use super::expr::BComprehension;
 use super::expr::BGenerate;
+use super::expr::BGenerateStrict;
 use super::expr::BinOp;
 use super::expr::Binary;
 use super::expr::BinaryElem;
@@ -26,10 +27,12 @@ use super::expr::Filter;
 use super::expr::If;
 use super::expr::LComprehension;
 use super::expr::LGenerate;
+use super::expr::LGenerateStrict;
 use super::expr::Lambda;
 use super::expr::LocalCall;
 use super::expr::MComprehension;
 use super::expr::MGenerate;
+use super::expr::MGenerateStrict;
 use super::expr::MapCreate;
 use super::expr::MapUpdate;
 use super::expr::Match;
@@ -168,11 +171,24 @@ pub fn walk_qualifier<T, V: Transformer<T>>(
             pat: transformer.transform_pat(g.pat)?,
             expr: transformer.transform_expr(g.expr)?,
         })),
+        Qualifier::LGenerateStrict(g) => Ok(Qualifier::LGenerateStrict(LGenerateStrict {
+            pat: transformer.transform_pat(g.pat)?,
+            expr: transformer.transform_expr(g.expr)?,
+        })),
         Qualifier::BGenerate(g) => Ok(Qualifier::BGenerate(BGenerate {
             pat: transformer.transform_pat(g.pat)?,
             expr: transformer.transform_expr(g.expr)?,
         })),
+        Qualifier::BGenerateStrict(g) => Ok(Qualifier::BGenerateStrict(BGenerateStrict {
+            pat: transformer.transform_pat(g.pat)?,
+            expr: transformer.transform_expr(g.expr)?,
+        })),
         Qualifier::MGenerate(g) => Ok(Qualifier::MGenerate(MGenerate {
+            k_pat: transformer.transform_pat(g.k_pat)?,
+            v_pat: transformer.transform_pat(g.v_pat)?,
+            expr: transformer.transform_expr(g.expr)?,
+        })),
+        Qualifier::MGenerateStrict(g) => Ok(Qualifier::MGenerateStrict(MGenerateStrict {
             k_pat: transformer.transform_pat(g.k_pat)?,
             v_pat: transformer.transform_pat(g.v_pat)?,
             expr: transformer.transform_expr(g.expr)?,

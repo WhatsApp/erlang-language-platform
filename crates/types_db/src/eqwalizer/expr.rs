@@ -392,13 +392,22 @@ pub struct RecordFieldGen {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Qualifier {
     LGenerate(LGenerate),
+    LGenerateStrict(LGenerateStrict),
     BGenerate(BGenerate),
+    BGenerateStrict(BGenerateStrict),
     MGenerate(MGenerate),
+    MGenerateStrict(MGenerateStrict),
     Filter(Filter),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LGenerate {
+    pub pat: pat::Pat,
+    pub expr: Expr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct LGenerateStrict {
     pub pat: pat::Pat,
     pub expr: Expr,
 }
@@ -410,7 +419,20 @@ pub struct BGenerate {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct BGenerateStrict {
+    pub pat: pat::Pat,
+    pub expr: Expr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MGenerate {
+    pub k_pat: pat::Pat,
+    pub v_pat: pat::Pat,
+    pub expr: Expr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct MGenerateStrict {
     pub k_pat: pat::Pat,
     pub v_pat: pat::Pat,
     pub expr: Expr,
