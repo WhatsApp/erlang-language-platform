@@ -659,7 +659,7 @@ impl FunctionClauseBody {
                 FoldCtx::fold_exprs(strategy, &self.body, &from_macro.args, initial, callback)
             }
             _ => {
-                let initial = self.clause.pats.iter().enumerate().fold(
+                let acc1 = self.clause.pats.iter().enumerate().fold(
                     initial,
                     |acc_inner, (idx, pat_id)| {
                         FoldCtx::fold_pat_as_arg(
@@ -668,28 +668,25 @@ impl FunctionClauseBody {
                     },
                 );
 
-                let initial =
-                    self.clause
-                        .guards
-                        .iter()
-                        .flatten()
-                        .fold(initial, |acc_inner, expr_id| {
-                            FoldCtx::fold_expr_with_parents(
-                                strategy,
-                                &self.body,
-                                *expr_id,
-                                vec![ParentId::Constructor(Constructor::Guard)],
-                                acc_inner,
-                                callback,
-                            )
-                        });
-
-                self.clause
-                    .exprs
+                let acc2 = self
+                    .clause
+                    .guards
                     .iter()
-                    .fold(initial, |acc_inner, expr_id| {
-                        FoldCtx::fold_expr(strategy, &self.body, *expr_id, acc_inner, callback)
-                    })
+                    .flatten()
+                    .fold(acc1, |acc_inner, expr_id| {
+                        FoldCtx::fold_expr_with_parents(
+                            strategy,
+                            &self.body,
+                            *expr_id,
+                            vec![ParentId::Constructor(Constructor::Guard)],
+                            acc_inner,
+                            callback,
+                        )
+                    });
+
+                self.clause.exprs.iter().fold(acc2, |acc_inner, expr_id| {
+                    FoldCtx::fold_expr(strategy, &self.body, *expr_id, acc_inner, callback)
+                })
             }
         }
     }
