@@ -1169,30 +1169,11 @@ impl PatternIterator {
                     };
                     PatternIterator::as_pattern_list(
                         bs.into_iter()
-                            .chain(exprs.iter().flat_map(|cb| match cb {
-                                ComprehensionExpr::BinGenerator { pat, expr, strict } => {
-                                    vec!["CBB".into(), strict.into(), (*pat).into(), (*expr).into()]
-                                }
-                                ComprehensionExpr::ListGenerator { pat, expr, strict } => {
-                                    vec!["CBL".into(), strict.into(), (*pat).into(), (*expr).into()]
-                                }
-                                ComprehensionExpr::MapGenerator {
-                                    key,
-                                    value,
-                                    expr,
-                                    strict,
-                                } => {
-                                    vec![
-                                        "CBM".into(),
-                                        strict.into(),
-                                        (*key).into(),
-                                        (*value).into(),
-                                        (*expr).into(),
-                                    ]
-                                }
-                                ComprehensionExpr::Expr(expr) => vec![(*expr).into()],
-                                ComprehensionExpr::Zip(_) => todo!(),
-                            }))
+                            .chain(
+                                exprs
+                                    .iter()
+                                    .flat_map(|cb| PatternIterator::for_comprehension_expr(cb)),
+                            )
                             .collect(),
                     )
                 }
@@ -1379,6 +1360,38 @@ impl PatternIterator {
         match self {
             PatternIterator::Leaf => true,
             _ => false,
+        }
+    }
+
+    fn for_comprehension_expr(cb: &ComprehensionExpr) -> Vec<SubId> {
+        match cb {
+            ComprehensionExpr::BinGenerator { pat, expr, strict } => {
+                vec!["CBB".into(), strict.into(), (*pat).into(), (*expr).into()]
+            }
+            ComprehensionExpr::ListGenerator { pat, expr, strict } => {
+                vec!["CBL".into(), strict.into(), (*pat).into(), (*expr).into()]
+            }
+            ComprehensionExpr::MapGenerator {
+                key,
+                value,
+                expr,
+                strict,
+            } => {
+                vec![
+                    "CBM".into(),
+                    strict.into(),
+                    (*key).into(),
+                    (*value).into(),
+                    (*expr).into(),
+                ]
+            }
+            ComprehensionExpr::Expr(expr) => vec![(*expr).into()],
+            ComprehensionExpr::Zip(exprs) => exprs
+                .iter()
+                .flat_map(|id| {
+                    iter::once("ZIP".into()).chain(PatternIterator::for_comprehension_expr(id))
+                })
+                .collect(),
         }
     }
 }

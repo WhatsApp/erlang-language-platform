@@ -696,6 +696,15 @@ fn ssr_expr_map_comprehension() {
 }
 
 #[test]
+fn ssr_expr_zip_comprehension() {
+    assert_matches(
+        "ssr: [_@A || XX <- _@List && YY <- _@B, _@Cond].",
+        "bar() -> [{XX,YY} || XX <- List && YY <- ZZ, XX >= 5].",
+        &["[{XX,YY} || XX <- List && YY <- ZZ, XX >= 5]"],
+    );
+}
+
+#[test]
 fn ssr_expr_if() {
     assert_matches(
         "ssr: if _@Cond -> _@B end .",
