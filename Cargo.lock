@@ -472,7 +472,6 @@ dependencies = [
  "elp_types_db",
  "fxhash",
  "itertools 0.10.5",
- "lazy_static",
  "log",
  "parking_lot 0.12.3",
  "salsa",

@@ -15,6 +15,7 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -26,7 +27,6 @@ use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::types::Type;
 pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use fxhash::FxHashMap;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use tempfile::Builder;
 use tempfile::TempPath;
@@ -158,18 +158,17 @@ impl Default for Eqwalizer {
     }
 }
 
-lazy_static! {
-    // We make a static version of the eqwalizer executable environment to
-    // - Prevent race conditions in tests from the temporary file creation
-    //   process (T182801661)
-    // - Speed up tests, since we create a RootDatabase once per test
-    //   needing the erlang service
-    // We wrap it in an Arc to make sure it never goes out of scope,
-    // triggering the Drop handler, until the programme exits.
-    // It has a Mutex so it can be updated if the operating systen deletes the file
-    // for a long-running ELP server.
-    static ref EQWALIZER_EXE: Arc<Mutex<EqwalizerExe>> = Arc::new(Mutex::new(EqwalizerExe::ensure_exe()));
-}
+// We make a static version of the eqwalizer executable environment to
+// - Prevent race conditions in tests from the temporary file creation
+//   process (T182801661)
+// - Speed up tests, since we create a RootDatabase once per test
+//   needing the erlang service
+// We wrap it in an Arc to make sure it never goes out of scope,
+// triggering the Drop handler, until the programme exits.
+// It has a Mutex so it can be updated if the operating systen deletes the file
+// for a long-running ELP server.
+static EQWALIZER_EXE: LazyLock<Mutex<EqwalizerExe>> =
+    LazyLock::new(|| Mutex::new(EqwalizerExe::ensure_exe()));
 
 impl EqwalizerExe {
     // Identify the required Eqwalizer executable, and ensure it is
@@ -232,11 +231,11 @@ impl EqwalizerExe {
 
 impl Eqwalizer {
     fn cmd(&self) -> Command {
-        let exe = &mut EQWALIZER_EXE.lock();
+        let mut exe = EQWALIZER_EXE.lock();
         if !exe.cmd.is_file() {
             log::error!("Eqwalizer exe has disappeared, recreating");
             // We have a problem with the eqwalizer exe file, recreate it
-            **exe = EqwalizerExe::ensure_exe();
+            *exe = EqwalizerExe::ensure_exe();
         }
         exe.cmd()
     }

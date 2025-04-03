@@ -8,23 +8,18 @@
  */
 
 use std::collections::BTreeSet;
-
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
 use crate::ast;
 
-pub static FAKE_MODULE: &str = "$compiler_macro";
+pub const FAKE_MODULE: &str = "$compiler_macro";
 
-lazy_static! {
-    static ref FUNS: BTreeSet<ast::Id> = {
-        vec![ast::Id {
-            name: "record_info".into(),
-            arity: 2,
-        }]
-        .into_iter()
-        .collect()
-    };
-}
+const FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
+    BTreeSet::from_iter([ast::Id {
+        name: "record_info".into(),
+        arity: 2,
+    }])
+});
 
 pub fn is_compiler_macro(id: &ast::Id) -> bool {
     FUNS.contains(id)

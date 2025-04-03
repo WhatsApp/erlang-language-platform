@@ -8,6 +8,7 @@
  */
 
 use std::collections::BTreeSet;
+use std::sync::LazyLock;
 
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::expr::Body;
@@ -32,103 +33,94 @@ use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::Pos;
 use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::AST;
-use lazy_static::lazy_static;
 
 use crate::ast;
 
-lazy_static! {
-    static ref PREDICATES: BTreeSet<ast::Id> = {
-        BTreeSet::from_iter([
-            ast::Id {
-                name: "is_atom".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_binary".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_bitstring".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_boolean".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_float".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_function".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_integer".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_list".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_number".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_pid".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_port".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_reference".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_map".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_tuple".into(),
-                arity: 1,
-            },
-            ast::Id {
-                name: "is_record".into(),
-                arity: 2,
-            },
-            ast::Id {
-                name: "is_function".into(),
-                arity: 2,
-            },
-            ast::Id {
-                name: "is_record".into(),
-                arity: 3,
-            },
-        ])
-    };
-}
+const PREDICATES: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
+    BTreeSet::from_iter([
+        ast::Id {
+            name: "is_atom".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_binary".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_bitstring".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_boolean".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_float".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_function".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_integer".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_list".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_number".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_pid".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_port".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_reference".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_map".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_tuple".into(),
+            arity: 1,
+        },
+        ast::Id {
+            name: "is_record".into(),
+            arity: 2,
+        },
+        ast::Id {
+            name: "is_function".into(),
+            arity: 2,
+        },
+        ast::Id {
+            name: "is_record".into(),
+            arity: 3,
+        },
+    ])
+});
 
-lazy_static! {
-    static ref BINOP: BTreeSet<SmolStr> = {
-        vec![
+const BINOP: LazyLock<BTreeSet<SmolStr>> = LazyLock::new(|| {
+    BTreeSet::from_iter(
+        [
             "/", "*", "-", "+", "div", "rem", "band", "bor", "bxor", "bsl", "bsr", "or", "xor",
             "and", ">=", ">", "=<", "<", "/=", "=/=", "==", "=:=", "andalso", "orelse",
         ]
-        .into_iter()
-        .map(|s| s.into())
-        .collect()
-    };
-}
+        .map(|s| s.into()),
+    )
+});
 
-lazy_static! {
-    static ref UNOP: BTreeSet<SmolStr> = vec!["bnot", "+", "-", "not"]
-        .into_iter()
-        .map(|s| s.into())
-        .collect();
-}
+const UNOP: LazyLock<BTreeSet<SmolStr>> =
+    LazyLock::new(|| BTreeSet::from_iter(["bnot", "+", "-", "not"].map(|s| s.into())));
 
 fn as_test(expr: Expr) -> Option<Test> {
     match expr {
