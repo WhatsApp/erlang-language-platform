@@ -1115,11 +1115,17 @@ impl Server {
             let diagnostics_types = opened_documents
                 .into_iter()
                 .filter_map(|file_id| {
-                    Some((
-                        file_id,
-                        snapshot.eqwalizer_diagnostics(file_id, include_otp)?,
-                        snapshot.eqwalizer_types(file_id, include_otp)?,
-                    ))
+                    let diags = snapshot
+                        .eqwalizer_diagnostics(file_id, include_otp)
+                        .unwrap_or_default();
+                    let types = snapshot
+                        .eqwalizer_types(file_id, include_otp)
+                        .unwrap_or_default();
+                    if diags.is_empty() && types.is_empty() {
+                        None
+                    } else {
+                        Some((file_id, diags, types))
+                    }
                 })
                 .collect();
 
