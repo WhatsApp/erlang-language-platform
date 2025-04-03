@@ -78,27 +78,37 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                 }?;
                 let source_file = sema.parse(file_id);
                 let ast = inc.form_id().get(&source_file.value);
-                let range = match ast {
+                let (range, make_include_lib) = match ast {
                     ast::Form::PreprocessorDirective(preprocessor_directive) => {
                         match preprocessor_directive {
-                            ast::PreprocessorDirective::PpInclude(pp_include) => {
-                                pp_include.include_range()
-                            }
+                            ast::PreprocessorDirective::PpInclude(pp_include) => pp_include
+                                .include_range()
+                                .map(|r| (r, Some(pp_include.text_range()))),
                             ast::PreprocessorDirective::PpIncludeLib(pp_include_lib) => {
-                                pp_include_lib.include_range()
+                                pp_include_lib.include_range().map(|r| (r, None))
                             }
                             _ => None,
                         }
                     }
                     _ => None,
                 }?;
-                acc.push(make_diagnostic(file_id, range, replacement)?);
+                acc.push(make_diagnostic(
+                    file_id,
+                    range,
+                    replacement,
+                    make_include_lib,
+                )?);
                 Some(())
             }();
         });
 }
 
-fn make_diagnostic(file_id: FileId, range: TextRange, new_include: &str) -> Option<Diagnostic> {
+fn make_diagnostic(
+    file_id: FileId,
+    range: TextRange,
+    new_include: &str,
+    make_include_lib: Option<TextRange>,
+) -> Option<Diagnostic> {
     let message = format!("Unspecific include.");
     Some(
         Diagnostic::new(DiagnosticCode::UnspecificInclude, message, range)
@@ -107,13 +117,26 @@ fn make_diagnostic(file_id: FileId, range: TextRange, new_include: &str) -> Opti
                 file_id,
                 range,
                 new_include,
+                make_include_lib,
             )])),
     )
 }
 
-fn replace_include_path(file_id: FileId, range: TextRange, filename: &str) -> Assist {
+fn replace_include_path(
+    file_id: FileId,
+    range: TextRange,
+    filename: &str,
+    make_include_lib: Option<TextRange>,
+) -> Assist {
     let mut builder = TextEdit::builder();
-    builder.replace(range, format!("\"{}\"", filename.to_string()));
+    if let Some(attr_range) = make_include_lib {
+        builder.replace(
+            attr_range,
+            format!("-include_lib(\"{}\").", filename.to_string()),
+        );
+    } else {
+        builder.replace(range, format!("\"{}\"", filename.to_string()));
+    }
     let edit = builder.finish();
     fix(
         "replace_unspecific_include",
@@ -174,7 +197,24 @@ mod tests {
            -define(A,3)."#,
             expect![[r#"
                     -module(unspecific_include).
-                    -include("app_a/include/some_header_from_app_a.hrl").
+                    -include_lib("app_a/include/some_header_from_app_a.hrl").
+            "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_unspecific_include_lib() {
+        check_fix(
+            r#"
+           //- /app_a/src/unspecific_include.erl
+           -module(unspecific_include).
+           -include_lib("some~_header_from_app_a.hrl").
+           %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
+           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
+           -define(A,3)."#,
+            expect![[r#"
+                    -module(unspecific_include).
+                    -include_lib("app_a/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
