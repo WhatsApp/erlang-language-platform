@@ -23,4 +23,4 @@ Where you can use:
 * `enabled_lints`: To enable a diagnostic that would otherwise be disabled by default
 * `disabled_lints`: To disable a diagnostic that would otherwise be enabled by default
 
-Please refer to the [Erlang Error Index](../../erlang-error-index/erlang-error-index.md) for a reference of supported diagnostic codes.
+Please refer to the [Erlang Error Index](../../erlang-error-index/erlang-error-index.mdx) for a reference of supported diagnostic codes.
