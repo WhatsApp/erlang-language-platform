@@ -94,6 +94,7 @@ pub enum Namespace {
     Parser,
     EDoc,
     WhatsApp,
+    // @fb-only
 }
 
 impl fmt::Display for Namespace {
@@ -108,6 +109,7 @@ impl fmt::Display for Namespace {
             Namespace::Parser => "p",
             Namespace::EDoc => "o",
             Namespace::WhatsApp => "w",
+            // @fb-only
         };
         write!(f, "{namespace}")
     }

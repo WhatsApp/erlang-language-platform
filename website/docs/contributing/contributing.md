@@ -34,7 +34,7 @@ The Erlang Error Index is currently part of the ELP website, so you can refer to
 
 The entrypoint for the index is [here](https://github.com/WhatsApp/erlang-language-platform/tree/main/website/docs/erlang-error-index).
 
-Error codes are organized using *namespaces*, which are listed [here](https://github.com/WhatsApp/erlang-language-platform/blob/main/website/docs/erlang-error-index/erlang-error-index.md#namespaces).
+Error codes are organized using *namespaces*, which are listed [here](https://github.com/WhatsApp/erlang-language-platform/blob/main/website/docs/erlang-error-index/erlang-error-index.mdx#namespaces).
 Generally speaking, a namespace corresponds to a tool which emits error codes (e.g. `C` for the `Erlang Compiler`).
 A folder is associated to each namespace. If the namespace is `C`, the corresponding folder is named `c` (lowered version of the namespace).
 
