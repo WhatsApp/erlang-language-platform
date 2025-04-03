@@ -13,692 +13,181 @@ use std::sync::LazyLock;
 use crate::ast;
 
 const FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
-    BTreeSet::from_iter([
-        ast::Id {
-            name: "abs".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "apply".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "apply".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "atom_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "atom_to_binary".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "atom_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_part".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "binary_part".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "binary_to_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_atom".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "binary_to_existing_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_existing_atom".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "binary_to_integer".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_integer".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "binary_to_float".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_list".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "binary_to_term".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "binary_to_term".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "bitsize".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "bit_size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "bitstring_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "byte_size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "ceil".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "check_old_code".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "check_process_code".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "check_process_code".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "date".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "delete_module".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "demonitor".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "demonitor".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "disconnect_node".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "element".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "erase".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "erase".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "error".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "error".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "exit".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "exit".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "float".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "float_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "float_to_list".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "float_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "float_to_binary".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "floor".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "garbage_collect".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "garbage_collect".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "garbage_collect".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "get".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "get".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "get_keys".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "get_keys".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "group_leader".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "group_leader".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "halt".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "halt".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "halt".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "hd".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "integer_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "integer_to_binary".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "integer_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "integer_to_list".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "iolist_size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "iolist_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_alive".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "is_process_alive".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_boolean".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_bitstring".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_float".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_function".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_function".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "is_integer".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_map".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_map_key".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "is_number".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_pid".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_port".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_reference".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_tuple".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_record".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "is_record".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "length".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "link".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_bitstring".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_existing_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_float".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_integer".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_integer".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "list_to_pid".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_port".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_ref".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "list_to_tuple".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "load_module".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "make_ref".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "map_size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "map_get".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "max".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "min".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "module_loaded".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "monitor".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "monitor_node".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "node".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "node".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "nodes".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "nodes".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "now".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "open_port".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "pid_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "port_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "port_close".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "port_command".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "port_command".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "port_connect".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "port_control".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "pre_loaded".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "process_flag".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "process_flag".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "process_info".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "process_info".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "processes".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "purge_module".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "put".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "ref_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "register".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "registered".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "round".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "self".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "setelement".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "spawn".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "spawn".into(),
-            arity: 4,
-        },
-        ast::Id {
-            name: "spawn_link".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn_link".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "spawn_link".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "spawn_link".into(),
-            arity: 4,
-        },
-        ast::Id {
-            name: "spawn_request".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn_request".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "spawn_request".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "spawn_request".into(),
-            arity: 4,
-        },
-        ast::Id {
-            name: "spawn_request".into(),
-            arity: 5,
-        },
-        ast::Id {
-            name: "spawn_request_abandon".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn_monitor".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "spawn_monitor".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "spawn_monitor".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "spawn_monitor".into(),
-            arity: 4,
-        },
-        ast::Id {
-            name: "spawn_opt".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "spawn_opt".into(),
-            arity: 3,
-        },
-        ast::Id {
-            name: "spawn_opt".into(),
-            arity: 4,
-        },
-        ast::Id {
-            name: "spawn_opt".into(),
-            arity: 5,
-        },
-        ast::Id {
-            name: "split_binary".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "statistics".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "term_to_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "term_to_binary".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "term_to_iovec".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "term_to_iovec".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "throw".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "time".into(),
-            arity: 0,
-        },
-        ast::Id {
-            name: "tl".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "trunc".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "tuple_size".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "tuple_to_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "unlink".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "unregister".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "whereis".into(),
-            arity: 1,
-        },
-    ])
+    BTreeSet::from_iter(
+        [
+            "abs/1",
+            "apply/2",
+            "apply/3",
+            "atom_to_binary/1",
+            "atom_to_binary/2",
+            "atom_to_list/1",
+            "binary_part/2",
+            "binary_part/3",
+            "binary_to_atom/1",
+            "binary_to_atom/2",
+            "binary_to_existing_atom/1",
+            "binary_to_existing_atom/2",
+            "binary_to_integer/1",
+            "binary_to_integer/2",
+            "binary_to_float/1",
+            "binary_to_list/1",
+            "binary_to_list/3",
+            "binary_to_term/1",
+            "binary_to_term/2",
+            "bitsize/1",
+            "bit_size/1",
+            "bitstring_to_list/1",
+            "byte_size/1",
+            "ceil/1",
+            "check_old_code/1",
+            "check_process_code/2",
+            "check_process_code/3",
+            "date/0",
+            "delete_module/1",
+            "demonitor/1",
+            "demonitor/2",
+            "disconnect_node/1",
+            "element/2",
+            "erase/0",
+            "erase/1",
+            "error/1",
+            "error/2",
+            "exit/1",
+            "exit/2",
+            "float/1",
+            "float_to_list/1",
+            "float_to_list/2",
+            "float_to_binary/1",
+            "float_to_binary/2",
+            "floor/1",
+            "garbage_collect/0",
+            "garbage_collect/1",
+            "garbage_collect/2",
+            "get/0",
+            "get/1",
+            "get_keys/0",
+            "group_leader/0",
+            "group_leader/2",
+            "halt/0",
+            "halt/1",
+            "halt/2",
+            "hd/1",
+            "integer_to_binary/1",
+            "integer_to_binary/2",
+            "integer_to_list/1",
+            "integer_to_list/2",
+            "iolist_size/1",
+            "iolist_to_binary/1",
+            "is_alive/0",
+            "is_process_alive/1",
+            "is_atom/1",
+            "is_boolean/1",
+            "is_binary/1",
+            "is_bitstring/1",
+            "is_float/1",
+            "is_function/1",
+            "is_function/2",
+            "is_integer/1",
+            "is_list/1",
+            "is_map/1",
+            "is_map_key/2",
+            "is_number/1",
+            "is_pid/1",
+            "is_port/1",
+            "is_reference/1",
+            "is_tuple/1",
+            "is_record/2",
+            "is_record/3",
+            "length/1",
+            "link/1",
+            "list_to_atom/1",
+            "list_to_binary/1",
+            "list_to_bitstring/1",
+            "list_to_existing_atom/1",
+            "list_to_float/1",
+            "list_to_integer/1",
+            "list_to_integer/2",
+            "list_to_pid/1",
+            "list_to_port/1",
+            "list_to_ref/1",
+            "list_to_tuple/1",
+            "load_module/2",
+            "make_ref/0",
+            "map_size/1",
+            "map_get/2",
+            "max/2",
+            "min/2",
+            "module_loaded/1",
+            "monitor/2",
+            "monitor_node/2",
+            "node/0",
+            "node/1",
+            "nodes/0",
+            "nodes/1",
+            "now/0",
+            "open_port/2",
+            "pid_to_list/1",
+            "port_to_list/1",
+            "port_close/1",
+            "port_command/2",
+            "port_command/3",
+            "port_connect/2",
+            "port_control/3",
+            "pre_loaded/0",
+            "process_flag/2",
+            "process_flag/3",
+            "process_info/1",
+            "process_info/2",
+            "processes/0",
+            "purge_module/1",
+            "put/2",
+            "ref_to_list/1",
+            "register/2",
+            "registered/0",
+            "round/1",
+            "self/0",
+            "setelement/3",
+            "size/1",
+            "spawn/1",
+            "spawn/2",
+            "spawn/3",
+            "spawn/4",
+            "spawn_link/1",
+            "spawn_link/2",
+            "spawn_link/3",
+            "spawn_link/4",
+            "spawn_request/1",
+            "spawn_request/2",
+            "spawn_request/3",
+            "spawn_request/4",
+            "spawn_request/5",
+            "spawn_request_abandon/1",
+            "spawn_monitor/1",
+            "spawn_monitor/2",
+            "spawn_monitor/3",
+            "spawn_monitor/4",
+            "spawn_opt/2",
+            "spawn_opt/3",
+            "spawn_opt/4",
+            "spawn_opt/5",
+            "split_binary/2",
+            "statistics/1",
+            "term_to_binary/1",
+            "term_to_binary/2",
+            "term_to_iovec/1",
+            "term_to_iovec/2",
+            "throw/1",
+            "time/0",
+            "tl/1",
+            "trunc/1",
+            "tuple_size/1",
+            "tuple_to_list/1",
+            "unlink/1",
+            "unregister/1",
+            "whereis/1",
+        ]
+        .map(|s| s.parse().unwrap()),
+    )
 });
 
 pub fn is_auto_imported(id: &ast::Id) -> bool {

@@ -37,76 +37,28 @@ use elp_types_db::eqwalizer::AST;
 use crate::ast;
 
 const PREDICATES: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
-    BTreeSet::from_iter([
-        ast::Id {
-            name: "is_atom".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_binary".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_bitstring".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_boolean".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_float".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_function".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_integer".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_list".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_number".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_pid".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_port".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_reference".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_map".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_tuple".into(),
-            arity: 1,
-        },
-        ast::Id {
-            name: "is_record".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "is_function".into(),
-            arity: 2,
-        },
-        ast::Id {
-            name: "is_record".into(),
-            arity: 3,
-        },
-    ])
+    BTreeSet::from_iter(
+        [
+            "is_atom/1",
+            "is_binary/1",
+            "is_bitstring/1",
+            "is_boolean/1",
+            "is_float/1",
+            "is_function/1",
+            "is_function/2",
+            "is_integer/1",
+            "is_list/1",
+            "is_map/1",
+            "is_number/1",
+            "is_pid/1",
+            "is_port/1",
+            "is_reference/1",
+            "is_tuple/1",
+            "is_record/2",
+            "is_record/3",
+        ]
+        .map(|s| s.parse().unwrap()),
+    )
 });
 
 const BINOP: LazyLock<BTreeSet<SmolStr>> = LazyLock::new(|| {
