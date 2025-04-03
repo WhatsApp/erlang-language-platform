@@ -526,60 +526,7 @@ impl<'a> Printer<'a> {
 
                     this.print_labelled("exprs", false, &mut |this| {
                         exprs.iter().for_each(|expr| {
-                            match expr {
-                                ComprehensionExpr::BinGenerator { pat, expr, strict } => {
-                                    this.print_herald(
-                                        "ComprehensionExpr::BinGenerator",
-                                        &mut |this| {
-                                            this.print_pat(pat);
-                                            writeln!(this).ok();
-                                            this.print_expr(expr);
-                                            writeln!(this).ok();
-                                            writeln!(format!("strict: {}", strict)).ok();
-                                        },
-                                    );
-                                }
-                                ComprehensionExpr::ListGenerator { pat, expr, strict } => {
-                                    this.print_herald(
-                                        "ComprehensionExpr::ListGenerator",
-                                        &mut |this| {
-                                            this.print_pat(pat);
-                                            writeln!(this).ok();
-                                            this.print_expr(expr);
-                                            writeln!(this).ok();
-                                            writeln!(format!("strict: {}", strict)).ok();
-                                        },
-                                    );
-                                }
-                                ComprehensionExpr::Expr(expr) => {
-                                    this.print_herald("ComprehensionExpr::Expr", &mut |this| {
-                                        this.print_expr(expr);
-                                        writeln!(this).ok();
-                                    });
-                                }
-                                ComprehensionExpr::MapGenerator {
-                                    key,
-                                    value,
-                                    expr,
-                                    strict,
-                                } => {
-                                    this.print_herald(
-                                        "ComprehensionExpr::MapGenerator",
-                                        &mut |this| {
-                                            this.print_pat(key);
-                                            writeln!(this, " :=").ok();
-                                            this.print_pat(value);
-                                            writeln!(this, " <-").ok();
-                                            this.print_expr(expr);
-                                            writeln!(this).ok();
-                                            writeln!(format!("strict: {}", strict)).ok();
-                                        },
-                                    );
-                                }
-                                ComprehensionExpr::Zip(_) => {
-                                    todo!()
-                                }
-                            };
+                            print_comprehension_expr(this, expr);
                             writeln!(this, ",").ok();
                         });
                     });
@@ -1342,6 +1289,59 @@ impl<'a> Printer<'a> {
     }
 }
 
+fn print_comprehension_expr<'a>(this: &mut Printer<'a>, expr: &ComprehensionExpr) {
+    match expr {
+        ComprehensionExpr::BinGenerator { pat, expr, strict } => {
+            this.print_herald("ComprehensionExpr::BinGenerator", &mut |this| {
+                this.print_pat(pat);
+                writeln!(this).ok();
+                this.print_expr(expr);
+                writeln!(this).ok();
+                writeln!(format!("strict: {}", strict)).ok();
+            });
+        }
+        ComprehensionExpr::ListGenerator { pat, expr, strict } => {
+            this.print_herald("ComprehensionExpr::ListGenerator", &mut |this| {
+                this.print_pat(pat);
+                writeln!(this).ok();
+                this.print_expr(expr);
+                writeln!(this).ok();
+                writeln!(format!("strict: {}", strict)).ok();
+            });
+        }
+        ComprehensionExpr::Expr(expr) => {
+            this.print_herald("ComprehensionExpr::Expr", &mut |this| {
+                this.print_expr(expr);
+                writeln!(this).ok();
+            });
+        }
+        ComprehensionExpr::MapGenerator {
+            key,
+            value,
+            expr,
+            strict,
+        } => {
+            this.print_herald("ComprehensionExpr::MapGenerator", &mut |this| {
+                this.print_pat(key);
+                writeln!(this, " :=").ok();
+                this.print_pat(value);
+                writeln!(this, " <-").ok();
+                this.print_expr(expr);
+                writeln!(this).ok();
+                writeln!(format!("strict: {}", strict)).ok();
+            });
+        }
+        ComprehensionExpr::Zip(exprs) => {
+            this.print_herald("ComprehensionExpr::Zip", &mut |this| {
+                exprs.iter().for_each(|expr| {
+                    print_comprehension_expr(this, expr);
+                    writeln!(this, ",").ok();
+                });
+            });
+        }
+    };
+}
+
 impl<'a> fmt::Write for Printer<'a> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
@@ -2040,6 +2040,55 @@ mod tests {
         );
     }
 
+    #[test]
+    fn expr_via_fun_zip_comprehension() {
+        check(
+            r#"
+            foo() ->
+              [{X,Y} || X <- [1,2,3] && Y <- [4,5,6] ].
+            "#,
+            expect![[r#"
+                function: foo/0
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<12>:Expr::Comprehension {
+                            builder
+                                ComprehensionBuilder::List {
+                                    Expr<3>:Expr::Tuple {
+                                        Expr<1>:Expr::Var(X),
+                                        Expr<2>:Expr::Var(Y),
+                                    }
+                                }
+                            exprs
+                                ComprehensionExpr::Zip {
+                                    ComprehensionExpr::ListGenerator {
+                                        Pat<0>:Pat::Var(X)
+                                        Expr<7>:Expr::List {
+                                            exprs
+                                                Expr<4>:Literal(Integer(1)),
+                                                Expr<5>:Literal(Integer(2)),
+                                                Expr<6>:Literal(Integer(3)),
+                                            tail
+                                        }
+                                    },
+                                    ComprehensionExpr::ListGenerator {
+                                        Pat<1>:Pat::Var(Y)
+                                        Expr<11>:Expr::List {
+                                            exprs
+                                                Expr<8>:Literal(Integer(4)),
+                                                Expr<9>:Literal(Integer(5)),
+                                                Expr<10>:Literal(Integer(6)),
+                                            tail
+                                        }
+                                    },
+                                },
+                        },
+                }.
+            "#]],
+        );
+    }
     #[test]
     fn expr_via_fun_block() {
         check(
