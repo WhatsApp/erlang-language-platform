@@ -1191,6 +1191,7 @@ impl PatternIterator {
                                     ]
                                 }
                                 ComprehensionExpr::Expr(expr) => vec![(*expr).into()],
+                                ComprehensionExpr::Zip(_) => todo!(),
                             }))
                             .collect(),
                     )

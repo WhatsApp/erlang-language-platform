@@ -3329,7 +3329,7 @@ pub struct LcExprs {
     pub(crate) syntax: SyntaxNode,
 }
 impl LcExprs {
-    pub fn exprs(&self) -> AstChildren<LcExpr> {
+    pub fn exprs(&self) -> AstChildren<LcOrZcExpr> {
         support::children(&self.syntax)
     }
 }
@@ -3352,6 +3352,39 @@ impl AstNode for LcExprs {
 }
 #[doc = r" Via NodeType::Node 2 display"]
 impl std::fmt::Display for LcExprs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LcOrZcExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl LcOrZcExpr {
+    pub fn exprs(&self) -> AstChildren<LcExpr> {
+        support::children(&self.syntax)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for LcOrZcExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == LC_OR_ZC_EXPR
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for LcOrZcExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

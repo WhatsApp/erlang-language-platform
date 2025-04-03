@@ -622,6 +622,9 @@ impl<'a> Printer<'a> {
                         }
                         this.print_expr(&this.body[*expr])
                     }
+                    ComprehensionExpr::Zip(_) => {
+                        todo!();
+                    }
                 })
             }
             Expr::Closure { clauses, name } => {

@@ -576,6 +576,9 @@ impl<'a> Printer<'a> {
                                         },
                                     );
                                 }
+                                ComprehensionExpr::Zip(_) => {
+                                    todo!()
+                                }
                             };
                             writeln!(this, ",").ok();
                         });

@@ -1026,6 +1026,9 @@ impl<'a, T> FoldCtx<'a, T> {
                     let r = self.do_fold_pat(*value, r);
                     self.do_fold_expr(*expr, r)
                 }
+                ComprehensionExpr::Zip(_) => {
+                    todo!()
+                }
             })
     }
 

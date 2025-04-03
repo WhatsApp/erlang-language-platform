@@ -1748,42 +1748,57 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_lc_exprs(&mut self, exprs: Option<ast::LcExprs>) -> Vec<ComprehensionExpr> {
+        // If the LcExprs has more than one child, it is a zip generator
         exprs
             .iter()
             .flat_map(|exprs| exprs.exprs())
-            .map(|expr| match expr {
-                ast::LcExpr::Expr(expr) => ComprehensionExpr::Expr(self.lower_expr(&expr)),
-                ast::LcExpr::BGenerator(bin_gen) => {
-                    let pat = self.lower_optional_pat(bin_gen.lhs());
-                    let expr = self.lower_optional_expr(bin_gen.rhs());
-                    ComprehensionExpr::BinGenerator {
-                        pat,
-                        expr,
-                        strict: bin_gen.strict(),
-                    }
-                }
-                ast::LcExpr::Generator(list_gen) => {
-                    let pat = self.lower_optional_pat(list_gen.lhs());
-                    let expr = self.lower_optional_expr(list_gen.rhs());
-                    ComprehensionExpr::ListGenerator {
-                        pat,
-                        expr,
-                        strict: list_gen.strict(),
-                    }
-                }
-                ast::LcExpr::MapGenerator(map_gen) => {
-                    let key = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.key()));
-                    let value = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.value()));
-                    let expr = self.lower_optional_expr(map_gen.rhs());
-                    ComprehensionExpr::MapGenerator {
-                        key,
-                        value,
-                        expr,
-                        strict: map_gen.strict(),
-                    }
+            .map(|lc_or_zc_expr| {
+                let mut exprs: Vec<_> = lc_or_zc_expr
+                    .exprs()
+                    .map(|lc_expr| self.lower_lc_expr(lc_expr))
+                    .collect();
+                if exprs.len() == 1 {
+                    exprs.remove(0)
+                } else {
+                    ComprehensionExpr::Zip(exprs)
                 }
             })
             .collect()
+    }
+
+    fn lower_lc_expr(&mut self, expr: ast::LcExpr) -> ComprehensionExpr {
+        match expr {
+            ast::LcExpr::Expr(expr) => ComprehensionExpr::Expr(self.lower_expr(&expr)),
+            ast::LcExpr::BGenerator(bin_gen) => {
+                let pat = self.lower_optional_pat(bin_gen.lhs());
+                let expr = self.lower_optional_expr(bin_gen.rhs());
+                ComprehensionExpr::BinGenerator {
+                    pat,
+                    expr,
+                    strict: bin_gen.strict(),
+                }
+            }
+            ast::LcExpr::Generator(list_gen) => {
+                let pat = self.lower_optional_pat(list_gen.lhs());
+                let expr = self.lower_optional_expr(list_gen.rhs());
+                ComprehensionExpr::ListGenerator {
+                    pat,
+                    expr,
+                    strict: list_gen.strict(),
+                }
+            }
+            ast::LcExpr::MapGenerator(map_gen) => {
+                let key = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.key()));
+                let value = self.lower_optional_pat(map_gen.lhs().and_then(|mf| mf.value()));
+                let expr = self.lower_optional_expr(map_gen.rhs());
+                ComprehensionExpr::MapGenerator {
+                    key,
+                    value,
+                    expr,
+                    strict: map_gen.strict(),
+                }
+            }
+        }
     }
 
     fn lower_optional_type_expr(&mut self, expr: Option<ast::Expr>) -> TypeExprId {

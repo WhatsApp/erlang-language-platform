@@ -665,6 +665,7 @@ pub enum ComprehensionExpr {
         strict: bool,
     },
     Expr(ExprId),
+    Zip(Vec<ComprehensionExpr>),
 }
 
 pub type PatId = Idx<Pat>;

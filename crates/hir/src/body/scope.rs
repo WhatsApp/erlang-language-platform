@@ -515,6 +515,9 @@ fn compute_expr_scopes(
                         scopes.add_bindings(body, scope, *key, &mut sub_vt, AddBinding::Always);
                         scopes.add_bindings(body, scope, *value, &mut sub_vt, AddBinding::Always);
                     }
+                    crate::ComprehensionExpr::Zip(_) => {
+                        todo!()
+                    }
                 };
             }
             match builder {

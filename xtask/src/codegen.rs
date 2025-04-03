@@ -786,6 +786,7 @@ fn map_name(name: &str) -> Result<NameType> {
         "'_'" => Ok(Punctuation("DeprecatedWildcard".into())),
 
         "==>>" => Ok(Punctuation("SsrMatch".into())),
+        "&&" => Ok(Punctuation("DAmp".into())),
 
         // "@" => Ok(Punctuation("At".into())),
         // "%" => Ok(Punctuation("Percent".into())),
