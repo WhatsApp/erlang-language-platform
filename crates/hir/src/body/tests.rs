@@ -760,6 +760,37 @@ foo() ->
 }
 
 #[test]
+fn zip_comprehensions() {
+    check(
+        r#"
+foo() ->
+    [{X, Y} || X <- [1,2,3] && Y <- [4,5,6]].
+"#,
+        expect![[r#"
+            foo() ->
+                [
+                    {
+                        X,
+                        Y
+                    }
+                ||
+                        X <- [
+                            1,
+                            2,
+                            3
+                        ]
+                    &&
+                        Y <- [
+                            4,
+                            5,
+                            6
+                        ]
+                ].
+        "#]],
+    );
+}
+
+#[test]
 fn fun() {
     check(
         r#"

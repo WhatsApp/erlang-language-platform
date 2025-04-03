@@ -586,45 +586,8 @@ impl<'a> Printer<'a> {
                 }
                 self.indent_level -= 1;
                 writeln!(self)?;
-                self.print_seq(exprs, None, "||", end, ",", |this, expr| match expr {
-                    ComprehensionExpr::BinGenerator { pat, expr, strict } => {
-                        this.print_pat(&this.body[*pat])?;
-                        if *strict {
-                            write!(this, " <:= ")?;
-                        } else {
-                            write!(this, " <= ")?;
-                        }
-                        this.print_expr(&this.body[*expr])
-                    }
-                    ComprehensionExpr::ListGenerator { pat, expr, strict } => {
-                        this.print_pat(&this.body[*pat])?;
-                        if *strict {
-                            write!(this, " <:- ")?;
-                        } else {
-                            write!(this, " <- ")?;
-                        }
-                        this.print_expr(&this.body[*expr])
-                    }
-                    ComprehensionExpr::Expr(expr) => this.print_expr(&this.body[*expr]),
-                    ComprehensionExpr::MapGenerator {
-                        key,
-                        value,
-                        expr,
-                        strict,
-                    } => {
-                        this.print_pat(&this.body[*key])?;
-                        write!(this, " := ")?;
-                        this.print_pat(&this.body[*value])?;
-                        if *strict {
-                            write!(this, " <:- ")?;
-                        } else {
-                            write!(this, " <- ")?;
-                        }
-                        this.print_expr(&this.body[*expr])
-                    }
-                    ComprehensionExpr::Zip(_) => {
-                        todo!();
-                    }
+                self.print_seq(exprs, None, "||", end, ",", |this, expr| {
+                    this.print_comprehension_expr(expr)
                 })
             }
             Expr::Closure { clauses, name } => {
@@ -661,6 +624,59 @@ impl<'a> Printer<'a> {
             }
             Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
             Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
+        }
+    }
+
+    fn print_comprehension_expr(&mut self, expr: &ComprehensionExpr) -> Result<(), fmt::Error> {
+        match expr {
+            ComprehensionExpr::BinGenerator { pat, expr, strict } => {
+                self.print_pat(&self.body[*pat])?;
+                if *strict {
+                    write!(self, " <:= ")?;
+                } else {
+                    write!(self, " <= ")?;
+                }
+                self.print_expr(&self.body[*expr])
+            }
+            ComprehensionExpr::ListGenerator { pat, expr, strict } => {
+                self.print_pat(&self.body[*pat])?;
+                if *strict {
+                    write!(self, " <:- ")?;
+                } else {
+                    write!(self, " <- ")?;
+                }
+                self.print_expr(&self.body[*expr])
+            }
+            ComprehensionExpr::Expr(expr) => self.print_expr(&self.body[*expr]),
+            ComprehensionExpr::MapGenerator {
+                key,
+                value,
+                expr,
+                strict,
+            } => {
+                self.print_pat(&self.body[*key])?;
+                write!(self, " := ")?;
+                self.print_pat(&self.body[*value])?;
+                if *strict {
+                    write!(self, " <:- ")?;
+                } else {
+                    write!(self, " <- ")?;
+                }
+                self.print_expr(&self.body[*expr])
+            }
+            ComprehensionExpr::Zip(exprs) => {
+                if !exprs.is_empty() {
+                    for (idx, expr) in exprs.iter().enumerate() {
+                        if idx > 0 {
+                            writeln!(self, "\n&&")?;
+                        }
+                        self.indent_level += 1;
+                        self.print_comprehension_expr(expr)?;
+                        self.indent_level -= 1;
+                    }
+                }
+                Ok(())
+            }
         }
     }
 
