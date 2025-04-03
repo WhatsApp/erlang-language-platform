@@ -216,7 +216,7 @@ impl EdocHeader {
         res
     }
 
-    pub fn metadata_attribute(&self) -> String {
+    pub fn params_metadata(&self) -> String {
         let mut res = String::new();
         for (name, param) in &self.params {
             let mut description = String::new();
@@ -226,6 +226,15 @@ impl EdocHeader {
                 }
             }
             res.push_str(&format!("\"{name}\" => \"{}\", ", description.trim()));
+        }
+        res.trim_end_matches(", ").to_string()
+    }
+
+    pub fn metadata_attribute(&self) -> String {
+        let mut res = String::new();
+        let params_metadata = &self.params_metadata();
+        if !params_metadata.is_empty() {
+            res.push_str(&format!("params => #{{{}}}, ", params_metadata.trim()));
         }
         if let Some(equiv) = &self.equiv {
             if let Some(equivalent_to) = equiv.to_markdown() {
