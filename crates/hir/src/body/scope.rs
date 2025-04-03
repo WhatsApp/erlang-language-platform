@@ -47,6 +47,7 @@ use crate::fold::VisibleMacros;
 use crate::Body;
 use crate::CRClause;
 use crate::ComprehensionBuilder;
+use crate::ComprehensionExpr;
 use crate::ExprId;
 use crate::FunctionClauseBody;
 use crate::FunctionClauseId;
@@ -482,43 +483,7 @@ fn compute_expr_scopes(
             let mut sub_vt = vt.clone();
             let scope = &mut scopes.new_scope(*scope);
             for expr in exprs {
-                match expr {
-                    crate::ComprehensionExpr::BinGenerator {
-                        pat,
-                        expr,
-                        strict: _,
-                    } => {
-                        compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
-                        *scope = scopes.new_scope(*scope);
-                        scopes.add_bindings(body, scope, *pat, &mut sub_vt, AddBinding::Always);
-                    }
-                    crate::ComprehensionExpr::ListGenerator {
-                        pat,
-                        expr,
-                        strict: _,
-                    } => {
-                        compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
-                        *scope = scopes.new_scope(*scope);
-                        scopes.add_bindings(body, scope, *pat, &mut sub_vt, AddBinding::Always);
-                    }
-                    crate::ComprehensionExpr::Expr(expr) => {
-                        compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt)
-                    }
-                    crate::ComprehensionExpr::MapGenerator {
-                        key,
-                        value,
-                        expr,
-                        strict: _,
-                    } => {
-                        compute_expr_scopes(*expr, body, scopes, scope, &mut sub_vt);
-                        *scope = scopes.new_scope(*scope);
-                        scopes.add_bindings(body, scope, *key, &mut sub_vt, AddBinding::Always);
-                        scopes.add_bindings(body, scope, *value, &mut sub_vt, AddBinding::Always);
-                    }
-                    crate::ComprehensionExpr::Zip(_) => {
-                        todo!()
-                    }
-                };
+                compute_comprehension_expr_scopes(body, scopes, vt, &mut sub_vt, scope, expr);
             }
             match builder {
                 ComprehensionBuilder::List(expr) => {
@@ -684,6 +649,53 @@ fn compute_expr_scopes(
     }
 }
 
+fn compute_comprehension_expr_scopes(
+    body: &Body,
+    scopes: &mut ExprScopes,
+    vt: &mut VarTable,
+    sub_vt: &mut VarTable,
+    scope: &mut Idx<ScopeData>,
+    expr: &ComprehensionExpr,
+) {
+    match expr {
+        ComprehensionExpr::BinGenerator {
+            pat,
+            expr,
+            strict: _,
+        } => {
+            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            *scope = scopes.new_scope(*scope);
+            scopes.add_bindings(body, scope, *pat, sub_vt, AddBinding::Always);
+        }
+        ComprehensionExpr::ListGenerator {
+            pat,
+            expr,
+            strict: _,
+        } => {
+            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            *scope = scopes.new_scope(*scope);
+            scopes.add_bindings(body, scope, *pat, sub_vt, AddBinding::Always);
+        }
+        ComprehensionExpr::Expr(expr) => compute_expr_scopes(*expr, body, scopes, scope, sub_vt),
+        ComprehensionExpr::MapGenerator {
+            key,
+            value,
+            expr,
+            strict: _,
+        } => {
+            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            *scope = scopes.new_scope(*scope);
+            scopes.add_bindings(body, scope, *key, sub_vt, AddBinding::Always);
+            scopes.add_bindings(body, scope, *value, sub_vt, AddBinding::Always);
+        }
+        ComprehensionExpr::Zip(exprs) => {
+            for expr in exprs {
+                compute_comprehension_expr_scopes(body, scopes, vt, sub_vt, scope, expr);
+            }
+        }
+    };
+}
+
 fn compute_clause_scopes(
     clauses: &[CRClause],
     body: &Body,
@@ -841,6 +853,20 @@ mod tests {
               ~.
             ",
             &["X"],
+        );
+    }
+
+    #[test]
+    fn test_zip_comprehension() {
+        do_check(
+            r"
+            f() ->
+              As = [1,2,3],
+              Bs = [4,5,6],
+              [{X,Y}~ || X <- As && Y <- Bs]
+              .
+            ",
+            &["Y", "X", "As", "Bs"],
         );
     }
 }
