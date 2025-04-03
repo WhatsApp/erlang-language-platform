@@ -996,40 +996,44 @@ impl<'a, T> FoldCtx<'a, T> {
 
     fn fold_comprehension(&mut self, expr: &ExprId, exprs: &[ComprehensionExpr], initial: T) -> T {
         let r = self.do_fold_expr(*expr, initial);
-        exprs
-            .iter()
-            .fold(r, |acc, comprehension_expr| match comprehension_expr {
-                ComprehensionExpr::BinGenerator {
-                    pat,
-                    expr,
-                    strict: _,
-                } => {
-                    let r = self.do_fold_pat(*pat, acc);
-                    self.do_fold_expr(*expr, r)
-                }
-                ComprehensionExpr::ListGenerator {
-                    pat,
-                    expr,
-                    strict: _,
-                } => {
-                    let r = self.do_fold_pat(*pat, acc);
-                    self.do_fold_expr(*expr, r)
-                }
-                ComprehensionExpr::Expr(expr) => self.do_fold_expr(*expr, acc),
-                ComprehensionExpr::MapGenerator {
-                    key,
-                    value,
-                    expr,
-                    strict: _,
-                } => {
-                    let r = self.do_fold_pat(*key, acc);
-                    let r = self.do_fold_pat(*value, r);
-                    self.do_fold_expr(*expr, r)
-                }
-                ComprehensionExpr::Zip(_) => {
-                    todo!()
-                }
-            })
+        exprs.iter().fold(r, |acc, comprehension_expr| {
+            self.fold_comprehension_expr(acc, comprehension_expr)
+        })
+    }
+
+    fn fold_comprehension_expr(&mut self, acc: T, comprehension_expr: &ComprehensionExpr) -> T {
+        match comprehension_expr {
+            ComprehensionExpr::BinGenerator {
+                pat,
+                expr,
+                strict: _,
+            } => {
+                let r = self.do_fold_pat(*pat, acc);
+                self.do_fold_expr(*expr, r)
+            }
+            ComprehensionExpr::ListGenerator {
+                pat,
+                expr,
+                strict: _,
+            } => {
+                let r = self.do_fold_pat(*pat, acc);
+                self.do_fold_expr(*expr, r)
+            }
+            ComprehensionExpr::Expr(expr) => self.do_fold_expr(*expr, acc),
+            ComprehensionExpr::MapGenerator {
+                key,
+                value,
+                expr,
+                strict: _,
+            } => {
+                let r = self.do_fold_pat(*key, acc);
+                let r = self.do_fold_pat(*value, r);
+                self.do_fold_expr(*expr, r)
+            }
+            ComprehensionExpr::Zip(exprs) => exprs
+                .iter()
+                .fold(acc, |acc, expr| self.fold_comprehension_expr(acc, expr)),
+        }
     }
 
     pub fn do_fold_term(&mut self, term_id: TermId, initial: T) -> T {
@@ -1265,6 +1269,7 @@ bar() ->
     A = B + 3,
     [A|A],
     Y = ~A,
+    [{A, B} || A <- [1,2,3] && B <- [4,5,6]],
     catch A,
     begin
       A,
@@ -1330,9 +1335,9 @@ bar() ->
             },
         );
 
-        // There are 7 occurrences of the Var "A" in the code example
+        // There are 9 occurrences of the Var "A" in the code example
         expect![[r#"
-            7
+            9
         "#]]
         .assert_debug_eq(&r);
         expect![[r#"
