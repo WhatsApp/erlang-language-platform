@@ -225,7 +225,11 @@ impl EdocHeader {
                     description.push_str(&format!("{} ", &content.trim()));
                 }
             }
-            res.push_str(&format!("\"{name}\" => \"{}\", ", description.trim()));
+            res.push_str(&format!(
+                "\"{}\" => \"{}\", ",
+                name.trim_end_matches(":"),
+                description.trim()
+            ));
         }
         res.trim_end_matches(", ").to_string()
     }
