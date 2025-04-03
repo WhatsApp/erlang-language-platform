@@ -27,6 +27,7 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::StringId;
 
 use super::stub::ModuleStub;
 use super::stub::VStub;
@@ -38,14 +39,14 @@ use crate::db::EqwalizerDiagnosticsDatabase;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Ref {
     RidRef(RemoteId),
-    RecRef(SmolStr, SmolStr),
+    RecRef(StringId, StringId),
 }
 
 impl Ref {
-    fn module(&self) -> &SmolStr {
+    fn module(&self) -> StringId {
         match self {
-            Ref::RidRef(rid) => &rid.module,
-            Ref::RecRef(module, _) => module,
+            Ref::RidRef(rid) => rid.module,
+            Ref::RecRef(module, _) => *module,
         }
     }
 }
@@ -53,7 +54,7 @@ impl Ref {
 pub struct TransitiveChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
-    module: SmolStr,
+    module: StringId,
     in_progress: BTreeSet<Ref>,
     invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
     maybe_invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
@@ -63,7 +64,7 @@ impl TransitiveChecker<'_> {
     pub fn new(
         db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
-        module: SmolStr,
+        module: StringId,
     ) -> TransitiveChecker<'_> {
         TransitiveChecker {
             db,
@@ -90,8 +91,8 @@ impl TransitiveChecker<'_> {
         t: &TypeDecl,
     ) -> Result<(), TransitiveCheckError> {
         let rref = Ref::RidRef(RemoteId {
-            module: self.module.clone(),
-            name: t.id.name.clone(),
+            module: self.module,
+            name: t.id.name,
             arity: t.id.arity,
         });
         if !self.is_valid(&rref)? {
@@ -113,8 +114,8 @@ impl TransitiveChecker<'_> {
         t: &TypeDecl,
     ) -> Result<(), TransitiveCheckError> {
         let rref = Ref::RidRef(RemoteId {
-            module: self.module.clone(),
-            name: t.id.name.clone(),
+            module: self.module,
+            name: t.id.name,
             arity: t.id.arity,
         });
         if !self.is_valid(&rref)? {
@@ -138,7 +139,7 @@ impl TransitiveChecker<'_> {
         let mut invalids = Default::default();
         self.collect_invalid_references(
             &mut invalids,
-            &self.module.clone(),
+            self.module,
             &Type::FunType(spec.ty.to_owned()),
             None,
         )?;
@@ -160,12 +161,12 @@ impl TransitiveChecker<'_> {
         stub: &mut ModuleStub,
         t: &RecDecl,
     ) -> Result<(), TransitiveCheckError> {
-        let rref = Ref::RecRef(self.module.clone(), t.name.clone());
+        let rref = Ref::RecRef(self.module, t.name);
         if !self.is_valid(&rref)? {
             let invalids = self.show_invalids(&rref);
             let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
                 t.pos.clone(),
-                t.name.clone(),
+                t.name.into(),
                 invalids,
             ));
             // we don't know at this point which fields are invalid,
@@ -190,7 +191,7 @@ impl TransitiveChecker<'_> {
         for ty in spec.tys.iter() {
             self.collect_invalid_references(
                 &mut invalids,
-                &self.module.clone(),
+                self.module,
                 &Type::FunType(ty.to_owned()),
                 None,
             )?;
@@ -214,7 +215,7 @@ impl TransitiveChecker<'_> {
             let mut invalids = Default::default();
             self.collect_invalid_references(
                 &mut invalids,
-                &self.module.clone(),
+                self.module,
                 &Type::FunType(ty.clone()),
                 None,
             )?;
@@ -274,20 +275,20 @@ impl TransitiveChecker<'_> {
             Ok(v_stub) => match rref {
                 Ref::RidRef(rid) => {
                     let id = Id {
-                        name: rid.name.clone(),
+                        name: rid.name,
                         arity: rid.arity,
                     };
                     match v_stub.get_type(&id) {
                         Some(tdecl) => self.collect_invalid_references(
                             &mut invalids,
-                            &rid.module,
+                            rid.module,
                             &tdecl.body,
                             Some(rref),
                         )?,
                         None => match v_stub.get_opaque(&id) {
                             Some(tdecl) => self.collect_invalid_references(
                                 &mut invalids,
-                                &rid.module,
+                                rid.module,
                                 &tdecl.body,
                                 Some(rref),
                             )?,
@@ -297,12 +298,12 @@ impl TransitiveChecker<'_> {
                         },
                     }
                 }
-                Ref::RecRef(module, rec_name) => match v_stub.get_record(rec_name) {
+                Ref::RecRef(module, rec_name) => match v_stub.get_record(*rec_name) {
                     Some(rdecl) => {
                         for field in rdecl.fields.iter() {
                             self.collect_invalid_references(
                                 &mut invalids,
-                                module,
+                                *module,
                                 &field.tp,
                                 Some(rref),
                             )?;
@@ -326,7 +327,7 @@ impl TransitiveChecker<'_> {
     fn collect_invalid_references(
         &mut self,
         invalids: &mut BTreeSet<Ref>,
-        module: &SmolStr,
+        module: StringId,
         ty: &Type,
         parent_ref: Option<&Ref>,
     ) -> Result<(), TransitiveCheckError> {
@@ -344,13 +345,13 @@ impl TransitiveChecker<'_> {
                 return Err(TransitiveCheckError::UnexpectedOpaqueType);
             }
             Type::RecordType(rt) => {
-                let rref = Ref::RecRef(module.clone(), rt.name.clone());
+                let rref = Ref::RecRef(module, rt.name);
                 if !self.is_maybe_valid(&rref, parent_ref)? {
                     invalids.insert(rref);
                 }
             }
             Type::RefinedRecordType(rt) => {
-                let rref = Ref::RecRef(module.clone(), rt.rec_type.name.clone());
+                let rref = Ref::RecRef(module, rt.rec_type.name);
                 for (_, ty) in rt.fields.iter() {
                     self.collect_invalid_references(invalids, module, ty, parent_ref)?;
                 }
@@ -368,7 +369,7 @@ impl TransitiveChecker<'_> {
     fn show(&self, rref: &Ref) -> SmolStr {
         match rref {
             Ref::RidRef(rid) if rid.module == self.module => Id {
-                name: rid.name.clone(),
+                name: rid.name,
                 arity: rid.arity,
             }
             .to_string()

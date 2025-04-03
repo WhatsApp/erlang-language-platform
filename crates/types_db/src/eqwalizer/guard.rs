@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
-use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::eqwalizer;
+use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Guard {
@@ -40,7 +40,7 @@ pub enum Test {
 }
 
 impl Test {
-    pub fn test_var(pos: eqwalizer::Pos, v: SmolStr) -> Self {
+    pub fn test_var(pos: eqwalizer::Pos, v: StringId) -> Self {
         Test::TestVar(TestVar { pos, v })
     }
 }
@@ -48,13 +48,13 @@ impl Test {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestVar {
     pub pos: eqwalizer::Pos,
-    pub v: SmolStr,
+    pub v: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestAtom {
     pub pos: eqwalizer::Pos,
-    pub s: SmolStr,
+    pub s: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -98,7 +98,7 @@ pub struct TestCall {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordCreate {
     pub pos: eqwalizer::Pos,
-    pub rec_name: SmolStr,
+    pub rec_name: StringId,
     #[serde(default)]
     pub fields: Vec<TestRecordField>,
 }
@@ -107,15 +107,15 @@ pub struct TestRecordCreate {
 pub struct TestRecordSelect {
     pub pos: eqwalizer::Pos,
     pub rec: Box<Test>,
-    pub rec_name: SmolStr,
-    pub field_name: SmolStr,
+    pub rec_name: StringId,
+    pub field_name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordIndex {
     pub pos: eqwalizer::Pos,
-    pub rec_name: SmolStr,
-    pub field_name: SmolStr,
+    pub rec_name: StringId,
+    pub field_name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -136,14 +136,14 @@ pub struct TestMapUpdate {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestUnOp {
     pub pos: eqwalizer::Pos,
-    pub op: SmolStr,
+    pub op: StringId,
     pub arg: Box<Test>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestBinOp {
     pub pos: eqwalizer::Pos,
-    pub op: SmolStr,
+    pub op: StringId,
     pub arg_1: Box<Test>,
     pub arg_2: Box<Test>,
 }
@@ -161,7 +161,7 @@ pub enum TestRecordField {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TestRecordFieldNamed {
-    pub name: SmolStr,
+    pub name: StringId,
     pub value: Test,
 }
 

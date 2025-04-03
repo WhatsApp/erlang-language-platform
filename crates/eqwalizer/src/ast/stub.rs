@@ -11,28 +11,28 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+use elp_types_db::StringId;
 use serde::Serialize;
 
 use super::Id;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModuleStub {
-    pub module: SmolStr,
+    pub module: StringId,
     pub exports: BTreeSet<Id>,
-    pub imports: BTreeMap<Id, SmolStr>,
+    pub imports: BTreeMap<Id, StringId>,
     pub export_types: BTreeSet<Id>,
     pub opaques: BTreeMap<Id, TypeDecl>,
     pub types: BTreeMap<Id, TypeDecl>,
     pub specs: BTreeMap<Id, FunSpec>,
     pub overloaded_specs: BTreeMap<Id, OverloadedFunSpec>,
-    pub records: BTreeMap<SmolStr, RecDecl>,
+    pub records: BTreeMap<StringId, RecDecl>,
     pub callbacks: Vec<Callback>,
     pub optional_callbacks: BTreeSet<Id>,
     pub invalids: Vec<Invalid>,
@@ -85,8 +85,8 @@ impl VStub {
             .filter(|decl| !self.invalid_ids.contains(&decl.id))
     }
 
-    pub fn get_record(&self, name: &SmolStr) -> Option<&RecDecl> {
-        self.stub.records.get(name)
+    pub fn get_record(&self, name: StringId) -> Option<&RecDecl> {
+        self.stub.records.get(&name)
     }
 
     pub fn records(&self) -> impl Iterator<Item = &RecDecl> {

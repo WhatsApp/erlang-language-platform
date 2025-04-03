@@ -280,7 +280,7 @@ impl VarianceChecker<'_> {
                             .into_iter()
                             .map(|field_ty| {
                                 let mut new_fields = rt.fields.clone();
-                                new_fields.insert(name.clone(), field_ty);
+                                new_fields.insert(*name, field_ty);
                                 new_fields
                             })
                             .map(|fields| {
@@ -360,7 +360,7 @@ impl VarianceChecker<'_> {
 
     fn to_invalid(&self, t: &TypeDecl, ty_var: &VarType, expansion: Vec<Type>) -> Invalid {
         Invalid::AliasWithNonCovariantParam(AliasWithNonCovariantParam {
-            type_var: ty_var.name.clone(),
+            type_var: ty_var.name.into(),
             pos: t.pos.clone(),
             name: t.id.to_string().into(),
             exps: expansion,
@@ -373,7 +373,7 @@ impl VarianceChecker<'_> {
         args: &[Type],
     ) -> Result<Option<Type>, VarianceCheckError> {
         let local_id = Id {
-            name: id.name.clone(),
+            name: id.name,
             arity: id.arity,
         };
         let v_stub = self

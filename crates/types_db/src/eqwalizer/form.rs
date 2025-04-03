@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -18,6 +17,7 @@ use crate::eqwalizer::types::FunType;
 use crate::eqwalizer::types::Type;
 use crate::eqwalizer::types::VarType;
 use crate::eqwalizer::TextRange;
+use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExternalForm {
@@ -44,7 +44,7 @@ pub enum ExternalForm {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ModuleAttr {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -57,7 +57,7 @@ pub struct ExportAttr {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ImportAttr {
     pub pos: eqwalizer::Pos,
-    pub module: SmolStr,
+    pub module: StringId,
     #[serde(default)]
     pub funs: Vec<eqwalizer::Id>,
 }
@@ -80,7 +80,7 @@ pub struct FunDecl {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FileAttr {
     pub pos: eqwalizer::Pos,
-    pub file: SmolStr,
+    pub file: StringId,
     pub start: u32,
 }
 
@@ -101,7 +101,7 @@ pub struct Fixme {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BehaviourAttr {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -142,7 +142,7 @@ pub struct Callback {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecDecl {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     #[serde(default)]
     pub fields: Vec<RecField>,
     pub refinable: bool,
@@ -150,7 +150,7 @@ pub struct RecDecl {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecField {
-    pub name: SmolStr,
+    pub name: StringId,
     pub tp: Type,
     pub default_value: Option<expr::Expr>,
     pub refinable: bool,
@@ -174,7 +174,7 @@ pub struct CompileExportAllAttr {
 pub struct TypingAttribute {
     pub pos: eqwalizer::Pos,
     #[serde(default)]
-    pub names: Vec<SmolStr>,
+    pub names: Vec<StringId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -182,7 +182,7 @@ pub struct ExternalTypeDecl {
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
-    pub params: Vec<SmolStr>,
+    pub params: Vec<StringId>,
     pub body: ext_types::ExtType,
 }
 
@@ -191,7 +191,7 @@ pub struct ExternalOpaqueDecl {
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
-    pub params: Vec<SmolStr>,
+    pub params: Vec<StringId>,
     pub body: ext_types::ExtType,
 }
 
@@ -221,14 +221,14 @@ pub struct ExternalOptionalCallbacks {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalRecDecl {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     #[serde(default)]
     pub fields: Vec<ExternalRecField>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalRecField {
-    pub name: SmolStr,
+    pub name: StringId,
     pub tp: Option<ext_types::ExtType>,
     pub default_value: Option<expr::Expr>,
 }

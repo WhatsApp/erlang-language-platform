@@ -105,6 +105,7 @@ tree-sitter = "0.23.2"
 # @fb-only
 tree-sitter-erlang = "0.13.0" # @oss-only
 url = "2.5.4"
+ustr = { version = "1.1.0", features = ["serde"] }
 vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
 walkdir = "2.5.0"

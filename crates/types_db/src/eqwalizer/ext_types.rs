@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
-use elp_syntax::SmolStr;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::eqwalizer;
+use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExtType {
@@ -126,7 +126,7 @@ impl ExtType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AtomLitExtType {
     pub pos: eqwalizer::Pos,
-    pub atom: SmolStr,
+    pub atom: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -187,7 +187,7 @@ pub struct RemoteExtType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BuiltinExtType {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -198,31 +198,31 @@ pub struct IntLitExtType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnOpType {
     pub pos: eqwalizer::Pos,
-    pub op: SmolStr,
+    pub op: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BinOpType {
     pub pos: eqwalizer::Pos,
-    pub op: SmolStr,
+    pub op: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VarExtType {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordExtType {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecordRefinedExtType {
     pub pos: eqwalizer::Pos,
-    pub name: SmolStr,
+    pub name: StringId,
     #[serde(default)]
     pub refined_fields: Vec<RefinedField>,
 }
@@ -250,13 +250,13 @@ pub struct ConstrainedFunType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Constraint {
     pub pos: eqwalizer::Pos,
-    pub t_var: SmolStr,
+    pub t_var: StringId,
     pub ty: ExtType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedField {
-    pub label: SmolStr,
+    pub label: StringId,
     pub ty: ExtType,
 }
 

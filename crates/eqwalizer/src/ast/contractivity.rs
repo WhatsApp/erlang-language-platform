@@ -41,7 +41,6 @@ use std::sync::Arc;
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
@@ -49,6 +48,7 @@ use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::OpaqueType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::StringId;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 
@@ -186,14 +186,14 @@ fn he_prop(s: &Prop, t: &Prop) -> Result<bool, ContractivityCheckError> {
 pub struct StubContractivityChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
-    module: SmolStr,
+    module: StringId,
 }
 
 impl StubContractivityChecker<'_> {
     pub fn new(
         db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
-        module: SmolStr,
+        module: StringId,
     ) -> StubContractivityChecker<'_> {
         StubContractivityChecker {
             db,
@@ -300,7 +300,7 @@ impl StubContractivityChecker<'_> {
         args: &[Type],
     ) -> Result<Option<Type>, ContractivityCheckError> {
         let local_id = Id {
-            name: id.name.clone(),
+            name: id.name,
             arity: id.arity,
         };
         let stub = self
