@@ -2397,21 +2397,26 @@ mod tests {
     struct BackupFiles {
         // Restore the first Path to the second
         restore: Vec<(PathBuf, PathBuf)>,
+        #[allow(dead_code)] // Reference to stop Drop handler
+        temp_dir: TempDir,
     }
     impl BackupFiles {
         fn save_files(project: &str, files: &[&str]) -> Result<BackupFiles> {
             let path_str = project_path(project);
             let project_path: PathBuf = path_str.into();
             let mut restore = Vec::default();
+            let temp_dir = tempfile::tempdir().unwrap();
             files.iter().for_each(|file| {
                 let file_path = project_path.join(file);
-                let bak_file_path = file_path.with_extension("bak");
                 assert!(file_path.exists());
+                let bak_file_path = temp_dir.path().join(file);
+                let parent = bak_file_path.parent().unwrap();
+                fs::create_dir_all(parent).unwrap();
                 assert!(!bak_file_path.exists());
                 fs::copy(file_path.clone(), bak_file_path.clone()).expect("Failed to copy file");
                 restore.push((bak_file_path, file_path));
             });
-            Ok(BackupFiles { restore })
+            Ok(BackupFiles { restore, temp_dir })
         }
     }
 
