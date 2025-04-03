@@ -7,13 +7,10 @@
  * of this source tree.
  */
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 
 use elp_syntax::SmolStr;
-use fxhash::FxHashMap;
-use itertools::Itertools;
-use serde::ser::SerializeMap;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_with::DeserializeFromStr;
@@ -420,14 +417,14 @@ pub struct RecordType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedRecordType {
     pub rec_type: RecordType,
-    #[serde(default, serialize_with = "serialize_sorted_map")]
-    pub fields: FxHashMap<SmolStr, Type>,
+    #[serde(default)]
+    pub fields: BTreeMap<SmolStr, Type>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MapType {
-    #[serde(default, serialize_with = "serialize_sorted_map")]
-    pub props: FxHashMap<Key, Prop>,
+    #[serde(default)]
+    pub props: BTreeMap<Key, Prop>,
     pub k_type: Box<Type>,
     pub v_type: Box<Type>,
 }
@@ -548,17 +545,4 @@ impl fmt::Display for Prop {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BoundedDynamicType {
     pub bound: Box<Type>,
-}
-
-fn serialize_sorted_map<S, K, V, H>(value: &HashMap<K, V, H>, ser: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-    K: Ord + Serialize,
-    V: Serialize,
-{
-    let mut ser = ser.serialize_map(Some(value.len()))?;
-    for (key, value) in value.iter().sorted_by_key(|(k, _)| *k) {
-        ser.serialize_entry(key, value)?;
-    }
-    ser.end()
 }

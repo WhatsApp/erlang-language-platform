@@ -29,6 +29,8 @@
 //! The implementation is clone and allocation heavy, but only if a
 //! contravariant expansion is found, which should not happen.
 
+use std::collections::BTreeMap;
+
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -133,11 +135,11 @@ impl VarianceChecker<'_> {
 
     fn find_contravariant_expansion_in_props(
         &self,
-        props: &FxHashMap<Key, Prop>,
+        props: &BTreeMap<Key, Prop>,
         tv: &VarType,
         positive: bool,
         history: &Vec<&RemoteType>,
-    ) -> Result<Vec<FxHashMap<Key, Prop>>, VarianceCheckError> {
+    ) -> Result<Vec<BTreeMap<Key, Prop>>, VarianceCheckError> {
         for (key, prop) in props.iter() {
             let expansion = self.find_contravariant_expansion(&prop.tp, tv, positive, history)?;
             if !expansion.is_empty() {

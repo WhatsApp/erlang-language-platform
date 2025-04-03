@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use elp_syntax::SmolStr;
@@ -16,8 +18,6 @@ use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
-use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use serde::Serialize;
 
 use super::Id;
@@ -25,16 +25,16 @@ use super::Id;
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModuleStub {
     pub module: SmolStr,
-    pub exports: FxHashSet<Id>,
-    pub imports: FxHashMap<Id, SmolStr>,
-    pub export_types: FxHashSet<Id>,
-    pub opaques: FxHashMap<Id, TypeDecl>,
-    pub types: FxHashMap<Id, TypeDecl>,
-    pub specs: FxHashMap<Id, FunSpec>,
-    pub overloaded_specs: FxHashMap<Id, OverloadedFunSpec>,
-    pub records: FxHashMap<SmolStr, RecDecl>,
+    pub exports: BTreeSet<Id>,
+    pub imports: BTreeMap<Id, SmolStr>,
+    pub export_types: BTreeSet<Id>,
+    pub opaques: BTreeMap<Id, TypeDecl>,
+    pub types: BTreeMap<Id, TypeDecl>,
+    pub specs: BTreeMap<Id, FunSpec>,
+    pub overloaded_specs: BTreeMap<Id, OverloadedFunSpec>,
+    pub records: BTreeMap<SmolStr, RecDecl>,
     pub callbacks: Vec<Callback>,
-    pub optional_callbacks: FxHashSet<Id>,
+    pub optional_callbacks: BTreeSet<Id>,
     pub invalids: Vec<Invalid>,
 }
 
@@ -45,7 +45,7 @@ pub struct ModuleStub {
 pub struct VStub {
     stub: Arc<ModuleStub>,
     pub invalids: Vec<Invalid>,
-    pub invalid_ids: FxHashSet<Id>,
+    pub invalid_ids: BTreeSet<Id>,
 }
 
 impl VStub {
@@ -53,7 +53,7 @@ impl VStub {
         Self {
             stub,
             invalids: vec![],
-            invalid_ids: FxHashSet::default(),
+            invalid_ids: BTreeSet::default(),
         }
     }
 

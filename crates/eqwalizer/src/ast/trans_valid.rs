@@ -13,6 +13,9 @@
 //! all invalid declarations. I.e., if a type t1 depends on a type t2
 //! and t2 is invalid, then t1 will be tagged as invalid.
 
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
@@ -24,8 +27,6 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
-use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 
 use super::stub::ModuleStub;
 use super::stub::VStub;
@@ -34,7 +35,7 @@ use super::RemoteId;
 use super::TransitiveCheckError;
 use crate::db::EqwalizerDiagnosticsDatabase;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Ref {
     RidRef(RemoteId),
     RecRef(SmolStr, SmolStr),
@@ -53,9 +54,9 @@ pub struct TransitiveChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: SmolStr,
-    in_progress: FxHashSet<Ref>,
-    invalid_refs: FxHashMap<Ref, FxHashSet<Ref>>,
-    maybe_invalid_refs: FxHashMap<Ref, FxHashSet<Ref>>,
+    in_progress: BTreeSet<Ref>,
+    invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
+    maybe_invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
 }
 
 impl TransitiveChecker<'_> {
@@ -68,9 +69,9 @@ impl TransitiveChecker<'_> {
             db,
             project_id,
             module,
-            in_progress: FxHashSet::default(),
-            invalid_refs: FxHashMap::default(),
-            maybe_invalid_refs: FxHashMap::default(),
+            in_progress: Default::default(),
+            invalid_refs: Default::default(),
+            maybe_invalid_refs: Default::default(),
         }
     }
 
@@ -134,7 +135,7 @@ impl TransitiveChecker<'_> {
         stub: &mut ModuleStub,
         spec: &FunSpec,
     ) -> Result<(), TransitiveCheckError> {
-        let mut invalids = FxHashSet::default();
+        let mut invalids = Default::default();
         self.collect_invalid_references(
             &mut invalids,
             &self.module.clone(),
@@ -185,7 +186,7 @@ impl TransitiveChecker<'_> {
         stub: &mut ModuleStub,
         spec: &OverloadedFunSpec,
     ) -> Result<(), TransitiveCheckError> {
-        let mut invalids = FxHashSet::default();
+        let mut invalids = Default::default();
         for ty in spec.tys.iter() {
             self.collect_invalid_references(
                 &mut invalids,
@@ -210,7 +211,7 @@ impl TransitiveChecker<'_> {
     fn normalize_callback(&mut self, cb: Callback) -> Result<Callback, TransitiveCheckError> {
         let mut filtered_tys = vec![];
         for ty in cb.tys.into_iter() {
-            let mut invalids = FxHashSet::default();
+            let mut invalids = Default::default();
             self.collect_invalid_references(
                 &mut invalids,
                 &self.module.clone(),
@@ -231,7 +232,7 @@ impl TransitiveChecker<'_> {
 
     fn is_valid(&mut self, rref: &Ref) -> Result<bool, TransitiveCheckError> {
         let maybe_valid = self.is_maybe_valid(rref, None)?;
-        let mut resolved_invalids = FxHashSet::default();
+        let mut resolved_invalids = BTreeSet::default();
         if let Some(maybe_invalids) = self.maybe_invalid_refs.remove(rref) {
             for maybe_invalid in maybe_invalids.iter() {
                 if !self.is_valid(maybe_invalid)? {
@@ -265,7 +266,7 @@ impl TransitiveChecker<'_> {
             return Ok(invs.is_empty());
         }
         self.in_progress.insert(rref.clone());
-        let mut invalids = FxHashSet::default();
+        let mut invalids = Default::default();
         match self
             .db
             .covariant_stub(self.project_id, ModuleName::new(rref.module().as_str()))
@@ -324,7 +325,7 @@ impl TransitiveChecker<'_> {
 
     fn collect_invalid_references(
         &mut self,
-        invalids: &mut FxHashSet<Ref>,
+        invalids: &mut BTreeSet<Ref>,
         module: &SmolStr,
         ty: &Type,
         parent_ref: Option<&Ref>,

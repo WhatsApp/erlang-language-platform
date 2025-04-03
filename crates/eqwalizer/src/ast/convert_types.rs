@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::collections::BTreeMap;
+
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
 use elp_types_db::eqwalizer::ext_types::ExtProp;
@@ -316,12 +318,12 @@ impl TypeConverter {
                         self.convert_type(sub, field.ty)
                             .map(|res| res.map(|map| (field.label, map)))
                     })
-                    .collect::<Result<Result<FxHashMap<_, _>, _>, _>>()?;
+                    .collect::<Result<Result<_, _>, _>>()?;
                 Ok(fields
                     .map(|fields| Type::RefinedRecordType(RefinedRecordType { rec_type, fields })))
             }
             ExtType::MapExtType(ty) => {
-                let mut props: FxHashMap<Key, Prop> = FxHashMap::default();
+                let mut props: BTreeMap<Key, Prop> = BTreeMap::default();
                 let mut k_type = Type::NoneType;
                 let mut v_type = Type::NoneType;
                 // .rev() so that the leftmost association takes precedence in the props list

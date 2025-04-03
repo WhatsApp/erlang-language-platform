@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::BufRead;
 use std::io::Cursor;
@@ -22,7 +23,6 @@ pub use elp_types_db::eqwalizer::Id;
 pub use elp_types_db::eqwalizer::Pos;
 pub use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::AST;
-use fxhash::FxHashMap;
 
 pub mod auto_import;
 pub mod compiler_macro;
@@ -255,8 +255,8 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
     Err(Error::InvalidBEAM)
 }
 
-pub fn type_ids(ast: &AST) -> FxHashMap<Id, Visibility> {
-    let mut type_ids = FxHashMap::default();
+pub fn type_ids(ast: &AST) -> BTreeMap<Id, Visibility> {
+    let mut type_ids = BTreeMap::default();
     for form in &ast.forms {
         match form {
             ExternalForm::ExportType(tys) => {

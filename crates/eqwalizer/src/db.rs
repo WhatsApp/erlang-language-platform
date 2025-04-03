@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -19,7 +20,6 @@ use elp_base_db::SourceDatabase;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::AST;
-use fxhash::FxHashMap;
 use parking_lot::Mutex;
 
 use crate::ast;
@@ -85,7 +85,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         &self,
         project_id: ProjectId,
         module: ModuleName,
-    ) -> Result<Arc<FxHashMap<Id, Visibility>>, Error>;
+    ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
     fn expanded_stub(
         &self,
@@ -195,7 +195,7 @@ fn type_ids(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
-) -> Result<Arc<FxHashMap<Id, Visibility>>, Error> {
+) -> Result<Arc<BTreeMap<Id, Visibility>>, Error> {
     db.converted_stub(project_id, module)
         .map(|ast| Arc::new(ast::type_ids(&ast)))
 }

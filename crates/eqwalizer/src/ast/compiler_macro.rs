@@ -7,7 +7,7 @@
  * of this source tree.
  */
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use lazy_static::lazy_static;
 
@@ -16,7 +16,7 @@ use crate::ast;
 pub static FAKE_MODULE: &str = "$compiler_macro";
 
 lazy_static! {
-    static ref FUNS: HashSet<ast::Id> = {
+    static ref FUNS: BTreeSet<ast::Id> = {
         vec![ast::Id {
             name: "record_info".into(),
             arity: 2,

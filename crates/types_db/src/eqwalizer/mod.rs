@@ -83,7 +83,17 @@ where
 
 // ---------------------------------------------------------------------
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord
+)]
 pub struct RemoteId {
     pub module: SmolStr,
     pub name: SmolStr,
@@ -103,7 +113,8 @@ impl fmt::Display for RemoteId {
     Clone,
     PartialEq,
     Eq,
-    Hash
+    PartialOrd,
+    Ord
 )]
 pub struct Id {
     pub name: SmolStr,

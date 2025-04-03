@@ -7,13 +7,14 @@
  * of this source tree.
  */
 
-use fxhash::FxHashSet;
+use std::collections::BTreeSet;
+
 use lazy_static::lazy_static;
 
 use crate::ast;
 
 lazy_static! {
-    static ref FUNS: FxHashSet<ast::Id> = {
+    static ref FUNS: BTreeSet<ast::Id> = {
         vec![
             ast::Id {
                 name: "abs".into(),

@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::collections::BTreeSet;
+
 use elp_syntax::SmolStr;
 use elp_types_db::eqwalizer::expr::Body;
 use elp_types_db::eqwalizer::expr::Clause;
@@ -30,14 +32,13 @@ use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::Pos;
 use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::AST;
-use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 
 use crate::ast;
 
 lazy_static! {
-    static ref PREDICATES: FxHashSet<ast::Id> = {
-        vec![
+    static ref PREDICATES: BTreeSet<ast::Id> = {
+        BTreeSet::from_iter([
             ast::Id {
                 name: "is_atom".into(),
                 arity: 1,
@@ -106,14 +107,12 @@ lazy_static! {
                 name: "is_record".into(),
                 arity: 3,
             },
-        ]
-        .into_iter()
-        .collect()
+        ])
     };
 }
 
 lazy_static! {
-    static ref BINOP: FxHashSet<SmolStr> = {
+    static ref BINOP: BTreeSet<SmolStr> = {
         vec![
             "/", "*", "-", "+", "div", "rem", "band", "bor", "bxor", "bsl", "bsr", "or", "xor",
             "and", ">=", ">", "=<", "<", "/=", "=/=", "==", "=:=", "andalso", "orelse",
@@ -125,7 +124,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref UNOP: FxHashSet<SmolStr> = vec!["bnot", "+", "-", "not"]
+    static ref UNOP: BTreeSet<SmolStr> = vec!["bnot", "+", "-", "not"]
         .into_iter()
         .map(|s| s.into())
         .collect();

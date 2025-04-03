@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::collections::BTreeSet;
+
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
@@ -159,7 +161,6 @@ use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::LineAndColumn;
 use elp_types_db::eqwalizer::TextRange;
 use elp_types_db::eqwalizer::AST;
-use fxhash::FxHashSet;
 
 use super::auto_import;
 use super::compiler_macro;
@@ -170,7 +171,7 @@ use crate::ast;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Converter {
-    no_auto_imports: FxHashSet<ast::Id>,
+    no_auto_imports: BTreeSet<ast::Id>,
     from_beam: bool,
     filter_stub: bool,
     current_file: Option<SmolStr>,
@@ -2169,12 +2170,12 @@ pub fn convert_forms(
 ) -> Result<AST, ConversionError> {
     if let Term::List(forms) = term {
         let dummy_converter = Converter {
-            no_auto_imports: FxHashSet::default(),
+            no_auto_imports: BTreeSet::default(),
             from_beam,
             filter_stub,
             current_file: None,
         };
-        let no_auto_imports: FxHashSet<ast::Id> = forms
+        let no_auto_imports = forms
             .elements
             .iter()
             .flat_map(|f| dummy_converter.extract_no_auto_import(f))
