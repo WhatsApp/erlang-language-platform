@@ -56,6 +56,10 @@ impl MemDocs {
     pub(crate) fn iter(&self) -> impl Iterator<Item = &VfsPath> {
         self.mem_docs.keys()
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.mem_docs.len()
+    }
 }
 
 /// Information about a document that the Language Client

@@ -84,6 +84,7 @@ use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
+use serde::Serialize;
 use vfs::Change;
 
 use self::dispatch::RequestDispatcher;
@@ -100,6 +101,7 @@ use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::mem_docs::DocumentData;
 use crate::mem_docs::MemDocs;
+use crate::memory_usage::Bytes;
 use crate::memory_usage::MemoryUsage;
 use crate::project_loader::ProjectLoader;
 use crate::project_loader::ReloadManager;
@@ -1900,7 +1902,20 @@ impl Server {
         if self.last_periodic_processed.elapsed() >= PERIODIC_INTERVAL_MS {
             self.last_periodic_processed = Instant::now();
             let mem_usage = MemoryUsage::now();
-            match serde_json::to_value(mem_usage) {
+            #[derive(Serialize)]
+            struct MemoryStats {
+                allocated: Bytes,
+                active: Bytes,
+                resident: Bytes,
+                num_open_files: usize,
+            }
+            let mem_stats = MemoryStats {
+                allocated: mem_usage.allocated,
+                active: mem_usage.active,
+                resident: mem_usage.resident,
+                num_open_files: self.mem_docs.read().len(),
+            };
+            match serde_json::to_value(mem_stats) {
                 Ok(mem_usage_value) => {
                     telemetry::send("periodic_memory_stats".to_string(), mem_usage_value);
                 }
