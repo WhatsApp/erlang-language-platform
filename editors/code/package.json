@@ -61,6 +61,13 @@
         "path": "./third-party/grammar/Erlang.plist"
       }
     ],
+    "commands": [
+      {
+        "command": "elp.restartServer",
+        "title": "Restart server",
+        "category": "Erlang"
+      }
+    ],
     "debuggers": [
       {
         "type": "erlang-edb",

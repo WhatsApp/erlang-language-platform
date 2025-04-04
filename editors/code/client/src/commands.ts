@@ -10,6 +10,7 @@
 import * as vscode from 'vscode';
 import * as dapConfig from './dapConfig';
 import * as edbDebugger from './debugger';
+import { LanguageClient } from 'vscode-languageclient/node';
 
 export type Runnable = {
     label: string;
@@ -30,8 +31,7 @@ export type CommonRunnableArgs = {
     workspaceRoot: string;
 };
 
-export function registerCommands(context: vscode.ExtensionContext) {
-    // elp.runSingle
+export function registerCommands(context: vscode.ExtensionContext, client: LanguageClient) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'elp.runSingle',
@@ -39,13 +39,16 @@ export function registerCommands(context: vscode.ExtensionContext) {
                 await runSingle(runnable);
             },
         ),
-    );
-    // elp.debugSingle
-    context.subscriptions.push(
         vscode.commands.registerCommand(
             'elp.debugSingle',
             async (runnable: Runnable) => {
                 await debugSingle(runnable);
+            },
+        ),
+        vscode.commands.registerCommand(
+            'elp.restartServer',
+            async () => {
+                await client.restart();
             },
         ),
     );

@@ -66,8 +66,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	};
 
-	registerCommands(context);
-
 	// Create the language client and start the client.
 	client = new LanguageClient(
 		'elp',
@@ -75,6 +73,8 @@ export function activate(context: vscode.ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
+	registerCommands(context, client);
 
 	log.append('Activating debugger');
 	// Activate the DAP Debugger
