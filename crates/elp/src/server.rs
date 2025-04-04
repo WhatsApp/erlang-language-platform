@@ -258,6 +258,8 @@ pub struct Server {
     eqwalize_all_completed: bool,
     logger: Logger,
     last_periodic_processed: Instant,
+    // We record the highest FileId index seen as a count of the number of files recorded
+    highest_file_id: u32,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -323,6 +325,7 @@ impl Server {
             logger,
             last_periodic_processed: Instant::now(),
             vfs_config_version: 0,
+            highest_file_id: 0,
         };
 
         // Run config-based initialisation
@@ -507,7 +510,10 @@ impl Server {
             self.reload_project(to_reload);
         }
 
-        let changed = self.process_changes_to_vfs_store();
+        let (changed, highest_file_id) = self.process_changes_to_vfs_store();
+        // This has to be outside of process_changes_to_vfs_store to
+        // avoid mutability clashes
+        self.record_highest_file_id(highest_file_id);
 
         if self.status == Status::Running {
             if mem::take(&mut self.native_diagnostics_requested)
@@ -934,7 +940,7 @@ impl Server {
         }
     }
 
-    fn process_changes_to_vfs_store(&mut self) -> bool {
+    fn process_changes_to_vfs_store(&mut self) -> (bool, u32) {
         // We need to guard against a file being created/modified and
         // then deleted within a change processing cycle. This is
         // problematic because the task generating the vfs changes
@@ -963,7 +969,7 @@ impl Server {
         }
 
         if changed_files.is_empty() && !self.reset_source_roots {
-            return false;
+            return (false, 0);
         }
 
         // downgrade to read lock to allow more readers while we are processing the changes
@@ -977,7 +983,9 @@ impl Server {
         // sure all calculations see a consistent view of the
         // database.
 
+        let mut highest_file_id: u32 = 0;
         for (_, file) in &changed_files {
+            highest_file_id = highest_file_id.max(file.file_id.index());
             let file_exists = vfs.exists(file.file_id);
 
             if &file.change != &vfs::Change::Delete && file_exists {
@@ -1065,7 +1073,7 @@ impl Server {
             self.reset_source_roots = false;
         }
 
-        true
+        (true, highest_file_id)
     }
 
     fn opened_documents(&self) -> Vec<FileId> {
@@ -1908,12 +1916,14 @@ impl Server {
                 active: Bytes,
                 resident: Bytes,
                 num_open_files: usize,
+                num_loaded_files: u32,
             }
             let mem_stats = MemoryStats {
                 allocated: mem_usage.allocated,
                 active: mem_usage.active,
                 resident: mem_usage.resident,
                 num_open_files: self.mem_docs.read().len(),
+                num_loaded_files: self.highest_file_id,
             };
             match serde_json::to_value(mem_stats) {
                 Ok(mem_usage_value) => {
@@ -1928,6 +1938,10 @@ impl Server {
                 }
             };
         }
+    }
+
+    fn record_highest_file_id(&mut self, latest_high: u32) {
+        self.highest_file_id = self.highest_file_id.max(latest_high);
     }
 }
 
