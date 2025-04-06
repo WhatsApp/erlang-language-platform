@@ -140,7 +140,7 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
     let mut res = FxHashMap::default();
     let def_map = sema.db.def_map_local(file_id);
     let functions = def_map.get_functions();
-    let excludes = sema.resolve_implemented_callbacks(file_id);
+    let excludes = sema.resolve_callbacks(file_id);
     for (name_arity, def) in functions {
         if def.exported
             && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity)

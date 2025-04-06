@@ -251,7 +251,7 @@ impl<'db> Semantic<'db> {
         Some((behaviour, behaviour_def_map.get_callbacks().clone()))
     }
 
-    pub fn resolve_implemented_callbacks(&self, file_id: FileId) -> FxHashSet<NameArity> {
+    pub fn resolve_callbacks(&self, file_id: FileId) -> FxHashSet<NameArity> {
         let mut res = FxHashSet::default();
         let def_map = self.def_map(file_id);
         def_map.get_behaviours().iter().for_each(|name| {
