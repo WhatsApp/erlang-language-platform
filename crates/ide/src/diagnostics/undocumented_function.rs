@@ -12,10 +12,12 @@ use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
+use fxhash::FxHashSet;
 use hir::form_list::ModuleDocAttribute;
 use hir::known;
 use hir::AsName;
 use hir::FunctionDef;
+use hir::NameArity;
 use hir::Semantic;
 
 use super::Diagnostic;
@@ -41,10 +43,11 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 };
 
 fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    let callbacks = sema.resolve_callbacks(file_id);
     if !contains_moduledoc_hidden_attribute(sema, file_id) {
         sema.def_map_local(file_id)
             .get_functions()
-            .for_each(|(_arity, def)| check_function(diagnostics, sema, def));
+            .for_each(|(_arity, def)| check_function(diagnostics, sema, def, &callbacks));
     }
 }
 
@@ -71,8 +74,13 @@ fn is_hidden_or_false(atom: &Atom) -> bool {
     atom.as_name() == known::hidden || atom.as_name() == known::false_name
 }
 
-fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    if def.exported {
+fn check_function(
+    diagnostics: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    def: &FunctionDef,
+    callbacks: &FxHashSet<NameArity>,
+) {
+    if def.exported && !callbacks.contains(&def.name) {
         if def.edoc_comments(sema.db).is_none() && def.doc_id.is_none() {
             if let Some(name_range) = def.name_range(sema.db) {
                 let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
@@ -236,6 +244,30 @@ mod tests {
     
     main() ->
       ok.
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_exported_function_callback() {
+        check_diagnostics(
+            r#"
+    //- /src/main.erl
+    -module(main).
+    -behaviour(gen_server).
+    -export([main/0]).
+    -export([handle_call/1]).
+    
+    main() ->
+    %%<^ weak: The function is exported, but not documented.
+      ok.
+
+    handle_call(X) ->
+      X.
+
+    //- /src/gen_server.erl
+    -module(gen_server).
+    -callback handle_call(term()) -> term().
         "#,
         )
     }
