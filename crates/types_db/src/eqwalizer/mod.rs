@@ -42,9 +42,7 @@ pub struct EqwalizerDiagnostic {
     pub message: String,
     pub uri: String,
     pub code: String,
-    #[serde(rename(deserialize = "expressionOrNull"))]
     pub expression: Option<String>,
-    #[serde(rename(deserialize = "explanationOrNull"))]
     pub explanation: Option<String>,
     #[serde(default)]
     pub diagnostic: Option<StructuredDiagnostic>,
