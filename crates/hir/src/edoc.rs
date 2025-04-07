@@ -61,7 +61,7 @@ pub struct EdocHeader {
     pub kind: EdocHeaderKind,
     pub exported: bool,
     pub doc: Option<Tag>,
-    pub params: FxHashMap<String, Tag>,
+    pub params: Vec<(String, Tag)>,
     pub returns: Option<Tag>,
     pub equiv: Option<Tag>,
     pub authors: Vec<Tag>,
@@ -82,7 +82,7 @@ impl EdocHeader {
     pub fn comments(&self) -> impl Iterator<Item = &InFileAstPtr<ast::Comment>> {
         self.doc
             .iter()
-            .chain(self.params.values())
+            .chain(self.params.iter().map(|(_name, tag)| tag))
             .chain(&self.returns)
             .chain(&self.equiv)
             .chain(&self.authors)
@@ -460,7 +460,7 @@ struct ParseContext {
 
     doc: Option<Tag>,
     returns: Option<Tag>,
-    params: FxHashMap<String, Tag>,
+    params: Vec<(String, Tag)>,
     equiv: Option<Tag>,
     authors: Vec<Tag>,
     copyright: Option<Tag>,
@@ -521,13 +521,13 @@ impl ParseContext {
                         });
                     }
                     TagKind::Param(name) => {
-                        self.params.insert(
+                        self.params.push((
                             name.to_string(),
                             Tag {
                                 lines: self.lines.clone(),
                                 range: tag_name.range,
                             },
-                        );
+                        ));
                     }
                     TagKind::Equiv => {
                         self.equiv = Some(Tag {
