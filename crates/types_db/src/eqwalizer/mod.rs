@@ -73,14 +73,14 @@ where
 {
     #[derive(Deserialize)]
     struct RawTextRange {
-        start: u32,
-        end: u32,
+        start_byte: u32,
+        end_byte: u32,
     }
 
     let range = RawTextRange::deserialize(deserializer)?;
     Ok(elp_syntax::TextRange::new(
-        range.start.into(),
-        range.end.into(),
+        range.start_byte.into(),
+        range.end_byte.into(),
     ))
 }
 
