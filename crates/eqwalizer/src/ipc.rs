@@ -43,7 +43,6 @@ pub enum EqWAlizerASTFormat {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(tag = "tag", content = "content")]
 pub enum MsgFromEqWAlizer {
     EnteringModule {
         module: String,
@@ -62,7 +61,9 @@ pub enum MsgFromEqWAlizer {
         modules: Vec<String>,
     },
     Done {
+        #[serde(default)]
         diagnostics: FxHashMap<String, Vec<EqwalizerDiagnostic>>,
+        #[serde(default)]
         type_info: FxHashMap<String, Vec<(Pos, Type)>>,
     },
 }
