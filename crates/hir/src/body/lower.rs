@@ -299,6 +299,10 @@ impl<'a> Ctx<'a> {
         self.do_lower_type_alias(type_alias.name(), type_alias.ty())
     }
 
+    pub fn lower_nominal_type(self, nominal_type: &ast::Nominal) -> (TypeBody, BodySourceMap) {
+        self.do_lower_type_alias(nominal_type.name(), nominal_type.ty())
+    }
+
     pub fn lower_opaque_type_alias(self, type_alias: &ast::Opaque) -> (TypeBody, BodySourceMap) {
         self.do_lower_type_alias(type_alias.name(), type_alias.ty())
     }

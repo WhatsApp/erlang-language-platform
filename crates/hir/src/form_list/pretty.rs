@@ -272,6 +272,11 @@ impl<'a> Printer<'a> {
                 cond,
                 form_id: _,
             } => ("type", name, cond),
+            TypeAlias::Nominal {
+                name,
+                cond,
+                form_id: _,
+            } => ("nominal", name, cond),
             TypeAlias::Opaque {
                 name,
                 cond,

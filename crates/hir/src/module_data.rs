@@ -462,6 +462,7 @@ pub struct TypeAliasDef {
 
 pub enum TypeAliasSource {
     Regular(ast::TypeAlias),
+    Nominal(ast::Nominal),
     Opaque(ast::Opaque),
 }
 
@@ -473,12 +474,16 @@ impl TypeAliasDef {
             TypeAlias::Regular { form_id, .. } => {
                 TypeAliasSource::Regular(form_id.get(&source_file))
             }
+            TypeAlias::Nominal { form_id, .. } => {
+                TypeAliasSource::Nominal(form_id.get(&source_file))
+            }
         }
     }
 
     pub fn name(&self) -> &NameArity {
         match &self.type_alias {
             TypeAlias::Regular { name, .. } => name,
+            TypeAlias::Nominal { name, .. } => name,
             TypeAlias::Opaque { name, .. } => name,
         }
     }
@@ -488,10 +493,16 @@ impl TypeAliasDef {
         Some(source.syntax().text_range())
     }
 
-    pub fn map_expr(&self, db: &dyn SourceDatabase) -> Option<MapExpr> {
+    /// This information is used for completion.
+    /// We deliberately return nothing for an opaque type
+    pub fn map_expr_for_completion(&self, db: &dyn SourceDatabase) -> Option<MapExpr> {
         let source = self.source(db);
         match source {
             TypeAliasSource::Regular(alias) => match alias.ty()? {
+                ast::Expr::MapExpr(expr) => Some(expr),
+                _ => None,
+            },
+            TypeAliasSource::Nominal(nominal_type) => match nominal_type.ty()? {
                 ast::Expr::MapExpr(expr) => Some(expr),
                 _ => None,
             },
@@ -504,6 +515,7 @@ impl TypeAliasSource {
     pub fn syntax(&self) -> &SyntaxNode {
         match self {
             TypeAliasSource::Regular(type_alias) => type_alias.syntax(),
+            TypeAliasSource::Nominal(nominal_type) => nominal_type.syntax(),
             TypeAliasSource::Opaque(opaque) => opaque.syntax(),
         }
     }
@@ -511,6 +523,7 @@ impl TypeAliasSource {
     pub fn type_name(&self) -> Option<ast::TypeName> {
         match self {
             TypeAliasSource::Regular(type_alias) => type_alias.name(),
+            TypeAliasSource::Nominal(nominal_type) => nominal_type.name(),
             TypeAliasSource::Opaque(opaque) => opaque.name(),
         }
     }

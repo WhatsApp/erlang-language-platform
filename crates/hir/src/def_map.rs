@@ -850,6 +850,9 @@ mod tests {
                 TypeAlias::Regular { name, .. } => {
                     format!("-type {} exported: {}", name, def.exported)
                 }
+                TypeAlias::Nominal { name, .. } => {
+                    format!("-nominal {} exported: {}", name, def.exported)
+                }
                 TypeAlias::Opaque { name, .. } => {
                     format!("-opaque {} exported: {}", name, def.exported)
                 }
@@ -877,6 +880,9 @@ mod tests {
             .chain(def_map.types.values().map(|def| match &def.type_alias {
                 TypeAlias::Regular { name, .. } => {
                     format!("-type {} exported: {}", name, def.exported)
+                }
+                TypeAlias::Nominal { name, .. } => {
+                    format!("-nominal {} exported: {}", name, def.exported)
                 }
                 TypeAlias::Opaque { name, .. } => {
                     format!("-opaque {} exported: {}", name, def.exported)

@@ -167,6 +167,7 @@ pub(crate) fn print_type_alias(
 
     match form {
         TypeAlias::Regular { .. } => write!(printer, "-type ").unwrap(),
+        TypeAlias::Nominal { .. } => write!(printer, "-nominal ").unwrap(),
         TypeAlias::Opaque { .. } => write!(printer, "-opaque ").unwrap(),
     }
 

@@ -814,6 +814,11 @@ pub enum TypeAlias {
         cond: Option<PPConditionId>,
         form_id: FormId<ast::TypeAlias>,
     },
+    Nominal {
+        name: NameArity,
+        cond: Option<PPConditionId>,
+        form_id: FormId<ast::Nominal>,
+    },
     Opaque {
         name: NameArity,
         cond: Option<PPConditionId>,
@@ -825,6 +830,7 @@ impl TypeAlias {
     pub fn form_id(&self) -> FormId<ast::Form> {
         match self {
             TypeAlias::Regular { form_id, .. } => form_id.upcast(),
+            TypeAlias::Nominal { form_id, .. } => form_id.upcast(),
             TypeAlias::Opaque { form_id, .. } => form_id.upcast(),
         }
     }
@@ -832,6 +838,7 @@ impl TypeAlias {
     pub fn name(&self) -> &NameArity {
         match self {
             TypeAlias::Regular { name, .. } => name,
+            TypeAlias::Nominal { name, .. } => name,
             TypeAlias::Opaque { name, .. } => name,
         }
     }

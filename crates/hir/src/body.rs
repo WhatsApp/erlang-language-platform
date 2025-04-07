@@ -708,6 +708,7 @@ impl TypeBody {
         let source = type_alias_id.file_syntax(db.upcast());
         let (body, source_map) = match form_list[type_alias_id.value] {
             TypeAlias::Regular { form_id, .. } => ctx.lower_type_alias(&form_id.get(&source)),
+            TypeAlias::Nominal { form_id, .. } => ctx.lower_nominal_type(&form_id.get(&source)),
             TypeAlias::Opaque { form_id, .. } => ctx.lower_opaque_type_alias(&form_id.get(&source)),
         };
         (Arc::new(body), Arc::new(source_map))

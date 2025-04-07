@@ -58,7 +58,7 @@ fn add_token_based_completions(
             types_from_specs(&mut types, sema, &def_map);
             for (name, def) in types {
                 let db = sema.db.upcast();
-                if let Some(expr) = def.map_expr(db) {
+                if let Some(expr) = def.map_expr_for_completion(db) {
                     acc.push(completion(sema, &name, &def, &expr, ":=".to_string()));
                     acc.push(completion(sema, &name, &def, &expr, "=>".to_string()));
                 }

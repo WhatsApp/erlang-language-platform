@@ -116,7 +116,7 @@ impl<'a> Ctx<'a> {
                     ast::Form::RecordDecl(record) => self.lower_record(record),
                     ast::Form::Spec(spec) => self.lower_spec(spec),
                     ast::Form::TypeAlias(alias) => self.lower_type_alias(alias),
-                    ast::Form::Nominal(_ty) => todo!(),
+                    ast::Form::Nominal(ty) => self.lower_nominal_type(ty),
                     ast::Form::WildAttribute(attribute) => self.lower_attribute(attribute),
                     ast::Form::DeprecatedAttribute(deprecated_attr) => {
                         self.lower_deprecated_attr(deprecated_attr)
@@ -518,6 +518,22 @@ impl<'a> Ctx<'a> {
 
         let form_id = self.id_map.get_id(alias);
         let res = TypeAlias::Regular {
+            name,
+            cond,
+            form_id,
+        };
+        Some(FormIdx::TypeAlias(self.data.type_aliases.alloc(res)))
+    }
+
+    fn lower_nominal_type(&mut self, nominal: &ast::Nominal) -> Option<FormIdx> {
+        let cond = self.conditions.last().copied();
+        let type_name = nominal.name()?;
+        let name = self.resolve_name(&type_name.name()?);
+        let arity = type_name.args()?.args().count().try_into().ok()?;
+        let name = NameArity::new(name, arity);
+
+        let form_id = self.id_map.get_id(nominal);
+        let res = TypeAlias::Nominal {
             name,
             cond,
             form_id,

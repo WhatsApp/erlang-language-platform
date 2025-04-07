@@ -78,6 +78,7 @@ pub fn print_type_alias(db: &dyn InternDatabase, body: &TypeBody, form: &TypeAli
 
     match form {
         TypeAlias::Regular { .. } => write!(printer, "-type ").unwrap(),
+        TypeAlias::Nominal { .. } => write!(printer, "-nominal ").unwrap(),
         TypeAlias::Opaque { .. } => write!(printer, "-opaque ").unwrap(),
     }
 
