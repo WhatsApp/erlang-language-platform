@@ -72,7 +72,7 @@ pub enum MsgFromEqWAlizer {
 pub enum MsgToEqWAlizer {
     ELPEnteringModule,
     ELPExitingModule,
-    GetAstBytesReply { ast_bytes_len: u32 },
+    GetAstBytesReply { len: u32 },
     CannotCompleteRequest,
 }
 

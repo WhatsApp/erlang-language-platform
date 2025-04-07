@@ -341,8 +341,8 @@ fn get_module_diagnostics(
                             "sending to eqwalizer: GetAstBytesReply for module {}",
                             module
                         );
-                        let ast_bytes_len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetAstBytesReply { ast_bytes_len };
+                        let len = ast_bytes.len().try_into()?;
+                        let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
                         handle.send(reply)?;
                         handle.receive_newline()?;
                         handle.send_bytes(&ast_bytes).with_context(|| {
@@ -357,8 +357,8 @@ fn get_module_diagnostics(
                             "module not found, sending to eqwalizer: empty GetAstBytesReply for module {}",
                             module
                         );
-                        let ast_bytes_len = 0;
-                        let reply = &MsgToEqWAlizer::GetAstBytesReply { ast_bytes_len };
+                        let len = 0;
+                        let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
                         handle.send(reply)?;
                         handle.receive_newline()?;
                     }
