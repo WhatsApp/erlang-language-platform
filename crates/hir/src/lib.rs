@@ -12,6 +12,7 @@ use elp_base_db::SourceDatabase;
 use elp_syntax::ast;
 
 mod body;
+mod code_complexity;
 pub mod db;
 mod def_map;
 mod diagnostics;

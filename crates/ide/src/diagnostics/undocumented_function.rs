@@ -27,7 +27,7 @@ use super::DiagnosticDescriptor;
 use super::Severity;
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::UndocumentedFunction;
-const DIAGNOSTIC_MESSAGE: &str = "The function is exported, but not documented.";
+const DIAGNOSTIC_MESSAGE: &str = "The function is non-trivial, exported, but not documented.";
 const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
@@ -74,13 +74,24 @@ fn is_hidden_or_false(atom: &Atom) -> bool {
     atom.as_name() == known::hidden || atom.as_name() == known::false_name
 }
 
+fn function_should_be_checked(
+    sema: &Semantic,
+    def: &FunctionDef,
+    callbacks: &FxHashSet<NameArity>,
+) -> bool {
+    const CODE_COMPLEXITY_CAP: usize = 5;
+    def.exported
+        && !callbacks.contains(&def.name)
+        && def.code_complexity(sema, Some(CODE_COMPLEXITY_CAP)).score >= CODE_COMPLEXITY_CAP
+}
+
 fn check_function(
     diagnostics: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
     callbacks: &FxHashSet<NameArity>,
 ) {
-    if def.exported && !callbacks.contains(&def.name) {
+    if function_should_be_checked(sema, def, callbacks) {
         if def.edoc_comments(sema.db).is_none() && def.doc_id.is_none() {
             if let Some(name_range) = def.name_range(sema.db) {
                 let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
@@ -116,8 +127,12 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: The function is exported, but not documented.
-      ok.
+ %% ^^^^ weak: The function is non-trivial, exported, but not documented.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -129,11 +144,19 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: The function is exported, but not documented.
-      ok.
+ %% ^^^^ weak: The function is non-trivial, exported, but not documented.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
 
     local() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -148,7 +171,11 @@ mod tests {
     Some documentation
     """.
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -161,7 +188,11 @@ mod tests {
     -export([main/0]).
     -doc hidden.
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -174,7 +205,11 @@ mod tests {
     -export([main/0]).
     -doc false.
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -187,7 +222,11 @@ mod tests {
     -export([main/0]).
     %% @doc Some documentation
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -201,7 +240,11 @@ mod tests {
     -export([main/0]).
     
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -215,7 +258,11 @@ mod tests {
     -export([main/0]).
     
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -229,7 +276,11 @@ mod tests {
     -export([main/0]).
     
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -243,7 +294,11 @@ mod tests {
     -export([main/0]).
     
     main() ->
-      ok.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
         "#,
         )
     }
@@ -259,15 +314,64 @@ mod tests {
     -export([handle_call/1]).
     
     main() ->
-    %%<^ weak: The function is exported, but not documented.
-      ok.
+    %%<^ weak: The function is non-trivial, exported, but not documented.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
 
-    handle_call(X) ->
-      X.
+    handle_call(_X) ->
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
 
     //- /src/gen_server.erl
     -module(gen_server).
     -callback handle_call(term()) -> term().
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_exported_function_simple_function() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([simple/0, complex/0]).
+    
+    simple() ->
+      ok.
+
+    complex() ->
+    %%<^^^^ weak: The function is non-trivial, exported, but not documented.
+      [ok,
+       ok,
+       ok,
+       ok,
+       ok].
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_exported_function_complex_function_multiple_clauses() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -export([simple/0, complex/1]).
+    
+    simple() ->
+      ok.
+
+    complex(a) ->
+    %%<^^^^ weak: The function is non-trivial, exported, but not documented.
+      [ok];
+    complex(b) ->
+      [ok,
+       ok].
         "#,
         )
     }

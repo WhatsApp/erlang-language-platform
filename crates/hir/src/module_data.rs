@@ -24,6 +24,8 @@ use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+use crate::code_complexity;
+use crate::code_complexity::CodeComplexity;
 use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::def_map::FunctionDefId;
@@ -303,6 +305,10 @@ impl FunctionDef {
             };
         }
         res
+    }
+
+    pub fn code_complexity(&self, sema: &Semantic, score_cap: Option<usize>) -> CodeComplexity {
+        code_complexity::compute(sema, self, score_cap)
     }
 }
 
