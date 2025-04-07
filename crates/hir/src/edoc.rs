@@ -1030,6 +1030,7 @@ mod tests {
                 -callback do_it(Typ :: a_type()) -> ok.
                 -spec foo(Foo :: type1(), type2()) -> ok.
                 -opaque client() :: #client{}.
+                -nominal nclient() :: #client{}.
                 -type client2() :: #client2{}.
                 -optional_callbacks([do_it/1]).
                 -record(state, {profile}).

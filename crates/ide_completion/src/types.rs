@@ -140,6 +140,8 @@ mod test {
         -type alias(T) :: T.
         -opaque alias_opaque() :: secret.
         -opaque alias_opaque(T) :: T.
+        -nominal alias_nominal() :: secret.
+        -nominal alias_nominal(T) :: T.
         -spec foo() -> a~.
         foo() -> ok.
         //- /src/another_module.erl
@@ -151,6 +153,8 @@ mod test {
             expect![[r#"
                 {label:alias/0, kind:Type, contents:Snippet("alias()"), position:None}
                 {label:alias/1, kind:Type, contents:Snippet("alias(${1:Arg1})"), position:None}
+                {label:alias_nominal/0, kind:Type, contents:Snippet("alias_nominal()"), position:None}
+                {label:alias_nominal/1, kind:Type, contents:Snippet("alias_nominal(${1:Arg1})"), position:None}
                 {label:alias_opaque/0, kind:Type, contents:Snippet("alias_opaque()"), position:None}
                 {label:alias_opaque/1, kind:Type, contents:Snippet("alias_opaque(${1:Arg1})"), position:None}
                 {label:another_module, kind:Module, contents:SameAsLabel, position:None}"#]],
@@ -171,16 +175,20 @@ mod test {
         foo() -> ok.
         //- /src/sample2.erl
         -module(sample2).
-        -export_type([alias2/0, alias_opaque2/0, alias_opaque2/1, bar2/0]).
+        -export_type([alias2/0, alias_opaque2/0, alias_opaque2/1, alias_nominal2/0, alias_nominal2/1, bar2/0]).
         -type alias2() :: ok.
         -opaque alias_opaque2() :: secret.
         -opaque alias_opaque2(T) :: T.
+        -nominal alias_nominal2() :: secret.
+        -nominal alias_nominal2(T) :: T.
         -type ba2() :: ok.
         -type alias_not_exported2() :: ok.
         "#,
             Some(':'),
             expect![[r#"
                 {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None}
+                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None}
+                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None}
                 {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None}
                 {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None}"#]],
         );
@@ -195,16 +203,20 @@ mod test {
         foo() -> ok.
         //- /src/sample2.erl
         -module(sample2).
-        -export_type([alias2/0, alias_opaque2/0, alias_opaque2/1, bar2/0]).
+        -export_type([alias2/0, alias_opaque2/0, alias_opaque2/1, alias_nominal2/0, alias_nominal2/1, bar2/0]).
         -type alias2() :: ok.
         -opaque alias_opaque2() :: secret.
         -opaque alias_opaque2(T) :: T.
+        -nominal alias_nominal2() :: secret.
+        -nominal alias_nominal2(T) :: T.
         -type ba2() :: ok.
         -type alias_not_exported2() :: ok.
         "#,
             None,
             expect![[r#"
                 {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None}
+                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None}
+                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None}
                 {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None}
                 {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None}"#]],
         );

@@ -1151,6 +1151,18 @@ fn simple_type() {
 }
 
 #[test]
+fn simple_nominal_type() {
+    check(
+        r#"
+-nominal foo() :: ok.
+"#,
+        expect![[r#"
+            -nominal foo() :: 'ok'.
+        "#]],
+    );
+}
+
+#[test]
 fn simple_opaque() {
     check(
         r#"
@@ -2746,6 +2758,7 @@ fn tree_print_type_body() {
         r#"
         -type foo() :: ok | error.
         -opaque foo() :: term().
+        -nominal bar() :: {ok}.
         "#,
         expect![[r#"
             -type foo() :: TypeExpr::Union {
@@ -2761,6 +2774,10 @@ fn tree_print_type_body() {
                     }
                 args
                     ()
+            }.
+
+            -nominal bar() :: TypeExpr::Tuple {
+                Literal(Atom('ok')),
             }.
         "#]],
     );

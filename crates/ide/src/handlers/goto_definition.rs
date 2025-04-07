@@ -419,6 +419,17 @@ foo() ->
 
 -type foo() :: number().
 %%    ^^^^^
+-nominal bar() :: f~oo().
+"#,
+        );
+
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-type foo() :: number().
+%%    ^^^^^
 -type id(X) :: X.
 -type bar() :: id(f~oo()).
 "#,
@@ -433,6 +444,17 @@ foo() ->
 -type foo() :: number().
 %%    ^^^^^
 -opaque bar() :: #{atom() => f~oo()}.
+"#,
+        );
+
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-type foo() :: number().
+%%    ^^^^^
+-nominal bar() :: #{atom() => f~oo()}.
 "#,
         );
 
@@ -469,6 +491,17 @@ foo() ->
 -type foo() :: number().
 %%    ^^^^^
 -opaque bar() :: binary() | f~oo().
+"#,
+        );
+
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-type foo() :: number().
+%%    ^^^^^
+-nominal bar() :: binary() | f~oo().
 "#,
         );
 
@@ -680,7 +713,35 @@ foo() ->
 
 //- /src/mod2.erl
 -module(mod2).
+-nominal bar() :: binary() | mod1:f~oo().
+"#,
+        );
+
+        check(
+            r#"
+//- /src/mod1.erl
+-module(mod1).
+
+-type foo() :: number().
+%%    ^^^^^
+
+//- /src/mod2.erl
+-module(mod2).
 -opaque bar() :: #{atom() => mod1:f~oo()}.
+"#,
+        );
+
+        check(
+            r#"
+//- /src/mod1.erl
+-module(mod1).
+
+-type foo() :: number().
+%%    ^^^^^
+
+//- /src/mod2.erl
+-module(mod2).
+-nominal bar() :: #{atom() => mod1:f~oo()}.
 "#,
         );
     }
@@ -742,6 +803,36 @@ foo() ->
 -module(mod1).
 -opaque foo() :: number().
 %%      ^^^^^
+
+//- /src/mod2.erl
+-module(mod2).
+-type bar() :: mod1:f~oo().
+"#,
+        )
+    }
+
+    #[test]
+    fn local_nominal() {
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-nominal foo() :: number().
+%%       ^^^^^
+-type bar() :: f~oo().
+"#,
+        )
+    }
+
+    #[test]
+    fn remote_nominal() {
+        check(
+            r#"
+//- /src/mod1.erl
+-module(mod1).
+-nominal foo() :: number().
+%%       ^^^^^
 
 //- /src/mod2.erl
 -module(mod2).
@@ -1485,6 +1576,18 @@ foo() -> #rec{field1 = 1, f~ield3 = ok, field2 = ""}.
 
 -opaque foo(_) :: ok.
 %%      ^^^^^^
+"#,
+        );
+
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-export_type([f~oo/1]).
+
+-nominal foo(_) :: ok.
+%%       ^^^^^^
 "#,
         );
     }

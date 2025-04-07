@@ -998,12 +998,14 @@ bar() -> ok.
     fn exported_types() {
         check_functions(
             r#"
--export_type([foo/1]).
+-export_type([foo/1, baz/0]).
 
 -type foo(A) :: ok.
 -opaque bar() :: ok.
+-nominal baz() :: ok.
 "#,
             expect![[r#"
+                -nominal baz/0 exported: true
                 -opaque bar/0 exported: false
                 -type foo/1 exported: true
             "#]],
@@ -1016,10 +1018,12 @@ bar() -> ok.
             r#"
 -opaque foo(A) :: ok.
 -type bar() :: ok.
+-nominal baz() :: ok.
 
 -export_type([foo/1]).
 "#,
             expect![[r#"
+                -nominal baz/0 exported: false
                 -type bar/0 exported: false
                 -opaque foo/1 exported: true
             "#]],

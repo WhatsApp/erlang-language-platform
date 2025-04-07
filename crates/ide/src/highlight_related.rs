@@ -950,6 +950,25 @@ mod tests {
     }
 
     #[test]
+    fn nominal() {
+        check(
+            r#"
+          //- /src/main.erl
+            -module(main).
+            -nominal nominal_t~ype_a() :: atom().
+            %%       ^^^^^^^^^^^^^^^^
+
+            -export_type([ nominal_type_a/0 ]).
+            %%             ^^^^^^^^^^^^^^
+
+            -type user_type_a() :: type_a() | nominal_type_a().
+            %%                                ^^^^^^^^^^^^^^
+
+"#,
+        );
+    }
+
+    #[test]
     fn macro_define() {
         check(
             r#"

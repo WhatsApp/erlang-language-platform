@@ -2738,6 +2738,30 @@ mod tests {
     }
 
     #[test]
+    fn type_nominal() {
+        check(
+            r#"
+             -nominal foo() :: ok.
+            "#,
+            expect![[r#"
+                -nominal foo() :: Literal(Atom('ok')).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn type_opaque() {
+        check(
+            r#"
+             -opaque foo() :: ok.
+            "#,
+            expect![[r#"
+                -opaque foo() :: Literal(Atom('ok')).
+            "#]],
+        );
+    }
+
+    #[test]
     fn type_binary_op() {
         check(
             r#"

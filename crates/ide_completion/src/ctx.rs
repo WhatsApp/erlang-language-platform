@@ -225,6 +225,9 @@ impl CtxKind {
                         ast::Opaque(_) => {
                             return true;
                         },
+                        ast::Nominal(_) => {
+                            return true;
+                        },
                         ast::FieldType(_) => {
                             return true;
                         },
@@ -572,6 +575,14 @@ mod ctx_tests {
             ctx(r#"
         -module(sample).
         -opaque test() :: ~.
+        "#),
+            CtxKind::Type
+        );
+
+        assert_eq!(
+            ctx(r#"
+        -module(sample).
+        -nominal test() :: ~.
         "#),
             CtxKind::Type
         );

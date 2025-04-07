@@ -85,12 +85,14 @@ mod test {
         -type foo() :: ok.
         -opaque foo(X) :: X.
         -type foon() :: ok.
+        -nominal foob() :: ok.
         -type bar() :: ok.
         "#,
             None,
             expect![[r#"
                 {label:foo/0, kind:Type, contents:SameAsLabel, position:None}
                 {label:foo/1, kind:Type, contents:SameAsLabel, position:None}
+                {label:foob/0, kind:Type, contents:SameAsLabel, position:None}
                 {label:foon/0, kind:Type, contents:SameAsLabel, position:None}"#]],
         );
     }

@@ -357,6 +357,21 @@ fn type_alias() {
 }
 
 #[test]
+fn nominal_type() {
+    check(
+        r#"
+-nominal foo() :: ok.
+-nominal bar(A) :: ok.
+"#,
+        expect![[r#"
+            -nominal foo() :: .... %% cond: None
+
+            -nominal bar(_) :: .... %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn opaque() {
     check(
         r#"
