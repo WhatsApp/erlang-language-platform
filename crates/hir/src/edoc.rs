@@ -228,7 +228,7 @@ impl EdocHeader {
             res.push_str(&format!(
                 "\"{}\" => \"{}\", ",
                 name.trim_end_matches(":"),
-                description.trim()
+                description.trim().replace("\"", "\\\"")
             ));
         }
         res.trim_end_matches(", ").to_string()
