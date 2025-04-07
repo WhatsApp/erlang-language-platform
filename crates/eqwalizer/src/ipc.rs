@@ -68,7 +68,6 @@ pub enum MsgFromEqWAlizer {
 }
 
 #[derive(Serialize, Debug)]
-#[serde(tag = "tag", content = "content")]
 pub enum MsgToEqWAlizer {
     ELPEnteringModule,
     ELPExitingModule,
