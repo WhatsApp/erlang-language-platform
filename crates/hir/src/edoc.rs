@@ -219,17 +219,19 @@ impl EdocHeader {
     pub fn params_metadata(&self) -> String {
         let mut res = String::new();
         for (name, param) in &self.params {
-            let mut description = String::new();
-            for line in &param.lines {
-                if let Some(content) = line.to_markdown() {
-                    description.push_str(&format!("{} ", &content.trim()));
+            if !name.is_empty() {
+                let mut description = String::new();
+                for line in &param.lines {
+                    if let Some(content) = line.to_markdown() {
+                        description.push_str(&format!("{} ", &content.trim()));
+                    }
                 }
+                res.push_str(&format!(
+                    "\"{}\" => \"{}\", ",
+                    name.trim_end_matches(":"),
+                    description.trim().replace("\"", "\\\"")
+                ));
             }
-            res.push_str(&format!(
-                "\"{}\" => \"{}\", ",
-                name.trim_end_matches(":"),
-                description.trim().replace("\"", "\\\"")
-            ));
         }
         res.trim_end_matches(", ").to_string()
     }
@@ -356,7 +358,7 @@ pub struct TagName {
 pub enum TagKind {
     Doc,
     Returns,
-    Param(String),
+    Param(Option<String>),
     Equiv,
     Author,
     Copyright,
@@ -497,6 +499,9 @@ impl ParseContext {
             syntax,
         });
     }
+    fn update_current_tag(&mut self, tag: Option<TagName>) {
+        self.current_tag = tag
+    }
     fn process_tag(&mut self) {
         if let Some(last_comment) = self.lines.last() {
             if let Some(content) = &last_comment.content {
@@ -521,8 +526,9 @@ impl ParseContext {
                         });
                     }
                     TagKind::Param(name) => {
+                        let name = name.clone().unwrap_or_default();
                         self.params.push((
-                            name.to_string(),
+                            name,
                             Tag {
                                 lines: self.lines.clone(),
                                 range: tag_name.range,
@@ -635,13 +641,35 @@ fn parse_edoc(
                         context.plaintext_copyright = Some(content.as_str().to_string());
                     }
                 }
-                if let Some(_tag) = &context.current_tag {
+                if let Some(tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());
                     let content = text.trim_start_matches(|c: char| c == '%');
-                    context.add_line(Line {
-                        content: Some(content.to_string()),
-                        syntax,
-                    });
+                    if tag.kind == TagKind::Param(None) {
+                        match extract_param_name_and_content(content.trim()) {
+                            None => {
+                                context.add_line(Line {
+                                    content: Some(content.to_string()),
+                                    syntax,
+                                });
+                            }
+                            Some((name, content)) => {
+                                let current_tag = TagName {
+                                    kind: TagKind::Param(Some(name.to_string())),
+                                    range: tag.range,
+                                };
+                                context.update_current_tag(Some(current_tag));
+                                context.add_line(Line {
+                                    content: Some(content.to_string()),
+                                    syntax,
+                                });
+                            }
+                        }
+                    } else {
+                        context.add_line(Line {
+                            content: Some(content.to_string()),
+                            syntax,
+                        });
+                    }
                 }
             }
             Some((range, prefix, tag, content)) => {
@@ -656,17 +684,20 @@ fn parse_edoc(
                     "returns" => {
                         context.start_tag(TagKind::Returns, range, content, comment, syntax);
                     }
-                    "param" => {
-                        if let Some((name, content)) = content.split_once(" ") {
+                    "param" => match extract_param_name_and_content(content) {
+                        None => {
+                            context.start_tag(TagKind::Param(None), range, content, comment, syntax)
+                        }
+                        Some((name, content)) => {
                             context.start_tag(
-                                TagKind::Param(name.to_string()),
+                                TagKind::Param(Some(name.to_string())),
                                 range,
                                 content,
                                 comment,
                                 syntax,
                             );
                         }
-                    }
+                    },
                     "equiv" => {
                         context.start_tag(TagKind::Equiv, range, content, comment, syntax);
                     }
@@ -703,6 +734,18 @@ fn parse_edoc(
     context.process_tag();
 
     context.to_edoc_header(kind)
+}
+
+fn extract_param_name_and_content(content: &str) -> Option<(&str, &str)> {
+    if content.is_empty() {
+        None
+    } else {
+        if let Some((name, content)) = content.split_once(" ") {
+            Some((name, content))
+        } else {
+            Some((content, ""))
+        }
+    }
 }
 
 /// An edoc comment must be alone on a line, it cannot come after

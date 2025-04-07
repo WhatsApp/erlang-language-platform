@@ -670,6 +670,41 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_function_doc_fix_params_missing_descriptions() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A is a param
+%% @param B is another param
+%% @param C
+%%        With a separate description line
+%% @param D
+%% @param
+%%        E: With a separate description line
+%% @param
+%% @end
+main(A, B, C, D, E) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+""".
+-doc #{params => #{"A" => "is a param", "B" => "is another param", "C" => "With a separate description line", "D" => "", "E" => "With a separate description line"}}.
+main(A, B, C, D, E) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_fix_params_colon() {
         check_fix(
             r#"
