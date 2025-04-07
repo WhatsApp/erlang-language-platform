@@ -63,41 +63,43 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
         .for_each(|(included_file_id, inc)| {
             || -> Option<()> {
                 let include_path = path_for_file(sema.db.upcast(), included_file_id)?;
-                let app_data = sema.db.file_app_data(file_id)?;
-                let candidate = include_path
-                    .as_path()?
-                    .strip_prefix(app_data.dir.as_path().parent()?)?;
+                if !include_path.to_string().contains("/src/") {
+                    let app_data = sema.db.file_app_data(file_id)?;
+                    let candidate = include_path
+                        .as_path()?
+                        .strip_prefix(app_data.dir.as_path().parent()?)?;
 
-                let ctx = &IncludeCtx::new(sema.db.upcast(), file_id);
-                let resolved_file_id = ctx.resolve_include(candidate.as_str())?;
-                let replacement = if resolved_file_id == included_file_id {
-                    // We have an equivalent include
-                    Some(candidate.as_str())
-                } else {
-                    None
-                }?;
-                let source_file = sema.parse(file_id);
-                let ast = inc.form_id().get(&source_file.value);
-                let (range, make_include_lib) = match ast {
-                    ast::Form::PreprocessorDirective(preprocessor_directive) => {
-                        match preprocessor_directive {
-                            ast::PreprocessorDirective::PpInclude(pp_include) => pp_include
-                                .include_range()
-                                .map(|r| (r, Some(pp_include.text_range()))),
-                            ast::PreprocessorDirective::PpIncludeLib(pp_include_lib) => {
-                                pp_include_lib.include_range().map(|r| (r, None))
+                    let ctx = &IncludeCtx::new(sema.db.upcast(), file_id);
+                    let resolved_file_id = ctx.resolve_include(candidate.as_str())?;
+                    let replacement = if resolved_file_id == included_file_id {
+                        // We have an equivalent include
+                        Some(candidate.as_str())
+                    } else {
+                        None
+                    }?;
+                    let source_file = sema.parse(file_id);
+                    let ast = inc.form_id().get(&source_file.value);
+                    let (range, make_include_lib) = match ast {
+                        ast::Form::PreprocessorDirective(preprocessor_directive) => {
+                            match preprocessor_directive {
+                                ast::PreprocessorDirective::PpInclude(pp_include) => pp_include
+                                    .include_range()
+                                    .map(|r| (r, Some(pp_include.text_range()))),
+                                ast::PreprocessorDirective::PpIncludeLib(pp_include_lib) => {
+                                    pp_include_lib.include_range().map(|r| (r, None))
+                                }
+                                _ => None,
                             }
-                            _ => None,
                         }
-                    }
-                    _ => None,
-                }?;
-                acc.push(make_diagnostic(
-                    file_id,
-                    range,
-                    replacement,
-                    make_include_lib,
-                )?);
+                        _ => None,
+                    }?;
+                    acc.push(make_diagnostic(
+                        file_id,
+                        range,
+                        replacement,
+                        make_include_lib,
+                    )?);
+                }
                 Some(())
             }();
         });
@@ -180,8 +182,19 @@ mod tests {
 
          //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
            -define(A,3).
-         
             "#,
+        )
+    }
+
+    #[test]
+    fn no_diagnostic_for_same_dir_include() {
+        check_diagnostics(
+            r#"
+           //- /app_a/src/unspecific_include.erl app:app_a
+           -module(unspecific_include).
+           -include("some~_header_from_app_a.hrl").
+           //- /app_a/src/some_header_from_app_a.hrl app:app_a include_path:/app_a/include
+           -define(A,3)."#,
         )
     }
 
