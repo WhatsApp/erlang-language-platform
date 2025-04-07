@@ -2481,6 +2481,7 @@ pub enum Form {
     FunDecl(FunDecl),
     ImportAttribute(ImportAttribute),
     ModuleAttribute(ModuleAttribute),
+    Nominal(Nominal),
     Opaque(Opaque),
     OptionalCallbacksAttribute(OptionalCallbacksAttribute),
     RecordDecl(RecordDecl),
@@ -2515,6 +2516,7 @@ impl AstNode for Form {
             | FUN_DECL
             | IMPORT_ATTRIBUTE
             | MODULE_ATTRIBUTE
+            | NOMINAL
             | OPAQUE
             | OPTIONAL_CALLBACKS_ATTRIBUTE
             | RECORD_DECL
@@ -2550,6 +2552,7 @@ impl AstNode for Form {
             FUN_DECL => Some(Form::FunDecl(FunDecl { syntax })),
             IMPORT_ATTRIBUTE => Some(Form::ImportAttribute(ImportAttribute { syntax })),
             MODULE_ATTRIBUTE => Some(Form::ModuleAttribute(ModuleAttribute { syntax })),
+            NOMINAL => Some(Form::Nominal(Nominal { syntax })),
             OPAQUE => Some(Form::Opaque(Opaque { syntax })),
             OPTIONAL_CALLBACKS_ATTRIBUTE => Some(Form::OptionalCallbacksAttribute(
                 OptionalCallbacksAttribute { syntax },
@@ -2577,6 +2580,7 @@ impl AstNode for Form {
             Form::FunDecl(it) => it.syntax(),
             Form::ImportAttribute(it) => it.syntax(),
             Form::ModuleAttribute(it) => it.syntax(),
+            Form::Nominal(it) => it.syntax(),
             Form::Opaque(it) => it.syntax(),
             Form::OptionalCallbacksAttribute(it) => it.syntax(),
             Form::RecordDecl(it) => it.syntax(),
@@ -2647,6 +2651,11 @@ impl From<ImportAttribute> for Form {
 impl From<ModuleAttribute> for Form {
     fn from(node: ModuleAttribute) -> Form {
         Form::ModuleAttribute(node)
+    }
+}
+impl From<Nominal> for Form {
+    fn from(node: Nominal) -> Form {
+        Form::Nominal(node)
     }
 }
 impl From<Opaque> for Form {
@@ -4291,6 +4300,42 @@ impl From<Var> for Name {
 }
 #[doc = r" Via NodeType::Enum 2 display"]
 impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct inner"]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Nominal {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Nominal {
+    pub fn ty(&self) -> Option<Expr> {
+        support::child(&self.syntax, 0usize)
+    }
+    pub fn name(&self) -> Option<TypeName> {
+        support::child(&self.syntax, 0usize)
+    }
+}
+#[doc = r" Via NodeType::Node 2 struct"]
+impl AstNode for Nominal {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == NOMINAL
+    }
+    #[doc = r" Via field_casts"]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+#[doc = r" Via NodeType::Node 2 display"]
+impl std::fmt::Display for Nominal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

@@ -116,6 +116,7 @@ impl<'a> Ctx<'a> {
                     ast::Form::RecordDecl(record) => self.lower_record(record),
                     ast::Form::Spec(spec) => self.lower_spec(spec),
                     ast::Form::TypeAlias(alias) => self.lower_type_alias(alias),
+                    ast::Form::Nominal(_ty) => todo!(),
                     ast::Form::WildAttribute(attribute) => self.lower_attribute(attribute),
                     ast::Form::DeprecatedAttribute(deprecated_attr) => {
                         self.lower_deprecated_attr(deprecated_attr)
