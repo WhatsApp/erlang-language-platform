@@ -1865,8 +1865,8 @@ mod tests {
         check_diagnostics(
             r#"
 -module(main).
-foo() -> XX 3.
-    %%      ^ error: Syntax Error
+foo() -> XX 3.0.
+    %%   ^^ error: Syntax Error
 "#,
         );
     }

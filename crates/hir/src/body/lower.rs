@@ -3028,8 +3028,18 @@ fn lower_char(char: &ast::Char) -> Option<Literal> {
 }
 
 fn lower_float(float: &ast::Float) -> Option<Literal> {
-    let float: f64 = float.text().parse().ok()?;
-    Some(Literal::Float(float.to_bits()))
+    let text = float.text().replace('_', "");
+    let parts: Vec<_> = text.split("#").collect();
+    match &parts[..] {
+        [val] => {
+            let float: f64 = val.parse().ok()?;
+            Some(Literal::Float(float.to_bits()))
+        }
+        _ => {
+            // We do not currently support processing based floating point literals
+            None
+        }
+    }
 }
 
 fn lower_raw_int(int: &ast::Integer) -> Option<BasedInteger> {

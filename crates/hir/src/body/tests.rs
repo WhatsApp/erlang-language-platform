@@ -194,6 +194,19 @@ foo(0.1) -> 1.2.
 }
 
 #[test]
+fn based_float() {
+    check(
+        r#"
+foo(10#0.1) -> 10#1.2.
+"#,
+        expect![[r#"
+            foo([missing]) ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
 fn integer() {
     check(
         r#"
