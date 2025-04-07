@@ -50,8 +50,12 @@ pub struct EqwalizerDiagnostic {
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
 pub enum StructuredDiagnostic {
-    TypeError(tc_diagnostics::TypeError),
-    InvalidForm(invalid_diagnostics::Invalid),
+    TypeError {
+        error: tc_diagnostics::TypeError,
+    },
+    InvalidForm {
+        invalid: invalid_diagnostics::Invalid,
+    },
 }
 
 impl EqwalizerDiagnostic {

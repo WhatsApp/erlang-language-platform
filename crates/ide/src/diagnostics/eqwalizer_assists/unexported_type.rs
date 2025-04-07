@@ -30,14 +30,18 @@ pub fn unexported_type(
     d: &EqwalizerDiagnostic,
     diagnostic: &mut Diagnostic,
 ) {
-    if let Some(StructuredDiagnostic::InvalidForm(Invalid::NonExportedId(NonExportedId {
-        pos: _,
-        id: RemoteId {
-            module,
-            name,
-            arity,
-        },
-    }))) = &d.diagnostic
+    if let Some(StructuredDiagnostic::InvalidForm {
+        invalid:
+            Invalid::NonExportedId(NonExportedId {
+                pos: _,
+                id:
+                    RemoteId {
+                        module,
+                        name,
+                        arity,
+                    },
+            }),
+    }) = &d.diagnostic
     {
         if let Some(module) = resolve_module_name(sema, file_id, module) {
             let name = NameArity::new(Name::from_erlang_service(name), *arity);

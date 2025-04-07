@@ -40,11 +40,14 @@ pub fn expected_type(
     d: &EqwalizerDiagnostic,
     diagnostic: &mut Diagnostic,
 ) {
-    if let Some(StructuredDiagnostic::TypeError(TypeError::ExpectedSubtype(ExpectedSubtype {
-        pos: _,
-        expected,
-        got,
-    }))) = &d.diagnostic
+    if let Some(StructuredDiagnostic::TypeError {
+        error:
+            TypeError::ExpectedSubtype(ExpectedSubtype {
+                pos: _,
+                expected,
+                got,
+            }),
+    }) = &d.diagnostic
     {
         match (expected, got) {
             // mismatched atoms
