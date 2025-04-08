@@ -135,7 +135,7 @@ fn old_edoc_syntax_diagnostic(
 fn author_exists(author: &str, authors: &FxHashSet<String>) -> bool {
     authors
         .iter()
-        .any(|a| a.contains(author) || author.contains(a))
+        .any(|a| a.contains(&normalize(&author)) || author.contains(a))
 }
 
 fn author_tags_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
@@ -160,12 +160,16 @@ fn existing_authors(sema: &Semantic, file_id: FileId) -> FxHashSet<String> {
         .attributes()
         .filter_map(|(_idx, attr)| {
             if attr.name == known::author {
-                author_name(sema, file_id, attr)
+                author_name(sema, file_id, attr).map(|author| normalize(&author))
             } else {
                 None
             }
         })
         .collect()
+}
+
+fn normalize(name: &str) -> String {
+    name.to_lowercase().replace(" ", "")
 }
 
 fn author_name(sema: &Semantic, file_id: FileId, attribute: &Attribute) -> Option<String> {
@@ -1328,6 +1332,48 @@ dep() -> ok.
 %%%-----------------------------------------------------------------------------
 -module(main).
 -author('some@email.com').
+-oncall(something).
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_author_contains_normalized() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% @author Some Author
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author('someauthor').
+-oncall(something).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author('someauthor').
 -oncall(something).
 -moduledoc """
 Some description
