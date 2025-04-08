@@ -1755,6 +1755,44 @@ main(A, B) ->
     }
 
     #[test]
+    fn test_function_doc_see_dot() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0, main/2]).
+
+%% @d~oc This is the main function documentation.
+%% @see main/2.
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0, main/2]).
+
+-doc """
+This is the main function documentation.
+See `main/2`.
+""".
+-spec main() -> tuple().
+main() ->
+    main([], []).
+
+%% @doc This is the main function with two arguments documentation.
+-spec main(any(), any()) -> tuple().
+main(A, B) ->
+    {A, B}.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_see_end() {
         check_fix(
             r#"

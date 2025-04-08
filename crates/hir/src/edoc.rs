@@ -293,7 +293,7 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
 }
 
 fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\s]+)").unwrap());
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\s.]+)").unwrap());
     let captures = RE.captures(&text)?;
     let reference = captures.get(1)?;
     let rest = &text[reference.end()..];
