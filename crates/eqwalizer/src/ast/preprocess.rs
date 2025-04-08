@@ -209,7 +209,7 @@ impl Preprocessor {
                         }
                     }
                 }
-                return Expr::Lambda(lambda);
+                Expr::Lambda(lambda)
             }
             expr => expr,
         }

@@ -21,7 +21,9 @@ impl<'a> Visitor<'a, ()> for OverloadedSpecVisitor<'a> {
     fn visit_form(&mut self, form: &'a ExternalForm) -> Result<(), ()> {
         match form {
             ExternalForm::ExternalFunSpec(spec) if spec.types.len() > 1 => {
-                overloaded_spec_diagnostic(&spec.pos).map(|d| self.diagnostics.push(d));
+                if let Some(d) = overloaded_spec_diagnostic(&spec.pos) {
+                    self.diagnostics.push(d);
+                }
             }
             _ => (),
         }
@@ -47,5 +49,5 @@ fn overloaded_spec_diagnostic(pos: &Pos) -> Option<EqwalizerDiagnostic> {
 
 pub(crate) fn overloaded_specs(diagnostics: &mut Vec<EqwalizerDiagnostic>, ast: &AST) {
     let mut visitor = OverloadedSpecVisitor { diagnostics };
-    let _ = visitor.visit_ast(&ast);
+    let _ = visitor.visit_ast(ast);
 }

@@ -368,7 +368,7 @@ impl TypeConverter {
     ) -> Result<Result<(Key, Prop), Invalid>, TypeConversionError> {
         let req = prop.required();
         let (key, tp) = prop.to_pair();
-        let converted_key = match self.convert_type(sub, key)?.map(|kt| Key::from_type(kt)) {
+        let converted_key = match self.convert_type(sub, key)?.map(Key::from_type) {
             Ok(Some(k)) => k,
             Ok(None) => return Err(TypeConversionError::UnexpectedShapeProp),
             Err(invalid) => return Ok(Err(invalid)),

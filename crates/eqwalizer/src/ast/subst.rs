@@ -25,7 +25,7 @@ pub struct Subst<'a> {
     pub sub: FxHashMap<u32, &'a Type>,
 }
 
-impl<'a> Subst<'a> {
+impl Subst<'_> {
     pub fn apply(&self, t: Type) -> Type {
         match t {
             Type::FunType(ft) => {

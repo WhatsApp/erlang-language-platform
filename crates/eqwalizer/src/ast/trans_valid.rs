@@ -171,12 +171,12 @@ impl TransitiveChecker<'_> {
             ));
             // we don't know at this point which fields are invalid,
             // so replacing all the fields with dynamic type
-            stub.records.get_mut(&t.name).map(|rec_decl| {
+            if let Some(rec_decl) = stub.records.get_mut(&t.name) {
                 rec_decl
                     .fields
                     .iter_mut()
                     .for_each(|field| field.tp = Type::DynamicType)
-            });
+            };
             stub.invalids.push(diag);
         }
         Ok(())

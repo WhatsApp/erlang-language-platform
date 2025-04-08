@@ -99,8 +99,8 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         Type::RemoteType(rt) => any_he(s, rt.arg_tys.iter()),
         Type::OpaqueType(ot) => any_he(s, ot.arg_tys.iter()),
         Type::MapType(m) => {
-            let tys: Vec<Type> = m.props.iter().map(|(_, p)| p.tp.to_owned()).collect();
-            any_he(s, tys.iter())?;
+            let tys = m.props.values().map(|p| &p.tp);
+            any_he(s, tys)?;
             Ok(is_he(s, &m.k_type)? || is_he(s, &m.v_type)?)
         }
         Type::RefinedRecordType(rt) => any_he(s, rt.fields.values()),
@@ -246,7 +246,7 @@ impl StubContractivityChecker<'_> {
             Type::OpaqueType(ot) => Ok(self.all_foldable(ot.arg_tys.iter(), &new_history)?),
             Type::MapType(mt) => Ok(self.is_foldable(&mt.k_type, &new_history)?
                 && self.is_foldable(&mt.v_type, &new_history)?
-                && self.all_foldable(mt.props.iter().map(|(_, prop)| &prop.tp), &new_history)?),
+                && self.all_foldable(mt.props.values().map(|prop| &prop.tp), &new_history)?),
             Type::RefinedRecordType(rt) => Ok(self.all_foldable(rt.fields.values(), &new_history)?),
             Type::RemoteType(rt) => {
                 for &t in history.iter() {

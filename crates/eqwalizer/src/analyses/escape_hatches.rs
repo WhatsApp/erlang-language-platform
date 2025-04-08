@@ -32,7 +32,9 @@ impl<'a> Visitor<'a, ()> for EscapeHatchesVisitor<'a> {
                 }
             }
             ExternalForm::EqwalizerNowarnFunction(attr) => {
-                nowarn_diagnostic(&attr.pos).map(|d| self.diagnostics.push(d));
+                if let Some(d) = nowarn_diagnostic(&attr.pos) {
+                    self.diagnostics.push(d);
+                }
             }
             _ => (),
         }

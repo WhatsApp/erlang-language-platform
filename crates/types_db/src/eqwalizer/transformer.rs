@@ -493,7 +493,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                     transformer.transform_expr(k).and_then(|k_trans| {
                         transformer
                             .transform_expr(v)
-                            .and_then(|v_trans| Ok((k_trans, v_trans)))
+                            .map(|v_trans| (k_trans, v_trans))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
@@ -508,7 +508,7 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
                     transformer.transform_expr(k).and_then(|k_trans| {
                         transformer
                             .transform_expr(v)
-                            .and_then(|v_trans| Ok((k_trans, v_trans)))
+                            .map(|v_trans| (k_trans, v_trans))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
@@ -622,7 +622,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
                     transformer.transform_test(k).and_then(|k_trans| {
                         transformer
                             .transform_pat(v)
-                            .and_then(|v_trans| Ok((k_trans, v_trans)))
+                            .map(|v_trans| (k_trans, v_trans))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
@@ -713,7 +713,7 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                     transformer.transform_test(k).and_then(|k_trans| {
                         transformer
                             .transform_test(v)
-                            .and_then(|v_trans| Ok((k_trans, v_trans)))
+                            .map(|v_trans| (k_trans, v_trans))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
@@ -728,7 +728,7 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
                     transformer.transform_test(k).and_then(|k_trans| {
                         transformer
                             .transform_test(v)
-                            .and_then(|v_trans| Ok((k_trans, v_trans)))
+                            .map(|v_trans| (k_trans, v_trans))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,

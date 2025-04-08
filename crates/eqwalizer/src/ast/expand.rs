@@ -403,7 +403,7 @@ impl Expander<'_> {
         match t {
             ExtType::LocalExtType(ty) => {
                 let id = RemoteId {
-                    module: self.module.clone(),
+                    module: self.module,
                     name: ty.id.name,
                     arity: ty.id.arity,
                 };
@@ -568,12 +568,12 @@ impl StubExpander<'_> {
         ast: &AST,
     ) -> StubExpander<'d> {
         let expander = Expander {
-            module: module.clone(),
+            module,
             invalids: vec![],
             db,
             project_id,
         };
-        let type_converter = TypeConverter::new(module.clone());
+        let type_converter = TypeConverter::new(module);
         let stub = ModuleStub {
             module,
             ..ModuleStub::default()
@@ -582,18 +582,17 @@ impl StubExpander<'_> {
             .forms
             .iter()
             .find_map(|form| match form {
-                ExternalForm::File(f) => Some(f.file.clone()),
+                ExternalForm::File(f) => Some(f.file),
                 _ => None,
             })
             .unwrap();
-        let current_file = module_file.clone();
         StubExpander {
             from_beam: ast.from_beam,
             expander,
             type_converter,
             stub,
             module_file,
-            current_file,
+            current_file: module_file,
         }
     }
 
@@ -712,7 +711,7 @@ impl StubExpander<'_> {
         for form in forms {
             match form {
                 ExternalForm::File(f) => {
-                    self.current_file = f.file.clone();
+                    self.current_file = f.file;
                 }
                 ExternalForm::Export(e) => {
                     self.stub.exports.extend(e.funs.iter().cloned());

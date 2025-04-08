@@ -123,10 +123,10 @@ impl Type {
                 "iodata".into(),
             ]
         });
-        static EMPTY: LazyLock<Vec<StringId>> = LazyLock::new(|| vec![]);
+        static EMPTY: LazyLock<Vec<StringId>> = LazyLock::new(Vec::new);
         match module {
-            "erlang" => ERLANG_ALIASES.iter().cloned(),
-            _ => EMPTY.iter().cloned(),
+            "erlang" => ERLANG_ALIASES.iter().copied(),
+            _ => EMPTY.iter().copied(),
         }
     }
 
@@ -343,7 +343,7 @@ impl fmt::Display for Type {
             Type::MapType(ty) if ty.props.is_empty() => {
                 write!(f, "#{{{} => {}}}", ty.k_type, ty.v_type)
             }
-            Type::MapType(ty) if &*ty.k_type == &Self::NoneType => write!(
+            Type::MapType(ty) if *ty.k_type == Self::NoneType => write!(
                 f,
                 "#{{{}}}",
                 ty.props
@@ -478,7 +478,7 @@ impl std::str::FromStr for Key {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         fn split(s: &str) -> Vec<&str> {
-            if s.len() == 0 {
+            if s.is_empty() {
                 return vec![];
             }
             let mut res = vec![];

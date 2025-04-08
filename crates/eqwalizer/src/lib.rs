@@ -141,8 +141,8 @@ impl EqwalizerDiagnostics {
                     errors: other_errors,
                     type_info: other_type_info,
                 } => {
-                    errors.extend(other_errors.into_iter());
-                    type_info.extend(other_type_info.into_iter());
+                    errors.extend(other_errors);
+                    type_info.extend(other_type_info);
                     self
                 }
                 EqwalizerDiagnostics::Error(_) => other.clone(),
@@ -211,7 +211,7 @@ impl EqwalizerExe {
                 "java".into(),
                 vec!["-Xss20M".into(), "-jar".into(), path.into()],
             ),
-            "" => (path.into(), vec![]),
+            "" => (path, vec![]),
             _ => panic!("Unknown eqwalizer executable {:?}", path),
         };
 
