@@ -71,6 +71,7 @@ pub enum DiagnosticCode {
     OldEdocSyntax,
     MacroPrecedenceEscape,
     UndocumentedFunction,
+    DebuggingFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -211,6 +212,7 @@ impl DiagnosticCode {
             DiagnosticCode::OldEdocSyntax => "W0038".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "W0039".to_string(),
             DiagnosticCode::UndocumentedFunction => "W0040".to_string(),
+            DiagnosticCode::DebuggingFunction => "W0041".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -288,6 +290,7 @@ impl DiagnosticCode {
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
             DiagnosticCode::UndocumentedFunction => "undocumented_function".to_string(),
+            DiagnosticCode::DebuggingFunction => "debugging_function".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -378,6 +381,7 @@ impl DiagnosticCode {
             DiagnosticCode::CrossNodeEval => true,
             DiagnosticCode::MissingCompileWarnMissingSpec => true,
             DiagnosticCode::RecordTupleMatch => true,
+            DiagnosticCode::DebuggingFunction => true,
             // False list
             DiagnosticCode::DefaultCodeForEnumIter => false,
             DiagnosticCode::HeadMismatch => false,

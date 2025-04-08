@@ -80,6 +80,7 @@ mod application_env;
 mod atoms_exhaustion;
 mod boolean_precedence;
 mod cross_node_eval;
+mod debugging_function;
 mod dependent_header;
 mod deprecated_function;
 mod edoc;
@@ -881,6 +882,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &edoc::DESCRIPTOR,
         &macro_precedence_suprise::DESCRIPTOR,
         &undocumented_function::DESCRIPTOR,
+        &debugging_function::DESCRIPTOR,
     ]
 }
 
