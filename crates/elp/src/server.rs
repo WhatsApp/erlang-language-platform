@@ -14,7 +14,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::Instant;
 
 use always_assert::always;
 use anyhow::bail;
@@ -84,7 +83,7 @@ use lsp_types::Url;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
-use serde::Serialize;
+use telemetry_manager::TelemetryManager;
 use vfs::loader::LoadingProgress;
 use vfs::Change;
 
@@ -102,8 +101,6 @@ use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::mem_docs::DocumentData;
 use crate::mem_docs::MemDocs;
-use crate::memory_usage::Bytes;
-use crate::memory_usage::MemoryUsage;
 use crate::project_loader::ProjectLoader;
 use crate::project_loader::ReloadManager;
 use crate::read_lint_config_file;
@@ -117,6 +114,7 @@ mod dispatch;
 mod logger;
 mod progress;
 pub mod setup;
+mod telemetry_manager;
 
 const LOGGER_NAME: &str = "lsp";
 const FILE_WATCH_LOGGER_NAME: &str = "watched_files";
@@ -130,7 +128,6 @@ const SLOW_DURATION: Duration = Duration::from_millis(300);
 /// If the main loop exceeds this time, log the specific request causing the problem
 const TOO_SLOW_DURATION: Duration = Duration::from_millis(3000);
 const INCLUDE_GENERATED: bool = true;
-const PERIODIC_INTERVAL_MS: Duration = Duration::from_millis(60_000);
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -258,7 +255,7 @@ pub struct Server {
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
     eqwalize_all_completed: bool,
     logger: Logger,
-    last_periodic_processed: Instant,
+    telemetry_manager: TelemetryManager,
     // We record the highest FileId index seen as a count of the number of files recorded
     highest_file_id: u32,
 
@@ -324,7 +321,7 @@ impl Server {
             eqwalize_all_scheduled: FxHashSet::default(),
             eqwalize_all_completed: false,
             logger,
-            last_periodic_processed: Instant::now(),
+            telemetry_manager: TelemetryManager::new(),
             vfs_config_version: 0,
             highest_file_id: 0,
         };
@@ -384,7 +381,8 @@ impl Server {
             let _timer1 = timeit_exceeds!("main_loop_health", SLOW_DURATION);
             let _timer2 = timeit_exceeds!(format!("slow_event:{:?}", event), TOO_SLOW_DURATION);
             self.handle_event(event)?;
-            self.on_periodic();
+            self.telemetry_manager
+                .on_periodic(self.mem_docs.read().len(), self.highest_file_id);
         }
 
         bail!("client exited without proper shutdown sequence");
@@ -1903,40 +1901,6 @@ impl Server {
                 message,
                 err
             ),
-        }
-    }
-
-    fn on_periodic(&mut self) {
-        if self.last_periodic_processed.elapsed() >= PERIODIC_INTERVAL_MS {
-            self.last_periodic_processed = Instant::now();
-            let mem_usage = MemoryUsage::now();
-            #[derive(Serialize)]
-            struct MemoryStats {
-                allocated: Bytes,
-                active: Bytes,
-                resident: Bytes,
-                num_open_files: usize,
-                num_loaded_files: u32,
-            }
-            let mem_stats = MemoryStats {
-                allocated: mem_usage.allocated,
-                active: mem_usage.active,
-                resident: mem_usage.resident,
-                num_open_files: self.mem_docs.read().len(),
-                num_loaded_files: self.highest_file_id,
-            };
-            match serde_json::to_value(mem_stats) {
-                Ok(mem_usage_value) => {
-                    telemetry::send("periodic_memory_stats".to_string(), mem_usage_value);
-                }
-                Err(err) => {
-                    log::warn!(
-                        "on_periodic: unable to serialize {:?}, err: {}",
-                        mem_usage,
-                        err
-                    );
-                }
-            };
         }
     }
 
