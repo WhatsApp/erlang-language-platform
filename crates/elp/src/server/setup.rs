@@ -7,7 +7,6 @@
  * of this source tree.
  */
 
-use std::convert::TryFrom;
 use std::env;
 use std::fs;
 
@@ -213,7 +212,7 @@ fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {
         .root_uri
         .as_ref()
         .and_then(|uri| uri.to_file_path().ok())
-        .and_then(|path| AbsPathBuf::try_from(path).ok())
+        .map(|path| AbsPathBuf::assert_utf8(path))
     {
         Some(path) => Ok(path),
         None => {

@@ -85,6 +85,7 @@ use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
 use serde::Serialize;
+use vfs::loader::LoadingProgress;
 use vfs::Change;
 
 use self::dispatch::RequestDispatcher;
@@ -885,11 +886,10 @@ impl Server {
         result && path_ref.is_file()
     }
 
-    fn on_loader_progress(&mut self, n_total: usize, n_done: Option<usize>, config_version: u32) {
+    fn on_loader_progress(&mut self, n_total: usize, n_done: LoadingProgress, config_version: u32) {
         // report progress
         always!(config_version <= self.vfs_config_version);
-        // n_done is `None` for a response to a config change
-        if let Some(n_done) = n_done {
+        if let LoadingProgress::Progress(n_done) = n_done {
             if n_done == 0 && n_total != 0 {
                 let pb = self
                     .progress

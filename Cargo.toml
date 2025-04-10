@@ -56,7 +56,7 @@ jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl" }
 jemallocator = { version = "0.5.4", package = "tikv-jemallocator" }
 jod-thread = "0.1.2"
 krates = "0.12.6"
-la-arena = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+la-arena = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 lazy_static = "1.5.0"
 log = "0.4.22"
 lsp-server = "0.7.6"
@@ -67,11 +67,11 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 once_cell = "1.19.0"
 parking_lot = "0.12.3"
-paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 proc-macro2 = "1.0.86"
 profile = { features = [
     "jemalloc",
-], git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+], git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 quote = "1.0.36"
 range-set = "0.0.10"
 rayon = "1.10.0"
@@ -88,13 +88,13 @@ serde_path_to_error = "0.1.16"
 serde_with = "1.14.0"
 smallvec = { version = "1.13.2", features = ["const_new", "union", "const_generics"] }
 smol_str = "0.1.24"
-stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 strsim = { version = "0.10.0" }
 strum = "0.25.0"
 strum_macros = "0.25.3"
 tempfile = "3.12.0"
 test-case = "2.2.2"
-text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+text-edit = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 text-size = "1.1.1"
 thiserror = "1.0"
 tracing = "0.1.40"
@@ -106,7 +106,7 @@ tree-sitter = "0.23.2"
 tree-sitter-erlang = "0.14.0" # @oss-only
 url = "2.5.4"
 ustr = { version = "1.1.0", features = ["serde"] }
-vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
-vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-07-29" }
+vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
+vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 walkdir = "2.5.0"
 xshell = "0.2.6"

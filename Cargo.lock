@@ -1265,7 +1265,7 @@ dependencies = [
 [[package]]
 name = "la-arena"
 version = "0.3.1"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 
 [[package]]
 name = "lazy_static"
@@ -1638,7 +1638,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 [[package]]
 name = "paths"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "camino",
 ]
@@ -1732,7 +1732,7 @@ dependencies = [
 [[package]]
 name = "profile"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "cfg-if",
  "libc",
@@ -2079,7 +2079,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stdx"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "always-assert 0.2.0",
  "crossbeam-channel",
@@ -2201,7 +2201,7 @@ dependencies = [
 [[package]]
 name = "text-edit"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "itertools 0.12.1",
  "text-size",
@@ -2466,7 +2466,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vfs"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "fst",
  "indexmap 2.3.0",
@@ -2480,11 +2480,13 @@ dependencies = [
 [[package]]
 name = "vfs-notify"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-07-29#fd74511f34ae6c165466543cc6e55ea60e7365af"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2024-08-12#0daeb5c0b05cfdf2101b0f078c27539099bf38e6"
 dependencies = [
  "crossbeam-channel",
  "notify",
  "paths",
+ "rayon",
+ "rustc-hash",
  "stdx",
  "tracing",
  "vfs",

@@ -38,6 +38,7 @@ use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use fxhash::FxHashMap;
+use vfs::loader::LoadingProgress;
 use vfs::VfsPath;
 
 use crate::build::types::LoadResult;
@@ -158,11 +159,14 @@ fn load_database(
                 n_done, n_total, ..
             } => {
                 pb.set_length(n_total as u64);
-                if let Some(n_done) = n_done {
-                    pb.set_position(n_done as u64);
-                }
-                if n_done == Some(n_total) {
-                    break;
+                match n_done {
+                    LoadingProgress::Started => {}
+                    LoadingProgress::Progress(n_done) => {
+                        pb.set_position(n_done as u64);
+                    }
+                    LoadingProgress::Finished => {
+                        break;
+                    }
                 }
             }
             loader::Message::Loaded { files } | loader::Message::Changed { files } => {
