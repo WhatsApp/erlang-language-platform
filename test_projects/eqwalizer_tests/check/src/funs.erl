@@ -366,3 +366,9 @@ nullary_fun_neg1() ->
 nullary_fun_neg2() ->
     Fun = fun() -> no_ok end,
     Fun().
+
+-spec callback_test(fun((term()) -> none()) | atom()) -> ok.
+callback_test(_F) -> ok.
+
+-spec use_callback_test_neg() -> ok.
+use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
