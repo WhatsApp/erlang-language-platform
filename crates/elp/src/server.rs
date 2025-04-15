@@ -896,7 +896,7 @@ impl Server {
             LoadingProgress::Started => {
                 let pb = self
                     .progress
-                    .begin_bar("Loading source files".into(), Some(n_total));
+                    .begin_bar_with_telemetry("Loading source files".into(), Some(n_total));
                 self.transition(Status::Loading(pb));
             }
             LoadingProgress::Progress(n_done) => {
@@ -1525,7 +1525,7 @@ impl Server {
             let query_config = self.config.buck_query();
             let spinner = self
                 .progress
-                .begin_spinner("ELP reloading project config".to_string());
+                .begin_spinner_with_telemetry("ELP reloading project config".to_string());
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
                     let mut loader = loader.lock();
@@ -1627,7 +1627,7 @@ impl Server {
         let query_config = self.config.buck_query();
         let spinner = self
             .progress
-            .begin_spinner("ELP loading project config".to_string());
+            .begin_spinner_with_telemetry("ELP loading project config".to_string());
         self.project_pool.handle.spawn_with_sender({
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
@@ -1716,7 +1716,7 @@ impl Server {
 
         let spinner = self
             .progress
-            .begin_spinner("ELP compiling dependencies for EqWAlizer".to_string());
+            .begin_spinner_with_telemetry("ELP compiling dependencies for EqWAlizer".to_string());
 
         self.task_pool.handle.spawn_with_sender(move |sender| {
             snapshot.set_up_projects();

@@ -11,8 +11,13 @@
 
 use std::time::Duration;
 use std::time::Instant;
+use std::time::SystemTime;
 
 use elp_log::telemetry;
+use elp_log::telemetry::send_with_duration;
+use fxhash::FxHashMap;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use serde::Serialize;
 
 use crate::memory_usage::Bytes;
@@ -61,6 +66,173 @@ impl TelemetryManager {
                     );
                 }
             };
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum WithTelemetry {
+    Yes,
+    No,
+}
+
+pub(crate) fn reporter_telemetry_start(
+    token: lsp_types::NumberOrString,
+    title: String,
+) -> ReporterTelemetry {
+    let mut telemetry = TELEMETRY.lock();
+    telemetry.new(token, title)
+}
+
+pub(crate) fn reporter_telemetry_next(token: lsp_types::NumberOrString, message: String) {
+    let mut telemetry = TELEMETRY.lock();
+    telemetry.next_segment(token, Some(message));
+}
+
+pub(crate) fn reporter_telemetry_end(token: lsp_types::NumberOrString) {
+    let mut telemetry = TELEMETRY.lock();
+    telemetry.end(token).map(|t| {
+        t.send_final_telemetry();
+    });
+}
+
+lazy_static! {
+    static ref TELEMETRY: Mutex<ReporterTelemetryManager> =
+        Mutex::new(ReporterTelemetryManager::default());
+}
+
+#[derive(Default, Debug)]
+struct ReporterTelemetryManager {
+    /// telemetry state indexed by reporting progress tokens, storing last time it changed state
+    active: FxHashMap<lsp_types::NumberOrString, ReporterTelemetry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ReporterTelemetry {
+    #[serde(skip_serializing)]
+    start_time: SystemTime,
+    title: String,
+    #[serde(skip_serializing)]
+    segment_start_time: SystemTime,
+    #[serde(skip_serializing)]
+    segment_message: String,
+    segments: FxHashMap<String, u32>,
+}
+
+impl ReporterTelemetryManager {
+    fn new(&mut self, token: lsp_types::NumberOrString, title: String) -> ReporterTelemetry {
+        let time = SystemTime::now();
+        let val = ReporterTelemetry {
+            start_time: time,
+            title: title.clone(),
+            segment_start_time: time,
+            segment_message: title,
+            segments: FxHashMap::default(),
+        };
+        self.active.insert(token, val.clone());
+        val
+    }
+
+    fn next_segment(&mut self, token: lsp_types::NumberOrString, message: Option<String>) {
+        self.active.entry(token.clone()).and_modify(|then| {
+            then.update(message);
+        });
+    }
+
+    fn end(&mut self, token: lsp_types::NumberOrString) -> Option<ReporterTelemetry> {
+        self.next_segment(token.clone(), None);
+        self.active.get(&token).cloned()
+    }
+}
+
+impl ReporterTelemetry {
+    fn update(&mut self, message: Option<String>) {
+        // First capture the prior segment timing
+        self.segments.insert(
+            self.segment_message.clone(),
+            self.segment_duration().as_millis() as u32,
+        );
+        // Then do the update
+        if let Some(message) = message {
+            let time = SystemTime::now();
+            self.segment_start_time = time;
+            self.segment_message = message;
+        }
+    }
+
+    pub(crate) fn segment_duration(&self) -> Duration {
+        self.segment_start_time.elapsed().unwrap_or_default()
+    }
+
+    pub(crate) fn full_duration(&self) -> Duration {
+        self.start_time.elapsed().unwrap_or_default()
+    }
+
+    pub(crate) fn send_final_telemetry(&self) {
+        let data = serde_json::to_value(self).unwrap_or_else(|err| {
+            serde_json::Value::String(format!("JSON serialization failed: {err}"))
+        });
+        send_with_duration(
+            "elp_reporter_telemetry".to_string(),
+            data,
+            self.full_duration().as_millis() as u32,
+            self.start_time,
+        );
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use expect_test::expect;
+    use lazy_static::lazy_static;
+    use lsp_types::NumberOrString;
+    use parking_lot::Mutex;
+
+    use crate::server::telemetry_manager::ReporterTelemetryManager;
+
+    #[test]
+    fn test_lifecycle() {
+        lazy_static! {
+            static ref TEST_TELEMETRY: Mutex<ReporterTelemetryManager> =
+                Mutex::new(ReporterTelemetryManager::default());
+        }
+
+        let token = NumberOrString::Number(1);
+        let message = "Start message".to_string();
+
+        let orig = {
+            // Control lock scope by having it in braces
+            let mut telemetry = TEST_TELEMETRY.lock();
+            telemetry.new(token.clone(), message)
+        };
+
+        {
+            // Control lock scope by having it in braces
+            let mut telemetry = TEST_TELEMETRY.lock();
+            let update_message = "update message".to_string();
+            telemetry.next_segment(token.clone(), Some(update_message.clone()));
+            let new = telemetry.active.get(&token).unwrap();
+            assert_ne!(orig.segment_start_time, new.segment_start_time);
+            assert_eq!(orig.start_time, new.start_time);
+            assert_eq!(new.segment_message, update_message);
+        }
+
+        {
+            // Control lock scope by having it in braces
+            let mut telemetry = TEST_TELEMETRY.lock();
+            telemetry.next_segment(token.clone(), None);
+            let new = telemetry.active.get(&token).unwrap();
+            assert_ne!(orig.segment_start_time, new.segment_start_time);
+            assert_eq!(orig.start_time, new.start_time);
+            expect![[r#"
+                {
+                    "Start message": 0,
+                    "update message": 0,
+                }
+            "#]]
+            .assert_debug_eq(&new.segments);
         }
     }
 }

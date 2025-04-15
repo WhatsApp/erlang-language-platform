@@ -18,6 +18,11 @@ use lsp_types::WorkDoneProgressBegin;
 use lsp_types::WorkDoneProgressEnd;
 use lsp_types::WorkDoneProgressReport;
 
+use super::telemetry_manager::reporter_telemetry_end;
+use super::telemetry_manager::reporter_telemetry_next;
+use super::telemetry_manager::reporter_telemetry_start;
+use super::telemetry_manager::WithTelemetry;
+
 #[derive(Debug)]
 pub enum ProgressTask {
     BeginNotify(ProgressParams),
@@ -51,11 +56,41 @@ impl ProgressManager {
     }
 
     pub fn begin_spinner(&mut self, title: String) -> Spinner {
-        Spinner::begin(self.sender.clone(), self.next_token(), title)
+        Spinner::begin(
+            self.sender.clone(),
+            self.next_token(),
+            title,
+            WithTelemetry::No,
+        )
+    }
+
+    pub fn begin_spinner_with_telemetry(&mut self, title: String) -> Spinner {
+        Spinner::begin(
+            self.sender.clone(),
+            self.next_token(),
+            title,
+            WithTelemetry::Yes,
+        )
     }
 
     pub fn begin_bar(&mut self, title: String, total: Option<usize>) -> ProgressBar {
-        ProgressBar::begin(self.sender.clone(), self.next_token(), title, total)
+        ProgressBar::begin(
+            self.sender.clone(),
+            self.next_token(),
+            title,
+            total,
+            WithTelemetry::No,
+        )
+    }
+
+    pub fn begin_bar_with_telemetry(&mut self, title: String, total: Option<usize>) -> ProgressBar {
+        ProgressBar::begin(
+            self.sender.clone(),
+            self.next_token(),
+            title,
+            total,
+            WithTelemetry::Yes,
+        )
     }
 
     fn next_token(&mut self) -> NumberOrString {
@@ -76,13 +111,22 @@ pub struct Spinner {
 }
 
 impl Spinner {
-    fn begin(sender: Sender<ProgressTask>, token: NumberOrString, title: String) -> Self {
+    fn begin(
+        sender: Sender<ProgressTask>,
+        token: NumberOrString,
+        title: String,
+        telemetry: WithTelemetry,
+    ) -> Self {
         let msg = WorkDoneProgressBegin {
             title: title.clone(),
             cancellable: None,
             message: None,
             percentage: None,
         };
+
+        if telemetry == WithTelemetry::Yes {
+            reporter_telemetry_start(token.clone(), title.clone());
+        }
         send_begin(&sender, token.clone(), msg);
         Self {
             token,
@@ -94,9 +138,10 @@ impl Spinner {
     pub fn report(&self, message: String) {
         let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
             cancellable: None,
-            message: Some(message),
+            message: Some(message.clone()),
             percentage: None,
         });
+        reporter_telemetry_next(self.token.clone(), message);
         send_progress(&self.sender, self.token.clone(), msg);
     }
 
@@ -113,7 +158,8 @@ impl Drop for Spinner {
             WorkDoneProgress::End(WorkDoneProgressEnd {
                 message: Some(self.end_message.clone()),
             }),
-        )
+        );
+        reporter_telemetry_end(self.token.clone());
     }
 }
 
@@ -133,6 +179,7 @@ impl ProgressBar {
         token: NumberOrString,
         title: String,
         total: Option<usize>,
+        report_telemetry: WithTelemetry,
     ) -> Self {
         let msg = WorkDoneProgressBegin {
             title: title.clone(),
@@ -140,6 +187,9 @@ impl ProgressBar {
             message: total.map(|_total| format!("0%")),
             percentage: Some(0),
         };
+        if report_telemetry == WithTelemetry::Yes {
+            reporter_telemetry_start(token.clone(), title.clone());
+        }
         send_begin(&sender, token.clone(), msg);
         Self {
             token,
@@ -157,6 +207,8 @@ impl ProgressBar {
             message: Some(message),
             percentage: Some(percent),
         });
+        // We do not update any associated telemetry here, it will
+        // report on the whole bar at the end in the drop.
         send_progress(&self.sender, self.token.clone(), msg);
     }
 
@@ -173,7 +225,8 @@ impl Drop for ProgressBar {
             WorkDoneProgress::End(WorkDoneProgressEnd {
                 message: Some(self.end_message.clone()),
             }),
-        )
+        );
+        reporter_telemetry_end(self.token.clone());
     }
 }
 
