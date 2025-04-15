@@ -1519,7 +1519,7 @@ impl Server {
             let query_config = self.config.buck_query();
             let spinner = self
                 .progress
-                .begin_spinner("ELP reloading projects".to_string());
+                .begin_spinner("ELP reloading project config".to_string());
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
                     let mut loader = loader.lock();
@@ -1611,7 +1611,7 @@ impl Server {
             };
             sender.send(Task::ShowMessage(params))?;
         }
-        spinner.report("Project loaded".to_string());
+        spinner.report("Project config loaded".to_string());
         project
     }
 
@@ -1621,7 +1621,7 @@ impl Server {
         let query_config = self.config.buck_query();
         let spinner = self
             .progress
-            .begin_spinner("ELP loading project".to_string());
+            .begin_spinner("ELP loading project config".to_string());
         self.project_pool.handle.spawn_with_sender({
             move |sender| {
                 let manifest = loader.lock().load_manifest_if_new(&path);
