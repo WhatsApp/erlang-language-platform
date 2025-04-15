@@ -9,20 +9,20 @@
 
 //! Utilities for creating `Analysis` instances for tests.
 
-use elp_ide_db::elp_base_db::fixture::ChangeFixture;
-use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::fixture::ChangeFixture;
+use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 
+use crate::Analysis;
+use crate::AnalysisHost;
+use crate::FilePosition;
 use crate::diagnostics::AdhocSemanticDiagnostics;
 use crate::diagnostics::DiagnosticsConfig;
 use crate::diagnostics::RemoveElpReported;
 use crate::diagnostics_collection::DiagnosticCollection;
-use crate::Analysis;
-use crate::AnalysisHost;
-use crate::FilePosition;
 
 /// Creates analysis from a single file fixture
 #[track_caller]

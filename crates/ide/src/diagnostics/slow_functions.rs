@@ -15,16 +15,16 @@ use elp_ide_db::elp_base_db::FileId;
 use hir::Semantic;
 use lazy_static::lazy_static;
 
-use super::helpers::check_used_functions;
-use super::helpers::DiagnosticTemplate;
 use super::Diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
+use super::helpers::DiagnosticTemplate;
+use super::helpers::check_used_functions;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::UseRange;
-use crate::diagnostics::helpers::FunctionCallDiagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
+use crate::diagnostics::helpers::FunctionCallDiagnostic;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {

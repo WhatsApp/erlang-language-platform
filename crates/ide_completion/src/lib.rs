@@ -10,8 +10,8 @@
 use std::fmt;
 
 use ctx::CtxKind;
-use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;

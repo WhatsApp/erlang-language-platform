@@ -27,6 +27,7 @@ mod tests;
 
 // use hir::Semantics;
 pub use assist_config::AssistConfig;
+use elp_ide_db::RootDatabase;
 pub use elp_ide_db::assists::Assist;
 use elp_ide_db::assists::AssistContextDiagnostic;
 pub use elp_ide_db::assists::AssistId;
@@ -36,7 +37,6 @@ use elp_ide_db::assists::AssistUserInput;
 pub use elp_ide_db::assists::GroupLabel;
 pub use elp_ide_db::assists::SingleResolve;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::RootDatabase;
 
 // use elp_syntax::TextRange;
 pub(crate) use crate::assist_context::AssistContext;

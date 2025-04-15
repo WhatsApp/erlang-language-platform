@@ -7,18 +7,14 @@
  * of this source tree.
  */
 
-use elp_syntax::ast;
-use elp_syntax::ast::in_erlang_module;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
+use elp_syntax::ast::in_erlang_module;
 use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
-use hir::db::InternDatabase;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::ParentId;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::Body;
@@ -31,6 +27,10 @@ use hir::InFunctionClauseBody;
 use hir::Literal;
 use hir::Semantic;
 use hir::Strategy;
+use hir::db::InternDatabase;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::ParentId;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -598,23 +598,24 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
 
 #[cfg(test)]
 mod tests {
-    use elp_ide_db::elp_base_db::fixture::WithFixture;
+    use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::SourceDatabase;
-    use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use hir::FunctionDef;
     use hir::InFile;
     use hir::Semantic;
 
-    use super::find_call_in_function;
     use super::FunctionMatch;
     use super::MatchCtx;
     use super::UseRange;
+    use super::find_call_in_function;
+    use crate::AnalysisHost;
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
@@ -622,7 +623,6 @@ mod tests {
     use crate::fixture;
     use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::tests::check_fix_with_config_and_adhoc;
-    use crate::AnalysisHost;
 
     fn check_functions(
         diags: &mut Vec<Diagnostic>,

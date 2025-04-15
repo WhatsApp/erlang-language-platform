@@ -11,13 +11,13 @@ use std::cmp::min;
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::TextSize;
+use elp_syntax::ast;
 
-use crate::helpers::prev_form_nodes;
 use crate::AssistContext;
 use crate::Assists;
+use crate::helpers::prev_form_nodes;
 
 const PRAGMA: &str = "@format";
 // The following prefix is used to prevent being recognized as an EDoc tag.

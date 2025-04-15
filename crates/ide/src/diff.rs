@@ -12,12 +12,12 @@ use std::fmt::Write;
 use std::hash::Hash;
 use std::ops::Range;
 
+use imara_diff::Algorithm;
+use imara_diff::Sink;
 use imara_diff::diff;
 use imara_diff::intern::InternedInput;
 use imara_diff::intern::Interner;
 use imara_diff::intern::Token;
-use imara_diff::Algorithm;
-use imara_diff::Sink;
 
 pub fn diff_from_textedit(before: &str, after: &str) -> (Vec<DiffRange>, Option<String>) {
     let input = InternedInput::new(before, after);

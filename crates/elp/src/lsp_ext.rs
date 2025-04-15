@@ -12,11 +12,11 @@
 use std::path::PathBuf;
 
 use elp_ide::elp_ide_db::assists::AssistUserInput;
-use lsp_types::notification::Notification;
-use lsp_types::request::Request;
 use lsp_types::Position;
 use lsp_types::TextDocumentIdentifier;
 use lsp_types::TextDocumentPositionParams;
+use lsp_types::notification::Notification;
+use lsp_types::request::Request;
 use serde::Deserialize;
 use serde::Serialize;
 

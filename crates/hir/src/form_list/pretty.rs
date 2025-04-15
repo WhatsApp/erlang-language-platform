@@ -18,9 +18,6 @@ use super::DocAttribute;
 use super::FeatureAttribute;
 use super::ModuleDocAttribute;
 use super::SsrDefinition;
-use crate::form_list::DeprecatedAttribute;
-use crate::form_list::DeprecatedDesc;
-use crate::form_list::DeprecatedFa;
 use crate::Attribute;
 use crate::Behaviour;
 use crate::Callback;
@@ -42,6 +39,9 @@ use crate::Record;
 use crate::Spec;
 use crate::TypeAlias;
 use crate::TypeExport;
+use crate::form_list::DeprecatedAttribute;
+use crate::form_list::DeprecatedDesc;
+use crate::form_list::DeprecatedFa;
 
 pub fn print(forms: &FormList) -> String {
     let mut printer = Printer {

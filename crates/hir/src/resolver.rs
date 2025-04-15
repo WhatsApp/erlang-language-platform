@@ -13,12 +13,12 @@ use std::sync::Arc;
 
 use fxhash::FxHashSet;
 
-use crate::body::scope::ExprScopes;
-use crate::body::scope::ScopeId;
 use crate::AnyExprId;
 use crate::ExprId;
 use crate::PatId;
 use crate::Var;
+use crate::body::scope::ExprScopes;
+use crate::body::scope::ScopeId;
 
 pub type Resolution = (Var, Vec<PatId>);
 

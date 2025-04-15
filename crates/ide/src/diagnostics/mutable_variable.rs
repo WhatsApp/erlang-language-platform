@@ -28,19 +28,19 @@
 use elp_ide_db::elp_base_db::FileId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionClauseId;
 use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use crate::diagnostics::DiagnosticCode;
 use crate::Diagnostic;
+use crate::diagnostics::DiagnosticCode;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {

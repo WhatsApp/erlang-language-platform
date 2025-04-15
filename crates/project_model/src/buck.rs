@@ -19,8 +19,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::bail;
 use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
@@ -40,13 +40,13 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::otp::Otp;
 use crate::AppName;
 use crate::AppType;
 use crate::CommandProxy;
 use crate::ElpConfig;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
+use crate::otp::Otp;
 
 pub type TargetFullName = String;
 
@@ -1372,8 +1372,8 @@ pub fn get_prelude_cell(buck_config: &BuckConfig) -> Result<String> {
 #[cfg(test)]
 mod tests {
 
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use super::*;
     use crate::temp_dir::TempDir;

@@ -11,12 +11,12 @@
 //
 // Return a warning if a macro defined in an .erl file has no references to it
 
-use elp_ide_assists::helpers::extend_range;
 use elp_ide_assists::Assist;
+use elp_ide_assists::helpers::extend_range;
+use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use hir::Semantic;
@@ -24,9 +24,9 @@ use text_edit::TextEdit;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
+use crate::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
-use crate::Diagnostic;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {

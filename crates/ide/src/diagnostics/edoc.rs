@@ -16,13 +16,13 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
-use hir::edoc::EdocHeader;
-use hir::edoc::EdocHeaderKind;
-use hir::known;
 use hir::Attribute;
 use hir::FormList;
 use hir::Name;
 use hir::Semantic;
+use hir::edoc::EdocHeader;
+use hir::edoc::EdocHeaderKind;
+use hir::known;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
@@ -208,11 +208,11 @@ fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
 mod tests {
 
     use elp_ide_db::DiagnosticCode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
-    use crate::tests;
     use crate::DiagnosticsConfig;
+    use crate::tests;
 
     fn config() -> DiagnosticsConfig {
         DiagnosticsConfig::default().enable(DiagnosticCode::OldEdocSyntax)

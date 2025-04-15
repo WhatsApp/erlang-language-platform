@@ -9,6 +9,8 @@
 
 //! See [`AssistContext`].
 
+use elp_ide_db::RootDatabase;
+use elp_ide_db::SymbolClass;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::GroupLabel;
@@ -16,11 +18,6 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_db::RootDatabase;
-use elp_ide_db::SymbolClass;
-use elp_syntax::algo;
-use elp_syntax::ast::AstNode;
-use elp_syntax::label::Label;
 use elp_syntax::Direction;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxElement;
@@ -30,10 +27,10 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
+use elp_syntax::algo;
+use elp_syntax::ast::AstNode;
+use elp_syntax::label::Label;
 use fxhash::FxHashSet;
-use hir::db::DefDatabase;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Body;
 use hir::ClauseId;
@@ -47,12 +44,15 @@ use hir::InFunctionClauseBody;
 use hir::Semantic;
 use hir::Strategy;
 use hir::TypeExprId;
+use hir::db::DefDatabase;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
-use crate::assist_config::AssistConfig;
 use crate::Assist;
 use crate::AssistId;
 use crate::AssistKind;
 use crate::AssistResolveStrategy;
+use crate::assist_config::AssistConfig;
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///

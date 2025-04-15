@@ -13,35 +13,25 @@ use std::sync::Arc;
 
 use either::Either;
 use elp_base_db::FileId;
+use elp_syntax::AstPtr;
 use elp_syntax::ast;
-use elp_syntax::ast::is_erlang_fun;
-use elp_syntax::ast::is_erlang_type;
 use elp_syntax::ast::ExprMax;
 use elp_syntax::ast::HasArity;
 use elp_syntax::ast::MacroCallArgs;
 use elp_syntax::ast::MacroDefReplacement;
 use elp_syntax::ast::MapOp;
+use elp_syntax::ast::is_erlang_fun;
+use elp_syntax::ast::is_erlang_type;
 use elp_syntax::unescape;
-use elp_syntax::AstPtr;
 use fxhash::FxHashMap;
 
 use super::BodyOrigin;
 use super::FunctionClauseBody;
 use super::InFileAstPtr;
+use super::SSR_SOURCE_FILE_ID;
 use super::SsrBody;
 use super::SsrPatternIds;
 use super::TopLevelMacro;
-use super::SSR_SOURCE_FILE_ID;
-use crate::db::DefDatabase;
-use crate::def_map::FunctionDefId;
-use crate::expr::Guards;
-use crate::expr::MacroCallName;
-use crate::expr::MaybeExpr;
-use crate::expr::StringVariant;
-use crate::known;
-use crate::macro_exp;
-use crate::macro_exp::BuiltInMacro;
-use crate::name::AsName;
 use crate::Atom;
 use crate::AttributeBody;
 use crate::BasedInteger;
@@ -87,6 +77,16 @@ use crate::TypeBody;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
+use crate::db::DefDatabase;
+use crate::def_map::FunctionDefId;
+use crate::expr::Guards;
+use crate::expr::MacroCallName;
+use crate::expr::MaybeExpr;
+use crate::expr::StringVariant;
+use crate::known;
+use crate::macro_exp;
+use crate::macro_exp::BuiltInMacro;
+use crate::name::AsName;
 
 #[derive(Debug, Clone)]
 pub(crate) struct MacroStackEntry {

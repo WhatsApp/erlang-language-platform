@@ -15,16 +15,16 @@ use hir::Semantic;
 use lazy_static::lazy_static;
 use text_edit::TextRange;
 
-use crate::codemod_helpers::find_call_in_function;
-use crate::codemod_helpers::statement_range;
+use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
+use crate::codemod_helpers::statement_range;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
 use crate::diagnostics::Severity;
-use crate::FunctionMatch;
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::DebuggingFunction;
 const DIAGNOSTIC_MESSAGE: &str = "Debugging functions should only be used during local debugging and usages should not be checked in.";

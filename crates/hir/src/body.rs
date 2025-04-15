@@ -13,30 +13,17 @@ use std::u32;
 
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::ArenaMap;
 use la_arena::RawIdx;
 
 use self::lower::MacroInformation;
-use crate::db::DefDatabase;
-use crate::db::InternDatabase;
-use crate::def_map::FunctionDefId;
-use crate::expr::AstClauseId;
-use crate::expr::ClauseId;
-use crate::fold::default_fold_body;
-use crate::fold::fold_body;
-use crate::fold::AnyCallBack;
-use crate::fold::Constructor;
-use crate::fold::MacroStrategy;
-use crate::fold::ParenStrategy;
-use crate::fold::ParentId;
-use crate::fold::VisibleMacros;
 use crate::AnyExprId;
 use crate::AnyExprRef;
 use crate::Attribute;
@@ -78,6 +65,19 @@ use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
+use crate::db::DefDatabase;
+use crate::db::InternDatabase;
+use crate::def_map::FunctionDefId;
+use crate::expr::AstClauseId;
+use crate::expr::ClauseId;
+use crate::fold::AnyCallBack;
+use crate::fold::Constructor;
+use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
+use crate::fold::ParentId;
+use crate::fold::VisibleMacros;
+use crate::fold::default_fold_body;
+use crate::fold::fold_body;
 
 mod lower;
 mod pretty;
@@ -1191,16 +1191,16 @@ impl BodySourceMap {
 
 #[cfg(test)]
 mod local_tests {
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::fixture::WithFixture;
+    use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
 
-    use crate::test_db::TestDB;
     use crate::AnyExprId;
     use crate::InFile;
     use crate::Semantic;
+    use crate::test_db::TestDB;
 
     fn check_is_macro_expr(fixture: &str) {
         let (db, fixture) = TestDB::with_fixture(fixture);

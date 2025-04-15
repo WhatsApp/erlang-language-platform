@@ -12,9 +12,9 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
+use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
-use anyhow::Result;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;

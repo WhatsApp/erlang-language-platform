@@ -21,12 +21,12 @@ use std::process::Stdio;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use elp_base_db::limit_logged_string;
-use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;

@@ -12,10 +12,10 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use bpaf::construct;
-use bpaf::long;
 use bpaf::Bpaf;
 use bpaf::Parser;
+use bpaf::construct;
+use bpaf::long;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::buck::BuildGeneratedCode;
 use itertools::Itertools;

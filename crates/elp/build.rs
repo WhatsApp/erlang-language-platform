@@ -10,8 +10,8 @@
 use std::env;
 use std::str::FromStr;
 
-use time::format_description;
 use time::OffsetDateTime;
+use time::format_description;
 
 const CI: &str = "CI";
 const SOURCE_DATE_EPOCH: &str = "SOURCE_DATE_EPOCH";

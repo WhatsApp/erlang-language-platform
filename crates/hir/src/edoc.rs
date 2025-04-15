@@ -35,9 +35,6 @@ use std::sync::LazyLock;
 
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
-use elp_syntax::algo;
-use elp_syntax::ast;
-use elp_syntax::ast::Form;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::Direction;
@@ -46,15 +43,18 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use elp_syntax::algo;
+use elp_syntax::ast;
+use elp_syntax::ast::Form;
 use fxhash::FxHashMap;
 use htmlentity::entity::ICodedDataTrait;
 use itertools::Itertools;
 use regex::Regex;
 use stdx::trim_indent;
 
-use crate::db::DefDatabase;
 use crate::FunctionDef;
 use crate::InFileAstPtr;
+use crate::db::DefDatabase;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
@@ -823,13 +823,13 @@ fn convert_to_markdown(text: &str) -> String {
 mod tests {
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::ast;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use fxhash::FxHashMap;
 
     use super::*;
-    use crate::test_db::TestDB;
     use crate::InFileAstPtr;
+    use crate::test_db::TestDB;
 
     fn test_print(edoc: &FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>) -> String {
         let mut buf = String::default();

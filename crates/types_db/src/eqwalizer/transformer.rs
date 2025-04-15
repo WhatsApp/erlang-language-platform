@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use super::AST;
 use super::expr::BComprehension;
 use super::expr::BGenerate;
 use super::expr::BGenerateStrict;
@@ -82,7 +83,6 @@ use super::pat::PatRecord;
 use super::pat::PatRecordFieldNamed;
 use super::pat::PatTuple;
 use super::pat::PatUnOp;
-use super::AST;
 use crate::eqwalizer::expr::RecordFieldNamed;
 
 pub trait Transformer<T>: Sized {

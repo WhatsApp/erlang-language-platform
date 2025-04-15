@@ -13,10 +13,10 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 
-use crate::diagnostics::attach_related_diagnostics;
 use crate::Diagnostic;
 use crate::FileId;
 use crate::LabeledDiagnostics;
+use crate::diagnostics::attach_related_diagnostics;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticCollection {
@@ -257,16 +257,16 @@ mod tests {
     use text_edit::TextRange;
 
     use super::are_diagnostics_equal;
+    use crate::DiagnosticsConfig;
     use crate::diagnostics;
-    use crate::diagnostics::attach_related_diagnostics;
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::LabeledDiagnostics;
     use crate::diagnostics::Severity;
-    use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
+    use crate::diagnostics::attach_related_diagnostics;
     use crate::diagnostics_collection::DiagnosticCollection;
-    use crate::elp_ide_db::elp_base_db::fixture::WithFixture;
+    use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
     use crate::elp_ide_db::RootDatabase;
-    use crate::DiagnosticsConfig;
+    use crate::elp_ide_db::elp_base_db::fixture::WithFixture;
 
     fn are_diagnostics_equal_vec(old: &[Diagnostic], new: &[Diagnostic]) -> bool {
         new.iter()

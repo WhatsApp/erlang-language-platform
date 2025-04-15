@@ -21,10 +21,10 @@ use elp_project_model::ProjectAppData;
 use fxhash::FxHashMap;
 use paths::RelPath;
 use paths::Utf8Path;
-use vfs::file_set::FileSet;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 use vfs::VfsPath;
+use vfs::file_set::FileSet;
 
 use crate::AppDataIndex;
 use crate::SourceDatabaseExt;

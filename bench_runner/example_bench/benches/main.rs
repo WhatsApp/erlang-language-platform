@@ -10,10 +10,10 @@
 use std::thread;
 use std::time;
 
-use criterion::criterion_group;
-use criterion::criterion_main;
 use criterion::BenchmarkId;
 use criterion::Criterion;
+use criterion::criterion_group;
+use criterion::criterion_main;
 
 fn fibonacci_slow(n: u64) -> u64 {
     match n {

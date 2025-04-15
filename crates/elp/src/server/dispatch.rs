@@ -10,20 +10,20 @@
 use std::fmt;
 use std::panic;
 
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::bail;
 use crossbeam_channel::Sender;
 use elp_ide::is_cancelled;
 use lsp_server::ExtractError;
 use lsp_server::RequestId;
 use lsp_server::Response;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::Server;
 use super::Snapshot;
-use crate::server::Task;
 use crate::LspError;
+use crate::server::Task;
 
 #[must_use]
 pub(crate) struct RequestDispatcher<'a> {

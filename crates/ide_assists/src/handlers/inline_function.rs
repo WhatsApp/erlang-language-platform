@@ -9,6 +9,10 @@
 
 use std::iter::zip;
 
+use elp_ide_db::ReferenceType;
+use elp_ide_db::SearchScope;
+use elp_ide_db::SymbolClass;
+use elp_ide_db::SymbolDefinition;
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::elp_base_db::FileId;
@@ -17,13 +21,6 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::find_best_token;
 use elp_ide_db::helpers::get_call;
 use elp_ide_db::rename::SafetyChecks;
-use elp_ide_db::ReferenceType;
-use elp_ide_db::SearchScope;
-use elp_ide_db::SymbolClass;
-use elp_ide_db::SymbolDefinition;
-use elp_syntax::ast;
-use elp_syntax::ast::edit::IndentLevel;
-use elp_syntax::ast::HasArity;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
@@ -31,6 +28,9 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use elp_syntax::ast;
+use elp_syntax::ast::HasArity;
+use elp_syntax::ast::edit::IndentLevel;
 use fxhash::FxHashSet;
 use hir::FunctionDef;
 use hir::InFile;
@@ -44,11 +44,11 @@ use text_edit::TextEdit;
 
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;
+use crate::helpers::DEFAULT_INDENT_STEP;
 use crate::helpers::change_indent;
 use crate::helpers::parens_needed;
 use crate::helpers::ranges_for_delete_function;
 use crate::helpers::simple_param_vars;
-use crate::helpers::DEFAULT_INDENT_STEP;
 
 // Assist: inline_function
 //

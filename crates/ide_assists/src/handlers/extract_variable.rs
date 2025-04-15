@@ -11,11 +11,11 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
+use elp_syntax::ast;
 use hir::InFile;
 use stdx::format_to;
 

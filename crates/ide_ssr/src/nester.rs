@@ -22,9 +22,9 @@ use fxhash::FxHashMap;
 use hir::BodyOrigin;
 use hir::Semantic;
 
+use crate::SsrMatches;
 use crate::matching::Match;
 use crate::matching::SubId;
-use crate::SsrMatches;
 
 pub(crate) fn nest_and_remove_collisions(mut matches: Vec<Match>, sema: &Semantic) -> SsrMatches {
     // We sort the matches by depth then by rule index. Sorting by

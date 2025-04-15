@@ -13,23 +13,23 @@
 
 use std::time::SystemTime;
 
-use anyhow::bail;
 use anyhow::Result;
-use elp_ide::elp_ide_assists::AssistKind;
-use elp_ide::elp_ide_assists::AssistResolveStrategy;
-use elp_ide::elp_ide_assists::SingleResolve;
-use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
-use elp_ide::elp_ide_db::docs::Doc;
-use elp_ide::elp_ide_db::elp_base_db::FilePosition;
-use elp_ide::elp_ide_db::elp_base_db::FileRange;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::LineIndex;
-use elp_ide::elp_ide_db::SymbolKind;
+use anyhow::bail;
 use elp_ide::Cancellable;
 use elp_ide::HighlightedRange;
 use elp_ide::NavigationTarget;
 use elp_ide::RangeInfo;
 use elp_ide::TextRange;
+use elp_ide::elp_ide_assists::AssistKind;
+use elp_ide::elp_ide_assists::AssistResolveStrategy;
+use elp_ide::elp_ide_assists::SingleResolve;
+use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::SymbolKind;
+use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
+use elp_ide::elp_ide_db::docs::Doc;
+use elp_ide::elp_ide_db::elp_base_db::FilePosition;
+use elp_ide::elp_ide_db::elp_base_db::FileRange;
+use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::telemetry;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -58,12 +58,12 @@ use lsp_types::TextDocumentIdentifier;
 use lsp_types::Url;
 use lsp_types::WorkspaceEdit;
 
+use crate::LspError;
 use crate::convert::lsp_to_assist_context_diagnostic;
 use crate::from_proto;
 use crate::lsp_ext;
 use crate::snapshot::Snapshot;
 use crate::to_proto;
-use crate::LspError;
 
 pub(crate) fn handle_code_action(
     snap: Snapshot,

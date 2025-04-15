@@ -14,15 +14,15 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use hir::Semantic;
 use text_edit::TextEdit;
 
-use crate::fix;
 use crate::Diagnostic;
+use crate::fix;
 
 pub(crate) fn module_mismatch(
     sema: &Semantic,

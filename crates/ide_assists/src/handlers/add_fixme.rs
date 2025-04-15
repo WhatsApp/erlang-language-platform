@@ -26,9 +26,9 @@ use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
 use elp_ide_db::assists::GroupLabel;
-use elp_syntax::ast::edit::start_of_line;
-use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::AstNode;
+use elp_syntax::ast::edit::IndentLevel;
+use elp_syntax::ast::edit::start_of_line;
 
 use crate::AssistContext;
 use crate::Assists;

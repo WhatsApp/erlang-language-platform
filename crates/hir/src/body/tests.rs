@@ -8,13 +8,9 @@
  */
 
 use elp_base_db::fixture::WithFixture;
-use expect_test::expect;
 use expect_test::Expect;
+use expect_test::expect;
 
-use crate::db::DefDatabase;
-use crate::fold::MacroStrategy;
-use crate::fold::ParenStrategy;
-use crate::test_db::TestDB;
 use crate::AnyAttribute;
 use crate::FormIdx;
 use crate::FunctionDefId;
@@ -22,6 +18,10 @@ use crate::InFile;
 use crate::PPDirective;
 use crate::SpecOrCallback;
 use crate::Strategy;
+use crate::db::DefDatabase;
+use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
+use crate::test_db::TestDB;
 
 #[track_caller]
 fn check(ra_fixture: &str, expect: Expect) {

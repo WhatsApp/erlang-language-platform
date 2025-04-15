@@ -14,10 +14,10 @@ use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::telemetry;
-use elp_project_model::otp::Otp;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::ProjectManifest;
+use elp_project_model::otp::Otp;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 

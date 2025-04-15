@@ -7,12 +7,12 @@
  * of this source tree.
  */
 
-use crate::helpers;
 use crate::Completion;
 use crate::Contents;
 use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
+use crate::helpers;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
@@ -51,12 +51,12 @@ pub(crate) fn add_completions(
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::Kind;
     use crate::tests::get_completions;
     use crate::tests::render_completions;
-    use crate::Kind;
 
     // completions filtered to avoid noise
     fn check(code: &str, expect: Expect) {

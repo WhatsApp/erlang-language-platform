@@ -12,11 +12,11 @@ use elp_syntax::ast::AstNode;
 use elp_syntax::ast::ClauseSeparator;
 use hir::Semantic;
 
-use super::make_unexpected_diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use crate::diagnostics::make_missing_diagnostic;
+use super::make_unexpected_diagnostic;
 use crate::Diagnostic;
+use crate::diagnostics::make_missing_diagnostic;
 
 // Diagnostic: missing separator (W0004)
 //

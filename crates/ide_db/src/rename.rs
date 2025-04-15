@@ -16,17 +16,17 @@ use std::iter::once;
 
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
+use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
-use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
 use text_edit::TextEdit;
 
+use crate::SymbolDefinition;
 use crate::helpers::get_call;
 use crate::search::NameLike;
 use crate::source_change::SourceChange;
-use crate::SymbolDefinition;
 
 pub type RenameResult<T> = Result<T, RenameError>;
 

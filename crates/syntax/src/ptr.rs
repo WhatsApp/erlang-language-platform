@@ -149,9 +149,9 @@ impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr {
 
 #[test]
 fn test_local_syntax_ptr() {
-    use crate::ast;
     use crate::AstNode;
     use crate::SourceFile;
+    use crate::ast;
 
     let file = SourceFile::parse_text("foo() -> Expr#Name.Field.")
         .ok()

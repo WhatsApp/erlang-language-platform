@@ -22,21 +22,21 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
 
-use anyhow::anyhow;
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
+use anyhow::bail;
 use byteorder::BigEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
 use common_test::ConversionError;
 use common_test::GroupDef;
 pub use common_test::TestDef;
-use crossbeam_channel::bounded;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
-use eetf::pattern;
+use crossbeam_channel::bounded;
 use eetf::Term;
+use eetf::pattern;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_syntax::SmolStr;
@@ -883,9 +883,9 @@ mod tests {
     use std::str;
 
     use elp_project_model::otp::supports_eep59_doc_attributes;
+    use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
-    use expect_test::ExpectFile;
     use lazy_static::lazy_static;
 
     use super::*;

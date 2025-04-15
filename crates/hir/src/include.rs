@@ -10,10 +10,10 @@
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 
-use crate::db::DefDatabase;
 use crate::InFile;
 use crate::IncludeAttribute;
 use crate::IncludeAttributeId;
+use crate::db::DefDatabase;
 
 pub(crate) fn resolve(
     db: &dyn DefDatabase,
@@ -38,10 +38,10 @@ pub(crate) fn resolve(
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::SourceDatabase;
-    use expect_test::expect;
+    use elp_base_db::fixture::WithFixture;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use super::*;
     use crate::test_db::TestDB;

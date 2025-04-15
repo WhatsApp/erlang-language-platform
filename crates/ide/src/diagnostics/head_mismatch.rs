@@ -12,12 +12,12 @@ use std::hash::Hash;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_syntax::SyntaxToken;
+use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::ClauseSeparator;
 use elp_syntax::syntax_node::SyntaxNode;
-use elp_syntax::SyntaxToken;
-use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use hir::Semantic;
 use text_edit::TextEdit;
@@ -25,9 +25,9 @@ use text_edit::TextEdit;
 use super::DiagnosticCode;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
+use crate::Diagnostic;
 use crate::diagnostics::RelatedInformation;
 use crate::fix;
-use crate::Diagnostic;
 
 // Diagnostic: head-mismatch (P1700)
 //
@@ -351,14 +351,14 @@ fn anonymous_fun_heads(fun: ast::AnonymousFun) -> Vec<HeadInfo> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
+    use crate::tests::IncludeCodeActionAssists;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_nth_fix;
-    use crate::tests::IncludeCodeActionAssists;
 
     #[track_caller]
     fn check_diagnostics(fixture: &str) {

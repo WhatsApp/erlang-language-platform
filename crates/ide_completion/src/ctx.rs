@@ -7,10 +7,6 @@
  * of this source tree.
  */
 
-use elp_syntax::algo;
-use elp_syntax::ast;
-use elp_syntax::match_ast;
-use elp_syntax::ted::Element;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxElement;
@@ -18,6 +14,10 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextSize;
+use elp_syntax::algo;
+use elp_syntax::ast;
+use elp_syntax::match_ast;
+use elp_syntax::ted::Element;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CtxKind {
@@ -262,9 +262,9 @@ impl CtxKind {
 #[cfg(test)]
 mod ctx_tests {
     use elp_base_db::SourceDatabase;
-    use elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_ide_db::elp_base_db::FilePosition;
     use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::FilePosition;
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use hir::Semantic;
 

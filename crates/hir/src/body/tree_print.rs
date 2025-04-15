@@ -19,12 +19,6 @@ use super::FoldBody;
 use super::RecordBody;
 use super::SpecBody;
 use super::SpecOrCallback;
-use crate::db::InternDatabase;
-use crate::expr::Guards;
-use crate::expr::MaybeExpr;
-use crate::expr::SsrPlaceholder;
-use crate::fold::default_fold_body;
-use crate::fold::fold_body;
 use crate::AnyAttribute;
 use crate::AttributeBody;
 use crate::BinarySeg;
@@ -54,6 +48,12 @@ use crate::TermId;
 use crate::TypeAlias;
 use crate::TypeExpr;
 use crate::TypeExprId;
+use crate::db::InternDatabase;
+use crate::expr::Guards;
+use crate::expr::MaybeExpr;
+use crate::expr::SsrPlaceholder;
+use crate::fold::default_fold_body;
+use crate::fold::fold_body;
 
 pub(crate) fn print_expr(db: &dyn InternDatabase, body: &FoldBody, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
@@ -1367,19 +1367,19 @@ impl<'a> fmt::Write for Printer<'a> {
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
-    use crate::db::DefDatabase;
-    use crate::fold::MacroStrategy;
-    use crate::fold::ParenStrategy;
-    use crate::test_db::TestDB;
     use crate::AnyAttribute;
     use crate::FormIdx;
     use crate::FunctionDefId;
     use crate::InFile;
     use crate::SpecOrCallback;
     use crate::Strategy;
+    use crate::db::DefDatabase;
+    use crate::fold::MacroStrategy;
+    use crate::fold::ParenStrategy;
+    use crate::test_db::TestDB;
 
     #[track_caller]
     fn check(fixture: &str, expect: Expect) {

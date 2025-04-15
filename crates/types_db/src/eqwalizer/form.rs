@@ -10,14 +10,14 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::StringId;
 use crate::eqwalizer;
+use crate::eqwalizer::TextRange;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::ext_types;
 use crate::eqwalizer::types::FunType;
 use crate::eqwalizer::types::Type;
 use crate::eqwalizer::types::VarType;
-use crate::eqwalizer::TextRange;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExternalForm {

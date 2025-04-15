@@ -8,11 +8,11 @@
  */
 
 use elp_ide_assists::Assist;
-use elp_ide_db::elp_base_db::path_for_file;
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::IncludeCtx;
+use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::DiagnosticCode;
 use elp_syntax::ast;
 use hir::InFile;
 use hir::Semantic;
@@ -151,8 +151,8 @@ fn replace_include_path(
 #[cfg(test)]
 mod tests {
     use elp_ide_db::DiagnosticCode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::Diagnostic;
     use crate::tests;

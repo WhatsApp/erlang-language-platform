@@ -17,12 +17,12 @@ use std::path::PathBuf;
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
-use elp_types_db::eqwalizer::form::ExternalForm;
-use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+use elp_types_db::eqwalizer::AST;
 pub use elp_types_db::eqwalizer::Id;
 pub use elp_types_db::eqwalizer::Pos;
 pub use elp_types_db::eqwalizer::RemoteId;
-use elp_types_db::eqwalizer::AST;
+use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 
 pub mod auto_import;
 pub mod compiler_macro;

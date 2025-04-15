@@ -10,12 +10,12 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::StringId;
 use crate::eqwalizer;
+use crate::eqwalizer::Pos;
 use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::guard;
 use crate::eqwalizer::pat;
-use crate::eqwalizer::Pos;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Expr {

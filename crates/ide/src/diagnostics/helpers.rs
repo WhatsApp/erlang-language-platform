@@ -9,17 +9,17 @@
 
 //! Helpers for writing diagnostics
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::DiagnosticCode;
+use elp_ide_db::elp_base_db::FileId;
 use hir::FunctionDef;
 use hir::Semantic;
 
 use super::Diagnostic;
 use super::Severity;
-use crate::codemod_helpers::find_call_in_function;
+use crate::FunctionMatch;
 use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::UseRange;
-use crate::FunctionMatch;
+use crate::codemod_helpers::find_call_in_function;
 
 // ---------------------------------------------------------------------
 
@@ -95,15 +95,15 @@ pub(crate) fn check_function_with_diagnostic_template(
 mod tests {
     use elp_ide_db::DiagnosticCode;
 
-    use super::check_used_functions;
     use super::DiagnosticTemplate;
     use super::FunctionCallDiagnostic;
+    use super::check_used_functions;
+    use crate::FunctionMatch;
     use crate::codemod_helpers::UseRange;
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::diagnostics::DiagnosticsConfig;
     use crate::diagnostics::Severity;
     use crate::tests::check_diagnostics_with_config_and_ad_hoc;
-    use crate::FunctionMatch;
 
     #[track_caller]
     pub(crate) fn check_diagnostics_with_ad_hoc_semantics(

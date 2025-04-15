@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
-use elp_ide_db::helpers::pick_best_token;
 use elp_ide_db::RootDatabase;
-use elp_syntax::ast;
+use elp_ide_db::helpers::pick_best_token;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
+use elp_syntax::ast;
 use hir::Semantic;
 
 use crate::FilePosition;
@@ -62,8 +62,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::fixture;
 

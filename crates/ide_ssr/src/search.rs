@@ -10,16 +10,16 @@
 //! Searching for matches.
 
 use elp_ide_db::elp_base_db::FileRange;
-use hir::fold::fold_body;
 use hir::AnyExprId;
 use hir::BodyOrigin;
 use hir::FoldBody;
 use hir::FormIdx;
+use hir::fold::fold_body;
 
-use crate::matching;
-use crate::matching::Match;
 use crate::MatchFinder;
 use crate::SsrPattern;
+use crate::matching;
+use crate::matching::Match;
 
 impl MatchFinder<'_> {
     /// Adds all matches for `rule` to `matches_out`. Matches may

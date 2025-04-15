@@ -21,8 +21,6 @@ use rowan::TextRange;
 use smol_str::SmolStr;
 use stdx::trim_indent;
 
-use super::generated::nodes;
-use super::operators::GeneratorOp;
 use super::ArithOp;
 use super::BinaryOp;
 use super::CompOp;
@@ -34,14 +32,16 @@ use super::Name;
 use super::Ordering;
 use super::PpDefine;
 use super::UnaryOp;
+use super::generated::nodes;
+use super::operators::GeneratorOp;
+use crate::SyntaxKind;
+use crate::SyntaxKind::*;
+use crate::SyntaxToken;
 use crate::ast::AstNode;
 use crate::ast::SyntaxNode;
 use crate::token_text::TokenText;
 use crate::unescape;
 use crate::unescape::unescape_string;
-use crate::SyntaxKind;
-use crate::SyntaxKind::*;
-use crate::SyntaxToken;
 
 impl nodes::MacroName {
     pub fn raw_text(&self) -> TokenText<'_> {

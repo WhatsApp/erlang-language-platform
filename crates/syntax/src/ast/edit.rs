@@ -16,14 +16,14 @@ use std::ops;
 
 use rowan::TextSize;
 
-use crate::ast::AstNode;
-use crate::ted;
-use crate::ted::make_whitespace;
 use crate::NodeOrToken;
 use crate::SyntaxElement;
 use crate::SyntaxKind::*;
 use crate::SyntaxNode;
 use crate::SyntaxToken;
+use crate::ast::AstNode;
+use crate::ted;
+use crate::ted::make_whitespace;
 
 #[derive(Debug, Clone, Copy)]
 pub struct IndentLevel(pub u8);
@@ -201,8 +201,8 @@ mod tests {
 
     use super::AstNodeEdit;
     use super::IndentLevel;
-    use crate::ast::AstNode;
     use crate::SourceFile;
+    use crate::ast::AstNode;
 
     #[test]
     fn test_increase_indent() {

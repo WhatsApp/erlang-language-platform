@@ -21,22 +21,22 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
 use elp_eqwalizer::Mode;
+use elp_ide::Analysis;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::erlang_service::DiagnosticLocation;
-use elp_ide::Analysis;
 use elp_log::timeit;
-use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 
 use crate::args::ParseAll;
 use crate::reporting;
+use crate::reporting::ParseDiagnostic;
 use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
-use crate::reporting::ParseDiagnostic;
 
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let config = DiscoverConfig::new(!args.buck, &args.profile);

@@ -15,6 +15,7 @@ use std::cell::Cell;
 use std::iter;
 
 use elp_ide_db::elp_base_db::FileRange;
+use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::ArithOp;
 use elp_syntax::ast::BinaryOp;
@@ -23,7 +24,6 @@ use elp_syntax::ast::ListOp;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::ast::Ordering;
 use elp_syntax::ast::UnaryOp;
-use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::AnyExprId;
@@ -53,10 +53,10 @@ use hir::SsrPlaceholder;
 use hir::TypeExpr;
 use hir::Var;
 
-use crate::get_literal_subid;
 use crate::Condition;
 use crate::SsrMatches;
 use crate::SsrPattern;
+use crate::get_literal_subid;
 
 // Creates a match error.
 macro_rules! match_error {

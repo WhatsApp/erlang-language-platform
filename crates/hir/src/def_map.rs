@@ -19,23 +19,15 @@
 use std::mem;
 use std::sync::Arc;
 
-use elp_base_db::module_name;
 use elp_base_db::FileId;
+use elp_base_db::module_name;
+use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
-use elp_syntax::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
 
-use crate::db::DefDatabase;
-use crate::form_list::DeprecatedAttribute;
-use crate::form_list::DeprecatedDesc;
-use crate::form_list::DeprecatedFa;
-use crate::known;
-use crate::module_data::SpecDef;
-use crate::name::erlang_funs;
-use crate::name::AsName;
 use crate::CallbackDef;
 use crate::DefineDef;
 use crate::File;
@@ -51,6 +43,14 @@ use crate::OptionalCallbacks;
 use crate::PPDirective;
 use crate::RecordDef;
 use crate::TypeAliasDef;
+use crate::db::DefDatabase;
+use crate::form_list::DeprecatedAttribute;
+use crate::form_list::DeprecatedDesc;
+use crate::form_list::DeprecatedFa;
+use crate::known;
+use crate::module_data::SpecDef;
+use crate::name::AsName;
+use crate::name::erlang_funs;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DefMap {
@@ -825,12 +825,12 @@ impl DefMap {
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use super::*;
-    use crate::test_db::TestDB;
     use crate::TypeAlias;
+    use crate::test_db::TestDB;
 
     fn check_functions(fixture: &str, expect: Expect) {
         let (db, files, _) = TestDB::with_many_files(fixture);

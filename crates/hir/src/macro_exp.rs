@@ -10,11 +10,6 @@
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
-use crate::body::SSR_SOURCE_FILE_ID;
-use crate::db::DefDatabase;
-use crate::form_list::FormListData;
-use crate::known;
-use crate::name::AsName;
 use crate::Define;
 use crate::DefineId;
 use crate::InFile;
@@ -22,6 +17,11 @@ use crate::MacroName;
 use crate::ModuleAttribute;
 use crate::Name;
 use crate::PPDirective;
+use crate::body::SSR_SOURCE_FILE_ID;
+use crate::db::DefDatabase;
+use crate::form_list::FormListData;
+use crate::known;
+use crate::name::AsName;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[allow(non_camel_case_types)]
@@ -298,18 +298,18 @@ pub fn macro_name(macro_call: &ast::MacroCallExpr) -> Option<MacroName> {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::fixture::ChangeFixture;
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::FileRange;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::fixture::ChangeFixture;
+    use elp_base_db::fixture::WithFixture;
+    use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
 
     use super::*;
-    use crate::test_db::TestDB;
     use crate::DefineDef;
     use crate::File;
+    use crate::test_db::TestDB;
 
     #[track_caller]
     fn resolve_macro(fixture: &str) -> (Option<ResolvedMacro>, TestDB, ChangeFixture) {

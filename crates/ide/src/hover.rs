@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FilePosition;
 
-use crate::doc_links::external_docs;
 use crate::doc_links::DocLink;
+use crate::doc_links::external_docs;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverActionsConfig {
@@ -45,10 +45,10 @@ fn doc_links_actions(res: &mut Vec<HoverAction>, db: &RootDatabase, position: Fi
 #[cfg(test)]
 mod tests {
 
-    use crate::doc_links::DocLink;
-    use crate::fixture;
     use crate::HoverAction;
     use crate::HoverActionsConfig;
+    use crate::doc_links::DocLink;
+    use crate::fixture;
 
     #[track_caller]
     fn check(fixture: &str, expected: Vec<HoverAction>) {

@@ -19,21 +19,21 @@
 //! and suggest
 //! maps:from_list(List)
 
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::is_placeholder_a_var_from_body;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use elp_ide_ssr::PlaceholderMatch;
 use elp_ide_ssr::SubId;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
+use elp_ide_ssr::is_placeholder_a_var_from_body;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use hir::AnyExprId;
 use hir::Body;
 use hir::Expr;
 use hir::Semantic;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 
 use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
@@ -230,8 +230,8 @@ fn make_diagnostic_maps_from_keys(sema: &Semantic, matched: &Match) -> Option<Di
 #[cfg(test)]
 mod tests {
 
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;

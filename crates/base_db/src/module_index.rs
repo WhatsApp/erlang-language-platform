@@ -17,9 +17,9 @@ use std::sync::Arc;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 
-use crate::to_quoted_string;
 use crate::FileId;
 use crate::FileSource;
+use crate::to_quoted_string;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ModuleName(SmolStr);

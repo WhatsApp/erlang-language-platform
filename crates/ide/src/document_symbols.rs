@@ -9,19 +9,19 @@
 
 use std::fmt;
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolKind;
-use elp_syntax::ast::FunctionOrMacroClause;
+use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
-use hir::db::DefDatabase;
+use elp_syntax::ast::FunctionOrMacroClause;
 use hir::DefineDef;
 use hir::FunctionDef;
 use hir::Name;
 use hir::RecordDef;
 use hir::Semantic;
 use hir::TypeAliasDef;
+use hir::db::DefDatabase;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct DocumentSymbol {

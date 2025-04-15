@@ -146,12 +146,12 @@ pub use module_data::SpecDef;
 pub use module_data::TypeAliasDef;
 pub use module_data::TypeAliasSource;
 pub use module_data::VarDef;
-pub use name::known;
-// @fb-only
 pub use name::AsName;
 pub use name::MacroName;
 pub use name::Name;
 pub use name::NameArity;
+pub use name::known;
+// @fb-only
 pub use sema::AtomDef;
 pub use sema::CallDef;
 pub use sema::DefinitionOrReference;
@@ -312,14 +312,14 @@ mod tests {
     use la_arena::Idx;
     use la_arena::RawIdx;
 
-    use crate::expr::ClauseId;
-    use crate::test_db::TestDB;
     use crate::AnyExprId;
     use crate::FunctionBody;
     use crate::FunctionDefId;
     use crate::HirIdx;
     use crate::InFile;
     use crate::Semantic;
+    use crate::expr::ClauseId;
+    use crate::test_db::TestDB;
 
     #[test]
     fn print_fun_expr() {

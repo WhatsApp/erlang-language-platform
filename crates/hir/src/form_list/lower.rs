@@ -7,20 +7,19 @@
  * of this source tree.
  */
 
-use elp_syntax::ast;
-use elp_syntax::ast::DeprecatedFunArity;
-use elp_syntax::ast::Desc;
-use elp_syntax::unescape;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
+use elp_syntax::ast;
+use elp_syntax::ast::DeprecatedFunArity;
+use elp_syntax::ast::Desc;
+use elp_syntax::unescape;
 use fxhash::FxHashMap;
 use la_arena::Idx;
 use la_arena::IdxRange;
 use la_arena::RawIdx;
 
-use super::form_id::FormIdMap;
 use super::DocAttribute;
 use super::FeatureAttribute;
 use super::FormIdx;
@@ -28,13 +27,7 @@ use super::FormListData;
 use super::ModuleDocAttribute;
 use super::ParamName;
 use super::SsrDefinition;
-use crate::db::DefDatabase;
-use crate::form_list::DeprecatedAttribute;
-use crate::form_list::DeprecatedDesc;
-use crate::form_list::DeprecatedFa;
-use crate::known;
-use crate::macro_exp::MacroExpCtx;
-use crate::name::AsName;
+use super::form_id::FormIdMap;
 use crate::Attribute;
 use crate::Behaviour;
 use crate::Callback;
@@ -64,6 +57,13 @@ use crate::RecordFieldId;
 use crate::Spec;
 use crate::TypeAlias;
 use crate::TypeExport;
+use crate::db::DefDatabase;
+use crate::form_list::DeprecatedAttribute;
+use crate::form_list::DeprecatedDesc;
+use crate::form_list::DeprecatedFa;
+use crate::known;
+use crate::macro_exp::MacroExpCtx;
+use crate::name::AsName;
 
 pub struct Ctx<'a> {
     db: &'a dyn DefDatabase,

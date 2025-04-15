@@ -16,10 +16,10 @@ use std::sync::Arc;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 
-use crate::input::AppStructure;
 use crate::SourceDatabaseExt;
 use crate::SourceRoot;
 use crate::SourceRootId;
+use crate::input::AppStructure;
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
 #[derive(Clone, Default)]

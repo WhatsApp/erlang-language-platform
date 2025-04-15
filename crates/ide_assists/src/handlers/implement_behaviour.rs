@@ -11,8 +11,8 @@ use std::cmp::max;
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast::BehaviourAttribute;
 use elp_syntax::AstNode;
+use elp_syntax::ast::BehaviourAttribute;
 use hir::Callback;
 use hir::CallbackId;
 use hir::InFile;

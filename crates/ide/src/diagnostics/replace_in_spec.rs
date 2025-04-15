@@ -12,28 +12,28 @@
 //! Return a diagnostic for the spec of a given function, which has a
 //! specified type replacement in it
 
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::DiagnosticCode;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
-use hir::fold::Fold;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Semantic;
 use hir::Spec;
 use hir::Strategy;
 use hir::TypeExpr;
+use hir::fold::Fold;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use serde::Deserialize;
 use serde::Serialize;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
 use super::Severity;
-use crate::fix;
 use crate::MFA;
+use crate::fix;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -132,14 +132,14 @@ pub fn replace_in_spec(
 mod tests {
 
     use elp_ide_db::DiagnosticCode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use super::*;
+    use crate::DiagnosticsConfig;
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::tests::check_fix_with_config_and_adhoc;
-    use crate::DiagnosticsConfig;
 
     #[track_caller]
     pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(

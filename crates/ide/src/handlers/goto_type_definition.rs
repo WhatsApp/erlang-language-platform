@@ -7,19 +7,19 @@
  * of this source tree.
  */
 
+use elp_ide_db::RootDatabase;
+use elp_ide_db::SymbolClass;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::find_best_token;
-use elp_ide_db::RootDatabase;
-use elp_ide_db::SymbolClass;
+use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
-use elp_syntax::AstNode;
 use hir::Semantic;
 
-use crate::navigation_target::ToNav;
 use crate::NavigationTarget;
 use crate::RangeInfo;
+use crate::navigation_target::ToNav;
 
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,

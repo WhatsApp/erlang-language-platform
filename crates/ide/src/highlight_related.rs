@@ -7,17 +7,17 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FilePosition;
-use elp_ide_db::find_best_token;
 use elp_ide_db::ReferenceCategory;
 use elp_ide_db::ReferenceType;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
-use elp_syntax::ast;
+use elp_ide_db::elp_base_db::FilePosition;
+use elp_ide_db::find_best_token;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use hir::Semantic;
 
 use crate::navigation_target::ToNav;

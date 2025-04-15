@@ -13,16 +13,16 @@ use std::fmt;
 use std::panic;
 use std::sync::Arc;
 
-use elp_base_db::salsa;
 use elp_base_db::FileId;
 use elp_base_db::FileLoader;
 use elp_base_db::FileLoaderDelegate;
 use elp_base_db::FileRange;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
-use elp_types_db::eqwalizer;
+use elp_base_db::salsa;
 use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
+use elp_types_db::eqwalizer;
 
 use crate::db::InternDatabase;
 

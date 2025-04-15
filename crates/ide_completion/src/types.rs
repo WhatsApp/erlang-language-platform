@@ -7,19 +7,19 @@
  * of this source tree.
  */
 
+use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
-use elp_syntax::AstNode;
 use hir::AtomDef;
 use hir::InFile;
 use hir::NameArity;
 
-use crate::helpers;
 use crate::Completion;
 use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
+use crate::helpers;
 
 pub(crate) fn add_completions(acc: &mut Vec<Completion>, args: &Ctx) -> DoneFlag {
     add_remote(acc, args) || add_local(acc, args)
@@ -117,8 +117,8 @@ fn create_call_completion(name_arity: &NameArity) -> Completion {
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::tests::get_completions;
     use crate::tests::render_completions;

@@ -11,17 +11,17 @@
 //
 // Return a warning if a record field defined in an .erl file has no references to it
 
+use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
-use elp_ide_db::SymbolDefinition;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use hir::Semantic;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use crate::diagnostics::DiagnosticCode;
 use crate::Diagnostic;
+use crate::diagnostics::DiagnosticCode;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {

@@ -9,15 +9,15 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
-use hir::db::InternDatabase;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::ParamName;
 use hir::Semantic;
 use hir::Strategy;
+use hir::db::InternDatabase;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use crate::InlayHint;
 use crate::InlayHintLabel;
@@ -103,9 +103,9 @@ fn should_hint(db: &dyn InternDatabase, param_name: &ParamName, expr: &Expr) -> 
 
 #[cfg(test)]
 mod tests {
-    use crate::inlay_hints::tests::check_with_config;
-    use crate::inlay_hints::tests::DISABLED_CONFIG;
     use crate::inlay_hints::InlayHintsConfig;
+    use crate::inlay_hints::tests::DISABLED_CONFIG;
+    use crate::inlay_hints::tests::check_with_config;
 
     #[track_caller]
     fn check_params(fixture: &str) {

@@ -10,11 +10,11 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::StringId;
 use crate::eqwalizer;
 use crate::eqwalizer::binary_specifier;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::guard;
-use crate::StringId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Pat {

@@ -10,8 +10,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::eqwalizer;
 use crate::StringId;
+use crate::eqwalizer;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExtType {

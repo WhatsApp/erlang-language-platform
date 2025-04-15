@@ -12,20 +12,20 @@
 // Return a warning if nothing is used from an include file
 
 use elp_ide_assists::helpers::extend_range;
-use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::DefDatabase;
-use hir::known;
 use hir::FormIdx;
 use hir::InFile;
 use hir::IncludeAttribute;
 use hir::Name;
 use hir::Semantic;
+use hir::db::DefDatabase;
+use hir::known;
 use lazy_static::lazy_static;
 use text_edit::TextEdit;
 

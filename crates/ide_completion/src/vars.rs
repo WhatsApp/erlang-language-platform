@@ -77,12 +77,12 @@ fn complete_var(var: &SyntaxToken, candidate: &SyntaxToken, acc: &mut FxHashSet<
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::Kind;
     use crate::tests::get_completions;
     use crate::tests::render_completions;
-    use crate::Kind;
 
     // keywords are filtered out to avoid noise
     fn check(code: &str, trigger_character: Option<char>, expect: Expect) {

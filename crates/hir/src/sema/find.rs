@@ -8,8 +8,8 @@
  */
 
 use elp_base_db::FileId;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
+use elp_syntax::ast;
 
 use crate::Behaviour;
 use crate::Callback;

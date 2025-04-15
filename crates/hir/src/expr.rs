@@ -11,15 +11,13 @@ use std::str::Chars;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_syntax::SmolStr;
+use elp_syntax::TextRange;
 pub use elp_syntax::ast::BinaryOp;
 pub use elp_syntax::ast::MapOp;
 pub use elp_syntax::ast::UnaryOp;
-use elp_syntax::SmolStr;
-use elp_syntax::TextRange;
 use la_arena::Idx;
 
-use crate::known;
-use crate::sema;
 use crate::Atom;
 use crate::Body;
 use crate::DefineId;
@@ -31,6 +29,8 @@ use crate::RecordFieldId;
 use crate::Semantic;
 use crate::TypeAliasDef;
 use crate::Var;
+use crate::known;
+use crate::sema;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AnyExprId {

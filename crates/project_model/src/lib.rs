@@ -23,9 +23,9 @@ use std::process::Command;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use buck::BuckConfig;
 use buck::BuckQueryConfig;
 use elp_log::timeit;

@@ -11,20 +11,20 @@
 //!
 //! warn on code of the form `lists:zip(lists:seq(1,length(L)),L)` and suggest `lists:enumerate(L)`
 
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_ide_ssr::Match;
 use elp_ide_ssr::SubId;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use hir::AnyExprId;
 use hir::BasedInteger;
 use hir::Expr;
 use hir::Literal;
 use hir::Semantic;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 
 use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
@@ -202,8 +202,8 @@ fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Op
 #[cfg(test)]
 mod tests {
 
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;

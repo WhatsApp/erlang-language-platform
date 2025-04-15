@@ -13,14 +13,12 @@ use std::iter;
 
 use either::Either;
 use elp_base_db::FileId;
-use elp_syntax::ast;
-use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
-use hir::db::DefDatabase;
-use hir::known;
+use elp_syntax::ast;
+use elp_syntax::match_ast;
 use hir::AnyExprRef;
 use hir::AsName;
 use hir::AtomDef;
@@ -43,6 +41,8 @@ use hir::RecordFieldDef;
 use hir::Semantic;
 use hir::TypeAliasDef;
 use hir::VarDef;
+use hir::db::DefDatabase;
+use hir::known;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolClass {

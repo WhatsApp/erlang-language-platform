@@ -9,8 +9,8 @@
 
 use hir::Semantic;
 
-use crate::elp_ide_db::SymbolDefinition;
 use crate::DocLink;
+use crate::elp_ide_db::SymbolDefinition;
 
 const OTP_BASE_URL: &str = "https://erlang.org";
 

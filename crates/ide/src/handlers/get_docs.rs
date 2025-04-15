@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
+use elp_ide_db::RootDatabase;
 use elp_ide_db::docs::Doc;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::find_best_token;
-use elp_ide_db::RootDatabase;
 use hir::Semantic;
 
 pub(crate) fn get_doc_at_position(

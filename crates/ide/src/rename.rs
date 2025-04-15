@@ -9,24 +9,24 @@
 
 //! Renaming functionality.
 
-use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FilePosition;
-use elp_ide_db::rename::format_err;
-use elp_ide_db::rename::rename_error;
-use elp_ide_db::rename::RenameError;
-use elp_ide_db::rename::RenameResult;
-use elp_ide_db::rename::SafetyChecks;
-use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::ReferenceClass;
 use elp_ide_db::ReferenceType;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
-use elp_syntax::algo;
-use elp_syntax::ast;
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FilePosition;
+use elp_ide_db::rename::RenameError;
+use elp_ide_db::rename::RenameResult;
+use elp_ide_db::rename::SafetyChecks;
+use elp_ide_db::rename::format_err;
+use elp_ide_db::rename::rename_error;
+use elp_ide_db::source_change::SourceChange;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SyntaxNode;
+use elp_syntax::algo;
+use elp_syntax::ast;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Body;
@@ -172,13 +172,13 @@ pub fn rename_var(
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::assert_eq_text;
     use elp_ide_db::elp_base_db::fixture::WithFixture as _;
-    use elp_ide_db::RootDatabase;
     use elp_project_model::test_fixture::trim_indent;
+    use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
     use hir::AnyExprId;
     use hir::InFile;
     use hir::Semantic;

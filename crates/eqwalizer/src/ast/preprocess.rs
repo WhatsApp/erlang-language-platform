@@ -10,6 +10,11 @@
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
+use elp_types_db::StringId;
+use elp_types_db::eqwalizer::AST;
+use elp_types_db::eqwalizer::Id;
+use elp_types_db::eqwalizer::Pos;
+use elp_types_db::eqwalizer::RemoteId;
 use elp_types_db::eqwalizer::expr::Body;
 use elp_types_db::eqwalizer::expr::Clause;
 use elp_types_db::eqwalizer::expr::Expr;
@@ -28,11 +33,6 @@ use elp_types_db::eqwalizer::pat::Pat;
 use elp_types_db::eqwalizer::pat::PatVar;
 use elp_types_db::eqwalizer::transformer;
 use elp_types_db::eqwalizer::transformer::Transformer;
-use elp_types_db::eqwalizer::Id;
-use elp_types_db::eqwalizer::Pos;
-use elp_types_db::eqwalizer::RemoteId;
-use elp_types_db::eqwalizer::AST;
-use elp_types_db::StringId;
 
 use crate::ast;
 

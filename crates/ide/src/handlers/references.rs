@@ -17,11 +17,11 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element SymbolDefinition, we get a reference.
 
-use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::find_best_token;
 use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::find_best_token;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;

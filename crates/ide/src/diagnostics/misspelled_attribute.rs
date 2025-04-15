@@ -16,10 +16,10 @@ use hir::Semantic;
 use text_edit::TextEdit;
 
 use super::Diagnostic;
-use crate::diagnostics::RelatedInformation;
-use crate::fix;
 use crate::TextRange;
 use crate::TextSize;
+use crate::diagnostics::RelatedInformation;
+use crate::fix;
 
 // Diagnostic: misspelled_attribute
 //

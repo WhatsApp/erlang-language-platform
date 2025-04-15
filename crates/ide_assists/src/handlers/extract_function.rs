@@ -10,10 +10,6 @@
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
-use elp_syntax::algo;
-use elp_syntax::ast;
-use elp_syntax::ast::edit::IndentLevel;
-use elp_syntax::ast::AstChildren;
 use elp_syntax::AstNode;
 use elp_syntax::Direction;
 use elp_syntax::NodeOrToken;
@@ -21,18 +17,22 @@ use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
+use elp_syntax::algo;
+use elp_syntax::ast;
+use elp_syntax::ast::AstChildren;
+use elp_syntax::ast::edit::IndentLevel;
 use fxhash::FxHashSet;
-use hir::resolver::Resolution;
 use hir::ScopeAnalysis;
 use hir::Var;
+use hir::resolver::Resolution;
 use itertools::Itertools;
 use stdx::format_to;
 
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;
+use crate::helpers::DEFAULT_INDENT_STEP;
 use crate::helpers::change_indent;
 use crate::helpers::freshen_function_name;
-use crate::helpers::DEFAULT_INDENT_STEP;
 
 // Assist: extract_function
 //

@@ -12,21 +12,6 @@
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
-use elp_ide::elp_ide_assists::Assist;
-use elp_ide::elp_ide_assists::AssistKind;
-use elp_ide::elp_ide_completion::Completion;
-use elp_ide::elp_ide_completion::Contents;
-use elp_ide::elp_ide_completion::Kind;
-use elp_ide::elp_ide_db::assists::AssistUserInput;
-use elp_ide::elp_ide_db::docs::Doc;
-use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::FilePosition;
-use elp_ide::elp_ide_db::elp_base_db::FileRange;
-use elp_ide::elp_ide_db::rename::RenameError;
-use elp_ide::elp_ide_db::source_change::SourceChange;
-use elp_ide::elp_ide_db::LineIndex;
-use elp_ide::elp_ide_db::ReferenceCategory;
-use elp_ide::elp_ide_db::SymbolKind;
 use elp_ide::AnnotationKind;
 use elp_ide::Cancellable;
 use elp_ide::DocLink;
@@ -46,6 +31,21 @@ use elp_ide::RunnableKind;
 use elp_ide::SignatureHelp;
 use elp_ide::TextRange;
 use elp_ide::TextSize;
+use elp_ide::elp_ide_assists::Assist;
+use elp_ide::elp_ide_assists::AssistKind;
+use elp_ide::elp_ide_completion::Completion;
+use elp_ide::elp_ide_completion::Contents;
+use elp_ide::elp_ide_completion::Kind;
+use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::ReferenceCategory;
+use elp_ide::elp_ide_db::SymbolKind;
+use elp_ide::elp_ide_db::assists::AssistUserInput;
+use elp_ide::elp_ide_db::docs::Doc;
+use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FilePosition;
+use elp_ide::elp_ide_db::elp_base_db::FileRange;
+use elp_ide::elp_ide_db::rename::RenameError;
+use elp_ide::elp_ide_db::source_change::SourceChange;
 use elp_project_model::ProjectBuildData;
 use lsp_types::CompletionItemTag;
 use lsp_types::Hover;
@@ -55,14 +55,14 @@ use lsp_types::MarkupKind;
 use text_edit::Indel;
 use text_edit::TextEdit;
 
+use crate::LspError;
+use crate::Result;
 use crate::config::LensConfig;
 use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::lsp_ext::CompletionData;
 use crate::semantic_tokens;
 use crate::snapshot::Snapshot;
-use crate::LspError;
-use crate::Result;
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
@@ -358,8 +358,8 @@ pub fn completion_response(
 }
 
 fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem {
-    use lsp_types::CompletionItemKind as K;
     use Kind::*;
+    use lsp_types::CompletionItemKind as K;
 
     // Trigger Signature Help after completion for functions
     let command = if c.kind == Function {

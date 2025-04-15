@@ -13,8 +13,8 @@
 
 use super::HasArity;
 use crate::ast;
-use crate::ast::support;
 use crate::ast::AstNode;
+use crate::ast::support;
 use crate::label::Label;
 
 pub trait HasLabel: AstNode {

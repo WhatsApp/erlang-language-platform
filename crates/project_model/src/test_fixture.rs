@@ -95,11 +95,11 @@ pub use stdx::trim_indent;
 use text_size::TextRange;
 use text_size::TextSize;
 
-use crate::otp::Otp;
-use crate::temp_dir::TempDir;
 use crate::AppName;
 use crate::Project;
 use crate::ProjectAppData;
+use crate::otp::Otp;
+use crate::temp_dir::TempDir;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fixture {

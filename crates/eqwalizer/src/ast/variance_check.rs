@@ -51,11 +51,11 @@ use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
 
-use super::stub::VStub;
-use super::subst::Subst;
 use super::Id;
 use super::RemoteId;
 use super::VarianceCheckError;
+use super::stub::VStub;
+use super::subst::Subst;
 use crate::db::EqwalizerDiagnosticsDatabase;
 
 pub struct VarianceChecker<'d> {

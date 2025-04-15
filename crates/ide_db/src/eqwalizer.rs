@@ -9,7 +9,6 @@
 
 use std::sync::Arc;
 
-use elp_base_db::salsa;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::FileSource;
@@ -17,6 +16,9 @@ use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
+use elp_base_db::salsa;
+use elp_eqwalizer::EqwalizerDiagnostic;
+use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_eqwalizer::analyses::EqwalizerAnalysesDatabase;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
@@ -24,14 +26,12 @@ use elp_eqwalizer::ast::RemoteId;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ipc::IpcHandle;
-use elp_eqwalizer::EqwalizerDiagnostic;
-use elp_eqwalizer::EqwalizerDiagnostics;
 use elp_project_model::otp::otp_supported_by_eqwalizer;
-use elp_syntax::ast;
 use elp_syntax::SmolStr;
+use elp_syntax::ast;
+use elp_types_db::IncludeGenerated;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::IncludeGenerated;
 use fxhash::FxHashSet;
 use parking_lot::Mutex;
 

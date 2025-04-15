@@ -7,19 +7,19 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::CURSOR_MARKER;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::RangeOrOffset;
-use elp_ide_db::elp_base_db::CURSOR_MARKER;
-use elp_ide_db::RootDatabase;
-use expect_test::expect;
+use elp_ide_db::elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use expect_test::expect;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use crate::MatchFinder;
 use crate::SsrRule;

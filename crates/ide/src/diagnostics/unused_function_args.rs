@@ -18,8 +18,6 @@ use std::collections::HashSet;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::FunctionClauseDef;
@@ -28,6 +26,8 @@ use hir::InFunctionClauseBody;
 use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use text_edit::TextEdit;
 use text_edit::TextRange;
 

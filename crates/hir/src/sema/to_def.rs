@@ -9,16 +9,10 @@
 
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
+use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
-use elp_syntax::AstNode;
 
-use crate::known;
-use crate::macro_exp;
-use crate::macro_exp::BuiltInMacro;
-use crate::macro_exp::MacroExpCtx;
-use crate::resolver::Resolver;
-// @fb-only
 use crate::AnyExprRef;
 use crate::Body;
 use crate::CallTarget;
@@ -43,6 +37,12 @@ use crate::TypeAliasDef;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::VarDef;
+use crate::known;
+use crate::macro_exp;
+use crate::macro_exp::BuiltInMacro;
+use crate::macro_exp::MacroExpCtx;
+use crate::resolver::Resolver;
+// @fb-only
 
 pub trait ToDef: Clone {
     type Def;

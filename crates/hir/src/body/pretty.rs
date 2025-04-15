@@ -12,11 +12,6 @@ use std::fmt::Write as _;
 use std::str;
 
 use super::SpecOrCallback;
-use crate::db::InternDatabase;
-use crate::expr::Guards;
-use crate::expr::MaybeExpr;
-use crate::expr::SsrPlaceholder;
-use crate::expr::StringVariant;
 use crate::AnyAttribute;
 use crate::AttributeBody;
 use crate::BinarySeg;
@@ -47,6 +42,11 @@ use crate::TypeBody;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
+use crate::db::InternDatabase;
+use crate::expr::Guards;
+use crate::expr::MaybeExpr;
+use crate::expr::SsrPlaceholder;
+use crate::expr::StringVariant;
 
 pub fn print_function_clause(
     db: &dyn InternDatabase,

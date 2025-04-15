@@ -9,25 +9,25 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use hir::fold::ParentId;
-use hir::known;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::FunctionDef;
 use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
+use hir::fold::ParentId;
+use hir::known;
 use text_edit::TextRange;
 use text_edit::TextSize;
 
-use crate::codemod_helpers::find_call_in_function;
+use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 use crate::fix;
-use crate::FunctionMatch;
 
 pub fn missing_no_link_in_init_per_suite(
     res: &mut Vec<Diagnostic>,

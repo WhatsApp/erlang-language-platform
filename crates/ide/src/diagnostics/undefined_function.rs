@@ -19,12 +19,12 @@ use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::ExportForm;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use hir::known;
 use hir::Expr;
 use hir::FunctionDef;
 use hir::Module;
 use hir::NameArity;
 use hir::Semantic;
+use hir::known;
 use text_edit::TextRange;
 
 use super::Diagnostic;
@@ -32,12 +32,12 @@ use super::DiagnosticCode;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
 use super::Severity;
-use crate::codemod_helpers::find_call_in_function;
+use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
 // @fb-only
 use crate::fix;
-use crate::FunctionMatch;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
@@ -218,10 +218,10 @@ mod tests {
 
     use expect_test::expect;
 
+    use crate::DiagnosticsConfig;
     use crate::tests::check_diagnostics;
     use crate::tests::check_fix;
     use crate::tests::check_nth_fix;
-    use crate::DiagnosticsConfig;
 
     #[test]
     fn test_local() {

@@ -11,14 +11,14 @@ use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
-use hir::sema::to_def::resolve_module_name;
 use hir::Semantic;
+use hir::sema::to_def::resolve_module_name;
 
-use crate::helpers;
 use crate::Completion;
 use crate::Ctx;
 use crate::DoneFlag;
 use crate::Kind;
+use crate::helpers;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
@@ -218,12 +218,12 @@ fn complete_remote_function_call<'a>(
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::Kind;
     use crate::tests::get_completions;
     use crate::tests::render_completions;
-    use crate::Kind;
 
     // keywords are filtered out to avoid noise
     fn check(code: &str, trigger_character: Option<char>, expect: Expect) {

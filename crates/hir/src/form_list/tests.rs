@@ -8,8 +8,8 @@
  */
 
 use elp_base_db::fixture::WithFixture;
-use expect_test::expect;
 use expect_test::Expect;
+use expect_test::expect;
 
 use crate::db::DefDatabase;
 use crate::test_db::TestDB;

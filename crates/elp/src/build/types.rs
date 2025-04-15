@@ -7,13 +7,13 @@
  * of this source tree.
  */
 
+use elp_ide::Analysis;
+use elp_ide::AnalysisHost;
+use elp_ide::elp_ide_db::EqwalizerProgressReporter;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
-use elp_ide::elp_ide_db::EqwalizerProgressReporter;
-use elp_ide::Analysis;
-use elp_ide::AnalysisHost;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;

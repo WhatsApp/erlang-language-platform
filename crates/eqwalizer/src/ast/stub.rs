@@ -11,13 +11,13 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
-use elp_types_db::StringId;
 use serde::Serialize;
 
 use super::Id;

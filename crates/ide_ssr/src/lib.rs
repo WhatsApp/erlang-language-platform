@@ -57,24 +57,16 @@
 
 use std::sync::Arc;
 
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
-use elp_ide_db::RootDatabase;
-use elp_syntax::ast;
-use elp_syntax::ast::CompOp;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
+use elp_syntax::ast::CompOp;
 use fxhash::FxHashMap;
-use hir::db::DefDatabase;
-use hir::db::InternDatabase;
-use hir::fold::fold_body;
-use hir::fold::fold_file;
-use hir::fold::fold_file_functions;
-use hir::fold::AnyCallBack;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Body;
@@ -93,6 +85,14 @@ use hir::SsrBody;
 use hir::SsrPatternIds;
 use hir::SsrPlaceholder;
 use hir::SsrSource;
+use hir::db::DefDatabase;
+use hir::db::InternDatabase;
+use hir::fold::AnyCallBack;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::fold_body;
+use hir::fold::fold_file;
+use hir::fold::fold_file_functions;
 
 #[macro_use]
 mod errors;
@@ -655,13 +655,13 @@ fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<&'a Lite
 
 #[cfg(test)]
 mod test {
-    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use expect_test::expect;
-    use hir::fold::MacroStrategy;
-    use hir::fold::ParenStrategy;
     use hir::Semantic;
     use hir::Strategy;
+    use hir::fold::MacroStrategy;
+    use hir::fold::ParenStrategy;
 
     use crate::match_pattern_in_file;
     use crate::match_pattern_in_file_functions;

@@ -12,9 +12,10 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
+use elp_eqwalizer::IncludeGenerated;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
-use elp_eqwalizer::IncludeGenerated;
+use elp_ide::Analysis;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -25,7 +26,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
-use elp_ide::Analysis;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
@@ -41,9 +41,9 @@ use crate::config::Config;
 use crate::convert;
 use crate::line_endings::LineEndings;
 use crate::mem_docs::MemDocs;
+use crate::server::EqwalizerTypes;
 use crate::server::file_id_to_path;
 use crate::server::file_id_to_url;
-use crate::server::EqwalizerTypes;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelemetryData {

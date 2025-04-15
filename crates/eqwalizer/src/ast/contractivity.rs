@@ -41,6 +41,7 @@ use std::sync::Arc;
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
@@ -48,16 +49,15 @@ use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::OpaqueType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::StringId;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 
-use super::stub::ModuleStub;
-use super::stub::VStub;
-use super::subst::Subst;
 use super::ContractivityCheckError;
 use super::Id;
 use super::RemoteId;
+use super::stub::ModuleStub;
+use super::stub::VStub;
+use super::subst::Subst;
 use crate::db::EqwalizerDiagnosticsDatabase;
 
 fn is_he(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {

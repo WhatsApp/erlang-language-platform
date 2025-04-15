@@ -7,15 +7,15 @@
  * of this source tree.
  */
 
-use elp_ide_db::assists::AssistId;
-use elp_ide_db::assists::AssistKind;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
+use elp_ide_db::assists::AssistId;
+use elp_ide_db::assists::AssistKind;
 
-use crate::helpers;
-use crate::helpers::ExportForm;
 use crate::AssistContext;
 use crate::Assists;
+use crate::helpers;
+use crate::helpers::ExportForm;
 
 // Assist: export_type
 //

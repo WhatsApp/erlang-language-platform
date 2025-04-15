@@ -7,8 +7,8 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::fixture::WithFixture;
 
 use crate::Completion;
 

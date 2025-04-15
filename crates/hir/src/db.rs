@@ -9,25 +9,14 @@
 
 use std::sync::Arc;
 
-use elp_base_db::salsa;
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
+use elp_base_db::salsa;
 use elp_syntax::ast;
 use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 
-use crate::body::scope::ExprScopes;
-use crate::body::scope::FunctionScopes;
-use crate::body::DefineBody;
-use crate::def_map::FunctionDefId;
-use crate::edoc;
-use crate::edoc::EdocHeader;
-use crate::include;
-pub use crate::intern::InternDatabase;
-pub use crate::intern::InternDatabaseStorage;
-use crate::macro_exp;
-use crate::macro_exp::MacroResolution;
 use crate::AttributeBody;
 use crate::AttributeId;
 use crate::BodySourceMap;
@@ -52,6 +41,17 @@ use crate::SsrBody;
 use crate::SsrSource;
 use crate::TypeAliasId;
 use crate::TypeBody;
+use crate::body::DefineBody;
+use crate::body::scope::ExprScopes;
+use crate::body::scope::FunctionScopes;
+use crate::def_map::FunctionDefId;
+use crate::edoc;
+use crate::edoc::EdocHeader;
+use crate::include;
+pub use crate::intern::InternDatabase;
+pub use crate::intern::InternDatabaseStorage;
+use crate::macro_exp;
+use crate::macro_exp::MacroResolution;
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase:

@@ -7,14 +7,14 @@
  * of this source tree.
  */
 
+use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
-use elp_syntax::AstNode;
 
-use crate::helpers;
 use crate::Completion;
 use crate::Ctx;
 use crate::Kind;
+use crate::helpers;
 
 pub(crate) fn add_completions(
     acc: &mut Vec<Completion>,
@@ -60,8 +60,8 @@ pub(crate) fn add_completions(
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::tests::get_completions;
     use crate::tests::render_completions;

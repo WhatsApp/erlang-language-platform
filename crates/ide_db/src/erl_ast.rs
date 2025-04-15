@@ -10,25 +10,25 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use elp_base_db::path_for_file;
-use elp_base_db::salsa;
-use elp_base_db::salsa::Database;
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
 use elp_base_db::FileLoader;
 use elp_base_db::IncludeCtx;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
+use elp_base_db::path_for_file;
+use elp_base_db::salsa;
+use elp_base_db::salsa::Database;
 use elp_erlang_service::Format;
 use elp_erlang_service::IncludeType;
 use elp_erlang_service::ParseError;
 use elp_erlang_service::ParseResult;
 
+use crate::LineIndexDatabase;
 use crate::erlang_service::CompileOption;
 use crate::erlang_service::ParseRequest;
 use crate::metadata;
 use crate::metadata::Metadata;
-use crate::LineIndexDatabase;
 
 pub trait AstLoader {
     fn load_ast(

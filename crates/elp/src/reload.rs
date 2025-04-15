@@ -10,10 +10,10 @@
 use std::cmp;
 use std::iter;
 
-use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::elp_base_db::loader;
 use fxhash::FxHashSet;
 use vfs::AbsPathBuf;
 

@@ -11,14 +11,14 @@
 
 use std::fmt;
 
-use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::SymbolKind;
-use elp_syntax::ast;
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use hir::db::DefDatabase;
 
 /// `NavigationTarget` represents an element in the editor's UI which you can

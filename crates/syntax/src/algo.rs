@@ -454,8 +454,8 @@ fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, row
 
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use itertools::Itertools;
     use text_edit::TextEdit;
 

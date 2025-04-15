@@ -15,14 +15,14 @@ use text_edit::TextRange;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use crate::codemod_helpers::find_call_in_function;
+use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
 // @fb-only
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
-use crate::FunctionMatch;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {

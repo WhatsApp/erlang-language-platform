@@ -13,9 +13,9 @@ use std::str::FromStr;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::de;
 use serde::Deserialize;
 use serde::Deserializer;
+use serde::de;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 

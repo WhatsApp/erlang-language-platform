@@ -7,18 +7,18 @@
  * of this source tree.
  */
 
-use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::TestDef;
-use elp_ide_db::elp_base_db::FileId;
+use elp_erlang_service::common_test::GroupDef;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
 // @fb-only
-use crate::runnables::runnables;
 use crate::runnables::Runnable;
+use crate::runnables::runnables;
 
 // Feature: Annotations
 //
@@ -76,8 +76,8 @@ mod tests {
     use elp_ide_db::elp_base_db::FileRange;
     use stdx::trim_indent;
 
-    use crate::fixture;
     use crate::AnnotationKind;
+    use crate::fixture;
 
     #[track_caller]
     fn check(fixture: &str) {

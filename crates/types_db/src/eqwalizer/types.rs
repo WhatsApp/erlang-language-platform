@@ -17,8 +17,8 @@ use serde::Serialize;
 use serde_with::DeserializeFromStr;
 use serde_with::SerializeDisplay;
 
-use crate::eqwalizer::RemoteId;
 use crate::StringId;
+use crate::eqwalizer::RemoteId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {

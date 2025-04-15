@@ -13,25 +13,17 @@ use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::ModuleName;
 use elp_base_db::SourceDatabase;
-use elp_syntax::ast;
-use elp_syntax::ast::MapExpr;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
+use elp_syntax::ast::MapExpr;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::code_complexity;
-use crate::code_complexity::CodeComplexity;
-use crate::db::DefDatabase;
-use crate::db::InternDatabase;
-use crate::def_map::FunctionDefId;
-use crate::edoc::EdocHeader;
-use crate::form_list::DeprecatedDesc;
-use crate::form_list::DocAttributeId;
 use crate::Callback;
 use crate::DefMap;
 use crate::Define;
@@ -52,6 +44,14 @@ use crate::Spec;
 use crate::SpecId;
 use crate::TypeAlias;
 use crate::Var;
+use crate::code_complexity;
+use crate::code_complexity::CodeComplexity;
+use crate::db::DefDatabase;
+use crate::db::InternDatabase;
+use crate::def_map::FunctionDefId;
+use crate::edoc::EdocHeader;
+use crate::form_list::DeprecatedDesc;
+use crate::form_list::DocAttributeId;
 
 /// Represents an erlang file - header or module
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]

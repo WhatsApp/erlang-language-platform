@@ -12,8 +12,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
 
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::bail;
 use elp_log::timeit;
 use lazy_static::lazy_static;
 use paths::AbsPathBuf;

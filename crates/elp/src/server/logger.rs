@@ -14,10 +14,10 @@ use elp_log::Builder;
 use elp_log::Filter;
 use elp_log::ReconfigureLog;
 use lsp_server::Message;
-use lsp_types::notification::LogMessage;
-use lsp_types::notification::Notification;
 use lsp_types::LogMessageParams;
 use lsp_types::MessageType;
+use lsp_types::notification::LogMessage;
+use lsp_types::notification::Notification;
 
 pub struct LspLogger {
     filter: Filter,

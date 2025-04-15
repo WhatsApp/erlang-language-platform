@@ -18,8 +18,8 @@ use std::mem;
 
 use elp_base_db::AnchoredPathBuf;
 use elp_base_db::FileId;
-use elp_syntax::algo;
 use elp_syntax::SyntaxNode;
+use elp_syntax::algo;
 use fxhash::FxHashMap;
 use stdx::never;
 use text_edit::TextEdit;

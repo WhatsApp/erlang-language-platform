@@ -14,13 +14,13 @@ use hir::Semantic;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::Diagnostic;
+use super::TypeReplacement;
 use super::replace_call;
 use super::replace_call::Replacement;
 use super::replace_in_spec;
-use super::Diagnostic;
-use super::TypeReplacement;
-use crate::codemod_helpers::FunctionMatch;
 use crate::MFA;
+use crate::codemod_helpers::FunctionMatch;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct LintsFromConfig {
@@ -133,8 +133,8 @@ mod tests {
     use super::ReplaceInSpecAction;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
-    use crate::diagnostics::replace_call::Replacement;
     use crate::diagnostics::TypeReplacement;
+    use crate::diagnostics::replace_call::Replacement;
 
     #[test]
     fn serde_serialize_function_match_mfa() {

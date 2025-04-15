@@ -23,10 +23,10 @@ use lazy_static::lazy_static;
 use super::Diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use crate::codemod_helpers::find_call_in_function;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
 // @fb-only
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;

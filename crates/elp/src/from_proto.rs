@@ -9,17 +9,17 @@
 
 //! Conversion lsp_types types to ELP specific ones.
 
+use elp_ide::TextRange;
+use elp_ide::TextSize;
 use elp_ide::elp_ide_assists::AssistKind;
+use elp_ide::elp_ide_db::LineCol;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
-use elp_ide::elp_ide_db::LineCol;
-use elp_ide::elp_ide_db::LineIndex;
-use elp_ide::TextRange;
-use elp_ide::TextSize;
 
-use crate::snapshot::Snapshot;
 use crate::Result;
+use crate::snapshot::Snapshot;
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineCol {

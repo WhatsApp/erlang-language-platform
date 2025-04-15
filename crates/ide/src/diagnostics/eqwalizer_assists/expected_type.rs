@@ -9,17 +9,17 @@
 
 use std::sync::Arc;
 
+use elp_ide_db::EqwalizerDiagnostic;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::find_best_token;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::StructuredDiagnostic;
 use elp_types_db::eqwalizer::tc_diagnostics::ExpectedSubtype;
 use elp_types_db::eqwalizer::tc_diagnostics::TypeError;
 use elp_types_db::eqwalizer::types::AtomLitType;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::eqwalizer::StructuredDiagnostic;
 use hir::FunctionBody;
 use hir::InFile;
 use hir::Literal;

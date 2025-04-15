@@ -7,15 +7,15 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FilePosition;
-use elp_ide_db::find_best_token;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
+use elp_ide_db::elp_base_db::FilePosition;
+use elp_ide_db::find_best_token;
 use hir::Semantic;
 
+use crate::RangeInfo;
 use crate::navigation_target::NavigationTarget;
 use crate::navigation_target::ToNav;
-use crate::RangeInfo;
 
 pub(crate) fn goto_definition(
     db: &RootDatabase,

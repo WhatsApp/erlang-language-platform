@@ -7,8 +7,8 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::EqwalizerDiagnostic;
+use elp_ide_db::elp_base_db::FileId;
 use hir::Semantic;
 
 use super::Diagnostic;

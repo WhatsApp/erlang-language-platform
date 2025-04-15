@@ -10,8 +10,8 @@
 use elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
+use elp_syntax::ast;
 
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;

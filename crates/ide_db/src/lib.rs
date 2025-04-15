@@ -13,8 +13,6 @@ use std::panic::RefUnwindSafe;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use elp_base_db::limit_logged_string;
-use elp_base_db::salsa;
 use elp_base_db::AbsPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::FileLoader;
@@ -24,23 +22,25 @@ use elp_base_db::FileRange;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
-use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
-use elp_eqwalizer::ipc::IpcHandle;
+use elp_base_db::limit_logged_string;
+use elp_base_db::salsa;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
+use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+use elp_eqwalizer::ipc::IpcHandle;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
-use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
+use elp_types_db::eqwalizer::types::Type;
 use erlang_service::Connection;
 use fxhash::FxHashMap;
 use helpers::pick_best_token;
-use hir::db::DefDatabase;
-use hir::db::InternDatabase;
 use hir::InFile;
 use hir::Semantic;
+use hir::db::DefDatabase;
+use hir::db::InternDatabase;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockUpgradableReadGuard;
@@ -417,8 +417,8 @@ impl TypedSemantic for RootDatabase {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::fixture::WithFixture;
     use text_edit::TextRange;
 
     use crate::RootDatabase;

@@ -38,10 +38,10 @@ pub use self::operators::MapOp;
 pub use self::operators::Ordering;
 pub use self::operators::UnaryOp;
 pub use self::traits::*;
+use crate::SyntaxKind;
 use crate::syntax_node::SyntaxNode;
 use crate::syntax_node::SyntaxNodeChildren;
 use crate::syntax_node::SyntaxToken;
-use crate::SyntaxKind;
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly

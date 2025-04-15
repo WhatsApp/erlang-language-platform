@@ -14,10 +14,6 @@ use std::sync::Arc;
 use elp_base_db::FileId;
 use elp_syntax::TextRange;
 
-use crate::body::BodyOrigin;
-use crate::body::FoldBody;
-use crate::expr::AnyExpr;
-use crate::expr::MaybeExpr;
 use crate::AnyExprId;
 use crate::Attribute;
 use crate::AttributeId;
@@ -57,6 +53,10 @@ use crate::TypeAlias;
 use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
+use crate::body::BodyOrigin;
+use crate::body::FoldBody;
+use crate::expr::AnyExpr;
+use crate::expr::MaybeExpr;
 
 // ---------------------------------------------------------------------
 
@@ -1209,27 +1209,20 @@ impl<'a, T> FoldCtx<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::FileId;
     use elp_base_db::RangeOrOffset;
+    use elp_base_db::fixture::WithFixture;
+    use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use la_arena::Idx;
     use la_arena::RawIdx;
 
-    use super::fold_file;
     use super::MacroStrategy;
     use super::ParenStrategy;
-    use crate::db::InternDatabase;
-    use crate::expr::AnyExpr;
-    use crate::fold::FoldCtx;
-    use crate::fold::ParentId;
-    use crate::fold::Strategy;
-    use crate::form_list::Form;
-    use crate::test_db::TestDB;
+    use super::fold_file;
     use crate::AnyExprId;
     use crate::AnyExprRef;
     use crate::Atom;
@@ -1245,6 +1238,13 @@ mod tests {
     use crate::Semantic;
     use crate::Term;
     use crate::TypeExpr;
+    use crate::db::InternDatabase;
+    use crate::expr::AnyExpr;
+    use crate::fold::FoldCtx;
+    use crate::fold::ParentId;
+    use crate::fold::Strategy;
+    use crate::form_list::Form;
+    use crate::test_db::TestDB;
 
     fn to_atom(sema: &Semantic<'_>, ast: InFile<&ast::Atom>) -> Option<Atom> {
         let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;

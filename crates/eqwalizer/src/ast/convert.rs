@@ -12,6 +12,10 @@ use std::sync::LazyLock;
 
 use eetf;
 use eetf::Term;
+use elp_types_db::StringId;
+use elp_types_db::eqwalizer::AST;
+use elp_types_db::eqwalizer::LineAndColumn;
+use elp_types_db::eqwalizer::TextRange;
 use elp_types_db::eqwalizer::binary_specifier::Specifier;
 use elp_types_db::eqwalizer::expr::AtomLit;
 use elp_types_db::eqwalizer::expr::BComprehension;
@@ -158,16 +162,12 @@ use elp_types_db::eqwalizer::pat::PatUnOp;
 use elp_types_db::eqwalizer::pat::PatVar;
 use elp_types_db::eqwalizer::pat::PatWild;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::eqwalizer::LineAndColumn;
-use elp_types_db::eqwalizer::TextRange;
-use elp_types_db::eqwalizer::AST;
-use elp_types_db::StringId;
 
-use super::auto_import;
-use super::compiler_macro;
 use super::ConversionError;
 use super::Id;
 use super::RemoteId;
+use super::auto_import;
+use super::compiler_macro;
 use crate::ast;
 
 const ERLANG: LazyLock<StringId> = LazyLock::new(|| StringId::from("erlang"));

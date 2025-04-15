@@ -10,15 +10,15 @@
 //! This module provides primitives for showing type and function parameter information when editing
 //! a call or use-site.
 
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::find_best_token;
-use elp_ide_db::RootDatabase;
-use elp_syntax::algo;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use elp_syntax::algo;
+use elp_syntax::ast;
 use fxhash::FxHashMap;
 use hir::CallTarget;
 use hir::FunctionDef;
@@ -257,8 +257,8 @@ mod tests {
 
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_project_model::otp::supports_eep59_doc_attributes;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use itertools::Itertools;
     use stdx::format_to;
 

@@ -14,17 +14,17 @@ use std::ops::Index;
 use std::sync::Arc;
 use std::vec::IntoIter;
 
-use elp_base_db::module_name;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
-use elp_syntax::ast;
+use elp_base_db::module_name;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -39,25 +39,6 @@ pub use self::to_def::DefinitionOrReference;
 pub use self::to_def::FaDef;
 pub use self::to_def::MacroCallDef;
 use self::to_def::ToDef;
-use crate::body::scope::ScopeId;
-use crate::body::FunctionClauseBody;
-use crate::db::DefDatabase;
-use crate::def_map::FunctionDefId;
-use crate::edoc::EdocHeader;
-use crate::expr::AnyExpr;
-use crate::expr::AstClauseId;
-use crate::expr::ClauseId;
-use crate::fold::AnyCallBack;
-use crate::fold::AnyCallBackCtx;
-use crate::fold::Fold;
-use crate::fold::FoldCtx;
-use crate::fold::MacroStrategy;
-use crate::fold::ParenStrategy;
-use crate::fold::Strategy;
-pub use crate::intern::InternDatabase;
-pub use crate::intern::InternDatabaseStorage;
-use crate::resolver::Resolution;
-use crate::resolver::Resolver;
 use crate::AnyExprId;
 use crate::Atom;
 use crate::AttributeBody;
@@ -92,6 +73,25 @@ use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
 use crate::VarDef;
+use crate::body::FunctionClauseBody;
+use crate::body::scope::ScopeId;
+use crate::db::DefDatabase;
+use crate::def_map::FunctionDefId;
+use crate::edoc::EdocHeader;
+use crate::expr::AnyExpr;
+use crate::expr::AstClauseId;
+use crate::expr::ClauseId;
+use crate::fold::AnyCallBack;
+use crate::fold::AnyCallBackCtx;
+use crate::fold::Fold;
+use crate::fold::FoldCtx;
+use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
+use crate::fold::Strategy;
+pub use crate::intern::InternDatabase;
+pub use crate::intern::InternDatabaseStorage;
+use crate::resolver::Resolution;
+use crate::resolver::Resolver;
 
 mod find;
 // @fb-only
@@ -1563,20 +1563,20 @@ impl<'a, T> Index<TermId> for InFunctionClauseBody<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::fixture::WithFixture;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::fixture::WithFixture;
+    use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use itertools::Itertools;
 
-    use crate::test_db::TestDB;
     use crate::AnyExprId;
     use crate::InFile;
     use crate::InFunctionClauseBody;
     use crate::Semantic;
+    use crate::test_db::TestDB;
 
     #[track_caller]
     fn check_local_usages(fixture_before: &str, expect: Expect) {

@@ -18,9 +18,9 @@ use std::ops::Deref;
 use std::sync::OnceLock;
 
 use elp_base_db::to_quoted_string;
+use elp_syntax::SmolStr;
 use elp_syntax::ast;
 use elp_syntax::unescape;
-use elp_syntax::SmolStr;
 
 /// `Name` is a wrapper around string, in Erlang abstract forms represented
 /// as raw atoms, which is used in hir for both references and declarations

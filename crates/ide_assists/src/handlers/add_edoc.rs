@@ -9,14 +9,14 @@
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
+use elp_syntax::ast;
 use hir::InFileAstPtr;
 
-use crate::helpers::prev_form_nodes;
 use crate::AssistContext;
 use crate::Assists;
+use crate::helpers::prev_form_nodes;
 
 const DEFAULT_TEXT: &str = "{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}";
 const ARG_TEXT: &str = "Argument description";

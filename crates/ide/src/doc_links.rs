@@ -7,9 +7,9 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolClass;
+use elp_ide_db::elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;

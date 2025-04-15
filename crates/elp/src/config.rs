@@ -10,6 +10,8 @@
 use std::iter;
 use std::sync::Arc;
 
+use elp_ide::HoverActionsConfig;
+use elp_ide::InlayHintsConfig;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::FallBackToAll;
@@ -17,8 +19,6 @@ use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
-use elp_ide::HoverActionsConfig;
-use elp_ide::InlayHintsConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::buck::BuildGeneratedCode;
 use fxhash::FxHashSet;

@@ -14,15 +14,15 @@ use std::io::Write;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_project_model::buck::query_buck_targets_raw;
-use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::json::JsonConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
+use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::query_buck_targets_raw;
+use elp_project_model::json::JsonConfig;
 
 use crate::args::BuildInfo;
 use crate::args::ProjectInfo;

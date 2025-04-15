@@ -17,8 +17,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use elp_syntax::label::Label;
 use elp_syntax::TextRange;
+use elp_syntax::label::Label;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -26,8 +26,8 @@ use serde::Serialize;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::source_change::SourceChange;
 use crate::DiagnosticCode;
+use crate::source_change::SourceChange;
 
 #[derive(Debug, Clone)]
 pub struct Assist {

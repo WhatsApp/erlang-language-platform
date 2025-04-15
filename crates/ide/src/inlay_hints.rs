@@ -9,14 +9,14 @@
 
 use std::fmt::{self};
 
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::RootDatabase;
 use elp_syntax::TextRange;
 use hir::Semantic;
 use itertools::Itertools;
-use smallvec::smallvec;
 use smallvec::SmallVec;
+use smallvec::smallvec;
 mod param_name;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -9,37 +9,37 @@
 
 use std::str::FromStr;
 
+use elp_ide_db::RootDatabase;
+use elp_ide_db::SymbolClass;
+use elp_ide_db::SymbolDefinition;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
-use elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
+use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::helpers::SnippetCap;
 use elp_ide_db::source_change::FileSystemEdit;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_db::RootDatabase;
-use elp_ide_db::SymbolClass;
-use elp_ide_db::SymbolDefinition;
-use elp_syntax::ast;
 use elp_syntax::SourceFile;
-use expect_test::expect;
+use elp_syntax::ast;
 use expect_test::Expect;
+use expect_test::expect;
 use hir::Expr;
 use hir::InFile;
 use hir::Semantic;
 use stdx::format_to;
 
-use crate::handlers::Handler;
-use crate::helpers;
 use crate::AssistConfig;
 use crate::AssistContext;
 use crate::AssistResolveStrategy;
 use crate::Assists;
+use crate::handlers::Handler;
+use crate::helpers;
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     snippet_cap: SnippetCap::new(true),

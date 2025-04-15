@@ -11,12 +11,12 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use elp_project_model::AppName;
-use elp_syntax::ast::SourceFile;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
+use elp_syntax::ast::SourceFile;
 use fxhash::FxHashMap;
 use lazy_static::lazy_static;
 
@@ -32,11 +32,11 @@ pub mod fixture;
 // @fb-only
 pub mod test_utils;
 pub use change::Change;
+pub use elp_project_model::AppType;
+pub use elp_project_model::test_fixture::CURSOR_MARKER;
+pub use elp_project_model::test_fixture::RangeOrOffset;
 pub use elp_project_model::test_fixture::extract_offset;
 pub use elp_project_model::test_fixture::remove_annotations;
-pub use elp_project_model::test_fixture::RangeOrOffset;
-pub use elp_project_model::test_fixture::CURSOR_MARKER;
-pub use elp_project_model::AppType;
 pub use include::IncludeCtx;
 pub use input::AppData;
 pub use input::AppDataId;
@@ -58,10 +58,6 @@ pub use paths::RelPath;
 pub use paths::RelPathBuf;
 use regex::Regex;
 pub use salsa;
-pub use vfs::file_set::FileSet;
-pub use vfs::file_set::FileSetConfig;
-pub use vfs::file_set::FileSetConfigBuilder;
-pub use vfs::loader;
 pub use vfs::AnchoredPath;
 pub use vfs::AnchoredPathBuf;
 pub use vfs::ChangeKind;
@@ -69,6 +65,10 @@ pub use vfs::ChangedFile;
 pub use vfs::FileId;
 pub use vfs::Vfs;
 pub use vfs::VfsPath;
+pub use vfs::file_set::FileSet;
+pub use vfs::file_set::FileSetConfig;
+pub use vfs::file_set::FileSetConfigBuilder;
+pub use vfs::loader;
 
 // ---------------------------------------------------------------------
 

@@ -11,19 +11,23 @@
 // cargo test --package elp_ide --lib
 
 use elp_ide_assists::Assist;
-use elp_ide_db::elp_base_db::assert_eq_text;
-use elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_ide_db::elp_base_db::remove_annotations;
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
-use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::assert_eq_text;
+use elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_ide_db::elp_base_db::remove_annotations;
 use elp_project_model::test_fixture::trim_indent;
 use expect_test::Expect;
 use itertools::Itertools;
 use text_edit::TextRange;
 
+use crate::Analysis;
+use crate::AnalysisHost;
+use crate::DiagnosticsConfig;
+use crate::NavigationTarget;
 use crate::diagnostics;
 use crate::diagnostics::AdhocSemanticDiagnostics;
 use crate::diagnostics::Diagnostic;
@@ -31,10 +35,6 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::LabeledDiagnostics;
 use crate::diagnostics::Severity;
 use crate::fixture;
-use crate::Analysis;
-use crate::AnalysisHost;
-use crate::DiagnosticsConfig;
-use crate::NavigationTarget;
 
 #[track_caller]
 pub(crate) fn check_ct_fix(fixture_before: &str, fixture_after: &str) {

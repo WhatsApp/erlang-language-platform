@@ -19,10 +19,10 @@ use std::hash::Hasher;
 use std::marker::PhantomData;
 
 use elp_base_db::FileId;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNodePtr;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use fxhash::FxHashMap;
 
 use crate::db::DefDatabase;

@@ -9,6 +9,7 @@
 
 use std::collections::BTreeMap;
 
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
 use elp_types_db::eqwalizer::ext_types::ExtProp;
 use elp_types_db::eqwalizer::ext_types::ExtType;
@@ -41,7 +42,6 @@ use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
-use elp_types_db::StringId;
 use fxhash::FxHashMap;
 
 use super::TypeConversionError;

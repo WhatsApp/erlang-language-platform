@@ -15,8 +15,6 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BodySourceMap;
@@ -29,6 +27,8 @@ use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use super::Diagnostic;
 use super::DiagnosticConditions;

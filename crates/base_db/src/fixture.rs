@@ -18,38 +18,38 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
-use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::json::JsonConfig;
-use elp_project_model::otp::Otp;
-use elp_project_model::otp::OTP_ERLANG_APP;
-use elp_project_model::otp::OTP_ERLANG_MODULE;
-use elp_project_model::rebar::RebarProject;
-use elp_project_model::temp_dir::TempDir;
-use elp_project_model::test_fixture::DiagnosticsEnabled;
-use elp_project_model::test_fixture::FixtureWithProjectMeta;
-use elp_project_model::test_fixture::RangeOrOffset;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
+use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::json::JsonConfig;
+use elp_project_model::otp::OTP_ERLANG_APP;
+use elp_project_model::otp::OTP_ERLANG_MODULE;
+use elp_project_model::otp::Otp;
+use elp_project_model::rebar::RebarProject;
+use elp_project_model::temp_dir::TempDir;
+use elp_project_model::test_fixture::DiagnosticsEnabled;
+use elp_project_model::test_fixture::FixtureWithProjectMeta;
+use elp_project_model::test_fixture::RangeOrOffset;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
-use vfs::file_set::FileSet;
 use vfs::FileId;
 use vfs::VfsPath;
+use vfs::file_set::FileSet;
 
-use crate::change::Change;
-use crate::input::IncludeOtp;
 use crate::FilePosition;
 use crate::FileRange;
 use crate::ProjectApps;
 use crate::ProjectId;
 use crate::SourceDatabaseExt;
 use crate::SourceRoot;
+use crate::change::Change;
+use crate::input::IncludeOtp;
 
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     #[track_caller]

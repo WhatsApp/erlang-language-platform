@@ -7,11 +7,11 @@
  * of this source tree.
  */
 
-use elp_types_db::eqwalizer::form::ExternalForm;
-use elp_types_db::eqwalizer::visitor::Visitor;
+use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::TextRange;
-use elp_types_db::eqwalizer::AST;
+use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::visitor::Visitor;
 
 use crate::ast::Pos;
 

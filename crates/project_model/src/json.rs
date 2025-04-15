@@ -17,8 +17,8 @@ use eetf::Atom;
 use eetf::Term;
 use eetf::Tuple;
 use fxhash::FxHashMap;
-use indexmap::indexset;
 use indexmap::IndexSet;
+use indexmap::indexset;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
@@ -26,10 +26,10 @@ use paths::Utf8PathBuf;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::eqwalizer_support;
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
+use crate::eqwalizer_support;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct JsonConfig {

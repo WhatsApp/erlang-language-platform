@@ -12,12 +12,12 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
-use anyhow::Result;
+use elp_ide::Analysis;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::Analysis;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
@@ -156,13 +156,13 @@ pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Re
 
 #[cfg(test)]
 mod tests {
+    use elp_ide::FunctionMatch;
     use elp_ide::diagnostics::DiagnosticCode;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
     use elp_ide::diagnostics::ReplaceCall;
     use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
-    use elp_ide::FunctionMatch;
     use expect_test::expect;
 
     use crate::LintConfig;

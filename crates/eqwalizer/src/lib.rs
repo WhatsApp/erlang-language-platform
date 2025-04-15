@@ -21,11 +21,11 @@ use anyhow::Context;
 use anyhow::Result;
 use ast::Error;
 use ast::Pos;
-use elp_base_db::limit_logged_string;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_types_db::eqwalizer::types::Type;
+use elp_base_db::limit_logged_string;
 pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
 use tempfile::Builder;
@@ -43,8 +43,8 @@ use crate::ipc::EqWAlizerASTFormat;
 
 pub mod analyses;
 pub mod ast;
-pub use elp_types_db::eqwalizer::types;
 pub use elp_types_db::IncludeGenerated;
+pub use elp_types_db::eqwalizer::types;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Mode {

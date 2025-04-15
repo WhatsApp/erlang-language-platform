@@ -17,6 +17,7 @@
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::ext_types::AnyArityFunExtType;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
 use elp_types_db::eqwalizer::ext_types::ExtProp;
@@ -49,16 +50,15 @@ use elp_types_db::eqwalizer::invalid_diagnostics::TyVarWithMultipleConstraints;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnboundTyVarInTyDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnknownId;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::StringId;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
-use super::convert_types::TypeConverter;
-use super::stub::ModuleStub;
+use super::AST;
 use super::Id;
 use super::RemoteId;
 use super::TypeConversionError;
-use super::AST;
+use super::convert_types::TypeConverter;
+use super::stub::ModuleStub;
 use crate::ast;
 use crate::ast::Visibility;
 use crate::db::EqwalizerDiagnosticsDatabase;

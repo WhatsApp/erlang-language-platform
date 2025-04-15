@@ -30,27 +30,27 @@ use std::sync::Arc;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::ModuleName;
-use elp_ide_db::erlang_service::common_test::GroupDef;
 use elp_ide_db::erlang_service::TestDef;
+use elp_ide_db::erlang_service::common_test::GroupDef;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::known;
 use hir::DefMap;
 use hir::FunctionDef;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
+use hir::known;
 use lazy_static::lazy_static;
 
+use crate::Runnable;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 use crate::navigation_target::ToNav;
 use crate::runnables::RunnableKind;
-use crate::Runnable;
 
 const SUFFIX: &str = "_SUITE";
 

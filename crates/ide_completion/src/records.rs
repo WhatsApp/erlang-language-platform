@@ -7,9 +7,9 @@
  * of this source tree.
  */
 
+use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
-use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Name;
 
@@ -184,12 +184,12 @@ fn field_name_to_completion(field_name: Name) -> Completion {
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::Kind;
     use crate::tests::get_completions;
     use crate::tests::render_completions;
-    use crate::Kind;
 
     fn check(code: &str, trigger_character: Option<char>, expect: Expect) {
         let completions = get_completions(code, trigger_character)

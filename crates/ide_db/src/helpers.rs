@@ -9,12 +9,12 @@
 
 //! A module with ide helpers for high-level ide features.
 
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TokenAtOffset;
+use elp_syntax::ast;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SnippetCap {

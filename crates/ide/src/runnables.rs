@@ -7,10 +7,10 @@
  * of this source tree.
  */
 
-use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::TestDef;
-use elp_ide_db::elp_base_db::FileId;
+use elp_erlang_service::common_test::GroupDef;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FileId;
 use elp_project_model::AppName;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
@@ -18,9 +18,9 @@ use fxhash::FxHashSet;
 use hir::NameArity;
 use hir::Semantic;
 
-use crate::common_test;
 use crate::GroupName;
 use crate::NavigationTarget;
+use crate::common_test;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {

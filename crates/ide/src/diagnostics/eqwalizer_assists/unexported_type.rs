@@ -10,16 +10,16 @@
 use elp_eqwalizer::ast::RemoteId;
 use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::ExportForm;
+use elp_ide_db::EqwalizerDiagnostic;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_db::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::StructuredDiagnostic;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonExportedId;
-use elp_types_db::eqwalizer::StructuredDiagnostic;
-use hir::sema::to_def::resolve_module_name;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
+use hir::sema::to_def::resolve_module_name;
 
 use crate::diagnostics::Diagnostic;
 use crate::fix;

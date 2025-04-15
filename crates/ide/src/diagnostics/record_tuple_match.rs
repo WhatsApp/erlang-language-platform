@@ -11,10 +11,8 @@
 //
 // Return a warning if a record is unpacked as a bare tuple, rather than using record syntax.
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::DiagnosticCode;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use elp_ide_db::elp_base_db::FileId;
 use hir::AnyExpr;
 use hir::FunctionDef;
 use hir::Literal;
@@ -22,6 +20,8 @@ use hir::Name;
 use hir::Pat;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use text_edit::TextRange;
 
 use super::DiagnosticConditions;

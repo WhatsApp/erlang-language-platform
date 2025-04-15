@@ -13,16 +13,14 @@ pub(crate) mod tags;
 use std::sync::Arc;
 
 use elp_eqwalizer::ast::Pos;
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolKind;
-use elp_syntax::ast;
+use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use elp_types_db::eqwalizer::types::Type;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::CallTarget;
 use hir::DefMap;
@@ -33,6 +31,8 @@ use hir::InFunctionClauseBody;
 use hir::NameArity;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use self::highlights::Highlights;
 use self::tags::Highlight;
@@ -296,15 +296,15 @@ fn is_dynamic(t: &Type) -> bool {
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
-    use elp_ide_db::elp_base_db;
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use itertools::Itertools;
     use stdx::trim_indent;
 
-    use crate::syntax_highlighting::highlight;
     use crate::HlTag;
+    use crate::syntax_highlighting::highlight;
 
     // These are tests of the specific modifier functionality.  When
     // we go all-in with semantic tokens, we can consider bringing

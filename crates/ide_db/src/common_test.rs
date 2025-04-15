@@ -9,22 +9,22 @@
 
 use std::sync::Arc;
 
-use elp_base_db::salsa;
-use elp_base_db::salsa::Database;
 use elp_base_db::FileId;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
+use elp_base_db::salsa;
+use elp_base_db::salsa::Database;
+use elp_erlang_service::CTInfoRequest;
 use elp_erlang_service::common_test::ConversionError;
 use elp_erlang_service::common_test::GroupDef;
 use elp_erlang_service::common_test::TestDef;
-use elp_erlang_service::CTInfoRequest;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use hir::db::DefDatabase;
 use hir::DefMap;
 use hir::Name;
 use hir::NameArity;
+use hir::db::DefDatabase;
 
 use crate::ErlAstDatabase;
 

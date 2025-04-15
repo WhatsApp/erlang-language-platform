@@ -8,13 +8,10 @@
  */
 
 use elp_base_db::FilePosition;
+use elp_syntax::AstNode;
 use elp_syntax::ast::Expr;
 use elp_syntax::ast::MapExpr;
-use elp_syntax::AstNode;
 use fxhash::FxHashMap;
-use hir::fold::Fold;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::DefMap;
 use hir::InFile;
@@ -25,6 +22,9 @@ use hir::SpecDef;
 use hir::Strategy;
 use hir::TypeAliasDef;
 use hir::TypeExpr;
+use hir::fold::Fold;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use crate::Completion;
 use crate::Contents;
@@ -193,12 +193,12 @@ fn format_field(idx: i32, key: Expr, op: &str) -> String {
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::Kind;
     use crate::tests::get_completions;
     use crate::tests::render_completions;
-    use crate::Kind;
 
     fn check(code: &str, trigger_character: Option<char>, expect: Expect) {
         let completions = get_completions(code, trigger_character)

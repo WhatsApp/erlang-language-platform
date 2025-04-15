@@ -7,17 +7,17 @@
  * of this source tree.
  */
 
-use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::AnalysisHost;
+use elp_ide::elp_ide_db::RootDatabase;
+use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use fxhash::FxHashMap;
-use vfs::file_set::FileSetConfig;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 use vfs::Vfs;
 use vfs::VfsPath;
+use vfs::file_set::FileSetConfig;
 
 use super::types::LoadResult;
 use crate::document::Document;

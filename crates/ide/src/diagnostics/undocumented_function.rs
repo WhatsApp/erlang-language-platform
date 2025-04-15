@@ -13,12 +13,12 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
 use fxhash::FxHashSet;
-use hir::form_list::ModuleDocAttribute;
-use hir::known;
 use hir::AsName;
 use hir::FunctionDef;
 use hir::NameArity;
 use hir::Semantic;
+use hir::form_list::ModuleDocAttribute;
+use hir::known;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
@@ -107,8 +107,8 @@ mod tests {
 
     use elp_ide_db::DiagnosticCode;
 
-    use crate::tests;
     use crate::DiagnosticsConfig;
+    use crate::tests;
 
     fn config() -> DiagnosticsConfig {
         DiagnosticsConfig::default()

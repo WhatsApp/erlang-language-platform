@@ -14,10 +14,8 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
-use elp_syntax::ast;
 use elp_syntax::TextRange;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use elp_syntax::ast;
 use hir::AnyExprId;
 use hir::CallTarget;
 use hir::Expr;
@@ -27,6 +25,8 @@ use hir::InFunctionClauseBody;
 use hir::Literal;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
@@ -34,14 +34,14 @@ use text_edit::TextEdit;
 
 use super::Diagnostic;
 use super::Severity;
-use crate::codemod_helpers::find_call_in_function;
-use crate::codemod_helpers::statement_range;
 use crate::codemod_helpers::CheckCall;
 use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::FunctionMatcher;
-use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::MFA;
+use crate::codemod_helpers::MatchCtx;
+use crate::codemod_helpers::find_call_in_function;
+use crate::codemod_helpers::statement_range;
 use crate::diagnostics::DiagnosticCode;
 use crate::fix;
 
@@ -361,13 +361,14 @@ mod tests {
 
     use std::sync::Arc;
 
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use hir::BasedInteger;
     use hir::Expr;
     use hir::Literal;
 
     use super::*;
+    use crate::DiagnosticsConfig;
     use crate::codemod_helpers::CheckCallCtx;
     use crate::diagnostics::AdhocSemanticDiagnostics;
     use crate::diagnostics::Lint;
@@ -376,7 +377,6 @@ mod tests {
     use crate::tests::check_diagnostics_with_config_and_ad_hoc;
     use crate::tests::check_fix_with_config;
     use crate::tests::check_fix_with_config_and_adhoc;
-    use crate::DiagnosticsConfig;
 
     #[track_caller]
     pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(

@@ -8,24 +8,24 @@
  */
 
 use ast::AstNode;
+use elp_ide_db::ReferenceClass;
+use elp_ide_db::ReferenceType;
+use elp_ide_db::SymbolClass;
+use elp_ide_db::SymbolDefinition;
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::rename::RenameResult;
 use elp_ide_db::rename::SafetyChecks;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_db::ReferenceClass;
-use elp_ide_db::ReferenceType;
-use elp_ide_db::SymbolClass;
-use elp_ide_db::SymbolDefinition;
 use elp_syntax::ast;
 use fxhash::FxHashSet;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::Pat;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use lazy_static::lazy_static;
 use regex::Regex;
 

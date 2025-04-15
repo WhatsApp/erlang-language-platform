@@ -63,8 +63,8 @@ pub(crate) fn add_completions(acc: &mut Vec<Completion>, Ctx { trigger, .. }: &C
 
 #[cfg(test)]
 mod test {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::tests::get_completions;
     use crate::tests::render_completions;

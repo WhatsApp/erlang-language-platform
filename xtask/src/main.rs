@@ -15,22 +15,22 @@ use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::bail;
 use anyhow::Result;
-use bpaf::construct;
+use anyhow::bail;
 use bpaf::Bpaf;
 use bpaf::Parser;
-use krates::cm;
-use krates::petgraph;
-use krates::petgraph::dot::Config;
+use bpaf::construct;
 use krates::Builder;
 use krates::Cmd;
 use krates::DepKind;
 use krates::Krates;
 use krates::Node;
 use krates::Scope;
-use xshell::cmd;
+use krates::cm;
+use krates::petgraph;
+use krates::petgraph::dot::Config;
 use xshell::Shell;
+use xshell::cmd;
 
 use crate::Command::Help;
 

@@ -13,25 +13,25 @@ use std::fmt;
 use std::sync::Arc;
 use std::vec;
 
-use elp_base_db::salsa;
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceDatabaseExt;
 use elp_base_db::Upcast;
+use elp_base_db::salsa;
 use elp_erlang_service::DocDiagnostic;
 use elp_erlang_service::DocOrigin;
 use elp_erlang_service::DocRequest;
-use elp_syntax::ast;
-use elp_syntax::match_ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
+use elp_syntax::ast;
+use elp_syntax::match_ast;
 use fxhash::FxHashMap;
-use hir::db::DefDatabase;
 use hir::CallDef;
 use hir::InFile;
 use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
+use hir::db::DefDatabase;
 
 use crate::ErlAstDatabase;
 

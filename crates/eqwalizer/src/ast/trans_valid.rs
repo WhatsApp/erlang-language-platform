@@ -19,6 +19,7 @@ use std::collections::BTreeSet;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
@@ -27,13 +28,12 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
-use elp_types_db::StringId;
 
-use super::stub::ModuleStub;
-use super::stub::VStub;
 use super::Id;
 use super::RemoteId;
 use super::TransitiveCheckError;
+use super::stub::ModuleStub;
+use super::stub::VStub;
 use crate::db::EqwalizerDiagnosticsDatabase;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

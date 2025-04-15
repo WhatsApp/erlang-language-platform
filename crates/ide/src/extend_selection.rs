@@ -8,7 +8,6 @@
  */
 
 use elp_ide_db::RootDatabase;
-use elp_syntax::ast::AstNode;
 use elp_syntax::Direction;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind::*;
@@ -18,6 +17,7 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
+use elp_syntax::ast::AstNode;
 use hir::Semantic;
 
 use crate::FileRange;

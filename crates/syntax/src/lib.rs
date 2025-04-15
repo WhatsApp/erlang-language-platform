@@ -388,8 +388,8 @@ macro_rules! match_ast {
 // cargo test --package elp_syntax --lib
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
     use rowan::Direction;
     use rowan::NodeOrToken;
     use rowan::SyntaxText;

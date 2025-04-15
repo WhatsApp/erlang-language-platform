@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use super::AST;
 use super::expr::BinaryElem;
 use super::expr::Body;
 use super::expr::Clause;
@@ -21,7 +22,6 @@ use super::guard::TestRecordField;
 use super::pat::Pat;
 use super::pat::PatBinaryElem;
 use super::types::Type;
-use super::AST;
 
 pub trait Visitor<'a, T>: Sized {
     fn visit_ast(&mut self, ast: &'a AST) -> Result<(), T> {

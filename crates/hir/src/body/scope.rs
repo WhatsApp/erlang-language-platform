@@ -38,12 +38,6 @@ use la_arena::ArenaMap;
 use la_arena::Idx;
 
 use super::FoldBody;
-use crate::db::DefDatabase;
-use crate::def_map::FunctionDefId;
-use crate::expr::ClauseId;
-use crate::expr::MaybeExpr;
-use crate::fold::ParenStrategy;
-use crate::fold::VisibleMacros;
 use crate::Body;
 use crate::CRClause;
 use crate::ComprehensionBuilder;
@@ -55,6 +49,12 @@ use crate::InFile;
 use crate::Name;
 use crate::PatId;
 use crate::Var;
+use crate::db::DefDatabase;
+use crate::def_map::FunctionDefId;
+use crate::expr::ClauseId;
+use crate::expr::MaybeExpr;
+use crate::fold::ParenStrategy;
+use crate::fold::VisibleMacros;
 
 pub type ScopeId = Idx<ScopeData>;
 
@@ -758,21 +758,21 @@ fn add_exported_scopes(
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::FileId;
+    use elp_base_db::SourceDatabase;
     use elp_base_db::assert_eq_text;
     use elp_base_db::extract_offset;
     use elp_base_db::fixture::WithFixture;
-    use elp_base_db::FileId;
-    use elp_base_db::SourceDatabase;
+    use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
-    use elp_syntax::AstNode;
 
-    use crate::db::DefDatabase;
-    use crate::db::InternDatabase;
-    use crate::test_db::TestDB;
     use crate::FunctionDefId;
     use crate::InFile;
     use crate::Semantic;
+    use crate::db::DefDatabase;
+    use crate::db::InternDatabase;
+    use crate::test_db::TestDB;
 
     // Return the first function found in the test fixture
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionDefId {

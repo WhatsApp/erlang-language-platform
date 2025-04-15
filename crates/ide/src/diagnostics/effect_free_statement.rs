@@ -16,12 +16,10 @@ use std::iter;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
-use elp_syntax::ast;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use elp_syntax::ast;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::ExprId;
@@ -29,6 +27,8 @@ use hir::FunctionDef;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use text_edit::TextEdit;
 
 use super::Category;

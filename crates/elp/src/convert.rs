@@ -10,22 +10,22 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
+use elp_ide::TextRange;
+use elp_ide::TextSize;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticCode;
 use elp_ide::diagnostics::DiagnosticTag;
 use elp_ide::diagnostics::RelatedInformation;
 use elp_ide::diagnostics::Severity;
+use elp_ide::elp_ide_db::EqwalizerDiagnostic;
+use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::elp_ide_db::EqwalizerDiagnostic;
-use elp_ide::elp_ide_db::LineIndex;
-use elp_ide::TextRange;
-use elp_ide::TextSize;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
 use lsp_types::Url;

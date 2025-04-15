@@ -53,20 +53,20 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_syntax::ast;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
+use elp_syntax::ast;
 use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::Idx;
 use la_arena::IdxRange;
 
-use crate::db::DefDatabase;
 use crate::Diagnostic;
 use crate::MacroName;
 use crate::Name;
 use crate::NameArity;
+use crate::db::DefDatabase;
 
 mod form_id;
 mod lower;

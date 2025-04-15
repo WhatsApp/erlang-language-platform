@@ -10,9 +10,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use codespan_reporting::term::termcolor::Color;
 use codespan_reporting::term::termcolor::ColorSpec;
 use elp::build;
@@ -21,26 +21,26 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
-use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
+use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+use elp_ide::Analysis;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
+use elp_ide::elp_ide_db::EqwalizerDiagnostics;
+use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::elp_ide_db::EqwalizerDiagnostics;
-use elp_ide::elp_ide_db::LineIndex;
-use elp_ide::elp_ide_db::LineIndexDatabase;
-use elp_ide::Analysis;
-use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::AppName;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectBuildData;
+use elp_project_model::buck::BuckQueryConfig;
 use fxhash::FxHashMap;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
@@ -53,10 +53,10 @@ use crate::args::EqwalizeApp;
 use crate::args::EqwalizeStats;
 use crate::args::EqwalizeTarget;
 use crate::reporting;
-use crate::reporting::add_stat;
-use crate::reporting::dump_stats;
 use crate::reporting::ParseDiagnostic;
 use crate::reporting::Reporter;
+use crate::reporting::add_stat;
+use crate::reporting::dump_stats;
 
 struct EqwalizerInternalArgs<'a> {
     analysis: &'a Analysis,

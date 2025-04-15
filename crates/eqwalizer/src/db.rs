@@ -17,24 +17,24 @@ use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
-use elp_types_db::eqwalizer::form::ExternalForm;
-use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::AST;
+use elp_types_db::eqwalizer::Id;
+use elp_types_db::eqwalizer::form::ExternalForm;
 use parking_lot::Mutex;
 
+use crate::EqwalizerConfig;
+use crate::EqwalizerDiagnostics;
 use crate::ast;
+use crate::ast::Error;
+use crate::ast::Visibility;
 use crate::ast::contractivity::StubContractivityChecker;
 use crate::ast::expand::StubExpander;
 use crate::ast::stub::ModuleStub;
 use crate::ast::stub::VStub;
 use crate::ast::trans_valid::TransitiveChecker;
 use crate::ast::variance_check::VarianceChecker;
-use crate::ast::Error;
-use crate::ast::Visibility;
 use crate::get_module_diagnostics;
 use crate::ipc::IpcHandle;
-use crate::EqwalizerConfig;
-use crate::EqwalizerDiagnostics;
 
 pub trait EqwalizerErlASTStorage {
     fn erl_ast_bytes(

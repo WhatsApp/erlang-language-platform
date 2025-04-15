@@ -7,28 +7,28 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::FxIndexMap;
 use elp_ide_db::RootDatabase;
-use elp_syntax::algo;
-use elp_syntax::ast::{self};
+use elp_ide_db::elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
+use elp_syntax::algo;
+use elp_syntax::ast::{self};
 use hir::AnyExpr;
 use hir::Expr;
 use hir::InFile;
 use hir::Semantic;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
+use crate::NavigationTarget;
+use crate::RangeInfo;
 use crate::handlers::goto_definition;
 use crate::handlers::references;
 use crate::navigation_target::ToNav;
-use crate::NavigationTarget;
-use crate::RangeInfo;
 
 #[derive(Debug, Clone)]
 pub struct CallItem {

@@ -7,15 +7,15 @@
  * of this source tree.
  */
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::TextRange;
-use hir::form_list::DocAttribute;
-use hir::form_list::ModuleDocAttribute;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::RecordDef;
 use hir::Semantic;
+use hir::form_list::DocAttribute;
+use hir::form_list::ModuleDocAttribute;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FoldingRangeKind {

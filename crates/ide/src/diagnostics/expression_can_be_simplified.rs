@@ -15,9 +15,6 @@
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::ast::UnaryOp;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::known;
 use hir::AnyExprId;
 use hir::ClauseId;
 use hir::FunctionDef;
@@ -25,9 +22,15 @@ use hir::InFunctionBody;
 use hir::Literal;
 use hir::Name;
 use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::known;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
+use crate::Diagnostic;
+use crate::FileId;
+use crate::Semantic;
 use crate::ast::ArithOp;
 use crate::ast::BinaryOp;
 use crate::ast::ListOp;
@@ -35,9 +38,6 @@ use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 use crate::fix;
-use crate::Diagnostic;
-use crate::FileId;
-use crate::Semantic;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
