@@ -474,7 +474,7 @@ pub(crate) fn check_filtered_diagnostics_with_config(
         let diagnostics = diagnostics
             .diagnostics_for(file_id)
             .into_iter()
-            .filter(filter)
+            .filter(|d| filter(d) || d.code == DiagnosticCode::SyntaxError)
             .collect();
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
@@ -636,4 +636,31 @@ fn check_call_hierarchy_outgoing_calls(fixture: &str) {
         |(frange, text): &(FileRange, String)| (frange.file_id, frange.range.start(), text.clone());
     actual.sort_by_key(cmp);
     assert_eq!(actual, expected);
+}
+
+#[cfg(test)]
+mod test {
+    use elp_ide_db::DiagnosticCode;
+
+    use super::check_filtered_diagnostics;
+    use crate::diagnostics::Diagnostic;
+
+    fn filter(d: &Diagnostic) -> bool {
+        // Only allows through diagnostics where it returns true
+        d.code == DiagnosticCode::MissingModule
+    }
+
+    #[test]
+    fn filtered_diagnostics_passes_syntax_errors() {
+        check_filtered_diagnostics(
+            r#"
+            %%<^^^^^^^^^^^^ error: no module definition
+            foo() ->
+               bug bug.
+                %% ^^^^ error: Syntax Error
+               
+            "#,
+            &filter,
+        )
+    }
 }
