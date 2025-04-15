@@ -18,10 +18,10 @@ use lsp_types::WorkDoneProgressBegin;
 use lsp_types::WorkDoneProgressEnd;
 use lsp_types::WorkDoneProgressReport;
 
+use super::telemetry_manager::WithTelemetry;
 use super::telemetry_manager::reporter_telemetry_end;
 use super::telemetry_manager::reporter_telemetry_next;
 use super::telemetry_manager::reporter_telemetry_start;
-use super::telemetry_manager::WithTelemetry;
 
 #[derive(Debug)]
 pub enum ProgressTask {
