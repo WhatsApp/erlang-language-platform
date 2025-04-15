@@ -884,20 +884,27 @@ impl Server {
         result && path_ref.is_file()
     }
 
-    fn on_loader_progress(&mut self, n_total: usize, n_done: LoadingProgress, config_version: u32) {
+    fn on_loader_progress(
+        &mut self,
+        n_total: usize,
+        progress: LoadingProgress,
+        config_version: u32,
+    ) {
         // report progress
         always!(config_version <= self.vfs_config_version);
-        if let LoadingProgress::Progress(n_done) = n_done {
-            if n_done == 0 && n_total != 0 {
+        match progress {
+            LoadingProgress::Started => {
                 let pb = self
                     .progress
                     .begin_bar("Loading source files".into(), Some(n_total));
                 self.transition(Status::Loading(pb));
-            } else if n_done < n_total {
+            }
+            LoadingProgress::Progress(n_done) => {
                 if let Status::Loading(pb) = &self.status {
                     pb.report(n_done, n_total);
                 }
-            } else {
+            }
+            LoadingProgress::Finished => {
                 if n_total == 0 {
                     let params = lsp_types::ShowMessageParams {
                         typ: lsp_types::MessageType::WARNING,
@@ -905,7 +912,6 @@ impl Server {
                     };
                     self.show_message(params);
                 }
-                assert_eq!(n_done, n_total);
                 self.transition(Status::Running);
                 self.schedule_compile_deps();
                 self.schedule_cache();
