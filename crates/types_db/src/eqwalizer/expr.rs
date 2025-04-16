@@ -14,6 +14,7 @@ use crate::StringId;
 use crate::eqwalizer;
 use crate::eqwalizer::Pos;
 use crate::eqwalizer::binary_specifier;
+use crate::eqwalizer::ext_types::ExtType;
 use crate::eqwalizer::guard;
 use crate::eqwalizer::pat;
 
@@ -59,6 +60,7 @@ pub enum Expr {
     Maybe(Maybe),
     MaybeElse(MaybeElse),
     MaybeMatch(MaybeMatch),
+    TypeCast(TypeCast),
 }
 
 impl Expr {
@@ -468,4 +470,12 @@ pub struct MaybeMatch {
     pub pos: Pos,
     pub pat: pat::Pat,
     pub arg: Box<Expr>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TypeCast {
+    pub pos: Pos,
+    pub expr: Box<Expr>,
+    pub ty: ExtType,
+    pub checked: bool,
 }

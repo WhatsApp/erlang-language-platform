@@ -2574,7 +2574,11 @@ expr({remote,_Anno,M,_F}, _Vt, St) ->
 expr({executable_line,_,_}, _Vt, St) ->
     {[], St};
 expr({ssa_check_when,_Anno,_WantedResult,_Args,_Tag,_Exprs}, _Vt, St) ->
-    {[], St}.
+    {[], St};
+expr({checked_cast, _Anno, Expr, _Type}, Vt, St) ->
+    expr(Expr, Vt, St);
+expr({unchecked_cast, _Anno, Expr, _Type}, Vt, St) ->
+    expr(Expr, Vt, St).
 
 %% Checks whether 0.0 occurs naked in the LHS or RHS of an equality check. Note
 %% that we do not warn when it's being used as arguments for expressions in

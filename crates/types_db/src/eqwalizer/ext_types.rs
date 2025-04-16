@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::collections::BTreeSet;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -120,6 +122,41 @@ impl ExtType {
             }
             _ => false,
         }
+    }
+
+    pub fn pos(&self) -> &eqwalizer::Pos {
+        match self {
+            ExtType::AtomLitExtType(ty) => &ty.pos,
+            ExtType::FunExtType(ty) => &ty.pos,
+            ExtType::AnyArityFunExtType(ty) => &ty.pos,
+            ExtType::TupleExtType(ty) => &ty.pos,
+            ExtType::ListExtType(ty) => &ty.pos,
+            ExtType::AnyListExtType(ty) => &ty.pos,
+            ExtType::UnionExtType(ty) => &ty.pos,
+            ExtType::LocalExtType(ty) => &ty.pos,
+            ExtType::RemoteExtType(ty) => &ty.pos,
+            ExtType::BuiltinExtType(ty) => &ty.pos,
+            ExtType::IntLitExtType(ty) => &ty.pos,
+            ExtType::UnOpType(ty) => &ty.pos,
+            ExtType::BinOpType(ty) => &ty.pos,
+            ExtType::VarExtType(ty) => &ty.pos,
+            ExtType::RecordExtType(ty) => &ty.pos,
+            ExtType::RecordRefinedExtType(ty) => &ty.pos,
+            ExtType::MapExtType(ty) => &ty.pos,
+            ExtType::AnyMapExtType(ty) => &ty.pos,
+        }
+    }
+
+    pub fn vars(&self) -> BTreeSet<StringId> {
+        let mut vars = BTreeSet::default();
+        let _ = self.traverse::<()>(&mut |t| match t {
+            ExtType::VarExtType(v) => {
+                vars.insert(v.name);
+                Ok(())
+            }
+            _ => Ok(()),
+        });
+        vars
     }
 }
 

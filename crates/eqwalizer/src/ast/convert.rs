@@ -70,6 +70,7 @@ use elp_types_db::eqwalizer::expr::StringLit;
 use elp_types_db::eqwalizer::expr::TryCatchExpr;
 use elp_types_db::eqwalizer::expr::TryOfCatchExpr;
 use elp_types_db::eqwalizer::expr::Tuple;
+use elp_types_db::eqwalizer::expr::TypeCast;
 use elp_types_db::eqwalizer::expr::UnOp;
 use elp_types_db::eqwalizer::expr::Var;
 use elp_types_db::eqwalizer::expr::Zip;
@@ -1107,6 +1108,26 @@ impl Converter {
                             pos,
                             pat: self.convert_pat(exp1)?,
                             arg: Box::new(self.convert_expr(exp2)?),
+                        }));
+                    }
+                    ("checked_cast", [exp, ty]) => {
+                        let expr = self.convert_expr(exp)?;
+                        let tp = self.convert_type(ty)?;
+                        return Ok(Expr::TypeCast(TypeCast {
+                            pos,
+                            expr: Box::new(expr),
+                            ty: tp,
+                            checked: true,
+                        }));
+                    }
+                    ("unchecked_cast", [exp, ty]) => {
+                        let expr = self.convert_expr(exp)?;
+                        let tp = self.convert_type(ty)?;
+                        return Ok(Expr::TypeCast(TypeCast {
+                            pos,
+                            expr: Box::new(expr),
+                            ty: tp,
+                            checked: false,
                         }));
                     }
                     _ => (),

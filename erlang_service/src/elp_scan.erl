@@ -433,6 +433,8 @@ scan1(":=" ++ Cs, St, Off, Toks) ->
 %% :: for typed records
 scan1("::" ++ Cs, St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '::', 2);
+scan1(":>" ++ Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, ':>', 2);
 scan1(":" = Cs, St, Off, Toks) ->
     {more, {Cs, St, Off, Toks, [], fun scan/5}};
 %% Optimization: punctuation characters less than 127:

@@ -15,6 +15,8 @@
 //! It also performs several checks on types, such as ensuring that the same
 //! type variable does not appear twice in the parameters of a type.
 
+use std::collections::BTreeSet;
+
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_types_db::StringId;
@@ -45,10 +47,12 @@ use elp_types_db::eqwalizer::invalid_diagnostics::BadMapKey;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonExportedId;
 use elp_types_db::eqwalizer::invalid_diagnostics::RecursiveConstraint;
+use elp_types_db::eqwalizer::invalid_diagnostics::RefinedRecordInTypeCast;
 use elp_types_db::eqwalizer::invalid_diagnostics::RepeatedTyVarInTyDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::TyVarWithMultipleConstraints;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnboundTyVarInTyDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::UnknownId;
+use elp_types_db::eqwalizer::invalid_diagnostics::VariablesInTypeCast;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -745,5 +749,72 @@ impl StubExpander<'_> {
         self.add_extra_types();
         self.stub.invalids.append(&mut self.expander.invalids);
         Ok(())
+    }
+}
+
+pub struct CastExpander<'d> {
+    expander: Expander<'d>,
+    type_converter: TypeConverter,
+}
+impl CastExpander<'_> {
+    pub fn new<'d>(
+        db: &'d dyn EqwalizerDiagnosticsDatabase,
+        project_id: ProjectId,
+        module: StringId,
+    ) -> CastExpander<'d> {
+        let expander = Expander {
+            module,
+            invalids: vec![],
+            db,
+            project_id,
+        };
+        let type_converter = TypeConverter::new(module);
+        CastExpander {
+            expander,
+            type_converter,
+        }
+    }
+
+    fn refined_records(ty: &ExtType) -> BTreeSet<StringId> {
+        let mut records = BTreeSet::default();
+        let _ = ty.traverse::<()>(&mut |t| match t {
+            ExtType::RecordRefinedExtType(r) => {
+                records.insert(r.name);
+                Ok(())
+            }
+            _ => Ok(()),
+        });
+        records
+    }
+
+    pub fn expand(&mut self, ty: ExtType) -> Result<Result<Type, Invalid>, TypeConversionError> {
+        let result = self.expander.expand_type(ty);
+        if let Some(invalid) = self.expander.invalids.first() {
+            return Ok(Err(invalid.to_owned()));
+        }
+        match result {
+            Ok(expanded_ty) => {
+                let type_vars = expanded_ty.vars();
+                if !type_vars.is_empty() {
+                    let variables = type_vars.iter().map(|v| v.into()).collect();
+                    let diag = Invalid::VariablesInTypeCast(VariablesInTypeCast::new(
+                        expanded_ty.pos().to_owned(),
+                        variables,
+                    ));
+                    return Ok(Err(diag));
+                }
+                let refined_records = Self::refined_records(&expanded_ty);
+                if let Some(name) = refined_records.first() {
+                    let diag = Invalid::RefinedRecordInTypeCast(RefinedRecordInTypeCast {
+                        pos: expanded_ty.pos().to_owned(),
+                        name: name.into(),
+                    });
+                    return Ok(Err(diag));
+                }
+                self.type_converter
+                    .convert_type(&Default::default(), expanded_ty)
+            }
+            Err(invalid) => Ok(Err(invalid)),
+        }
     }
 }

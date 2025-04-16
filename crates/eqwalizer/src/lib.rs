@@ -38,6 +38,8 @@ use ipc::IpcHandle;
 use ipc::MsgFromEqWAlizer;
 use ipc::MsgToEqWAlizer;
 
+use crate::ast::expand::CastExpander;
+use crate::ast::trans_valid::TransitiveChecker;
 use crate::db::EqwalizerDiagnosticsDatabase;
 use crate::ipc::EqWAlizerASTFormat;
 
@@ -380,6 +382,42 @@ fn get_module_diagnostics(
                         let reply = &MsgToEqWAlizer::CannotCompleteRequest;
                         handle.send(reply)?;
                         return Ok(EqwalizerDiagnostics::Error(err.to_string()));
+                    }
+                }
+            }
+            MsgFromEqWAlizer::ValidateType { ty } => {
+                log::debug!("received from eqwalizer: ValidateType");
+                let pos = ty.pos().to_owned();
+                let mut expander = CastExpander::new(db, project_id, module.clone().into());
+                let expanded_ty = expander.expand(ty).map_err(Error::TypeConversionError)?;
+                let mut trans_checker =
+                    TransitiveChecker::new(db, project_id, module.clone().into());
+                let validated_ty = match expanded_ty {
+                    Ok(exp_ty) => trans_checker
+                        .check_type(pos, exp_ty)
+                        .map_err(Error::TransitiveCheckError)?,
+                    Err(invalid) => Err(invalid),
+                };
+                match validated_ty {
+                    Ok(valid_ty) => {
+                        let type_bytes = serde_json::to_vec(&valid_ty).unwrap();
+                        let len = type_bytes.len().try_into()?;
+                        let reply = &MsgToEqWAlizer::ValidatedType { len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                        handle
+                            .send_bytes(&type_bytes)
+                            .with_context(|| format!("sending to eqwalizer: ValidatedType"))?
+                    }
+                    Err(invalid) => {
+                        let invalid_bytes = serde_json::to_vec(&invalid).unwrap();
+                        let len = invalid_bytes.len().try_into()?;
+                        let reply = &&MsgToEqWAlizer::InvalidType { len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                        handle
+                            .send_bytes(&invalid_bytes)
+                            .with_context(|| format!("sending to eqwalizer: InvalidType"))?
                     }
                 }
             }

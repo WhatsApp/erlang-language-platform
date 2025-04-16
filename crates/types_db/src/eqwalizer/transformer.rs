@@ -84,6 +84,7 @@ use super::pat::PatRecordFieldNamed;
 use super::pat::PatTuple;
 use super::pat::PatUnOp;
 use crate::eqwalizer::expr::RecordFieldNamed;
+use crate::eqwalizer::expr::TypeCast;
 
 pub trait Transformer<T>: Sized {
     fn transform_ast(&mut self, ast: AST) -> Result<AST, T> {
@@ -530,6 +531,12 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
             pos: m.pos,
             pat: transformer.transform_pat(m.pat)?,
             arg: Box::new(transformer.transform_expr(*m.arg)?),
+        })),
+        Expr::TypeCast(t) => Ok(Expr::TypeCast(TypeCast {
+            pos: t.pos,
+            expr: Box::new(transformer.transform_expr(*t.expr)?),
+            ty: t.ty,
+            checked: t.checked,
         })),
     }
 }

@@ -27,6 +27,9 @@ pub enum Invalid {
     TransitiveInvalid(TransitiveInvalid),
     AliasWithNonCovariantParam(AliasWithNonCovariantParam),
     BadMapKey(BadMapKey),
+    InvalidRefInTypeCast(InvalidRefInTypeCast),
+    VariablesInTypeCast(VariablesInTypeCast),
+    RefinedRecordInTypeCast(RefinedRecordInTypeCast),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -109,4 +112,44 @@ pub struct AliasWithNonCovariantParam {
 pub struct BadMapKey {
     pub pos: eqwalizer::Pos,
     pub required: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct InvalidRefInTypeCast {
+    pub pos: eqwalizer::Pos,
+    #[serde(default)]
+    references: Vec<SmolStr>,
+}
+
+impl InvalidRefInTypeCast {
+    pub fn new(location: eqwalizer::Pos, mut references: Vec<SmolStr>) -> Self {
+        references.sort_unstable();
+        Self {
+            pos: location,
+            references,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct VariablesInTypeCast {
+    pub pos: eqwalizer::Pos,
+    #[serde(default)]
+    variables: Vec<SmolStr>,
+}
+
+impl VariablesInTypeCast {
+    pub fn new(location: eqwalizer::Pos, mut variables: Vec<SmolStr>) -> Self {
+        variables.sort_unstable();
+        Self {
+            pos: location,
+            variables,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct RefinedRecordInTypeCast {
+    pub pos: eqwalizer::Pos,
+    pub name: SmolStr,
 }

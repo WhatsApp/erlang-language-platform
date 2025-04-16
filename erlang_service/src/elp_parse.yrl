@@ -51,7 +51,8 @@ type_sig type_sigs type_guard type_guards fun_type binary_type
 type_spec spec_fun typed_exprs typed_record_fields field_types field_type
 map_pair_types map_pair_type
 bin_base_type bin_unit_type
-maybe_expr maybe_match_exprs maybe_match.
+maybe_expr maybe_match_exprs maybe_match
+cast_expr.
 
 Terminals
 char integer float atom sigil_prefix string sigil_suffix var
@@ -66,7 +67,7 @@ char integer float atom sigil_prefix string sigil_suffix var
 '++' '--'
 '==' '/=' '=<' '<' '>=' '>' '=:=' '=/=' '<=' '<:=' '=>' ':='
 '<<' '>>'
-'!' '=' '::' '..' '...'
+'!' '=' '::' ':>' '..' '...'
 '?='
 'spec' 'callback' % helper
 dot.
@@ -124,6 +125,9 @@ typed_exprs -> expr ',' typed_exprs       : ['$1'|'$3'].
 typed_exprs -> typed_expr ',' exprs       : ['$1'|'$3'].
 
 typed_expr -> expr '::' top_type          : {typed,'$1','$3'}.
+
+cast_expr -> '(' expr '::' top_type ')' : {checked_cast, ?anno('$1','$5'), '$2', '$4'}.
+cast_expr -> '(' expr ':>' top_type ')' : {unchecked_cast, ?anno('$1','$5'), '$2', '$4'}.
 
 type_sigs -> type_sig                     : ['$1'].
 type_sigs -> type_sig ';' type_sigs       : ['$1'|'$3'].
@@ -265,6 +269,7 @@ expr_max -> receive_expr : '$1'.
 expr_max -> fun_expr : '$1'.
 expr_max -> try_expr : '$1'.
 expr_max -> maybe_expr : '$1'.
+expr_max -> cast_expr : '$1'.
 
 pat_expr -> pat_expr '=' pat_expr : {match,?anno('$1','$3'),'$1','$3'}.
 pat_expr -> pat_expr comp_op pat_expr : ?mkop2('$1', '$2', '$3').

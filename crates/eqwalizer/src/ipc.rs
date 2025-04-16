@@ -26,6 +26,7 @@ use anyhow::Result;
 use anyhow::bail;
 use elp_base_db::limit_logged_string;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::ext_types::ExtType;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use serde::Deserialize;
@@ -51,6 +52,9 @@ pub enum MsgFromEqWAlizer {
         module: String,
         format: EqWAlizerASTFormat,
     },
+    ValidateType {
+        ty: ExtType,
+    },
     EqwalizingStart {
         module: String,
     },
@@ -73,6 +77,8 @@ pub enum MsgToEqWAlizer {
     ELPEnteringModule,
     ELPExitingModule,
     GetAstBytesReply { len: u32 },
+    ValidatedType { len: u32 },
+    InvalidType { len: u32 },
     CannotCompleteRequest,
 }
 

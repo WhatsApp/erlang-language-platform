@@ -250,7 +250,7 @@ impl TypeConverter {
             .collect::<Result<Result<Vec<_>, _>, _>>()
     }
 
-    fn convert_type(
+    pub fn convert_type(
         &self,
         sub: &FxHashMap<StringId, u32>,
         ty: ExtType,

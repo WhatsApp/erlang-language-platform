@@ -271,6 +271,10 @@ pub fn walk_expr<'a, T, V: Visitor<'a, T>>(visitor: &mut V, e: &'a Expr) -> Resu
             visitor.visit_pat(&m.pat)?;
             visitor.visit_expr(&m.arg)
         }
+        Expr::TypeCast(t) => {
+            visitor.visit_expr(&t.expr)?;
+            visitor.visit_ext_type(&t.ty)
+        }
     }
 }
 

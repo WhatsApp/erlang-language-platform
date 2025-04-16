@@ -20,12 +20,14 @@ use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_syntax::SmolStr;
 use elp_types_db::StringId;
+use elp_types_db::eqwalizer::Pos;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+use elp_types_db::eqwalizer::invalid_diagnostics::InvalidRefInTypeCast;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
 
@@ -405,5 +407,20 @@ impl TransitiveChecker<'_> {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(stub_result)
+    }
+
+    pub fn check_type(
+        &mut self,
+        pos: Pos,
+        ty: Type,
+    ) -> Result<Result<Type, Invalid>, TransitiveCheckError> {
+        let mut invalids = Default::default();
+        self.collect_invalid_references(&mut invalids, self.module, &ty, None)?;
+        if !invalids.is_empty() {
+            let references = invalids.iter().map(|rref| self.show(rref)).collect();
+            let diag = Invalid::InvalidRefInTypeCast(InvalidRefInTypeCast::new(pos, references));
+            return Ok(Err(diag));
+        }
+        Ok(Ok(ty))
     }
 }
