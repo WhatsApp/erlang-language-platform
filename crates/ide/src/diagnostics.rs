@@ -2630,7 +2630,7 @@ baz(1)->4.
                 //- /src/a_mod.erl app:app_a
                 -module(a_mod).
                 -export([foo/0]).
-    
+
                 % @docc
                 %%<^^^^^ warning: tag @docc not recognized.
                 foo() -> \~"foo".
@@ -2645,7 +2645,7 @@ baz(1)->4.
                 //- /src/a_mod.erl app:app_a
                 -module(a_mod).
                 -export([foo/0]).
-    
+
                 % @docc
                 foo() -> \~"foo".
                 "#,
