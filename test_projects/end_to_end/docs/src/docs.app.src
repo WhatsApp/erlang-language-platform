@@ -1,0 +1,3 @@
+{application, docs,
+  [{description, "docs"}, {vsn, "1.0.0"}, {applications, [kernel, stdlib]}]
+}.
