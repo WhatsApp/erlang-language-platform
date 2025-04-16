@@ -153,6 +153,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
+    pub cli_severity: Option<Severity>,
     pub tag: DiagnosticTag,
     pub categories: FxHashSet<Category>,
     pub fixes: Option<Vec<Assist>>,
@@ -169,6 +170,7 @@ impl Diagnostic {
             message,
             range,
             severity: Severity::Error,
+            cli_severity: None,
             tag: DiagnosticTag::None,
             categories: FxHashSet::default(),
             fixes: None,
@@ -202,6 +204,11 @@ impl Diagnostic {
 
     pub(crate) fn with_severity(mut self, severity: Severity) -> Diagnostic {
         self.severity = severity;
+        self
+    }
+
+    pub(crate) fn with_cli_severity(mut self, severity: Severity) -> Diagnostic {
+        self.cli_severity = Some(severity);
         self
     }
 
@@ -321,19 +328,31 @@ impl Diagnostic {
         self
     }
 
-    pub fn print(&self, line_index: &LineIndex) -> String {
+    pub fn print(&self, line_index: &LineIndex, use_cli_severity: bool) -> String {
         let start = line_index.line_col(self.range.start());
         let end = line_index.line_col(self.range.end());
+
         format!(
             "{}:{}-{}:{}::[{:?}] [{}] {}",
             start.line,
             start.col_utf16,
             end.line,
             end.col_utf16,
-            self.severity,
+            self.severity(use_cli_severity),
             self.code,
             self.message
         )
+    }
+
+    pub fn severity(&self, use_cli_severity: bool) -> Severity {
+        if use_cli_severity {
+            match self.cli_severity {
+                Some(severity) => severity,
+                None => self.severity,
+            }
+        } else {
+            self.severity
+        }
     }
 
     pub fn as_assist_context_diagnostic(&self) -> AssistContextDiagnostic {
@@ -536,6 +555,7 @@ pub struct DiagnosticsConfig {
     pub include_suppressed: bool,
     pub include_otp: bool,
     pub include_edoc: bool,
+    pub use_cli_severity: bool,
     /// Used in `elp lint` to request erlang service diagnostics if
     /// needed.
     pub request_erlang_service_diagnostics: bool,
@@ -617,6 +637,11 @@ impl DiagnosticsConfig {
     pub fn set_include_edoc(mut self, value: bool) -> DiagnosticsConfig {
         self.include_edoc = value;
         self.enabled.set_edoc(value);
+        self
+    }
+
+    pub fn set_use_cli_severity(mut self, value: bool) -> DiagnosticsConfig {
+        self.use_cli_severity = value;
         self
     }
 
@@ -752,6 +777,7 @@ pub fn eqwalizer_to_diagnostic(
     let mut diagnostic = Diagnostic {
         range,
         severity,
+        cli_severity: None,
         tag: DiagnosticTag::None,
         code: DiagnosticCode::Eqwalizer(d.code.clone()),
         message,
@@ -2204,6 +2230,7 @@ baz(1)->4.
                     message: "function foo/0 undefined".to_string(),
                     range: TextRange::new(21.into(), 43.into()),
                     severity: Severity::Error,
+                    cli_severity: None,
                     tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
@@ -2215,6 +2242,7 @@ baz(1)->4.
                     message: "function foo/0 undefined".to_string(),
                     range: TextRange::new(74.into(), 79.into()),
                     severity: Severity::Error,
+                    cli_severity: None,
                     tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
@@ -2226,6 +2254,7 @@ baz(1)->4.
                     message: "spec for undefined function foo/0".to_string(),
                     range: TextRange::new(82.into(), 99.into()),
                     severity: Severity::Error,
+                    cli_severity: None,
                     tag: DiagnosticTag::None,
                     categories: FxHashSet::default(),
                     fixes: None,
@@ -2241,6 +2270,7 @@ baz(1)->4.
                 message: "syntax error before: '->'".to_string(),
                 range: TextRange::new(106.into(), 108.into()),
                 severity: Severity::Error,
+                cli_severity: None,
                 tag: DiagnosticTag::None,
                 categories: FxHashSet::default(),
                 fixes: None,

@@ -404,7 +404,13 @@ pub fn eqwalize_stats(
         let relative_path = reporting::get_relative_path(root_path, &vfs_path);
         let line_index = analysis.line_index(file_id)?;
         for stat in stats {
-            print_diagnostic_json(&stat, &line_index, relative_path, cli)?;
+            print_diagnostic_json(
+                &stat,
+                &line_index,
+                relative_path,
+                args.use_cli_severity,
+                cli,
+            )?;
         }
     }
     Ok(())
@@ -414,9 +420,11 @@ fn print_diagnostic_json(
     diagnostic: &Diagnostic,
     line_index: &LineIndex,
     path: &Path,
+    use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    let converted_diagnostic = convert::ide_to_arc_diagnostic(line_index, path, diagnostic);
+    let converted_diagnostic =
+        convert::ide_to_arc_diagnostic(line_index, path, diagnostic, use_cli_severity);
     writeln!(
         cli,
         "{}",

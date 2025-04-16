@@ -167,7 +167,14 @@ pub fn parse_all(
                             .unwrap_or_else(|| panic!("could not find project data"))
                             .root_dir;
                         let relative_path = reporting::get_relative_path(root_path, &vfs_path);
-                        print_diagnostic_json(&diag, &analysis, diags.file_id, relative_path, cli)?;
+                        print_diagnostic_json(
+                            &diag,
+                            &analysis,
+                            diags.file_id,
+                            relative_path,
+                            args.use_cli_severity,
+                            cli,
+                        )?;
                     } else {
                         print_diagnostic(&diag, &line_index, &url, &mut err_in_diag, cli)?;
                     }
@@ -187,10 +194,12 @@ fn print_diagnostic_json(
     analysis: &Analysis,
     file_id: FileId,
     path: &Path,
+    use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
-    let converted_diagnostic = convert::ide_to_arc_diagnostic(&line_index, path, diagnostic);
+    let converted_diagnostic =
+        convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
     writeln!(
         cli,
         "{}",

@@ -52,6 +52,8 @@ pub struct ParseAllElp {
     pub include_generated: bool,
     /// Parse the files serially, not in parallel
     pub serial: bool,
+    /// If specified, use the provided CLI severity mapping instead of the default one
+    pub use_cli_severity: bool,
     /// Show diagnostics in JSON format
     #[bpaf(
         argument("FORMAT"),
@@ -184,6 +186,8 @@ pub struct EqwalizeStats {
     pub rebar: bool,
     /// Also eqwalize opted-in generated modules from project
     pub include_generated: bool,
+    /// If specified, use the provided CLI severity mapping instead of the default one
+    pub use_cli_severity: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -274,6 +278,8 @@ pub struct Lint {
     pub one_shot: bool,
     /// Optional prefix to prepend to each fact. Only used when --format=json is set
     pub prefix: Option<String>,
+    /// If specified, use the provided CLI severity mapping instead of the default one
+    pub use_cli_severity: bool,
     /// Ignore the specified diagnostic, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,

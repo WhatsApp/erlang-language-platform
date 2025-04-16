@@ -28,7 +28,8 @@ use crate::diagnostics::Severity;
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::DebuggingFunction;
 const DIAGNOSTIC_MESSAGE: &str = "Debugging functions should only be used during local debugging and usages should not be checked in.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Error;
+const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning; // For IDE
+const DIAGNOSTIC_CLI_SEVERITY: Severity = Severity::Error; // For CLI, when using the --use-cli-severity flag
 const REMOVE_FIX_ID: &str = "remove_invocation";
 const REMOVE_FIX_LABEL: &str = "Remove invocation";
 
@@ -111,6 +112,7 @@ fn make_diagnostic(
     let range_mf_only = range_mf_only?;
     let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range_mf_only)
         .with_severity(DIAGNOSTIC_SEVERITY)
+        .with_cli_severity(DIAGNOSTIC_CLI_SEVERITY)
         .with_fixes(Some(vec![remove_fix(file_id, range)]))
         .with_ignore_fix(sema, file_id);
     Some(diagnostic)
@@ -141,9 +143,9 @@ mod tests {
 
 error() ->
     redbug:start("io:format/2->return", []),
-%%  ^^^^^^^^^^^^ 💡 error: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ 💡 weak: Debugging functions should only be used during local debugging and usages should not be checked in.
     redbug:stop().
-%%  ^^^^^^^^^^^ 💡 error: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^ 💡 weak: Debugging functions should only be used during local debugging and usages should not be checked in.
 
 noerror() ->
     redbug(),
@@ -187,7 +189,7 @@ redbug(_) ->
 
 main() ->
     re~dbug:start("io:format/2->return", []).
-%%  ^^^^^^^^^^^^ 💡 error: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ 💡 weak: Debugging functions should only be used during local debugging and usages should not be checked in.
 //- /src/redbug.erl
 -module(redbug).
 -export([start/2]).
@@ -219,7 +221,7 @@ main() ->
 
 main() ->
     re~dbug:start("io:format/2->return", []),
-%%  ^^^^^^^^^^^^ 💡 error: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ 💡 weak: Debugging functions should only be used during local debugging and usages should not be checked in.
     ok.
 //- /src/redbug.erl
 -module(redbug).

@@ -316,6 +316,7 @@ pub fn do_codemod(
                             &analysis,
                             *file_id,
                             with_prefix(relative_path, prefix).as_path(),
+                            args.use_cli_severity,
                             cli,
                         )?;
                     }
@@ -335,7 +336,13 @@ pub fn do_codemod(
                         if let diagnostics::Severity::Error = diag.severity {
                             err_in_diag = true;
                         };
-                        print_diagnostic(diag, &loaded.analysis(), *file_id, cli)?;
+                        print_diagnostic(
+                            diag,
+                            &loaded.analysis(),
+                            *file_id,
+                            args.use_cli_severity,
+                            cli,
+                        )?;
                     }
                 }
             }
@@ -389,6 +396,7 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
         .set_include_generated(args.include_generated)
         .set_experimental(args.experimental_diags)
         .set_include_suppressed(args.include_suppressed)
+        .set_use_cli_severity(args.use_cli_severity)
         .set_include_edoc(args.include_edoc_diagnostics);
     Ok(cfg)
 }
@@ -397,10 +405,11 @@ fn print_diagnostic(
     diag: &diagnostics::Diagnostic,
     analysis: &Analysis,
     file_id: FileId,
+    use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
-    writeln!(cli, "      {}", diag.print(&line_index))?;
+    writeln!(cli, "      {}", diag.print(&line_index, use_cli_severity))?;
     Ok(())
 }
 
@@ -409,10 +418,12 @@ fn print_diagnostic_json(
     analysis: &Analysis,
     file_id: FileId,
     path: &Path,
+    use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
-    let converted_diagnostic = convert::ide_to_arc_diagnostic(&line_index, path, diagnostic);
+    let converted_diagnostic =
+        convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
     writeln!(
         cli,
         "{}",
@@ -631,7 +642,13 @@ impl<'a> Lints<'a> {
                 for (file_id, (name, diags)) in &self.diags {
                     writeln!(cli, "  {}: {}", name, diags.len())?;
                     for diag in diags.iter() {
-                        print_diagnostic(diag, &self.analysis_host.analysis(), *file_id, cli)?;
+                        print_diagnostic(
+                            diag,
+                            &self.analysis_host.analysis(),
+                            *file_id,
+                            self.args.use_cli_severity,
+                            cli,
+                        )?;
                     }
                 }
             }
@@ -700,7 +717,13 @@ impl<'a> Lints<'a> {
                 if format_normal {
                     writeln!(cli, "---------------------------------------------\n")?;
                     writeln!(cli, "Applying fix in module '{name}' for")?;
-                    print_diagnostic(diagnostic, &self.analysis_host.analysis(), file_id, cli)?;
+                    print_diagnostic(
+                        diagnostic,
+                        &self.analysis_host.analysis(),
+                        file_id,
+                        self.args.use_cli_severity,
+                        cli,
+                    )?;
                 }
                 let changed = fixes
                     .iter()
@@ -760,7 +783,13 @@ impl<'a> Lints<'a> {
                 writeln!(cli, "---------------------------------------------\n")?;
                 writeln!(cli, "Applying fix(es) in module '{name}' for")?;
                 for diagnostic in diagnostics {
-                    print_diagnostic(&diagnostic, &self.analysis_host.analysis(), file_id, cli)?;
+                    print_diagnostic(
+                        &diagnostic,
+                        &self.analysis_host.analysis(),
+                        file_id,
+                        self.args.use_cli_severity,
+                        cli,
+                    )?;
                 }
             }
             let source_change =

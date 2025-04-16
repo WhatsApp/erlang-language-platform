@@ -239,6 +239,7 @@ pub fn ide_to_arc_diagnostic(
     line_index: &LineIndex,
     path: &Path,
     diagnostic: &Diagnostic,
+    use_cli_severity: bool,
 ) -> arc_types::Diagnostic {
     let pos = position(line_index, diagnostic.range.start());
     let line_num = pos.line + 1;
@@ -248,11 +249,12 @@ pub fn ide_to_arc_diagnostic(
         Some(uri) => format!("{message}\n\nFor more information see: {uri}"),
         None => message,
     };
+    let severity = diagnostic.severity(use_cli_severity);
     arc_types::Diagnostic::new(
         path,
         line_num,
         character,
-        ide_to_arc_severity(diagnostic.severity),
+        ide_to_arc_severity(severity),
         diagnostic.code.as_labeled_code(),
         description,
         None,
