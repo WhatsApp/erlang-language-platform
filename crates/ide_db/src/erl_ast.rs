@@ -52,8 +52,10 @@ impl AstLoader for crate::RootDatabase {
         parse_transforms: &[eetf::Term],
         elp_metadata: eetf::Term,
     ) -> ParseResult {
+        let mut macros = macros.to_vec();
+        macros.push(eetf::Atom::from("ELP_ERLANG_SERVICE").into());
         let options = vec![
-            CompileOption::Macros(macros.to_vec()),
+            CompileOption::Macros(macros),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
