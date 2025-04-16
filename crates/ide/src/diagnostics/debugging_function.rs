@@ -25,6 +25,7 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
 use crate::diagnostics::Severity;
+use crate::diagnostics::meta_only;
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::DebuggingFunction;
 const DIAGNOSTIC_MESSAGE: &str = "Debugging functions should only be used during local debugging and usages should not be checked in.";
@@ -48,7 +49,10 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 fn debugging_functions(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     lazy_static! {
         static ref BAD_CALLS: Vec<FunctionMatch> =
-            vec![FunctionMatch::m("redbug"),].into_iter().collect();
+            vec![FunctionMatch::m("redbug"),]
+            .into_iter()
+            // @fb-only
+            .collect();
         static ref BAD_CALLS_MFAS: Vec<(&'static FunctionMatch, ())> = BAD_CALLS
             .iter()
             .map(|matcher| (matcher, ()))
