@@ -1294,7 +1294,7 @@ impl Converter {
                             .into_iter()
                             .flatten()
                             .collect();
-                        let gen = fields
+                        let gen_ = fields
                             .elements
                             .iter()
                             .map(|f| self.convert_pat_record_field_gen(f))
@@ -1307,7 +1307,7 @@ impl Converter {
                             pos,
                             rec_name: StringId::from(&name.name),
                             fields: fields_named,
-                            gen,
+                            gen_,
                         }));
                     }
                     ("record_index", [Term::Atom(name), field_name]) => {

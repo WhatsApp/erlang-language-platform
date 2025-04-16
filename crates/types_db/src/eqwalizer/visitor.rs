@@ -304,7 +304,7 @@ pub fn walk_pat<'a, T, V: Visitor<'a, T>>(visitor: &mut V, p: &'a Pat) -> Result
             r.fields
                 .iter()
                 .try_for_each(|f| visitor.visit_pat(&f.pat))?;
-            r.gen.as_ref().map_or(Ok(()), |g| visitor.visit_pat(g))
+            r.gen_.as_ref().map_or(Ok(()), |g| visitor.visit_pat(g))
         }
         Pat::PatRecordIndex(_) => Ok(()),
         Pat::PatUnOp(o) => visitor.visit_pat(&o.arg),

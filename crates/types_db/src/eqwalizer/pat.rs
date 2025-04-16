@@ -106,7 +106,8 @@ pub struct PatRecord {
     pub rec_name: StringId,
     #[serde(default)]
     pub fields: Vec<PatRecordFieldNamed>,
-    pub gen: Option<Box<Pat>>,
+    #[serde(rename = "gen")]
+    pub gen_: Option<Box<Pat>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

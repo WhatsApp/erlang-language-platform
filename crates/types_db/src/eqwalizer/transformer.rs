@@ -589,7 +589,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
                         .map(|pat| PatRecordFieldNamed { name: f.name, pat })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
-            gen: r.gen.map_or(Ok(None), |g| {
+            gen_: r.gen_.map_or(Ok(None), |g| {
                 transformer.transform_pat(*g).map(|pat| Some(Box::new(pat)))
             })?,
         })),
