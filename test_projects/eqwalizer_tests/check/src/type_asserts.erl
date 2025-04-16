@@ -7,6 +7,8 @@
 
 -compile([export_all, nowarn_export_all]).
 
+-include_lib("eqwalizer/include/eqwalizer.hrl").
+
 -spec assert1(term()) -> binary().
 assert1(Arg) ->
   is_binary(Arg) orelse throw(bad_arg),
@@ -95,3 +97,77 @@ scope_neg(A) ->
 assert7(Input) ->
   true = is_binary(Input),
   Input.
+
+-spec checked_cast1(atom()) -> ok.
+checked_cast1(A) -> ?checked_cast(A, dynamic()).
+
+-spec checked_cast1_neg(atom()) -> ok.
+checked_cast1_neg(A) -> ?checked_cast(A, ok).
+
+-spec checked_cast2_neg(ok) -> ok.
+checked_cast2_neg(A) -> ?checked_cast(A, atom()).
+
+-type invalid() :: foo:non_exist().
+
+-spec checked_cast3_neg(atom()) -> ok.
+checked_cast3_neg(A) -> ?checked_cast(A, foo:non_exist()).
+
+-spec checked_cast4_neg(atom()) -> ok.
+checked_cast4_neg(A) -> ?checked_cast(A, {ok, invalid()}).
+
+-type nested_map() :: #{dynamic() => #{ka => va, kb => vb, kc => vc}}.
+
+-spec checked_cast_foldl_neg(dynamic()) -> nested_map().
+checked_cast_foldl_neg(K) ->
+  lists:foldl(fun (Key, Acc) ->
+    case Key of
+      a ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{ka => va}};
+      b ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{kb => vb}};
+      c ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{kc => vc}}
+    end
+  end, #{}, [a, b, c]).
+
+-spec checked_cast_foldl(dynamic()) -> nested_map().
+checked_cast_foldl(K) ->
+  lists:foldl(fun (Key, Acc) ->
+    case Key of
+      a ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{ka => va}};
+      b ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{kb => vb}};
+      c ->
+        V = maps:get(K, Acc, #{}),
+        Acc#{K => V#{kc => vc}}
+    end
+  end, ?checked_cast(#{}, nested_map()), [a, b, c]).
+
+-spec unsafe_cast1(atom()) -> ok.
+unsafe_cast1(A) -> ?unchecked_cast(A, ok).
+
+-spec unsafe_cast1_neg(atom()) -> ok.
+unsafe_cast1_neg(A) -> ?unchecked_cast(A, err).
+
+-spec unsafe_cast2_neg(dynamic()) -> ok.
+unsafe_cast2_neg(D) -> ?unchecked_cast(a + D, ok).
+
+-spec vars_in_cast1_neg(A) -> A.
+vars_in_cast1_neg(T) when is_atom(T) ->
+  ?checked_cast(ok, A).
+
+-spec vars_in_cast2_neg(A | B) -> A | B.
+vars_in_cast2_neg(T) when is_atom(T) ->
+  ?unchecked_cast(ok, A | B).
+
+-record(rec, {field :: atom()}).
+
+-spec bad_record_field() -> #rec{}.
+bad_record_field() ->
+  ?unchecked_cast(1, #rec{bad_field :: atom()}).
