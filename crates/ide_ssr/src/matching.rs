@@ -156,7 +156,7 @@ impl PlaceholderMatch {
     /// Return any comments on the matched item
     pub fn comments(&self, sema: &Semantic, body_map: &BodySourceMap) -> Option<Vec<ast::Comment>> {
         match self.code_id {
-            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(&body_map, any_expr_id),
+            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(body_map, any_expr_id),
             _ => None,
         }
     }
@@ -221,7 +221,7 @@ where
 // a boolean into all the bits of code that can make the decision to
 // not match.
 thread_local! {
-    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = Cell::new(false);
+    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = const { Cell::new(false) };
 }
 
 fn recording_match_fail_reasons() -> bool {
@@ -250,8 +250,8 @@ pub(crate) fn get_match(
             *restrict_range,
             pattern,
             code_body_origin,
-            &pattern_body,
-            &code_body,
+            pattern_body,
+            code_body,
         )
         .try_match(debug_active, &SubId::AnyExprId(*code))
     })
@@ -306,16 +306,13 @@ impl<'a> Matcher<'a> {
 
     fn try_match(&self, debug_active: bool, code: &SubId) -> Result<Match, MatchFailed> {
         if debug_active {
-            match code {
-                SubId::AnyExprId(any_expr_id) => {
-                    println!(
-                        "Matcher::try_match:code:---------------\n{}----------------\n",
-                        self.code_body
-                            .body
-                            .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
-                    );
-                }
-                _ => {}
+            if let SubId::AnyExprId(any_expr_id) = code {
+                println!(
+                    "Matcher::try_match:code:---------------\n{}----------------\n",
+                    self.code_body
+                        .body
+                        .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
+                );
             }
         }
 
@@ -330,7 +327,7 @@ impl<'a> Matcher<'a> {
         self.validate_range(&code_range)?;
         let mut the_match = Match {
             range: code_range,
-            matched_node_body: self.code_body_origin.clone(),
+            matched_node_body: *self.code_body_origin,
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             placeholders_by_var: FxHashMap::default(),
@@ -341,7 +338,7 @@ impl<'a> Matcher<'a> {
         // Second matching pass, where we record placeholder matches,
         // ignored comments and maybe do any other more expensive
         // checks that we didn't want to do on the first pass.
-        self.attempt_match_node(&mut Phase::Second(&mut the_match), &self.pattern, code)?;
+        self.attempt_match_node(&mut Phase::Second(&mut the_match), self.pattern, code)?;
 
         Ok(the_match)
     }
@@ -428,7 +425,7 @@ impl<'a> Matcher<'a> {
                         {
                             for match_id in match_ids.iter() {
                                 if let Some(m) = matches_out.placeholder_values.get(match_id) {
-                                    if !m.equivalent(self.sema, &self.rule, self.code_body, code) {
+                                    if !m.equivalent(self.sema, self.rule, self.code_body, code) {
                                         fail_match!(
                                             "placeholder match failed: different occurrences do not match:\n---------------\n{:?}\n-----------",
                                             &m
@@ -455,13 +452,13 @@ impl<'a> Matcher<'a> {
                 return Ok(true);
             }
         }
-        return Ok(false);
+        Ok(false)
     }
 
     fn check_condition(&self, code: &SubId, condition: &Condition) -> Result<(), MatchFailed> {
         match condition {
             Condition::Literal(literal) => {
-                if let Some(code_literal) = get_literal_subid(&self.code_body, code) {
+                if let Some(code_literal) = get_literal_subid(self.code_body, code) {
                     if code_literal != literal {
                         fail_match!("literal match condition failed: literals different");
                     }
@@ -599,11 +596,13 @@ impl<'a> Matcher<'a> {
         codes: &[(&SubId, &Vec<SubId>)],
     ) -> Result<usize, MatchFailed> {
         if let Some((idx, rhs)) = codes.iter().enumerate().find_map(|(idx, (code, rhs))| {
-            if let Ok(_) = if self.is_code_leaf(code) {
+            if (if self.is_code_leaf(code) {
                 self.attempt_match_leaf(phase, pattern.0, code)
             } else {
                 self.attempt_match_node(phase, pattern.0, code)
-            } {
+            })
+            .is_ok()
+            {
                 Some((idx, *rhs))
             } else {
                 None
@@ -623,10 +622,10 @@ impl<'a> Matcher<'a> {
         pattern: &SubId,
         code: &SubId,
     ) -> Result<(), MatchFailed> {
-        let code_expr = &code.sub_id_ref(&self.code_body);
-        let code_node_type = code.variant_str(&self.code_body);
-        let pattern_expr = pattern.sub_id_ref(&self.pattern_body);
-        let pattern_node_type = pattern.variant_str(&self.pattern_body);
+        let code_expr = &code.sub_id_ref(self.code_body);
+        let code_node_type = code.variant_str(self.code_body);
+        let pattern_expr = pattern.sub_id_ref(self.pattern_body);
+        let pattern_node_type = pattern.variant_str(self.pattern_body);
 
         if self.attempt_match_placeholder(pattern, code, phase)? {
             return Ok(());
@@ -707,7 +706,7 @@ impl<'a> Matcher<'a> {
 
     fn attempt_match_var(&self, code_var: &Var, pat_var: &Var) -> Result<(), MatchFailed> {
         if self.sema.db.lookup_var(*pat_var) == self.sema.db.lookup_var(*code_var) {
-            return Ok(());
+            Ok(())
         } else {
             fail_match!(
                 "Pattern had var `{}`, code had var `{}`",
@@ -776,11 +775,11 @@ impl<'a> Matcher<'a> {
     }
 
     fn get_code_str(&self, id: &SubId) -> String {
-        id.variant_str(&self.code_body).to_string()
+        id.variant_str(self.code_body).to_string()
     }
 
     fn get_pattern_str(&self, id: &SubId) -> String {
-        id.variant_str(&self.pattern_body).to_string()
+        id.variant_str(self.pattern_body).to_string()
     }
 
     /// Check if the pattern_body SubId is a placeholder
@@ -1026,10 +1025,12 @@ pub enum SubIdRef<'a> {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum PatternIterator {
     List(PatternList),
     // For records and fields, we record the name and value separately
     Map(PatternMap),
+    #[default]
     Leaf,
 }
 
@@ -1048,12 +1049,6 @@ pub struct PatternMap {
 impl From<Vec<SubId>> for PatternList {
     fn from(children: Vec<SubId>) -> Self {
         PatternList { children, idx: 0 }
-    }
-}
-
-impl Default for PatternIterator {
-    fn default() -> Self {
-        PatternIterator::Leaf
     }
 }
 
@@ -1089,7 +1084,7 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::Binary { segs } => PatternIterator::as_pattern_list(
-                    segs.iter().flat_map(|s| iterate_binary_seg(s)).collect(),
+                    segs.iter().flat_map(iterate_binary_seg).collect(),
                 ),
                 Expr::UnaryOp { expr, op } => {
                     PatternIterator::as_pattern_list(vec![(*op).into(), (*expr).into()])
@@ -1172,7 +1167,7 @@ impl PatternIterator {
                             .chain(
                                 exprs
                                     .iter()
-                                    .flat_map(|cb| PatternIterator::for_comprehension_expr(cb)),
+                                    .flat_map(PatternIterator::for_comprehension_expr),
                             )
                             .collect(),
                     )
@@ -1181,17 +1176,17 @@ impl PatternIterator {
                     PatternIterator::as_pattern_list(exprs.iter().map(|id| (*id).into()).collect())
                 }
                 Expr::If { clauses } => PatternIterator::as_pattern_list(
-                    clauses.iter().flat_map(|cr| if_clause_iter(cr)).collect(),
+                    clauses.iter().flat_map(if_clause_iter).collect(),
                 ),
                 Expr::Case { expr, clauses } => PatternIterator::as_pattern_list(
                     iter::once((*expr).into())
-                        .chain(clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
+                        .chain(clauses.iter().flat_map(cr_clause_iter))
                         .collect(),
                 ),
                 Expr::Receive { clauses, after } => PatternIterator::as_pattern_list(
                     clauses
                         .iter()
-                        .flat_map(|cr| cr_clause_iter(cr))
+                        .flat_map(cr_clause_iter)
                         .chain(iter::once("after".into()))
                         .chain(
                             after
@@ -1211,13 +1206,17 @@ impl PatternIterator {
                     res.push("of".into());
                     of_clauses
                         .iter()
-                        .flat_map(|cr| cr_clause_iter(cr))
+                        .flat_map(cr_clause_iter)
                         .for_each(|e| res.push(e));
                     res.push("catch".into());
                     catch_clauses.iter().for_each(|cc| {
-                        cc.class.map(|p| res.push(p.into()));
+                        if let Some(p) = cc.class {
+                            res.push(p.into())
+                        }
                         res.push(cc.reason.into());
-                        cc.stack.map(|p| res.push(p.into()));
+                        if let Some(p) = cc.stack {
+                            res.push(p.into())
+                        }
                         cc.guards
                             .iter()
                             .for_each(|g| g.iter().for_each(|e| res.push((*e).into())));
@@ -1271,13 +1270,13 @@ impl PatternIterator {
                             MaybeExpr::Cond { lhs, rhs } => vec![(*lhs).into(), (*rhs).into()],
                             MaybeExpr::Expr(expr) => vec![(*expr).into()],
                         })
-                        .chain(else_clauses.iter().flat_map(|cr| cr_clause_iter(cr)))
+                        .chain(else_clauses.iter().flat_map(cr_clause_iter))
                         .collect(),
                 ),
                 Expr::Paren { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
                 Expr::SsrPlaceholder(_) => PatternIterator::Leaf,
             },
-            AnyExprRef::Pat(it) => match &*it {
+            AnyExprRef::Pat(it) => match it {
                 Pat::Missing => PatternIterator::Leaf,
                 Pat::Literal(_) => PatternIterator::Leaf,
                 Pat::Var(var) => PatternIterator::as_pattern_list(vec![(*var).into()]),
@@ -1294,7 +1293,7 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Pat::Binary { segs } => PatternIterator::as_pattern_list(
-                    segs.iter().flat_map(|s| iterate_binary_seg(s)).collect(),
+                    segs.iter().flat_map(iterate_binary_seg).collect(),
                 ),
                 Pat::UnaryOp { pat, op } => {
                     PatternIterator::as_pattern_list(vec![(*op).into(), (*pat).into()])
@@ -1399,7 +1398,7 @@ impl PatternIterator {
 fn if_clause_iter(ifc: &IfClause) -> Vec<SubId> {
     ifc.guards
         .iter()
-        .flat_map(|g| g.into_iter().map(|e| (*e).into()))
+        .flat_map(|g| g.iter().map(|e| (*e).into()))
         .chain(iter::once("exprs".into()))
         .chain(ifc.exprs.iter().map(|e| (*e).into()))
         .collect()
@@ -1408,11 +1407,7 @@ fn if_clause_iter(ifc: &IfClause) -> Vec<SubId> {
 fn cr_clause_iter(cr: &CRClause) -> Vec<SubId> {
     iter::once(cr.pat.into())
         .chain(iter::once("guards".into()))
-        .chain(
-            cr.guards
-                .iter()
-                .flat_map(|g| g.into_iter().map(|e| (*e).into())),
-        )
+        .chain(cr.guards.iter().flat_map(|g| g.iter().map(|e| (*e).into())))
         .chain(iter::once("exprs".into()))
         .chain(cr.exprs.iter().map(|e| (*e).into()))
         .collect()

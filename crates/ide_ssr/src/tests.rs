@@ -27,14 +27,14 @@ use crate::SsrSearchScope;
 
 #[track_caller]
 fn parse_error_text(query: &str) -> String {
-    let (mut db, _file_id) = RootDatabase::with_single_file(&query);
+    let (mut db, _file_id) = RootDatabase::with_single_file(query);
     let pattern = SsrRule::parse_str(&mut db, query);
     format!("{}", pattern.unwrap_err())
 }
 
 #[track_caller]
 fn parse_good_text(query: &str, expect: Expect) {
-    let (mut db, _file_id) = RootDatabase::with_single_file(&query);
+    let (mut db, _file_id) = RootDatabase::with_single_file(query);
     let pattern = SsrRule::parse_str(&mut db, query);
     let actual = pattern.unwrap().tree_print(&db);
     expect.assert_eq(actual.as_str());
@@ -196,10 +196,8 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 #[track_caller]
 fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, _selections) = single_file(code);
-    if expected.len() > 0 {
-        if expected[0] == "" {
-            panic!("empty expected string");
-        }
+    if !expected.is_empty() && expected[0].is_empty() {
+        panic!("empty expected string");
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
@@ -229,10 +227,8 @@ fn assert_match_placeholder(
     expected_val: Expect,
 ) {
     let (db, position, _selections) = single_file(code);
-    if expected.len() > 0 {
-        if expected[0] == "" {
-            panic!("empty expected string");
-        }
+    if !expected.is_empty() && expected[0].is_empty() {
+        panic!("empty expected string");
     }
     let sema = Semantic::new(&db);
     let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();

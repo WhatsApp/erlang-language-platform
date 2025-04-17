@@ -146,7 +146,7 @@ pub fn match_pattern_in_file(
 ) -> SsrMatches {
     let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
     let mut match_finder =
-        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+        MatchFinder::in_context(sema, strategy, SsrSearchScope::WholeFile(file_id));
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches: SsrMatches = match_finder.matches().flattened();
@@ -161,7 +161,7 @@ pub fn match_pattern_in_file_functions(
 ) -> SsrMatches {
     let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
     let mut match_finder =
-        MatchFinder::in_context(&sema, strategy, SsrSearchScope::FunctionsOnly(file_id));
+        MatchFinder::in_context(sema, strategy, SsrSearchScope::FunctionsOnly(file_id));
     match_finder.debug_print = false;
     match_finder.add_search_pattern(pattern);
     let matches: SsrMatches = match_finder.matches().flattened();
@@ -188,13 +188,13 @@ pub fn is_placeholder_a_var_from_sema_and_match(
     overall_match: &Match,
     m: &PlaceholderMatch,
 ) -> bool {
-    return overall_match
+    overall_match
         .matched_node_body
         .get_body(sema)
-        .map_or(false, |body_arc| {
+        .is_some_and(|body_arc| {
             let body = body_arc.as_ref();
             is_placeholder_a_var_from_body(body, m)
-        });
+        })
 }
 
 // ---------------------------------------------------------------------
@@ -264,13 +264,13 @@ impl SsrRule {
     ) -> Result<FxHashMap<SsrPlaceholder, Condition>, SsrError> {
         let mut conditions: FxHashMap<SsrPlaceholder, Condition> = FxHashMap::default();
         let mut error = None;
-        ssr_body.when.as_ref().map(|w| {
+        if let Some(w) = ssr_body.when.as_ref() {
             w.iter().for_each(|conds| {
                 conds.iter().for_each(|cond| {
                     extract_condition(body, cond, &mut conditions, &mut error);
                 });
             })
-        });
+        }
         if let Some(error) = error {
             Err(error)
         } else {
@@ -287,40 +287,34 @@ fn extract_condition(
 ) {
     match body[*cond] {
         Expr::BinaryOp { lhs, rhs, op } => {
-            match &body[lhs] {
-                Expr::SsrPlaceholder(ssr_placeholder) => {
-                    // We have a condition on the current placeholder, store it if valid
-                    match op {
-                        ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
-                            if let Some(lit_rhs) =
-                                get_literal_subid(&body, &SubId::AnyExprId(AnyExprId::Expr(rhs)))
-                            {
-                                if negated {
-                                    conditions.insert(
-                                        ssr_placeholder.clone(),
-                                        Condition::Not(Box::new(Condition::Literal(
-                                            lit_rhs.clone(),
-                                        ))),
-                                    );
-                                } else {
-                                    conditions.insert(
-                                        ssr_placeholder.clone(),
-                                        Condition::Literal(lit_rhs.clone()),
-                                    );
-                                }
+            if let Expr::SsrPlaceholder(ssr_placeholder) = &body[lhs] {
+                // We have a condition on the current placeholder, store it if valid
+                match op {
+                    ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
+                        if let Some(lit_rhs) =
+                            get_literal_subid(body, &SubId::AnyExprId(AnyExprId::Expr(rhs)))
+                        {
+                            if negated {
+                                conditions.insert(
+                                    ssr_placeholder.clone(),
+                                    Condition::Not(Box::new(Condition::Literal(lit_rhs.clone()))),
+                                );
                             } else {
-                                *error =
-                                    Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
+                                conditions.insert(
+                                    ssr_placeholder.clone(),
+                                    Condition::Literal(lit_rhs.clone()),
+                                );
                             }
-                        }
-                        _ => {
-                            *error = Some(SsrError::new(
-                                "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
-                            ))
+                        } else {
+                            *error = Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
                         }
                     }
+                    _ => {
+                        *error = Some(SsrError::new(
+                            "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
+                        ))
+                    }
                 }
-                _ => {}
             }
         }
         _ => {
@@ -360,10 +354,10 @@ impl SsrPattern {
         code: &AnyExprId,
     ) -> SubId {
         match code {
-            AnyExprId::Expr(_) => SubId::AnyExprId(AnyExprId::Expr(self.pattern_node.expr.clone())),
+            AnyExprId::Expr(_) => SubId::AnyExprId(AnyExprId::Expr(self.pattern_node.expr)),
             AnyExprId::Pat(_) => match pattern_body[self.pattern_node.pat] {
                 Pat::Missing => SubId::Constant("Cannot match pattern Pat::Missing".to_string()),
-                _ => SubId::AnyExprId(AnyExprId::Pat(self.pattern_node.pat.clone())),
+                _ => SubId::AnyExprId(AnyExprId::Pat(self.pattern_node.pat)),
             },
             _ => SubId::Constant("not implemented yet".to_string()),
         }
@@ -420,7 +414,7 @@ impl<'a> MatchFinder<'a> {
         for rule in &self.rules {
             self.find_matches_for_rule(rule, &mut matches);
         }
-        nester::nest_and_remove_collisions(matches, &self.sema)
+        nester::nest_and_remove_collisions(matches, self.sema)
     }
 
     /// Finds all nodes in `file_id` whose text is exactly equal to
@@ -481,7 +475,7 @@ impl<'a> MatchFinder<'a> {
                             let code_body = &body_origin
                                 .get_body(self.sema)
                                 .expect("Could not get code Body");
-                            let code_body = fold_body(self.strategy, &code_body);
+                            let code_body = fold_body(self.strategy, code_body);
                             out.push(MatchDebugInfo {
                                 matched: matching::get_match(
                                     true,
@@ -490,7 +484,7 @@ impl<'a> MatchFinder<'a> {
                                     &body_origin,
                                     &any_expr_id,
                                     restrict_range,
-                                    &self.sema,
+                                    self.sema,
                                     &code_body,
                                     &pattern_body,
                                 )
@@ -541,13 +535,12 @@ impl Match {
         sema: &Semantic,
         placeholder_name: &str,
     ) -> Option<Vec<PlaceholderMatch>> {
-        let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
+        let var = sema.db.var(Name::from_erlang_service(placeholder_name));
         let subids = self.placeholders_by_var.get(&var)?;
         Some(
             subids
                 .iter()
-                .map(|sub_id| self.placeholder_values.get(sub_id).cloned())
-                .flatten()
+                .filter_map(|sub_id| self.placeholder_values.get(sub_id).cloned())
                 .collect(),
         )
     }
@@ -556,7 +549,7 @@ impl Match {
         sema: &Semantic,
         placeholder_name: &str,
     ) -> Option<PlaceholderMatch> {
-        let var = sema.db.var(Name::from_erlang_service(&placeholder_name));
+        let var = sema.db.var(Name::from_erlang_service(placeholder_name));
         let subids = self.placeholders_by_var.get(&var)?;
         if subids.len() == 1 {
             self.placeholder_values

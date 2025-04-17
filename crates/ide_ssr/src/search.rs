@@ -46,7 +46,7 @@ impl MatchFinder<'_> {
         //   does not match.
 
         self.scope.fold(
-            &self.sema,
+            self.sema,
             self.strategy,
             (),
             &mut |_acc, ctx| {
@@ -54,7 +54,7 @@ impl MatchFinder<'_> {
                     .body_origin
                     .get_body(self.sema)
                     .expect("Could not get code Body");
-                let code_body = fold_body(self.strategy, &code_body);
+                let code_body = fold_body(self.strategy, code_body);
                 {
                     let code_body_origin: &BodyOrigin = &ctx.body_origin;
                     let code: &AnyExprId = &ctx.item_id;
