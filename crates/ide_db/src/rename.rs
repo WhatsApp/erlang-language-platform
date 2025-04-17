@@ -183,7 +183,7 @@ impl SymbolDefinition {
                     let arity = function.name.arity();
                     let mut problems = usages.iter().filter(|(file_id, refs)| {
                         (file_id != &function.file.file_id)
-                            && !is_safe_remote_function(sema, *file_id, new_name, arity, *refs)
+                            && !is_safe_remote_function(sema, *file_id, new_name, arity, refs)
                     });
                     // Report the first one only, an existence proof of problems
                     if let Some((file_id, _)) = problems.next() {
@@ -230,7 +230,7 @@ impl SymbolDefinition {
                     value: &var.source(sema.db.upcast()),
                 };
                 if safety_check == SafetyChecks::Yes {
-                    if !is_safe_var_usages(sema, infile_var, &usages, &new_name) {
+                    if !is_safe_var_usages(sema, infile_var, &usages, new_name) {
                         rename_error!("Name '{}' already in scope", new_name);
                     }
 
@@ -400,7 +400,7 @@ pub fn is_safe_remote_function(
 ) -> bool {
     // Problem occurs if the usage is not qualified with a module name
     let all_remote = refs.iter().all(|name_like| {
-        if let Some(call) = get_call(&name_like.syntax()) {
+        if let Some(call) = get_call(name_like.syntax()) {
             if let Some(ast::Expr::Remote(_)) = call.expr() {
                 true
             } else {

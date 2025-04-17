@@ -156,18 +156,14 @@ impl AssistResolveStrategy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, EnumIter)]
+#[derive(Default)]
 pub enum AssistContextDiagnosticCode {
+    #[default]
     DefaultCodeForEnumIter,
     UndefinedFunction,
     UnusedFunction,
     UnusedVariable,
     ElpDiagnostic(DiagnosticCode),
-}
-
-impl Default for AssistContextDiagnosticCode {
-    fn default() -> Self {
-        AssistContextDiagnosticCode::DefaultCodeForEnumIter
-    }
 }
 
 impl AssistContextDiagnosticCode {

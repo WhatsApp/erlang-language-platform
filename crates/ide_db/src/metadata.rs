@@ -102,7 +102,7 @@ impl From<Metadata> for eetf::Term {
 
 // serialize as:
 // {FixmeCommentStart, FixmeCommentEnd, SuppressionRangeStart, SuppressionRangeEnd, IsIgnore}
-impl<'a> From<&'a Annotation> for eetf::Term {
+impl From<&Annotation> for eetf::Term {
     fn from(val: &Annotation) -> Self {
         let to_term = |n: TextSize| -> eetf::Term {
             let n: u32 = n.into();
@@ -169,7 +169,7 @@ pub fn collect_metadata(
                     let comment_range = TextRange::new(pattern_start, pattern_end);
                     let codes = comment
                         .split_whitespace()
-                        .filter_map(|word| DiagnosticCode::maybe_from_string(word))
+                        .filter_map(DiagnosticCode::maybe_from_string)
                         .collect();
 
                     annotations.push(Annotation {

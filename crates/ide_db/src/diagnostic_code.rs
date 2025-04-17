@@ -25,7 +25,9 @@ use strum_macros::EnumIter;
 pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Default)]
 pub enum DiagnosticCode {
+    #[default]
     DefaultCodeForEnumIter,
     HeadMismatch,
     MissingModule,
@@ -155,12 +157,6 @@ impl serde::Serialize for DiagnosticCode {
         S: serde::Serializer,
     {
         serializer.serialize_str(self.as_code().as_str())
-    }
-}
-
-impl Default for DiagnosticCode {
-    fn default() -> Self {
-        DiagnosticCode::DefaultCodeForEnumIter
     }
 }
 
@@ -478,7 +474,7 @@ mod tests {
 
     #[test]
     fn from_string_1() {
-        let strings = vec!["W0008", "unreachable_test"];
+        let strings = ["W0008", "unreachable_test"];
         let codes = strings
             .iter()
             .map(|s| DiagnosticCode::maybe_from_string(s))
@@ -498,7 +494,7 @@ mod tests {
 
     #[test]
     fn from_string_2() {
-        let strings = vec![
+        let strings = [
             DiagnosticCode::AdHoc("ad-hoc-title-1".to_string()).as_label(),
             DiagnosticCode::AdHoc("ad-hoc-title-2".to_string()).as_code(),
         ];
@@ -525,7 +521,7 @@ mod tests {
 
     #[test]
     fn from_string_3() {
-        let strings = vec!["C1000", "L1213"];
+        let strings = ["C1000", "L1213"];
         let codes = strings
             .iter()
             .map(|s| DiagnosticCode::maybe_from_string(s))
@@ -549,7 +545,7 @@ mod tests {
 
     #[test]
     fn from_string_eqwalizer() {
-        let strings = vec!["eqwalizer: unknown_id"];
+        let strings = ["eqwalizer: unknown_id"];
         let codes = strings
             .iter()
             .map(|s| DiagnosticCode::maybe_from_string(s))

@@ -203,7 +203,7 @@ impl<'db> Documentation<'db> {
     }
 }
 
-impl<'db> Documentation<'db> {
+impl Documentation<'_> {
     pub fn to_doc<T: ToDoc>(&self, ast: T) -> Option<Doc> {
         ToDoc::to_doc(self, ast)
     }

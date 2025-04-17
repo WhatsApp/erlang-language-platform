@@ -69,12 +69,12 @@ impl AstLoader for crate::RootDatabase {
             file_text,
         };
         let erlang_service = self.erlang_service_for(project_id);
-        let r = erlang_service.request_parse(
+
+        erlang_service.request_parse(
             req,
             || self.unwind_if_cancelled(),
-            &move |file_id, include_type, path| resolve_include(self, file_id, include_type, &path),
-        );
-        r
+            &move |file_id, include_type, path| resolve_include(self, file_id, include_type, path),
+        )
     }
 }
 
@@ -87,7 +87,7 @@ fn resolve_include(
     let include_file_id = match include_type {
         IncludeType::Normal => IncludeCtx::new(db, file_id).resolve_include(path)?,
         IncludeType::Lib => IncludeCtx::new(db, file_id).resolve_include_lib(path)?,
-        IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(&path)?,
+        IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(path)?,
     };
     let path = path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())?;
     Some((path, include_file_id, db.file_text(include_file_id)))

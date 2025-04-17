@@ -206,7 +206,7 @@ impl RootDatabase {
                     .iter()
                     .map(|path| path.clone().into())
                     .collect();
-                if path.len() > 0 {
+                if !path.is_empty() {
                     // For a test fixture this should never happen
                     conn.add_code_path(path);
                 }
