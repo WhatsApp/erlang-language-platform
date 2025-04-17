@@ -25,7 +25,7 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
 use crate::diagnostics::Severity;
-use crate::diagnostics::meta_only;
+// @fb-only
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::DebuggingFunction;
 const DIAGNOSTIC_MESSAGE: &str = "Debugging functions should only be used during local debugging and usages should not be checked in.";
