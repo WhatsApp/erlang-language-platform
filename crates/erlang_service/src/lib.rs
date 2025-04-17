@@ -457,7 +457,7 @@ impl Connection {
             {
                 buf.write_u32::<BigEndian>(resolved.len() as u32)?;
                 buf.write_all(resolved.as_bytes())?;
-                buf.write_u32::<BigEndian>(file_id.index() as u32)?;
+                buf.write_u32::<BigEndian>(file_id.index())?;
                 buf.write_u32::<BigEndian>(contents.len() as u32)?;
                 buf.write_all(contents.as_bytes())?;
                 Ok(buf)
