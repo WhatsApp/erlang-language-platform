@@ -63,7 +63,7 @@ impl<'a> IncludeCtx<'a> {
         let app_data = db.file_app_data(file_id)?;
         app_data.include_path.iter().find_map(|include| {
             let name = include.join(path);
-            db.include_file_id(app_data.project_id, VfsPath::from((&name).clone()))
+            db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
         })
     }
 
@@ -79,6 +79,6 @@ impl<'a> IncludeCtx<'a> {
         let source_root_id = project_data.app_roots.get(app_name)?;
         let target_app_data = db.app_data(source_root_id)?;
         let path = target_app_data.dir.join(path);
-        db.include_file_id(app_data.project_id, VfsPath::from((&path).clone()))
+        db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
     }
 }

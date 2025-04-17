@@ -517,7 +517,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
 pub fn to_quoted_string(input: &str) -> Cow<str> {
     fn is_valid_atom(input: &str) -> bool {
         let mut chars = input.chars();
-        chars.next().map_or(false, |c| c.is_lowercase())
+        chars.next().is_some_and(|c| c.is_lowercase())
             && chars.all(|c| char::is_alphanumeric(c) || c == '_' || c == '@')
     }
     if is_valid_atom(input) {

@@ -206,7 +206,7 @@ impl AppStructure {
             let arc_data = data.map(Arc::new);
             db.set_app_data_by_id(app_data_id, arc_data);
             db.set_app_data_id(source_root_id, app_data_id);
-            applicable_files.map(|files| {
+            if let Some(files) = applicable_files {
                 files.iter().for_each(|path| {
                     if let Some(file_id) = resolve_file_id(path) {
                         app_index.map.insert(file_id, app_data_id);
@@ -214,7 +214,7 @@ impl AppStructure {
                         unresolved_paths.insert(path.clone(), app_data_id);
                     }
                 })
-            });
+            }
             app_data_id = AppDataId(app_data_id.0 + 1);
         }
         for (project_id, project_data) in self.project_map {
@@ -286,7 +286,6 @@ impl<'a> ProjectApps<'a> {
             .flat_map(|(project_idx, project)| {
                 project
                     .all_apps()
-                    .into_iter()
                     .map(move |p| (ProjectId(project_idx as u32), p))
             })
             .collect();
@@ -365,7 +364,7 @@ impl<'a> ProjectApps<'a> {
                     app_type: app.app_type,
                     src_path: app.abs_src_dirs.clone(),
                     ebin_path: app.ebin.clone(),
-                    is_test_target: app.is_test_target.clone(),
+                    is_test_target: app.is_test_target,
                 };
                 app_structure.add_app_data(root_id, Some(input_data), app.applicable_files.clone());
             }

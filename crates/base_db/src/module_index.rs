@@ -124,7 +124,7 @@ impl ModuleIndex {
     /// Iterate over project-owned modules, without OTP
     pub fn iter_own(
         &self,
-    ) -> impl Iterator<Item = (&ModuleName, FileSource, FileId)> + ExactSizeIterator + '_ {
+    ) -> impl ExactSizeIterator<Item = (&ModuleName, FileSource, FileId)> + '_ {
         self.mod2file
             .iter()
             .map(|(name, (source, id))| (name, *source, *id))
