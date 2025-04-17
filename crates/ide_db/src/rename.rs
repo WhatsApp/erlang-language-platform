@@ -306,7 +306,7 @@ pub fn source_edit_from_references(
 fn source_edit_from_def(
     sema: &Semantic,
     def: SymbolDefinition,
-    new_name: &String,
+    new_name: &str,
 ) -> RenameResult<(FileId, TextEdit)> {
     let FileRange { file_id, range } = def
         .range_for_rename(sema)
@@ -314,7 +314,7 @@ fn source_edit_from_def(
 
     let mut edit = TextEdit::builder();
     if edit.is_empty() {
-        edit.replace(range, new_name.clone());
+        edit.replace(range, new_name.to_string());
     }
     Ok((file_id, edit.finish()))
 }
@@ -384,7 +384,7 @@ pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &str, arity:
         .db
         .def_map_local(file_id)
         .get_functions_in_scope()
-        .all(|(name, _)| !(&name.name().to_string() == new_name && name.arity() == arity));
+        .all(|(name, _)| !(*name.name().to_string() == *new_name && name.arity() == arity));
 
     scope_ok && !in_erlang_module(new_name, arity as usize)
 }

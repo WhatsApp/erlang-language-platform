@@ -9,7 +9,6 @@
 
 use std::ops::Index;
 use std::sync::Arc;
-use std::u32;
 
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;

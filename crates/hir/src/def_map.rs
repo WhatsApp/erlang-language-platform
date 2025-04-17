@@ -675,9 +675,9 @@ impl DefMap {
             doc_id,
         };
         let function_def_id = FunctionDefId(fun.function_clause_ids[0]);
-        fun.spec
-            .as_mut()
-            .map(|spec| spec.function = Some(function_def_id));
+        if let Some(spec) = fun.spec.as_mut() {
+            spec.function = Some(function_def_id)
+        };
         self.function_by_function_id.extend(
             fun.function_clause_ids
                 .iter()

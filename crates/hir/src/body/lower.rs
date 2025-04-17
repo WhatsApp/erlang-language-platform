@@ -3066,8 +3066,8 @@ fn lower_raw_int(int: &ast::Integer) -> Option<BasedInteger> {
 
 fn parse_based(base: u32, str: &str) -> Option<i128> {
     let acc_base = base as i128;
-    str.chars().fold(Some(0), |acc, c| {
-        let r = acc?;
+    str.chars().try_fold(0, |acc, c| {
+        let r: i128 = acc;
         let val = c.to_digit(base)?;
         // Erlang allows arbitrary length strings.  Fail conversion if
         // it would overflow.

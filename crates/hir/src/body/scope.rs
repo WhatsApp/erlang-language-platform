@@ -483,7 +483,7 @@ fn compute_expr_scopes(
             let mut sub_vt = vt.clone();
             let scope = &mut scopes.new_scope(*scope);
             for expr in exprs {
-                compute_comprehension_expr_scopes(body, scopes, vt, &mut sub_vt, scope, expr);
+                compute_comprehension_expr_scopes(body, scopes, &mut sub_vt, scope, expr);
             }
             match builder {
                 ComprehensionBuilder::List(expr) => {
@@ -652,7 +652,6 @@ fn compute_expr_scopes(
 fn compute_comprehension_expr_scopes(
     body: &Body,
     scopes: &mut ExprScopes,
-    vt: &mut VarTable,
     sub_vt: &mut VarTable,
     scope: &mut Idx<ScopeData>,
     expr: &ComprehensionExpr,
@@ -690,7 +689,7 @@ fn compute_comprehension_expr_scopes(
         }
         ComprehensionExpr::Zip(exprs) => {
             for expr in exprs {
-                compute_comprehension_expr_scopes(body, scopes, vt, sub_vt, scope, expr);
+                compute_comprehension_expr_scopes(body, scopes, sub_vt, scope, expr);
             }
         }
     };

@@ -81,10 +81,10 @@ impl ModuleIndex {
         Builder::default()
     }
 
-    pub fn file_for_module<Q: ?Sized>(&self, name: &Q) -> Option<FileId>
+    pub fn file_for_module<Q>(&self, name: &Q) -> Option<FileId>
     where
         ModuleName: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.mod2file
             .get(name)

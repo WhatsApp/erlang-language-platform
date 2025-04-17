@@ -113,7 +113,7 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     hir::db::InternDatabaseStorage,
     hir::db::DefDatabaseStorage
 )]
-
+#[allow(clippy::type_complexity)]
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
     erlang_services: Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>,

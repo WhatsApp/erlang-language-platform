@@ -58,25 +58,25 @@ use crate::fold::fold_body;
 pub(crate) fn print_expr(db: &dyn InternDatabase, body: &FoldBody, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_expr(&expr);
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_pat(db: &dyn InternDatabase, body: &FoldBody, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_pat(&pat);
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_type(db: &dyn InternDatabase, body: &FoldBody, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_type(&ty);
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_term(db: &dyn InternDatabase, body: &FoldBody, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_term(&term);
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_record(db: &dyn InternDatabase, body: &RecordBody, record: &Record) -> String {
@@ -91,7 +91,7 @@ pub(crate) fn print_record(db: &dyn InternDatabase, body: &RecordBody, record: &
     printer.dedent();
     write!(printer, ").").ok();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_attribute(
@@ -113,7 +113,7 @@ pub(crate) fn print_attribute(
     printer.dedent();
     write!(printer, ").").ok();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_function(
@@ -123,11 +123,11 @@ pub(crate) fn print_function(
 ) -> String {
     let mut out = String::new();
 
-    body.clauses.iter().next().map(|(_, clause)| {
+    if let Some((_, clause)) = body.clauses.iter().next() {
         if let Some(na) = clause.name.clone() {
             write!(out, "function: {}", na).ok();
         }
-    });
+    };
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
         write!(out, "{}", sep).unwrap();
@@ -135,7 +135,7 @@ pub(crate) fn print_function(
         let fold_body = fold_body(strategy, &clause.body);
         let mut printer = Printer::new(db, &fold_body);
         printer.print_clause(&clause.clause);
-        write!(out, "{}", printer.to_string_raw()).unwrap();
+        write!(out, "{}", printer.result_raw()).unwrap();
     }
     writeln!(out, ".").unwrap();
 
@@ -151,7 +151,7 @@ pub(crate) fn print_function_clause(
     let fold_body = default_fold_body(&clause.body);
     let mut printer = Printer::new(db, &fold_body);
     printer.print_clause(&clause.clause);
-    write!(out, "{}", printer.to_string_raw()).unwrap();
+    write!(out, "{}", printer.result_raw()).unwrap();
     writeln!(out).unwrap();
 
     out
@@ -178,7 +178,7 @@ pub(crate) fn print_type_alias(
     printer.print_type(&body.ty);
     write!(printer, ".").ok();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_spec(
@@ -237,7 +237,7 @@ pub(crate) fn print_spec(
         }
     });
     write!(printer, ".").unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &Define) -> String {
@@ -250,7 +250,7 @@ pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &
     printer.dedent();
     write!(printer, ").").ok();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
@@ -276,7 +276,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
         });
     });
 
-    printer.to_string()
+    printer.result()
 }
 
 struct Printer<'a> {
@@ -300,13 +300,13 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn to_string(mut self) -> String {
+    fn result(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf.push('\n');
         self.buf
     }
 
-    fn to_string_raw(mut self) -> String {
+    fn result_raw(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf
     }
@@ -1271,16 +1271,16 @@ impl<'a> Printer<'a> {
                 this.print_record_field(&field.field_id);
             });
             this.print_labelled("expr", false, &mut |this| {
-                field.expr.map(|expr| {
+                if let Some(expr) = field.expr {
                     this.print_expr(&expr);
                     writeln!(this, ",").ok();
-                });
+                };
             });
             this.print_labelled("ty", false, &mut |this| {
-                field.ty.map(|ty| {
+                if let Some(ty) = field.ty {
                     this.print_type(&ty);
                     writeln!(this, ",").ok();
-                });
+                };
             });
         });
     }

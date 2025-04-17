@@ -68,6 +68,7 @@ impl<Definition, Reference> DefinitionOrReference<Definition, Reference> {
 // ---------------------------------------------------------------------
 
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum AtomDef {
     Module(Module),
     Function(FunctionDef),

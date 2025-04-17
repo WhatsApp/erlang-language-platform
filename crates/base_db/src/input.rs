@@ -242,10 +242,10 @@ impl AppRoots {
         self.otp = otp;
     }
 
-    pub fn get<Q: ?Sized>(&self, app: &Q) -> Option<SourceRootId>
+    pub fn get<Q>(&self, app: &Q) -> Option<SourceRootId>
     where
         AppName: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.app_map
             .get(app)
@@ -259,6 +259,7 @@ impl AppRoots {
 /// Historical reasons:
 /// - We used to not support the full language. Now we may actually be able to eqWAlize OTP if we could get the project model
 /// - OTP code is written very differently from WhatsApp code, so we didn't want to bias our trade-offs at the beginning.
+///
 /// It could change in future
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IncludeOtp {

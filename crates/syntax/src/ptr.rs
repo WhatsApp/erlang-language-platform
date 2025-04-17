@@ -88,16 +88,12 @@ pub struct AstPtr<N: AstNode> {
     _ty: PhantomData<fn() -> N>,
 }
 
+impl<N: AstNode> Copy for AstPtr<N> {}
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
-        AstPtr {
-            raw: self.raw,
-            _ty: PhantomData,
-        }
+        *self
     }
 }
-
-impl<N: AstNode> Copy for AstPtr<N> {}
 
 impl<N: AstNode> Eq for AstPtr<N> {}
 

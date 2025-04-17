@@ -576,7 +576,7 @@ impl ParseContext {
             self.lines = vec![];
         }
     }
-    fn to_edoc_header(self, kind: EdocHeaderKind) -> Option<EdocHeader> {
+    fn into_edoc_header(self, kind: EdocHeaderKind) -> Option<EdocHeader> {
         if self.doc.is_none()
             && self.returns.is_none()
             && self.params.is_empty()
@@ -620,8 +620,10 @@ fn parse_edoc(
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
-    let mut context = ParseContext::default();
-    context.exported = exported;
+    let mut context = ParseContext {
+        exported,
+        ..Default::default()
+    };
 
     static COPYRIGHT_RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").unwrap());
@@ -728,7 +730,7 @@ fn parse_edoc(
     }
     context.process_tag();
 
-    context.to_edoc_header(kind)
+    context.into_edoc_header(kind)
 }
 
 fn extract_param_name_and_content(content: &str) -> Option<(&str, &str)> {

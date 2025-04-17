@@ -298,7 +298,7 @@ impl AssistContextDiagnostic {
 /// Passed in the code action `data` field to be processed by
 /// middleware in the client to request user input when the request is
 /// being resolved.
-
+///
 /// This is a 'fail-safe' process, if the client does not return the
 /// requested new values the assist should use a default.
 /// This is modelled on the erlang_ls Wrangler middleware introduced in

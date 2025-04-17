@@ -613,7 +613,7 @@ impl ElpConfig {
     }
 }
 
-fn app_data_from_path(path: &PathBuf) -> Option<JsonProjectAppData> {
+fn app_data_from_path(path: &Path) -> Option<JsonProjectAppData> {
     let name = path.file_name()?.to_string_lossy().to_string();
     let dir = path.to_string_lossy().to_string();
     let src_dirs = vec!["src".to_string()];
@@ -1065,7 +1065,7 @@ pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
     Ok(stdout.trim().to_string())
 }
 
-pub fn to_abs_path_buf(path: &PathBuf) -> Result<AbsPathBuf> {
+pub fn to_abs_path_buf(path: &Path) -> Result<AbsPathBuf> {
     let path = Utf8PathBuf::from_path_buf(path.to_path_buf()).expect("UTF8 conversion failed");
     Ok(AbsPathBuf::assert(path))
 }

@@ -66,7 +66,7 @@ pub fn print_function_clause(
                 clause.name.clone().unwrap_or(form.name.clone()).name(),
             )
             .unwrap();
-        write!(out, "{}", printer.to_string_raw()).unwrap();
+        write!(out, "{}", printer.result_raw()).unwrap();
     }
     writeln!(out, ".").unwrap();
 
@@ -91,7 +91,7 @@ pub fn print_type_alias(db: &dyn InternDatabase, body: &TypeBody, form: &TypeAli
     printer.print_type(&printer.body[body.ty]).unwrap();
     write!(printer, ".").unwrap();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_spec(db: &dyn InternDatabase, body: &SpecBody, form: SpecOrCallback) -> String {
@@ -112,7 +112,7 @@ pub fn print_spec(db: &dyn InternDatabase, body: &SpecBody, form: SpecOrCallback
 
     write!(printer, ".").unwrap();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_record(
@@ -136,7 +136,7 @@ pub fn print_record(
     printer.indent_level -= 1;
     write!(printer, "\n}}).").unwrap();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_attribute(
@@ -153,31 +153,31 @@ pub fn print_attribute(
     printer.print_term(&printer.body[body.value]).unwrap();
     write!(printer, ").").unwrap();
 
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_expr(&body[expr]).unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_pat(&body[pat]).unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_type(&body[ty]).unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 pub fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
     printer.print_term(&body[term]).unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String {
@@ -186,7 +186,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String
     printer
         .print_ssr(&ssr.body[ssr.pattern.expr], *template, &ssr.when)
         .unwrap();
-    printer.to_string()
+    printer.result()
 }
 
 struct Printer<'a> {
@@ -208,13 +208,13 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn to_string(mut self) -> String {
+    fn result(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf.push('\n');
         self.buf
     }
 
-    fn to_string_raw(mut self) -> String {
+    fn result_raw(mut self) -> String {
         self.buf.truncate(self.buf.trim_end().len());
         self.buf
     }

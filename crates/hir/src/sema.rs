@@ -1474,7 +1474,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
 
     pub fn to_var_def(
         &self,
-        pat_ids: &Vec<PatId>,
+        pat_ids: &[PatId],
         var: Var,
         original_pat_id: Option<PatId>,
     ) -> Option<DefinitionOrReference<VarDef, Vec<VarDef>>> {

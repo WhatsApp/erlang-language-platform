@@ -41,9 +41,10 @@ impl CtxKind {
             Self::Export
         } else if Self::is_export_type(node, offset) {
             Self::ExportType
-        } else if Self::is_attribute(node, offset) {
-            Self::Other
-        } else if Self::is_type_level_param(node, offset) || Self::is_pattern(node, offset) {
+        } else if Self::is_attribute(node, offset)
+            || Self::is_type_level_param(node, offset)
+            || Self::is_pattern(node, offset)
+        {
             Self::Other
         } else if Self::is_type(node, offset) {
             Self::Type

@@ -415,6 +415,7 @@ impl Doc {
     /// is a reference to a module/function definition e.g.:
     ///   - gets the docs for the f in m:f(a)
     ///   - gets the docs for the m in m:f(a)
+    ///
     /// If both are available, we pick the more specific docs,
     /// i.e. the docs for the function
     pub fn from_reference(docdb: &Documentation, token: &InFile<SyntaxToken>) -> Option<Self> {

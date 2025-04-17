@@ -311,7 +311,7 @@ impl FunctionDef {
     }
 }
 
-fn all_spec_arg_names_are_generated(names: &Vec<SpecArgName>) -> bool {
+fn all_spec_arg_names_are_generated(names: &[SpecArgName]) -> bool {
     !names.iter().any(|name| match name {
         SpecArgName::Name(_) => true,
         SpecArgName::Generated(_) => false,
