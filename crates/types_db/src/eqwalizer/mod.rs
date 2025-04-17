@@ -134,17 +134,20 @@ impl std::str::FromStr for Id {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.split('/');
-        let name = parts.next().ok_or("Missing ID name")?;
-        let arity = parts
-            .next()
-            .ok_or("Missing ID arity")?
-            .parse::<u32>()
-            .map_err(|e| e.to_string())?;
-        Ok(Id {
-            name: name.into(),
-            arity,
-        })
+        match s.rfind('/') {
+            Some(index) => {
+                let (name, arity_str) = s.split_at(index);
+                let arity_str = &arity_str[1..]; // Skip the '/' character
+
+                let arity = arity_str.parse::<u32>().map_err(|e| e.to_string())?;
+
+                Ok(Id {
+                    name: name.into(),
+                    arity,
+                })
+            }
+            None => Err("Missing slash in ID".into()),
+        }
     }
 }
 
