@@ -845,11 +845,10 @@ fn find_app_root_bxl(
         // We will always get a `Some` result, due to the length check
         set.into_iter().reduce(|a, b| common_prefix(&a, &b))
     } else {
-        for path in set {
-            return Some(path);
-        }
-        // Otherwise, we just return the directory containing the BUCK file,
-        Some(dir_based_on_buck_file)
+        Some(set.into_iter().next().unwrap_or(
+            // Otherwise, we just return the directory containing the BUCK file,
+            dir_based_on_buck_file,
+        ))
     }
 }
 
