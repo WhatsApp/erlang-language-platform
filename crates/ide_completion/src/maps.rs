@@ -85,7 +85,7 @@ fn types_from_specs(
             types_from_spec(res, sema, spec);
         }
     }
-    for (_name, spec) in def_map.get_unowned_specs() {
+    for spec in def_map.get_unowned_specs().values() {
         types_from_spec(res, sema, spec);
     }
 }
@@ -101,8 +101,8 @@ fn types_from_spec(res: &mut FxHashMap<NameArity, TypeAliasDef>, sema: &Semantic
         },
         spec_id,
         (),
-        &mut |_acc, ctx| match ctx.item {
-            AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
+        &mut |_acc, ctx| {
+            if let AnyExpr::TypeExpr(TypeExpr::Call { target, args }) = ctx.item {
                 let arity = args.len();
                 if let Some(alias_def) =
                     target.resolve_call(arity as u32, sema, spec.file.file_id, &spec_body.body)
@@ -110,7 +110,6 @@ fn types_from_spec(res: &mut FxHashMap<NameArity, TypeAliasDef>, sema: &Semantic
                     res.insert(alias_def.type_alias.name().clone(), alias_def);
                 }
             }
-            _ => {}
         },
     );
 }
@@ -151,7 +150,7 @@ fn capitalize_first_char(word: String) -> Option<String> {
     let mut chars = word.chars();
     chars
         .next()
-        .map(|char| char.to_uppercase().to_string() + &chars.as_str())
+        .map(|char| char.to_uppercase().to_string() + chars.as_str())
 }
 
 fn preview(def: &MapExpr, op: &str) -> String {

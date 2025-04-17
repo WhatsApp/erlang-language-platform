@@ -154,7 +154,7 @@ pub(crate) fn add_completions(
                         })
                         .unwrap_or(file_position.file_id);
                     let def_map = sema.db.def_map(module_file_id);
-                    let def = def_map.get_function(&na)?;
+                    let def = def_map.get_function(na)?;
                     let fun_decl_ast = def.source(sema.db.upcast());
                     let deprecated = def_map.is_deprecated(na);
                     match ctx {
@@ -166,7 +166,7 @@ pub(crate) fn add_completions(
                         _ => {
                             let contents = helpers::function_contents(
                                 sema.db.upcast(),
-                                &def,
+                                def,
                                 &function_name,
                                 helpers::should_include_args(next_token),
                             )?;

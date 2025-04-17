@@ -166,11 +166,10 @@ impl CtxKind {
         let mut in_expr = true;
         let ancestor_offset = if let Some(ancestors) = algo::ancestors_at_offset(node, offset) {
             ancestors
-                .map(|n| {
+                .inspect(|n| {
                     if n.kind() == SyntaxKind::TYPE_SIG {
                         in_expr = false;
                     };
-                    n
                 })
                 .take_while(|n| n.kind() != SyntaxKind::SOURCE_FILE)
                 .last()
