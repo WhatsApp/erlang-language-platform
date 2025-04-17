@@ -314,7 +314,7 @@ pub(crate) fn handle_goto_definition(
 
     let nav_info = match snap.analysis.goto_definition(position)? {
         None => {
-            goto_definition_telemetry(&snap, &vec![], start);
+            goto_definition_telemetry(&snap, &[], start);
             return Ok(None);
         }
         Some(it) => {

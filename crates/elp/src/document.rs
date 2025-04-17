@@ -32,7 +32,7 @@ impl Document {
                 // Fall back to lossy latin1 loading of files.
                 // This should only affect files from yaws, and
                 // possibly OTP that are latin1 encoded.
-                bytes.into_iter().map(|byte| (*byte) as char).collect()
+                bytes.iter().map(|byte| (*byte) as char).collect()
             }
         };
         Document { content }

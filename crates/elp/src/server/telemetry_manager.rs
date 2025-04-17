@@ -93,9 +93,9 @@ pub(crate) fn reporter_telemetry_next(token: lsp_types::NumberOrString, message:
 
 pub(crate) fn reporter_telemetry_end(token: lsp_types::NumberOrString) {
     let mut telemetry = TELEMETRY.lock();
-    telemetry.end(token).map(|t| {
+    if let Some(t) = telemetry.end(token) {
         t.send_final_telemetry();
-    });
+    }
 }
 
 lazy_static! {

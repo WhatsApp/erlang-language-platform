@@ -44,10 +44,7 @@ mod tests {
             elp_eqwalizer::Mode::Cli,
             &BUCK_QUERY_CONFIG,
         )
-        .expect(&format!(
-            "Can't load project from path {}",
-            &path.to_string_lossy()
-        ));
+        .unwrap_or_else(|_| panic!("Can't load project from path {}", &path.to_string_lossy()));
         let analysis = &result.analysis();
         let modules = vec![
             ("test_elp", true),
@@ -58,23 +55,21 @@ mod tests {
         let project_id = result.project_id;
         for (module, eqwalizer_enabled) in modules {
             let file_id = analysis.module_file_id(project_id, module).unwrap();
-            let file_id = file_id.expect(&format!("Can't find file id for {module}"));
+            let file_id = file_id.unwrap_or_else(|| panic!("Can't find file id for {module}"));
             analysis
                 .file_text(file_id)
-                .expect(&format!("No file text for {module}"));
+                .unwrap_or_else(|_| panic!("No file text for {module}"));
             let prj_id = analysis.project_id(file_id).unwrap();
-            let prj_id = prj_id.expect(&format!("Can't find project id for {module}"));
+            let prj_id = prj_id.unwrap_or_else(|| panic!("Can't find project id for {module}"));
             assert_eq!(prj_id, project_id);
             let ast = analysis.module_ast(file_id).unwrap();
             assert_eq!(ast.errors, vec![]);
             let eq_enabled = analysis
                 .is_eqwalizer_enabled(file_id, IncludeGenerated::No)
-                .expect(&format!(
-                    "Failed to check if eqwalizer enabled for {module}"
-                ));
+                .unwrap_or_else(|_| panic!("Failed to check if eqwalizer enabled for {module}"));
             assert_eq!(eq_enabled, eqwalizer_enabled);
             let project_data = analysis.project_data(file_id).unwrap();
-            project_data.expect(&format!("Can't find project data for {module}"));
+            project_data.unwrap_or_else(|| panic!("Can't find project data for {module}"));
         }
     }
 
@@ -97,8 +92,8 @@ mod tests {
 
         let project_data: Vec<ProjectAppData> = project
             .non_otp_apps()
+            .filter(|&app| app.app_type == AppType::App)
             .cloned()
-            .filter(|app| app.app_type == AppType::App)
             .filter(|app| {
                 !app.dir
                     .as_os_str()
@@ -270,7 +265,7 @@ mod tests {
             &test.dir
         );
         for src in &test.abs_src_dirs {
-            assert!(app.abs_src_dirs.iter().any(|path| ends_with(&path, src)));
+            assert!(app.abs_src_dirs.iter().any(|path| ends_with(path, src)));
         }
         assert_eq!(app.extra_src_dirs, test.extra_src_dirs);
         for include in &test.include_dirs {

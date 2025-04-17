@@ -105,7 +105,7 @@ pub fn parse_all(
                     loaded
                         .vfs
                         .file_id(&VfsPath::new_real_path(path.to_string())),
-                    path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
+                    path_buf.as_path().file_name().map(ModuleName::new),
                 )
             }
             None => (None, None),
@@ -166,7 +166,7 @@ pub fn parse_all(
                             .unwrap_or_else(|_err| panic!("could not find project data"))
                             .unwrap_or_else(|| panic!("could not find project data"))
                             .root_dir;
-                        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+                        let relative_path = reporting::get_relative_path(root_path, vfs_path);
                         print_diagnostic_json(
                             &diag,
                             &analysis,
@@ -218,7 +218,7 @@ fn print_diagnostic(
     err_in_diag: &mut bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
-    let diag = convert::ide_to_lsp_diagnostic(&line_index, &url, &diag);
+    let diag = convert::ide_to_lsp_diagnostic(line_index, url, diag);
     let severity = match diag.severity {
         None => DiagnosticSeverity::ERROR,
         Some(sev) => {

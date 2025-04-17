@@ -184,7 +184,7 @@ impl ProgressBar {
         let msg = WorkDoneProgressBegin {
             title: title.clone(),
             cancellable: None,
-            message: total.map(|_total| format!("0%")),
+            message: total.map(|_total| "0%".to_string()),
             percentage: Some(0),
         };
         if report_telemetry == WithTelemetry::Yes {

@@ -144,7 +144,7 @@ impl Config {
 
     pub fn update(&mut self, json: serde_json::Value) {
         log::info!("updating config from JSON: {:#}", json);
-        if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
+        if json.is_null() || json.as_object().is_some_and(|it| it.is_empty()) {
             return;
         }
         self.data = ConfigData::from_json(json);
@@ -262,7 +262,7 @@ impl Config {
             .diagnostics_disabled
             .iter()
             // Look up disabled diagnostics using both label and code.
-            .filter_map(|code| DiagnosticCode::maybe_from_string(&code))
+            .filter_map(|code| DiagnosticCode::maybe_from_string(code))
         {
             config = config.disable(code);
         }

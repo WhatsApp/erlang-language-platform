@@ -124,9 +124,8 @@ impl ServerSetup {
         }
 
         // Pass the --buck-bxl flag through if set
-        match self.query_config {
-            BuckQueryConfig::Bxl(_build) => config.set_buck_query_use_bxl(),
-            _ => {}
+        if let BuckQueryConfig::Bxl(_build) = self.query_config {
+            config.set_buck_query_use_bxl()
         }
 
         Ok(config)
@@ -212,7 +211,7 @@ fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {
         .root_uri
         .as_ref()
         .and_then(|uri| uri.to_file_path().ok())
-        .map(|path| AbsPathBuf::assert_utf8(path))
+        .map(AbsPathBuf::assert_utf8)
     {
         Some(path) => Ok(path),
         None => {

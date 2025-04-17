@@ -222,7 +222,7 @@ mod tests {
         let content = r#"
             disabled_lints = []
             "#;
-        let config = toml::from_str::<LintConfig>(&content).unwrap();
+        let config = toml::from_str::<LintConfig>(content).unwrap();
         assert_eq!(config.enabled_lints, vec![]);
         assert_eq!(config.disabled_lints, vec![]);
     }

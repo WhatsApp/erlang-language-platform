@@ -91,9 +91,9 @@ struct IndexConfig {
     pub prefix: Option<String>,
 }
 
-impl Into<FileId> for GleanFileId {
-    fn into(self) -> FileId {
-        FileId::from_raw(self.0 - 1)
+impl From<GleanFileId> for FileId {
+    fn from(val: GleanFileId) -> Self {
+        FileId::from_raw(val.0 - 1)
     }
 }
 
@@ -794,9 +794,9 @@ impl GleanIndexer {
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
                 match Self::index_file(
-                    &db,
+                    db,
                     file_id,
-                    &path,
+                    path,
                     project_id,
                     &module_index,
                     config.prefix.as_ref(),
@@ -1312,7 +1312,7 @@ impl GleanIndexer {
             | hir::AnyExpr::TypeExpr(TypeExpr::Var(var))
             | hir::AnyExpr::Expr(Expr::Var(var)) => {
                 let name = var.as_string(db);
-                let (_, range) = ctx.find_range(&sema)?;
+                let (_, range) = ctx.find_range(sema)?;
                 Some(XRef {
                     source: range.into(),
                     target: XRefTarget::Var(
@@ -1325,18 +1325,18 @@ impl GleanIndexer {
                 })
             }
             hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
-                let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
+                let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
+                let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
                 let arity = args.len() as u32;
-                Self::resolve_call_v2(&sema, target, arity, file_id, &body, range)
+                Self::resolve_call_v2(sema, target, arity, file_id, &body, range)
             }
             hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                let (body, range) = ctx.find_range(&sema)?;
+                let (body, range) = ctx.find_range(sema)?;
                 let arity: Option<u32> = match &body[*arity] {
                     Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
                     _ => None,
                 };
-                Self::resolve_call_v2(&sema, target, arity?, file_id, &body, range)
+                Self::resolve_call_v2(sema, target, arity?, file_id, &body, range)
             }
             hir::AnyExpr::Pat(Pat::Record { name, .. })
             | hir::AnyExpr::Pat(Pat::RecordIndex { name, .. })
@@ -1345,7 +1345,7 @@ impl GleanIndexer {
             | hir::AnyExpr::Expr(Expr::RecordIndex { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordUpdate { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordField { name, .. }) => {
-                Self::resolve_record_v2(&sema, *name, file_id, ctx)
+                Self::resolve_record_v2(sema, *name, file_id, ctx)
             }
             hir::AnyExpr::Expr(Expr::MacroCall {
                 macro_def, args, ..
@@ -1360,13 +1360,13 @@ impl GleanIndexer {
                 macro_def, args, ..
             }) => {
                 let def = macro_def.as_ref()?;
-                Self::resolve_macro_v2(&sema, def, args, &source_file, &ctx)
+                Self::resolve_macro_v2(sema, def, args, source_file, ctx)
             }
             hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
-                let (body, _, expr_source) = ctx.body_with_expr_source(&sema)?;
-                let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
+                let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
+                let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
                 let arity = args.len() as u32;
-                Self::resolve_type_v2(&sema, target, arity, file_id, &body, range)
+                Self::resolve_type_v2(sema, target, arity, file_id, &body, range)
             }
             _ => None,
         };
@@ -1400,9 +1400,9 @@ impl GleanIndexer {
                         let decl = VarDecl {
                             name: name.to_string(),
                             doc: text,
-                            span: range.into(),
+                            span: range,
                         };
-                        result.push(decl.into());
+                        result.push(decl);
                     }
                 }
             }
@@ -1435,10 +1435,10 @@ impl GleanIndexer {
                 (hir::On::Entry, hir::FormIdx::PPDirective(idx)) => {
                     let directive = &form_list[idx];
                     if let PPDirective::Include(idx) = directive {
-                        let include = &form_list[idx.clone()];
+                        let include = &form_list[*idx];
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
-                        if let Some(file) = db.resolve_include(InFile::new(file_id, idx.clone())) {
+                        if let Some(file) = db.resolve_include(InFile::new(file_id, *idx)) {
                             if let Some(path) = path_for_file(db, file) {
                                 if let Some((name, Some("hrl"))) = path.name_and_extension() {
                                     let target = HeaderTarget {
@@ -1459,7 +1459,7 @@ impl GleanIndexer {
                 (hir::On::Entry, hir::FormIdx::Export(idx)) => {
                     let export = &form_list[idx];
                     let ast = export.form_id.get_ast(db, file_id);
-                    for fun in ast.funs().into_iter() {
+                    for fun in ast.funs() {
                         if let Some(na) = Self::fa_name_arity(&fun) {
                             if let Some(def) = sema.def_map(file_id).get_function(&na) {
                                 let range = fun.syntax().text_range().into();
@@ -1505,7 +1505,7 @@ impl GleanIndexer {
                 _ => acc,
             },
         );
-        xrefs.retain(|x| module_index.contains_key(&x.target.file_id()));
+        xrefs.retain(|x| module_index.contains_key(x.target.file_id()));
         XRefFile {
             file_id: file_id.into(),
             xrefs,
@@ -1591,8 +1591,8 @@ impl GleanIndexer {
         source_file: &InFile<ast::SourceFile>,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRef> {
-        let (_, source_map, expr_source) = ctx.body_with_expr_source(&sema)?;
-        let range = Self::find_range(&sema, &ctx, &source_file, &expr_source)?;
+        let (_, source_map, expr_source) = ctx.body_with_expr_source(sema)?;
+        let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
         let form_list = sema.form_list(macro_def.file_id);
         let define = &form_list[macro_def.value];
         let name = define.name.name();
@@ -1635,7 +1635,7 @@ impl GleanIndexer {
         body: &Body,
         range: TextRange,
     ) -> Option<XRefFactVal> {
-        let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
+        let def = resolve_type_target(sema, target, Some(arity), file_id, body)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
         let mfa = MFA::new(
             &module,
@@ -1654,7 +1654,7 @@ impl GleanIndexer {
         body: &Body,
         range: TextRange,
     ) -> Option<XRef> {
-        let def = resolve_type_target(sema, target, Some(arity), file_id, &body)?;
+        let def = resolve_type_target(sema, target, Some(arity), file_id, body)?;
         Some(XRef {
             source: range.into(),
             target: XRefTarget::Type(
@@ -1678,7 +1678,7 @@ impl GleanIndexer {
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
         let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         let mfa = MFA::new(&module, &def.record.name, REC_ARITY, def.file.file_id);
@@ -1694,7 +1694,7 @@ impl GleanIndexer {
         let record_name = sema.db.lookup_atom(name);
         let def_map = sema.db.def_map(file_id);
         let def = def_map.get_record(&record_name)?;
-        let (_, _, expr_source) = ctx.body_with_expr_source(&sema)?;
+        let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
         Some(XRef {
@@ -1715,7 +1715,7 @@ impl GleanIndexer {
         source_file: &InFile<ast::SourceFile>,
         expr_source: &ExprSource,
     ) -> Option<TextRange> {
-        let node = expr_source.to_node(&source_file)?;
+        let node = expr_source.to_node(source_file)?;
         let range = match node {
             elp_syntax::ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(expr)) => {
                 expr.name()?.syntax().text_range()
@@ -1904,7 +1904,7 @@ mod tests {
         let result = facts_with_annotations(spec).0;
         assert_eq!(result.file_line_facts.len(), 1);
         let line_fact = &result.file_line_facts[0];
-        assert_eq!(line_fact.ends_with_new_line, false);
+        assert!(!line_fact.ends_with_new_line);
         assert_eq!(line_fact.lengths, vec![24, 10, 8]);
     }
 
@@ -1920,7 +1920,7 @@ mod tests {
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ glean_module5/main/1
         "#;
-        decl_check(&spec);
+        decl_check(spec);
     }
 
     #[test]
@@ -1961,7 +1961,7 @@ mod tests {
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
         "#;
-            decl_v2_check(&spec);
+            decl_v2_check(spec);
         }
     }
 
@@ -1986,7 +1986,7 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
-            decl_v2_check(&spec);
+            decl_v2_check(spec);
         }
     }
 
@@ -2005,7 +2005,7 @@ mod tests {
         //- /glean/app_glean/src/glean_module5.erl
             -module(glean_module5).
         "#;
-        decl_v2_check(&spec);
+        decl_v2_check(spec);
     }
 
     #[test]
@@ -2031,7 +2031,7 @@ mod tests {
             1 + 2.
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2051,7 +2051,7 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2064,7 +2064,7 @@ mod tests {
         foo(Bar) -> Bar + 1.
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2081,7 +2081,7 @@ mod tests {
         bar(A) -> A.
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2101,7 +2101,7 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^ macro.hrl/header
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2123,7 +2123,7 @@ mod tests {
         baz(1, 2) ->
             1 + 2."#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2141,7 +2141,7 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2164,7 +2164,7 @@ mod tests {
         %%     ^ glean_module8/B/135
             1 + 2."#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2183,7 +2183,7 @@ mod tests {
         %%                ^ glean_module_parametrized/X/130
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2199,7 +2199,7 @@ mod tests {
         my_function(X) -> X.
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2220,7 +2220,7 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2236,7 +2236,7 @@ mod tests {
         %%  ^^^^^^ glean_module9/query/99
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2251,7 +2251,7 @@ mod tests {
         %%  ^^^^^^ glean_module9.erl/rec/query
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2268,7 +2268,7 @@ mod tests {
 
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2284,7 +2284,7 @@ mod tests {
 
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2299,7 +2299,7 @@ mod tests {
         %%  ^^^^^ glean_module11/Stats/49
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2312,7 +2312,7 @@ mod tests {
         %%       ^^^^^^ glean_module11.erl/rec/stats
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2327,7 +2327,7 @@ mod tests {
         %%  ^^^^^ glean_module12/Stats/52
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2340,7 +2340,7 @@ mod tests {
         %%       ^^^^^^ glean_module12.erl/rec/stats
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2357,7 +2357,7 @@ mod tests {
         %%  ^^^^^^ glean_module13/stats/99
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2370,7 +2370,7 @@ mod tests {
         %%  ^^^^^^ glean_module13.erl/rec/stats
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2382,7 +2382,7 @@ mod tests {
         %%  ^^^^ glean_module14/rec/99
         "#;
 
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2394,7 +2394,7 @@ mod tests {
         %%  ^^^^ glean_module14.erl/rec/rec
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2408,7 +2408,7 @@ mod tests {
             #stats{count = 1, time = 2}.
         %%  ^^^^^^ glean_module15/stats/99
         "#;
-        xref_check(&spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2423,7 +2423,7 @@ mod tests {
         %%  ^^^^^^ glean_module15.erl/rec/stats
         "#;
 
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2444,7 +2444,7 @@ mod tests {
         %%             ^^^ macro.erl/macro/MAX/137/no_ods/if (N > 200) -> N; 'true' -> 200 end
 
         "#;
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2471,7 +2471,7 @@ mod tests {
         %%       ^^^ macro.erl/macro/TAU/54/no_ods/6.28
 
         "#;
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2486,7 +2486,7 @@ mod tests {
             baz(ok) -> 1.
 
         "#;
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     #[test]
@@ -2499,7 +2499,7 @@ mod tests {
         %%        ^^^ macro.erl/macro/FOO/53/no_ods/'atom'
 
         "#;
-        xref_v2_check(&spec);
+        xref_v2_check(spec);
     }
 
     fn facts_with_annotations(
@@ -2539,7 +2539,7 @@ mod tests {
         let mut file_names = HashMap::new();
         let db = host.raw_database();
         for file_id in &fixture.files {
-            let file_id = file_id.clone();
+            let file_id = *file_id;
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
             let path = source_root.path_for_file(&file_id).unwrap();
@@ -2577,9 +2577,12 @@ mod tests {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
                 let tuple = (range, label);
-                let idx = annotations.iter().position(|a| a == &tuple).expect(
-                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
-                );
+                let idx = annotations
+                    .iter()
+                    .position(|a| a == &tuple)
+                    .unwrap_or_else(|| {
+                        panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
+                    });
                 annotations.remove(idx);
             }
             assert_eq!(annotations, vec![], "Expected no more annotations");
@@ -2610,9 +2613,12 @@ mod tests {
                 }
                 let label = format!("{}/{}", file_name, label);
                 let tuple = (range, label);
-                let idx = annotations.iter().position(|a| a == &tuple).expect(
-                    format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
-                );
+                let idx = annotations
+                    .iter()
+                    .position(|a| a == &tuple)
+                    .unwrap_or_else(|| {
+                        panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
+                    });
                 annotations.remove(idx);
             }
             assert_eq!(annotations, vec![], "Expected no more annotations");
@@ -2645,7 +2651,7 @@ mod tests {
             let idx = annotations
                 .iter()
                 .position(|a| a == &tuple)
-                .expect(format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str());
+                .unwrap_or_else(|| panic!("Expected to find {:?} in {:?}", &tuple, &annotations));
             annotations.remove(idx);
         }
         assert_eq!(annotations, vec![], "Expected no more annotations");
@@ -2670,9 +2676,12 @@ mod tests {
                     let range: TextRange = decl.span().clone().into();
                     let label = decl.to_string();
                     let tuple = (range, label);
-                    let idx = annotations.iter().position(|a| a == &tuple).expect(
-                        format!("Expected to find {:?} in {:?}", &tuple, &annotations).as_str(),
-                    );
+                    let idx = annotations
+                        .iter()
+                        .position(|a| a == &tuple)
+                        .unwrap_or_else(|| {
+                            panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
+                        });
                     annotations.remove(idx);
                 }
                 assert_eq!(annotations, vec![], "Expected no more annotations");

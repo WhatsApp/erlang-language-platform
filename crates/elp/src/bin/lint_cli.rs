@@ -176,7 +176,7 @@ fn do_parse_one(
             .edoc_diagnostics(file_id, config)?
             .into_iter()
             .filter(|(f, _)| *f == file_id)
-            .flat_map(|(_, ds)| ds.into_iter().map(|d| d))
+            .flat_map(|(_, ds)| ds.into_iter())
             .collect_vec();
         diagnostics.set_edoc(file_id, edoc_diagnostics);
     }
@@ -190,13 +190,11 @@ fn do_parse_one(
             {
                 diagnostics.set_eqwalizer_project(diags);
             }
-        } else {
-            if let Some(diags) = db
-                .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
-                .unwrap()
-            {
-                diagnostics.set_eqwalizer(file_id, diags);
-            }
+        } else if let Some(diags) = db
+            .eqwalizer_diagnostics_for_file(file_id, args.include_generated.into())
+            .unwrap()
+        {
+            diagnostics.set_eqwalizer(file_id, diags);
         }
     }
     if args.include_eqwalizer_diagnostics {
@@ -256,7 +254,7 @@ pub fn do_codemod(
                         loaded
                             .vfs
                             .file_id(&VfsPath::new_real_path(path.to_string())),
-                        path_buf.as_path().file_name().map(|n| ModuleName::new(n)),
+                        path_buf.as_path().file_name().map(ModuleName::new),
                     )
                 }
                 None => (None, None),
@@ -264,15 +262,11 @@ pub fn do_codemod(
         };
 
         res = match (file_id, name) {
-            (None, _) => do_parse_all(
-                cli,
-                &analysis,
-                &loaded.project_id,
-                &diagnostics_config,
-                args,
-            )?,
+            (None, _) => {
+                do_parse_all(cli, &analysis, &loaded.project_id, diagnostics_config, args)?
+            }
             (Some(file_id), Some(name)) => {
-                do_parse_one(&analysis, &diagnostics_config, file_id, &name, args)?
+                do_parse_one(&analysis, diagnostics_config, file_id, &name, args)?
                     .map_or(vec![], |x| vec![x])
             }
             (Some(file_id), _) => {
@@ -309,7 +303,7 @@ pub fn do_codemod(
                             .unwrap_or_else(|_err| panic!("could not find project data"))
                             .unwrap_or_else(|| panic!("could not find project data"))
                             .root_dir;
-                        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+                        let relative_path = reporting::get_relative_path(root_path, vfs_path);
                         let prefix = args.prefix.as_ref();
                         print_diagnostic_json(
                             diag,
@@ -356,9 +350,9 @@ pub fn do_codemod(
             let mut changed_files = FxHashSet::default();
             let mut lints = Lints::new(
                 &mut loaded.analysis_host,
-                &diagnostics_config,
+                diagnostics_config,
                 &mut loaded.vfs,
-                &args,
+                args,
                 &mut changed_files,
                 initial_diags,
             );
@@ -671,7 +665,7 @@ impl<'a> Lints<'a> {
         if self.args.one_shot {
             self.diags.iter().for_each(|(file_id, (m, ds))| {
                 if let Ok(fs) = self.apply_all_fixes(m, ds, *file_id, format_normal, cli) {
-                    changes.extend(fs.into_iter());
+                    changes.extend(fs);
                 }
             });
         } else {
@@ -755,7 +749,7 @@ impl<'a> Lints<'a> {
     ) -> Result<Vec<FixResult>> {
         // Get code action ones too
         let fixes = diagnostics
-            .into_iter()
+            .iter()
             .filter_map(|d| {
                 let fs = d
                     .get_diagnostic_fixes(self.analysis_host.raw_database(), file_id)
@@ -767,7 +761,7 @@ impl<'a> Lints<'a> {
                             f.group != Some(GroupLabel::ignore())
                         }
                     })
-                    .map(|a| a.clone())
+                    .cloned()
                     .collect_vec();
                 if fs.is_empty() {
                     None

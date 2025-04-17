@@ -140,7 +140,7 @@ impl ShellCommand {
                             option.into(),
                         ));
                     }
-                    if args.len() >= 1 {
+                    if !args.is_empty() {
                         return Ok(Some(ShellCommand::ShellEqwalize(Eqwalize {
                             project,
                             profile,
@@ -244,9 +244,9 @@ fn process_changes_to_vfs_store(loaded: &mut LoadResult) -> bool {
 
     for (_, file) in &changed_files {
         let file_exists = loaded.vfs.exists(file.file_id);
-        if &file.change != &vfs::Change::Delete && file_exists {
+        if file.change != vfs::Change::Delete && file_exists {
             if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
-                let document = Document::from_bytes(&v);
+                let document = Document::from_bytes(v);
                 let (text, line_ending) = document.vfs_to_salsa();
                 raw_database.set_file_text(file.file_id, Arc::from(text));
                 loaded.line_ending_map.insert(file.file_id, line_ending);

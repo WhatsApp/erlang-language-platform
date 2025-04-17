@@ -106,7 +106,7 @@ impl<'a> PrettyReporter<'a> {
     }
 }
 
-impl<'a> Reporter for PrettyReporter<'a> {
+impl Reporter for PrettyReporter<'_> {
     fn write_eqwalizer_diagnostics(
         &mut self,
         file_id: FileId,
@@ -218,7 +218,7 @@ impl<'a> JsonReporter<'a> {
     }
 }
 
-impl<'a> Reporter for JsonReporter<'a> {
+impl Reporter for JsonReporter<'_> {
     fn write_eqwalizer_diagnostics(
         &mut self,
         file_id: FileId,

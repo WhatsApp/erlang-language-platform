@@ -992,14 +992,14 @@ impl Server {
             highest_file_id = highest_file_id.max(file.file_id.index());
             let file_exists = vfs.exists(file.file_id);
 
-            if &file.change != &vfs::Change::Delete && file_exists {
+            if file.change != vfs::Change::Delete && file_exists {
                 // Temporary for T183487471
                 let _pctx = stdx::panic_context::enter(format!(
                     "\nserver::process_changes_to_vfs_store:{:?}:{:?}",
                     &file.file_id, &file.change
                 ));
                 if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
-                    let document = Document::from_bytes(&v);
+                    let document = Document::from_bytes(v);
                     let (text, line_endings) = document.vfs_to_salsa();
                     raw_database.set_file_text(file.file_id, Arc::from(text));
                     self.line_ending_map
@@ -1065,7 +1065,7 @@ impl Server {
                 .into_values()
                 .any(|file| file.is_created_or_deleted())
         {
-            let sets = self.file_set_config.partition(&vfs);
+            let sets = self.file_set_config.partition(vfs);
             for (idx, set) in sets.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);
                 for file_id in set.iter() {
@@ -1465,7 +1465,7 @@ impl Server {
     fn cancel(&mut self, request_id: RequestId) {
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
             // Temporary for T180205228 / #17
-            let _pctx = stdx::panic_context::enter(format!("\nserver::cancel"));
+            let _pctx = stdx::panic_context::enter("\nserver::cancel".to_string());
             self.send(response.into());
         }
     }
@@ -1854,7 +1854,7 @@ impl Server {
                 let file_ids = if chunk_size < len {
                     files.split_off(len - chunk_size)
                 } else {
-                    files.drain(..).collect()
+                    std::mem::take(&mut files)
                 };
                 if snapshot
                     .analysis

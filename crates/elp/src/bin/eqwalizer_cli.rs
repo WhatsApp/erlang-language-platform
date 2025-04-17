@@ -172,7 +172,7 @@ pub fn do_eqwalize_all(
             if analysis
                 .should_eqwalize(file_id, include_generated)
                 .unwrap()
-                && !otp_file_to_ignore(&analysis, file_id)
+                && !otp_file_to_ignore(analysis, file_id)
             {
                 if args.stats {
                     add_stat(name.to_string());
@@ -248,7 +248,7 @@ pub fn do_eqwalize_app(
                 && analysis
                     .should_eqwalize(file_id, include_generated)
                     .unwrap()
-                && !otp_file_to_ignore(&analysis, file_id)
+                && !otp_file_to_ignore(analysis, file_id)
             {
                 Some(file_id)
             } else {
@@ -313,7 +313,7 @@ pub fn eqwalize_target(
                     if analysis
                         .should_eqwalize(file_id, include_generated)
                         .unwrap()
-                        && !otp_file_to_ignore(&analysis, file_id)
+                        && !otp_file_to_ignore(analysis, file_id)
                     {
                         file_ids.push(file_id);
                     }
@@ -377,7 +377,7 @@ pub fn eqwalize_stats(
             if analysis
                 .should_eqwalize(file_id, include_generated)
                 .expect("cancelled")
-                && !otp_file_to_ignore(&analysis, file_id)
+                && !otp_file_to_ignore(analysis, file_id)
             {
                 analysis
                     .eqwalizer_stats(project_id, file_id)
@@ -401,7 +401,7 @@ pub fn eqwalize_stats(
             .unwrap_or_else(|_err| panic!("could not find project data"))
             .unwrap_or_else(|| panic!("could not find project data"))
             .root_dir;
-        let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+        let relative_path = reporting::get_relative_path(root_path, vfs_path);
         let line_index = analysis.line_index(file_id)?;
         for stat in stats {
             print_diagnostic_json(
@@ -456,7 +456,7 @@ fn eqwalize(
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
         let project_id = loaded.project_id;
         let max_tasks = loaded.project.eqwalizer_config.max_tasks;
-        let chunk_size = (files_count + max_tasks - 1) / max_tasks;
+        let chunk_size = files_count.div_ceil(max_tasks);
         file_ids
             .chunks(chunk_size)
             .par_bridge()
@@ -527,7 +527,7 @@ fn eqwalize(
                         .unwrap_or_else(|_err| panic!("could not find project data"))
                         .unwrap_or_else(|| panic!("could not find project data"))
                         .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, &vfs_path);
+                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
 
                     let line_num = convert::position(&line_index, diag.range.start()).line + 1;
                     parse_diagnostics.push(ParseDiagnostic {
@@ -581,7 +581,7 @@ fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[
     pb.finish();
 }
 
-fn set_eqwalizer_config(loaded: &mut LoadResult) -> () {
+fn set_eqwalizer_config(loaded: &mut LoadResult) {
     let config = EqwalizerConfig::default();
     let db = loaded.analysis_host.raw_database_mut();
     if config != *db.eqwalizer_config() {

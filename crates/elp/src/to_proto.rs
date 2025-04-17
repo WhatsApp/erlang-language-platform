@@ -150,7 +150,7 @@ pub(crate) fn workspace_edit(
         let edit = text_document_edit(snap, file_id, edit)?;
         edits.push(lsp_types::TextDocumentEdit {
             text_document: edit.text_document,
-            edits: edit.edits.into_iter().map(From::from).collect(),
+            edits: edit.edits.into_iter().collect(),
         });
     }
     let document_changes = lsp_types::DocumentChanges::Edits(edits);

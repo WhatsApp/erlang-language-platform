@@ -595,7 +595,7 @@ fn format_guard(format: &Option<String>) -> bool {
 }
 
 fn at_least_1(data: &Vec<String>) -> bool {
-    data.len() >= 1
+    !data.is_empty()
 }
 
 #[allow(clippy::ptr_arg)]

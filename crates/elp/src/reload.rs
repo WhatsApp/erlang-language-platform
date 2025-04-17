@@ -97,9 +97,9 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     let mut files = FxHashSet::default();
     project_apps.all_apps.iter().for_each(|(_, app)| {
         app_dirs.extend(app.all_source_dirs());
-        app.applicable_files.as_ref().map(|applicable_files| {
+        if let Some(applicable_files) = app.applicable_files.as_ref() {
             files.extend(applicable_files.clone());
-        });
+        }
         include_dirs.extend(app.include_dirs.clone());
     });
 
