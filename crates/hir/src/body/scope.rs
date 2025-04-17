@@ -185,7 +185,7 @@ impl FunctionScopes {
         let clause_scopes = function_body
             .clauses
             .iter()
-            .map(|(idx, clause)| (idx, ExprScopes::for_clause(&clause, anonymous_var)))
+            .map(|(idx, clause)| (idx, ExprScopes::for_clause(clause, anonymous_var)))
             .collect();
         Arc::new(FunctionScopes { clause_scopes })
     }
@@ -815,7 +815,7 @@ mod tests {
 
         let expr_id = in_clause
             .expr_id_ast(InFile {
-                file_id: file_id.into(),
+                file_id,
                 value: &marker,
             })
             .unwrap();

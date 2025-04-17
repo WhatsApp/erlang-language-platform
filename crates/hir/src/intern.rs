@@ -70,7 +70,7 @@ impl Atom {
     }
 
     pub fn as_name(&self, db: &dyn InternDatabase) -> Name {
-        Name::from(db.lookup_atom(*self))
+        db.lookup_atom(*self)
     }
 }
 

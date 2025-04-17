@@ -56,7 +56,7 @@ pub enum AnyExprRef<'a> {
     Term(&'a Term),
 }
 
-impl<'a> AnyExprRef<'a> {
+impl AnyExprRef<'_> {
     pub fn variant_str(&self) -> &'static str {
         match self {
             AnyExprRef::Expr(it) => it.variant_str(),
@@ -356,7 +356,7 @@ pub struct SsrPlaceholder {
 // We need to treat Var specially for SSR matching, as we want to be
 // able to match a Pat::Var and Expr::Var occurring as a placeholder
 // result as the same, if the placeholders have the same name.
-pub const COMMON_VAR_VARIANT_STR: &'static str = "::Var";
+pub const COMMON_VAR_VARIANT_STR: &str = "::Var";
 
 impl Expr {
     pub fn as_atom(&self) -> Option<Atom> {

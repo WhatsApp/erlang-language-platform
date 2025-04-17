@@ -202,7 +202,7 @@ impl<'a> Ctx<'a> {
     fn finish(mut self) -> (Arc<Body>, BodySourceMap) {
         // Verify macro expansion state
         let entry = self.macro_stack.pop().expect("BUG: macro stack empty");
-        if self.macro_stack.len() == 0 {
+        if self.macro_stack.is_empty() {
             // We can only check this at the actual end, not when
             // finishing a recursive case.
             assert_eq!(entry.file_id, self.file_id());
@@ -500,7 +500,7 @@ impl<'a> Ctx<'a> {
                 pat: self.lower_pat(&rhs_ast),
             })
         });
-        let when = ssr.when().and_then(|w| Some(self.lower_guards(w.guard())));
+        let when = ssr.when().map(|w| self.lower_guards(w.guard()));
         let (body, source_map) = self.finish();
         Some((
             SsrBody {
@@ -2415,7 +2415,7 @@ impl<'a> Ctx<'a> {
                                                 Term::Binary(vec)
                                             }
                                             Term::Literal(Literal::Integer(int)) => {
-                                                vec.push((*int).value as u8);
+                                                vec.push(int.value as u8);
                                                 Term::Binary(vec)
                                             }
                                             Term::Literal(Literal::String(str)) => {

@@ -132,14 +132,13 @@ impl FunctionClauseDef {
     where
         T: Clone,
     {
-        let function_clause_body = sema.db.function_clause_body(InFile::new(
-            self.file.file_id,
-            self.function_clause_id.clone(),
-        ));
+        let function_clause_body = sema
+            .db
+            .function_clause_body(InFile::new(self.file.file_id, self.function_clause_id));
         InFunctionClauseBody::new(
             sema,
             function_clause_body,
-            InFile::new(self.file.file_id, self.function_clause_id.clone()),
+            InFile::new(self.file.file_id, self.function_clause_id),
             None,
             value,
         )
@@ -175,7 +174,7 @@ impl FunctionDef {
     }
 
     pub fn first_clause_name(&self, db: &dyn SourceDatabase) -> Option<ast::Name> {
-        self.source(db).get(0)?.name()
+        self.source(db).first()?.name()
     }
 
     pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
@@ -207,11 +206,11 @@ impl FunctionDef {
     {
         let function_body = sema
             .db
-            .function_body(InFile::new(self.file.file_id, self.function_id.clone()));
+            .function_body(InFile::new(self.file.file_id, self.function_id));
         InFunctionBody::new(
             sema,
             function_body,
-            InFile::new(self.file.file_id, self.function_id.clone()),
+            InFile::new(self.file.file_id, self.function_id),
             value,
         )
     }
@@ -222,7 +221,7 @@ impl FunctionDef {
 
     pub fn edoc_comments(&self, db: &dyn DefDatabase) -> Option<EdocHeader> {
         let fun_decls = self.source(db.upcast());
-        let fun_decl = fun_decls.get(0)?;
+        let fun_decl = fun_decls.first()?;
         let form = InFileAstPtr::new(
             self.file.file_id,
             AstPtr::new(&ast::Form::FunDecl(fun_decl.clone())),
@@ -234,7 +233,7 @@ impl FunctionDef {
     pub fn first_clause_arg_names(&self) -> Option<Vec<String>> {
         let res = self
             .function_clauses
-            .get(0)?
+            .first()?
             .param_names
             .iter()
             .map(|param_name| param_name.to_string())
@@ -296,7 +295,7 @@ impl FunctionDef {
             if let Some(expr) = ast.value() {
                 let text = expr.syntax().text().to_string();
                 for line in text.split("\n") {
-                    if let Some(captures) = RE.captures(&line) {
+                    if let Some(captures) = RE.captures(line) {
                         if captures.len() == 3 {
                             res.insert(captures[1].to_string(), captures[2].to_string());
                         }

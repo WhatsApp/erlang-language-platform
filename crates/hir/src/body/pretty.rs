@@ -68,7 +68,7 @@ pub fn print_function_clause(
             .unwrap();
         write!(out, "{}", printer.to_string_raw()).unwrap();
     }
-    write!(out, ".\n").unwrap();
+    writeln!(out, ".").unwrap();
 
     out
 }
@@ -184,7 +184,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String
     let mut printer = Printer::new(db, &ssr.body);
     let template = &ssr.template.as_ref().map(|idx| &ssr.body[idx.expr]);
     printer
-        .print_ssr(&ssr.body[ssr.pattern.expr], template.clone(), &ssr.when)
+        .print_ssr(&ssr.body[ssr.pattern.expr], *template, &ssr.when)
         .unwrap();
     printer.to_string()
 }
@@ -361,7 +361,7 @@ impl<'a> Printer<'a> {
                 }
             }
         }
-        writeln!(self, "")
+        writeln!(self)
     }
 
     fn print_type_guards(&mut self, guards: &[(Var, TypeExprId)]) -> fmt::Result {
@@ -941,17 +941,17 @@ impl<'a> Printer<'a> {
         self.print_expr(lhs)?;
         rhs.map(|rhs| {
             write!(self, " ==>> ")?;
-            self.print_expr(&rhs)
+            self.print_expr(rhs)
         });
         if let Some(when) = when {
             writeln!(self, "\nwhen")?;
-            self.print_ssr_guards(&when)?;
+            self.print_ssr_guards(when)?;
         };
         Ok(())
     }
 }
 
-impl<'a> fmt::Write for Printer<'a> {
+impl fmt::Write for Printer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
             if self.needs_indent {

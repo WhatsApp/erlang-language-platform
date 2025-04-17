@@ -104,7 +104,7 @@ pub struct FoldBody<'a> {
     pub parens: ParenStrategy,
 }
 
-impl<'a> FoldBody<'a> {
+impl FoldBody<'_> {
     /// Equivalent to `Body::get_any`, but uses the `FoldBody` `Index` instances
     pub fn get_any(&self, id: AnyExprId) -> AnyExprRef<'_> {
         match id {
@@ -318,7 +318,7 @@ impl Body {
     /// indexing on `Body` keeps both invisible. If they need to be
     /// seen, make a `FoldBody` with the appropriate strategy.
     pub fn index_with_strategy(&self, strategy: Strategy) -> FoldBody {
-        fold_body(strategy, &self)
+        fold_body(strategy, self)
     }
 
     pub fn range_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<TextRange> {
@@ -396,22 +396,22 @@ impl Body {
         }
     }
 
-    pub fn fold_expr<'a, T>(
+    pub fn fold_expr<T>(
         &self,
         strategy: Strategy,
         expr_id: ExprId,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         FoldCtx::fold_expr(strategy, self, expr_id, initial, callback)
     }
 
-    pub fn fold_pat<'a, T>(
+    pub fn fold_pat<T>(
         &self,
         strategy: Strategy,
         pat_id: PatId,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         FoldCtx::fold_pat(strategy, self, pat_id, initial, callback)
     }
@@ -428,7 +428,7 @@ impl Body {
         map_id: AnyExprId,
         path: &[String],
     ) -> Option<AnyExprId> {
-        let key = path.get(0)?;
+        let key = path.first()?;
         match map_id {
             AnyExprId::Expr(id) => {
                 match &self[id] {
@@ -565,10 +565,7 @@ impl FunctionBody {
     }
 
     pub fn spec_body(&self) -> Option<Arc<SpecBody>> {
-        match &self.spec {
-            Some(spec) => Some(spec.clone()),
-            None => None,
-        }
+        self.spec.as_ref().map(|spec| spec.clone())
     }
 
     pub fn print(&self, db: &dyn InternDatabase, form: &FunctionClause) -> String {
@@ -645,7 +642,7 @@ impl FunctionClauseBody {
         ctx.set_macro_information(macrostack);
         let from_macro =
             macro_def.map(|(macro_def, args)| ctx.lower_top_level_macro(args, macro_def));
-        let (body, source_map) = ctx.lower_function_clause(&clause_ast, from_macro);
+        let (body, source_map) = ctx.lower_function_clause(clause_ast, from_macro);
         (body, source_map)
     }
 
@@ -653,7 +650,7 @@ impl FunctionClauseBody {
         tree_print::print_function_clause(db, self)
     }
 
-    pub fn fold<'a, T>(&self, strategy: Strategy, initial: T, callback: AnyCallBack<'a, T>) -> T {
+    pub fn fold<T>(&self, strategy: Strategy, initial: T, callback: AnyCallBack<'_, T>) -> T {
         match &self.from_macro {
             Some(from_macro) if strategy.macros == MacroStrategy::DoNotExpand => {
                 FoldCtx::fold_exprs(strategy, &self.body, &from_macro.args, initial, callback)
@@ -932,7 +929,7 @@ impl Index<ClauseId> for FunctionBody {
     }
 }
 
-impl<'a> Index<ExprId> for FoldBody<'a> {
+impl Index<ExprId> for FoldBody<'_> {
     type Output = Expr;
 
     fn index(&self, index: ExprId) -> &Self::Output {
@@ -943,7 +940,7 @@ impl<'a> Index<ExprId> for FoldBody<'a> {
             },
             expr @ Expr::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => expr,
-                VisibleMacros::No => &self.index(*expansion),
+                VisibleMacros::No => self.index(*expansion),
             },
             expr => expr,
         }
@@ -956,14 +953,14 @@ impl Index<ExprId> for Body {
     fn index(&self, index: ExprId) -> &Self::Output {
         // "look through" macro expansion and parens
         match &self.exprs[index] {
-            Expr::MacroCall { expansion, .. } => &self.index(*expansion),
-            Expr::Paren { expr } => &self.index(*expr),
+            Expr::MacroCall { expansion, .. } => self.index(*expansion),
+            Expr::Paren { expr } => self.index(*expr),
             expr => expr,
         }
     }
 }
 
-impl<'a> Index<PatId> for FoldBody<'a> {
+impl Index<PatId> for FoldBody<'_> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
@@ -975,7 +972,7 @@ impl<'a> Index<PatId> for FoldBody<'a> {
             },
             pat @ Pat::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => pat,
-                VisibleMacros::No => &self.index(*expansion),
+                VisibleMacros::No => self.index(*expansion),
             },
             pat => pat,
         }
@@ -988,14 +985,14 @@ impl Index<PatId> for Body {
     fn index(&self, index: PatId) -> &Self::Output {
         // "look through" macro expansion and parens.
         match &self.pats[index] {
-            Pat::MacroCall { expansion, .. } => &self.index(*expansion),
-            Pat::Paren { pat } => &self.index(*pat),
+            Pat::MacroCall { expansion, .. } => self.index(*expansion),
+            Pat::Paren { pat } => self.index(*pat),
             pat => pat,
         }
     }
 }
 
-impl<'a> Index<TypeExprId> for FoldBody<'a> {
+impl Index<TypeExprId> for FoldBody<'_> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
@@ -1003,7 +1000,7 @@ impl<'a> Index<TypeExprId> for FoldBody<'a> {
         match &self.body.type_exprs[index] {
             type_expr @ TypeExpr::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => type_expr,
-                VisibleMacros::No => &self.index(*expansion),
+                VisibleMacros::No => self.index(*expansion),
             },
             type_expr => type_expr,
         }
@@ -1016,13 +1013,13 @@ impl Index<TypeExprId> for Body {
     fn index(&self, index: TypeExprId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.type_exprs[index] {
-            TypeExpr::MacroCall { expansion, .. } => &self.index(*expansion),
+            TypeExpr::MacroCall { expansion, .. } => self.index(*expansion),
             type_expr => type_expr,
         }
     }
 }
 
-impl<'a> Index<TermId> for FoldBody<'a> {
+impl Index<TermId> for FoldBody<'_> {
     type Output = Term;
 
     fn index(&self, index: TermId) -> &Self::Output {
@@ -1030,7 +1027,7 @@ impl<'a> Index<TermId> for FoldBody<'a> {
         match &self.body.terms[index] {
             term @ Term::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => term,
-                VisibleMacros::No => &self.index(*expansion),
+                VisibleMacros::No => self.index(*expansion),
             },
             term => term,
         }
@@ -1043,7 +1040,7 @@ impl Index<TermId> for Body {
     fn index(&self, index: TermId) -> &Self::Output {
         // "look through" macro expansion.
         match &self.terms[index] {
-            Term::MacroCall { expansion, .. } => &self.index(*expansion),
+            Term::MacroCall { expansion, .. } => self.index(*expansion),
             term => term,
         }
     }
@@ -1281,19 +1278,17 @@ mod local_tests {
             } else {
                 panic!("expected invalid path, found {:?}", ast_found);
             }
+        } else if valid {
+            panic!("expected valid path, nothing found");
         } else {
-            if valid {
-                panic!("expected valid path, nothing found");
-            } else {
-                // pass
-            }
+            // pass
         }
     }
 
     #[test]
     fn map_path_expr() {
         check_map_path_expr(
-            &vec!["k1", "k2"],
+            &["k1", "k2"],
             true,
             r#"
             -module(main).
@@ -1306,7 +1301,7 @@ mod local_tests {
     #[test]
     fn map_path_expr_not_found() {
         check_map_path_expr(
-            &vec!["k1", "k3"],
+            &["k1", "k3"],
             false,
             r#"
             -module(main).

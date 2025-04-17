@@ -124,9 +124,9 @@ pub(crate) fn print_function(
     let mut out = String::new();
 
     body.clauses.iter().next().map(|(_, clause)| {
-        clause.name.clone().map(|na| {
+        if let Some(na) = clause.name.clone() {
             write!(out, "function: {}", na).ok();
-        });
+        }
     });
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
@@ -137,7 +137,7 @@ pub(crate) fn print_function(
         printer.print_clause(&clause.clause);
         write!(out, "{}", printer.to_string_raw()).unwrap();
     }
-    write!(out, ".\n").unwrap();
+    writeln!(out, ".").unwrap();
 
     out
 }
@@ -152,7 +152,7 @@ pub(crate) fn print_function_clause(
     let mut printer = Printer::new(db, &fold_body);
     printer.print_clause(&clause.clause);
     write!(out, "{}", printer.to_string_raw()).unwrap();
-    write!(out, "\n").unwrap();
+    writeln!(out).unwrap();
 
     out
 }
@@ -202,7 +202,7 @@ pub(crate) fn print_spec(
         write!(printer, "{}", sep).unwrap();
         sep = ";\n";
 
-        if sig.args.len() == 0 {
+        if sig.args.is_empty() {
             writeln!(printer, "() ->").unwrap();
         } else {
             writeln!(printer, "(").unwrap();
@@ -219,7 +219,7 @@ pub(crate) fn print_spec(
         printer.indent_level += 1;
         printer.print_type(&sig.result);
         printer.indent_level -= 1;
-        if sig.guards.len() > 0 {
+        if !sig.guards.is_empty() {
             writeln!(printer, "\nwhen").unwrap();
             printer.indent_level += 1;
             sig.guards
@@ -271,7 +271,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
         });
         this.print_labelled("when", false, &mut |this| {
             if let Some(expr) = &body.when {
-                this.print_guards(&expr);
+                this.print_guards(expr);
             }
         });
     });
@@ -917,7 +917,7 @@ impl<'a> Printer<'a> {
                         this1.print_call_target(target, |this, ty| this.print_type(ty));
                     });
                     this.print_labelled("args", false, &mut |this| {
-                        if args.len() == 0 {
+                        if args.is_empty() {
                             writeln!(this, "()").ok();
                         } else {
                             args.iter().for_each(|ty| {
@@ -1290,7 +1290,7 @@ impl<'a> Printer<'a> {
     }
 }
 
-fn print_comprehension_expr<'a>(this: &mut Printer<'a>, expr: &ComprehensionExpr) {
+fn print_comprehension_expr(this: &mut Printer<'_>, expr: &ComprehensionExpr) {
     match expr {
         ComprehensionExpr::BinGenerator { pat, expr, strict } => {
             this.print_herald("ComprehensionExpr::BinGenerator", &mut |this| {
@@ -1343,7 +1343,7 @@ fn print_comprehension_expr<'a>(this: &mut Printer<'a>, expr: &ComprehensionExpr
     };
 }
 
-impl<'a> fmt::Write for Printer<'a> {
+impl fmt::Write for Printer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
             if self.needs_indent {

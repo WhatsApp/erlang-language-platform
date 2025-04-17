@@ -114,7 +114,7 @@ pub struct Semantic<'db> {
     pub db: &'db dyn DefDatabase,
 }
 
-impl<'db> fmt::Debug for Semantic<'db> {
+impl fmt::Debug for Semantic<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Information-free print, to allow `fmt::Debug` on structs
         // containing this.
@@ -128,7 +128,7 @@ impl<'db> Semantic<'db> {
     }
 }
 
-impl<'db> Semantic<'db> {
+impl Semantic<'_> {
     pub fn parse(&self, file_id: FileId) -> InFile<ast::SourceFile> {
         InFile::new(file_id, self.db.parse(file_id).tree())
     }
@@ -577,11 +577,8 @@ impl<'db> Semantic<'db> {
             expr_id_in,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
-                match ctx.item_id {
-                    AnyExprId::Pat(pat_id) => {
-                        acc.insert(pat_id);
-                    }
-                    _ => {}
+                if let AnyExprId::Pat(pat_id) = ctx.item_id {
+                    acc.insert(pat_id);
                 };
                 acc
             },
@@ -792,29 +789,25 @@ impl<'db> Semantic<'db> {
         // that if we are looking at a variable in one leg of a case
         // clause, and it has equivalents in another leg, then these
         // are also found.
-        in_clause
-            .body_exprs()
-            .for_each(|(expr_id, expr)| match expr {
-                Expr::Var(v) => {
-                    if let Some(ds) = resolver.resolve_expr_id(&v, expr_id).cloned() {
-                        let ds_set = FxHashSet::from_iter(ds);
-                        if resolved_set.intersection(&ds_set).next().is_some() {
-                            resolved_set.extend(ds_set);
-                        }
-                    }
-                }
-                _ => {}
-            });
-        in_clause.body_pats().for_each(|(pat_id, pat)| match pat {
-            Pat::Var(v) => {
-                if let Some(ds) = resolver.resolve_pat_id(&v, pat_id).cloned() {
+        in_clause.body_exprs().for_each(|(expr_id, expr)| {
+            if let Expr::Var(v) = expr {
+                if let Some(ds) = resolver.resolve_expr_id(v, expr_id).cloned() {
                     let ds_set = FxHashSet::from_iter(ds);
                     if resolved_set.intersection(&ds_set).next().is_some() {
                         resolved_set.extend(ds_set);
                     }
                 }
             }
-            _ => {}
+        });
+        in_clause.body_pats().for_each(|(pat_id, pat)| {
+            if let Pat::Var(v) = pat {
+                if let Some(ds) = resolver.resolve_pat_id(v, pat_id).cloned() {
+                    let ds_set = FxHashSet::from_iter(ds);
+                    if resolved_set.intersection(&ds_set).next().is_some() {
+                        resolved_set.extend(ds_set);
+                    }
+                }
+            }
         });
 
         // Then we actually check for any variables that resolve to it.
@@ -827,7 +820,7 @@ impl<'db> Semantic<'db> {
             .body_exprs()
             .filter_map(|(expr_id, expr)| match expr {
                 Expr::Var(v) => {
-                    if let Some(ds) = resolver.resolve_expr_id(&v, expr_id).cloned() {
+                    if let Some(ds) = resolver.resolve_expr_id(v, expr_id).cloned() {
                         {
                             if resolved_set
                                 .intersection(&FxHashSet::from_iter(ds))
@@ -847,7 +840,7 @@ impl<'db> Semantic<'db> {
             .collect();
         vars.extend(in_clause.body_pats().filter_map(|(pat_id, pat)| match pat {
             Pat::Var(v) => {
-                if let Some(ds) = resolver.resolve_pat_id(&v, pat_id).cloned() {
+                if let Some(ds) = resolver.resolve_pat_id(v, pat_id).cloned() {
                     {
                         if resolved_set
                             .intersection(&FxHashSet::from_iter(ds))
@@ -871,22 +864,22 @@ impl<'db> Semantic<'db> {
     // -----------------------------------------------------------------
     // Folds
 
-    pub fn fold<'a, F: Fold, T>(
+    pub fn fold<F: Fold, T>(
         &self,
         strategy: Strategy,
         id: F::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         F::fold(self, strategy, id, initial, callback)
     }
 
-    pub fn fold_function<'a, T>(
+    pub fn fold_function<T>(
         &self,
         strategy: Strategy,
         function_id: InFile<FunctionDefId>,
         initial: T,
-        callback: FunctionAnyCallBack<'a, T>,
+        callback: FunctionAnyCallBack<'_, T>,
     ) -> T {
         let function_body = self.db.function_body(function_id);
         fold_function_body(strategy, &function_body, initial, callback)
@@ -983,32 +976,28 @@ impl<'db> Semantic<'db> {
             *pat_id,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
-                match ctx.item_id {
-                    AnyExprId::Pat(pat_id) => {
-                        if let Pat::Var(var) = &resolver[pat_id] {
-                            if let Some(pat_ids) = resolver.value.resolve_pat_id(var, pat_id) {
-                                pat_ids.iter().for_each(|def_pat_id| {
-                                    if &pat_id != def_pat_id {
-                                        if let Some(pat_ptr) = body_map.pat(pat_id) {
-                                            if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(
-                                                var,
-                                            ))) = pat_ptr.to_node(&parse)
-                                            {
-                                                if var.syntax().text() != "_" {
-                                                    acc.insert((
-                                                        resolver.function_clause_id,
-                                                        pat_id,
-                                                        var,
-                                                    ));
-                                                }
+                if let AnyExprId::Pat(pat_id) = ctx.item_id {
+                    if let Pat::Var(var) = &resolver[pat_id] {
+                        if let Some(pat_ids) = resolver.value.resolve_pat_id(var, pat_id) {
+                            pat_ids.iter().for_each(|def_pat_id| {
+                                if &pat_id != def_pat_id {
+                                    if let Some(pat_ptr) = body_map.pat(pat_id) {
+                                        if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(var))) =
+                                            pat_ptr.to_node(&parse)
+                                        {
+                                            if var.syntax().text() != "_" {
+                                                acc.insert((
+                                                    resolver.function_clause_id,
+                                                    pat_id,
+                                                    var,
+                                                ));
                                             }
-                                        };
-                                    }
-                                });
-                            }
-                        };
-                    }
-                    _ => {}
+                                        }
+                                    };
+                                }
+                            });
+                        }
+                    };
                 }
                 acc
             },
@@ -1039,11 +1028,11 @@ impl<'db> Semantic<'db> {
 
 pub type FunctionAnyCallBack<'a, T> = &'a mut dyn FnMut(T, ClauseId, AnyCallBackCtx) -> T;
 
-fn fold_function_body<'a, T>(
+fn fold_function_body<T>(
     strategy: Strategy,
     function_body: &FunctionBody,
     initial: T,
-    callback: FunctionAnyCallBack<'a, T>,
+    callback: FunctionAnyCallBack<'_, T>,
 ) -> T {
     function_body
         .clauses
@@ -1273,7 +1262,7 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
     }
 }
 
-impl<'a, T> Index<ClauseId> for InFunctionBody<'a, T> {
+impl<T> Index<ClauseId> for InFunctionBody<'_, T> {
     type Output = FunctionClauseBody;
 
     fn index(&self, index: ClauseId) -> &Self::Output {
@@ -1527,7 +1516,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
     }
 }
 
-impl<'a, T> Index<ExprId> for InFunctionClauseBody<'a, T> {
+impl<T> Index<ExprId> for InFunctionClauseBody<'_, T> {
     type Output = Expr;
 
     fn index(&self, index: ExprId) -> &Self::Output {
@@ -1535,7 +1524,7 @@ impl<'a, T> Index<ExprId> for InFunctionClauseBody<'a, T> {
     }
 }
 
-impl<'a, T> Index<PatId> for InFunctionClauseBody<'a, T> {
+impl<T> Index<PatId> for InFunctionClauseBody<'_, T> {
     type Output = Pat;
 
     fn index(&self, index: PatId) -> &Self::Output {
@@ -1543,7 +1532,7 @@ impl<'a, T> Index<PatId> for InFunctionClauseBody<'a, T> {
     }
 }
 
-impl<'a, T> Index<TypeExprId> for InFunctionClauseBody<'a, T> {
+impl<T> Index<TypeExprId> for InFunctionClauseBody<'_, T> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
@@ -1551,7 +1540,7 @@ impl<'a, T> Index<TypeExprId> for InFunctionClauseBody<'a, T> {
     }
 }
 
-impl<'a, T> Index<TermId> for InFunctionClauseBody<'a, T> {
+impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
     type Output = Term;
 
     fn index(&self, index: TermId) -> &Self::Output {

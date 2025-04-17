@@ -2452,7 +2452,7 @@ macro_rules! my_expect {
 // This section based on QB tests in
 // https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R60-R65
 
-const QUOTED_BINARY_EXPECT: &'static str = r#"
+const QUOTED_BINARY_EXPECT: &str = r#"
             f() ->
                 <<
                     "ab\"c\"\u{7f}"/utf8
@@ -2509,7 +2509,7 @@ fn quoted_binary_explicit_sigil_in_tq_string() {
 // This section based on VB tests in
 // https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R66-R73
 
-const VERBATIM_BINARY_EXPECT: &'static str = r#"
+const VERBATIM_BINARY_EXPECT: &str = r#"
         f() ->
             <<
                 "ab\"c\"\\d"/utf8
@@ -2567,7 +2567,7 @@ fn verbatim_binary_in_verbatim_sigil_tq_string() {
 // This section based on QS tests in
 // https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R75-R79
 
-const QUOTED_STRING_EXPECT: &'static str = r#"
+const QUOTED_STRING_EXPECT: &str = r#"
             f() ->
                 "ab\"c\"\u{7f}".
         "#;
@@ -2610,7 +2610,7 @@ fn quoted_string_with_sigil_in_tq_string() {
 // This section based on VS tests in
 // https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R80-R84
 
-const VERBATIM_STRING_EXPECT: &'static str = r#"
+const VERBATIM_STRING_EXPECT: &str = r#"
             f() ->
                 "ab\"c\"\\d".
         "#;

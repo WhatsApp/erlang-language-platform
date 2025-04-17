@@ -259,7 +259,7 @@ fn capitalize_first_char(word: &str) -> Option<String> {
     let mut chars = word.chars();
     chars
         .next()
-        .map(|char| char.to_uppercase().to_string() + &chars.as_str())
+        .map(|char| char.to_uppercase().to_string() + chars.as_str())
 }
 
 fn decode_html_entities(text: &str) -> Cow<str> {
@@ -283,10 +283,8 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
     if let Some(NodeOrToken::Node(node)) =
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
     {
-        if node.kind() == SyntaxKind::COMMENT {
-            if is_divider(&node.text().to_string()) {
-                return Some(node);
-            }
+        if node.kind() == SyntaxKind::COMMENT && is_divider(&node.text().to_string()) {
+            return Some(node);
         }
     }
     None
@@ -294,7 +292,7 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
 
 fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
     static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\s.]+)").unwrap());
-    let captures = RE.captures(&text)?;
+    let captures = RE.captures(text)?;
     let reference = captures.get(1)?;
     let rest = &text[reference.end()..];
     Some(format!("`{}`{}", reference.as_str(), rest))
@@ -317,7 +315,7 @@ impl Tag {
         let mut res = String::new();
         for line in &self.lines {
             if let Some(content) = &line.content {
-                res.push_str(&format!("{}", content))
+                res.push_str(&content.to_string())
             };
         }
         res
@@ -328,7 +326,7 @@ impl Tag {
         let head = head.to_markdown().unwrap_or("".to_string());
         for line in tail {
             if let Some(text) = line.to_markdown() {
-                res.push_str(&format!("{}", &text));
+                res.push_str(&text.to_string());
             }
         }
         ensure_non_empty(&format!("{}{}", &head, &trim_indent(&res)))
@@ -344,7 +342,7 @@ pub struct Line {
 impl Line {
     pub fn to_markdown(&self) -> Option<String> {
         let content = self.content.clone()?;
-        Some(format!("{}\n", convert_to_markdown(&content).to_string()))
+        Some(format!("{}\n", convert_to_markdown(&content)))
     }
 }
 
@@ -393,7 +391,7 @@ fn module_doc_header(
     let ast = module_attribute.form_id.get_ast(db, file_id);
     let syntax = ast.syntax();
     let form = ast::Form::cast(syntax.clone())?;
-    edoc_header(file_id, &form, &syntax, EdocHeaderKind::Module, true)
+    edoc_header(file_id, &form, syntax, EdocHeaderKind::Module, true)
 }
 
 fn function_doc_header(
@@ -406,7 +404,7 @@ fn function_doc_header(
     let form = ast::Form::cast(decl.syntax().clone())?;
     let syntax = form.syntax();
     let exported = def.exported;
-    spec_doc_header(db, file_id, &def, &form, exported).or(edoc_header(
+    spec_doc_header(db, file_id, def, &form, exported).or(edoc_header(
         file_id,
         &form,
         syntax,
@@ -427,7 +425,7 @@ fn spec_doc_header(
     let spec_syntax = spec.syntax();
     edoc_header(
         file_id,
-        &form,
+        form,
         spec_syntax,
         EdocHeaderKind::Function,
         exported,
@@ -443,7 +441,7 @@ fn edoc_header(
 ) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let mut comments: Vec<_> = prev_form_nodes(syntax)
         .filter_map(ast::Comment::cast)
-        .filter(|comment| only_comment_on_line(comment))
+        .filter(only_comment_on_line)
         .collect();
     comments.reverse();
 
@@ -505,80 +503,77 @@ impl ParseContext {
     fn process_tag(&mut self) {
         if let Some(last_comment) = self.lines.last() {
             if let Some(content) = &last_comment.content {
-                if is_divider(&content) {
+                if is_divider(content) {
                     _ = self.lines.pop();
                 }
             }
         }
-        match &self.current_tag {
-            Some(tag_name) => {
-                match &tag_name.kind {
-                    TagKind::Doc => {
-                        self.doc = Some(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Returns => {
-                        self.returns = Some(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Param(name) => {
-                        let name = name.clone().unwrap_or_default();
-                        self.params.push((
-                            name,
-                            Tag {
-                                lines: self.lines.clone(),
-                                range: tag_name.range,
-                            },
-                        ));
-                    }
-                    TagKind::Equiv => {
-                        self.equiv = Some(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Author => {
-                        self.authors.push(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Copyright => {
-                        self.copyright = Some(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Hidden => {
-                        self.hidden = Some(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::See => {
-                        self.sees.push(Tag {
-                            lines: self.lines.clone(),
-                            range: tag_name.range,
-                        });
-                    }
-                    TagKind::Unknown(unknown) => {
-                        self.unknown.push((
-                            unknown.to_string(),
-                            Tag {
-                                lines: self.lines.clone(),
-                                range: tag_name.range,
-                            },
-                        ));
-                    }
+        if let Some(tag_name) = &self.current_tag {
+            match &tag_name.kind {
+                TagKind::Doc => {
+                    self.doc = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
                 }
-                self.current_tag = None;
-                self.lines = vec![];
+                TagKind::Returns => {
+                    self.returns = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::Param(name) => {
+                    let name = name.clone().unwrap_or_default();
+                    self.params.push((
+                        name,
+                        Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        },
+                    ));
+                }
+                TagKind::Equiv => {
+                    self.equiv = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::Author => {
+                    self.authors.push(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::Copyright => {
+                    self.copyright = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::Hidden => {
+                    self.hidden = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::See => {
+                    self.sees.push(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
+                TagKind::Unknown(unknown) => {
+                    self.unknown.push((
+                        unknown.to_string(),
+                        Tag {
+                            lines: self.lines.clone(),
+                            range: tag_name.range,
+                        },
+                    ));
+                }
             }
-            None => (),
+            self.current_tag = None;
+            self.lines = vec![];
         }
     }
     fn to_edoc_header(self, kind: EdocHeaderKind) -> Option<EdocHeader> {
@@ -643,7 +638,7 @@ fn parse_edoc(
                 }
                 if let Some(tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());
-                    let content = text.trim_start_matches(|c: char| c == '%');
+                    let content = text.trim_start_matches('%');
                     if tag.kind == TagKind::Param(None) {
                         match extract_param_name_and_content(content.trim()) {
                             None => {
@@ -739,12 +734,10 @@ fn parse_edoc(
 fn extract_param_name_and_content(content: &str) -> Option<(&str, &str)> {
     if content.is_empty() {
         None
+    } else if let Some((name, content)) = content.split_once(" ") {
+        Some((name, content))
     } else {
-        if let Some((name, content)) = content.split_once(" ") {
-            Some((name, content))
-        } else {
-            Some((content, ""))
-        }
+        Some((content, ""))
     }
 }
 
@@ -754,12 +747,12 @@ fn only_comment_on_line(comment: &ast::Comment) -> bool {
     // We check for a positive "other" found on the same line, in case
     // the comment is the first line of the file, which will not have
     // a preceding newline.
-    let mut node = comment
+    let node = comment
         .syntax()
         .siblings_with_tokens(elp_syntax::Direction::Prev)
         .skip(1); // Starts with itself
 
-    while let Some(node) = node.next() {
+    for node in node {
         if let Some(tok) = node.into_token() {
             if tok.kind() == SyntaxKind::WHITESPACE && tok.text().contains('\n') {
                 return true;
@@ -775,7 +768,7 @@ fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> + us
     syntax
         .siblings(elp_syntax::Direction::Prev)
         .skip(1) // Starts with itself
-        .take_while(|node| !edoc_header_kind(node).is_some())
+        .take_while(|node| edoc_header_kind(node).is_none())
 }
 
 fn edoc_header_kind(node: &SyntaxNode) -> Option<EdocHeaderKind> {
@@ -816,7 +809,7 @@ fn convert_triple_quotes(comment: &str) -> Cow<str> {
 }
 
 fn convert_to_markdown(text: &str) -> String {
-    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(&text))).to_string()
+    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(text))).to_string()
 }
 
 #[cfg(test)]
@@ -921,7 +914,7 @@ mod tests {
         let (db, fixture) = TestDB::with_fixture(fixture);
         let file_id = fixture.files[0];
         let edocs = file_edoc_comments_query(&db, file_id);
-        expected.assert_eq(&test_print(&*edocs.unwrap()))
+        expected.assert_eq(&test_print(&edocs.unwrap()))
     }
 
     #[test]

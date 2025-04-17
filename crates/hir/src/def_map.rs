@@ -406,13 +406,9 @@ impl DefMap {
     }
 
     pub fn get_functions(&self) -> impl Iterator<Item = (&NameArity, &FunctionDef)> {
-        self.functions_by_fa.iter().filter_map(|(k, _)| {
-            if let Some(def) = self.get_function(k) {
-                Some((k, def))
-            } else {
-                None
-            }
-        })
+        self.functions_by_fa
+            .iter()
+            .filter_map(|(k, _)| self.get_function(k).map(|def| (k, def)))
     }
 
     pub fn get_behaviours(&self) -> &FxHashSet<Name> {
@@ -430,7 +426,7 @@ impl DefMap {
         let mut v: Vec<(FunctionClauseId, FunctionClauseDef)> = Vec::from_iter(
             self.function_clauses
                 .iter()
-                .map(|(k, v)| ((*k).clone(), (*v).clone())),
+                .map(|(k, v)| ((*k), (*v).clone())),
         );
         v.sort_by(|(ka, _), (kb, _)| ka.into_raw().cmp(&kb.into_raw()));
         v
@@ -529,31 +525,31 @@ impl DefMap {
             other
                 .function_clauses
                 .iter()
-                .map(|(name, def)| (name.clone(), def.clone())),
+                .map(|(name, def)| (*name, def.clone())),
         );
         self.functions.extend(
             other
                 .functions
                 .iter()
-                .map(|(name, def)| (name.clone(), def.clone())),
+                .map(|(name, def)| (*name, def.clone())),
         );
         self.function_clauses_by_fa.extend(
             other
                 .function_clauses_by_fa
                 .iter()
-                .map(|(name, def)| (name.clone(), def.clone())),
+                .map(|(name, def)| (name.clone(), *def)),
         );
         self.functions_by_fa.extend(
             other
                 .functions_by_fa
                 .iter()
-                .map(|(name, def)| (name.clone(), def.clone())),
+                .map(|(name, def)| (name.clone(), *def)),
         );
         self.function_by_function_id.extend(
             other
                 .function_by_function_id
                 .iter()
-                .map(|(name, def)| (name.clone(), def.clone())),
+                .map(|(name, def)| (*name, *def)),
         );
         self.unowned_specs.extend(
             other
@@ -626,7 +622,7 @@ impl DefMap {
         self.get_function_clauses_ordered()
             .iter()
             .for_each(|(_next_id, next_def)| {
-                if let Some((current_na, _def)) = current.get(0) {
+                if let Some((current_na, _def)) = current.first() {
                     if current_na == &next_def.function_clause.name
                         || (next_def.function_clause.is_macro
                             && prior_separator == Some(ast::ClauseSeparator::Semi))
@@ -685,7 +681,7 @@ impl DefMap {
         self.function_by_function_id.extend(
             fun.function_clause_ids
                 .iter()
-                .map(|id| (*id, function_def_id.clone())),
+                .map(|id| (*id, function_def_id)),
         );
         let id = InFile::new(file.file_id, function_def_id);
         self.functions.insert(id, fun);
@@ -725,8 +721,8 @@ impl DefMap {
         let exported: FxHashMap<FunctionDefId, bool> = self
             .functions
             .clone()
-            .iter()
-            .map(|(fun_def_id, _)| (fun_def_id.value.clone(), self.is_exported(fun_def_id)))
+            .keys()
+            .map(|fun_def_id| (fun_def_id.value, self.is_exported(fun_def_id)))
             .collect();
 
         for (fun_def_id, fun_def) in self.functions.iter_mut() {
@@ -744,20 +740,15 @@ impl DefMap {
         let deprecated: FxHashMap<FunctionDefId, bool> = self
             .functions
             .clone()
-            .iter()
-            .map(|(fun_def_id, _)| {
-                (
-                    fun_def_id.value.clone(),
-                    self.is_deprecated_fun_def(fun_def_id),
-                )
-            })
+            .keys()
+            .map(|fun_def_id| (fun_def_id.value, self.is_deprecated_fun_def(fun_def_id)))
             .collect();
 
         let deprecation_desc: FxHashMap<FunctionDefId, Option<DeprecatedDesc>> = self
             .functions
             .clone()
-            .iter()
-            .map(|(fun_def_id, _)| (fun_def_id.value.clone(), self.deprecation_desc(fun_def_id)))
+            .keys()
+            .map(|fun_def_id| (fun_def_id.value, self.deprecation_desc(fun_def_id)))
             .collect();
 
         for (fun_def_id, fun_def) in self.functions.iter_mut() {

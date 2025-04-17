@@ -63,7 +63,7 @@ struct Printer<'a> {
     buf: String,
 }
 
-impl<'a> Printer<'a> {
+impl Printer<'_> {
     pub fn print_form(&mut self, form: FormIdx) -> fmt::Result {
         match form {
             FormIdx::ModuleAttribute(idx) => self.print_module_attribute(&self.forms[idx])?,
@@ -435,7 +435,7 @@ impl fmt::Display for DeprecatedFa {
 
 struct DeprecatedFas<'a>(&'a Vec<DeprecatedFa>);
 
-impl<'a> fmt::Display for DeprecatedFas<'a> {
+impl fmt::Display for DeprecatedFas<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "[")?;
         for (i, fa) in self.0.iter().enumerate() {
@@ -465,7 +465,7 @@ fn raw_cond(cond: &Option<PPConditionId>) -> Option<RawIdx> {
     cond.map(|cond| cond.into_raw())
 }
 
-impl<'a> fmt::Write for Printer<'a> {
+impl fmt::Write for Printer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.buf.push_str(s);
         Ok(())

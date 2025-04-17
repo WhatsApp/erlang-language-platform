@@ -90,24 +90,24 @@ pub fn default_fold_body(body: &Body) -> FoldBody {
 pub trait Fold {
     type Id;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T;
 }
 
 impl Fold for Spec {
     type Id = InFile<SpecId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.spec_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
@@ -119,12 +119,12 @@ impl Fold for Spec {
 impl Fold for Callback {
     type Id = InFile<CallbackId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: InFile<CallbackId>,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.callback_body(id);
         body.sigs.iter().fold(initial, |acc, spec_sig| {
@@ -136,12 +136,12 @@ impl Fold for Callback {
 impl Fold for TypeAlias {
     type Id = InFile<TypeAliasId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.type_body(id);
         FoldCtx::fold_type_expr(strategy, &body.body, body.ty, initial, callback)
@@ -151,12 +151,12 @@ impl Fold for TypeAlias {
 impl Fold for Record {
     type Id = InFile<RecordId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.record_body(id);
         body.fields.iter().fold(initial, |acc, item| {
@@ -168,12 +168,12 @@ impl Fold for Record {
 impl Fold for Attribute {
     type Id = InFile<AttributeId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.attribute_body(id);
         FoldCtx::fold_term(strategy, &body.body, body.value, initial, callback)
@@ -183,12 +183,12 @@ impl Fold for Attribute {
 impl Fold for CompileOption {
     type Id = InFile<CompileOptionId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.compile_body(id);
         FoldCtx::fold_term(strategy, &body.body, body.value, initial, callback)
@@ -198,12 +198,12 @@ impl Fold for CompileOption {
 impl Fold for Define {
     type Id = InFile<DefineId>;
 
-    fn fold<'a, T>(
+    fn fold<T>(
         sema: &Semantic,
         strategy: Strategy,
         id: Self::Id,
         initial: T,
-        callback: AnyCallBack<'a, T>,
+        callback: AnyCallBack<'_, T>,
     ) -> T {
         let body = sema.db.define_body(id);
         FoldCtx::fold_expr(strategy, &body.body, body.expr, initial, callback)
@@ -297,12 +297,12 @@ pub fn fold_file<'a, T>(
 }
 
 /// Fold over only the functions in a file.
-pub fn fold_file_functions<'a, T>(
+pub fn fold_file_functions<T>(
     sema: &Semantic,
     strategy: Strategy,
     file_id: FileId,
     initial: T,
-    callback: AnyCallBack<'a, T>,
+    callback: AnyCallBack<'_, T>,
 ) -> T {
     sema.def_map_local(file_id)
         .get_functions()
@@ -346,7 +346,7 @@ pub struct AnyCallBackCtx<'a> {
     pub body_origin: BodyOrigin,
 }
 
-impl<'a> AnyCallBackCtx<'a> {
+impl AnyCallBackCtx<'_> {
     pub fn body_with_expr_source(
         &self,
         sema: &Semantic,
@@ -462,7 +462,7 @@ pub enum VisibleMacros {
     No,
 }
 
-impl<'a> FoldBody<'a> {
+impl FoldBody<'_> {
     fn normalise_expr(&self, expr: &Expr) -> Expr {
         match expr {
             Expr::Call {
@@ -476,16 +476,16 @@ impl<'a> FoldBody<'a> {
             } => match self.parens {
                 ParenStrategy::VisibleParens => Expr::Call {
                     target: CallTarget::Remote {
-                        module: module.clone(),
-                        name: name.clone(),
+                        module: *module,
+                        name: *name,
                         parens: *parens,
                     },
                     args: args.clone(),
                 },
                 ParenStrategy::InvisibleParens => Expr::Call {
                     target: CallTarget::Remote {
-                        module: module.clone(),
-                        name: name.clone(),
+                        module: *module,
+                        name: *name,
                         parens: false,
                     },
                     args: args.clone(),
@@ -639,7 +639,7 @@ impl<'a, T> FoldCtx<'a, T> {
         callback: AnyCallBack<'a, T>,
     ) -> T {
         let fold_body = &fold_body(strategy, body);
-        let mut ctx = FoldCtx::new(strategy, &fold_body, body.origin, callback);
+        let mut ctx = FoldCtx::new(strategy, fold_body, body.origin, callback);
         let r = ctx.do_fold_args_type_exprs(&spec_sig.args, initial);
         ctx.macro_stack = Vec::default();
         let r = ctx.do_fold_type_expr(spec_sig.result, r);
@@ -666,12 +666,12 @@ impl<'a, T> FoldCtx<'a, T> {
         } else {
             initial
         };
-        let r = if let Some(type_expr_id) = record_field_body.ty {
+
+        if let Some(type_expr_id) = record_field_body.ty {
             ctx.do_fold_type_expr(type_expr_id, r)
         } else {
             r
-        };
-        r
+        }
     }
 
     // -----------------------------------------------------------------
@@ -756,7 +756,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_def: _,
                 macro_name: _,
             } => {
-                let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
+                if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -766,8 +766,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     let e = self.do_fold_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
-                };
-                r
+                }
             }
             crate::Expr::Call { target, args } => {
                 let r = match target {
@@ -1161,7 +1160,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_def: _,
                 macro_name: _,
             } => {
-                let r = if self.strategy.macros == MacroStrategy::DoNotExpand {
+                if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
                     self.macro_stack.push(HirIdx {
@@ -1171,8 +1170,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     let e = self.do_fold_type_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
-                };
-                r
+                }
             }
             TypeExpr::SsrPlaceholder(_) => acc,
         };
@@ -1258,7 +1256,7 @@ mod tests {
             _ => return None,
         };
 
-        Some(atom.clone())
+        Some(*atom)
     }
 
     #[test]
@@ -2417,7 +2415,7 @@ bar() ->
 
     fn do_count_parens(sema: &Semantic, parens: ParenStrategy, file_id: FileId) -> u32 {
         fold_file(
-            &sema,
+            sema,
             Strategy {
                 macros: MacroStrategy::Expand,
                 parens,

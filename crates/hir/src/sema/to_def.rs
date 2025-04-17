@@ -94,9 +94,9 @@ impl ToDef for ast::Atom {
 }
 
 fn resolve_atom(sema: &Semantic<'_>, name: &Name, file_id: FileId) -> Option<AtomDef> {
-    resolve_testcase(sema, file_id, &name)
+    resolve_testcase(sema, file_id, name)
         .map(AtomDef::Function)
-        .or_else(|| resolve_module_name(sema, file_id, &name).map(AtomDef::Module))
+        .or_else(|| resolve_module_name(sema, file_id, name).map(AtomDef::Module))
 }
 
 // ---------------------------------------------------------------------
@@ -408,7 +408,7 @@ impl ToDef for ast::Fa {
                         .or_else(|| {
                             sema.db
                                 .def_map(ast.file_id)
-                                .get_function_any_arity(&form_list[entry].name.name())
+                                .get_function_any_arity(form_list[entry].name.name())
                                 .cloned()
                                 .map(FaDef::FuzzyFunction)
                         })
@@ -429,7 +429,7 @@ impl ToDef for ast::Fa {
                         .or_else(|| {
                             sema.db
                                 .def_map(imported_module.file.file_id)
-                                .get_function_any_arity(&form_list[entry].name.name())
+                                .get_function_any_arity(form_list[entry].name.name())
                                 .cloned()
                                 .map(FaDef::FuzzyFunction)
                         })
@@ -450,7 +450,7 @@ impl ToDef for ast::Fa {
                         .or_else(|| {
                             sema.db
                                 .def_map(ast.file_id)
-                                .get_type_any_arity(&form_list[entry].name.name())
+                                .get_type_any_arity(form_list[entry].name.name())
                                 .cloned()
                                 .map(FaDef::FuzzyType)
                         })
