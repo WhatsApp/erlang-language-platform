@@ -112,9 +112,11 @@ pub fn parse_all(
         },
     };
 
-    let mut cfg = DiagnosticsConfig::default();
-    cfg.experimental = args.experimental_diags;
-    cfg.include_generated = args.include_generated;
+    let cfg = DiagnosticsConfig {
+        experimental: args.experimental_diags,
+        include_generated: args.include_generated,
+        ..Default::default()
+    };
 
     let mut res = match (file_id, name, args.serial) {
         (None, _, true) => do_parse_all_seq(cli, &loaded, &cfg, &args.to)?,

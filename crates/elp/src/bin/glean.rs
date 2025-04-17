@@ -189,6 +189,7 @@ impl XRefFactVal {
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 struct MFA {
     module: String,
     name: String,
@@ -357,6 +358,7 @@ pub(crate) struct CommentFact {
 }
 
 #[derive(Serialize, Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum Declaration {
     #[serde(rename = "func")]
     FunctionDeclaration(Key<FuncDecl>),
@@ -474,7 +476,7 @@ impl IndexedFacts {
         }
     }
 
-    fn to_v1_facts(mut self) -> Vec<Fact> {
+    fn into_v1_facts(mut self) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.declaration_facts);
@@ -584,7 +586,7 @@ impl IndexedFacts {
         Some(fact)
     }
 
-    fn to_v2_facts(mut self, modules: &FxHashMap<GleanFileId, String>) -> Vec<Fact> {
+    fn into_v2_facts(mut self, modules: &FxHashMap<GleanFileId, String>) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.file_declarations);
@@ -717,9 +719,9 @@ fn write_results(
 ) -> Result<()> {
     for (name, fact) in facts {
         let fact = if args.v2 {
-            fact.to_v2_facts(&module_index)
+            fact.into_v2_facts(&module_index)
         } else {
-            fact.to_v1_facts()
+            fact.into_v1_facts()
         };
         let content = if args.pretty {
             serde_json::to_string_pretty(&fact)?
@@ -873,6 +875,7 @@ impl GleanIndexer {
         files
     }
 
+    #[allow(clippy::type_complexity)]
     fn index_file(
         db: &RootDatabase,
         file_id: FileId,
@@ -2560,7 +2563,7 @@ mod tests {
 
     fn xref_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
-        let facts = facts.to_v2_facts(&module_index);
+        let facts = facts.into_v2_facts(&module_index);
         let xref_facts = facts
             .iter()
             .find_map(|x| match x {
@@ -2632,7 +2635,7 @@ mod tests {
 
     fn decl_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
-        let facts = facts.to_v2_facts(&module_index);
+        let facts = facts.into_v2_facts(&module_index);
         let func_decl = facts
             .iter()
             .find_map(|x| match x {

@@ -254,6 +254,7 @@ impl Analysis {
 
     /// Computes the set of eqwalizer diagnostics for the given project and files,
     /// including checking for disabled. Returns standard diagnostics.
+    #[allow(clippy::type_complexity)]
     pub fn eqwalizer_diagnostics_by_project(
         &self,
         project_id: ProjectId,
@@ -312,6 +313,7 @@ impl Analysis {
         self.with_db(|db| db.type_at_position(range))
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn types_for_file(&self, file_id: FileId) -> Cancellable<Option<Arc<Vec<(Pos, Type)>>>> {
         self.with_db(|db| db.types_for_file(file_id))
     }
@@ -465,6 +467,7 @@ impl Analysis {
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
+    #[allow(clippy::too_many_arguments)]
     pub fn assists_with_fixes(
         &self,
         assist_config: &AssistConfig,

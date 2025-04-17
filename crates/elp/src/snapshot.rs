@@ -111,6 +111,7 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: Arc<Config>,
         diagnostics_config: Arc<DiagnosticsConfig>,

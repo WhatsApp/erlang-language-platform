@@ -333,6 +333,7 @@ impl Assists {
         self.do_add(id, label, group, None, target, user_input, f)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn add_from_diagnostic(
         &mut self,
         id: AssistId,
@@ -354,6 +355,7 @@ impl Assists {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn do_add(
         &mut self,
         id: AssistId,

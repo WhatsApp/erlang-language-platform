@@ -73,6 +73,7 @@ impl BadEnvCall {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum BadEnvCallAction {
     AppArg(usize), // Zero-based argument index
     /// Matches a config argument of the form {tag, {Arg0, Arg1, ...}}

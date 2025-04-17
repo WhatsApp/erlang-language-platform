@@ -83,7 +83,7 @@ pub(crate) fn reporter_telemetry_start(
     title: String,
 ) -> ReporterTelemetry {
     let mut telemetry = TELEMETRY.lock();
-    telemetry.new(token, title)
+    telemetry.new_reporter(token, title)
 }
 
 pub(crate) fn reporter_telemetry_next(token: lsp_types::NumberOrString, message: String) {
@@ -122,7 +122,11 @@ pub(crate) struct ReporterTelemetry {
 }
 
 impl ReporterTelemetryManager {
-    fn new(&mut self, token: lsp_types::NumberOrString, title: String) -> ReporterTelemetry {
+    fn new_reporter(
+        &mut self,
+        token: lsp_types::NumberOrString,
+        title: String,
+    ) -> ReporterTelemetry {
         let time = SystemTime::now();
         let val = ReporterTelemetry {
             start_time: time,
@@ -205,7 +209,7 @@ mod test {
         let orig = {
             // Control lock scope by having it in braces
             let mut telemetry = TEST_TELEMETRY.lock();
-            telemetry.new(token.clone(), message)
+            telemetry.new_reporter(token.clone(), message)
         };
 
         {

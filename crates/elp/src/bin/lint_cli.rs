@@ -442,8 +442,8 @@ fn filter_diagnostics<'a>(
     // `Category::SimplificationRule` is always enabled for that
     // usage.
     Ok(diags
-        .to_owned()
-        .into_iter()
+        .iter()
+        .cloned()
         .filter_map(|(m, file_id, ds)| {
             if module.is_none() || &Some(m.to_string()) == module {
                 let ds2 = ds

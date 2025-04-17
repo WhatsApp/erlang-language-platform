@@ -594,6 +594,7 @@ fn format_guard(format: &Option<String>) -> bool {
     }
 }
 
+#[allow(clippy::ptr_arg)] // This is needed in the BPAF macros
 fn at_least_1(data: &Vec<String>) -> bool {
     !data.is_empty()
 }

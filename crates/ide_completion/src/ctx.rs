@@ -52,9 +52,7 @@ impl CtxKind {
             Self::Spec
         } else if Self::is_dialyzer(node, offset) {
             Self::Dialyzer
-        } else if Self::is_expr(node, offset) {
-            Self::Expr
-        } else if Self::is_pp_define(node, offset) {
+        } else if Self::is_expr(node, offset) || Self::is_pp_define(node, offset) {
             Self::Expr
         } else {
             Self::Other

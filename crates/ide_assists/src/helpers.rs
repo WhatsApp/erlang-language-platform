@@ -504,6 +504,7 @@ pub fn add_suite_0_option<'a>(
     Some(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn new_suite_0(
     sema: &Semantic,
     file_id: FileId,

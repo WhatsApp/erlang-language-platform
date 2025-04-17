@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::fmt::Write;
+
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::AstNode;
@@ -81,12 +83,15 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 Some(cap) => {
                     let mut snippet_idx = 1;
                     let header_snippet = format!("%% @doc ${{{}:{}}}\n", snippet_idx, DEFAULT_TEXT);
-                    let args_snippets = arg_names
-                        .map(|arg_name| {
-                            snippet_idx += 1;
-                            format!("%% @param {} ${{{}:{}}}\n", arg_name, snippet_idx, ARG_TEXT)
-                        })
-                        .collect::<String>();
+                    let args_snippets = arg_names.fold(String::new(), |mut output, arg_name| {
+                        snippet_idx += 1;
+                        let _ = writeln!(
+                            output,
+                            "%% @param {} ${{{}:{}}}",
+                            arg_name, snippet_idx, ARG_TEXT
+                        );
+                        output
+                    });
                     snippet_idx += 1;
                     let snippet = format!(
                         "{}{}%% @returns ${{{}:{}}}\n",
@@ -96,9 +101,10 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     builder.insert_snippet(cap, insert, snippet);
                 }
                 None => {
-                    let args_text = arg_names
-                        .map(|arg_name| format!("%% @param {} {}\n", arg_name, ARG_TEXT))
-                        .collect::<String>();
+                    let args_text = arg_names.fold(String::new(), |mut output, arg_name| {
+                        let _ = writeln!(output, "%% @param {} {}", arg_name, ARG_TEXT);
+                        output
+                    });
                     let text = format!(
                         "%% @doc {}\n{}%% @returns {}\n",
                         DEFAULT_TEXT, args_text, RETURN_TEXT

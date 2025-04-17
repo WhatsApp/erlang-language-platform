@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use std::fmt::Write;
 use std::iter;
 use std::sync::Arc;
 
@@ -519,8 +520,10 @@ fn field_props(
 fn doc_comment_to_string(doc: &[&str]) -> String {
     doc.iter()
         .map(|it| it.strip_prefix(' ').unwrap_or(it))
-        .map(|it| format!("{}\n", it))
-        .collect()
+        .fold(String::new(), |mut output, it| {
+            let _ = writeln!(output, "{}", it);
+            output
+        })
 }
 
 pub fn config_schema_json() -> String {

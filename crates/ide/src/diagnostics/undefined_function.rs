@@ -82,11 +82,10 @@ fn check_function(
                 hir::CallTarget::Remote { module, name, .. } => {
                     let module = &def_fb[*module];
                     let name = &def_fb[*name];
-                    if in_exclusion_list(sema, module, name, arity) {
-                        None
-                    } else if sema
-                        .resolve_module_expr(def_fb.file_id(), module)
-                        .is_some_and(|module| is_automatically_added(sema, module, name, arity))
+                    if in_exclusion_list(sema, module, name, arity)
+                        || sema
+                            .resolve_module_expr(def_fb.file_id(), module)
+                            .is_some_and(|module| is_automatically_added(sema, module, name, arity))
                     {
                         None
                     } else {

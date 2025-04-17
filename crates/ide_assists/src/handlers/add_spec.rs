@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::fmt::Write;
+
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::assists::AssistId;
@@ -75,12 +77,11 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let mut snippet_idx = 0;
-                    let types_snippets = type_names
-                        .map(|arg_name| {
-                            snippet_idx += 1;
-                            format!("${{{}:{}}}, ", snippet_idx, arg_name)
-                        })
-                        .collect::<String>();
+                    let types_snippets = type_names.fold(String::new(), |mut output, arg_name| {
+                        snippet_idx += 1;
+                        let _ = write!(output, "${{{}:{}}}, ", snippet_idx, arg_name);
+                        output
+                    });
                     snippet_idx += 1;
                     let snippet = format!(
                         "-spec {}({}) -> ${{{}:return_type()}}.\n",
@@ -92,9 +93,10 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     builder.insert_snippet(cap, insert, snippet);
                 }
                 None => {
-                    let types_text = type_names
-                        .map(|arg_name| format!("{}, ", arg_name))
-                        .collect::<String>();
+                    let types_text = type_names.fold(String::new(), |mut output, arg_name| {
+                        let _ = write!(output, "{}, ", arg_name);
+                        output
+                    });
                     let text = format!(
                         "-spec {}({}) -> return_type().\n",
                         name_text,

@@ -87,7 +87,7 @@ fn looks_like_misspelling(attr: &Attribute) -> Option<&str> {
         .iter()
         .filter(|&known| &attr.name != known)
         .filter(|&known| {
-            let close_enough: usize = std::cmp::max(1, std::cmp::min(3, attr.name.len() / 3));
+            let close_enough: usize = (attr.name.len() / 3).clamp(1, 3);
             triple_accel::levenshtein::rdamerau(attr.name.as_str().as_bytes(), known.as_bytes())
                 <= u32::try_from(close_enough).unwrap()
         })

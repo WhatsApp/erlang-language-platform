@@ -7,6 +7,8 @@
  * of this source tree.
  */
 
+use std::fmt::Write;
+
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::AstNode;
@@ -50,13 +52,15 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let mut snippet_idx = 0;
-                    let args_snippets = arg_names
-                        .iter()
-                        .map(|arg_name| {
-                            snippet_idx += 1;
-                            format!("${{{}:{}}}, ", snippet_idx, arg_name.name())
-                        })
-                        .collect::<String>();
+                    let args_snippets =
+                        arg_names
+                            .iter()
+                            .fold(String::new(), |mut output, arg_name| {
+                                snippet_idx += 1;
+                                let _ =
+                                    write!(output, "${{{}:{}}}, ", snippet_idx, arg_name.name());
+                                output
+                            });
                     snippet_idx += 1;
                     let snippet = format!(
                         "\n{}({}) ->\n  ${{{}:error(\"not implemented\").}}\n",
@@ -70,8 +74,10 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 None => {
                     let args_text = arg_names
                         .iter()
-                        .map(|arg_name| format!("{}, ", arg_name.name()))
-                        .collect::<String>();
+                        .fold(String::new(), |mut output, arg_name| {
+                            let _ = write!(output, "{}, ", arg_name.name());
+                            output
+                        });
                     let text = format!(
                         "\n{}({}) ->\n  error(\"not implemented\").\n",
                         name,

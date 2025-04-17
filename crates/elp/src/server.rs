@@ -137,6 +137,7 @@ enum Event {
 }
 
 #[derive(Debug)]
+#[allow(clippy::type_complexity)]
 pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
@@ -1226,6 +1227,7 @@ impl Server {
         });
     }
 
+    #[allow(clippy::type_complexity)]
     fn eqwalizer_diagnostics_completed(
         &mut self,
         diags_types: Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
@@ -1242,6 +1244,7 @@ impl Server {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     fn eqwalizer_project_diagnostics_completed(
         &mut self,
         diags: Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,

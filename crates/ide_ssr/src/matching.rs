@@ -232,6 +232,7 @@ fn recording_match_fail_reasons() -> bool {
 /// `search_scope`, returning information about the match, if it
 /// does. Since we only do matching in this module and searching is
 /// done by the parent module, we don't populate nested matches.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn get_match(
     debug_active: bool,
     rule: &SsrPattern,
@@ -552,6 +553,7 @@ impl<'a> Matcher<'a> {
         // What do we do if we have more than one possible match?
         // e.g. two placeholder field names, with placeholder RHS?
         // Pathological, ignore for now.
+        #[allow(clippy::type_complexity)]
         let (placeholders, non_placeholders): (
             Vec<(&SubId, &Vec<SubId>)>,
             Vec<(&SubId, &Vec<SubId>)>,
