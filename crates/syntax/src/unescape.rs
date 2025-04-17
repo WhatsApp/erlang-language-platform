@@ -15,7 +15,7 @@ use std::collections::VecDeque;
 use std::ops::BitAnd;
 
 macro_rules! try_option {
-    ($o:expr) => {
+    ($o:expr_2021) => {
         match $o {
             Some(s) => s,
             None => return None,

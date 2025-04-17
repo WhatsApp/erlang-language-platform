@@ -41,8 +41,8 @@ impl fmt::Display for RenameError {
 
 #[macro_export]
 macro_rules! _format_err {
-    ($fmt:expr) => { RenameError(format!($fmt)) };
-    ($fmt:expr, $($arg:tt)+) => { RenameError(format!($fmt, $($arg)+)) }
+    ($fmt:expr_2021) => { RenameError(format!($fmt)) };
+    ($fmt:expr_2021, $($arg:tt)+) => { RenameError(format!($fmt, $($arg)+)) }
 }
 pub use _format_err as format_err;
 

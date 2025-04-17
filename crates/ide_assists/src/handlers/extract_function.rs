@@ -618,7 +618,7 @@ impl Function {
     }
 }
 
-fn tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> {
+fn tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + use<> {
     node.descendants_with_tokens()
         .filter_map(|element| element.into_token())
 }

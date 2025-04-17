@@ -60,7 +60,7 @@ use crate::get_literal_subid;
 
 // Creates a match error.
 macro_rules! match_error {
-    ($e:expr) => {{
+    ($e:expr_2021) => {{
             MatchFailed {
                 reason: if recording_match_fail_reasons() {
                     Some(format!("{}", $e))
@@ -69,7 +69,7 @@ macro_rules! match_error {
                 }
             }
     }};
-    ($fmt:expr, $($arg:tt)+) => {{
+    ($fmt:expr_2021, $($arg:tt)+) => {{
         MatchFailed {
             reason: if recording_match_fail_reasons() {
                 Some(format!($fmt, $($arg)+))

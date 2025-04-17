@@ -951,7 +951,7 @@ mod tests {
     use crate::args::Command;
 
     macro_rules! args_vec {
-        ($($e:expr$(,)?)+) => {
+        ($($e:expr_2021$(,)?)+) => {
             vec![$(OsString::from($e),)+]
         }
     }

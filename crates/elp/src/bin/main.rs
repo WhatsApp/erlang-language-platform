@@ -142,7 +142,8 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
 }
 
 fn setup_logging(log_file: &Option<PathBuf>, no_buffering: bool) -> Result<Logger> {
-    env::set_var("RUST_BACKTRACE", "short");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("RUST_BACKTRACE", "short") };
 
     let log_file = match log_file {
         Some(path) => {
@@ -231,7 +232,7 @@ mod tests {
     const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Original;
 
     macro_rules! args_vec {
-        ($($e:expr$(,)?)+) => {
+        ($($e:expr_2021$(,)?)+) => {
             vec![$(OsString::from($e),)+]
         }
     }

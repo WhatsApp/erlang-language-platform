@@ -127,7 +127,7 @@ impl Log for Logger {
 /// so `drop` happens at the end of the function
 #[macro_export]
 macro_rules! timeit {
-    ($display:expr) => {
+    ($display:expr_2021) => {
         $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::No)
     };
     ($($arg:tt)+) => {
@@ -139,7 +139,7 @@ macro_rules! timeit {
 /// Same as timeit!, but also send a LSP telemetry/event
 #[macro_export]
 macro_rules! timeit_with_telemetry {
-    ($display:expr) => {
+    ($display:expr_2021) => {
         $crate::TimeIt::new(module_path!(), $display, $crate::Telemetry::Always)
     };
     ($($arg:tt)+) => {
@@ -151,7 +151,7 @@ macro_rules! timeit_with_telemetry {
 /// Same as timeit_with_telemetry!, but do work only if latency is more than configured value
 #[macro_export]
 macro_rules! timeit_exceeds {
-    ($display:expr, $duration:expr) => {
+    ($display:expr_2021, $duration:expr_2021) => {
         $crate::TimeIt::new(
             module_path!(),
             $display,

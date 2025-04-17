@@ -333,7 +333,7 @@ impl SourceFile {
     /// nevertheless contains all the correctly parsed forms bar the
     /// erroneous one.  In this case, look into the ERROR node and
     /// return the valid forms found.
-    pub fn forms(&self) -> impl Iterator<Item = ast::Form> {
+    pub fn forms(&self) -> impl Iterator<Item = ast::Form> + use<> {
         if self.syntax().first_child().map(|n| n.kind()) == Some(SyntaxKind::ERROR) {
             if let Some(child) = self.syntax().first_child() {
                 Either::Left(
@@ -373,9 +373,9 @@ impl SourceFile {
 macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
 
-    (match ($node:expr) {
-        $( ast::$ast:ident($it:pat) => $res:expr, )*
-        _ => $catch_all:expr $(,)?
+    (match ($node:expr_2021) {
+        $( ast::$ast:ident($it:pat) => $res:expr_2021, )*
+        _ => $catch_all:expr_2021 $(,)?
     }) => {{
         $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
         { $catch_all }

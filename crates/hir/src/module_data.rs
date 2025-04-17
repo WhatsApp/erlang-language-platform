@@ -401,7 +401,7 @@ impl RecordDef {
     pub fn fields(
         &self,
         db: &dyn DefDatabase,
-    ) -> impl Iterator<Item = (Name, RecordFieldDef)> + '_ {
+    ) -> impl Iterator<Item = (Name, RecordFieldDef)> + '_ + use<'_> {
         let forms = db.file_form_list(self.file.file_id);
         self.record.fields.clone().map(move |f| {
             (
@@ -414,7 +414,7 @@ impl RecordDef {
         })
     }
 
-    pub fn field_names(&self, db: &dyn DefDatabase) -> impl Iterator<Item = Name> {
+    pub fn field_names(&self, db: &dyn DefDatabase) -> impl Iterator<Item = Name> + use<> {
         let forms = db.file_form_list(self.file.file_id);
         self.record
             .fields

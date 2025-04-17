@@ -11,8 +11,8 @@
 
 /// Constructs an SsrError taking arguments like the format macro.
 macro_rules! _error {
-    ($fmt:expr) => {$crate::SsrError::new(format!($fmt))};
-    ($fmt:expr, $($arg:tt)+) => {$crate::SsrError::new(format!($fmt, $($arg)+))}
+    ($fmt:expr_2021) => {$crate::SsrError::new(format!($fmt))};
+    ($fmt:expr_2021, $($arg:tt)+) => {$crate::SsrError::new(format!($fmt, $($arg)+))}
 }
 #[allow(unused_imports)]
 pub(crate) use _error as error;

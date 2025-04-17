@@ -123,12 +123,12 @@ pub struct EqwalizerConfig {
 }
 
 macro_rules! try_ {
-    ($expr:expr) => {
+    ($expr:expr_2021) => {
         || -> _ { Some($expr) }()
     };
 }
 macro_rules! try_or {
-    ($expr:expr, $or:expr) => {
+    ($expr:expr_2021, $or:expr_2021) => {
         try_!($expr).unwrap_or($or)
     };
 }
@@ -370,7 +370,7 @@ macro_rules! _config_data {
     (struct $name:ident {
         $(
             $(#[doc=$doc:literal])*
-            $field:ident $(| $alias:ident)*: $ty:ty = $default:expr,
+            $field:ident $(| $alias:ident)*: $ty:ty = $default:expr_2021,
         )*
     }) => {
         #[allow(non_snake_case)]

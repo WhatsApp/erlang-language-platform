@@ -65,7 +65,7 @@ impl nodes::FunDecl {
             None => None,
         }
     }
-    pub fn clauses(&self) -> impl Iterator<Item = FunctionOrMacroClause> {
+    pub fn clauses(&self) -> impl Iterator<Item = FunctionOrMacroClause> + use<> {
         self.clause().into_iter()
     }
 
@@ -314,7 +314,7 @@ impl HasArity for super::MacroCallArgs {
 // ---------------------------------------------------------------------
 
 impl PpDefine {
-    pub fn args(&self) -> impl Iterator<Item = nodes::Var> {
+    pub fn args(&self) -> impl Iterator<Item = nodes::Var> + use<> {
         self.lhs()
             .into_iter()
             .flat_map(|args| args.args())

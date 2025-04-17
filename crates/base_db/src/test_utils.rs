@@ -21,10 +21,10 @@ pub use dissimilar::diff as __diff;
 /// `eprintln!()` macro in case of text inequality.
 #[macro_export]
 macro_rules! assert_eq_text {
-    ($left:expr, $right:expr) => {
+    ($left:expr_2021, $right:expr_2021) => {
         assert_eq_text!($left, $right,)
     };
-    ($left:expr, $right:expr, $($tt:tt)*) => {{
+    ($left:expr_2021, $right:expr_2021, $($tt:tt)*) => {{
         let left = $left;
         let right = $right;
         if left != right {

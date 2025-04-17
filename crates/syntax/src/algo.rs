@@ -36,7 +36,7 @@ use crate::TextSize;
 pub fn ancestors_at_offset(
     node: &SyntaxNode,
     offset: TextSize,
-) -> Option<impl Iterator<Item = SyntaxNode>> {
+) -> Option<impl Iterator<Item = SyntaxNode> + use<>> {
     // Check that token_at_offset will not fail an assertion, and
     // return None if so
     let range = node.text_range();

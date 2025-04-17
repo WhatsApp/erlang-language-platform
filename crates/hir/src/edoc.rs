@@ -771,7 +771,7 @@ fn only_comment_on_line(comment: &ast::Comment) -> bool {
     true
 }
 
-fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
+fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> + use<> {
     syntax
         .siblings(elp_syntax::Direction::Prev)
         .skip(1) // Starts with itself

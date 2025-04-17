@@ -426,7 +426,7 @@ impl<'a> Ctx<'a> {
         clause: ast::FunctionOrMacroClause,
         clause_id: &InFile<FunctionClauseId>,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
-    ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> {
+    ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> + use<> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
                 let macrostack = self.get_macro_information();
@@ -1703,7 +1703,10 @@ impl<'a> Ctx<'a> {
         })
     }
 
-    fn lower_cr_clause(&mut self, clause: ast::CrClauseOrMacro) -> impl Iterator<Item = CRClause> {
+    fn lower_cr_clause(
+        &mut self,
+        clause: ast::CrClauseOrMacro,
+    ) -> impl Iterator<Item = CRClause> + use<> {
         match clause {
             ast::CrClauseOrMacro::CrClause(clause) => {
                 let pat = self.lower_optional_pat(clause.pat());

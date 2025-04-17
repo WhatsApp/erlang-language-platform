@@ -56,7 +56,7 @@ use text_edit::TextSize;
 
 use crate::assist_context::AssistContext;
 
-pub fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
+pub fn prev_form_nodes(syntax: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> + use<> {
     syntax
         .siblings_with_tokens(elp_syntax::Direction::Prev)
         .skip(1) // Starts with itself

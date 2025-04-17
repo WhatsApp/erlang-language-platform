@@ -111,7 +111,7 @@ impl Type {
         TYPE.clone()
     }
 
-    pub fn builtin_type_aliases(module: &str) -> impl Iterator<Item = StringId> {
+    pub fn builtin_type_aliases(module: &str) -> impl Iterator<Item = StringId> + use<> {
         static ERLANG_ALIASES: LazyLock<Vec<StringId>> = LazyLock::new(|| {
             vec![
                 "string".into(),
