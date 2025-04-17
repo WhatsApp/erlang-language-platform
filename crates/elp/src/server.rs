@@ -1454,8 +1454,7 @@ impl Server {
     }
 
     fn send_response(&mut self, response: Response) {
-        if let Some((method, request_timer)) = self.req_queue.incoming.complete(response.id.clone())
-        {
+        if let Some((method, request_timer)) = self.req_queue.incoming.complete(&response.id) {
             log::debug!("response {}#{}: {:?}", method, response.id, response);
             // logs time to complete request
             drop(request_timer);
