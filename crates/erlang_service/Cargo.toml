@@ -3,6 +3,9 @@ name = "elp_erlang_service"
 edition.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 elp_base_db.workspace = true
 elp_syntax.workspace = true

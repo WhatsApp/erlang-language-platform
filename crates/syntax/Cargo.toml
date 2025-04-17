@@ -3,6 +3,9 @@ name = "elp_syntax"
 edition.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 cov-mark.workspace = true
 eetf.workspace = true

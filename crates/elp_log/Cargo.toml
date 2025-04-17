@@ -3,6 +3,9 @@ name = "elp_log"
 edition.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 crossbeam-channel.workspace = true
 env_logger.workspace = true

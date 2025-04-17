@@ -6,6 +6,9 @@ version.workspace = true
 [lib]
 doctest = false
 
+[lints]
+workspace = true
+
 [dependencies]
 elp_project_model.workspace = true
 elp_syntax.workspace = true

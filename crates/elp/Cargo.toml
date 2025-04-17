@@ -12,6 +12,9 @@ buck = ["elp_project_model/buck"]
 name = "elp"
 path = "src/bin/main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 elp_eqwalizer.workspace = true
 elp_ide.workspace = true

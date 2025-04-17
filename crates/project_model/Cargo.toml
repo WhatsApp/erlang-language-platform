@@ -6,6 +6,9 @@ version.workspace = true
 [features]
 buck = []
 
+[lints]
+workspace = true
+
 [dependencies]
 elp_log.workspace = true
 
