@@ -600,7 +600,7 @@ impl Function {
                     .filter(|it| {
                         text_range.contains_range(it.text_range())
                             // Remove comma before comment, if it exists we have its range.
-                            && has_comma.map_or(true, |comma_range| comma_range != it.text_range())
+                            && has_comma.is_none_or(|comma_range| comma_range != it.text_range())
                     })
                     .for_each(|it| {
                         parts.push_str(it.text());
@@ -613,7 +613,7 @@ impl Function {
         fun_str.push_str(&block);
         (
             fun_str,
-            last_tok.map_or(false, |t| t.kind() == SyntaxKind::COMMENT),
+            last_tok.is_some_and(|t| t.kind() == SyntaxKind::COMMENT),
         )
     }
 }

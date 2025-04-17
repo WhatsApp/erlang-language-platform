@@ -240,7 +240,7 @@ pub fn expr_needs_parens(body: &Body, expr_id: ExprId) -> bool {
             macros: MacroStrategy::Expand,
             parens: ParenStrategy::VisibleParens,
         },
-        &body,
+        body,
     );
     match &fold_body[expr_id] {
         Expr::BinaryOp { .. } => true,
@@ -290,8 +290,8 @@ pub fn add_parens_edit(range: &TextRange) -> TextEdit {
     let mut builder = TextEdit::builder();
     builder.insert(range.start(), "(".to_string());
     builder.insert(range.end(), ")".to_string());
-    let edit = builder.finish();
-    edit
+
+    builder.finish()
 }
 
 pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {

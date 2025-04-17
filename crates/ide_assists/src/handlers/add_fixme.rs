@@ -59,7 +59,7 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                         let indent = IndentLevel::from_token(&token);
                         let text = match &ctx.user_input {
                             Some(input)
-                                if input.value != ""
+                                if !input.value.is_empty()
                                     && input.task_id.is_some()
                                     && input.task_id != Some("".to_string()) =>
                             {

@@ -230,7 +230,7 @@ fn is_safe(
     //    new location.
 
     // Use closure to allow use of `?` operator
-    if let Some(r) = || -> Option<bool> {
+    || -> Option<bool> {
         let rhs = match_expr.rhs()?;
         let rhs_vars = ctx.sema.free_vars_ast(ctx.file_id(), &rhs)?;
 
@@ -267,11 +267,8 @@ fn is_safe(
         } else {
             Some(false)
         }
-    }() {
-        r
-    } else {
-        false
-    }
+    }()
+    .unwrap_or(false)
 }
 
 // ---------------------------------------------------------------------

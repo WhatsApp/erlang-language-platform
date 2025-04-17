@@ -188,7 +188,7 @@ fn check(
     let mut acc = Assists::new(&ctx, resolve.clone());
     handler(&mut acc, &ctx);
     let mut res = acc.finish();
-    if let Some(requested_user_input) = res.get(0).and_then(|a| a.user_input.clone()) {
+    if let Some(requested_user_input) = res.first().and_then(|a| a.user_input.clone()) {
         let value = if let Some(input) = user_input {
             input.to_string()
         } else {
@@ -209,12 +209,10 @@ fn check(
         };
         let task_id = if let Some(task_id) = user_task_id {
             Some(task_id.to_string())
+        } else if requested_user_input.input_type == AssistUserInputType::StringAndTaskId {
+            Some("T12345_test".to_string())
         } else {
-            if requested_user_input.input_type == AssistUserInputType::StringAndTaskId {
-                Some("T12345_test".to_string())
-            } else {
-                None
-            }
+            None
         };
         ctx.user_input = Some(AssistUserInput {
             input_type: requested_user_input.input_type,
@@ -575,7 +573,7 @@ fn export_single_group_with_overrides_comment() {
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
-            let fa = &export.entries.clone().into_iter().next().unwrap();
+            let fa = &export.entries.clone().next().unwrap();
             let existing = forms[*fa].name.clone();
 
             if !fun.exported {
@@ -632,7 +630,7 @@ fn export_into_specific_pre_existing_1() {
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().next().unwrap();
-            let fa = &export.entries.clone().into_iter().next().unwrap();
+            let fa = &export.entries.clone().next().unwrap();
             let existing = forms[*fa].name.clone();
 
             if !fun.exported {
@@ -692,7 +690,7 @@ fn export_into_specific_pre_existing_2() {
 
             let forms = ctx.db().file_form_list(ctx.file_id());
             let (_, export) = forms.exports().nth(1).unwrap();
-            let fa = &export.entries.clone().into_iter().next().unwrap();
+            let fa = &export.entries.clone().next().unwrap();
             let existing = forms[*fa].name.clone();
 
             if !fun.exported {
