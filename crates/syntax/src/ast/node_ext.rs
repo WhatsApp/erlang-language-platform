@@ -107,7 +107,7 @@ impl nodes::Atom {
     }
 }
 
-pub const SSR_PLACEHOLDER_PREFIX: &'static str = "_@";
+pub const SSR_PLACEHOLDER_PREFIX: &str = "_@";
 
 impl nodes::Var {
     pub fn text(&self) -> TokenText {
@@ -386,8 +386,8 @@ impl nodes::PpIncludeLib {
 }
 
 fn include_range(file: &super::AstChildren<super::IncludeDetail>) -> Option<TextRange> {
-    let start = file.clone().into_iter().next()?;
-    let end = file.clone().into_iter().last()?;
+    let start = file.clone().next()?;
+    let end = file.clone().last()?;
     Some(TextRange::new(
         detail_range(&start).start(),
         detail_range(&end).end(),
@@ -467,24 +467,22 @@ fn trim_quotes_and_sigils(s: &str) -> String {
                 quoted = false;
             }
             if is_tq {
-                let trimmed = trim_indent(&captures[3].trim_end_matches("\""));
+                let trimmed = trim_indent(captures[3].trim_end_matches("\""));
                 if let Some(rest) = trimmed.strip_suffix("\n") {
                     // tq string terminates with \n whitespace, quotes
                     rest.to_string()
                 } else {
                     trimmed
                 }
+            } else if captures[1] == *"B" || captures[1] == *"S" {
+                // Verbatim non-tq string. Only escape processed
+                // is for `\"`, to avoid clash with final terminator.
+                captures[3]
+                    .trim_end_matches("\"")
+                    .to_string()
+                    .replace("\\\"", "\"")
             } else {
-                if captures[1] == *"B" || captures[1] == *"S" {
-                    // Verbatim non-tq string. Only escape processed
-                    // is for `\"`, to avoid clash with final terminator.
-                    captures[3]
-                        .trim_end_matches("\"")
-                        .to_string()
-                        .replace("\\\"", "\"")
-                } else {
-                    captures[3].trim_end_matches("\"").to_string()
-                }
+                captures[3].trim_end_matches("\"").to_string()
             }
         } else {
             captures[0].to_string()
@@ -504,7 +502,7 @@ fn trim_quotes_and_sigils(s: &str) -> String {
 // Generator types
 impl super::Generator {
     pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
-        generator_op(&self.syntax())
+        generator_op(self.syntax())
     }
 
     pub fn strict(&self) -> bool {
@@ -516,7 +514,7 @@ impl super::Generator {
 
 impl super::BGenerator {
     pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
-        generator_op(&self.syntax())
+        generator_op(self.syntax())
     }
 
     pub fn strict(&self) -> bool {
@@ -528,7 +526,7 @@ impl super::BGenerator {
 
 impl super::MapGenerator {
     pub fn op(&self) -> Option<(GeneratorOp, SyntaxToken)> {
-        generator_op(&self.syntax())
+        generator_op(self.syntax())
     }
 
     pub fn strict(&self) -> bool {

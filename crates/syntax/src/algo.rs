@@ -141,7 +141,7 @@ pub fn non_whitespace_sibling(
     fn not_whitespace(element: &SyntaxElement) -> bool {
         match element {
             NodeOrToken::Node(_) => true,
-            NodeOrToken::Token(token) => !(token.kind() == SyntaxKind::WHITESPACE),
+            NodeOrToken::Token(token) => token.kind() != SyntaxKind::WHITESPACE,
         }
     }
 }

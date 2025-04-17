@@ -982,7 +982,7 @@ mod tests {
              ]}.
              "#;
         let parse = ast::SourceFile::parse_text(source_code);
-        assert_eq!(true, parse.tree().is_erlang_config_file());
+        assert!(parse.tree().is_erlang_config_file());
     }
 
     #[test]
@@ -994,6 +994,6 @@ mod tests {
              foo() -> ok.
              "#;
         let parse = ast::SourceFile::parse_text(source_code);
-        assert_eq!(false, parse.tree().is_erlang_config_file());
+        assert!(!parse.tree().is_erlang_config_file());
     }
 }
