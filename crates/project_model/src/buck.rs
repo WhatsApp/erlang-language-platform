@@ -212,22 +212,18 @@ fn load_from_config_bxl(
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
+#[derive(Default)]
 enum BuckTargetOrigin {
+    #[default]
     App,
     Dep,
     Prelude,
 }
 
-impl Default for BuckTargetOrigin {
-    fn default() -> Self {
-        BuckTargetOrigin::App
-    }
-}
-
 // Serde serialization via String
-impl Into<String> for BuckTargetOrigin {
-    fn into(self) -> String {
-        match self {
+impl From<BuckTargetOrigin> for String {
+    fn from(val: BuckTargetOrigin) -> Self {
+        match val {
             BuckTargetOrigin::App => "app".to_string(),
             BuckTargetOrigin::Dep => "dep".to_string(),
             BuckTargetOrigin::Prelude => "prelude".to_string(),
@@ -378,7 +374,7 @@ fn load_buck_targets_bxl(
         if buck_target.origin != BuckTargetOrigin::Prelude {
             if let Ok(target) = make_buck_target(
                 root,
-                &name,
+                name,
                 buck_target,
                 buck_config.build_deps,
                 &mut dep_path,
@@ -400,7 +396,7 @@ fn load_buck_targets_bxl(
             if buck_target.origin == BuckTargetOrigin::Prelude {
                 if let Ok(target) = make_buck_target(
                     root,
-                    &name,
+                    name,
                     buck_target,
                     buck_config.build_deps,
                     &mut dep_path,
@@ -424,11 +420,11 @@ fn make_buck_target(
 ) -> Result<Target> {
     let mut private_header = false;
 
-    let dir = find_app_root_bxl(root, &name, &target).expect("could not find app root");
+    let dir = find_app_root_bxl(root, name, target).expect("could not find app root");
 
     let (src_files, include_files, target_type, private_header, ebin) =
         if let Some(ref suite) = target.suite {
-            let src_file = buck_path_to_abs_path(root, &suite)?;
+            let src_file = buck_path_to_abs_path(root, suite)?;
             let src = vec![src_file.clone()];
             target_info
                 .path_to_target_name
@@ -441,7 +437,7 @@ fn make_buck_target(
             }
             (src, include_files, TargetType::ErlangTest, false, None)
         } else {
-            let target_type = compute_target_type(&name, &target);
+            let target_type = compute_target_type(name, target);
             let mut src_files = vec![];
             for src in &target.srcs {
                 let src = buck_path_to_abs_path(root, src).unwrap();
@@ -987,7 +983,7 @@ fn targets_to_project_data_bxl(
     let mut result: Vec<ProjectAppData> = vec![];
     let mut includes_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)> =
         FxHashMap::default();
-    for (_target_full_name, target) in targets {
+    for target in targets.values() {
         let mut includes = FxHashSet::from_iter(
             target
                 .include_files
@@ -1001,7 +997,7 @@ fn targets_to_project_data_bxl(
                 }
             });
         }
-        includes_cache.insert(target.name.clone(), (IsCached::No, &target, includes));
+        includes_cache.insert(target.name.clone(), (IsCached::No, target, includes));
     }
     let otp_includes = FxHashSet::from_iter(vec![AbsPathBuf::assert(otp_root.to_path_buf())]);
     for (target_full_name, target) in targets {
@@ -1020,7 +1016,7 @@ fn targets_to_project_data_bxl(
                 target
                     .src_files
                     .iter()
-                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter(|src| src.extension() == Some(ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
                     .collect(),
@@ -1031,7 +1027,7 @@ fn targets_to_project_data_bxl(
                 target
                     .src_files
                     .iter()
-                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter(|src| src.extension() == Some(ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
                     .filter_map(|d| {
@@ -1084,7 +1080,7 @@ fn apps_and_deps_includes(
                 .for_each(|sub_target| {
                     let sub_includes =
                         apps_and_deps_includes(includes_cache, sub_target, otp_include);
-                    includes.extend(sub_includes.into_iter())
+                    includes.extend(sub_includes)
                 });
             includes_cache.insert(
                 target_name.to_string(),
@@ -1186,10 +1182,10 @@ impl ProjectAppDataAcc {
                 let abs_src_dirs: FxHashSet<AbsPathBuf> = target
                     .src_files
                     .iter()
-                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter(|src| src.extension() == Some(ERL_EXT))
                     .filter_map(|src| src.parent())
                     .map(|dir| dir.to_path_buf())
-                    .filter(|dir| dir.file_name() != Some(&TEST_DIR))
+                    .filter(|dir| dir.file_name() != Some(TEST_DIR))
                     .collect();
 
                 self.abs_src_dirs.extend(abs_src_dirs);
@@ -1198,7 +1194,7 @@ impl ProjectAppDataAcc {
                 let abs_extra_dirs: FxHashSet<AbsPathBuf> = target
                     .src_files
                     .iter()
-                    .filter(|src| src.extension() == Some(&ERL_EXT))
+                    .filter(|src| src.extension() == Some(ERL_EXT))
                     .filter_map(|extra| extra.parent())
                     .map(|extra| extra.to_path_buf())
                     .collect();
@@ -1390,7 +1386,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1417,7 +1413,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1444,7 +1440,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1472,7 +1468,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1503,7 +1499,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1531,7 +1527,7 @@ mod tests {
         //- /app_a/BUCK
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let root = AbsPath::assert(&Utf8Path::from_path(dir.path()).unwrap());
+        let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1946,7 +1942,7 @@ mod tests {
                 ),
             )
         "#]]
-        .assert_debug_eq(&buck_path_to_abs_path(&root, "cell//foo/bar"));
+        .assert_debug_eq(&buck_path_to_abs_path(root, "cell//foo/bar"));
 
         expect![[r#"
             Ok(
@@ -1955,7 +1951,7 @@ mod tests {
                 ),
             )
         "#]]
-        .assert_debug_eq(&buck_path_to_abs_path(&root, "//foo/bar"));
+        .assert_debug_eq(&buck_path_to_abs_path(root, "//foo/bar"));
 
         expect![[r#"
             Ok(
@@ -1964,6 +1960,6 @@ mod tests {
                 ),
             )
         "#]]
-        .assert_debug_eq(&buck_path_to_abs_path(&root, "foo/bar"))
+        .assert_debug_eq(&buck_path_to_abs_path(root, "foo/bar"))
     }
 }

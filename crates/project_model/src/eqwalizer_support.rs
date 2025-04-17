@@ -32,7 +32,8 @@ lazy_static! {
 
 pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
     let eqwalizer_support = AbsPathBuf::assert(EQWALIZER_SUPPORT.to_path_buf());
-    let eqwalizer_support_app = ProjectAppData {
+
+    ProjectAppData {
         name: AppName("eqwalizer_support".to_string()),
         dir: eqwalizer_support.clone(),
         include_dirs: vec![],
@@ -45,9 +46,7 @@ pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
         include_path: vec![otp_root.to_path_buf()],
         applicable_files: None,
         is_test_target: None,
-    };
-
-    eqwalizer_support_app
+    }
 }
 
 pub fn setup_eqwalizer_support(project_dir: &Dir) -> Result<()> {

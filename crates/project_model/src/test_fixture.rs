@@ -355,7 +355,7 @@ impl FixtureWithProjectMeta {
                     let path = AbsPathBuf::assert(Utf8PathBuf::from(value.to_string()));
                     let lib_dir = path.parent().unwrap().normalize();
                     let versioned_name = path.file_name().unwrap();
-                    let app = ProjectAppData::otp_app_data(&versioned_name, &path);
+                    let app = ProjectAppData::otp_app_data(versioned_name, &path);
 
                     otp = Some((Otp { lib_dir }, app));
                 }
@@ -548,7 +548,7 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
                             content,
                         } => {
                             // Deal with "annotations" in files from otp
-                            if res.len() > 0 {
+                            if !res.is_empty() {
                                 offset += annotation_offset;
                                 this_line_annotations.push((offset, res.len() - 1));
                                 let &(_, idx) = prev_line_annotations
@@ -563,16 +563,14 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
                 }
                 TextSize::from(0)
             }
-        } else {
-            if line.contains(CURSOR_MARKER) {
-                if line.contains(ESCAPED_CURSOR_MARKER) {
-                    TextSize::of(line) - TextSize::of(ESCAPED_CURSOR_MARKER)
-                } else {
-                    TextSize::of(line) - TextSize::of(CURSOR_MARKER)
-                }
+        } else if line.contains(CURSOR_MARKER) {
+            if line.contains(ESCAPED_CURSOR_MARKER) {
+                TextSize::of(line) - TextSize::of(ESCAPED_CURSOR_MARKER)
             } else {
-                TextSize::of(line)
+                TextSize::of(line) - TextSize::of(CURSOR_MARKER)
             }
+        } else {
+            TextSize::of(line)
         };
 
         line_start_map = line_start_map.split_off(&line_length);
@@ -609,10 +607,8 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
             } else {
                 lines.push(line.to_string())
             }
-        } else {
-            if (idx == 0) && line.starts_with(CURSOR_MARKER) {
-                prepend_cursor = true;
-            }
+        } else if (idx == 0) && line.starts_with(CURSOR_MARKER) {
+            prepend_cursor = true;
         }
     }
     if prepend_cursor {
@@ -663,7 +659,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
             .chars()
             .take_while(|&it| it == '^')
             .count();
-        len = len + len_prefix;
+        len += len_prefix;
         let mut continuation = false;
         if len == 0 {
             assert!(line.starts_with('|'));
@@ -855,8 +851,8 @@ foo() -> ok.
 bar() -> ok.
 "#,
         );
-        assert_eq!(fixture.diagnostics_enabled.use_ct, false);
-        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, false);
+        assert!(!fixture.diagnostics_enabled.use_ct);
+        assert!(!fixture.diagnostics_enabled.use_erlang_service);
         let parsed = fixture.fixture;
         assert_eq!(2, parsed.len());
 
@@ -884,8 +880,8 @@ foo() -> ok.
 bar() -> ok.
 "#,
         );
-        assert_eq!(fixture.diagnostics_enabled.use_ct, false);
-        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, true);
+        assert!(!fixture.diagnostics_enabled.use_ct);
+        assert!(fixture.diagnostics_enabled.use_erlang_service);
         let parsed = fixture.fixture;
         assert_eq!(2, parsed.len());
 
@@ -910,8 +906,8 @@ bar() -> ok.
 foo() -> ok.
 "#,
         );
-        assert_eq!(fixture.diagnostics_enabled.use_ct, true);
-        assert_eq!(fixture.diagnostics_enabled.use_erlang_service, false);
+        assert!(fixture.diagnostics_enabled.use_ct);
+        assert!(!fixture.diagnostics_enabled.use_erlang_service);
     }
 
     #[test]

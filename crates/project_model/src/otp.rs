@@ -50,14 +50,14 @@ lazy_static! {
 pub fn otp_supported_by_eqwalizer() -> bool {
     OTP_VERSION
         .as_ref()
-        .and_then(|v| Some(v.as_str() > "25"))
+        .map(|v| v.as_str() > "25")
         .unwrap_or(true)
 }
 
 pub fn supports_eep59_doc_attributes() -> bool {
     OTP_VERSION
         .as_ref()
-        .and_then(|v| Some(v.as_str() >= "27"))
+        .map(|v| v.as_str() >= "27")
         .unwrap_or(true)
 }
 

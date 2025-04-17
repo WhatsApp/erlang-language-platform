@@ -80,7 +80,7 @@ impl<'a> CommandProxy<'a> {
     }
 }
 
-impl<'a> Deref for CommandProxy<'a> {
+impl Deref for CommandProxy<'_> {
     type Target = Command;
 
     fn deref(&self) -> &Self::Target {
@@ -88,13 +88,13 @@ impl<'a> Deref for CommandProxy<'a> {
     }
 }
 
-impl<'a> DerefMut for CommandProxy<'a> {
+impl DerefMut for CommandProxy<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.command
     }
 }
 
-impl<'a> fmt::Display for CommandProxy<'a> {
+impl fmt::Display for CommandProxy<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let program = self.command.get_program().to_string_lossy();
         let args = self
@@ -439,9 +439,9 @@ pub enum SingleOrMulti {
     Multi(Vec<StringOrApp>),
 }
 
-impl Into<Vec<StringOrApp>> for SingleOrMulti {
-    fn into(self) -> Vec<StringOrApp> {
-        match self {
+impl From<SingleOrMulti> for Vec<StringOrApp> {
+    fn from(val: SingleOrMulti) -> Self {
+        match val {
             SingleOrMulti::Single(single) => vec![single],
             SingleOrMulti::Multi(multi) => multi,
         }
@@ -1083,7 +1083,7 @@ mod tests {
     fn debug_normalise_temp_dir(dir: TempDir, actual: &impl fmt::Debug) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let actual_debug = format!("{:#?}\n", actual);
-        let replaced = actual_debug.replace(&dir_str.as_str(), "TMPDIR");
+        let replaced = actual_debug.replace(dir_str.as_str(), "TMPDIR");
         replaced
     }
 
@@ -1596,7 +1596,7 @@ mod tests {
     fn normalise_temp_dir_in_err(dir: TempDir, err: anyhow::Error) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let err_str = format!("{err}");
-        let res = err_str.replace(&dir_str.as_str(), "TMPDIR/");
+        let res = err_str.replace(dir_str.as_str(), "TMPDIR/");
         res
     }
 

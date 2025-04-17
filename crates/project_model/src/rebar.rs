@@ -114,14 +114,14 @@ fn rebar3_version(config: &RebarConfig) -> Result<String> {
 
 fn check_version(config: &RebarConfig) -> Result<bool> {
     let version = rebar3_version(config)?;
-    let required = VersionReq::parse(&REQUIRED_REBAR3_VERSION)?;
-    let version = Version::parse(&version.split(' ').nth(1).ok_or(
+    let required = VersionReq::parse(REQUIRED_REBAR3_VERSION)?;
+    let version = Version::parse(version.split(' ').nth(1).ok_or(
         ProjectModelError::RebarVersionError {
             error: format!("Cannot extract version from {}", version.clone()),
         },
     )?)
     .map_err(|err| ProjectModelError::RebarVersionError {
-        error: format!("{} Version: {}", err.to_string(), version.clone()),
+        error: format!("{} Version: {}", err, version.clone()),
     })?;
     match required.matches(&version) {
         true => Ok(true),
