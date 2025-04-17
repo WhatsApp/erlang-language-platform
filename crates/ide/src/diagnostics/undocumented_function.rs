@@ -54,7 +54,7 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
 fn contains_moduledoc_hidden_attribute(sema: &Semantic, file_id: FileId) -> bool {
     sema.form_list(file_id)
         .module_doc_attributes()
-        .any(|(_idx, attribute)| is_hidden_moduledoc(sema, file_id, &attribute) == Some(true))
+        .any(|(_idx, attribute)| is_hidden_moduledoc(sema, file_id, attribute) == Some(true))
 }
 
 fn is_hidden_moduledoc(
@@ -91,13 +91,14 @@ fn check_function(
     def: &FunctionDef,
     callbacks: &FxHashSet<NameArity>,
 ) {
-    if function_should_be_checked(sema, def, callbacks) {
-        if def.edoc_comments(sema.db).is_none() && def.doc_id.is_none() {
-            if let Some(name_range) = def.name_range(sema.db) {
-                let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
-                    .with_severity(DIAGNOSTIC_SEVERITY);
-                diagnostics.push(diagnostic);
-            }
+    if function_should_be_checked(sema, def, callbacks)
+        && def.edoc_comments(sema.db).is_none()
+        && def.doc_id.is_none()
+    {
+        if let Some(name_range) = def.name_range(sema.db) {
+            let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
+                .with_severity(DIAGNOSTIC_SEVERITY);
+            diagnostics.push(diagnostic);
         }
     }
 }

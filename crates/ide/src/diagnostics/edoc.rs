@@ -56,7 +56,7 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
             if let Some(doc) = &header.doc {
                 if let Some(doc_start) = header.start() {
                     diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema, file_id, doc.range, &header, doc_start,
+                        sema, file_id, doc.range, header, doc_start,
                     ));
                 }
             } else if let Some(equiv) = &header.equiv {
@@ -65,7 +65,7 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         sema,
                         file_id,
                         equiv.range,
-                        &header,
+                        header,
                         doc_start,
                     ));
                 }
@@ -75,7 +75,7 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         sema,
                         file_id,
                         hidden.range,
-                        &header,
+                        header,
                         doc_start,
                     ));
                 }
@@ -135,7 +135,7 @@ fn old_edoc_syntax_diagnostic(
 fn author_exists(author: &str, authors: &FxHashSet<String>) -> bool {
     authors
         .iter()
-        .any(|a| a.contains(&normalize(&author)) || author.contains(a))
+        .any(|a| a.contains(&normalize(author)) || author.contains(a))
 }
 
 fn author_tags_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {

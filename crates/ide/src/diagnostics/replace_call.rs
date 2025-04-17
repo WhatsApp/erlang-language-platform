@@ -268,39 +268,36 @@ pub fn remove_fun_ref_from_list(
             &mut |_acc, clause_id, ctx| {
                 let body_map = def_fb.get_body_map(clause_id);
                 let in_clause = def_fb.in_clause(clause_id);
-                match ctx.item_id {
-                    AnyExprId::Expr(expr_id) => {
-                        let matches =
-                            match_fun_ref_in_list_in_call_arg(&matcher, sema, in_clause, &expr_id);
-                        matches
-                            .iter()
-                            .for_each(|(matched_funref_id, target, arity)| {
-                                || -> Option<()> {
-                                    let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
-                                    let list_elem_ast = in_file_ast_ptr.to_node(&source_file)?;
-                                    let statement_removal = remove_statement(&list_elem_ast)?;
-                                    let mfa = MFA::from_call_target(
-                                        target,
-                                        *arity,
-                                        sema,
-                                        &def_fb.body(clause_id),
-                                        file_id,
-                                    )?;
-                                    let range = def_fb
-                                        .clone()
-                                        .range_for_expr(clause_id, *matched_funref_id)?;
-                                    let diag = diagnostic_builder(&mfa, "", range)?;
-                                    diags.push(diag.with_fixes(Some(vec![fix(
-                                        "remove_fun_ref_from_list",
-                                        "Remove noop fun ref from list",
-                                        SourceChange::from_text_edit(file_id, statement_removal),
-                                        range,
-                                    )])));
-                                    Some(())
-                                }();
-                            });
-                    }
-                    _ => {}
+                if let AnyExprId::Expr(expr_id) = ctx.item_id {
+                    let matches =
+                        match_fun_ref_in_list_in_call_arg(&matcher, sema, in_clause, &expr_id);
+                    matches
+                        .iter()
+                        .for_each(|(matched_funref_id, target, arity)| {
+                            || -> Option<()> {
+                                let in_file_ast_ptr = body_map.expr(*matched_funref_id)?;
+                                let list_elem_ast = in_file_ast_ptr.to_node(&source_file)?;
+                                let statement_removal = remove_statement(&list_elem_ast)?;
+                                let mfa = MFA::from_call_target(
+                                    target,
+                                    *arity,
+                                    sema,
+                                    &def_fb.body(clause_id),
+                                    file_id,
+                                )?;
+                                let range = def_fb
+                                    .clone()
+                                    .range_for_expr(clause_id, *matched_funref_id)?;
+                                let diag = diagnostic_builder(&mfa, "", range)?;
+                                diags.push(diag.with_fixes(Some(vec![fix(
+                                    "remove_fun_ref_from_list",
+                                    "Remove noop fun ref from list",
+                                    SourceChange::from_text_edit(file_id, statement_removal),
+                                    range,
+                                )])));
+                                Some(())
+                            }();
+                        });
                 }
             },
         );
@@ -379,8 +376,8 @@ mod tests {
     use crate::tests::check_fix_with_config_and_adhoc;
 
     #[track_caller]
-    pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(
-        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub(crate) fn check_fix_with_ad_hoc_semantics(
+        ad_hoc_semantic_diagnostics: Vec<&dyn AdhocSemanticDiagnostics>,
         fixture_before: &str,
         fixture_after: Expect,
     ) {
@@ -409,8 +406,8 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn check_diagnostics_with_ad_hoc_semantics<'a>(
-        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub(crate) fn check_diagnostics_with_ad_hoc_semantics(
+        ad_hoc_semantic_diagnostics: Vec<&dyn AdhocSemanticDiagnostics>,
         fixture: &str,
     ) {
         let config = DiagnosticsConfig::default()

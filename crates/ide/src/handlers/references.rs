@@ -97,7 +97,7 @@ mod tests {
 
     fn check(fixture: &str) {
         let (analysis, fixture) = fixture::with_fixture(fixture);
-        let mut annos = &mut fixture.annotations();
+        let annos = &mut fixture.annotations();
         if let Ok(Some(resolved)) = analysis.find_all_refs(fixture.position()) {
             for res in resolved {
                 let def_name = match annos
@@ -114,7 +114,7 @@ mod tests {
                     .strip_prefix("def")
                     .expect("malformed definition key");
 
-                let expected = take_by(&mut annos, |(_, name)| name == key);
+                let expected = take_by(annos, |(_, name)| name == key);
                 let found_ranges = res
                     .references
                     .into_iter()

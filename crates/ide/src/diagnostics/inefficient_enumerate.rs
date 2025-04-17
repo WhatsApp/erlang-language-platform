@@ -69,10 +69,8 @@ fn inefficient_enumerate_custom_index_ssr(
             if let Some(diagnostic) = make_diagnostic(sema, m) {
                 diags.push(diagnostic);
             }
-        } else {
-            if let Some(diagnostic) = make_diagnostic_custom_index(sema, m) {
-                diags.push(diagnostic);
-            }
+        } else if let Some(diagnostic) = make_diagnostic_custom_index(sema, m) {
+            diags.push(diagnostic);
         }
     });
 }

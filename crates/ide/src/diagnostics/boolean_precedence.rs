@@ -123,46 +123,42 @@ fn report(
     */
     let (binop, b_lhs, b_rhs) = binop;
     let body = def_fb.body(clause_id);
-    match ctx.parent() {
-        ParentId::HirIdx(hir_idx) => match &body.get_any(hir_idx.idx) {
-            AnyExprRef::Expr(Expr::BinaryOp { lhs, rhs, op: _ }) => {
-                let lhs_complex = AnyExprId::Expr(*rhs) == ctx.item_id;
-                let rhs_complex = AnyExprId::Expr(*lhs) == ctx.item_id;
-                if !lhs_complex && !rhs_complex {
-                    return None;
-                }
-                let map = def_fb.get_body_map(clause_id);
-                let add_parens_range = if rhs_complex {
-                    let b_rhs_ast_ptr = map.expr(b_rhs)?;
-                    let rhs_ast_ptr = map.expr(*rhs)?;
-                    TextRange::new(b_rhs_ast_ptr.range().start(), rhs_ast_ptr.range().end())
-                } else {
-                    let lhs_ast_ptr = map.expr(*lhs)?;
-                    let b_lhs_ast_ptr = map.expr(b_lhs)?;
-                    TextRange::new(lhs_ast_ptr.range().start(), b_lhs_ast_ptr.range().end())
-                };
-                let expr_source = map.any(ctx.item_id)?;
-                let source = sema.db.parse(file_id).tree();
-                if let Some(ast::Expr::BinaryOpExpr(binop_ast)) =
-                    unwrap_parens(&expr_source.to_node(&InFile::new(file_id, source))?)
-                {
-                    let (_op, token) = binop_ast.op()?;
-                    let range = token.text_range();
-                    let preceding_ws_range = include_preceding_whitespace(&token);
-                    let mut d = make_diagnostic(file_id, range, preceding_ws_range, binop)
-                        .with_ignore_fix(sema, def_fb.file_id());
-                    if lhs_complex {
-                        add_parens_fix(file_id, &range, add_parens_range, "LHS", &mut d);
-                    }
-                    if rhs_complex {
-                        add_parens_fix(file_id, &range, add_parens_range, "RHS", &mut d);
-                    }
-                    diagnostics.push(d);
-                }
+    if let ParentId::HirIdx(hir_idx) = ctx.parent() {
+        if let AnyExprRef::Expr(Expr::BinaryOp { lhs, rhs, op: _ }) = &body.get_any(hir_idx.idx) {
+            let lhs_complex = AnyExprId::Expr(*rhs) == ctx.item_id;
+            let rhs_complex = AnyExprId::Expr(*lhs) == ctx.item_id;
+            if !lhs_complex && !rhs_complex {
+                return None;
             }
-            _ => {}
-        },
-        _ => {}
+            let map = def_fb.get_body_map(clause_id);
+            let add_parens_range = if rhs_complex {
+                let b_rhs_ast_ptr = map.expr(b_rhs)?;
+                let rhs_ast_ptr = map.expr(*rhs)?;
+                TextRange::new(b_rhs_ast_ptr.range().start(), rhs_ast_ptr.range().end())
+            } else {
+                let lhs_ast_ptr = map.expr(*lhs)?;
+                let b_lhs_ast_ptr = map.expr(b_lhs)?;
+                TextRange::new(lhs_ast_ptr.range().start(), b_lhs_ast_ptr.range().end())
+            };
+            let expr_source = map.any(ctx.item_id)?;
+            let source = sema.db.parse(file_id).tree();
+            if let Some(ast::Expr::BinaryOpExpr(binop_ast)) =
+                unwrap_parens(&expr_source.to_node(&InFile::new(file_id, source))?)
+            {
+                let (_op, token) = binop_ast.op()?;
+                let range = token.text_range();
+                let preceding_ws_range = include_preceding_whitespace(&token);
+                let mut d = make_diagnostic(file_id, range, preceding_ws_range, binop)
+                    .with_ignore_fix(sema, def_fb.file_id());
+                if lhs_complex {
+                    add_parens_fix(file_id, &range, add_parens_range, "LHS", &mut d);
+                }
+                if rhs_complex {
+                    add_parens_fix(file_id, &range, add_parens_range, "RHS", &mut d);
+                }
+                diagnostics.push(d);
+            }
+        }
     };
     Some(())
 }
@@ -180,7 +176,7 @@ fn add_parens_fix(
         "replace_boolean_operator_add_parens",
         &assist_message,
         SourceChange::from_text_edit(file_id, edit.clone()),
-        range.clone(),
+        *range,
     ));
 }
 

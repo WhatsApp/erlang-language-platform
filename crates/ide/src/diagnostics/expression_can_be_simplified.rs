@@ -174,7 +174,7 @@ fn simplify_binary_op(
             if is_literal_atom(sema, lhs, known::true_name) =>
         {
             let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
-            Some(format!("{}", rhs_str))
+            Some(rhs_str.to_string())
         }
 
         // orelse
@@ -182,7 +182,7 @@ fn simplify_binary_op(
             if is_literal_atom(sema, lhs, known::false_name) =>
         {
             let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
-            Some(format!("{}", rhs_str))
+            Some(rhs_str.to_string())
         }
 
         _ => None,

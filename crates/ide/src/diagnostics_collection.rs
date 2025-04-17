@@ -101,7 +101,7 @@ impl DiagnosticCollection {
         let eqwalizer_combined = eqwalizer
             .into_iter()
             .chain(eqwalizer_project)
-            .dedup_by(|a, b| are_diagnostics_equal(a, b));
+            .dedup_by(are_diagnostics_equal);
         let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer_combined);
@@ -134,7 +134,7 @@ impl DiagnosticCollection {
         eqwalizer
             .into_iter()
             .chain(eqwalizer_project)
-            .dedup_by(|a, b| are_diagnostics_equal(a, b))
+            .dedup_by(are_diagnostics_equal)
             .collect()
     }
 
@@ -310,7 +310,7 @@ mod tests {
         assert_eq!(changes.as_ref(), Some(&expected_changes));
 
         let stored = diagnostics.diagnostics_for(file_id);
-        assert!(are_diagnostics_equal_vec(&stored, &vec![diagnostic]),);
+        assert!(are_diagnostics_equal_vec(&stored, &[diagnostic]),);
 
         // Reset to empty
         diagnostics.set_native(file_id, LabeledDiagnostics::new(vec![]));
@@ -330,7 +330,7 @@ mod tests {
     ) {
         let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
         for file_id in &fixture.files {
-            let file_id = file_id.clone();
+            let file_id = *file_id;
             let diagnostics = diagnostics::native_diagnostics(&db, &config, &vec![], file_id);
 
             let combined = attach_related_diagnostics(diagnostics, extra_diags.clone());
@@ -451,13 +451,10 @@ mod tests {
         };
 
         let file_id = FileId::from_raw(0);
-        assert_eq!(
-            are_all_labeled_diagnostics_equal(
-                &FxHashMap::from_iter(once((file_id, diags_one))),
-                file_id,
-                &diags_two,
-            ),
-            false
-        );
+        assert!(!are_all_labeled_diagnostics_equal(
+            &FxHashMap::from_iter(once((file_id, diags_one))),
+            file_id,
+            &diags_two,
+        ));
     }
 }

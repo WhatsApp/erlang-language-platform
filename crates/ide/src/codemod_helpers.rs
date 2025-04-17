@@ -126,7 +126,7 @@ pub(crate) fn check_is_only_place_where_var_is_defined_ast(
     let usages = sema.find_local_usages_ast(var)?;
     let num_definitions = usages
         .iter()
-        .filter(|v| sema.to_def(var.with_value(*v)).map_or(false, is_definition))
+        .filter(|v| sema.to_def(var.with_value(*v)).is_some_and(is_definition))
         .count();
     if num_definitions == 1 { Some(()) } else { None }
 }
@@ -138,7 +138,7 @@ pub(crate) fn check_is_only_place_where_var_is_defined(
     let usages = sema.find_local_usages(var)?;
     let num_definitions = usages
         .iter()
-        .filter(|(id, _v)| var.to_var_def_any(*id).map_or(false, is_definition))
+        .filter(|(id, _v)| var.to_var_def_any(*id).is_some_and(is_definition))
         .count();
     if num_definitions == 1 { Some(()) } else { None }
 }
@@ -152,7 +152,7 @@ pub(crate) fn check_var_has_no_references_ast(
         .iter()
         .filter(|v| {
             sema.to_def(var.with_value(*v))
-                .map_or(false, |dor| !is_definition(dor))
+                .is_some_and(|dor| !is_definition(dor))
         })
         .count();
     if num_definitions == 0 { Some(()) } else { None }
@@ -165,7 +165,7 @@ pub(crate) fn check_var_has_no_references(
     let usages = sema.find_local_usages(var)?;
     let definition_found = usages.iter().any(|(id, _v)| {
         var.to_var_def_any(*id)
-            .map_or(false, |dor| !is_definition(dor))
+            .is_some_and(|dor| !is_definition(dor))
     });
     if !definition_found { Some(()) } else { None }
 }
@@ -400,9 +400,9 @@ impl MFA {
 }
 
 // Serde serialization via String
-impl Into<String> for MFA {
-    fn into(self) -> String {
-        format!("{}:{}/{}", self.module, self.name, self.arity)
+impl From<MFA> for String {
+    fn from(val: MFA) -> Self {
+        format!("{}:{}/{}", val.module, val.name, val.arity)
     }
 }
 
@@ -421,11 +421,11 @@ impl TryFrom<&str> for MFA {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").unwrap();
         }
-        if let Some(captures) = RE.captures(&value) {
+        if let Some(captures) = RE.captures(value) {
             if captures.len() > 3 {
                 let arity = captures[3]
                     .parse::<u32>()
-                    .expect(format!("bad arity field for `{value}'").as_str());
+                    .unwrap_or_else(|_| panic!("bad arity field for `{value}'"));
                 return Ok(MFA {
                     module: captures[1].to_string(),
                     name: captures[2].to_string(),
@@ -433,7 +433,7 @@ impl TryFrom<&str> for MFA {
                 });
             }
         }
-        return Err(format!("invalid MFA '{value}'"));
+        Err(format!("invalid MFA '{value}'"))
     }
 }
 
@@ -456,7 +456,7 @@ pub enum Args {
 impl Args {
     pub fn get(&self, i: usize) -> Option<ExprId> {
         match self {
-            Args::Args(args) => args.get(i as usize).copied(),
+            Args::Args(args) => args.get(i).copied(),
             Args::Arity(_) => None,
         }
     }
@@ -491,7 +491,7 @@ pub struct MatchCtx<'a, Extra> {
     pub extra: &'a Extra,
 }
 
-impl<'a, U> MatchCtx<'a, U> {
+impl<U> MatchCtx<'_, U> {
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
     pub fn range_mf_only(&self) -> TextRange {
@@ -567,7 +567,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                             ctx.item_id
                         };
                         if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
-                            let range_mf_only = if !ctx.in_macro.is_some() {
+                            let range_mf_only = if ctx.in_macro.is_none() {
                                 target.range(in_clause)
                             } else {
                                 // We need to rather use the full range, of the macro

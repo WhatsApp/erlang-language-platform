@@ -187,10 +187,7 @@ pub(crate) fn runnables(
     groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Vec<Runnable> {
     let sema = Semantic::new(db);
-    match common_test::runnables(&sema, file_id, all, groups) {
-        Ok(runnables) => runnables,
-        Err(_) => Vec::new(),
-    }
+    common_test::runnables(&sema, file_id, all, groups).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -204,7 +201,7 @@ mod tests {
     #[track_caller]
     fn check_runnables(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
-        let (analysis, fixture) = fixture::with_fixture(&trimmed_fixture.as_str());
+        let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
         let annotations = fixture.annotations();
         let runnables = analysis.runnables(fixture.file_id()).unwrap();
         let mut actual = Vec::new();

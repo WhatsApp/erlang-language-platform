@@ -132,7 +132,7 @@ fn process_badmatches(
         diags,
         sema,
         def,
-        &mfas,
+        mfas,
         &move |CheckCallCtx {
                    t, args, in_clause, ..
                }: CheckCallCtx<'_, &BadEnvCallAction>| match t {
@@ -146,7 +146,7 @@ fn process_badmatches(
                     hir::Expr::List { exprs, tail: _ } => {
                         exprs.iter().find_map(|expr| match &in_clause[*expr] {
                             hir::Expr::Tuple { exprs } => {
-                                let key = exprs.get(0)?;
+                                let key = exprs.first()?;
                                 let val = exprs.get(1)?;
                                 let key_name = in_clause.as_atom_name(key)?;
                                 if tag == key_name.as_str() {

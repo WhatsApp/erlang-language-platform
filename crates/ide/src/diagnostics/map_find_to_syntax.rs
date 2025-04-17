@@ -179,9 +179,7 @@ fn is_pat_valid(body: &Body, pat: Pat) -> bool {
         Pat::List { pats, tail } => {
             pats.iter()
                 .all(|pat_id| is_pat_valid(body, body.pats[*pat_id].clone()))
-                && tail.map_or(true, |tail_pat_id| {
-                    is_pat_valid(body, body.pats[tail_pat_id].clone())
-                })
+                && tail.is_none_or(|tail_pat_id| is_pat_valid(body, body.pats[tail_pat_id].clone()))
         }
         Pat::Map { .. } => false, // Map's expression semantics are different to their pattern semantics (e.g. patterns need match only a subset of the map value, so we explicitly reject them here for simplicity)
         _ => false,

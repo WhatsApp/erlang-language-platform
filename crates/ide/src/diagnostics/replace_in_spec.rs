@@ -53,7 +53,7 @@ pub fn replace_in_spec(
     let def_map = sema.def_map(file_id);
     if let Some(module_name) = sema.module_name(file_id) {
         let possibles: FxHashSet<_> = functions
-            .into_iter()
+            .iter()
             .filter_map(
                 |MFA {
                      module,
@@ -82,43 +82,40 @@ pub fn replace_in_spec(
                         spec_id,
                         (),
                         &mut |_acc, ctx| {
-                            match ctx.item {
-                                AnyExpr::TypeExpr(TypeExpr::Call { target, ref args }) => {
-                                    let arity = args.len();
-                                    let type_label = target.label(arity as u32, sema, &spec.body);
-                                    let from_label: SmolStr = action_from.label().into();
-                                    if &type_label == &Some(from_label) {
-                                        if let Some(range) =
-                                            spec.body.range_for_any(sema, ctx.item_id)
-                                        {
-                                            let mut edit_builder = TextEdit::builder();
-                                            edit_builder.replace(range, action_to.to_string());
-                                            let edit = edit_builder.finish();
+                            if let AnyExpr::TypeExpr(TypeExpr::Call { target, ref args }) = ctx.item
+                            {
+                                let arity = args.len();
+                                let type_label = target.label(arity as u32, sema, &spec.body);
+                                let from_label: SmolStr = action_from.label().into();
+                                if type_label == Some(from_label) {
+                                    if let Some(range) = spec.body.range_for_any(sema, ctx.item_id)
+                                    {
+                                        let mut edit_builder = TextEdit::builder();
+                                        edit_builder.replace(range, action_to.to_string());
+                                        let edit = edit_builder.finish();
 
-                                            let diag_label = format!(
-                                                "Replace '{}' with '{}'",
-                                                &action_from.label(),
-                                                action_to
-                                            );
+                                        let diag_label = format!(
+                                            "Replace '{}' with '{}'",
+                                            &action_from.label(),
+                                            action_to
+                                        );
 
-                                            let diag = Diagnostic::new(
-                                                DiagnosticCode::AdHoc(action_from.label()),
-                                                diag_label.clone(),
-                                                range,
-                                            )
-                                            .with_severity(Severity::WeakWarning)
-                                            .experimental()
-                                            .with_fixes(Some(vec![fix(
-                                                "replace_type",
-                                                &diag_label,
-                                                SourceChange::from_text_edit(file_id, edit),
-                                                range,
-                                            )]));
-                                            diags.push(diag);
-                                        }
+                                        let diag = Diagnostic::new(
+                                            DiagnosticCode::AdHoc(action_from.label()),
+                                            diag_label.clone(),
+                                            range,
+                                        )
+                                        .with_severity(Severity::WeakWarning)
+                                        .experimental()
+                                        .with_fixes(Some(vec![fix(
+                                            "replace_type",
+                                            &diag_label,
+                                            SourceChange::from_text_edit(file_id, edit),
+                                            range,
+                                        )]));
+                                        diags.push(diag);
                                     }
                                 }
-                                _ => {}
                             };
                         },
                     )
@@ -142,8 +139,8 @@ mod tests {
     use crate::tests::check_fix_with_config_and_adhoc;
 
     #[track_caller]
-    pub(crate) fn check_fix_with_ad_hoc_semantics<'a>(
-        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub(crate) fn check_fix_with_ad_hoc_semantics(
+        ad_hoc_semantic_diagnostics: Vec<&dyn AdhocSemanticDiagnostics>,
         fixture_before: &str,
         fixture_after: Expect,
     ) {
@@ -159,8 +156,8 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn check_diagnostics_with_ad_hoc_semantics<'a>(
-        ad_hoc_semantic_diagnostics: Vec<&'a dyn AdhocSemanticDiagnostics>,
+    pub(crate) fn check_diagnostics_with_ad_hoc_semantics(
+        ad_hoc_semantic_diagnostics: Vec<&dyn AdhocSemanticDiagnostics>,
         fixture: &str,
     ) {
         let config = DiagnosticsConfig::default()
@@ -174,7 +171,7 @@ mod tests {
         check_diagnostics_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_in_spec(
-                    &vec!["modu:fn/1".try_into().unwrap()],
+                    &["modu:fn/1".try_into().unwrap()],
                     &"modu:one/0".try_into().unwrap(),
                     "modu:other()",
                     acc,
@@ -200,7 +197,7 @@ mod tests {
         check_fix_with_ad_hoc_semantics(
             vec![&|acc, sema, file_id, _ext| {
                 replace_in_spec(
-                    &vec!["modu:fn/1".try_into().unwrap()],
+                    &["modu:fn/1".try_into().unwrap()],
                     &"modu:one/0".try_into().unwrap(),
                     "modu:other()",
                     acc,

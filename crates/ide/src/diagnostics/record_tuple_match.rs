@@ -55,25 +55,19 @@ fn check_function(acc: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef)
         (),
         &mut |_acc, clause_id, ctx| {
             let in_clause = def_fb.in_clause(clause_id);
-            match &ctx.item {
-                AnyExpr::Pat(Pat::Tuple { pats }) => {
-                    if let Some(pat) = pats.get(0) {
-                        match &in_clause[*pat] {
-                            Pat::Literal(Literal::Atom(atom)) => {
-                                let def_map = sema.def_map(def.file.file_id);
-                                let record_name = &(*atom).as_name(sema.db.upcast());
-                                if let Some(record) = def_map.get_record(&record_name) {
-                                    if pats.len() == record.record.fields.len() + 1 {
-                                        let range = in_clause.range_for_pat(*pat);
-                                        report(record_name, range, acc);
-                                    }
-                                }
+            if let AnyExpr::Pat(Pat::Tuple { pats }) = &ctx.item {
+                if let Some(pat) = pats.first() {
+                    if let Pat::Literal(Literal::Atom(atom)) = &in_clause[*pat] {
+                        let def_map = sema.def_map(def.file.file_id);
+                        let record_name = &(*atom).as_name(sema.db.upcast());
+                        if let Some(record) = def_map.get_record(record_name) {
+                            if pats.len() == record.record.fields.len() + 1 {
+                                let range = in_clause.range_for_pat(*pat);
+                                report(record_name, range, acc);
                             }
-                            _ => {}
                         }
                     }
                 }
-                _ => {}
             };
         },
     )

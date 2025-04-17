@@ -204,7 +204,7 @@ pub(crate) fn check_nth_fix(
         &analysis,
         pos.file_id,
         &config,
-        &adhoc_semantic_diagnostics,
+        adhoc_semantic_diagnostics,
         &diagnostics_enabled,
     );
     let fix = diagnostics
@@ -248,11 +248,10 @@ fn get_fixes(
     pos: FilePosition,
     diagnostic: Diagnostic,
 ) -> Vec<Assist> {
-    let fixes = match include_assists {
+    match include_assists {
         IncludeCodeActionAssists::Yes => diagnostic.get_diagnostic_fixes(&analysis.db, pos.file_id),
         IncludeCodeActionAssists::No => diagnostic.fixes.unwrap_or_default(),
-    };
-    fixes
+    }
 }
 
 /// Takes a multi-file input fixture with annotated cursor positions,
@@ -313,11 +312,11 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
             .filter_map(|d| {
                 d.fixes
                     .as_ref()
-                    .and_then(|fixes| fixes.into_iter().find(|f| f.label == label))
+                    .and_then(|fixes| fixes.iter().find(|f| f.label == label))
             })
             .next()
         {
-            &fix
+            fix
         } else {
             panic!(
                 "Expecting \"{}\", but not found in {:?}",
@@ -381,7 +380,7 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
                 Severity::Information => "information",
             });
             annotation.push_str(": ");
-            annotation.push_str(&&convert_diagnostic_message(&d));
+            annotation.push_str(&convert_diagnostic_message(&d));
             (d.range, annotation)
         })
         .collect::<Vec<_>>();
@@ -430,7 +429,7 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in &fixture.files {
-        let file_id = file_id.clone();
+        let file_id = *file_id;
         let diagnostics = fixture::diagnostics_for(
             &analysis,
             file_id,
@@ -463,7 +462,7 @@ pub(crate) fn check_filtered_diagnostics_with_config(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in &fixture.files {
-        let file_id = file_id.clone();
+        let file_id = *file_id;
         let diagnostics = fixture::diagnostics_for(
             &analysis,
             file_id,
@@ -492,7 +491,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     let host = AnalysisHost { db };
     let analysis = host.analysis();
     for file_id in &fixture.files {
-        let file_id = file_id.clone();
+        let file_id = *file_id;
         let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, &vec![], file_id);
         let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
 

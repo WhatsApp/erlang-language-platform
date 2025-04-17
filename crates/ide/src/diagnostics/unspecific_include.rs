@@ -111,7 +111,7 @@ fn make_diagnostic(
     new_include: &str,
     make_include_lib: Option<TextRange>,
 ) -> Option<Diagnostic> {
-    let message = format!("Unspecific include.");
+    let message = "Unspecific include.".to_string();
     Some(
         Diagnostic::new(DiagnosticCode::UnspecificInclude, message, range)
             .with_severity(Severity::WeakWarning)
@@ -132,12 +132,9 @@ fn replace_include_path(
 ) -> Assist {
     let mut builder = TextEdit::builder();
     if let Some(attr_range) = make_include_lib {
-        builder.replace(
-            attr_range,
-            format!("-include_lib(\"{}\").", filename.to_string()),
-        );
+        builder.replace(attr_range, format!("-include_lib(\"{}\").", filename));
     } else {
-        builder.replace(range, format!("\"{}\"", filename.to_string()));
+        builder.replace(range, format!("\"{}\"", filename));
     }
     let edit = builder.finish();
     fix(

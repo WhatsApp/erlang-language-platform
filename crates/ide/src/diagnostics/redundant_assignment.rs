@@ -71,27 +71,23 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
         (),
         &mut |_acc, clause_id, ctx| {
             let in_clause = def_fb.in_clause(clause_id);
-            match ctx.item_id {
-                AnyExprId::Expr(expr_id) => {
-                    if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
-                        if let Pat::Var(_) = &in_clause[lhs] {
-                            if let Expr::Var(_) = &in_clause[rhs] {
-                                if let Some(diag) = is_var_assignment_to_unused_var(
-                                    sema,
-                                    in_clause,
-                                    def.file.file_id,
-                                    expr_id,
-                                    lhs,
-                                    rhs,
-                                ) {
-                                    diags.push(diag);
-                                }
+            if let AnyExprId::Expr(expr_id) = ctx.item_id {
+                if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+                    if let Pat::Var(_) = &in_clause[lhs] {
+                        if let Expr::Var(_) = &in_clause[rhs] {
+                            if let Some(diag) = is_var_assignment_to_unused_var(
+                                sema,
+                                in_clause,
+                                def.file.file_id,
+                                expr_id,
+                                lhs,
+                                rhs,
+                            ) {
+                                diags.push(diag);
                             }
                         }
                     }
                 }
-
-                _ => {}
             }
         },
     );

@@ -123,7 +123,7 @@ mod tests {
                 check_used_functions(
                     sema,
                     file_id,
-                    &vec![FunctionCallDiagnostic {
+                    &[FunctionCallDiagnostic {
                         diagnostic_template: DiagnosticTemplate {
                             code: DiagnosticCode::AdHoc("a code".to_string()),
                             message: "diagnostic message".to_string(),

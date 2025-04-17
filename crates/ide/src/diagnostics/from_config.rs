@@ -105,14 +105,7 @@ impl ReplaceInSpec {
         match &self.action {
             ReplaceInSpecAction::Replace(replace) => match replace {
                 TypeReplacement::TypeAliasWithString { from, to } => {
-                    replace_in_spec::replace_in_spec(
-                        &self.functions,
-                        &from,
-                        &to,
-                        acc,
-                        sema,
-                        file_id,
-                    )
+                    replace_in_spec::replace_in_spec(&self.functions, from, to, acc, sema, file_id)
                 }
             },
         }

@@ -76,8 +76,8 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
                     },
                     *clause_arg_pat_id,
                     (),
-                    &mut |(), ctx| match ctx.item_id {
-                        AnyExprId::Pat(pat_id) => {
+                    &mut |(), ctx| {
+                        if let AnyExprId::Pat(pat_id) = ctx.item_id {
                             if let Some(var) = match ctx.item {
                                 AnyExpr::Pat(pat) => pat.as_var(),
                                 _ => None,
@@ -91,7 +91,6 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
                                 }
                             }
                         }
-                        _ => {}
                     },
                 );
             }

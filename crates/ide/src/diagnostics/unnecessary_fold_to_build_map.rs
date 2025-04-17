@@ -93,11 +93,11 @@ fn from_list_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
     let value = value_matches.first()?;
     let acc_matches = m.get_placeholder_matches(sema, ACC_VAR)?;
     let acc = acc_matches.first()?;
-    return Some(
+    Some(
         is_placeholder_a_var_from_body(body, key)
             && is_placeholder_a_var_from_body(body, value)
             && is_placeholder_a_var_from_body(body, acc),
-    );
+    )
 }
 
 fn unnecessary_fold_to_build_map_from_keys_ssr(
@@ -132,11 +132,11 @@ fn from_keys_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
     let value = &m.get_placeholder_match(sema, VALUE_VAR)?;
     let acc_matches = m.get_placeholder_matches(sema, ACC_VAR)?;
     let acc = acc_matches.first()?;
-    return Some(
+    Some(
         is_placeholder_a_var_from_body(body, key)
             && is_placeholder_a_var_from_body(body, acc)
             && is_pure(body, value),
-    );
+    )
 }
 
 fn is_pure(body: &Body, matched: &PlaceholderMatch) -> bool {
@@ -162,11 +162,10 @@ fn is_pure_expr(body: &Body, expr: Expr) -> bool {
             exprs: list_elems,
             tail: list_tail,
         } => {
-            list_tail.map_or(true, |tail_id| {
-                is_pure_expr(body, body.exprs[tail_id].clone())
-            }) && list_elems
-                .iter()
-                .all(|elem_id| is_pure_expr(body, body.exprs[*elem_id].clone()))
+            list_tail.is_none_or(|tail_id| is_pure_expr(body, body.exprs[tail_id].clone()))
+                && list_elems
+                    .iter()
+                    .all(|elem_id| is_pure_expr(body, body.exprs[*elem_id].clone()))
         }
         _ => false,
     }

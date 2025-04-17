@@ -87,12 +87,10 @@ fn missing_compile_warn_missing_spec(
                         let name = sema.db.lookup_atom(*atom);
                         if MISSING_SPEC_ALL_OPTIONS.contains(&name) {
                             (Found::WarnMissingSpecAll, Some(idx))
+                        } else if MISSING_SPEC_OPTIONS.contains(&name) {
+                            (Found::WarnMissingSpec, Some(idx))
                         } else {
-                            if MISSING_SPEC_OPTIONS.contains(&name) {
-                                (Found::WarnMissingSpec, Some(idx))
-                            } else {
-                                acc
-                            }
+                            acc
                         }
                     }
                     _ => acc,
@@ -134,14 +132,14 @@ enum Found {
 lazy_static! {
     static ref MISSING_SPEC_ALL_OPTIONS: FxHashSet<Name> = {
         let mut res = FxHashSet::default();
-        for name in vec![known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
+        for name in [known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
             res.insert(name);
         }
         res
     };
     static ref MISSING_SPEC_OPTIONS: FxHashSet<Name> = {
         let mut res = FxHashSet::default();
-        for name in vec![known::warn_missing_spec, known::nowarn_missing_spec] {
+        for name in [known::warn_missing_spec, known::nowarn_missing_spec] {
             res.insert(name);
         }
         res

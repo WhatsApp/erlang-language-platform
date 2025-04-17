@@ -192,7 +192,7 @@ fn matches_trivially(
         },
         Pat::RecordIndex { .. } => false,
 
-        Pat::Map { fields: pat_fields } => match { expr } {
+        Pat::Map { fields: pat_fields } => match expr {
             Expr::Map {
                 fields: expr_fields,
             } => {

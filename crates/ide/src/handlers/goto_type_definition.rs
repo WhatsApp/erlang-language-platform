@@ -46,8 +46,8 @@ fn classify(sema: &Semantic, range: FileRange) -> Option<SymbolClass> {
         file_id: range.file_id,
         offset: type_name_range.start(),
     };
-    let token = find_best_token(&sema, position)?;
-    SymbolClass::classify(&sema, token)
+    let token = find_best_token(sema, position)?;
+    SymbolClass::classify(sema, token)
 }
 
 #[cfg(test)]

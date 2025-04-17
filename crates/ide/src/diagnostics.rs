@@ -393,7 +393,7 @@ impl Diagnostic {
             .into_iter()
             .filter(|assist| assist.original_diagnostic == Some(context_diagnostic.clone()));
         if let Some(fixes) = &self.fixes {
-            assists.chain(fixes.clone().into_iter()).collect_vec()
+            assists.chain(fixes.clone()).collect_vec()
         } else {
             assists.collect_vec()
         }
@@ -525,12 +525,10 @@ impl EnabledDiagnostics {
     pub fn contains(&self, code: &DiagnosticCode) -> bool {
         if self.enable_all {
             true
+        } else if code.as_namespace() == Some(Namespace::EDoc) {
+            self.edoc
         } else {
-            if code.as_namespace() == Some(Namespace::EDoc) {
-                self.edoc
-            } else {
-                self.enabled.contains(code)
-            }
+            self.enabled.contains(code)
         }
     }
 
@@ -702,22 +700,13 @@ pub enum DiagnosticLabel {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct LabeledDiagnostics {
     pub normal: Vec<Diagnostic>,
     /// Syntax error diagnostics labeled by the name/arity of the function enclosing them
     pub labeled_syntax_errors: Labeled,
     /// "Undefined XXX" diagnostics labeled by the name/arity of XXX.
     pub labeled_undefined_errors: Labeled,
-}
-
-impl Default for LabeledDiagnostics {
-    fn default() -> Self {
-        Self {
-            normal: Default::default(),
-            labeled_syntax_errors: Default::default(),
-            labeled_undefined_errors: Default::default(),
-        }
-    }
 }
 
 impl LabeledDiagnostics {
@@ -747,7 +736,7 @@ impl LabeledDiagnostics {
     }
 
     pub fn extend<I: IntoIterator<Item = Diagnostic>>(&mut self, iter: I) {
-        self.normal.extend(iter.into_iter())
+        self.normal.extend(iter)
     }
 }
 
@@ -925,7 +914,7 @@ pub fn diagnostics_from_descriptors(
         .db
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
-    descriptors.into_iter().for_each(|descriptor| {
+    descriptors.iter().for_each(|descriptor| {
         if descriptor.conditions.enabled(config, is_generated, is_test) {
             if descriptor.conditions.default_disabled {
                 // Filter the returned diagnostics to ensure they are
@@ -1363,8 +1352,8 @@ pub fn to_standard_diagnostics(
     let module_index = db.module_index(project_id);
 
     let mut res = FxHashMap::default();
-    match diagnostics {
-        elp_eqwalizer::EqwalizerDiagnostics::Diagnostics { errors, .. } => errors
+    if let elp_eqwalizer::EqwalizerDiagnostics::Diagnostics { errors, .. } = diagnostics {
+        errors
             .iter()
             .map(|(module, ds)| {
                 for d in ds {
@@ -1374,8 +1363,7 @@ pub fn to_standard_diagnostics(
                     }
                 }
             })
-            .collect(),
-        _ => (),
+            .collect()
     }
     Some(res.into_iter().collect())
 }
@@ -2127,7 +2115,7 @@ baz(1)->4.
             TextRange::new(36.into(), 43.into()),
             "Syntax Error".to_owned(),
         );
-        let source_file = SourceFile::parse_text(&fixture_str);
+        let source_file = SourceFile::parse_text(fixture_str);
         expect![[r#"
             Some(
                 Range(

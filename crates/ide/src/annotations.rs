@@ -85,14 +85,11 @@ mod tests {
         let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
         let mut actual = Vec::new();
         for annotation in analysis.annotations(fixture.file_id()).unwrap() {
-            match annotation.kind {
-                AnnotationKind::Runnable(runnable) => {
-                    let file_id = runnable.nav.file_id;
-                    let range = runnable.nav.focus_range.unwrap();
-                    let text = runnable.nav.name;
-                    actual.push((FileRange { file_id, range }, text.to_string()));
-                }
-                _ => {}
+            if let AnnotationKind::Runnable(runnable) = annotation.kind {
+                let file_id = runnable.nav.file_id;
+                let range = runnable.nav.focus_range.unwrap();
+                let text = runnable.nav.name;
+                actual.push((FileRange { file_id, range }, text.to_string()));
             }
         }
         let cmp = |(frange, text): &(FileRange, String)| {

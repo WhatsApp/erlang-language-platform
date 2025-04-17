@@ -215,7 +215,6 @@ mod tests {
                 if fixture_after_str.starts_with("error:") {
                     let error_message = fixture_after_str
                         .chars()
-                        .into_iter()
                         .skip("error:".len())
                         .collect::<String>();
                     assert_eq!(error_message.trim(), err.to_string());

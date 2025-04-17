@@ -168,9 +168,8 @@ fn make_diagnostic(
 ) -> Diagnostic {
     let message = "Missing no_link option.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
-    match deletion_range {
-        Some(deletion_range) => builder.delete(deletion_range),
-        None => (),
+    if let Some(deletion_range) = deletion_range {
+        builder.delete(deletion_range)
     }
     let text = if is_empty {
         if new_arg {
@@ -182,7 +181,7 @@ fn make_diagnostic(
             }
         }
     } else {
-        format!(", no_link")
+        ", no_link".to_string()
     };
     builder.insert(end_of_list, text);
     let fixes = vec![fix(

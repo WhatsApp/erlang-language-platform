@@ -262,7 +262,7 @@ impl Analysis {
     ) -> Cancellable<Option<Vec<(FileId, Vec<Diagnostic>)>>> {
         self.with_db(|db| {
             let files_count = file_ids.len();
-            let chunk_size = (files_count + max_tasks - 1) / max_tasks;
+            let chunk_size = files_count.div_ceil(max_tasks);
             if chunk_size == 0 {
                 // The chunks function panics if the chunk size is 0, so we return an empty array
                 return Some(Vec::new());
@@ -507,8 +507,7 @@ impl Analysis {
                     .eqwalizer
                     .get(&frange.file_id)
                     .iter()
-                    .map(|x| x.iter().filter_map(|it| it.fixes.clone()).flatten())
-                    .flatten()
+                    .flat_map(|x| x.iter().filter_map(|it| it.fixes.clone()).flatten())
                     .filter(|it| it.target.intersect(frange.range).is_some())
                     .collect()
             } else {
