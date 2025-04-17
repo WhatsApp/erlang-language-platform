@@ -16,17 +16,14 @@ use std::collections::HashMap;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
-use elp_syntax::SourceFile;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BinarySeg;
-use hir::BodySourceMap;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionClauseDef;
-use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Literal;
 use hir::Pat;
@@ -85,7 +82,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
         &mut |_acc, ctx| {
             if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
                 let rhs = &rhs.clone();
-                if matches_trivially(sema, &in_clause, &body_map, &source_file, &lhs, rhs) {
+                if matches_trivially(sema, &in_clause, &lhs, rhs) {
                     let maybe_lhs_range = &in_clause.range_for_any(AnyExprId::Pat(lhs));
                     let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
                     if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range)
@@ -109,8 +106,6 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
 fn matches_trivially(
     sema: &Semantic,
     in_clause: &InFunctionClauseBody<&FunctionClauseDef>,
-    body_map: &BodySourceMap,
-    source_file: &InFile<SourceFile>,
     pat_id: &PatId,
     expr_id: &ExprId,
 ) -> bool {
@@ -147,7 +142,7 @@ fn matches_trivially(
             Expr::Tuple { exprs } if pats.len() == exprs.len() => pats
                 .iter()
                 .zip(exprs.iter())
-                .all(|(p, e)| matches_trivially(sema, in_clause, body_map, source_file, p, e)),
+                .all(|(p, e)| matches_trivially(sema, in_clause, p, e)),
             _ => false,
         },
 
@@ -155,7 +150,7 @@ fn matches_trivially(
             Expr::List { exprs, tail: None } if pats.len() == exprs.len() => pats
                 .iter()
                 .zip(exprs.iter())
-                .all(|(p, e)| matches_trivially(sema, in_clause, body_map, source_file, p, e)),
+                .all(|(p, e)| matches_trivially(sema, in_clause, p, e)),
             _ => false,
         },
         Pat::List { .. } => false,
@@ -174,14 +169,7 @@ fn matches_trivially(
                     let expr_fields_map = expr_fields.iter().copied().collect::<HashMap<_, _>>();
                     pat_fields_map.iter().all(|(field, pat_val)| {
                         if let Some(expr_val) = expr_fields_map.get(field) {
-                            matches_trivially(
-                                sema,
-                                in_clause,
-                                body_map,
-                                source_file,
-                                pat_val,
-                                expr_val,
-                            )
+                            matches_trivially(sema, in_clause, pat_val, expr_val)
                         } else {
                             false
                         }
@@ -219,14 +207,7 @@ fn matches_trivially(
 
                     pat_fields_map.iter().all(|(field, pat_val)| {
                         if let Some(expr_val) = expr_fields_map.get(field) {
-                            matches_trivially(
-                                sema,
-                                in_clause,
-                                body_map,
-                                source_file,
-                                pat_val,
-                                expr_val,
-                            )
+                            matches_trivially(sema, in_clause, pat_val, expr_val)
                         } else {
                             false
                         }
@@ -250,14 +231,7 @@ fn matches_trivially(
                     .all(|(pat_seg, expr_seg)| {
                         pat_seg.with_value(()) == trivial_seg
                             && expr_seg.with_value(()) == trivial_seg
-                            && matches_trivially(
-                                sema,
-                                in_clause,
-                                body_map,
-                                source_file,
-                                &pat_seg.elem,
-                                &expr_seg.elem,
-                            )
+                            && matches_trivially(sema, in_clause, &pat_seg.elem, &expr_seg.elem)
                     })
             }
 
@@ -270,10 +244,8 @@ fn matches_trivially(
             args: _,
             macro_def: _,
             macro_name: _,
-        } => matches_trivially(sema, in_clause, body_map, source_file, expansion, expr_id),
-        Pat::Paren { pat } => {
-            matches_trivially(sema, in_clause, body_map, source_file, pat, expr_id)
-        }
+        } => matches_trivially(sema, in_clause, expansion, expr_id),
+        Pat::Paren { pat } => matches_trivially(sema, in_clause, pat, expr_id),
         Pat::SsrPlaceholder(_) => false,
     }
 }
