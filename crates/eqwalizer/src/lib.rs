@@ -407,7 +407,7 @@ fn get_module_diagnostics(
                         handle.receive_newline()?;
                         handle
                             .send_bytes(&type_bytes)
-                            .with_context(|| format!("sending to eqwalizer: ValidatedType"))?
+                            .with_context(|| "sending to eqwalizer: ValidatedType".to_string())?
                     }
                     Err(invalid) => {
                         let invalid_bytes = serde_json::to_vec(&invalid).unwrap();
@@ -417,7 +417,7 @@ fn get_module_diagnostics(
                         handle.receive_newline()?;
                         handle
                             .send_bytes(&invalid_bytes)
-                            .with_context(|| format!("sending to eqwalizer: InvalidType"))?
+                            .with_context(|| "sending to eqwalizer: InvalidType".to_string())?
                     }
                 }
             }

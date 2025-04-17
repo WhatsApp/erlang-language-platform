@@ -93,13 +93,13 @@ mod tests {
         let project_data: Vec<ProjectAppData> = project
             .non_otp_apps()
             .filter(|&app| app.app_type == AppType::App)
-            .cloned()
-            .filter(|app| {
+            .filter(|&app| {
                 !app.dir
                     .as_os_str()
                     .to_string_lossy()
                     .contains("third-party")
             })
+            .cloned()
             .sorted_by_key(|data| data.name.0.clone())
             .collect();
 

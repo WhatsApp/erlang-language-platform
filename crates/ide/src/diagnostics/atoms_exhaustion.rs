@@ -59,9 +59,8 @@ fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id:
     sema.def_map_local(file_id)
         .get_functions()
         .for_each(|(_arity, def)| {
-            let is_relevant;
             // @fb-only
-            is_relevant = true; // @oss-only
+            let is_relevant = true; // @oss-only
             if is_relevant {
                 check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
             }
@@ -85,9 +84,9 @@ fn check_function(
                    parents,
                    ..
                }: CheckCallCtx<'_, ()>| {
-            let is_safe;
             // @fb-only
-            is_safe = false; // @oss-only
+                // @fb-only
+            let is_safe = false; // @oss-only
             if !is_safe {
                 match args.as_vec()[..] {
                     [_, options] => {

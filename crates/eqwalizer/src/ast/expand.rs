@@ -757,11 +757,11 @@ pub struct CastExpander<'d> {
     type_converter: TypeConverter,
 }
 impl CastExpander<'_> {
-    pub fn new<'d>(
-        db: &'d dyn EqwalizerDiagnosticsDatabase,
+    pub fn new(
+        db: &dyn EqwalizerDiagnosticsDatabase,
         project_id: ProjectId,
         module: StringId,
-    ) -> CastExpander<'d> {
+    ) -> CastExpander<'_> {
         let expander = Expander {
             module,
             invalids: vec![],

@@ -796,7 +796,7 @@ fn map_name(name: &str) -> Result<NameType> {
         _ => {
             if name
                 .chars()
-                .all(|c| ('a'..='z').contains(&c) || ('0'..='9').contains(&c) || c == '_')
+                .all(|c: char| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
             {
                 Ok(Identifier(to_camel_case(name)))
             } else {
