@@ -1496,8 +1496,7 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
                 Some(def)
             })
             .collect::<Vec<_>>();
-        if self_def {
-            assert!(resolved.len() == 1);
+        if self_def && resolved.len() == 1 {
             // swap_remove dance necessary to take ownership of element without copying
             Some(DefinitionOrReference::Definition(resolved.swap_remove(0)))
         } else if !resolved.is_empty() {

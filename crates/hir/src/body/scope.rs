@@ -832,6 +832,8 @@ mod tests {
         assert_eq_text!(&expected, &actual);
     }
 
+    // NOTE: Most of the scoping tests are done via the goto_definition.rs tests
+
     #[test]
     fn test_function_param_scope() {
         do_check(

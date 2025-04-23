@@ -2133,6 +2133,24 @@ bar(List) ->
     }
 
     #[test]
+    fn list_comprehension3() {
+        check(
+            r#"
+//- /main/src/main.erl
+-module(main).
+
+bar(ExpectedProps, ResultProps) ->
+    [
+        assertEqual(ExpectedVal, ResultVal, Field)
+     || {{Fi~eld, ExpectedVal}, {Field, ResultVal}} <- lists:zip(ExpectedProps, ResultProps)
+%%        ^^^^^
+%%                              ^^^^^
+    ].
+"#,
+        );
+    }
+
+    #[test]
     fn tuple1() {
         check(
             r#"
