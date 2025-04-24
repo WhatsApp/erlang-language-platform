@@ -402,12 +402,13 @@ impl TransitiveChecker<'_> {
             self.check_overloaded_spec(&mut stub_result, spec)?
         }
 
-        stub_result.callbacks = stub_result
-            .callbacks
+        let callbacks = (*stub_result.callbacks)
+            .clone()
             .into_iter()
             .map(|cb| self.normalize_callback(cb))
             .collect::<Result<Vec<_>, _>>()?;
 
+        stub_result.callbacks = Arc::new(callbacks);
         Ok(stub_result)
     }
 

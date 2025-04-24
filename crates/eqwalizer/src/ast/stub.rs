@@ -33,8 +33,8 @@ pub struct ModuleStub {
     pub specs: BTreeMap<Id, Arc<FunSpec>>,
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
-    pub callbacks: Vec<Callback>,
-    pub optional_callbacks: BTreeSet<Id>,
+    pub callbacks: Arc<Vec<Callback>>,
+    pub optional_callbacks: Arc<BTreeSet<Id>>,
     pub invalids: Vec<Invalid>,
 }
 

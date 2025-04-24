@@ -17,6 +17,7 @@
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use std::vec;
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
@@ -36,6 +37,7 @@ use elp_types_db::eqwalizer::ext_types::ReqExtProp;
 use elp_types_db::eqwalizer::ext_types::TupleExtType;
 use elp_types_db::eqwalizer::ext_types::UnionExtType;
 use elp_types_db::eqwalizer::ext_types::VarExtType;
+use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
@@ -676,21 +678,6 @@ impl StubExpander<'_> {
         Ok(())
     }
 
-    fn add_callback(&mut self, cb: ExternalCallback) -> Result<(), TypeConversionError> {
-        match self.expander.expand_callback(cb) {
-            Ok(cb) => {
-                let cb = self.type_converter.convert_callback(cb)?;
-                self.stub.callbacks.push(cb);
-            }
-            Err(invalid) => {
-                if self.current_file == self.module_file {
-                    self.stub.invalids.push(invalid);
-                }
-            }
-        }
-        Ok(())
-    }
-
     fn add_extra_types(&mut self) {
         if let "erlang" = self.stub.module.as_str() {
             let pos: ast::Pos = {
@@ -715,6 +702,8 @@ impl StubExpander<'_> {
     }
 
     pub fn expand(&mut self, forms: &[ExternalForm]) -> Result<(), TypeConversionError> {
+        let mut callbacks: Vec<Callback> = vec![];
+        let mut optional_callbacks: BTreeSet<Id> = BTreeSet::default();
         for form in forms {
             match form {
                 ExternalForm::File(f) => {
@@ -732,13 +721,25 @@ impl StubExpander<'_> {
                     self.stub.export_types.extend(e.types.iter().cloned());
                 }
                 ExternalForm::ExternalOptionalCallbacks(ocb) => {
-                    self.stub.optional_callbacks.extend(ocb.ids.iter().cloned());
+                    optional_callbacks.extend(ocb.ids.iter().cloned());
                 }
                 ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d.clone())?,
                 ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d.clone())?,
                 ExternalForm::ExternalFunSpec(s) => self.add_spec(s.clone())?,
                 ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r.clone())?,
-                ExternalForm::ExternalCallback(cb) => self.add_callback(cb.clone())?,
+                ExternalForm::ExternalCallback(cb) => {
+                    match self.expander.expand_callback(cb.clone()) {
+                        Ok(cb) => {
+                            let cb = self.type_converter.convert_callback(cb)?;
+                            callbacks.push(cb);
+                        }
+                        Err(invalid) => {
+                            if self.current_file == self.module_file {
+                                self.stub.invalids.push(invalid);
+                            }
+                        }
+                    }
+                }
                 ExternalForm::Module(_)
                 | ExternalForm::Behaviour(_)
                 | ExternalForm::CompileExportAll(_)
@@ -749,6 +750,8 @@ impl StubExpander<'_> {
                 | ExternalForm::TypingAttribute(_) => (),
             }
         }
+        self.stub.callbacks = Arc::new(callbacks);
+        self.stub.optional_callbacks = Arc::new(optional_callbacks);
         self.add_extra_types();
         self.stub.invalids.append(&mut self.expander.invalids);
         Ok(())
