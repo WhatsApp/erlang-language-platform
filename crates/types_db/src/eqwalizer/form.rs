@@ -250,3 +250,9 @@ impl FunSpec {
         serde_json::to_vec(self).unwrap()
     }
 }
+
+impl OverloadedFunSpec {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+}

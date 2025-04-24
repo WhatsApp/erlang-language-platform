@@ -23,6 +23,7 @@ use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use parking_lot::Mutex;
@@ -177,6 +178,20 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
     ) -> Result<Option<Arc<FunSpec>>, Error>;
 
     fn fun_spec_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
+
+    fn overloaded_fun_spec(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<OverloadedFunSpec>>, Error>;
+
+    fn overloaded_fun_spec_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
@@ -439,5 +454,25 @@ fn fun_spec_bytes(
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.fun_spec(project_id, module, id)
+        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
+}
+
+fn overloaded_fun_spec(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<OverloadedFunSpec>>, Error> {
+    let stub = db.transitive_stub(project_id, module)?;
+    Ok(stub.overloaded_specs.get(&id).map(|t| t.clone()))
+}
+
+fn overloaded_fun_spec_bytes(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<Vec<u8>>>, Error> {
+    db.overloaded_fun_spec(project_id, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
