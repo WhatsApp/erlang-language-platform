@@ -118,7 +118,7 @@ fn check_function(
             make_diagnostic(
                 sema,
                 def.file.file_id,
-                ctx.range_mf_only(),
+                ctx.range_mf_or_macro(),
                 &extra.0,
                 extra.2,
                 extra.3.clone(),

@@ -485,8 +485,8 @@ pub struct MatchCtx<'a, Extra> {
     pub target: &'a CallTarget<ExprId>,
     pub args: Args,
     /// Range of the module:fun part of an MFA, if not defined in a
-    /// macro, in which case the macro call location is used.
-    pub range_mf_only: Option<TextRange>,
+    /// macro.
+    pub range_surface_mf: Option<TextRange>,
     pub range: TextRange,
     pub extra: &'a Extra,
 }
@@ -494,14 +494,14 @@ pub struct MatchCtx<'a, Extra> {
 impl<U> MatchCtx<'_, U> {
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
-    pub fn range_mf_only(&self) -> TextRange {
-        self.range_mf_only.unwrap_or(self.range)
+    pub fn range_mf_or_macro(&self) -> TextRange {
+        self.range_surface_mf.unwrap_or(self.range)
     }
 
     pub fn range(&self, use_range: &UseRange) -> TextRange {
         match use_range {
             UseRange::WithArgs => self.range,
-            UseRange::NameOnly => self.range_mf_only(),
+            UseRange::NameOnly => self.range_mf_or_macro(),
         }
     }
 }
@@ -567,7 +567,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                             ctx.item_id
                         };
                         if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
-                            let range_mf_only = if ctx.in_macro.is_none() {
+                            let range_surface_mf = if ctx.in_macro.is_none() {
                                 target.range(in_clause)
                             } else {
                                 // We need to rather use the full range, of the macro
@@ -579,7 +579,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                                 target: &target,
                                 args,
                                 extra: &extra,
-                                range_mf_only,
+                                range_surface_mf,
                                 range: *range,
                             }) {
                                 res.push(diag)
@@ -669,13 +669,9 @@ mod tests {
                        sema,
                        def_fb,
                        extra,
-                       range,
                        ..
                    }: MatchCtx<'_, &str>| {
-                let diag_range = match use_range {
-                    UseRange::WithArgs => range,
-                    UseRange::NameOnly => ctx.range_mf_only(),
-                };
+                let diag_range = ctx.range(&use_range);
                 let diag = Diagnostic::new(
                     DiagnosticCode::AdHoc("test".to_string()),
                     *extra,
@@ -778,6 +774,26 @@ mod tests {
             bar(Config) ->
                 ?MY_MACRO(Config).
             %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            "#,
+        )
+    }
+
+    #[test]
+    fn find_call_in_function_full_range_for_remote_macro() {
+        check_adhoc_function_match_range_mf(
+            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
+            r#"
+            //- /src/main.erl
+            -module(main).
+
+            -include("inc.hrl").
+
+            bar(Config) ->
+                ?MY_MACRO(Config).
+            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+
+            //- /src/inc.hrl
+            -define(MY_MACRO(A), fun() -> foo:fire_bombs(A) end).
             "#,
         )
     }

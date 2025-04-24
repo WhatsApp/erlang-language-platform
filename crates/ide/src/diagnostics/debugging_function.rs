@@ -85,7 +85,7 @@ fn check_function(
         },
         &move |MatchCtx {
                    sema,
-                   range_mf_only,
+                   range_surface_mf,
                    def_fb,
                    extra,
                    ..
@@ -96,7 +96,7 @@ fn check_function(
                     let in_file_ast_ptr = body_map.expr(expr_id)?;
                     let expr_ast = in_file_ast_ptr.to_node(&source_file)?;
                     let range = statement_range(&expr_ast);
-                    make_diagnostic(sema, def.file.file_id, range_mf_only, range)
+                    make_diagnostic(sema, def.file.file_id, range_surface_mf, range)
                 } else {
                     None
                 }
