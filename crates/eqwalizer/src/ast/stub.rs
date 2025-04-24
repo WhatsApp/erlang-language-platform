@@ -28,10 +28,13 @@ pub struct ModuleStub {
     pub exports: BTreeSet<Id>,
     pub imports: BTreeMap<Id, StringId>,
     pub export_types: BTreeSet<Id>,
+    #[serde(skip_serializing)]
     pub opaques: BTreeMap<Id, Arc<TypeDecl>>,
+    #[serde(skip_serializing)]
     pub types: BTreeMap<Id, Arc<TypeDecl>>,
     pub specs: BTreeMap<Id, Arc<FunSpec>>,
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
+    #[serde(skip_serializing)]
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
     pub callbacks: Arc<Vec<Callback>>,
     pub optional_callbacks: Arc<BTreeSet<Id>>,
