@@ -27,6 +27,7 @@ pub struct ModuleStub {
     pub module: StringId,
     pub exports: BTreeSet<Id>,
     pub imports: BTreeMap<Id, StringId>,
+    #[serde(skip_serializing)]
     pub export_types: BTreeSet<Id>,
     #[serde(skip_serializing)]
     pub opaques: BTreeMap<Id, Arc<TypeDecl>>,
