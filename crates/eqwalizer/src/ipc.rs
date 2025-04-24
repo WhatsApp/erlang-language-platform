@@ -84,6 +84,10 @@ pub enum MsgFromEqWAlizer {
         module: String,
         id: StringId,
     },
+    GetFunSpec {
+        module: String,
+        id: Id,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -97,6 +101,7 @@ pub enum MsgToEqWAlizer {
     GetTypeDeclReply { len: u32 },
     GetOpaqueDeclReply { len: u32 },
     GetRecDeclReply { len: u32 },
+    GetFunSpecReply { len: u32 },
 }
 
 pub struct IpcHandle {
