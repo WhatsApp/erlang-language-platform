@@ -28,11 +28,11 @@ pub struct ModuleStub {
     pub exports: BTreeSet<Id>,
     pub imports: BTreeMap<Id, StringId>,
     pub export_types: BTreeSet<Id>,
-    pub opaques: BTreeMap<Id, TypeDecl>,
-    pub types: BTreeMap<Id, TypeDecl>,
-    pub specs: BTreeMap<Id, FunSpec>,
-    pub overloaded_specs: BTreeMap<Id, OverloadedFunSpec>,
-    pub records: BTreeMap<StringId, RecDecl>,
+    pub opaques: BTreeMap<Id, Arc<TypeDecl>>,
+    pub types: BTreeMap<Id, Arc<TypeDecl>>,
+    pub specs: BTreeMap<Id, Arc<FunSpec>>,
+    pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
+    pub records: BTreeMap<StringId, Arc<RecDecl>>,
     pub callbacks: Vec<Callback>,
     pub optional_callbacks: BTreeSet<Id>,
     pub invalids: Vec<Invalid>,
@@ -59,7 +59,7 @@ impl VStub {
 
     pub fn get_type(&self, id: &Id) -> Option<&TypeDecl> {
         if !self.invalid_ids.contains(id) {
-            return self.stub.types.get(id);
+            return self.stub.types.get(id).map(|t| t.as_ref());
         }
         None
     }
@@ -69,11 +69,12 @@ impl VStub {
             .types
             .values()
             .filter(|decl| !self.invalid_ids.contains(&decl.id))
+            .map(|t| t.as_ref())
     }
 
     pub fn get_opaque(&self, id: &Id) -> Option<&TypeDecl> {
         if !self.invalid_ids.contains(id) {
-            return self.stub.opaques.get(id);
+            return self.stub.opaques.get(id).map(|t| t.as_ref());
         }
         None
     }
@@ -83,22 +84,23 @@ impl VStub {
             .opaques
             .values()
             .filter(|decl| !self.invalid_ids.contains(&decl.id))
+            .map(|t| t.as_ref())
     }
 
     pub fn get_record(&self, name: StringId) -> Option<&RecDecl> {
-        self.stub.records.get(&name)
+        self.stub.records.get(&name).map(|r| r.as_ref())
     }
 
     pub fn records(&self) -> impl Iterator<Item = &RecDecl> {
-        self.stub.records.values()
+        self.stub.records.values().map(|r| r.as_ref())
     }
 
     pub fn specs(&self) -> impl Iterator<Item = &FunSpec> {
-        self.stub.specs.values()
+        self.stub.specs.values().map(|s| s.as_ref())
     }
 
     pub fn overloaded_specs(&self) -> impl Iterator<Item = &OverloadedFunSpec> {
-        self.stub.overloaded_specs.values()
+        self.stub.overloaded_specs.values().map(|s| s.as_ref())
     }
 
     pub fn into_normalized_stub(&self) -> ModuleStub {

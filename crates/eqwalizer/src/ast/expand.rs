@@ -16,6 +16,7 @@
 //! type variable does not appear twice in the parameters of a type.
 
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
@@ -604,7 +605,7 @@ impl StubExpander<'_> {
         match self.expander.expand_type_decl(t) {
             Ok(decl) => {
                 let decl = self.type_converter.convert_type_decl(decl)?;
-                self.stub.types.insert(decl.id.clone(), decl);
+                self.stub.types.insert(decl.id.clone(), Arc::new(decl));
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
@@ -621,7 +622,7 @@ impl StubExpander<'_> {
                 let opaque_decl = self.type_converter.convert_opaque_private(decl)?;
                 self.stub
                     .opaques
-                    .insert(opaque_decl.id.clone(), opaque_decl);
+                    .insert(opaque_decl.id.clone(), Arc::new(opaque_decl));
             }
             Err(invalid) => {
                 if self.current_file == self.module_file {
@@ -636,7 +637,7 @@ impl StubExpander<'_> {
         match self.expander.expand_rec_decl(t) {
             Ok(decl) => match self.type_converter.convert_rec_decl(decl)? {
                 Ok(decl) => {
-                    self.stub.records.insert(decl.name, decl);
+                    self.stub.records.insert(decl.name, Arc::new(decl));
                 }
                 Err(invalid) => {
                     if self.current_file == self.module_file {
@@ -658,10 +659,12 @@ impl StubExpander<'_> {
             Ok(decl) => {
                 if decl.types.len() == 1 {
                     let spec = self.type_converter.convert_spec(decl)?;
-                    self.stub.specs.insert(spec.id.clone(), spec);
+                    self.stub.specs.insert(spec.id.clone(), Arc::new(spec));
                 } else {
                     let spec = self.type_converter.convert_overloaded_spec(decl)?;
-                    self.stub.overloaded_specs.insert(spec.id.clone(), spec);
+                    self.stub
+                        .overloaded_specs
+                        .insert(spec.id.clone(), Arc::new(spec));
                 }
             }
             Err(invalid) => {
@@ -706,7 +709,7 @@ impl StubExpander<'_> {
                     params: vec![],
                     body,
                 };
-                self.stub.types.insert(id, decl);
+                self.stub.types.insert(id, Arc::new(decl));
             })
         }
     }
