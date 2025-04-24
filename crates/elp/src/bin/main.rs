@@ -541,7 +541,7 @@ mod tests {
     fn eqwalize_app_diagnostics_match_snapshot_pretty(buck: bool) {
         if otp_supported_by_eqwalizer() {
             simple_snapshot(
-                args_vec!["eqwalize-app", "app_a",],
+                args_vec!["--no-buck-bxl", "eqwalize-app", "app_a",],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_app_diagnostics.pretty"),
                 buck,
@@ -571,7 +571,12 @@ mod tests {
     fn eqwalize_app_diagnostics_match_snapshot_pretty_gen(buck: bool) {
         if otp_supported_by_eqwalizer() {
             simple_snapshot(
-                args_vec!["eqwalize-app", "app_a", "--include-generated",],
+                args_vec![
+                    "--no-buck-bxl",
+                    "eqwalize-app",
+                    "app_a",
+                    "--include-generated",
+                ],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty"),
                 buck,
@@ -620,7 +625,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn parse_all_diagnostics1(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec!["parse-elp", "--module", "diagnostics",],
+            args_vec!["parse-elp", "--no-buck-bxl", "--module", "diagnostics",],
             "diagnostics",
             expect_file!("../resources/test/diagnostics/parse_all_diagnostics1.stdout"),
             buck,
@@ -658,7 +663,14 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_json(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec!["parse-elp", "--module", "diagnostics", "--format", "json"],
+            args_vec![
+                "parse-elp",
+                "--no-buck-bxl",
+                "--module",
+                "diagnostics",
+                "--format",
+                "json"
+            ],
             "diagnostics",
             expect_file!("../resources/test/diagnostics/parse_all_diagnostics_json.stdout"),
             buck,
@@ -875,6 +887,7 @@ mod tests {
             let path_str = project_path(project);
             let args = args_vec![
                 "build-info",
+                "--no-buck-bxl",
                 "--to",
                 tmp_file.clone(),
                 "--project",

@@ -384,6 +384,9 @@ pub struct Args {
     /// Use BXL when querying for a buck project model
     pub buck_bxl: bool,
 
+    /// Do not use BXL when querying for a buck project model
+    pub no_buck_bxl: bool,
+
     /// When using BXL to query for a buck project model, invoke a
     /// build step for generated files. If present, forces `--buck-bxl`.
     pub buck_generated: bool,
@@ -399,8 +402,10 @@ impl Args {
             BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
         } else if self.buck_bxl {
             BuckQueryConfig::Bxl(BuildGeneratedCode::No)
-        } else {
+        } else if self.no_buck_bxl {
             BuckQueryConfig::Original
+        } else {
+            BuckQueryConfig::Bxl(BuildGeneratedCode::No)
         }
     }
 }
