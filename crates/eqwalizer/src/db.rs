@@ -138,6 +138,20 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
+
+    fn opaque_decl(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<TypeDecl>>, Error>;
+
+    fn opaque_decl_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 }
 
 fn module_diagnostics(
@@ -335,5 +349,25 @@ fn type_decl_bytes(
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.type_decl(project_id, module, id)
+        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
+}
+
+fn opaque_decl(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<TypeDecl>>, Error> {
+    let stub = db.transitive_stub(project_id, module)?;
+    Ok(stub.opaques.get(&id).map(|t| t.clone()))
+}
+
+fn opaque_decl_bytes(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<Vec<u8>>>, Error> {
+    db.opaque_decl(project_id, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }

@@ -75,6 +75,10 @@ pub enum MsgFromEqWAlizer {
         module: String,
         id: Id,
     },
+    GetOpaqueDecl {
+        module: String,
+        id: Id,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -86,6 +90,7 @@ pub enum MsgToEqWAlizer {
     InvalidType { len: u32 },
     CannotCompleteRequest,
     GetTypeDeclReply { len: u32 },
+    GetOpaqueDeclReply { len: u32 },
 }
 
 pub struct IpcHandle {
