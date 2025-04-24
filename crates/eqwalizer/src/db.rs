@@ -8,6 +8,7 @@
  */
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::time::Instant;
@@ -21,6 +22,7 @@ use elp_base_db::SourceDatabase;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::Id;
+use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::FunSpec;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
@@ -207,6 +209,18 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         &self,
         project_id: ProjectId,
     ) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<OverloadedFunSpec>>>>, Error>;
+
+    fn callbacks(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+    ) -> Result<(Arc<Vec<Callback>>, Arc<BTreeSet<Id>>), Error>;
+
+    fn callbacks_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+    ) -> Result<Arc<Vec<u8>>, Error>;
 }
 
 fn module_diagnostics(
@@ -570,4 +584,22 @@ fn custom_overloaded_fun_specs(
         Err(Error::ModuleNotFound(_)) => Ok(Arc::new(BTreeMap::new())),
         Err(err) => Err(err),
     }
+}
+
+fn callbacks(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+) -> Result<(Arc<Vec<Callback>>, Arc<BTreeSet<Id>>), Error> {
+    let stub = db.transitive_stub(project_id, module)?;
+    Ok((stub.callbacks.clone(), stub.optional_callbacks.clone()))
+}
+
+fn callbacks_bytes(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+) -> Result<Arc<Vec<u8>>, Error> {
+    db.callbacks(project_id, module)
+        .map(|op| Arc::new(serde_json::to_vec(&op).unwrap()))
 }
