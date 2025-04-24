@@ -673,7 +673,7 @@ fn get_module_diagnostics(
             }
             MsgFromEqWAlizer::GetCallbacks { module } => {
                 match db.callbacks_bytes(project_id, ModuleName::new(&module)) {
-                    Ok(ast_bytes) => {
+                    Ok(Some(ast_bytes)) => {
                         log::debug!("sending to eqwalizer: GetCallbacksReply {}", module);
                         let len = ast_bytes.len().try_into()?;
                         let reply = &MsgToEqWAlizer::GetCallbacksReply { len };
@@ -686,7 +686,7 @@ fn get_module_diagnostics(
                             )
                         })?;
                     }
-                    Err(Error::ModuleNotFound(_)) => {
+                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
                         log::debug!(
                             "module not found, sending to eqwalizer: empty GetCallbacksReply for {}",
                             module

@@ -220,7 +220,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         &self,
         project_id: ProjectId,
         module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
+    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 }
 
 fn module_diagnostics(
@@ -599,7 +599,7 @@ fn callbacks_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
-) -> Result<Arc<Vec<u8>>, Error> {
+) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.callbacks(project_id, module)
-        .map(|op| Arc::new(serde_json::to_vec(&op).unwrap()))
+        .map(|op| Some(Arc::new(serde_json::to_vec(&op).unwrap())))
 }
