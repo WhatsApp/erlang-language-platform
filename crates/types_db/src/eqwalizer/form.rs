@@ -232,3 +232,9 @@ pub struct ExternalRecField {
     pub tp: Option<ext_types::ExtType>,
     pub default_value: Option<expr::Expr>,
 }
+
+impl TypeDecl {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+}

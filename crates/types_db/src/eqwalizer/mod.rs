@@ -117,7 +117,8 @@ impl fmt::Display for RemoteId {
     PartialEq,
     Eq,
     PartialOrd,
-    Ord
+    Ord,
+    Hash
 )]
 pub struct Id {
     pub name: StringId,

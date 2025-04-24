@@ -442,6 +442,53 @@ fn get_module_diagnostics(
                     _ = db.transitive_stub_bytes(project_id, module);
                 });
             }
+            MsgFromEqWAlizer::GetTypeDecl { module, id } => {
+                let type_id = format!("{}:{}/{}", module, id.name, id.arity);
+                match db.type_decl_bytes(project_id, ModuleName::new(&module), id) {
+                    Ok(Some(ast_bytes)) => {
+                        log::debug!("sending to eqwalizer: GetTypeDeclReply {}", type_id);
+                        let len = ast_bytes.len().try_into()?;
+                        let reply = &MsgToEqWAlizer::GetTypeDeclReply { len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                        handle.send_bytes(&ast_bytes).with_context(|| {
+                            format!(
+                                "sending to eqwalizer: bytes for GetTypeDeclReply {}",
+                                type_id
+                            )
+                        })?;
+                    }
+                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
+                        log::debug!(
+                            "type not found, sending to eqwalizer: empty GetTypeDeclReply for {}",
+                            type_id
+                        );
+                        let len = 0;
+                        let reply = &MsgToEqWAlizer::GetTypeDeclReply { len };
+                        handle.send(reply)?;
+                        handle.receive_newline()?;
+                    }
+                    Err(Error::ParseError) => {
+                        log::debug!(
+                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
+                            module
+                        );
+                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
+                        handle.send(reply)?;
+                        return Ok(EqwalizerDiagnostics::NoAst { module });
+                    }
+                    Err(err) => {
+                        log::debug!(
+                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
+                            err,
+                            module
+                        );
+                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
+                        handle.send(reply)?;
+                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
+                    }
+                }
+            }
             msg => {
                 log::warn!(
                     "received unexpected message from eqwalizer, ignoring: {}",

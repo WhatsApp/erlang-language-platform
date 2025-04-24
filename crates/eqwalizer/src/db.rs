@@ -20,6 +20,7 @@ use elp_base_db::SourceDatabase;
 use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::form::ExternalForm;
+use elp_types_db::eqwalizer::form::TypeDecl;
 use parking_lot::Mutex;
 
 use crate::EqwalizerConfig;
@@ -110,11 +111,26 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
+
     fn transitive_stub_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
+
+    fn type_decl(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<TypeDecl>>, Error>;
+
+    fn type_decl_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: Id,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 }
 
 fn module_diagnostics(
@@ -259,4 +275,24 @@ fn transitive_stub_bytes(
 ) -> Result<Arc<Vec<u8>>, Error> {
     db.transitive_stub(project_id, module)
         .map(|stub| Arc::new(stub.to_bytes()))
+}
+
+fn type_decl(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<TypeDecl>>, Error> {
+    let stub = db.transitive_stub(project_id, module)?;
+    Ok(stub.types.get(&id).map(|t| t.clone()))
+}
+
+fn type_decl_bytes(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: Id,
+) -> Result<Option<Arc<Vec<u8>>>, Error> {
+    db.type_decl(project_id, module, id)
+        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }

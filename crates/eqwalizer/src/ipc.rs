@@ -26,6 +26,7 @@ use anyhow::Result;
 use anyhow::bail;
 use elp_base_db::limit_logged_string;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
+use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::ext_types::ExtType;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
@@ -70,6 +71,10 @@ pub enum MsgFromEqWAlizer {
         #[serde(default)]
         type_info: FxHashMap<String, Vec<(Pos, Type)>>,
     },
+    GetTypeDecl {
+        module: String,
+        id: Id,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -80,6 +85,7 @@ pub enum MsgToEqWAlizer {
     ValidatedType { len: u32 },
     InvalidType { len: u32 },
     CannotCompleteRequest,
+    GetTypeDeclReply { len: u32 },
 }
 
 pub struct IpcHandle {
