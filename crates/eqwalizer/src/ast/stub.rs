@@ -38,7 +38,9 @@ pub struct ModuleStub {
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
     #[serde(skip_serializing)]
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
+    #[serde(skip_serializing)]
     pub callbacks: Arc<Vec<Callback>>,
+    #[serde(skip_serializing)]
     pub optional_callbacks: Arc<BTreeSet<Id>>,
     pub invalids: Vec<Invalid>,
 }
