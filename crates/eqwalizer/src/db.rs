@@ -197,6 +197,16 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
+
+    fn custom_fun_specs(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<FunSpec>>>>, Error>;
+
+    fn custom_overloaded_fun_specs(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<OverloadedFunSpec>>>>, Error>;
 }
 
 fn module_diagnostics(
@@ -475,4 +485,62 @@ fn overloaded_fun_spec_bytes(
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.overloaded_fun_spec(project_id, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
+}
+
+static EQWALIZER_SPECS: LazyLock<ModuleName> = LazyLock::new(|| ModuleName::new("eqwalizer_specs"));
+
+fn custom_fun_specs(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<FunSpec>>>>, Error> {
+    match db.transitive_stub(project_id, EQWALIZER_SPECS.clone()) {
+        Ok(stub) => {
+            let mut result: BTreeMap<ModuleName, BTreeMap<Id, Arc<FunSpec>>> = BTreeMap::new();
+            for (id, fun_spec) in stub.specs.iter() {
+                let (module_name, ty_name) = id.name.split_once(':').unwrap();
+                let module = ModuleName::new(module_name);
+                let id = Id {
+                    name: StringId::from(ty_name),
+                    arity: id.arity,
+                };
+                result
+                    .entry(module)
+                    .or_default()
+                    .insert(id, fun_spec.clone());
+            }
+            Ok(Arc::new(result))
+        }
+        // if there is no eqwalizer_specs module, return an empty map
+        Err(Error::ModuleNotFound(_)) => Ok(Arc::new(BTreeMap::new())),
+        Err(err) => Err(err),
+    }
+}
+
+fn custom_overloaded_fun_specs(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<OverloadedFunSpec>>>>, Error> {
+    match db.transitive_stub(project_id, EQWALIZER_SPECS.clone()) {
+        Ok(stub) => {
+            let mut result: BTreeMap<ModuleName, BTreeMap<Id, Arc<OverloadedFunSpec>>> =
+                BTreeMap::new();
+            for (id, overloaded_fun_spec) in stub.overloaded_specs.iter() {
+                let parts: Vec<&str> = id.name.split(":").collect();
+                let module = ModuleName::new(parts[0]);
+                let ty_name = parts[1];
+                let id = Id {
+                    name: ty_name.to_string().into(),
+                    arity: id.arity,
+                };
+                result
+                    .entry(module)
+                    .or_insert_with(BTreeMap::new)
+                    .insert(id, overloaded_fun_spec.clone());
+            }
+            Ok(Arc::new(result))
+        }
+        // if there is no eqwalizer_specs module, return empty map
+        Err(Error::ModuleNotFound(_)) => Ok(Arc::new(BTreeMap::new())),
+        Err(err) => Err(err),
+    }
 }
