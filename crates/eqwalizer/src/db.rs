@@ -453,6 +453,18 @@ fn fun_spec(
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<FunSpec>>, Error> {
+    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project_id)?;
+    if custom_overloaded_fun_specs
+        .get(&module)
+        .and_then(|m| m.get(&id))
+        .is_some()
+    {
+        return Ok(None);
+    }
+    let custom_fun_specs = db.custom_fun_specs(project_id)?;
+    if let Some(fun_spec) = custom_fun_specs.get(&module).and_then(|m| m.get(&id)) {
+        return Ok(Some(fun_spec.clone()));
+    }
     let stub = db.transitive_stub(project_id, module)?;
     Ok(stub.specs.get(&id).map(|t| t.clone()))
 }
@@ -473,6 +485,21 @@ fn overloaded_fun_spec(
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<OverloadedFunSpec>>, Error> {
+    let custom_fun_specs = db.custom_fun_specs(project_id)?;
+    if custom_fun_specs
+        .get(&module)
+        .and_then(|m| m.get(&id))
+        .is_some()
+    {
+        return Ok(None);
+    }
+    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project_id)?;
+    if let Some(overloaded_fun_spec) = custom_overloaded_fun_specs
+        .get(&module)
+        .and_then(|m| m.get(&id))
+    {
+        return Ok(Some(overloaded_fun_spec.clone()));
+    }
     let stub = db.transitive_stub(project_id, module)?;
     Ok(stub.overloaded_specs.get(&id).map(|t| t.clone()))
 }
