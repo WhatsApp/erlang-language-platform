@@ -32,7 +32,9 @@ pub struct ModuleStub {
     pub opaques: BTreeMap<Id, Arc<TypeDecl>>,
     #[serde(skip_serializing)]
     pub types: BTreeMap<Id, Arc<TypeDecl>>,
+    #[serde(skip_serializing)]
     pub specs: BTreeMap<Id, Arc<FunSpec>>,
+    #[serde(skip_serializing)]
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
     #[serde(skip_serializing)]
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
