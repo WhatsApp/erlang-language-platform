@@ -443,278 +443,57 @@ fn get_module_diagnostics(
                 });
             }
             MsgFromEqWAlizer::GetTypeDecl { module, id } => {
-                let type_id = format!("{}:{}/{}", module, id.name, id.arity);
-                match db.type_decl_bytes(project_id, ModuleName::new(&module), id) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetTypeDeclReply {}", type_id);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetTypeDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!(
-                                "sending to eqwalizer: bytes for GetTypeDeclReply {}",
-                                type_id
-                            )
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "type not found, sending to eqwalizer: empty GetTypeDeclReply for {}",
-                            type_id
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetTypeDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetTypeDeclReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             MsgFromEqWAlizer::GetOpaqueDecl { module, id } => {
-                let type_id = format!("{}:{}/{}", module, id.name, id.arity);
-                match db.opaque_decl_bytes(project_id, ModuleName::new(&module), id) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetOpaqueDeclReply {}", type_id);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetOpaqueDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!(
-                                "sending to eqwalizer: bytes for GetOpaqueDeclReply {}",
-                                type_id
-                            )
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "opaque not found, sending to eqwalizer: empty GetOpaqueDeclReply for {}",
-                            type_id
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetOpaqueDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.opaque_decl_bytes(project_id, ModuleName::new(&module), id);
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetOpaqueDeclReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             MsgFromEqWAlizer::GetRecDecl { module, id } => {
-                match db.rec_decl_bytes(project_id, ModuleName::new(&module), id) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetRecDeclReply {}", id);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetRecDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!("sending to eqwalizer: bytes for GetRecDeclReply {}", id)
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "record not found, sending to eqwalizer: empty GetRecDeclReply for {}",
-                            id
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetRecDeclReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetRecDeclReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             MsgFromEqWAlizer::GetFunSpec { module, id } => {
-                let type_id = format!("{}:{}/{}", module, id.name, id.arity);
-                match db.fun_spec_bytes(project_id, ModuleName::new(&module), id) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetFunSpecReply {}", type_id);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetFunSpecReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!(
-                                "sending to eqwalizer: bytes for GetFunSpecReply {}",
-                                type_id
-                            )
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "spec not found, sending to eqwalizer: empty GetFunSpecReply for {}",
-                            type_id
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetFunSpecReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetFunSpecReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
-                let type_id = format!("{}:{}/{}", module, id.name, id.arity);
-                match db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetOverloadedFunSpec {}", type_id);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetOverloadedFunSpecReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!("sending to eqwalizer: bytes for GetFunSpec {}", type_id)
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "overloaded spec not found, sending to eqwalizer: empty GetOverloadedFunSpecReply for {}",
-                            type_id
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetOverloadedFunSpecReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetOverloadedFunSpecReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             MsgFromEqWAlizer::GetCallbacks { module } => {
-                match db.callbacks_bytes(project_id, ModuleName::new(&module)) {
-                    Ok(Some(ast_bytes)) => {
-                        log::debug!("sending to eqwalizer: GetCallbacksReply {}", module);
-                        let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetCallbacksReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
-                            format!(
-                                "sending to eqwalizer: bytes for GetCallbacksReply {}",
-                                module
-                            )
-                        })?;
-                    }
-                    Ok(None) | Err(Error::ModuleNotFound(_)) => {
-                        log::debug!(
-                            "module not found, sending to eqwalizer: empty GetCallbacksReply for {}",
-                            module
-                        );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetCallbacksReply { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                    }
-                    Err(Error::ParseError) => {
-                        log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
-                        );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
-                    }
+                let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
+                match send_bytes(result, &mut *handle, module, |len| {
+                    MsgToEqWAlizer::GetCallbacksReply { len }
+                })? {
+                    Some(error) => return Ok(error),
+                    None => (),
                 }
             }
             msg => {
@@ -723,6 +502,41 @@ fn get_module_diagnostics(
                     limit_logged_string(&format!("{:?}", msg))
                 )
             }
+        }
+    }
+}
+
+fn send_bytes(
+    result: Result<Option<Arc<Vec<u8>>>, Error>,
+    handle: &mut IpcHandle,
+    module: String,
+    reply: fn(u32) -> MsgToEqWAlizer,
+) -> Result<Option<EqwalizerDiagnostics>> {
+    match result {
+        Ok(Some(ast_bytes)) => {
+            let len = ast_bytes.len().try_into()?;
+            let msg = reply(len);
+            handle.send(&msg)?;
+            handle.receive_newline()?;
+            handle.send_bytes(&ast_bytes)?;
+            Ok(None)
+        }
+        Ok(None) | Err(Error::ModuleNotFound(_)) => {
+            let len = 0;
+            let msg = reply(len);
+            handle.send(&msg)?;
+            handle.receive_newline()?;
+            Ok(None)
+        }
+        Err(Error::ParseError) => {
+            let msg = &MsgToEqWAlizer::CannotCompleteRequest;
+            handle.send(msg)?;
+            Ok(Some(EqwalizerDiagnostics::NoAst { module }))
+        }
+        Err(err) => {
+            let msg = &MsgToEqWAlizer::CannotCompleteRequest;
+            handle.send(msg)?;
+            Ok(Some(EqwalizerDiagnostics::Error(err.to_string())))
         }
     }
 }
