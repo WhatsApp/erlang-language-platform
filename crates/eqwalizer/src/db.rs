@@ -9,6 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::time::Instant;
 
 use elp_base_db::AbsPathBuf;
@@ -17,6 +18,7 @@ use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::form::ExternalForm;
@@ -117,6 +119,11 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
+
+    fn custom_types(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<TypeDecl>>>>, Error>;
 
     fn type_decl(
         &self,
@@ -277,12 +284,46 @@ fn transitive_stub_bytes(
         .map(|stub| Arc::new(stub.to_bytes()))
 }
 
+static EQWALIZER_TYPES: LazyLock<ModuleName> = LazyLock::new(|| ModuleName::new("eqwalizer_types"));
+
+fn custom_types(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+) -> Result<Arc<BTreeMap<ModuleName, BTreeMap<Id, Arc<TypeDecl>>>>, Error> {
+    match db.transitive_stub(project_id, EQWALIZER_TYPES.clone()) {
+        Ok(stub) => {
+            let mut result: BTreeMap<ModuleName, BTreeMap<Id, Arc<TypeDecl>>> = BTreeMap::new();
+            for (id, type_decl) in stub.types.iter() {
+                let (module_name, ty_name) = id.name.split_once(':').unwrap();
+                let module = ModuleName::new(module_name);
+                let id = Id {
+                    name: StringId::from(ty_name),
+                    arity: id.arity,
+                };
+                result
+                    .entry(module)
+                    .or_default()
+                    .insert(id, type_decl.clone());
+            }
+            Ok(Arc::new(result))
+        }
+        // if there is no eqwalizer_types module, return empty map
+        Err(Error::ModuleNotFound(_)) => Ok(Arc::new(BTreeMap::new())),
+        Err(err) => Err(err),
+    }
+}
+
 fn type_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<TypeDecl>>, Error> {
+    let custom_types = db.custom_types(project_id)?;
+    // return custom type if it exists
+    if let Some(t) = custom_types.get(&module).and_then(|m| m.get(&id)) {
+        return Ok(Some(t.clone()));
+    }
     let stub = db.transitive_stub(project_id, module)?;
     Ok(stub.types.get(&id).map(|t| t.clone()))
 }
