@@ -238,3 +238,9 @@ impl TypeDecl {
         serde_json::to_vec(self).unwrap()
     }
 }
+
+impl RecDecl {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+}

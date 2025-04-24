@@ -25,6 +25,7 @@ use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
 use elp_base_db::limit_logged_string;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::ext_types::ExtType;
@@ -79,6 +80,10 @@ pub enum MsgFromEqWAlizer {
         module: String,
         id: Id,
     },
+    GetRecDecl {
+        module: String,
+        id: StringId,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -91,6 +96,7 @@ pub enum MsgToEqWAlizer {
     CannotCompleteRequest,
     GetTypeDeclReply { len: u32 },
     GetOpaqueDeclReply { len: u32 },
+    GetRecDeclReply { len: u32 },
 }
 
 pub struct IpcHandle {
