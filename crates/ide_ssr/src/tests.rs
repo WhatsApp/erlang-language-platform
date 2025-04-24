@@ -1166,7 +1166,7 @@ fn ssr_invalid_when_condition_not_literal() {
     expect![[r#"
         "Parse error: Invalid `when` RHS, expecting a literal"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X == Y."));
+    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X == {Y}."));
 }
 
 #[test]
@@ -1175,6 +1175,12 @@ fn ssr_invalid_when_condition_not_compop() {
         "Parse error: Invalid `when` condition"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X = foo."));
+}
+
+#[test]
+fn ssr_match_constant_var_placeholder() {
+    assert_matches("ssr: _@X when _@X == A.", "foo(A) -> 3.", &["A"]);
+    assert_matches("ssr: _@X when _@X == _.", "foo(_) -> 3.", &["_"]);
 }
 
 // ---------------------------------------------------------------------

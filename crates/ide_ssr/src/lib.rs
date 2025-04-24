@@ -105,6 +105,7 @@ mod tests;
 
 pub use errors::SsrError;
 use hir::Strategy;
+use hir::Var;
 pub use matching::Match;
 pub use matching::MatchFailureReason;
 pub use matching::PlaceholderMatch;
@@ -210,7 +211,7 @@ pub struct SsrRule {
 /// A possible condition extracted from the ssr rule `when` clause
 #[derive(Debug)]
 pub enum Condition {
-    Literal(hir::Literal),
+    Literal(GuardLiteral),
     Not(Box<Condition>),
 }
 
@@ -627,15 +628,23 @@ impl std::fmt::Debug for MatchDebugInfo {
     }
 }
 
-fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<&'a Literal> {
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum GuardLiteral {
+    Literal(Literal),
+    Var(Var),
+}
+
+fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<GuardLiteral> {
     let literal = match code {
         SubId::AnyExprId(any_expr_id) => match body.get_any(*any_expr_id) {
             AnyExprRef::Expr(expr) => match expr {
-                Expr::Literal(literal) => Some(literal),
+                Expr::Literal(literal) => Some(GuardLiteral::Literal(literal.clone())),
+                Expr::Var(var) => Some(GuardLiteral::Var(*var)),
                 _ => None,
             },
             AnyExprRef::Pat(pat) => match pat {
-                Pat::Literal(literal) => Some(literal),
+                Pat::Literal(literal) => Some(GuardLiteral::Literal(literal.clone())),
+                Pat::Var(var) => Some(GuardLiteral::Var(*var)),
                 _ => None,
             },
             AnyExprRef::TypeExpr(_) => None,

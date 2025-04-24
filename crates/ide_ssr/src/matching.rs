@@ -460,7 +460,7 @@ impl<'a> Matcher<'a> {
         match condition {
             Condition::Literal(literal) => {
                 if let Some(code_literal) = get_literal_subid(self.code_body, code) {
-                    if code_literal != literal {
+                    if &code_literal != literal {
                         fail_match!("literal match condition failed: literals different");
                     }
                 } else {
