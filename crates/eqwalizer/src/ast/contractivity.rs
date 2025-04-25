@@ -20,7 +20,7 @@
 //! properties on recursive types in finite time, by stopping whenever we
 //! visit an already-seen type.
 //!
-//! The main logic is function `is_foldable`, which checks whether a type
+//! The main logic is function `is_contractive`, which checks whether a type
 //! satisfies these properties, by recursively traversing it while keeping
 //! the history of aliases seen so far.
 //! Whenever we encounter a type alias that is already in the history, and
@@ -188,6 +188,8 @@ pub struct StubContractivityChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: StringId,
+    history: Vec<RemoteType>,
+    productive: Vec<RemoteType>,
 }
 
 impl StubContractivityChecker<'_> {
@@ -200,10 +202,16 @@ impl StubContractivityChecker<'_> {
             db,
             project_id,
             module,
+            history: vec![],
+            productive: vec![],
         }
     }
 
-    fn check_decl(&self, stub: &mut VStub, t: &TypeDecl) -> Result<(), ContractivityCheckError> {
+    fn check_decl(
+        &mut self,
+        stub: &mut VStub,
+        t: &TypeDecl,
+    ) -> Result<(), ContractivityCheckError> {
         let rty = RemoteType {
             id: RemoteId {
                 module: self.module,
@@ -216,11 +224,30 @@ impl StubContractivityChecker<'_> {
                 .map(|var| Type::VarType(var.clone()))
                 .collect(),
         };
-        if !self.is_contractive(&Type::RemoteType(rty))? {
+        assert!(self.history.is_empty());
+        assert!(self.productive.is_empty());
+        if !self.is_contractive(Type::RemoteType(rty))? {
             stub.invalid_ids.insert(t.id.clone());
             stub.invalids.push(self.to_invalid(t));
         }
         Ok(())
+    }
+
+    fn with_productive_history<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        let history = std::mem::take(&mut self.history);
+        let old_productive = self.productive.len();
+        self.productive.extend(history);
+        let res = f(self);
+        let restored = self.productive.drain(old_productive..);
+        self.history.extend(restored);
+        res
+    }
+
+    fn with_history<R>(&mut self, ty: RemoteType, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.history.push(ty);
+        let res = f(self);
+        self.history.pop();
+        res
     }
 
     fn to_invalid(&self, t: &TypeDecl) -> Invalid {
@@ -230,78 +257,46 @@ impl StubContractivityChecker<'_> {
         })
     }
 
-    fn is_contractive(&self, t: &Type) -> Result<bool, ContractivityCheckError> {
-        self.is_foldable(t, &vec![], &vec![])
-    }
-
-    fn is_foldable(
-        &self,
-        ty: &Type,
-        history: &Vec<&RemoteType>,
-        productive_aliases: &Vec<&RemoteType>,
-    ) -> Result<bool, ContractivityCheckError> {
+    fn is_contractive(&mut self, ty: Type) -> Result<bool, ContractivityCheckError> {
         match ty {
             Type::FunType(ft) => {
                 if !ft.forall.is_empty() {
                     return Err(ContractivityCheckError::NonEmptyForall);
                 }
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.is_foldable(&ft.res_ty, &vec![], &new_productive)?
-                    && self.all_foldable(ft.arg_tys.iter(), &vec![], &new_productive)?)
+                self.with_productive_history(|this| {
+                    Ok(this.is_contractive(*ft.res_ty)?
+                        && this.all_contractive(ft.arg_tys.into_iter())?)
+                })
             }
             Type::AnyArityFunType(ft) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.is_foldable(&ft.res_ty, &vec![], &new_productive)?)
+                self.with_productive_history(|this| Ok(this.is_contractive(*ft.res_ty)?))
             }
-            Type::TupleType(tt) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.all_foldable(tt.arg_tys.iter(), &vec![], &new_productive)?)
-            }
+            Type::TupleType(tt) => self
+                .with_productive_history(|this| Ok(this.all_contractive(tt.arg_tys.into_iter())?)),
             Type::ListType(lt) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.is_foldable(&lt.t, &vec![], &new_productive)?)
+                self.with_productive_history(|this| Ok(this.is_contractive(*lt.t)?))
             }
-            Type::UnionType(ut) => {
-                Ok(self.all_foldable(ut.tys.iter(), history, productive_aliases)?)
-            }
-            Type::OpaqueType(ot) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.all_foldable(ot.arg_tys.iter(), &vec![], &new_productive)?)
-            }
-            Type::MapType(mt) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.is_foldable(&mt.k_type, &vec![], &new_productive)?
-                    && self.is_foldable(&mt.v_type, &vec![], &new_productive)?
-                    && self.all_foldable(
-                        mt.props.values().map(|prop| &prop.tp),
-                        &vec![],
-                        &new_productive,
-                    )?)
-            }
-            Type::RefinedRecordType(rt) => {
-                let mut new_productive = productive_aliases.to_owned();
-                new_productive.append(&mut history.to_owned());
-                Ok(self.all_foldable(rt.fields.values(), &vec![], &new_productive)?)
-            }
+            Type::UnionType(ut) => Ok(self.all_contractive(ut.tys.into_iter())?),
+            Type::OpaqueType(ot) => self
+                .with_productive_history(|this| Ok(this.all_contractive(ot.arg_tys.into_iter())?)),
+            Type::MapType(mt) => self.with_productive_history(|this| {
+                Ok(this.is_contractive(*mt.k_type)?
+                    && this.is_contractive(*mt.v_type)?
+                    && this.all_contractive(mt.props.into_values().map(|prop| prop.tp))?)
+            }),
+            Type::RefinedRecordType(rt) => self
+                .with_productive_history(|this| Ok(this.all_contractive(rt.fields.into_values())?)),
             Type::RemoteType(rt) => {
-                if productive_aliases.iter().contains(&rt) {
+                if self.productive.contains(&rt) {
                     return Ok(true);
                 }
-                for &t in history.iter().chain(productive_aliases.iter()) {
+                for t in self.history.iter().chain(self.productive.iter()) {
                     if t.id == rt.id && all_he(t.arg_tys.iter(), rt.arg_tys.iter())? {
                         return Ok(false);
                     }
                 }
-                let mut new_history = history.to_owned();
-                new_history.push(rt);
                 match self.type_decl_body(&rt.id, &rt.arg_tys)? {
-                    Some(typ) => Ok(self.is_foldable(&typ, &new_history, productive_aliases)?),
+                    Some(typ) => self.with_history(rt, |this| Ok(this.is_contractive(typ)?)),
                     None => Ok(true),
                 }
             }
@@ -309,17 +304,12 @@ impl StubContractivityChecker<'_> {
         }
     }
 
-    fn all_foldable<'a, I>(
-        &self,
-        tys: I,
-        history: &Vec<&RemoteType>,
-        productive_aliases: &Vec<&RemoteType>,
-    ) -> Result<bool, ContractivityCheckError>
-    where
-        I: Iterator<Item = &'a Type>,
-    {
+    fn all_contractive(
+        &mut self,
+        tys: impl Iterator<Item = Type>,
+    ) -> Result<bool, ContractivityCheckError> {
         for ty in tys {
-            if !self.is_foldable(ty, history, productive_aliases)? {
+            if !self.is_contractive(ty)? {
                 return Ok(false);
             }
         }
@@ -366,7 +356,7 @@ impl StubContractivityChecker<'_> {
             }))
     }
 
-    pub fn check(&self, stub: Arc<ModuleStub>) -> Result<VStub, ContractivityCheckError> {
+    pub fn check(&mut self, stub: Arc<ModuleStub>) -> Result<VStub, ContractivityCheckError> {
         let mut v_stub = VStub::new(stub.clone());
         for decl in stub.types.values() {
             self.check_decl(&mut v_stub, decl)?

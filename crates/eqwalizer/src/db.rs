@@ -325,7 +325,7 @@ fn contractive_stub(
     module: ModuleName,
 ) -> Result<Arc<VStub>, Error> {
     let stub = db.expanded_stub(project_id, module.clone())?;
-    let checker = StubContractivityChecker::new(db, project_id, module.as_str().into());
+    let mut checker = StubContractivityChecker::new(db, project_id, module.as_str().into());
     checker
         .check(stub)
         .map(Arc::new)
