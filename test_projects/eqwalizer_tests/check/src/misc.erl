@@ -1009,3 +1009,6 @@ orelse5_neg(Validator) ->
 non_exported_id(F) -> F.
 
 -type non_exported_id_t() :: any_fun_type:f1().
+
+-spec mk_map() -> #{'' => ''}.
+mk_map() -> #{'' => ''}.
