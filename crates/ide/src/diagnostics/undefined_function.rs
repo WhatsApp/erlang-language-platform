@@ -460,7 +460,7 @@ foo() -> main:bar().
             -export([loop/0]).
 
             loop() ->
-              timer:sleep(1000),
+              timer:sleep(1_000),
               ?MODULE:loop().
 
             //- /src/timer.erl

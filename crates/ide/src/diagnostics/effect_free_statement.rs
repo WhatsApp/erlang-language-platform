@@ -350,7 +350,7 @@ mod tests {
                 (blah),
             %%  ^^^^^^ 💡 warning: this statement has no effect
                 ok.
-            do_something() -> (42).
+            do_something() -> (abc).
             "#,
         );
     }
@@ -362,10 +362,10 @@ mod tests {
             -module(main).
             test_foo(_Config) ->
                 do_something(),
-                begin 42, blah, ("foo") end,
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
-            %%        ^^ 💡 warning: this statement has no effect
-            %%            ^^^^ 💡 warning: this statement has no effect
+                begin abc, blah, ("foo") end,
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: this statement has no effect
+            %%        ^^^ 💡 warning: this statement has no effect
+            %%             ^^^^ 💡 warning: this statement has no effect
                 begin
                   do_something(),
                   blah,
@@ -373,7 +373,7 @@ mod tests {
                   ok
                 end,
                 ok.
-            do_something() -> (42).
+            do_something() -> (abc).
             "#,
         );
     }

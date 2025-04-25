@@ -1631,7 +1631,7 @@ foo() -> #rec{field1 = 1, f~ield3 = ok, field2 = ""}.
 //- /src/main.erl
 -module(main).
 
--define(FOO, 1).
+-define(FOO, x).
 %%      ^^^
 
 foo() -> ?F~OO.
@@ -1643,7 +1643,7 @@ foo() -> ?F~OO.
 //- /src/main.erl
 -module(main).
 
--define(FOO(), 1).
+-define(FOO(), x).
 %%      ^^^^^
 
 foo(?F~OO()) -> ok.

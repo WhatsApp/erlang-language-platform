@@ -104,6 +104,7 @@ mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
 mod mutable_variable;
+mod nonstandard_integer_formatting;
 mod record_tuple_match;
 mod redundant_assignment;
 mod replace_call;
@@ -878,6 +879,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &inefficient_enumerate::DESCRIPTOR,
         &equality_check_with_unnecessary_operator::DESCRIPTOR,
         &map_insertion_to_syntax::DESCRIPTOR,
+        &nonstandard_integer_formatting::DESCRIPTOR,
         &unnecessary_map_from_list_around_comprehension::DESCRIPTOR,
         &unnecessary_map_to_list_in_comprehension::DESCRIPTOR,
         &unnecessary_fold_to_build_map::DESCRIPTOR,

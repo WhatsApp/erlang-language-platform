@@ -75,6 +75,7 @@ pub enum DiagnosticCode {
     UndocumentedFunction,
     DebuggingFunction,
     EqualityCheckWithUnnecessaryOperator,
+    NonStandardIntegerFormatting,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -211,6 +212,7 @@ impl DiagnosticCode {
             DiagnosticCode::UndocumentedFunction => "W0040".to_string(),
             DiagnosticCode::DebuggingFunction => "W0041".to_string(),
             DiagnosticCode::EqualityCheckWithUnnecessaryOperator => "W0042".to_string(),
+            DiagnosticCode::NonStandardIntegerFormatting => "W0043".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -286,6 +288,9 @@ impl DiagnosticCode {
             DiagnosticCode::UnspecificInclude => "unspecific_include".to_string(),
             DiagnosticCode::EqualityCheckWithUnnecessaryOperator => {
                 "equality_check_with_unnecessary_operator".to_string()
+            }
+            DiagnosticCode::NonStandardIntegerFormatting => {
+                "nonstandard_integer_formatting".to_string()
             }
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
@@ -377,13 +382,15 @@ impl DiagnosticCode {
     pub fn allows_fixme_comment(&self) -> bool {
         // Note: exhaustive match, to make sure new ones get categorized too.
         match self {
-            // True list
+            // True
             DiagnosticCode::MisspelledAttribute => true,
             DiagnosticCode::CrossNodeEval => true,
             DiagnosticCode::MissingCompileWarnMissingSpec => true,
             DiagnosticCode::RecordTupleMatch => true,
             DiagnosticCode::DebuggingFunction => true,
-            // False list
+            DiagnosticCode::NonStandardIntegerFormatting => true,
+
+            // False
             DiagnosticCode::DefaultCodeForEnumIter => false,
             DiagnosticCode::HeadMismatch => false,
             DiagnosticCode::MissingModule => false,

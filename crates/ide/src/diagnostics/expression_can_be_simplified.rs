@@ -340,7 +340,7 @@ mod tests {
             -module(main).
             -define(SOME_CONST, 1).
 
-            foo() -> ?SOME_CONST * 1024.
+            foo() -> ?SOME_CONST * 1_024.
             "#,
         )
     }
