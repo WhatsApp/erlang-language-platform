@@ -51,6 +51,7 @@ use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 
 use super::ContractivityCheckError;
@@ -188,6 +189,7 @@ pub struct StubContractivityChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: StringId,
+    cache: FxHashSet<RemoteId>,
     history: Vec<RemoteType>,
     productive: Vec<RemoteType>,
 }
@@ -202,6 +204,7 @@ impl StubContractivityChecker<'_> {
             db,
             project_id,
             module,
+            cache: FxHashSet::default(),
             history: vec![],
             productive: vec![],
         }
@@ -212,12 +215,13 @@ impl StubContractivityChecker<'_> {
         stub: &mut VStub,
         t: &TypeDecl,
     ) -> Result<(), ContractivityCheckError> {
+        let id = RemoteId {
+            module: self.module,
+            name: t.id.name,
+            arity: t.id.arity,
+        };
         let rty = RemoteType {
-            id: RemoteId {
-                module: self.module,
-                name: t.id.name,
-                arity: t.id.arity,
-            },
+            id: id.clone(),
             arg_tys: t
                 .params
                 .iter()
@@ -226,7 +230,9 @@ impl StubContractivityChecker<'_> {
         };
         assert!(self.history.is_empty());
         assert!(self.productive.is_empty());
-        if !self.is_contractive(Type::RemoteType(rty))? {
+        if self.is_contractive(Type::RemoteType(rty))? {
+            self.cache.insert(id);
+        } else {
             stub.invalid_ids.insert(t.id.clone());
             stub.invalids.push(self.to_invalid(t));
         }
@@ -287,17 +293,55 @@ impl StubContractivityChecker<'_> {
             Type::RefinedRecordType(rt) => self
                 .with_productive_history(|this| Ok(this.all_contractive(rt.fields.into_values())?)),
             Type::RemoteType(rt) => {
-                if self.productive.contains(&rt) {
-                    return Ok(true);
-                }
-                for t in self.history.iter().chain(self.productive.iter()) {
-                    if t.id == rt.id && all_he(t.arg_tys.iter(), rt.arg_tys.iter())? {
+                if !rt.arg_tys.is_empty() {
+                    if self.productive.contains(&rt) {
+                        return Ok(true);
+                    }
+                    for t in self.history.iter().chain(self.productive.iter()) {
+                        if t.id == rt.id && all_he(t.arg_tys.iter(), rt.arg_tys.iter())? {
+                            return Ok(false);
+                        }
+                    }
+                    match self.type_decl_body(&rt.id, &rt.arg_tys)? {
+                        Some(typ) => {
+                            self.with_history(rt.clone(), |this| Ok(this.is_contractive(typ)?))
+                        }
+                        None => Ok(true),
+                    }
+                } else {
+                    // We optimise remote types with no arguments by caching them.
+                    // It's enough to check them once, they'll always have the same
+                    // result.
+                    // We only cache positive result, negative result will become an error
+                    // and the performance of this case is not particularly important.
+                    if self.cache.contains(&rt.id) {
+                        return Ok(true);
+                    }
+                    if self.productive.contains(&rt) {
+                        self.cache.insert(rt.id.clone());
+                        return Ok(true);
+                    }
+                    // The check above checking homomorphic embedding, in case of no arguments,
+                    // boils down to just checking if we've already seen the type.
+                    // We've also already checked the productive aliases, so we just need to
+                    // check the history
+                    if self.history.contains(&rt) {
                         return Ok(false);
                     }
-                }
-                match self.type_decl_body(&rt.id, &rt.arg_tys)? {
-                    Some(typ) => self.with_history(rt, |this| Ok(this.is_contractive(typ)?)),
-                    None => Ok(true),
+                    match self.type_decl_body(&rt.id, &rt.arg_tys)? {
+                        Some(typ) => {
+                            let id = rt.id.clone();
+                            self.with_history(rt, |this| {
+                                if this.is_contractive(typ)? {
+                                    this.cache.insert(id);
+                                    Ok(true)
+                                } else {
+                                    Ok(false)
+                                }
+                            })
+                        }
+                        None => Ok(true),
+                    }
                 }
             }
             _ => Ok(true),
