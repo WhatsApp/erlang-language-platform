@@ -248,11 +248,27 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: pid()
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/refine.erl:183:1
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/refine.erl:183:24
     │
 183 │ opaque2_neg([X, _]) -> X.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+    │                        ^
+    │                        │
+    │                        X.
+Expression has type:   erl_anno:annotation()
+Context expected type: pid()
+    │                        
+
+Because in the expression's type:
+  Here the type is:     tuple()/2 | tuple()/2 | tuple()/2 | tuple()/2 | tuple()/2
+  Context expects type: pid()
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  erl_anno:annotation() is not compatible with pid()
+  because
+  {'file', erl_anno:filename()} | {'generated', erl_anno:generated()} | {'record', erl_anno:record()} | {'text', string()} | {'location', erl_anno:location()} is not compatible with pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:191:7

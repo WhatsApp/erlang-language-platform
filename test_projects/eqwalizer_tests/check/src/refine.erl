@@ -178,7 +178,7 @@ opaque1_neg({X, _}) -> X.
 
 % returns a tuple
 -spec opaque2_neg(
-    gb_sets:iter(atom())) ->
+    erl_anno:anno()) ->
     pid().
 opaque2_neg([X, _]) -> X.
 
