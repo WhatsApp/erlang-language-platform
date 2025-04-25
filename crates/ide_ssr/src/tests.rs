@@ -1389,3 +1389,141 @@ fn ssr_comments_in_match() {
     "#]]
     .assert_debug_eq(&b_match.comments(&sema, &body_map));
 }
+
+#[test]
+fn ssr_underscore_pattern_in_code_does_not_match_atom_in_ssr_single_branch() {
+    assert_matches(
+        "ssr: case X of foo -> 1 end.",
+        "foo(X) -> case X of _ -> 1 end.",
+        &[],
+    )
+}
+
+#[test]
+fn ssr_underscore_pattern_in_code_does_not_match_atom_in_ssr_multi_branch() {
+    assert_matches(
+        "ssr: case X of true -> a; false -> b end.",
+        "foo(X) -> case X of true -> a; _ -> b end.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_patterns_and_branches_correspond() {
+    assert_match_placeholder(
+        "ssr: case X of a -> _@BranchA; _@PatB -> _@BranchB end.",
+        "foo(X) -> case X of a -> branch_a; _ -> branch_b end.",
+        &["case X of a -> branch_a; _ -> branch_b end"],
+        "_@BranchA",
+        expect![[r#"
+            Some(
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 25..33,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(2),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
+            )
+        "#]], // Range from col 25
+    );
+    assert_match_placeholder(
+        "ssr: case X of a -> _@BranchA; _@PatB -> _@BranchB end.",
+        "foo(X) -> case X of a -> branch_a; _ -> branch_b end.",
+        &["case X of a -> branch_a; _ -> branch_b end"],
+        "_@PatB",
+        expect![[r#"
+            Some(
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 35..36,
+                        },
+                        code_id: AnyExprId(
+                            Pat(
+                                Idx::<Pat>(2),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
+            )
+        "#]], // Range from col 35
+    );
+    assert_match_placeholder(
+        "ssr: case X of a -> _@BranchA; _@PatB -> _@BranchB end.",
+        "foo(X) -> case X of a -> branch_a; _ -> branch_b end.",
+        &["case X of a -> branch_a; _ -> branch_b end"],
+        "_@BranchB",
+        expect![[r#"
+            Some(
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 40..48,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(3),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
+            )
+        "#]], // Range from col 40
+    );
+}
+
+#[test]
+fn ssr_placeholder_does_not_match_already_matched_arm() {
+    assert_match_placeholder(
+        "ssr: case X of foo -> bar; _@Pat -> _@Branch end.",
+        "foo(X) -> case X of foo -> bar; pat -> branch end.",
+        &["case X of foo -> bar; pat -> branch end"],
+        "_@Pat",
+        expect![[r#"
+            Some(
+                [
+                    PlaceholderMatch {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 32..35,
+                        },
+                        code_id: AnyExprId(
+                            Pat(
+                                Idx::<Pat>(2),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
+            )
+        "#]],
+    )
+}

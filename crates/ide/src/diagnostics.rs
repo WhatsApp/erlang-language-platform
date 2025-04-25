@@ -85,6 +85,7 @@ mod dependent_header;
 mod deprecated_function;
 mod edoc;
 mod effect_free_statement;
+mod equality_check_with_unnecessary_operator;
 mod eqwalizer_assists;
 mod expression_can_be_simplified;
 mod from_config;
@@ -875,6 +876,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &inefficient_last::DESCRIPTOR,
         &inefficient_flatlength::DESCRIPTOR,
         &inefficient_enumerate::DESCRIPTOR,
+        &equality_check_with_unnecessary_operator::DESCRIPTOR,
         &map_insertion_to_syntax::DESCRIPTOR,
         &unnecessary_map_from_list_around_comprehension::DESCRIPTOR,
         &unnecessary_map_to_list_in_comprehension::DESCRIPTOR,

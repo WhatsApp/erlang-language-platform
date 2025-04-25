@@ -74,6 +74,7 @@ pub enum DiagnosticCode {
     MacroPrecedenceEscape,
     UndocumentedFunction,
     DebuggingFunction,
+    EqualityCheckWithUnnecessaryOperator,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -209,6 +210,7 @@ impl DiagnosticCode {
             DiagnosticCode::MacroPrecedenceEscape => "W0039".to_string(),
             DiagnosticCode::UndocumentedFunction => "W0040".to_string(),
             DiagnosticCode::DebuggingFunction => "W0041".to_string(),
+            DiagnosticCode::EqualityCheckWithUnnecessaryOperator => "W0042".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -282,6 +284,9 @@ impl DiagnosticCode {
                 "unnecessary_map_from_list_around_comprehension".to_string()
             }
             DiagnosticCode::UnspecificInclude => "unspecific_include".to_string(),
+            DiagnosticCode::EqualityCheckWithUnnecessaryOperator => {
+                "equality_check_with_unnecessary_operator".to_string()
+            }
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
@@ -410,6 +415,7 @@ impl DiagnosticCode {
             DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => false,
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => false,
             DiagnosticCode::UnnecessaryMapFromListAroundComprehension => false,
+            DiagnosticCode::EqualityCheckWithUnnecessaryOperator => false,
             DiagnosticCode::CannotEvaluateCTCallbacks => false,
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
             DiagnosticCode::AtomsExhaustion => false,
