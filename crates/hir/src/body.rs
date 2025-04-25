@@ -646,7 +646,17 @@ impl FunctionClauseBody {
     }
 
     pub fn tree_print(&self, db: &dyn InternDatabase) -> String {
-        tree_print::print_function_clause(db, self)
+        self.tree_print_with_strategy(
+            db,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+        )
+    }
+
+    pub fn tree_print_with_strategy(&self, db: &dyn InternDatabase, strategy: Strategy) -> String {
+        tree_print::print_function_clause_with_strategy(db, self, strategy)
     }
 
     pub fn fold<T>(&self, strategy: Strategy, initial: T, callback: AnyCallBack<'_, T>) -> T {
@@ -716,6 +726,15 @@ impl TypeBody {
 
     pub fn tree_print(&self, db: &dyn InternDatabase, form: &TypeAlias) -> String {
         tree_print::print_type_alias(db, self, form)
+    }
+
+    pub fn tree_print_with_strategy(
+        &self,
+        db: &dyn InternDatabase,
+        form: &TypeAlias,
+        strategy: Strategy,
+    ) -> String {
+        tree_print::print_type_alias_with_strategy(db, self, form, strategy)
     }
 }
 

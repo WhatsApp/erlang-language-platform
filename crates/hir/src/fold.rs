@@ -954,8 +954,17 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_def: _,
                 macro_name: _,
             } => {
-                let r = self.do_fold_pat(*expansion, acc);
-                args.iter().fold(r, |acc, arg| self.do_fold_expr(*arg, acc))
+                if self.strategy.macros == MacroStrategy::DoNotExpand {
+                    self.do_fold_exprs(args, acc)
+                } else {
+                    self.macro_stack.push(HirIdx {
+                        body_origin: self.body_origin,
+                        idx: AnyExprId::Pat(pat_id),
+                    });
+                    let e = self.do_fold_pat(*expansion, acc);
+                    self.macro_stack.pop();
+                    e
+                }
             }
             crate::Pat::Paren { pat } => self.do_fold_pat(*pat, acc),
             crate::Pat::SsrPlaceholder(_) => acc,
@@ -1446,10 +1455,21 @@ bar() ->
                         (in_macro, not_in_macro)
                     }
                 }
+                AnyExpr::Pat(Pat::Literal(Literal::Atom(atom))) => {
+                    if atom == hir_atom {
+                        if ctx.in_macro.is_some() {
+                            (in_macro + 1, not_in_macro)
+                        } else {
+                            (in_macro, not_in_macro + 1)
+                        }
+                    } else {
+                        (in_macro, not_in_macro)
+                    }
+                }
                 _ => (in_macro, not_in_macro),
             },
         );
-        tree_expect.assert_eq(&function_body.tree_print(&db));
+        tree_expect.assert_eq(&function_body.tree_print_with_strategy(&db, strategy));
 
         r_expect.assert_debug_eq(&r);
     }
@@ -1476,9 +1496,14 @@ bar() ->
                     guards
                     exprs
                         Expr<8>:Expr::Block {
-                            Expr<5>:Expr::Tuple {
-                                Expr<1>:Literal(Atom('foo')),
-                                Expr<2>:Literal(Atom('foo')),
+                            Expr<5>:Expr::MacroCall {
+                                args
+                                    Expr<4>:Literal(Atom('foo')),
+                                expansion
+                                    Expr<3>:Expr::Tuple {
+                                        Expr<1>:Literal(Atom('foo')),
+                                        Expr<2>:Literal(Atom('foo')),
+                                    }
                             },
                             Expr<7>:Expr::Tuple {
                                 Expr<6>:Literal(Atom('foo')),
@@ -1517,9 +1542,9 @@ bar() ->
                     guards
                     exprs
                         Expr<8>:Expr::Block {
-                            Expr<5>:Expr::Tuple {
-                                Expr<1>:Literal(Atom('foo')),
-                                Expr<2>:Literal(Atom('foo')),
+                            Expr<5>:Expr::MacroCall {
+                                args
+                                    Expr<4>:Literal(Atom('foo')),
                             },
                             Expr<7>:Expr::Tuple {
                                 Expr<6>:Literal(Atom('foo')),
@@ -1574,6 +1599,120 @@ bar() ->
                 3,
             )
         "#]],
+        )
+    }
+
+    #[test]
+    fn macro_aware_full_traversal_pat_macrocall_full() {
+        check_macros_expr(
+            Strategy {
+                macros: MacroStrategy::ExpandButIncludeMacroCall,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            r#"
+             -define(AA, {foo,foo,foo}).
+             bar(XX) ->
+               begin %% clause.exprs[0]
+                 case XX of 
+                   ?AA -> ok
+                 end,
+                 {fo~o}
+               end.
+            "#,
+            expect![[r#"
+
+                Clause {
+                    pats
+                        Pat<0>:Pat::Var(XX),
+                    guards
+                    exprs
+                        Expr<6>:Expr::Block {
+                            Expr<3>:Expr::Case {
+                                expr
+                                    Expr<1>:Expr::Var(XX)
+                                clauses
+                                    CRClause {
+                                        pat
+                                            Pat<5>:Pat::MacroCall {
+                                                args
+                                                expansion
+                                                    Pat<4>:Pat::Tuple {
+                                                        Pat<1>:Literal(Atom('foo')),
+                                                        Pat<2>:Literal(Atom('foo')),
+                                                        Pat<3>:Literal(Atom('foo')),
+                                                    }
+                                            }
+                                        guards
+                                        exprs
+                                            Expr<2>:Literal(Atom('ok')),
+                                    }
+                            },
+                            Expr<5>:Expr::Tuple {
+                                Expr<4>:Literal(Atom('foo')),
+                            },
+                        },
+                }
+            "#]],
+            expect![[r#"
+                (
+                    3,
+                    1,
+                )
+            "#]],
+        )
+    }
+
+    #[test]
+    fn macro_aware_full_traversal_pat_macrocall_noexpand() {
+        check_macros_expr(
+            Strategy {
+                macros: MacroStrategy::DoNotExpand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            r#"
+             -define(AA, {foo,foo,foo}).
+             bar(XX) ->
+               begin %% clause.exprs[0]
+                 case XX of 
+                   ?AA -> ok
+                 end,
+                 {fo~o}
+               end.
+            "#,
+            expect![[r#"
+
+                Clause {
+                    pats
+                        Pat<0>:Pat::Var(XX),
+                    guards
+                    exprs
+                        Expr<6>:Expr::Block {
+                            Expr<3>:Expr::Case {
+                                expr
+                                    Expr<1>:Expr::Var(XX)
+                                clauses
+                                    CRClause {
+                                        pat
+                                            Pat<5>:Pat::MacroCall {
+                                                args
+                                            }
+                                        guards
+                                        exprs
+                                            Expr<2>:Literal(Atom('ok')),
+                                    }
+                            },
+                            Expr<5>:Expr::Tuple {
+                                Expr<4>:Literal(Atom('foo')),
+                            },
+                        },
+                }
+            "#]],
+            expect![[r#"
+                (
+                    0,
+                    1,
+                )
+            "#]],
         )
     }
 
@@ -1790,7 +1929,7 @@ bar() ->
                 _ => (in_macro, not_in_macro),
             },
         );
-        tree_expect.assert_eq(&type_alias_body.tree_print(&db, type_alias));
+        tree_expect.assert_eq(&type_alias_body.tree_print_with_strategy(&db, type_alias, strategy));
 
         r_expect.assert_debug_eq(&r);
     }
@@ -1810,9 +1949,14 @@ bar() ->
 
                 -type baz() :: TypeExpr::Tuple {
                     Literal(Atom('foo')),
-                    TypeExpr::Tuple {
-                        Literal(Atom('foo')),
-                        Literal(Atom('foo')),
+                    TypeExpr::MacroCall {
+                        args
+                            Expr<0>:Literal(Atom('foo')),
+                        expansion
+                            TypeExpr::Tuple {
+                                Literal(Atom('foo')),
+                                Literal(Atom('foo')),
+                            }
                     },
                 }.
             "#]],
@@ -1840,12 +1984,12 @@ bar() ->
 
                 -type baz() :: TypeExpr::Tuple {
                     Literal(Atom('foo')),
-                    TypeExpr::Tuple {
-                        Literal(Atom('foo')),
-                        Literal(Atom('foo')),
+                    TypeExpr::MacroCall {
+                        args
+                            Expr<0>:Literal(Atom('foo')),
                     },
                 }.
-        "#]],
+            "#]],
             expect![[r#"
             (
                 0,

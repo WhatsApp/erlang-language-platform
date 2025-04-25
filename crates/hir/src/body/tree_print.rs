@@ -52,6 +52,8 @@ use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::SsrPlaceholder;
+use crate::fold::MacroStrategy;
+use crate::fold::ParenStrategy;
 use crate::fold::default_fold_body;
 use crate::fold::fold_body;
 
@@ -133,7 +135,7 @@ pub(crate) fn print_function(
         write!(out, "{}", sep).unwrap();
         sep = ";";
         let fold_body = fold_body(strategy, &clause.body);
-        let mut printer = Printer::new(db, &fold_body);
+        let mut printer = Printer::new_with_strategy(db, &fold_body, strategy);
         printer.print_clause(&clause.clause);
         write!(out, "{}", printer.result_raw()).unwrap();
     }
@@ -142,14 +144,29 @@ pub(crate) fn print_function(
     out
 }
 
+#[allow(dead_code)] // This is used for debugging
 pub(crate) fn print_function_clause(
     db: &dyn InternDatabase,
     clause: &FunctionClauseBody,
 ) -> String {
+    print_function_clause_with_strategy(
+        db,
+        clause,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+    )
+}
+pub(crate) fn print_function_clause_with_strategy(
+    db: &dyn InternDatabase,
+    clause: &FunctionClauseBody,
+    strategy: Strategy,
+) -> String {
     let mut out = String::new();
 
-    let fold_body = default_fold_body(&clause.body);
-    let mut printer = Printer::new(db, &fold_body);
+    let fold_body = fold_body(strategy, &clause.body);
+    let mut printer = Printer::new_with_strategy(db, &fold_body, strategy);
     printer.print_clause(&clause.clause);
     write!(out, "{}", printer.result_raw()).unwrap();
     writeln!(out).unwrap();
@@ -162,8 +179,25 @@ pub(crate) fn print_type_alias(
     body: &crate::TypeBody,
     form: &crate::TypeAlias,
 ) -> String {
-    let fold_body = default_fold_body(&body.body);
-    let mut printer = Printer::new(db, &fold_body);
+    print_type_alias_with_strategy(
+        db,
+        body,
+        form,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+    )
+}
+
+pub(crate) fn print_type_alias_with_strategy(
+    db: &dyn InternDatabase,
+    body: &crate::TypeBody,
+    form: &crate::TypeAlias,
+    strategy: Strategy,
+) -> String {
+    let fold_body = fold_body(strategy, &body.body);
+    let mut printer = Printer::new_with_strategy(db, &fold_body, strategy);
 
     match form {
         TypeAlias::Regular { .. } => write!(printer, "-type ").unwrap(),
@@ -282,6 +316,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
 struct Printer<'a> {
     db: &'a dyn InternDatabase,
     body: &'a FoldBody<'a>,
+    expand_macros: bool,
     buf: String,
     indent_level: usize,
     needs_indent: bool,
@@ -293,6 +328,23 @@ impl<'a> Printer<'a> {
         Printer {
             db,
             body,
+            expand_macros: true,
+            buf: String::new(),
+            indent_level: 0,
+            needs_indent: true,
+            include_id: true,
+        }
+    }
+
+    fn new_with_strategy(
+        db: &'a dyn InternDatabase,
+        body: &'a FoldBody,
+        strategy: Strategy,
+    ) -> Self {
+        Printer {
+            db,
+            body,
+            expand_macros: strategy.macros != MacroStrategy::DoNotExpand,
             buf: String::new(),
             indent_level: 0,
             needs_indent: true,
@@ -481,7 +533,11 @@ impl<'a> Printer<'a> {
             } => {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
-                    this.print_labelled("expansion", true, &mut |this| this.print_expr(expansion));
+                    if this.expand_macros {
+                        this.print_labelled("expansion", true, &mut |this| {
+                            this.print_expr(expansion)
+                        });
+                    }
                 });
             }
             Expr::Call { target, args } => {
@@ -791,7 +847,11 @@ impl<'a> Printer<'a> {
             } => {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
-                    this.print_labelled("expansion", true, &mut |this| this.print_pat(expansion));
+                    if this.expand_macros {
+                        this.print_labelled("expansion", true, &mut |this| {
+                            this.print_pat(expansion)
+                        });
+                    }
                 });
             }
             Pat::Paren { pat } => {
@@ -884,11 +944,20 @@ impl<'a> Printer<'a> {
                 });
             }
             Term::MacroCall {
-                expansion: _,
-                args: _,
+                expansion,
+                args,
                 macro_def: _,
                 macro_name: _,
-            } => todo!(),
+            } => {
+                self.print_herald("Term::MacroCall", &mut |this| {
+                    this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    if this.expand_macros {
+                        this.print_labelled("expansion", true, &mut |this| {
+                            this.print_term(expansion)
+                        });
+                    }
+                });
+            }
         }
     }
 
@@ -1044,11 +1113,20 @@ impl<'a> Printer<'a> {
                 write!(self, "TypeExpr::Var({})", self.db.lookup_var(*var)).ok();
             }
             TypeExpr::MacroCall {
-                expansion: _,
-                args: _,
+                expansion,
+                args,
                 macro_def: _,
                 macro_name: _,
-            } => todo!(),
+            } => {
+                self.print_herald("TypeExpr::MacroCall", &mut |this| {
+                    this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    if this.expand_macros {
+                        this.print_labelled("expansion", true, &mut |this| {
+                            this.print_type(expansion)
+                        });
+                    }
+                });
+            }
             TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
