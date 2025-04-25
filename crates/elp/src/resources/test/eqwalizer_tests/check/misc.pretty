@@ -798,6 +798,26 @@ Because in the expression's type:
   'v2_op' is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+    ┌─ check/src/misc.erl:760:1
+    │
+760 │ -opaque o_cycle() :: opaque:o_cycle().
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type o_cycle/0 is not productive
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+    ┌─ check/src/misc.erl:762:1
+    │  
+762 │ ╭ -spec use_o_cycle1(misc:o_cycle()) ->
+763 │ │     opaque:o_cycle().
+    │ ╰────────────────────^ use_o_cycle1/1 references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+    ┌─ check/src/misc.erl:766:1
+    │  
+766 │ ╭ -spec use_o_cycle2(opaque:o_cycle()) ->
+767 │ │     misc:o_cycle().
+    │ ╰──────────────────^ use_o_cycle2/1 references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
+
+error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/misc.erl:783:1
     │  
 783 │ ╭ -type x_cycle() ::
@@ -823,7 +843,8 @@ Context expected type: sets:set()
 
 Because in the expression's type:
   Here the type is:     []
-  Context expects type: opaque sets:set(term())
+  Context expects type: #set{} | #{term() => []}
+  No candidate matches in the expected union.
 
 ------------------------------ Detailed message ------------------------------
 
@@ -831,7 +852,9 @@ Because in the expression's type:
   because
   [] is not compatible with sets:set()
   because
-  [] is not compatible with opaque sets:set(term())
+  [] is not compatible with sets:set(term())
+  because
+  [] is not compatible with #set{} | #{term() => []}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:850:5
@@ -985,4 +1008,4 @@ error: non_exported_id (See https://fb.me/eqwalizer_errors#non_exported_id)
 1011 │ -type non_exported_id_t() :: any_fun_type:f1().
      │                              ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
 
-90 ERRORS
+93 ERRORS

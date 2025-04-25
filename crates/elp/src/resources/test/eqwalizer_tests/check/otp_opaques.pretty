@@ -10,16 +10,23 @@ Context expected type: gb_sets:set(number())
    │     
 
 Because in the expression's type:
-  Opaque gb_sets:set/1(
-    Here the type is:     atom()
-    Context expects type: number()
-  )
+  { number(), 
+    { 
+      Here the type is:     atom()
+      Context expects type: number()
+    , term(), term()}
+  }
 
 ------------------------------ Detailed message ------------------------------
 
-  opaque gb_sets:set(atom()) is not compatible with opaque gb_sets:set(number())
+  gb_sets:set(atom()) is not compatible with gb_sets:set(number())
   because
-  atom() is not compatible with number()
+  {number(), gb_sets:gb_set_node(atom())} is not compatible with gb_sets:set(number())
+  because
+  at tuple index 2:
+  {number(), gb_sets:gb_set_node(atom())} is not compatible with {number(), gb_sets:gb_set_node(number())}
+  because
+  gb_sets:gb_set_node(atom()) is not compatible with gb_sets:gb_set_node(number())
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:42:5
@@ -45,28 +52,6 @@ Because in the expression's type:
   [A] is not compatible with A
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/otp_opaques.erl:93:14
-   │
-93 │         1 -> gb_sets:new();
-   │              ^^^^^^^^^^^^^
-   │              │
-   │              gb_sets:new().
-Expression has type:   gb_sets:set(none())
-Context expected type: {term(), term()} | 'a'
-   │              
-
-Because in the expression's type:
-  Here the type is:     opaque gb_sets:set(none())
-  Context expects type: {term(), term()} | 'a'
-  No candidate matches in the expected union.
-
------------------------------- Detailed message ------------------------------
-
-  opaque gb_sets:set(none()) is not compatible with {term(), term()} | 'a'
-  because
-  opaque gb_sets:set(none()) is not compatible with {term(), term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:99:17
    │
 99 │ test3_neg(X) -> X.
@@ -78,15 +63,24 @@ Context expected type: sets:set('a')
    │                 
 
 Because in the expression's type:
-  Here the type is:     opaque maps:iterator('k', 'v')
-  Context expects type: opaque sets:set('a')
+  Here the type is:     tuple()/3 | 'none' | [...] | [...]
+  Context expects type: #set{} | #{a => []}
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  maps:iterator('k', 'v') is not compatible with sets:set('a')
+  because
+  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with sets:set('a')
+  because
+  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with #set{} | #{a => []}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:102:13
     │
 102 │ ts(X, X) -> X.
     │             ^ X.
-Expression has type:   opaque sets:set('a')
+Expression has type:   #set{} | #{a => []}
 Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -101,8 +95,17 @@ Context expected type: sets:set('a')
     │           
 
 Because in the expression's type:
-  Here the type is:     opaque maps:iterator('k', 'v')
-  Context expects type: opaque sets:set('a')
+  Here the type is:     tuple()/3 | 'none' | [...] | [...]
+  Context expects type: #set{} | #{a => []}
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  maps:iterator('k', 'v') is not compatible with sets:set('a')
+  because
+  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with sets:set('a')
+  because
+  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with #set{} | #{a => []}
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/otp_opaques.erl:124:5
@@ -120,4 +123,4 @@ error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
 Expected fun type with arity 0
 Got: sets:set('a')
 
-8 ERRORS
+7 ERRORS

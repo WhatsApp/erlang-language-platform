@@ -938,7 +938,13 @@ Context expected type: queue:queue(Item)
 
 Because in the expression's type:
   Here the type is:     'not_a_queue'
-  Context expects type: opaque queue:queue(Item)
+  Context expects type: {[Item], [Item]}
+
+------------------------------ Detailed message ------------------------------
+
+  'not_a_queue' is not compatible with queue:queue(Item)
+  because
+  'not_a_queue' is not compatible with {[Item], [Item]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:839:9
@@ -953,7 +959,13 @@ Context expected type: queue:queue(dynamic())
 
 Because in the expression's type:
   Here the type is:     'not_a_queue'
-  Context expects type: opaque queue:queue(dynamic())
+  Context expects type: {[dynamic()], [dynamic()]}
+
+------------------------------ Detailed message ------------------------------
+
+  'not_a_queue' is not compatible with queue:queue(dynamic())
+  because
+  'not_a_queue' is not compatible with {[dynamic()], [dynamic()]}
 
 error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
     ┌─ check/src/custom.erl:846:9
@@ -2735,19 +2747,24 @@ Context expected type: queue:queue(number())
      │   ╰─────' 
 
 Because in the expression's type:
-  Opaque queue:queue/1(
-    Here the type is a union type with some valid candidates: number()
-    However the following candidate: atom()
-    Differs from the expected type:  number()
-  )
+  { 
+    [
+      Here the type is a union type with some valid candidates: number()
+      However the following candidate: atom()
+      Differs from the expected type:  number()
+    ]
+  , [atom() | number()]}
 
 ------------------------------ Detailed message ------------------------------
 
-  opaque queue:queue(atom() | number()) is not compatible with opaque queue:queue(number())
+  queue:queue(atom() | number()) is not compatible with queue:queue(number())
   because
-  atom() | number() is not compatible with number()
+  {[atom() | number()], [atom() | number()]} is not compatible with queue:queue(number())
   because
-  atom() is not compatible with number()
+  at tuple index 1:
+  {[atom() | number()], [atom() | number()]} is not compatible with {[number()], [number()]}
+  because
+  [atom() | number()] is not compatible with [number()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2191:5

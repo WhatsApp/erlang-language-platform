@@ -111,7 +111,6 @@ use elp_types_db::eqwalizer::form::ExportTypeAttr;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
-use elp_types_db::eqwalizer::form::ExternalOpaqueDecl;
 use elp_types_db::eqwalizer::form::ExternalOptionalCallbacks;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
@@ -403,7 +402,7 @@ impl Converter {
                         .iter()
                         .map(|v| self.convert_varname(v))
                         .collect::<Result<Vec<_>, _>>()?;
-                    return Ok(Some(ExternalForm::ExternalOpaqueDecl(ExternalOpaqueDecl {
+                    return Ok(Some(ExternalForm::ExternalTypeDecl(ExternalTypeDecl {
                         pos,
                         id,
                         params,

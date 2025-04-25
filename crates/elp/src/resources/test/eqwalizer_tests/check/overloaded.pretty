@@ -45,14 +45,6 @@ Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
 expected union does not contain any tuple type of size 1
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/overloaded.erl:141:5
-    │
-141 │     Map.
-    │     ^^^ Map.
-Expression has type:   opaque maps:iterator(Key, Value)
-Context expected type: #{Key => Value}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:198:37
     │
 198 │ overlap_neg_1(X) when is_atom(X) -> 1;
@@ -158,4 +150,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'b'
 Context expected type: 'a'
 
-15 ERRORS
+14 ERRORS
