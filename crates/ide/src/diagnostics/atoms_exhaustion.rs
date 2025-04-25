@@ -16,7 +16,6 @@ use text_edit::TextRange;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
 use crate::FunctionMatch;
-use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::find_call_in_function;
 // @fb-only
@@ -78,20 +77,15 @@ fn check_function(
         sema,
         def,
         mfas,
-        &move |CheckCallCtx {
-                   args,
-                   in_clause,
-                   parents,
-                   ..
-               }: CheckCallCtx<'_, ()>| {
+        &move |ctx| {
             // @fb-only
                 // @fb-only
             let is_safe = false; // @oss-only
             if !is_safe {
-                match args.as_vec()[..] {
+                match ctx.args.as_vec()[..] {
                     [_, options] => {
-                        let body = in_clause.body();
-                        match &body[options].literal_list_contains_atom(in_clause, "safe") {
+                        let body = ctx.in_clause.body();
+                        match &body[options].literal_list_contains_atom(ctx.in_clause, "safe") {
                             Some(true) => None,
                             _ => Some(("".to_string(), "".to_string())),
                         }
