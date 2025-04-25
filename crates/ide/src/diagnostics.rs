@@ -109,6 +109,7 @@ mod record_tuple_match;
 mod redundant_assignment;
 mod replace_call;
 mod replace_in_spec;
+mod simplify_negation;
 mod slow_functions;
 mod trivial_match;
 mod undefined_function;
@@ -874,6 +875,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unused_record_field::DESCRIPTOR,
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
+        &simplify_negation::DESCRIPTOR,
         &inefficient_last::DESCRIPTOR,
         &inefficient_flatlength::DESCRIPTOR,
         &inefficient_enumerate::DESCRIPTOR,

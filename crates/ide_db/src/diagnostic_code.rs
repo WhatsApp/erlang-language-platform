@@ -76,6 +76,7 @@ pub enum DiagnosticCode {
     DebuggingFunction,
     EqualityCheckWithUnnecessaryOperator,
     NonStandardIntegerFormatting,
+    SimplifyNegation,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -213,6 +214,7 @@ impl DiagnosticCode {
             DiagnosticCode::DebuggingFunction => "W0041".to_string(),
             DiagnosticCode::EqualityCheckWithUnnecessaryOperator => "W0042".to_string(),
             DiagnosticCode::NonStandardIntegerFormatting => "W0043".to_string(),
+            DiagnosticCode::SimplifyNegation => "W0044".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -292,6 +294,7 @@ impl DiagnosticCode {
             DiagnosticCode::NonStandardIntegerFormatting => {
                 "nonstandard_integer_formatting".to_string()
             }
+            DiagnosticCode::SimplifyNegation => "simplify_negation".to_string(),
             DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
@@ -423,6 +426,7 @@ impl DiagnosticCode {
             DiagnosticCode::UnnecessaryFoldToBuildMapFromList => false,
             DiagnosticCode::UnnecessaryMapFromListAroundComprehension => false,
             DiagnosticCode::EqualityCheckWithUnnecessaryOperator => false,
+            DiagnosticCode::SimplifyNegation => false,
             DiagnosticCode::CannotEvaluateCTCallbacks => false,
             DiagnosticCode::MeckMissingNoLinkInInitPerSuite => false,
             DiagnosticCode::AtomsExhaustion => false,
