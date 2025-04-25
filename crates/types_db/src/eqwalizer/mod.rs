@@ -152,6 +152,16 @@ impl std::str::FromStr for Id {
     }
 }
 
+impl Id {
+    pub fn into_remote(self, modoule: StringId) -> RemoteId {
+        RemoteId {
+            module: modoule,
+            name: self.name,
+            arity: self.arity,
+        }
+    }
+}
+
 impl From<RemoteId> for Id {
     fn from(remote_id: RemoteId) -> Self {
         Id {

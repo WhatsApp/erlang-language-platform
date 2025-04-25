@@ -37,6 +37,8 @@
 //!
 //! Algorithm design by @ilyaklyuchnikov, see D30779530 for more information.
 
+use std::collections::BTreeMap;
+use std::iter;
 use std::sync::Arc;
 
 use elp_base_db::ModuleName;
@@ -52,7 +54,6 @@ use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use itertools::Itertools;
 
 use super::ContractivityCheckError;
 use super::Id;
@@ -68,7 +69,7 @@ fn is_he(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
 
 fn any_he<'a, I>(s: &Type, t: I) -> Result<bool, ContractivityCheckError>
 where
-    I: Iterator<Item = &'a Type>,
+    I: IntoIterator<Item = &'a Type>,
 {
     for ty in t {
         if is_he(s, ty)? {
@@ -78,11 +79,8 @@ where
     Ok(false)
 }
 
-fn all_he<'a, I>(s: I, t: I) -> Result<bool, ContractivityCheckError>
-where
-    I: Iterator<Item = &'a Type>,
-{
-    for (ty1, ty2) in s.zip(t) {
+fn all_he(s: &[Type], t: &[Type]) -> Result<bool, ContractivityCheckError> {
+    for (ty1, ty2) in s.iter().zip(t) {
         if !is_he(ty1, ty2)? {
             return Ok(false);
         }
@@ -93,13 +91,13 @@ where
 fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
     match t {
         Type::FunType(ft) if !ft.forall.is_empty() => Err(ContractivityCheckError::NonEmptyForall),
-        Type::FunType(ft) => Ok(is_he(s, &ft.res_ty)? || any_he(s, ft.arg_tys.iter())?),
+        Type::FunType(ft) => Ok(any_he(s, cons(&*ft.res_ty, &ft.arg_tys))?),
         Type::AnyArityFunType(ft) => is_he(s, &ft.res_ty),
-        Type::TupleType(tt) => any_he(s, tt.arg_tys.iter()),
+        Type::TupleType(tt) => any_he(s, &tt.arg_tys),
         Type::ListType(lt) => is_he(s, &lt.t),
-        Type::UnionType(ut) => any_he(s, ut.tys.iter()),
-        Type::RemoteType(rt) => any_he(s, rt.arg_tys.iter()),
-        Type::OpaqueType(ot) => any_he(s, ot.arg_tys.iter()),
+        Type::UnionType(ut) => any_he(s, &ut.tys),
+        Type::RemoteType(rt) => any_he(s, &rt.arg_tys),
+        Type::OpaqueType(ot) => any_he(s, &ot.arg_tys),
         Type::MapType(m) => {
             let tys = m.props.values().map(|p| &p.tp);
             any_he(s, tys)?;
@@ -113,35 +111,33 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
 fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
     match (s, t) {
         (Type::TupleType(tt1), Type::TupleType(tt2)) if tt1.arg_tys.len() == tt2.arg_tys.len() => {
-            all_he(tt1.arg_tys.iter(), tt2.arg_tys.iter())
+            all_he(&tt1.arg_tys, &tt2.arg_tys)
         }
         (Type::TupleType(_), _) => Ok(false),
         (Type::FunType(ft1), Type::FunType(ft2)) if ft1.arg_tys.len() == ft2.arg_tys.len() => {
             if !ft1.forall.is_empty() || !ft2.forall.is_empty() {
                 return Err(ContractivityCheckError::NonEmptyForall);
             }
-            Ok(is_he(&ft1.res_ty, &ft2.res_ty)? && all_he(ft1.arg_tys.iter(), ft2.arg_tys.iter())?)
+            Ok(is_he(&ft1.res_ty, &ft2.res_ty)? && all_he(&ft1.arg_tys, &ft2.arg_tys)?)
         }
         (Type::FunType(_), _) => Ok(false),
         (Type::AnyArityFunType(ft1), Type::AnyArityFunType(ft2)) => is_he(&ft1.res_ty, &ft2.res_ty),
         (Type::ListType(lt1), Type::ListType(lt2)) => is_he(&lt1.t, &lt2.t),
         (Type::ListType(_), _) => Ok(false),
         (Type::UnionType(ut1), Type::UnionType(ut2)) if ut1.tys.len() == ut2.tys.len() => {
-            all_he(ut1.tys.iter(), ut2.tys.iter())
+            all_he(&ut1.tys, &ut2.tys)
         }
         (Type::UnionType(_), _) => Ok(false),
         (Type::RemoteType(rt1), Type::RemoteType(rt2)) if rt1.id == rt2.id => {
-            all_he(rt1.arg_tys.iter(), rt2.arg_tys.iter())
+            all_he(&rt1.arg_tys, &rt2.arg_tys)
         }
         (Type::RemoteType(_), _) => Ok(false),
         (Type::OpaqueType(ot1), Type::OpaqueType(ot2)) if ot1.id == ot2.id => {
-            all_he(ot1.arg_tys.iter(), ot2.arg_tys.iter())
+            all_he(&ot1.arg_tys, &ot2.arg_tys)
         }
         (Type::OpaqueType(_), _) => Ok(false),
         (Type::MapType(m1), Type::MapType(m2)) if m1.props.len() == m2.props.len() => {
-            let props1 = m1.props.iter().sorted_by_key(|p| p.0);
-            let props2 = m2.props.iter().sorted_by_key(|p| p.0);
-            Ok(all_he_prop(props1, props2)?
+            Ok(all_he_prop(&m1.props, &m2.props)?
                 && is_he(&m1.k_type, &m2.k_type)?
                 && is_he(&m1.v_type, &m2.v_type)?)
         }
@@ -149,14 +145,17 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         (Type::RefinedRecordType(rt1), Type::RefinedRecordType(rt2))
             if rt1.rec_type == rt2.rec_type =>
         {
-            if rt1.fields.iter().any(|(f, _)| !rt2.fields.contains_key(f)) {
+            // Tree maps are sorted, so keys will always be in the same order
+            if !rt1
+                .fields
+                .keys()
+                .zip(rt2.fields.keys())
+                .all(|(f1, f2)| f1 == f2)
+            {
                 return Ok(false);
             }
-            if rt2.fields.iter().any(|(f, _)| !rt1.fields.contains_key(f)) {
-                return Ok(false);
-            }
-            for key in rt1.fields.keys() {
-                if !is_he(rt1.fields.get(key).unwrap(), rt2.fields.get(key).unwrap())? {
+            for (key, field1) in &rt1.fields {
+                if !is_he(field1, &rt2.fields[key])? {
                     return Ok(false);
                 }
             }
@@ -169,11 +168,11 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
     }
 }
 
-fn all_he_prop<'a, I>(s: I, t: I) -> Result<bool, ContractivityCheckError>
-where
-    I: Iterator<Item = (&'a Key, &'a Prop)>,
-{
-    for ((k1, p1), (k2, p2)) in s.zip(t) {
+fn all_he_prop(
+    s: &BTreeMap<Key, Prop>,
+    t: &BTreeMap<Key, Prop>,
+) -> Result<bool, ContractivityCheckError> {
+    for ((k1, p1), (k2, p2)) in s.iter().zip(t.iter()) {
         if (k1 != k2) || !he_prop(p1, p2)? {
             return Ok(false);
         }
@@ -215,18 +214,10 @@ impl StubContractivityChecker<'_> {
         stub: &mut VStub,
         t: &TypeDecl,
     ) -> Result<(), ContractivityCheckError> {
-        let id = RemoteId {
-            module: self.module,
-            name: t.id.name,
-            arity: t.id.arity,
-        };
+        let id = t.id.clone().into_remote(self.module);
         let rty = RemoteType {
             id: id.clone(),
-            arg_tys: t
-                .params
-                .iter()
-                .map(|var| Type::VarType(var.clone()))
-                .collect(),
+            arg_tys: t.params.iter().cloned().map(Type::VarType).collect(),
         };
         assert!(self.history.is_empty());
         assert!(self.productive.is_empty());
@@ -270,25 +261,25 @@ impl StubContractivityChecker<'_> {
                     return Err(ContractivityCheckError::NonEmptyForall);
                 }
                 self.with_productive_history(|this| {
-                    Ok(this.is_contractive(*ft.res_ty)?
-                        && this.all_contractive(ft.arg_tys.into_iter())?)
+                    Ok(this.all_contractive(cons(*ft.res_ty, ft.arg_tys))?)
                 })
             }
             Type::AnyArityFunType(ft) => {
                 self.with_productive_history(|this| Ok(this.is_contractive(*ft.res_ty)?))
             }
-            Type::TupleType(tt) => self
-                .with_productive_history(|this| Ok(this.all_contractive(tt.arg_tys.into_iter())?)),
+            Type::TupleType(tt) => {
+                self.with_productive_history(|this| Ok(this.all_contractive(tt.arg_tys)?))
+            }
             Type::ListType(lt) => {
                 self.with_productive_history(|this| Ok(this.is_contractive(*lt.t)?))
             }
-            Type::UnionType(ut) => Ok(self.all_contractive(ut.tys.into_iter())?),
-            Type::OpaqueType(ot) => self
-                .with_productive_history(|this| Ok(this.all_contractive(ot.arg_tys.into_iter())?)),
+            Type::UnionType(ut) => Ok(self.all_contractive(ut.tys)?),
+            Type::OpaqueType(ot) => {
+                self.with_productive_history(|this| Ok(this.all_contractive(ot.arg_tys)?))
+            }
             Type::MapType(mt) => self.with_productive_history(|this| {
-                Ok(this.is_contractive(*mt.k_type)?
-                    && this.is_contractive(*mt.v_type)?
-                    && this.all_contractive(mt.props.into_values().map(|prop| prop.tp))?)
+                let prop = mt.props.into_values().map(|prop| prop.tp);
+                Ok(this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))?)
             }),
             Type::RefinedRecordType(rt) => self
                 .with_productive_history(|this| Ok(this.all_contractive(rt.fields.into_values())?)),
@@ -297,8 +288,8 @@ impl StubContractivityChecker<'_> {
                     if self.productive.contains(&rt) {
                         return Ok(true);
                     }
-                    for t in self.history.iter().chain(self.productive.iter()) {
-                        if t.id == rt.id && all_he(t.arg_tys.iter(), rt.arg_tys.iter())? {
+                    for t in self.history.iter().chain(&self.productive) {
+                        if t.id == rt.id && all_he(&t.arg_tys, &rt.arg_tys)? {
                             return Ok(false);
                         }
                     }
@@ -350,7 +341,7 @@ impl StubContractivityChecker<'_> {
 
     fn all_contractive(
         &mut self,
-        tys: impl Iterator<Item = Type>,
+        tys: impl IntoIterator<Item = Type>,
     ) -> Result<bool, ContractivityCheckError> {
         for ty in tys {
             if !self.is_contractive(ty)? {
@@ -378,7 +369,7 @@ impl StubContractivityChecker<'_> {
                 decl.body.clone()
             } else {
                 let sub: FxHashMap<u32, &Type> =
-                    decl.params.iter().map(|v| v.n).zip(args.iter()).collect();
+                    decl.params.iter().map(|v| v.n).zip(args).collect();
                 Subst { sub }.apply(decl.body.clone())
             }
         }
@@ -410,4 +401,8 @@ impl StubContractivityChecker<'_> {
         }
         Ok(v_stub)
     }
+}
+
+fn cons<T>(h: T, t: impl IntoIterator<Item = T>) -> impl Iterator<Item = T> {
+    iter::once(h).chain(t.into_iter())
 }
