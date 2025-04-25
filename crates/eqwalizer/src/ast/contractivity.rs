@@ -100,8 +100,7 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         Type::OpaqueType(ot) => any_he(s, &ot.arg_tys),
         Type::MapType(m) => {
             let tys = m.props.values().map(|p| &p.tp);
-            any_he(s, tys)?;
-            Ok(is_he(s, &m.k_type)? || is_he(s, &m.v_type)?)
+            Ok(any_he(s, cons(&*m.k_type, cons(&*m.v_type, tys)))?)
         }
         Type::RefinedRecordType(rt) => any_he(s, rt.fields.values()),
         _ => Ok(false),
