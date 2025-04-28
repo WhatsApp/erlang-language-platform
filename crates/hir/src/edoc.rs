@@ -39,6 +39,7 @@ use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::Direction;
 use elp_syntax::NodeOrToken;
+use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
@@ -276,7 +277,7 @@ fn decode_html_entities(text: &str) -> Cow<str> {
 }
 
 fn is_divider(text: &str) -> bool {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%*\s*-*$").unwrap());
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%*\s*-+$").unwrap());
     RE.is_match(text)
 }
 
@@ -285,10 +286,30 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
     {
         if node.kind() == SyntaxKind::COMMENT && is_divider(&node.text().to_string()) {
-            return Some(node);
+            if !next_to_empty_line(&node, direction) {
+                return Some(node);
+            }
         }
     }
     None
+}
+
+fn next_to_empty_line(syntax: &SyntaxNode, direction: Direction) -> bool {
+    let sibling_or_token = match direction {
+        Direction::Next => syntax.prev_sibling_or_token(),
+        Direction::Prev => syntax.next_sibling_or_token(),
+    };
+    match sibling_or_token {
+        Some(element) => is_empty_line(&element),
+        None => false,
+    }
+}
+
+fn is_empty_line(element: &SyntaxElement) -> bool {
+    match element {
+        NodeOrToken::Token(token) => token.text() == "\n\n",
+        _ => false,
+    }
 }
 
 fn wrap_reference_in_backquotes(text: &str) -> Option<String> {

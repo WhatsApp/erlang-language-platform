@@ -1519,6 +1519,49 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_module_doc_empty_line() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%%
+%%% First line
+%%%
+%%% @d~oc
+%%%
+%%% @end
+%%% Second line
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%%
+%%% First line
+%%%
+%%% Second line
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_private() {
         check_fix(
             r#"
@@ -1970,6 +2013,38 @@ main() ->
 -doc """
 The main function
 """.
+-spec main() -> tuple().
+main() ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_section_divider() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%%%-----------------------------------------------------------------------------
+%%% Internal functions
+%%%-----------------------------------------------------------------------------
+
+%% @priv~ate
+-spec main() -> tuple().
+main() ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+%%%-----------------------------------------------------------------------------
+%%% Internal functions
+%%%-----------------------------------------------------------------------------
+
+-doc hidden.
 -spec main() -> tuple().
 main() ->
     {}.
