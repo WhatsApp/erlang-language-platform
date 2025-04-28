@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--with-check] [--check-eqwalize-all] [--one-shot] [--prefix ARG] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [[--format FORMAT]] [--rebar] [--include-generated] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--include-tests] [--apply-fix] [--recursive] [--in-place] [--with-check] [--check-eqwalize-all] [--one-shot] [--prefix ARG] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--ignore-fix-only] [--read-config] [--config-file CONFIG_FILE] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -6,6 +6,7 @@ Available positional items:
 Available options:
         --project <PROJECT>              Path to directory with project, or to a JSON file (defaults to `.`)
         --module <MODULE>                Parse a single module from the project, not the entire project.
+        --app <APP>                      Parse a single application from the project, not the entire project.
         --file <FILE>                    Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
         --to <TO>                        Path to a directory where to dump result files
         --no-diags                       Do not print the full diagnostics for a file, just the count

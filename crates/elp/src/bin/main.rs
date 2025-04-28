@@ -1267,6 +1267,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_app(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec!["lint", "--app", "app_a", "--diagnostic-filter", "P1700",],
+            "linter",
+            expect_file!("../resources/test/linter/parse_elp_lint_app.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn lint_report_suppressed(buck: bool) {
         simple_snapshot(
             args_vec![

@@ -224,6 +224,9 @@ pub struct Lint {
     /// Parse a single module from the project, not the entire project.
     #[bpaf(argument("MODULE"))]
     pub module: Option<String>,
+    /// Parse a single application from the project, not the entire project.
+    #[bpaf(argument("APP"))]
+    pub app: Option<String>,
     /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
     #[bpaf(argument("FILE"))]
     pub file: Option<String>,

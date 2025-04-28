@@ -126,6 +126,7 @@ fn do_parse_all(
         .map(|name| Some(Some(AppName(name.to_string()))))
         .collect();
     let pb = cli.progress(module_iter.len() as u64, "Parsing modules (parallel)");
+    let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
 
     Ok(module_iter
         .par_bridge()
@@ -136,6 +137,8 @@ fn do_parse_all(
                 if !otp_file_to_ignore(db, file_id)
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                     && !ignored_apps.contains(&db.file_app_name(file_id).ok())
+                    && (app_name.is_none()
+                        || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
                 {
                     do_parse_one(db, config, file_id, module_name.as_str(), args).unwrap()
                 } else {
@@ -266,6 +269,13 @@ pub fn do_codemod(
                 do_parse_all(cli, &analysis, &loaded.project_id, diagnostics_config, args)?
             }
             (Some(file_id), Some(name)) => {
+                if let Some(app) = &args.app {
+                    if let Ok(Some(file_app)) = analysis.file_app_name(file_id) {
+                        if file_app != AppName(app.to_string()) {
+                            panic!("Module {} does not belong to app {}", name.as_str(), app)
+                        }
+                    }
+                }
                 do_parse_one(&analysis, diagnostics_config, file_id, &name, args)?
                     .map_or(vec![], |x| vec![x])
             }
