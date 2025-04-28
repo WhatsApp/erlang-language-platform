@@ -47,6 +47,7 @@ use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::ast::Form;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use htmlentity::entity::ICodedDataTrait;
 use itertools::Itertools;
 use regex::Regex;
@@ -66,7 +67,7 @@ pub struct EdocHeader {
     pub equiv: Option<Tag>,
     pub authors: Vec<Tag>,
     pub copyright: Option<Tag>,
-    pub plaintext_copyright: Option<String>,
+    pub plaintext_copyrights: FxHashSet<String>,
     pub copyright_prefix: Option<String>,
     pub hidden: Option<Tag>,
     pub sees: Vec<Tag>,
@@ -97,7 +98,7 @@ impl EdocHeader {
     pub fn copyright_comment(&self) -> Option<String> {
         let copyright = self.copyright.clone()?;
         let copyright_prefix = self.copyright_prefix.clone()?;
-        if let Some(plaintext_copyright) = &self.plaintext_copyright {
+        for plaintext_copyright in &self.plaintext_copyrights {
             if plaintext_copyright.contains(&copyright.description()) {
                 return None;
             }
@@ -455,7 +456,7 @@ struct ParseContext {
     ranges: Vec<TextRange>,
     current_tag: Option<TagName>,
     lines: Vec<Line>,
-    plaintext_copyright: Option<String>,
+    plaintext_copyrights: FxHashSet<String>,
     copyright_prefix: Option<String>,
 
     doc: Option<Tag>,
@@ -591,7 +592,7 @@ impl ParseContext {
             kind,
             exported: self.exported,
             ranges: self.ranges,
-            plaintext_copyright: self.plaintext_copyright,
+            plaintext_copyrights: self.plaintext_copyrights,
             doc: self.doc,
             params: self.params,
             returns: self.returns,
@@ -635,7 +636,9 @@ fn parse_edoc(
             None => {
                 if let Some(captures) = COPYRIGHT_RE.captures(&text) {
                     if let Some(content) = captures.get(1) {
-                        context.plaintext_copyright = Some(content.as_str().to_string());
+                        context
+                            .plaintext_copyrights
+                            .insert(content.as_str().to_string());
                     }
                 }
                 if let Some(tag) = &context.current_tag {

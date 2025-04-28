@@ -1474,6 +1474,51 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_module_doc_copyright_multiple() {
+        check_fix(
+            r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%% Copyright (c) WhatsApp LLC
+%%% @author Some Author <some@email.com>
+%%% @copyright (c) Meta Platforms, Inc. and affiliates.
+%%% @d~oc
+%%% Some description
+%%% @end
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+%%%-----------------------------------------------------------------------------
+%%% Copyright (c) Meta Platforms, Inc. and affiliates.
+%%% Copyright (c) WhatsApp LLC
+%%% Some extra info
+%%%-----------------------------------------------------------------------------
+-module(main).
+-author("Some Author <some@email.com>").
+-moduledoc """
+Some description
+""".
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(A, B) ->
+  dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_private() {
         check_fix(
             r#"
