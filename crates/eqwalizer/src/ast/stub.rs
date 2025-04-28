@@ -30,8 +30,6 @@ pub struct ModuleStub {
     #[serde(skip_serializing)]
     pub export_types: BTreeSet<Id>,
     #[serde(skip_serializing)]
-    pub opaques: BTreeMap<Id, Arc<TypeDecl>>,
-    #[serde(skip_serializing)]
     pub types: BTreeMap<Id, Arc<TypeDecl>>,
     #[serde(skip_serializing)]
     pub specs: BTreeMap<Id, Arc<FunSpec>>,
@@ -48,7 +46,7 @@ pub struct ModuleStub {
 
 // The result of type validation checking:
 // - invalid_forms: a list of invalid forms
-// - invalid_types: a set of invalid types/opaque types
+// - invalid_types: a set of invalid types
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct VStub {
     stub: Arc<ModuleStub>,
@@ -80,21 +78,6 @@ impl VStub {
             .map(|t| t.as_ref())
     }
 
-    pub fn get_opaque(&self, id: &Id) -> Option<&TypeDecl> {
-        if !self.invalid_ids.contains(id) {
-            return self.stub.opaques.get(id).map(|t| t.as_ref());
-        }
-        None
-    }
-
-    pub fn opaques(&self) -> impl Iterator<Item = &TypeDecl> {
-        self.stub
-            .opaques
-            .values()
-            .filter(|decl| !self.invalid_ids.contains(&decl.id))
-            .map(|t| t.as_ref())
-    }
-
     pub fn get_record(&self, name: StringId) -> Option<&RecDecl> {
         self.stub.records.get(&name).map(|r| r.as_ref())
     }
@@ -115,7 +98,6 @@ impl VStub {
         let mut stub = (*self.stub).clone();
         stub.invalids.extend_from_slice(&self.invalids);
         stub.types.retain(|id, _| !self.invalid_ids.contains(id));
-        stub.opaques.retain(|id, _| !self.invalid_ids.contains(id));
         stub
     }
 }

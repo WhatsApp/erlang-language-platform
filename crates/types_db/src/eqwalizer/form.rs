@@ -34,7 +34,6 @@ pub enum ExternalForm {
     EqwalizerUnlimitedRefinement(EqwalizerUnlimitedRefinementAttr),
     TypingAttribute(TypingAttribute),
     ExternalTypeDecl(ExternalTypeDecl),
-    ExternalOpaqueDecl(ExternalOpaqueDecl),
     ExternalFunSpec(ExternalFunSpec),
     ExternalCallback(ExternalCallback),
     ExternalOptionalCallbacks(ExternalOptionalCallbacks),
@@ -179,15 +178,6 @@ pub struct TypingAttribute {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalTypeDecl {
-    pub pos: eqwalizer::Pos,
-    pub id: eqwalizer::Id,
-    #[serde(default)]
-    pub params: Vec<StringId>,
-    pub body: ext_types::ExtType,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ExternalOpaqueDecl {
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]

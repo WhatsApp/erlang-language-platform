@@ -41,7 +41,6 @@ use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
-use elp_types_db::eqwalizer::form::ExternalOpaqueDecl;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
@@ -140,16 +139,6 @@ impl Expander<'_> {
             .validate_type_vars(&decl.pos, &decl.body, &decl.params)
             .and_then(|()| self.expand_type(decl.body))?;
         Ok(ExternalTypeDecl { body, ..decl })
-    }
-
-    fn expand_opaque_decl(
-        &mut self,
-        decl: ExternalOpaqueDecl,
-    ) -> Result<ExternalOpaqueDecl, Invalid> {
-        let body = self
-            .validate_type_vars(&decl.pos, &decl.body, &decl.params)
-            .and_then(|()| self.expand_type(decl.body))?;
-        Ok(ExternalOpaqueDecl { body, ..decl })
     }
 
     fn validate_type_vars(
@@ -618,23 +607,6 @@ impl StubExpander<'_> {
         Ok(())
     }
 
-    fn add_opaque_decl(&mut self, t: ExternalOpaqueDecl) -> Result<(), TypeConversionError> {
-        match self.expander.expand_opaque_decl(t) {
-            Ok(decl) => {
-                let opaque_decl = self.type_converter.convert_opaque_private(decl)?;
-                self.stub
-                    .opaques
-                    .insert(opaque_decl.id.clone(), Arc::new(opaque_decl));
-            }
-            Err(invalid) => {
-                if self.current_file == self.module_file {
-                    self.stub.invalids.push(invalid);
-                }
-            }
-        }
-        Ok(())
-    }
-
     fn add_record_decl(&mut self, t: ExternalRecDecl) -> Result<(), TypeConversionError> {
         match self.expander.expand_rec_decl(t) {
             Ok(decl) => match self.type_converter.convert_rec_decl(decl)? {
@@ -724,7 +696,6 @@ impl StubExpander<'_> {
                     optional_callbacks.extend(ocb.ids.iter().cloned());
                 }
                 ExternalForm::ExternalTypeDecl(d) => self.add_type_decl(d.clone())?,
-                ExternalForm::ExternalOpaqueDecl(d) => self.add_opaque_decl(d.clone())?,
                 ExternalForm::ExternalFunSpec(s) => self.add_spec(s.clone())?,
                 ExternalForm::ExternalRecDecl(r) => self.add_record_decl(r.clone())?,
                 ExternalForm::ExternalCallback(cb) => {

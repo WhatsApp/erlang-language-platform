@@ -76,10 +76,6 @@ pub enum MsgFromEqWAlizer {
         module: String,
         id: Id,
     },
-    GetOpaqueDecl {
-        module: String,
-        id: Id,
-    },
     GetRecDecl {
         module: String,
         id: StringId,
@@ -106,7 +102,6 @@ pub enum MsgToEqWAlizer {
     InvalidType { len: u32 },
     CannotCompleteRequest,
     GetTypeDeclReply { len: u32 },
-    GetOpaqueDeclReply { len: u32 },
     GetRecDeclReply { len: u32 },
     GetFunSpecReply { len: u32 },
     GetOverloadedFunSpecReply { len: u32 },

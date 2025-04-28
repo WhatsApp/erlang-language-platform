@@ -17,7 +17,6 @@ use elp_types_db::eqwalizer::ext_types::FunExtType;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
-use elp_types_db::eqwalizer::form::ExternalOpaqueDecl;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
@@ -176,23 +175,6 @@ impl TypeConverter {
     pub fn convert_type_decl(
         &self,
         decl: ExternalTypeDecl,
-    ) -> Result<TypeDecl, TypeConversionError> {
-        let sub = self.collect_substitution(&decl.params);
-        let params = self.collect_vars(&decl.params);
-        let result = self.convert_type(&sub, decl.body)?;
-        // Invalid declarations should only appear when converting record declarations
-        let body = result.map_err(TypeConversionError::ErrorInTypeDecl)?;
-        Ok(TypeDecl {
-            id: decl.id,
-            params,
-            body,
-            pos: decl.pos,
-        })
-    }
-
-    pub fn convert_opaque_private(
-        &self,
-        decl: ExternalOpaqueDecl,
     ) -> Result<TypeDecl, TypeConversionError> {
         let sub = self.collect_substitution(&decl.params);
         let params = self.collect_vars(&decl.params);

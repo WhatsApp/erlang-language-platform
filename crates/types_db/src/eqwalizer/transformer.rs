@@ -783,7 +783,6 @@ pub fn walk_form<T, V: Transformer<T>>(
         }
         ExternalForm::TypingAttribute(t) => Ok(ExternalForm::TypingAttribute(t)),
         ExternalForm::ExternalTypeDecl(decl) => Ok(ExternalForm::ExternalTypeDecl(decl)),
-        ExternalForm::ExternalOpaqueDecl(decl) => Ok(ExternalForm::ExternalOpaqueDecl(decl)),
         ExternalForm::ExternalFunSpec(spec) => Ok(ExternalForm::ExternalFunSpec(spec)),
         ExternalForm::ExternalCallback(cb) => Ok(ExternalForm::ExternalCallback(cb)),
         ExternalForm::ExternalOptionalCallbacks(cb) => {

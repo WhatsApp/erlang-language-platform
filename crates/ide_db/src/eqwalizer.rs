@@ -325,11 +325,6 @@ fn collect_references(
                 links.insert(link);
             };
         }
-        eqwalizer::types::Type::OpaqueType(ot) => {
-            if let Some(link) = id_name_and_location(db, project_id, &ot.id) {
-                links.insert(link);
-            };
-        }
         eqwalizer::types::Type::RecordType(rt) => {
             if let Some(link) = record_name_and_location(db, project_id, rt) {
                 links.insert(link);

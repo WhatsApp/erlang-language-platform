@@ -34,7 +34,6 @@ pub mod preprocess;
 pub mod stub;
 pub mod subst;
 pub mod trans_valid;
-pub mod variance_check;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -46,8 +45,6 @@ pub enum Error {
     ConversionError(ConversionError),
     TypeConversionError(TypeConversionError),
     ContractivityError(ContractivityCheckError),
-    VarianceCheckError(VarianceCheckError),
-    TransitiveCheckError(TransitiveCheckError),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,34 +175,6 @@ impl fmt::Display for ContractivityCheckError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VarianceCheckError {
-    ErrorExpandingID(RemoteId, Box<Error>),
-}
-
-impl fmt::Display for VarianceCheckError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message: String = match self {
-            VarianceCheckError::ErrorExpandingID(rid, err) => {
-                format!("error when expanding ID {}\n{}", rid, err)
-            }
-        };
-        write!(f, "eqWAlizer variance check failed with {}", message)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TransitiveCheckError {
-    UnexpectedOpaqueType,
-}
-
-impl fmt::Display for TransitiveCheckError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message: String = format!("{:?}", self);
-        write!(f, "eqWAlizer transitive check failed with {}", message)
-    }
-}
-
 pub fn from_bytes(bytes: &Vec<u8>, filter_stub: bool) -> Result<AST, Error> {
     let term = eetf::Term::decode(Cursor::new(bytes))?;
     if let Term::Tuple(res) = term {
@@ -265,9 +234,6 @@ pub fn type_ids(ast: &AST) -> BTreeMap<Id, Visibility> {
                 }
             }
             ExternalForm::ExternalTypeDecl(d) => {
-                type_ids.entry(d.id.clone()).or_insert(Visibility::Private);
-            }
-            ExternalForm::ExternalOpaqueDecl(d) => {
                 type_ids.entry(d.id.clone()).or_insert(Visibility::Private);
             }
             _ => {}

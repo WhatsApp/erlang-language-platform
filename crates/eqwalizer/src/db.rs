@@ -40,7 +40,6 @@ use crate::ast::expand::StubExpander;
 use crate::ast::stub::ModuleStub;
 use crate::ast::stub::VStub;
 use crate::ast::trans_valid::TransitiveChecker;
-use crate::ast::variance_check::VarianceChecker;
 use crate::get_module_diagnostics;
 use crate::ipc::IpcHandle;
 
@@ -107,12 +106,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
         module: ModuleName,
     ) -> Result<Arc<VStub>, Error>;
 
-    fn covariant_stub(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<VStub>, Error>;
-
     fn transitive_stub(
         &self,
         project_id: ProjectId,
@@ -138,20 +131,6 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase 
     ) -> Result<Option<Arc<TypeDecl>>, Error>;
 
     fn type_decl_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-        id: Id,
-    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
-
-    fn opaque_decl(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-        id: Id,
-    ) -> Result<Option<Arc<TypeDecl>>, Error>;
-
-    fn opaque_decl_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
@@ -332,30 +311,14 @@ fn contractive_stub(
         .map_err(Error::ContractivityError)
 }
 
-fn covariant_stub(
-    db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-) -> Result<Arc<VStub>, Error> {
-    let v_stub = db.contractive_stub(project_id, module)?;
-    let checker = VarianceChecker::new(db, project_id);
-    checker
-        .check(&v_stub)
-        .map(Arc::new)
-        .map_err(Error::VarianceCheckError)
-}
-
 fn transitive_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let v_stub = db.covariant_stub(project_id, module.clone())?;
+    let v_stub = db.contractive_stub(project_id, module.clone())?;
     let mut checker = TransitiveChecker::new(db, project_id, module.as_str().into());
-    checker
-        .check(&v_stub)
-        .map(Arc::new)
-        .map_err(Error::TransitiveCheckError)
+    Ok(Arc::new(checker.check(&v_stub)))
 }
 
 fn transitive_stub_bytes(
@@ -418,26 +381,6 @@ fn type_decl_bytes(
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.type_decl(project_id, module, id)
-        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
-}
-
-fn opaque_decl(
-    db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-    id: Id,
-) -> Result<Option<Arc<TypeDecl>>, Error> {
-    let stub = db.transitive_stub(project_id, module)?;
-    Ok(stub.opaques.get(&id).map(|t| t.clone()))
-}
-
-fn opaque_decl_bytes(
-    db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
-    module: ModuleName,
-    id: Id,
-) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.opaque_decl(project_id, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 

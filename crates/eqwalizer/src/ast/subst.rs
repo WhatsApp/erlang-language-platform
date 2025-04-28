@@ -12,7 +12,6 @@ use elp_types_db::eqwalizer::types::BoundedDynamicType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::ListType;
 use elp_types_db::eqwalizer::types::MapType;
-use elp_types_db::eqwalizer::types::OpaqueType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
@@ -51,10 +50,6 @@ impl Subst<'_> {
             Type::RemoteType(rt) => Type::RemoteType(RemoteType {
                 id: rt.id,
                 arg_tys: self.apply_all(rt.arg_tys),
-            }),
-            Type::OpaqueType(ot) => Type::OpaqueType(OpaqueType {
-                id: ot.id,
-                arg_tys: self.apply_all(ot.arg_tys),
             }),
             Type::VarType(n) => {
                 if let Some(&typ) = self.sub.get(&n.n) {

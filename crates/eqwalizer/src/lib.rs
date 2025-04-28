@@ -393,9 +393,7 @@ fn get_module_diagnostics(
                 let mut trans_checker =
                     TransitiveChecker::new(db, project_id, module.clone().into());
                 let validated_ty = match expanded_ty {
-                    Ok(exp_ty) => trans_checker
-                        .check_type(pos, exp_ty)
-                        .map_err(Error::TransitiveCheckError)?,
+                    Ok(exp_ty) => trans_checker.check_type(pos, exp_ty),
                     Err(invalid) => Err(invalid),
                 };
                 match validated_ty {
@@ -446,15 +444,6 @@ fn get_module_diagnostics(
                 let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
                 match send_bytes(result, &mut *handle, module, |len| {
                     MsgToEqWAlizer::GetTypeDeclReply { len }
-                })? {
-                    Some(error) => return Ok(error),
-                    None => (),
-                }
-            }
-            MsgFromEqWAlizer::GetOpaqueDecl { module, id } => {
-                let result = db.opaque_decl_bytes(project_id, ModuleName::new(&module), id);
-                match send_bytes(result, &mut *handle, module, |len| {
-                    MsgToEqWAlizer::GetOpaqueDeclReply { len }
                 })? {
                     Some(error) => return Ok(error),
                     None => (),

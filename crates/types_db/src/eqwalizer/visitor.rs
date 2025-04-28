@@ -408,7 +408,6 @@ pub fn walk_form<'a, T, V: Visitor<'a, T>>(
         ExternalForm::EqwalizerUnlimitedRefinement(_) => Ok(()),
         ExternalForm::TypingAttribute(_) => Ok(()),
         ExternalForm::ExternalTypeDecl(decl) => visitor.visit_ext_type(&decl.body),
-        ExternalForm::ExternalOpaqueDecl(decl) => visitor.visit_ext_type(&decl.body),
         ExternalForm::ExternalFunSpec(spec) => spec.types.iter().try_for_each(|ty| {
             visitor
                 .visit_ext_type(&ty.ty.res_ty)

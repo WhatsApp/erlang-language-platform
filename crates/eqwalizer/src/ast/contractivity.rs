@@ -48,7 +48,6 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
 use elp_types_db::eqwalizer::types::Key;
-use elp_types_db::eqwalizer::types::OpaqueType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::Type;
@@ -97,7 +96,6 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         Type::ListType(lt) => is_he(s, &lt.t),
         Type::UnionType(ut) => any_he(s, &ut.tys),
         Type::RemoteType(rt) => any_he(s, &rt.arg_tys),
-        Type::OpaqueType(ot) => any_he(s, &ot.arg_tys),
         Type::MapType(m) => {
             let tys = m.props.values().map(|p| &p.tp);
             Ok(any_he(s, cons(&*m.k_type, cons(&*m.v_type, tys)))?)
@@ -131,10 +129,6 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
             all_he(&rt1.arg_tys, &rt2.arg_tys)
         }
         (Type::RemoteType(_), _) => Ok(false),
-        (Type::OpaqueType(ot1), Type::OpaqueType(ot2)) if ot1.id == ot2.id => {
-            all_he(&ot1.arg_tys, &ot2.arg_tys)
-        }
-        (Type::OpaqueType(_), _) => Ok(false),
         (Type::MapType(m1), Type::MapType(m2)) if m1.props.len() == m2.props.len() => {
             Ok(all_he_prop(&m1.props, &m2.props)?
                 && is_he(&m1.k_type, &m2.k_type)?
@@ -273,9 +267,6 @@ impl StubContractivityChecker<'_> {
                 self.with_productive_history(|this| Ok(this.is_contractive(*lt.t)?))
             }
             Type::UnionType(ut) => Ok(self.all_contractive(ut.tys)?),
-            Type::OpaqueType(ot) => {
-                self.with_productive_history(|this| Ok(this.all_contractive(ot.arg_tys)?))
-            }
             Type::MapType(mt) => self.with_productive_history(|this| {
                 let prop = mt.props.into_values().map(|prop| prop.tp);
                 Ok(this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))?)
@@ -372,30 +363,12 @@ impl StubContractivityChecker<'_> {
                 Subst { sub }.apply(decl.body.clone())
             }
         }
-        Ok(stub
-            .types
-            .get(&local_id)
-            .map(|t| subst(t, args))
-            .or_else(|| {
-                stub.opaques.get(&local_id).map(|t| {
-                    if self.module == id.module {
-                        subst(t, args)
-                    } else {
-                        Type::OpaqueType(OpaqueType {
-                            id: id.clone(),
-                            arg_tys: args.to_owned(),
-                        })
-                    }
-                })
-            }))
+        Ok(stub.types.get(&local_id).map(|t| subst(t, args)))
     }
 
     pub fn check(&mut self, stub: Arc<ModuleStub>) -> Result<VStub, ContractivityCheckError> {
         let mut v_stub = VStub::new(stub.clone());
         for decl in stub.types.values() {
-            self.check_decl(&mut v_stub, decl)?
-        }
-        for decl in stub.opaques.values() {
             self.check_decl(&mut v_stub, decl)?
         }
         Ok(v_stub)

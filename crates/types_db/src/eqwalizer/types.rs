@@ -32,7 +32,6 @@ pub enum Type {
     ListType(ListType),
     UnionType(UnionType),
     RemoteType(RemoteType),
-    OpaqueType(OpaqueType),
     VarType(VarType),
     RecordType(RecordType),
     RefinedRecordType(RefinedRecordType),
@@ -234,7 +233,6 @@ impl Type {
             Type::TupleType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::UnionType(ty) => ty.tys.iter().try_for_each(f),
             Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(f),
-            Type::OpaqueType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::MapType(ty) => f(&ty.k_type)
                 .and_then(|()| f(&ty.v_type))
                 .and_then(|()| ty.props.iter().try_for_each(|(_, prop)| f(&prop.tp))),
@@ -329,17 +327,6 @@ impl fmt::Display for Type {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Type::OpaqueType(ty) => write!(
-                f,
-                "{}:{}({})",
-                ty.id.module,
-                ty.id.name,
-                ty.arg_tys
-                    .iter()
-                    .map(|ty| ty.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
             Type::MapType(ty) if ty.props.is_empty() => {
                 write!(f, "#{{{} => {}}}", ty.k_type, ty.v_type)
             }
@@ -408,13 +395,6 @@ pub struct UnionType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteType {
-    pub id: RemoteId,
-    #[serde(default)]
-    pub arg_tys: Vec<Type>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct OpaqueType {
     pub id: RemoteId,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
