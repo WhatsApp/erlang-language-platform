@@ -158,7 +158,6 @@ impl fmt::Display for TypeConversionError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractivityCheckError {
-    UnexpectedType,
     ErrorExpandingID(RemoteId, Box<Error>),
     NonEmptyForall,
 }
