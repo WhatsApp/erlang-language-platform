@@ -75,10 +75,26 @@ impl<'a> IncludeCtx<'a> {
     ) -> Option<FileId> {
         let app_data = db.file_app_data(file_id)?;
         let project_data = db.project_data(app_data.project_id);
-        let (app_name, path) = path.split_once('/')?;
+        let (app_name, include_path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
         let target_app_data = db.app_data(source_root_id)?;
-        let path = target_app_data.dir.join(path);
+        let path = target_app_data.dir.join(include_path);
         db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
+            .or_else(|| {
+                // buck2 builds create an include file mapping when
+                // invoking the OTP compiler, by manipulating symlinks
+                // in the output directory.
+                //
+                // Since we are only generating some files, not
+                // building them, and we prefer to work with the files
+                // in their canonical locations, we deal with this
+                // here.
+                //
+                // And the solution is to remove the part of the path
+                // that does not exist, the leading "include".
+                let path = include_path.strip_prefix("include/")?;
+                let path = target_app_data.dir.join(path);
+                db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
+            })
     }
 }
