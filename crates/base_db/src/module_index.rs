@@ -158,36 +158,36 @@ pub enum OtpModuleIndex {
 }
 
 #[derive(Default)]
-pub struct Builder(
-    FxHashMap<ModuleName, (FileSource, FileId)>,
-    Option<OtpModuleIndex>,
-);
+pub struct Builder {
+    mod2file: FxHashMap<ModuleName, (FileSource, FileId)>,
+    otp: Option<OtpModuleIndex>,
+}
 
 impl Builder {
     pub fn insert(&mut self, file_id: FileId, source: FileSource, name: ModuleName) {
-        self.0.insert(name, (source, file_id));
+        self.mod2file.insert(name, (source, file_id));
     }
 
     /// Use a given, existing index as OTP
     pub fn set_otp(&mut self, otp: Arc<ModuleIndex>) {
-        self.1 = Some(OtpModuleIndex::There(otp))
+        self.otp = Some(OtpModuleIndex::There(otp))
     }
 
     /// You are OTP, so use yourself as your OTP index
     pub fn is_otp(&mut self) {
-        self.1 = Some(OtpModuleIndex::Here)
+        self.otp = Some(OtpModuleIndex::Here)
     }
 
     pub fn build(self) -> Arc<ModuleIndex> {
         let file2mod = self
-            .0
+            .mod2file
             .iter()
             .map(|(name, (_source, file))| (*file, name.clone()))
             .collect::<FxHashMap<_, _>>();
 
         Arc::new(ModuleIndex {
-            otp: self.1,
-            mod2file: self.0,
+            otp: self.otp,
+            mod2file: self.mod2file,
             file2mod,
         })
     }
