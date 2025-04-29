@@ -44,7 +44,6 @@ pub enum Error {
     InvalidBEAM,
     ConversionError(ConversionError),
     TypeConversionError(TypeConversionError),
-    ContractivityError(ContractivityCheckError),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,22 +152,6 @@ impl fmt::Display for TypeConversionError {
             err => format!("{:?}", err),
         };
         write!(f, "eqWAlizer stub expansion failed with {}", message)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ContractivityCheckError {
-    ErrorExpandingID(RemoteId, Box<Error>),
-}
-
-impl fmt::Display for ContractivityCheckError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message: String = match self {
-            ContractivityCheckError::ErrorExpandingID(rid, err) => {
-                format!("error when expanding ID {}\n{}", rid, err)
-            }
-        };
-        write!(f, "eqWAlizer contractivity check failed with {}", message)
     }
 }
 

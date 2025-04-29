@@ -54,7 +54,6 @@ use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
-use super::ContractivityCheckError;
 use super::Id;
 use super::RemoteId;
 use super::stub::ModuleStub;
@@ -62,34 +61,24 @@ use super::stub::VStub;
 use super::subst::Subst;
 use crate::db::EqwalizerDiagnosticsDatabase;
 
-fn is_he(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
-    Ok(he_by_diving(s, t)? || he_by_coupling(s, t)?)
+fn is_he(s: &Type, t: &Type) -> bool {
+    he_by_diving(s, t) || he_by_coupling(s, t)
 }
 
-fn any_he<'a, I>(s: &Type, t: I) -> Result<bool, ContractivityCheckError>
+fn any_he<'a, I>(s: &Type, t: I) -> bool
 where
     I: IntoIterator<Item = &'a Type>,
 {
-    for ty in t {
-        if is_he(s, ty)? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
+    t.into_iter().any(|ty| is_he(s, ty))
 }
 
-fn all_he(s: &[Type], t: &[Type]) -> Result<bool, ContractivityCheckError> {
-    for (ty1, ty2) in s.iter().zip(t) {
-        if !is_he(ty1, ty2)? {
-            return Ok(false);
-        }
-    }
-    Ok(true)
+fn all_he(s: &[Type], t: &[Type]) -> bool {
+    s.iter().zip(t).all(|(ty1, ty2)| is_he(ty1, ty2))
 }
 
-fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
+fn he_by_diving(s: &Type, t: &Type) -> bool {
     match t {
-        Type::FunType(ft) => Ok(any_he(s, cons(&*ft.res_ty, &ft.arg_tys))?),
+        Type::FunType(ft) => any_he(s, cons(&*ft.res_ty, &ft.arg_tys)),
         Type::AnyArityFunType(ft) => is_he(s, &ft.res_ty),
         Type::TupleType(tt) => any_he(s, &tt.arg_tys),
         Type::ListType(lt) => is_he(s, &lt.t),
@@ -97,40 +86,40 @@ fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         Type::RemoteType(rt) => any_he(s, &rt.arg_tys),
         Type::MapType(m) => {
             let tys = m.props.values().map(|p| &p.tp);
-            Ok(any_he(s, cons(&*m.k_type, cons(&*m.v_type, tys)))?)
+            any_he(s, cons(&*m.k_type, cons(&*m.v_type, tys)))
         }
         Type::RefinedRecordType(rt) => any_he(s, rt.fields.values()),
-        _ => Ok(false),
+        _ => false,
     }
 }
 
-fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
+fn he_by_coupling(s: &Type, t: &Type) -> bool {
     match (s, t) {
         (Type::TupleType(tt1), Type::TupleType(tt2)) if tt1.arg_tys.len() == tt2.arg_tys.len() => {
             all_he(&tt1.arg_tys, &tt2.arg_tys)
         }
-        (Type::TupleType(_), _) => Ok(false),
+        (Type::TupleType(_), _) => false,
         (Type::FunType(ft1), Type::FunType(ft2)) if ft1.arg_tys.len() == ft2.arg_tys.len() => {
-            Ok(is_he(&ft1.res_ty, &ft2.res_ty)? && all_he(&ft1.arg_tys, &ft2.arg_tys)?)
+            is_he(&ft1.res_ty, &ft2.res_ty) && all_he(&ft1.arg_tys, &ft2.arg_tys)
         }
-        (Type::FunType(_), _) => Ok(false),
+        (Type::FunType(_), _) => false,
         (Type::AnyArityFunType(ft1), Type::AnyArityFunType(ft2)) => is_he(&ft1.res_ty, &ft2.res_ty),
         (Type::ListType(lt1), Type::ListType(lt2)) => is_he(&lt1.t, &lt2.t),
-        (Type::ListType(_), _) => Ok(false),
+        (Type::ListType(_), _) => false,
         (Type::UnionType(ut1), Type::UnionType(ut2)) if ut1.tys.len() == ut2.tys.len() => {
             all_he(&ut1.tys, &ut2.tys)
         }
-        (Type::UnionType(_), _) => Ok(false),
+        (Type::UnionType(_), _) => false,
         (Type::RemoteType(rt1), Type::RemoteType(rt2)) if rt1.id == rt2.id => {
             all_he(&rt1.arg_tys, &rt2.arg_tys)
         }
-        (Type::RemoteType(_), _) => Ok(false),
+        (Type::RemoteType(_), _) => false,
         (Type::MapType(m1), Type::MapType(m2)) if m1.props.len() == m2.props.len() => {
-            Ok(all_he_prop(&m1.props, &m2.props)?
-                && is_he(&m1.k_type, &m2.k_type)?
-                && is_he(&m1.v_type, &m2.v_type)?)
+            all_he_prop(&m1.props, &m2.props)
+                && is_he(&m1.k_type, &m2.k_type)
+                && is_he(&m1.v_type, &m2.v_type)
         }
-        (Type::MapType(_), _) => Ok(false),
+        (Type::MapType(_), _) => false,
         (Type::RefinedRecordType(rt1), Type::RefinedRecordType(rt2))
             if rt1.rec_type == rt2.rec_type =>
         {
@@ -141,36 +130,33 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
                 .zip(rt2.fields.keys())
                 .all(|(f1, f2)| f1 == f2)
             {
-                return Ok(false);
+                return false;
             }
             for (key, field1) in &rt1.fields {
-                if !is_he(field1, &rt2.fields[key])? {
-                    return Ok(false);
+                if !is_he(field1, &rt2.fields[key]) {
+                    return false;
                 }
             }
-            Ok(true)
+            true
         }
-        (Type::RefinedRecordType(_), _) => Ok(false),
-        (Type::VarType(vt1), Type::VarType(vt2)) if vt1 == vt2 => Ok(true),
-        (Type::VarType(_), _) => Ok(false),
-        (s, t) => Ok(s == t),
+        (Type::RefinedRecordType(_), _) => false,
+        (Type::VarType(vt1), Type::VarType(vt2)) if vt1 == vt2 => true,
+        (Type::VarType(_), _) => false,
+        (s, t) => s == t,
     }
 }
 
-fn all_he_prop(
-    s: &BTreeMap<Key, Prop>,
-    t: &BTreeMap<Key, Prop>,
-) -> Result<bool, ContractivityCheckError> {
+fn all_he_prop(s: &BTreeMap<Key, Prop>, t: &BTreeMap<Key, Prop>) -> bool {
     for ((k1, p1), (k2, p2)) in s.iter().zip(t.iter()) {
-        if (k1 != k2) || !he_prop(p1, p2)? {
-            return Ok(false);
+        if (k1 != k2) || !he_prop(p1, p2) {
+            return false;
         }
     }
-    Ok(true)
+    true
 }
 
-fn he_prop(s: &Prop, t: &Prop) -> Result<bool, ContractivityCheckError> {
-    Ok(s.req == t.req && is_he(&s.tp, &t.tp)?)
+fn he_prop(s: &Prop, t: &Prop) -> bool {
+    s.req == t.req && is_he(&s.tp, &t.tp)
 }
 
 pub struct StubContractivityChecker<'d> {
@@ -198,11 +184,7 @@ impl StubContractivityChecker<'_> {
         }
     }
 
-    fn check_decl(
-        &mut self,
-        stub: &mut VStub,
-        t: &TypeDecl,
-    ) -> Result<(), ContractivityCheckError> {
+    fn check_decl(&mut self, stub: &mut VStub, t: &TypeDecl) {
         let id = t.id.clone().into_remote(self.module);
         let rty = RemoteType {
             id: id.clone(),
@@ -210,13 +192,12 @@ impl StubContractivityChecker<'_> {
         };
         assert!(self.history.is_empty());
         assert!(self.productive.is_empty());
-        if self.is_contractive(Type::RemoteType(rty))? {
+        if self.is_contractive(Type::RemoteType(rty)) {
             self.cache.insert(id);
         } else {
             stub.invalid_ids.insert(t.id.clone());
             stub.invalids.push(self.to_invalid(t));
         }
-        Ok(())
     }
 
     fn with_productive_history<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
@@ -243,7 +224,7 @@ impl StubContractivityChecker<'_> {
         })
     }
 
-    fn is_contractive(&mut self, ty: Type) -> Result<bool, ContractivityCheckError> {
+    fn is_contractive(&mut self, ty: Type) -> bool {
         match ty {
             Type::FunType(ft) => self
                 .with_productive_history(|this| this.all_contractive(cons(*ft.res_ty, ft.arg_tys))),
@@ -254,7 +235,7 @@ impl StubContractivityChecker<'_> {
                 self.with_productive_history(|this| this.all_contractive(tt.arg_tys))
             }
             Type::ListType(lt) => self.with_productive_history(|this| this.is_contractive(*lt.t)),
-            Type::UnionType(ut) => Ok(self.all_contractive(ut.tys)?),
+            Type::UnionType(ut) => self.all_contractive(ut.tys),
             Type::MapType(mt) => self.with_productive_history(|this| {
                 let prop = mt.props.into_values().map(|prop| prop.tp);
                 this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))
@@ -265,16 +246,16 @@ impl StubContractivityChecker<'_> {
             Type::RemoteType(rt) => {
                 if !rt.arg_tys.is_empty() {
                     if self.productive.contains(&rt) {
-                        return Ok(true);
+                        return true;
                     }
                     for t in self.history.iter().chain(&self.productive) {
-                        if t.id == rt.id && all_he(&t.arg_tys, &rt.arg_tys)? {
-                            return Ok(false);
+                        if t.id == rt.id && all_he(&t.arg_tys, &rt.arg_tys) {
+                            return false;
                         }
                     }
-                    match self.type_decl_body(&rt.id, &rt.arg_tys)? {
+                    match self.type_decl_body(&rt.id, &rt.arg_tys) {
                         Some(typ) => self.with_history(rt.clone(), |this| this.is_contractive(typ)),
-                        None => Ok(true),
+                        None => true,
                     }
                 } else {
                     // We optimise remote types with no arguments by caching them.
@@ -283,64 +264,59 @@ impl StubContractivityChecker<'_> {
                     // We only cache positive result, negative result will become an error
                     // and the performance of this case is not particularly important.
                     if self.cache.contains(&rt.id) {
-                        return Ok(true);
+                        return true;
                     }
                     if self.productive.contains(&rt) {
                         self.cache.insert(rt.id.clone());
-                        return Ok(true);
+                        return true;
                     }
                     // The check above checking homomorphic embedding, in case of no arguments,
                     // boils down to just checking if we've already seen the type.
                     // We've also already checked the productive aliases, so we just need to
                     // check the history
                     if self.history.contains(&rt) {
-                        return Ok(false);
+                        return false;
                     }
-                    match self.type_decl_body(&rt.id, &rt.arg_tys)? {
+                    match self.type_decl_body(&rt.id, &rt.arg_tys) {
                         Some(typ) => {
                             let id = rt.id.clone();
                             self.with_history(rt, |this| {
-                                if this.is_contractive(typ)? {
+                                if this.is_contractive(typ) {
                                     this.cache.insert(id);
-                                    Ok(true)
+                                    true
                                 } else {
-                                    Ok(false)
+                                    false
                                 }
                             })
                         }
-                        None => Ok(true),
+                        None => true,
                     }
                 }
             }
-            _ => Ok(true),
+            _ => true,
         }
     }
 
-    fn all_contractive(
-        &mut self,
-        tys: impl IntoIterator<Item = Type>,
-    ) -> Result<bool, ContractivityCheckError> {
+    fn all_contractive(&mut self, tys: impl IntoIterator<Item = Type>) -> bool {
         for ty in tys {
-            if !self.is_contractive(ty)? {
-                return Ok(false);
+            if !self.is_contractive(ty) {
+                return false;
             }
         }
-        Ok(true)
+        true
     }
 
-    fn type_decl_body(
-        &self,
-        id: &RemoteId,
-        args: &[Type],
-    ) -> Result<Option<Type>, ContractivityCheckError> {
+    fn type_decl_body(&self, id: &RemoteId, args: &[Type]) -> Option<Type> {
         let local_id = Id {
             name: id.name,
             arity: id.arity,
         };
+        // the stub is guaranteed to be present because the current call site
+        // is already expanded - meaning that all the types referencing from it exist
         let stub = self
             .db
             .expanded_stub(self.project_id, ModuleName::new(id.module.as_str()))
-            .map_err(|err| ContractivityCheckError::ErrorExpandingID(id.clone(), Box::new(err)))?;
+            .expect("the stub should exist, since expansion validation has already happened");
         fn subst(decl: &TypeDecl, args: &[Type]) -> Type {
             if decl.params.is_empty() {
                 decl.body.clone()
@@ -350,15 +326,15 @@ impl StubContractivityChecker<'_> {
                 Subst { sub }.apply(decl.body.clone())
             }
         }
-        Ok(stub.types.get(&local_id).map(|t| subst(t, args)))
+        stub.types.get(&local_id).map(|t| subst(t, args))
     }
 
-    pub fn check(&mut self, stub: Arc<ModuleStub>) -> Result<VStub, ContractivityCheckError> {
+    pub fn check(&mut self, stub: Arc<ModuleStub>) -> VStub {
         let mut v_stub = VStub::new(stub.clone());
         for decl in stub.types.values() {
-            self.check_decl(&mut v_stub, decl)?
+            self.check_decl(&mut v_stub, decl)
         }
-        Ok(v_stub)
+        v_stub
     }
 }
 
