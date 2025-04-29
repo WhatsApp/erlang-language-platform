@@ -87,7 +87,7 @@ fn check_function(
                     let src_ast = src_ptr.to_ast(db);
                     let src_syntax = src_ast.syntax();
                     let src_text = src_syntax.text().to_string();
-                    if let Some(formatted_src_text) = format_integer(&integer_to_format) {
+                    if let Some(formatted_src_text) = format_integer(integer_to_format) {
                         if formatted_src_text != src_text {
                             if let Some(diagnostic) = make_diagnostic(
                                 sema,
@@ -95,7 +95,8 @@ fn check_function(
                                 src_syntax.text_range(),
                                 &formatted_src_text,
                             ) {
-                                Some(diagnostics.push(diagnostic));
+                                diagnostics.push(diagnostic);
+                                Some(());
                             }
                         }
                     }

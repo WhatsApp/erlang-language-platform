@@ -797,7 +797,7 @@ fn safe_textrange(start: TextSize, end: TextSize) -> TextRange {
 impl ParseRequest {
     fn tag(&self) -> Tag {
         match self.format {
-            Format::OffsetEtf { .. } => b"COM",
+            Format::OffsetEtf => b"COM",
             Format::Text => b"TXT",
         }
     }

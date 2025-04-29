@@ -125,7 +125,7 @@ impl TransitiveChecker<'_> {
         }
     }
 
-    fn check_record_decl(&mut self, stub: &mut ModuleStub, t: &RecDecl) -> () {
+    fn check_record_decl(&mut self, stub: &mut ModuleStub, t: &RecDecl) {
         let rref = Ref::RecRef(self.module, t.name);
         if !self.is_valid(&rref) {
             let invalids = self.show_invalids(&rref);
@@ -147,7 +147,7 @@ impl TransitiveChecker<'_> {
         }
     }
 
-    fn check_overloaded_spec(&mut self, stub: &mut ModuleStub, spec: &OverloadedFunSpec) -> () {
+    fn check_overloaded_spec(&mut self, stub: &mut ModuleStub, spec: &OverloadedFunSpec) {
         let mut invalids = Default::default();
         for ty in spec.tys.iter() {
             self.collect_invalid_references(
@@ -183,12 +183,12 @@ impl TransitiveChecker<'_> {
                 filtered_tys.push(ty)
             }
         }
-        let new_cb = Callback {
+
+        Callback {
             pos: cb.pos,
             id: cb.id,
             tys: filtered_tys,
-        };
-        new_cb
+        }
     }
 
     fn is_valid(&mut self, rref: &Ref) -> bool {
@@ -306,7 +306,8 @@ impl TransitiveChecker<'_> {
             }
             ty => {
                 let _ = ty.walk::<()>(&mut |ty| {
-                    Ok(self.collect_invalid_references(invalids, module, ty, parent_ref))
+                    self.collect_invalid_references(invalids, module, ty, parent_ref);
+                    Ok(())
                 });
             }
         }

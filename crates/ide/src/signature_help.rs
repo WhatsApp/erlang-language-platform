@@ -253,7 +253,6 @@ fn get_function_doc(
 
 #[cfg(test)]
 mod tests {
-    use std::iter;
 
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_project_model::otp::supports_eep59_doc_attributes;
@@ -284,11 +283,11 @@ mod tests {
                         let gap = start.checked_sub(offset).unwrap_or_else(|| {
                             panic!("parameter ranges out of order: {:?}", sh.parameter_ranges())
                         });
-                        rendered.extend(iter::repeat(' ').take(gap as usize));
+                        rendered.extend(std::iter::repeat_n(' ', gap as usize));
                         let param_text = &sh.signature[*range];
                         let width = param_text.chars().count();
                         let marker = if is_active { '^' } else { '-' };
-                        rendered.extend(iter::repeat(marker).take(width));
+                        rendered.extend(std::iter::repeat_n(marker, width));
                         offset += gap + u32::from(range.len());
                     }
                     if !sh.parameter_ranges().is_empty() {

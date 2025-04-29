@@ -442,47 +442,42 @@ fn get_module_diagnostics(
             }
             MsgFromEqWAlizer::GetTypeDecl { module, id } => {
                 let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
-                match send_bytes(result, &mut *handle, module, |len| {
+                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
                     MsgToEqWAlizer::GetTypeDeclReply { len }
                 })? {
-                    Some(error) => return Ok(error),
-                    None => (),
+                    return Ok(error);
                 }
             }
             MsgFromEqWAlizer::GetRecDecl { module, id } => {
                 let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
-                match send_bytes(result, &mut *handle, module, |len| {
+                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
                     MsgToEqWAlizer::GetRecDeclReply { len }
                 })? {
-                    Some(error) => return Ok(error),
-                    None => (),
+                    return Ok(error);
                 }
             }
             MsgFromEqWAlizer::GetFunSpec { module, id } => {
                 let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                match send_bytes(result, &mut *handle, module, |len| {
+                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
                     MsgToEqWAlizer::GetFunSpecReply { len }
                 })? {
-                    Some(error) => return Ok(error),
-                    None => (),
+                    return Ok(error);
                 }
             }
             MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
                 let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                match send_bytes(result, &mut *handle, module, |len| {
+                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
                     MsgToEqWAlizer::GetOverloadedFunSpecReply { len }
                 })? {
-                    Some(error) => return Ok(error),
-                    None => (),
+                    return Ok(error);
                 }
             }
             MsgFromEqWAlizer::GetCallbacks { module } => {
                 let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
-                match send_bytes(result, &mut *handle, module, |len| {
+                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
                     MsgToEqWAlizer::GetCallbacksReply { len }
                 })? {
-                    Some(error) => return Ok(error),
-                    None => (),
+                    return Ok(error);
                 }
             }
             msg => {

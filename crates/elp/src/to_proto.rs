@@ -403,10 +403,7 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
         additional_text_edits: None,
         commit_characters: None,
         data: match completion_item_data(snap, c.position) {
-            Some(data) => match serde_json::value::to_value(data) {
-                Ok(data) => Some(data),
-                Err(_) => None,
-            },
+            Some(data) => serde_json::value::to_value(data).ok(),
             None => None,
         },
         sort_text: c.sort_text,

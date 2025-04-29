@@ -1174,7 +1174,7 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = to_abs_path_buf(&dir.path().to_path_buf()).unwrap();
+        let dir_path = to_abs_path_buf(dir.path()).unwrap();
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         expect![[r#"
             Ok(

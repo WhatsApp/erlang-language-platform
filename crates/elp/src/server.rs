@@ -919,7 +919,7 @@ impl Server {
                 // Not all clients send config in the `initialize` message, request it
                 self.refresh_config();
                 self.refresh_lens();
-                if self.unresolved_app_id_paths.len() > 0 {
+                if !self.unresolved_app_id_paths.is_empty() {
                     log::warn!(
                         "Loading finished with {} unresolved app ID paths",
                         self.unresolved_app_id_paths.len()

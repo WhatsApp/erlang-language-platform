@@ -372,7 +372,7 @@ mod tests {
             let files_count = file_ids.len();
             let project_id = loaded.project_id;
             // Use 4 instances for tests
-            let chunk_size = ((files_count + 3) / 4).max(1);
+            let chunk_size = files_count.div_ceil(4).max(1);
             let output = file_ids
                 .clone()
                 .chunks(chunk_size)

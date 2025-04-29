@@ -183,14 +183,11 @@ fn make_diagnostic(
 }
 
 fn get_replacement(sema: &Semantic, m: &Match, branch_order: BranchOrder) -> Option<String> {
-    match m.comments(sema) {
-        Some(comments) => {
-            // Avoid clobbering comments in the original source code
-            if comments.len() > 0 {
-                return None;
-            }
+    if let Some(comments) = m.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
         }
-        _ => (),
     }
     let new_discriminee_expr_text = m.placeholder_text(sema, NEGATED_EXPR_VAR)?;
     let affirmative_branch_text = m.placeholder_text(sema, AFFIRMATIVE_BRANCH_VAR)?;

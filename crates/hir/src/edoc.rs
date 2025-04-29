@@ -285,10 +285,11 @@ fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
     if let Some(NodeOrToken::Node(node)) =
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
     {
-        if node.kind() == SyntaxKind::COMMENT && is_divider(&node.text().to_string()) {
-            if !next_to_empty_line(&node, direction) {
-                return Some(node);
-            }
+        if node.kind() == SyntaxKind::COMMENT
+            && is_divider(&node.text().to_string())
+            && !next_to_empty_line(&node, direction)
+        {
+            return Some(node);
         }
     }
     None
@@ -319,7 +320,7 @@ fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
     let rest = &text[reference.end()..];
     Some(format!(
         "`{}`{}",
-        reference_to_exdoc(&reference.as_str()),
+        reference_to_exdoc(reference.as_str()),
         rest
     ))
 }

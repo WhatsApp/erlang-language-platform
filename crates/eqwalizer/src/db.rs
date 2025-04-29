@@ -371,7 +371,7 @@ fn type_decl(
         return Ok(Some(t.clone()));
     }
     let stub = db.transitive_stub(project_id, module)?;
-    Ok(stub.types.get(&id).map(|t| t.clone()))
+    Ok(stub.types.get(&id).cloned())
 }
 
 fn type_decl_bytes(
@@ -391,7 +391,7 @@ fn rec_decl(
     id: StringId,
 ) -> Result<Option<Arc<RecDecl>>, Error> {
     let stub = db.transitive_stub(project_id, module)?;
-    Ok(stub.records.get(&id).map(|t| t.clone()))
+    Ok(stub.records.get(&id).cloned())
 }
 
 fn rec_decl_bytes(
@@ -423,7 +423,7 @@ fn fun_spec(
         return Ok(Some(fun_spec.clone()));
     }
     let stub = db.transitive_stub(project_id, module)?;
-    Ok(stub.specs.get(&id).map(|t| t.clone()))
+    Ok(stub.specs.get(&id).cloned())
 }
 
 fn fun_spec_bytes(
@@ -458,7 +458,7 @@ fn overloaded_fun_spec(
         return Ok(Some(overloaded_fun_spec.clone()));
     }
     let stub = db.transitive_stub(project_id, module)?;
-    Ok(stub.overloaded_specs.get(&id).map(|t| t.clone()))
+    Ok(stub.overloaded_specs.get(&id).cloned())
 }
 
 fn overloaded_fun_spec_bytes(
@@ -518,7 +518,7 @@ fn custom_overloaded_fun_specs(
                 };
                 result
                     .entry(module)
-                    .or_insert_with(BTreeMap::new)
+                    .or_default()
                     .insert(id, overloaded_fun_spec.clone());
             }
             Ok(Arc::new(result))

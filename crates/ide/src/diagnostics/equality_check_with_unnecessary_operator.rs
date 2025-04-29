@@ -225,7 +225,7 @@ fn from_ssr(
         ssr_pattern,
     );
     matches.matches.iter().for_each(|m| {
-        || -> Option<()> { validate_and_make_diagnostic(diags, sema, m, underscore_expected) }();
+        validate_and_make_diagnostic(diags, sema, m, underscore_expected);
     });
 }
 
@@ -256,7 +256,6 @@ fn validate_and_make_diagnostic(
             (None, Some(_)) => report_diagnostic(diags, sema, m, body, lhs, rhs),
             (None, None) => {
                 // No rewrite possible - neither side of the operator is valid in the pattern position
-                ()
             }
         }
     }
@@ -562,14 +561,11 @@ fn get_replacement(
     expr: &PlaceholderMatch,
     pat: &PlaceholderMatch,
 ) -> Option<String> {
-    match m.comments(sema) {
-        Some(comments) => {
-            // Avoid clobbering comments in the original source code
-            if comments.len() > 0 {
-                return None;
-            }
+    if let Some(comments) = m.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
         }
-        None => (),
     }
     let same_branch_text = m.placeholder_text(sema, SAME_BRANCH_VAR)?;
     let diff_branch_text = m.placeholder_text(sema, DIFF_BRANCH_VAR)?;

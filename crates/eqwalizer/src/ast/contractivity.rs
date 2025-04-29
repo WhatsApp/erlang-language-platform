@@ -254,25 +254,24 @@ impl StubContractivityChecker<'_> {
                     return Err(ContractivityCheckError::NonEmptyForall);
                 }
                 self.with_productive_history(|this| {
-                    Ok(this.all_contractive(cons(*ft.res_ty, ft.arg_tys))?)
+                    this.all_contractive(cons(*ft.res_ty, ft.arg_tys))
                 })
             }
             Type::AnyArityFunType(ft) => {
-                self.with_productive_history(|this| Ok(this.is_contractive(*ft.res_ty)?))
+                self.with_productive_history(|this| this.is_contractive(*ft.res_ty))
             }
             Type::TupleType(tt) => {
-                self.with_productive_history(|this| Ok(this.all_contractive(tt.arg_tys)?))
+                self.with_productive_history(|this| this.all_contractive(tt.arg_tys))
             }
-            Type::ListType(lt) => {
-                self.with_productive_history(|this| Ok(this.is_contractive(*lt.t)?))
-            }
+            Type::ListType(lt) => self.with_productive_history(|this| this.is_contractive(*lt.t)),
             Type::UnionType(ut) => Ok(self.all_contractive(ut.tys)?),
             Type::MapType(mt) => self.with_productive_history(|this| {
                 let prop = mt.props.into_values().map(|prop| prop.tp);
-                Ok(this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))?)
+                this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))
             }),
-            Type::RefinedRecordType(rt) => self
-                .with_productive_history(|this| Ok(this.all_contractive(rt.fields.into_values())?)),
+            Type::RefinedRecordType(rt) => {
+                self.with_productive_history(|this| this.all_contractive(rt.fields.into_values()))
+            }
             Type::RemoteType(rt) => {
                 if !rt.arg_tys.is_empty() {
                     if self.productive.contains(&rt) {
@@ -284,9 +283,7 @@ impl StubContractivityChecker<'_> {
                         }
                     }
                     match self.type_decl_body(&rt.id, &rt.arg_tys)? {
-                        Some(typ) => {
-                            self.with_history(rt.clone(), |this| Ok(this.is_contractive(typ)?))
-                        }
+                        Some(typ) => self.with_history(rt.clone(), |this| this.is_contractive(typ)),
                         None => Ok(true),
                     }
                 } else {
@@ -376,5 +373,5 @@ impl StubContractivityChecker<'_> {
 }
 
 fn cons<T>(h: T, t: impl IntoIterator<Item = T>) -> impl Iterator<Item = T> {
-    iter::once(h).chain(t.into_iter())
+    iter::once(h).chain(t)
 }

@@ -95,7 +95,7 @@ pub(crate) fn check_filtered_ct_fix_with_config(
         .diagnostics_for(pos.file_id)
         .into_iter()
         .filter(diagnostic_filter)
-        .last()
+        .next_back()
         .expect("no diagnostics")
         .clone();
     let fixes = &diagnostic
@@ -219,7 +219,7 @@ pub(crate) fn check_nth_fix(
                 None
             }
         })
-        .last()
+        .next_back()
         .expect("no diagnostics")
         .clone();
     let actual = {
