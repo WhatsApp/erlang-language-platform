@@ -159,7 +159,6 @@ impl fmt::Display for TypeConversionError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractivityCheckError {
     ErrorExpandingID(RemoteId, Box<Error>),
-    NonEmptyForall,
 }
 
 impl fmt::Display for ContractivityCheckError {
@@ -168,7 +167,6 @@ impl fmt::Display for ContractivityCheckError {
             ContractivityCheckError::ErrorExpandingID(rid, err) => {
                 format!("error when expanding ID {}\n{}", rid, err)
             }
-            err => format!("{:?}", err),
         };
         write!(f, "eqWAlizer contractivity check failed with {}", message)
     }

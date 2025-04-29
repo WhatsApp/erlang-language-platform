@@ -89,7 +89,6 @@ fn all_he(s: &[Type], t: &[Type]) -> Result<bool, ContractivityCheckError> {
 
 fn he_by_diving(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
     match t {
-        Type::FunType(ft) if !ft.forall.is_empty() => Err(ContractivityCheckError::NonEmptyForall),
         Type::FunType(ft) => Ok(any_he(s, cons(&*ft.res_ty, &ft.arg_tys))?),
         Type::AnyArityFunType(ft) => is_he(s, &ft.res_ty),
         Type::TupleType(tt) => any_he(s, &tt.arg_tys),
@@ -112,9 +111,6 @@ fn he_by_coupling(s: &Type, t: &Type) -> Result<bool, ContractivityCheckError> {
         }
         (Type::TupleType(_), _) => Ok(false),
         (Type::FunType(ft1), Type::FunType(ft2)) if ft1.arg_tys.len() == ft2.arg_tys.len() => {
-            if !ft1.forall.is_empty() || !ft2.forall.is_empty() {
-                return Err(ContractivityCheckError::NonEmptyForall);
-            }
             Ok(is_he(&ft1.res_ty, &ft2.res_ty)? && all_he(&ft1.arg_tys, &ft2.arg_tys)?)
         }
         (Type::FunType(_), _) => Ok(false),
@@ -249,14 +245,8 @@ impl StubContractivityChecker<'_> {
 
     fn is_contractive(&mut self, ty: Type) -> Result<bool, ContractivityCheckError> {
         match ty {
-            Type::FunType(ft) => {
-                if !ft.forall.is_empty() {
-                    return Err(ContractivityCheckError::NonEmptyForall);
-                }
-                self.with_productive_history(|this| {
-                    this.all_contractive(cons(*ft.res_ty, ft.arg_tys))
-                })
-            }
+            Type::FunType(ft) => self
+                .with_productive_history(|this| this.all_contractive(cons(*ft.res_ty, ft.arg_tys))),
             Type::AnyArityFunType(ft) => {
                 self.with_productive_history(|this| this.is_contractive(*ft.res_ty))
             }
