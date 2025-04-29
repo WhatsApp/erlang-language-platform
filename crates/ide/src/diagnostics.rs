@@ -83,6 +83,7 @@ mod cross_node_eval;
 mod debugging_function;
 mod dependent_header;
 mod deprecated_function;
+mod duplicate_module;
 mod edoc;
 mod effect_free_statement;
 mod equality_check_with_unnecessary_operator;
@@ -904,6 +905,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &macro_precedence_suprise::DESCRIPTOR,
         &undocumented_function::DESCRIPTOR,
         &debugging_function::DESCRIPTOR,
+        &duplicate_module::DESCRIPTOR,
     ]
 }
 

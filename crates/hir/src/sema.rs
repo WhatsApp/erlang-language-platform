@@ -268,6 +268,20 @@ impl Semantic<'_> {
         module_name(self.db.upcast(), file_id)
     }
 
+    pub fn module_attribute_name(&self, file_id: FileId) -> Option<ast::Name> {
+        let form_list = self.form_list(file_id);
+        let module_attribute = form_list.module_attribute()?;
+        let module_attribute_ast = module_attribute.form_id.get_ast(self.db, file_id);
+        module_attribute_ast.name()
+    }
+
+    pub fn module_name_duplicates(&self, file_id: FileId) -> Option<FxHashSet<FileId>> {
+        let app_data = self.db.file_app_data(file_id)?;
+        let module_index = self.db.module_index(app_data.project_id);
+        let module_name = module_index.module_for_file(file_id)?;
+        module_index.duplicates(module_name)
+    }
+
     pub fn resolve_module_name(&self, file_id: FileId, name: &str) -> Option<Module> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolve_module_names {:?}", file_id));
