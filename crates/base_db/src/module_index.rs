@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 
 use crate::FileId;
 use crate::FileSource;
@@ -62,6 +63,7 @@ pub struct ModuleIndex {
     otp: Option<OtpModuleIndex>,
     mod2file: FxHashMap<ModuleName, (FileSource, FileId)>,
     file2mod: FxHashMap<FileId, ModuleName>,
+    duplicates: FxHashMap<ModuleName, FxHashSet<FileId>>,
 }
 
 impl fmt::Debug for ModuleIndex {
@@ -147,6 +149,10 @@ impl ModuleIndex {
             Some(_) | None => self.mod2file.keys().cloned().collect::<Vec<_>>(),
         }
     }
+
+    pub fn duplicates(&self, module_name: &ModuleName) -> Option<FxHashSet<FileId>> {
+        self.duplicates.get(module_name).cloned()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -161,11 +167,24 @@ pub enum OtpModuleIndex {
 pub struct Builder {
     mod2file: FxHashMap<ModuleName, (FileSource, FileId)>,
     otp: Option<OtpModuleIndex>,
+    duplicates: FxHashMap<ModuleName, FxHashSet<FileId>>,
 }
 
 impl Builder {
     pub fn insert(&mut self, file_id: FileId, source: FileSource, name: ModuleName) {
-        self.mod2file.insert(name, (source, file_id));
+        if let Some((_, dup_file_id)) = self.mod2file.insert(name.clone(), (source, file_id)) {
+            self.report_duplicate(name, dup_file_id, file_id);
+        }
+    }
+
+    pub fn report_duplicate(&mut self, name: ModuleName, dup_file_id: FileId, file_id: FileId) {
+        self.duplicates
+            .entry(name)
+            .and_modify(|file_ids| {
+                file_ids.insert(dup_file_id);
+                file_ids.insert(file_id);
+            })
+            .or_insert(FxHashSet::from_iter(vec![dup_file_id, file_id]));
     }
 
     /// Use a given, existing index as OTP
@@ -189,6 +208,7 @@ impl Builder {
             otp: self.otp,
             mod2file: self.mod2file,
             file2mod,
+            duplicates: self.duplicates,
         })
     }
 }
