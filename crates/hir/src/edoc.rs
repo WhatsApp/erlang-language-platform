@@ -317,7 +317,19 @@ fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
     let captures = RE.captures(text)?;
     let reference = captures.get(1)?;
     let rest = &text[reference.end()..];
-    Some(format!("`{}`{}", reference.as_str(), rest))
+    Some(format!(
+        "`{}`{}",
+        reference_to_exdoc(&reference.as_str()),
+        rest
+    ))
+}
+
+fn reference_to_exdoc(text: &str) -> String {
+    if text.contains('/') {
+        text.to_string()
+    } else {
+        format!("m:{}", text)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -834,8 +846,22 @@ fn convert_triple_quotes(comment: &str) -> Cow<str> {
     RE.replace_all(comment, "```")
 }
 
+fn convert_link_macros(comment: &str) -> Cow<str> {
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{@link\s+([^\s]+)\}").unwrap());
+    RE.replace_all(comment, |captures: &regex::Captures<'_>| {
+        if let Some(m) = captures.get(1) {
+            format!("`{}`", reference_to_exdoc(m.as_str()))
+        } else {
+            "".to_string()
+        }
+    })
+}
+
 fn convert_to_markdown(text: &str) -> String {
-    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(text))).to_string()
+    convert_single_quotes(&convert_triple_quotes(&convert_link_macros(
+        &decode_html_entities(text),
+    )))
+    .to_string()
 }
 
 #[cfg(test)]

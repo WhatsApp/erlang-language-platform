@@ -2051,4 +2051,138 @@ main() ->
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_link_macro_module() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% See {@link another} for more information.
+-spec main() -> tuple().
+main() ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+See `m:another` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_link_macro_mfa() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% See {@link another:main/2} for more information.
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+See `another:main/2` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_link_macro_fa() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% See {@link main/2} for more information.
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+See `main/2` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_link_macro_mixed() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% See {@link main/2} and {@link another} for more information.
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+See `main/2` and `m:another` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#]],
+        )
+    }
 }
