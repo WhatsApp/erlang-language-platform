@@ -2185,4 +2185,40 @@ main(_, _) ->
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_link_macro_multiline() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% See {@link
+%% main/2} for more information.
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+See `main/2` for more information.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#]],
+        )
+    }
 }

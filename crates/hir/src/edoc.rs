@@ -364,7 +364,11 @@ impl Tag {
                 res.push_str(&text.to_string());
             }
         }
-        ensure_non_empty(&format!("{}{}", &head, &trim_indent(&res)))
+        ensure_non_empty(&format!(
+            "{}{}",
+            &head,
+            &trim_indent(&convert_link_macros(&res))
+        ))
     }
 }
 
@@ -859,10 +863,7 @@ fn convert_link_macros(comment: &str) -> Cow<str> {
 }
 
 fn convert_to_markdown(text: &str) -> String {
-    convert_single_quotes(&convert_triple_quotes(&convert_link_macros(
-        &decode_html_entities(text),
-    )))
-    .to_string()
+    convert_single_quotes(&convert_triple_quotes(&decode_html_entities(text))).to_string()
 }
 
 #[cfg(test)]
