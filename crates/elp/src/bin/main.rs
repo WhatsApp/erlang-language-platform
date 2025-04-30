@@ -1892,6 +1892,19 @@ mod tests {
         );
     }
 
+    #[test]
+    fn lint_resolves_generated_includes() {
+        if cfg!(feature = "buck") {
+            simple_snapshot_expect_error(
+                args_vec!["lint",],
+                "buck_tests_2",
+                expect_file!("../resources/test/buck_tests_2/resolves_generated_includes.stdout"),
+                true,
+                None,
+            );
+        }
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {

@@ -90,11 +90,15 @@ impl<'a> IncludeCtx<'a> {
                 // in their canonical locations, we deal with this
                 // here.
                 //
-                // And the solution is to remove the part of the path
-                // that does not exist, the leading "include".
+
+                // The target_app_data has an `include_path` field. An "include/"
+                // prefix on the path should be replaced with an entry from the
+                // set of include paths/
                 let path = include_path.strip_prefix("include/")?;
-                let path = target_app_data.dir.join(path);
-                db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
+                target_app_data.include_path.iter().find_map(|dir| {
+                    let path = dir.join(path);
+                    db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
+                })
             })
     }
 }
