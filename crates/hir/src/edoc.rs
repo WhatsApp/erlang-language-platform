@@ -778,7 +778,12 @@ fn extract_param_name_and_content(content: &str) -> Option<(&str, &str)> {
     if content.is_empty() {
         None
     } else if let Some((name, content)) = content.split_once(" ") {
-        Some((name, content))
+        Some((
+            name,
+            content
+                .trim_start_matches(|c| c == ':' || c == '-')
+                .trim_start(),
+        ))
     } else {
         Some((content, ""))
     }

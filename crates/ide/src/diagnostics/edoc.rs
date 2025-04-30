@@ -738,6 +738,64 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_function_doc_fix_params_colon_space() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A : is a param
+%% @param B : is another param
+%% @end
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+""".
+-doc #{params => #{"A" => "is a param", "B" => "is another param"}}.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_params_dash_space() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A - is a param
+%% @param B - is another param
+%% @end
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+""".
+-doc #{params => #{"A" => "is a param", "B" => "is another param"}}.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_fix_params_quotes() {
         check_fix(
             r#"
