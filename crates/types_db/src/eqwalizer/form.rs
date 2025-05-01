@@ -117,6 +117,7 @@ pub struct EqwalizerUnlimitedRefinementAttr {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FunSpec {
+    #[serde(skip_serializing)]
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     pub ty: FunType,
@@ -124,6 +125,7 @@ pub struct FunSpec {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct OverloadedFunSpec {
+    #[serde(skip_serializing)]
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
@@ -132,6 +134,7 @@ pub struct OverloadedFunSpec {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Callback {
+    #[serde(skip_serializing)]
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
@@ -140,6 +143,7 @@ pub struct Callback {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RecDecl {
+    #[serde(skip_serializing)]
     pub pos: eqwalizer::Pos,
     pub name: StringId,
     #[serde(default)]
@@ -157,6 +161,7 @@ pub struct RecField {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TypeDecl {
+    #[serde(skip_serializing)]
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
