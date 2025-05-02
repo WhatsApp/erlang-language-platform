@@ -14,6 +14,7 @@ use core::str;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
+use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
@@ -39,6 +40,7 @@ use paths::Utf8PathBuf;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
+use thiserror::Error;
 
 use crate::AppName;
 use crate::AppType;
@@ -577,7 +579,7 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
         Ok(out) => out,
         Err(err) => {
             log::error!("Err executing buck2 root: {:?}", err);
-            bail!(crate::ProjectModelError::MissingBuck(err))
+            bail!(ProjectModelError::MissingBuck(err))
         }
     };
     if !output.status.success() {
@@ -741,17 +743,42 @@ fn query_buck_targets_bxl(
             Some(code) => format!("Exited with status code: {code}"),
             None => "Process terminated by signal".to_string(),
         };
-        let details = match String::from_utf8(output.stderr) {
-            Ok(err) => err,
-            Err(_) => "".to_string(),
+        let error = match String::from_utf8(output.stderr) {
+            Ok(err) => BuckQueryError::new(format!("{command}"), reason.clone(), err.clone()),
+            Err(_) => BuckQueryError::new(format!("{command}"), reason.clone(), "".to_string()),
         };
-        bail!(
-            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Command: {command}. Reason: {reason}. Details: {details}",
-        );
+        bail!(error);
     }
     let string = String::from_utf8(output.stdout)?;
     let result: FxHashMap<TargetFullName, BuckTarget> = serde_json::from_str(&string)?;
     Ok(result)
+}
+
+#[derive(Error, Debug)]
+struct BuckQueryError {
+    command: String,
+    reason: String,
+    details: String,
+}
+
+impl BuckQueryError {
+    pub fn new(command: String, reason: String, details: String) -> BuckQueryError {
+        BuckQueryError {
+            command,
+            reason,
+            details,
+        }
+    }
+}
+
+impl fmt::Display for BuckQueryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Command: {}. Reason: {}. Details: {}",
+            self.command, self.reason, self.details
+        )
+    }
 }
 
 fn build_third_party_targets(
