@@ -8,10 +8,12 @@
  */
 
 use core::str;
+use std::collections::HashMap;
 use std::fmt;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -62,6 +64,7 @@ use elp_project_model::ElpConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::BuckQueryError;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::map::Entry;
@@ -74,7 +77,11 @@ use lsp_server::Response;
 use lsp_types;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
+use lsp_types::MessageActionItem;
+use lsp_types::MessageActionItemProperty;
+use lsp_types::ShowDocumentParams;
 use lsp_types::ShowMessageParams;
+use lsp_types::ShowMessageRequestParams;
 use lsp_types::Url;
 use lsp_types::notification;
 use lsp_types::notification::Notification as _;
@@ -141,6 +148,7 @@ enum Event {
 pub enum Task {
     Response(lsp_server::Response),
     ShowMessage(lsp_types::ShowMessageParams),
+    ShowMessageRequest(lsp_types::ShowMessageRequestParams),
     FetchProject(Spinner, Vec<Project>),
     NativeDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     EqwalizerDiagnostics(
@@ -496,6 +504,7 @@ impl Server {
                 }
                 Task::ScheduleEqwalizeAll(project_id) => self.schedule_eqwalize_all(project_id),
                 Task::ShowMessage(params) => self.show_message(params),
+                Task::ShowMessageRequest(params) => self.show_message_request(params),
             },
             Event::Telemetry(message) => self.on_telemetry(message),
         }
@@ -1456,6 +1465,30 @@ impl Server {
         self.send_notification::<lsp_types::notification::ShowMessage>(params)
     }
 
+    fn show_message_request(&mut self, params: ShowMessageRequestParams) {
+        self.send_request::<request::ShowMessageRequest>(params, |this, resp| {
+            if let Some(res) = resp.result {
+                if let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(res) {
+                    if let Some(url) = hm.get("URL") {
+                        if let Ok(uri) = Url::from_str(url) {
+                            this.send_request::<request::ShowDocument>(
+                                ShowDocumentParams {
+                                    uri,
+                                    external: Some(true),
+                                    take_focus: Some(true),
+                                    selection: None,
+                                },
+                                |_, _| Ok(()),
+                            );
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        });
+    }
+
     fn send_response(&mut self, response: Response) {
         if let Some((method, request_timer)) = self.req_queue.incoming.complete(&response.id) {
             log::debug!("response {}#{}: {:?}", method, response.id, response);
@@ -1578,7 +1611,7 @@ impl Server {
                     err
                 );
                 fallback_used = true;
-                errors.push(err.to_string());
+                errors.push((err.to_string(), None));
                 fallback.clone()
             }
         };
@@ -1596,7 +1629,18 @@ impl Server {
                 manifest,
                 err
             );
-            errors.push(err.to_string());
+            match err.downcast_ref::<BuckQueryError>() {
+                Some(e) => {
+                    errors.push((
+                        "Project Initialisation Failed: invalid or missing buck 2 configuration"
+                            .to_string(),
+                        e.buck_ui_url.clone(),
+                    ));
+                }
+                None => {
+                    errors.push((err.to_string(), None));
+                }
+            }
             if !fallback_used {
                 project =
                     Project::load(&fallback, elp_config.eqwalizer, query_config, &|message| {
@@ -1608,16 +1652,31 @@ impl Server {
                         manifest,
                         err
                     );
-                    errors.push(err.to_string());
+                    errors.push((err.to_string(), None));
                 }
             }
         }
-        for err in errors {
-            let params = lsp_types::ShowMessageParams {
-                typ: lsp_types::MessageType::ERROR,
-                message: err,
-            };
-            sender.send(Task::ShowMessage(params))?;
+        for (err, uri) in errors {
+            if let Some(uri) = uri {
+                let params = lsp_types::ShowMessageRequestParams {
+                    typ: lsp_types::MessageType::ERROR,
+                    message: err,
+                    actions: Some(vec![MessageActionItem {
+                        title: "Open Buck UI".to_string(),
+                        properties: HashMap::from_iter(vec![(
+                            "URL".to_string(),
+                            MessageActionItemProperty::String(uri),
+                        )]),
+                    }]),
+                };
+                sender.send(Task::ShowMessageRequest(params))?;
+            } else {
+                let params = lsp_types::ShowMessageParams {
+                    typ: lsp_types::MessageType::ERROR,
+                    message: err,
+                };
+                sender.send(Task::ShowMessage(params))?;
+            }
         }
         spinner.report("Project config loaded".to_string());
         project
