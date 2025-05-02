@@ -65,6 +65,7 @@ pub struct EdocHeader {
     pub doc: Option<Tag>,
     pub params: Vec<(String, Tag)>,
     pub returns: Option<Tag>,
+    pub deprecated: Option<Tag>,
     pub equiv: Option<Tag>,
     pub authors: Vec<Tag>,
     pub copyright: Option<Tag>,
@@ -86,6 +87,7 @@ impl EdocHeader {
             .iter()
             .chain(self.params.iter().map(|(_name, tag)| tag))
             .chain(&self.returns)
+            .chain(&self.deprecated)
             .chain(&self.equiv)
             .chain(&self.authors)
             .chain(&self.copyright)
@@ -241,6 +243,16 @@ impl EdocHeader {
     pub fn metadata_attribute(&self) -> String {
         let mut res = String::new();
         let params_metadata = &self.params_metadata();
+        if let Some(deprecated) = &self.deprecated {
+            let deprecated_comment = match deprecated.to_markdown() {
+                Some(deprecated_comment) => deprecated_comment,
+                None => "".to_string(),
+            };
+            res.push_str(&format!(
+                "deprecated => \"{}\", ",
+                convert_link_macros(&deprecated_comment).trim()
+            ));
+        }
         if !params_metadata.is_empty() {
             res.push_str(&format!("params => #{{{}}}, ", params_metadata.trim()));
         }
@@ -249,8 +261,12 @@ impl EdocHeader {
                 res.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
             }
         }
+        let prefix = match self.kind {
+            EdocHeaderKind::Module => "moduledoc",
+            EdocHeaderKind::Function => "doc",
+        };
         if !res.is_empty() {
-            format!("-doc #{{{}}}.\n", res.trim_end_matches(", "))
+            format!("-{} #{{{}}}.\n", prefix, res.trim_end_matches(", "))
         } else {
             res
         }
@@ -396,6 +412,7 @@ pub enum TagKind {
     Doc,
     Returns,
     Param(Option<String>),
+    Deprecated,
     Equiv,
     Author,
     Copyright,
@@ -500,6 +517,7 @@ struct ParseContext {
     doc: Option<Tag>,
     returns: Option<Tag>,
     params: Vec<(String, Tag)>,
+    deprecated: Option<Tag>,
     equiv: Option<Tag>,
     authors: Vec<Tag>,
     copyright: Option<Tag>,
@@ -571,6 +589,12 @@ impl ParseContext {
                         },
                     ));
                 }
+                TagKind::Deprecated => {
+                    self.deprecated = Some(Tag {
+                        lines: self.lines.clone(),
+                        range: tag_name.range,
+                    });
+                }
                 TagKind::Equiv => {
                     self.equiv = Some(Tag {
                         lines: self.lines.clone(),
@@ -619,6 +643,7 @@ impl ParseContext {
         if self.doc.is_none()
             && self.returns.is_none()
             && self.params.is_empty()
+            && self.deprecated.is_none()
             && self.equiv.is_none()
             && self.hidden.is_none()
             && self.sees.is_empty()
@@ -634,6 +659,7 @@ impl ParseContext {
             doc: self.doc,
             params: self.params,
             returns: self.returns,
+            deprecated: self.deprecated,
             equiv: self.equiv,
             authors: self.authors,
             copyright: self.copyright,
@@ -736,6 +762,9 @@ fn parse_edoc(
                             );
                         }
                     },
+                    "deprecated" => {
+                        context.start_tag(TagKind::Deprecated, range, content, comment, syntax);
+                    }
                     "equiv" => {
                         context.start_tag(TagKind::Equiv, range, content, comment, syntax);
                     }
@@ -895,6 +924,7 @@ mod tests {
                     doc,
                     params,
                     returns,
+                    deprecated,
                     equiv,
                     hidden,
                     ..
@@ -905,6 +935,20 @@ mod tests {
                     if !doc.lines.is_empty() {
                         buf.push_str("  doc\n");
                         doc.lines.iter().for_each(|line| {
+                            if let Some(text) = &line.content {
+                                buf.push_str(&format!(
+                                    "    {:?}: \"{}\"\n",
+                                    line.syntax.range(),
+                                    text
+                                ));
+                            }
+                        });
+                    }
+                }
+                if let Some(Tag { lines, .. }) = deprecated {
+                    if !lines.is_empty() {
+                        buf.push_str("  deprecated\n");
+                        lines.iter().for_each(|line| {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",

@@ -69,6 +69,16 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         doc_start,
                     ));
                 }
+            } else if let Some(deprecated) = &header.deprecated {
+                if let Some(doc_start) = header.start() {
+                    diagnostics.push(old_edoc_syntax_diagnostic(
+                        sema,
+                        file_id,
+                        deprecated.range,
+                        header,
+                        doc_start,
+                    ));
+                }
             } else if let Some(hidden) = &header.hidden {
                 if let Some(doc_start) = header.start() {
                     diagnostics.push(old_edoc_syntax_diagnostic(
@@ -2276,6 +2286,134 @@ main() ->
 
 main(_, _) ->
     {}.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_module_doc_deprecated() {
+        check_fix(
+            r#"
+%% @d~oc
+%% @deprecated Use {@link main2} instead.
+-module(main).
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+"#,
+            expect![[r#"
+-module(main).
+-moduledoc #{deprecated => "Use `m:main2` instead."}.
+-export([main/2]).
+
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_deprecated() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc This function is deprecated
+%% @param A This is the A parameter
+%% @param B This is the B parameter
+%% @deprecated Use {@link main/0} instead.
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc """
+This function is deprecated
+""".
+-doc #{deprecated => "Use `main/0` instead.", params => #{"A" => "This is the A parameter", "B" => "This is the B parameter"}}.
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_deprecated_no_comment() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~oc
+%% @deprecated
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc #{deprecated => ""}.
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_deprecated_only() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/2]).
+
+%% @d~eprecated
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/2]).
+
+-doc #{deprecated => ""}.
+-spec main(any(), any()) -> ok.
+main(_A, _B) ->
+    ok.
+
+-spec main() -> ok.
+main() ->
+    ok.
 "#]],
         )
     }
