@@ -755,29 +755,44 @@ fn query_buck_targets_bxl(
 }
 
 #[derive(Error, Debug)]
-struct BuckQueryError {
-    command: String,
-    reason: String,
-    details: String,
+pub struct BuckQueryError {
+    pub command: String,
+    pub reason: String,
+    pub details: String,
+    pub buck_ui_url: Option<String>,
 }
 
 impl BuckQueryError {
     pub fn new(command: String, reason: String, details: String) -> BuckQueryError {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"Buck UI: (http\S+)").unwrap();
+        }
+        let buck_ui_url = RE
+            .captures(&details)
+            .and_then(|m| m.get(1))
+            .map(|m| m.as_str().to_string());
         BuckQueryError {
             command,
             reason,
             details,
+            buck_ui_url,
         }
     }
 }
 
 impl fmt::Display for BuckQueryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Error evaluating Buck2 query. This is often due to an incorrect BUCK file. Command: {}. Reason: {}. Details: {}",
-            self.command, self.reason, self.details
-        )
+        if let Some(url) = &self.buck_ui_url {
+            write!(
+                f,
+                "Project Initialisation Failed: invalid or missing buck 2 configuration. See {url} for details"
+            )
+        } else {
+            write!(
+                f,
+                "Project Initialisation Failed: invalid or missing buck 2 configuration"
+            )
+        }
     }
 }
 
@@ -1988,5 +2003,24 @@ mod tests {
             )
         "#]]
         .assert_debug_eq(&buck_path_to_abs_path(root, "foo/bar"))
+    }
+
+    #[test]
+    fn new_buck_query_error() {
+        expect![[r#"
+            BuckQueryError {
+                command: "command",
+                reason: "reason",
+                details: "Buck UI: https://a.b.com/buck2/ref-hash\nblah",
+                buck_ui_url: Some(
+                    "https://a.b.com/buck2/ref-hash",
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&BuckQueryError::new(
+            "command".to_string(),
+            "reason".to_string(),
+            "Buck UI: https://a.b.com/buck2/ref-hash\nblah".to_string(),
+        ));
     }
 }

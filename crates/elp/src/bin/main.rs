@@ -220,7 +220,9 @@ mod tests {
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
+    use lazy_static::lazy_static;
     use rayon::prelude::*;
+    use regex::Regex;
     use tempfile::Builder;
     use tempfile::TempDir;
     use test_case::test_case;
@@ -314,11 +316,11 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             match code {
                 0 => {
-                    assert_normalised_file(exp_path, &stdout, path);
+                    assert_normalised_file(exp_path, &stdout, path, false);
                     assert!(stderr.is_empty());
                 }
                 _ => {
-                    assert_normalised_file(exp_path, &stderr, path);
+                    assert_normalised_file(exp_path, &stderr, path, false);
                     assert!(stdout.is_empty());
                 }
             }
@@ -421,7 +423,7 @@ mod tests {
                             module.as_str()
                         ));
                         let (stdout, _) = cli.to_strings();
-                        assert_normalised_file(exp_path, &stdout, project_path.into());
+                        assert_normalised_file(exp_path, &stdout, project_path.into(), false);
                     }
                 }
                 EqwalizerDiagnostics::NoAst { module } => {
@@ -1586,6 +1588,7 @@ mod tests {
             expect_file!("../resources/test/linter/parse_elp_apply_fix_no_lint_output.stdout"),
             buck,
             None,
+            false,
         );
     }
 
@@ -1837,6 +1840,7 @@ mod tests {
             expect_file!("../resources/test/diagnostics/parse_elp_l1500_deprecated.stdout"),
             buck,
             None,
+            false,
         )
     }
 
@@ -1901,6 +1905,20 @@ mod tests {
                 expect_file!("../resources/test/buck_tests_2/resolves_generated_includes.stdout"),
                 true,
                 None,
+            );
+        }
+    }
+
+    #[test]
+    fn lint_reports_bxl_project_error() {
+        if cfg!(feature = "buck") {
+            simple_snapshot_expect_stderror(
+                args_vec!["lint",],
+                "buck_bad_config",
+                expect_file!("../resources/test/buck_bad_config/bxl_error_message.stdout"),
+                true,
+                None,
+                true,
             );
         }
     }
@@ -2234,7 +2252,7 @@ mod tests {
                 "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
                 code, expected_code, stdout, stderr
             );
-            assert_normalised_file(expected, &stdout, path);
+            assert_normalised_file(expected, &stdout, path, false);
             if expected_code == 0 {
                 assert!(
                     stderr.is_empty(),
@@ -2259,7 +2277,7 @@ mod tests {
             code, expected_code, stdout, stderr
         );
         let path = PathBuf::from("");
-        assert_normalised_file(expected, &stdout, path);
+        assert_normalised_file(expected, &stdout, path, false);
         if expected_code == 0 {
             assert!(
                 stderr.is_empty(),
@@ -2287,7 +2305,7 @@ mod tests {
                 "Expected exit code 101, got: {}\nstdout:\n{}\nstderr:\n{}",
                 code, stdout, stderr
             );
-            assert_normalised_file(expected, &stdout, path);
+            assert_normalised_file(expected, &stdout, path, false);
         }
     }
 
@@ -2297,6 +2315,7 @@ mod tests {
         expected: ExpectFile,
         buck: bool,
         file: Option<&str>,
+        normalise_urls: bool,
     ) {
         if !buck || cfg!(feature = "buck") {
             let (mut args, path) = add_project(args, project, file, None);
@@ -2309,7 +2328,7 @@ mod tests {
                 "Expected exit code 101, got: {}\nstdout:\n{}\nstderr:\n{}",
                 code, stdout, stderr
             );
-            assert_normalised_file(expected, &stderr, path);
+            assert_normalised_file(expected, &stderr, path, normalise_urls);
         }
     }
 
@@ -2374,7 +2393,7 @@ mod tests {
             if let Some(expected_stderr) = expected_stderr {
                 expected_stderr.assert_eq(&stderr);
             }
-            assert_normalised_file(expected, &stdout, path);
+            assert_normalised_file(expected, &stdout, path, false);
             for (expected_file, file) in files {
                 let expected = expect_file!(expected_dir.join(expected_file));
                 let actual = actual_dir.join(file);
@@ -2386,13 +2405,34 @@ mod tests {
         Ok(())
     }
 
-    fn assert_normalised_file(expected: ExpectFile, actual: &str, project_path: PathBuf) {
+    fn assert_normalised_file(
+        expected: ExpectFile,
+        actual: &str,
+        project_path: PathBuf,
+        normalise_urls: bool,
+    ) {
         let project_path: &str = &project_path.to_string_lossy();
         let normalised = actual
             .replace(project_path, "{project_path}")
             .replace(BASE_URL, "");
+        let normalised = if normalise_urls {
+            replace_url(&normalised)
+        } else {
+            normalised
+        };
 
         expected.assert_eq(&normalised);
+    }
+
+    fn replace_url(s: &str) -> String {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"https[^ ]+").unwrap();
+        }
+        if let Some(res) = RE.find(s) {
+            s.replace(res.as_str(), "https://[URL]")
+        } else {
+            s.to_string()
+        }
     }
 
     fn add_project(
