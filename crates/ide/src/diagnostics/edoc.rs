@@ -2417,4 +2417,32 @@ main() ->
 "#]],
         )
     }
+
+    #[test]
+    fn test_function_doc_trim_end() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%%
+-spec main() -> ok.
+main() ->
+    ok.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+""".
+-spec main() -> ok.
+main() ->
+    ok.
+"#]],
+        )
+    }
 }

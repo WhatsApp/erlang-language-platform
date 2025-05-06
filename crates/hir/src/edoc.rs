@@ -142,7 +142,7 @@ impl EdocHeader {
                 EdocHeaderKind::Module => "-moduledoc",
                 EdocHeaderKind::Function => "-doc",
             };
-            format!("{prefix} \"\"\"\n{res}\"\"\".\n")
+            format!("{prefix} \"\"\"\n{}\n\"\"\".\n", res.trim_end())
         } else {
             res
         }
