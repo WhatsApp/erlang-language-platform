@@ -44,6 +44,10 @@
 		</dict>
 		<dict>
 			<key>include</key>
+			<string>#doc-directive</string>
+		</dict>
+		<dict>
+			<key>include</key>
 			<string>#directive</string>
 		</dict>
 		<dict>
@@ -536,6 +540,82 @@
 				</dict>
 			</array>
 		</dict>
+		<key>doc-directive</key>
+		<dict>
+			<key>begin</key>
+			<string>^\s*+(-)\s*+((module)?doc)\s*([(]\s*)?(~[bBsS]?)?((["]{3,})\s*)(\S.*)?$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.section.directive.begin.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.control.directive.doc.erlang</string>
+				</dict>
+				<key>4</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.parameters.begin.erlang</string>
+				</dict>
+				<key>5</key>
+				<dict>
+					<key>name</key>
+					<string>storage.type.string.erlang</string>
+				</dict>
+				<key>6</key>
+				<dict>
+					<key>name</key>
+					<string>comment.block.documentation.erlang</string>
+				</dict>
+				<key>7</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.string.begin.erlang</string>
+				</dict>
+				<key>8</key>
+				<dict>
+					<key>name</key>
+					<string>invalid.illegal.string.erlang</string>
+				</dict>
+			</dict>
+			<key>end</key>
+			<string>^(\s*(\7))\s*([)]\s*)?(\.)</string>
+			<key>endCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>comment.block.documentation.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.string.end.erlang</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.section.directive.end.Erlang</string>
+				</dict>
+			</dict>
+			<key>name</key>
+			<string>meta.directive.doc.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>begin</key>
+					<string>\G</string>
+					<key>contentName</key>
+					<string>comment.block.documentation.erlang</string>
+					<key>while</key>
+					<string>(^)(?!\s*(\5))</string>
+				</dict>
+			</array>
+		</dict>
 		<key>docstring</key>
 		<dict>
 			<key>begin</key>
@@ -577,6 +657,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.triple.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>everything-else</key>
 		<dict>
@@ -645,6 +732,10 @@
 				<dict>
 					<key>include</key>
 					<string>#sigil-docstring</string>
+				</dict>
+				<dict>
+					<key>include</key>
+					<string>#sigil-docstring-verbatim</string>
 				</dict>
 				<dict>
 					<key>include</key>
@@ -906,7 +997,7 @@
 				</dict>
 				<dict>
 					<key>begin</key>
-					<string>\b(fun)\s*+(\()(?=(\s*+\())</string>
+					<string>\b(fun)\s*+(\()(?=(\s*+\()|(\)))</string>
 					<key>beginCaptures</key>
 					<dict>
 						<key>1</key>
@@ -1656,6 +1747,16 @@
 					<key>name</key>
 					<string>invalid.illegal.string.erlang</string>
 				</dict>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
+		</dict>
+		<key>internal-string-body-verbatim</key>
+		<dict>
+			<key>patterns</key>
+			<array>
 				<dict>
 					<key>captures</key>
 					<dict>
@@ -2691,7 +2792,7 @@
 		<key>sigil-docstring</key>
 		<dict>
 			<key>begin</key>
-			<string>(~[bBsS]?)((["]{3,})\s*)(\S.*)?$</string>
+			<string>(~[bs])((["]{3,})\s*)(\S.*)?$</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>1</key>
@@ -2734,6 +2835,67 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.tripple.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body</string>
+				</dict>
+			</array>
+		</dict>
+		<key>sigil-docstring-verbatim</key>
+		<dict>
+			<key>begin</key>
+			<string>(~[BS]?)((["]{3,})\s*)(\S.*)?$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>storage.type.string.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>meta.string.quoted.triple.begin.erlang</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.string.begin.erlang</string>
+				</dict>
+				<key>4</key>
+				<dict>
+					<key>name</key>
+					<string>invalid.illegal.string.erlang</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Only whitespace characters are allowed after the beggining and before the closing sequences and those cannot be in the same line</string>
+			<key>end</key>
+			<string>^(\s*(\3))(?!")</string>
+			<key>endCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>meta.string.quoted.triple.end.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.string.end.erlang</string>
+				</dict>
+			</dict>
+			<key>name</key>
+			<string>string.quoted.tripple.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string</key>
 		<dict>
@@ -2863,6 +3025,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.curly-brackets.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-double-quote</key>
 		<dict>
@@ -2930,6 +3099,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.double.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-less-greater</key>
 		<dict>
@@ -2997,6 +3173,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.less-greater.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-parenthesis</key>
 		<dict>
@@ -3064,6 +3247,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.parenthesis.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-single-character</key>
 		<dict>
@@ -3131,6 +3321,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.other.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-single-quote</key>
 		<dict>
@@ -3198,6 +3395,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.single.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>sigil-string-square-brackets</key>
 		<dict>
@@ -3265,6 +3469,13 @@
 			</dict>
 			<key>name</key>
 			<string>string.quoted.square-brackets.sigil.erlang</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#internal-string-body-verbatim</string>
+				</dict>
+			</array>
 		</dict>
 		<key>string</key>
 		<dict>
