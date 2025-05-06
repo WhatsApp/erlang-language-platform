@@ -1499,6 +1499,8 @@ bar() ->
                             Expr<5>:Expr::MacroCall {
                                 args
                                     Expr<4>:Literal(Atom('foo')),
+                                macro_def
+                                    Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                                 expansion
                                     Expr<3>:Expr::Tuple {
                                         Expr<1>:Literal(Atom('foo')),
@@ -1545,6 +1547,8 @@ bar() ->
                             Expr<5>:Expr::MacroCall {
                                 args
                                     Expr<4>:Literal(Atom('foo')),
+                                macro_def
+                                    Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                             },
                             Expr<7>:Expr::Tuple {
                                 Expr<6>:Literal(Atom('foo')),
@@ -1635,6 +1639,8 @@ bar() ->
                                         pat
                                             Pat<5>:Pat::MacroCall {
                                                 args
+                                                macro_def
+                                                    Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                                                 expansion
                                                     Pat<4>:Pat::Tuple {
                                                         Pat<1>:Literal(Atom('foo')),
@@ -1695,6 +1701,8 @@ bar() ->
                                         pat
                                             Pat<5>:Pat::MacroCall {
                                                 args
+                                                macro_def
+                                                    Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                                             }
                                         guards
                                         exprs
@@ -1952,6 +1960,8 @@ bar() ->
                     TypeExpr::MacroCall {
                         args
                             Expr<0>:Literal(Atom('foo')),
+                        macro_def
+                            Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                         expansion
                             TypeExpr::Tuple {
                                 Literal(Atom('foo')),
@@ -1987,6 +1997,8 @@ bar() ->
                     TypeExpr::MacroCall {
                         args
                             Expr<0>:Literal(Atom('foo')),
+                        macro_def
+                            Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                     },
                 }.
             "#]],

@@ -528,11 +528,14 @@ impl<'a> Printer<'a> {
             Expr::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("macro_def", false, &mut |this| {
+                        writeln!(this, "{:?}", macro_def).ok();
+                    });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
                             this.print_expr(expansion)
@@ -842,11 +845,14 @@ impl<'a> Printer<'a> {
             Pat::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("macro_def", false, &mut |this| {
+                        writeln!(this, "{:?}", macro_def).ok();
+                    });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
                             this.print_pat(expansion)
@@ -946,11 +952,14 @@ impl<'a> Printer<'a> {
             Term::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 self.print_herald("Term::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("macro_def", false, &mut |this| {
+                        writeln!(this, "{:?}", macro_def).ok();
+                    });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
                             this.print_term(expansion)
@@ -1115,11 +1124,14 @@ impl<'a> Printer<'a> {
             TypeExpr::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 self.print_herald("TypeExpr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("macro_def", false, &mut |this| {
+                        writeln!(this, "{:?}", macro_def).ok();
+                    });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
                             this.print_type(expansion)
@@ -1932,6 +1944,8 @@ mod tests {
                         Expr<5>:Expr::MacroCall {
                             args
                                 Expr<4>:Literal(Integer(2)),
+                            macro_def
+                                Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                             expansion
                                 Expr<3>:Expr::BinaryOp {
                                     lhs
