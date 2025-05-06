@@ -806,6 +806,64 @@ dep() -> ok.
     }
 
     #[test]
+    fn test_function_doc_fix_params_comma() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A, which is a param
+%% @param B, which is another param
+%% @end
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+""".
+-doc #{params => #{"A" => "which is a param", "B" => "which is another param"}}.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
+    fn test_function_doc_fix_params_comma_space() {
+        check_fix(
+            r#"
+-module(main).
+%% @d~oc
+%% This is the main doc
+%% @param A , which is a param
+%% @param B , which is another param
+%% @end
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#,
+            expect![[r#"
+-module(main).
+-doc """
+This is the main doc
+""".
+-doc #{params => #{"A" => "which is a param", "B" => "which is another param"}}.
+main(A, B) ->
+    dep().
+
+dep() -> ok.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_function_doc_fix_params_quotes() {
         check_fix(
             r#"

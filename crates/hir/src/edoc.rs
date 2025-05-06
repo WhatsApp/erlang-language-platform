@@ -232,7 +232,7 @@ impl EdocHeader {
                 }
                 res.push_str(&format!(
                     "\"{}\" => \"{}\", ",
-                    name.trim_end_matches(":"),
+                    name.trim_end_matches(is_param_name_separator),
                     description.trim().replace("\"", "\\\"")
                 ));
             }
@@ -810,12 +810,16 @@ fn extract_param_name_and_content(content: &str) -> Option<(&str, &str)> {
         Some((
             name,
             content
-                .trim_start_matches(|c| c == ':' || c == '-')
+                .trim_start_matches(is_param_name_separator)
                 .trim_start(),
         ))
     } else {
         Some((content, ""))
     }
+}
+
+fn is_param_name_separator(c: char) -> bool {
+    c == ':' || c == '-' || c == ','
 }
 
 /// An edoc comment must be alone on a line, it cannot come after
