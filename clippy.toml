@@ -1,0 +1,9 @@
+# Clippy parameter settings
+
+# See https://doc.rust-lang.org/clippy/lint_configuration.html for possible settings
+
+
+# Default is 250
+# see https://rust-lang.github.io/rust-clippy/master/index.html#type_complexity
+type-complexity-threshold = 350
+

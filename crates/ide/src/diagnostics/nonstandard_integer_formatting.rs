@@ -96,7 +96,6 @@ fn check_function(
                                 &formatted_src_text,
                             ) {
                                 diagnostics.push(diagnostic);
-                                Some(());
                             }
                         }
                     }
