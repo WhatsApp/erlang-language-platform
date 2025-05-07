@@ -83,6 +83,15 @@ Point the `ELP_EQWALIZER_PATH` environment variable to the path returned above:
 export ELP_EQWALIZER_PATH=/path/to/eqwalizer.jar
 ```
 
+Note: The ELP build assumes that you clone the eqwalizer and ELP
+repositories from the same starting directory, so they are
+"siblings". This is because there is a cross-reference within ELP to
+`../eqwalizer/eqwalizer_support`.  If you are unable to do this, set
+
+```
+export EQWALIZER_SUPPORT_DIR=</path/to/eqwalizer_repo>/eqwalizer_support
+```
+
 ### Compile ELP
 
 Clone the ELP repository:
