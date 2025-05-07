@@ -5,7 +5,8 @@ xtask = "run --package xtask --"
 # @fb-only
 
 [profile.release]
-lto = "thin"
+codegen-units = 1
+lto = true
 debug = "line-tables-only"
 
 # Workaround to easily locate workspace root
