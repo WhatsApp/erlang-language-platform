@@ -20,9 +20,9 @@ use crate::AssistContext;
 use crate::Assists;
 use crate::helpers::prev_form_nodes;
 
-const DEFAULT_TEXT: &str = "{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}";
+const DEFAULT_TEXT: &str =
+    "[How to write documentation](https://www.erlang.org/doc/system/documentation.html)";
 const ARG_TEXT: &str = "Argument description";
-const RETURN_TEXT: &str = "Return description";
 
 // Assist: add_edoc
 //
@@ -33,9 +33,10 @@ const RETURN_TEXT: &str = "Return description";
 // ```
 // ->
 // ```
-// %% @doc Function description
-// %% @param Arg1 Argument description
-// %% @returns Description
+// -doc """
+// [How to write documentation](https://www.erlang.org/doc/system/documentation.html)
+// """.
+// -doc #{params => #{"Arg1" => "Argument description"}}.
 // foo(Arg1) -> ok.
 // ```
 pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -82,33 +83,45 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let mut snippet_idx = 1;
-                    let header_snippet = format!("%% @doc ${{{}:{}}}\n", snippet_idx, DEFAULT_TEXT);
+                    let header_snippet = format!(
+                        "-doc \"\"\"\n${{{}:{}}}\n\"\"\".",
+                        snippet_idx, DEFAULT_TEXT
+                    );
                     let args_snippets = arg_names.fold(String::new(), |mut output, arg_name| {
                         snippet_idx += 1;
-                        let _ = writeln!(
+                        let _ = write!(
                             output,
-                            "%% @param {} ${{{}:{}}}",
+                            "\"{}\" => \"${{{}:{}}}\", ",
                             arg_name, snippet_idx, ARG_TEXT
                         );
                         output
                     });
-                    snippet_idx += 1;
-                    let snippet = format!(
-                        "{}{}%% @returns ${{{}:{}}}\n",
-                        header_snippet, args_snippets, snippet_idx, RETURN_TEXT
-                    );
+                    let args_snippets = if !args_snippets.is_empty() {
+                        format!(
+                            "-doc #{{params => #{{{}}}}}.",
+                            args_snippets.trim_end_matches(", ")
+                        )
+                    } else {
+                        "".to_string()
+                    };
+                    let snippet = format!("{}\n{}\n", header_snippet, args_snippets);
                     builder.edit_file(ctx.frange.file_id);
                     builder.insert_snippet(cap, insert, snippet);
                 }
                 None => {
                     let args_text = arg_names.fold(String::new(), |mut output, arg_name| {
-                        let _ = writeln!(output, "%% @param {} {}", arg_name, ARG_TEXT);
+                        let _ = write!(output, "\"{}\" => \"{}\", ", arg_name, ARG_TEXT);
                         output
                     });
-                    let text = format!(
-                        "%% @doc {}\n{}%% @returns {}\n",
-                        DEFAULT_TEXT, args_text, RETURN_TEXT
-                    );
+                    let args_text = if !args_text.is_empty() {
+                        format!(
+                            "-doc #{{params => #{{{}}}}}.",
+                            args_text.trim_end_matches(", ")
+                        )
+                    } else {
+                        "".to_string()
+                    };
+                    let text = format!("-doc \"\"\"\n{}\n\"\"\".\n{}\n", DEFAULT_TEXT, args_text);
                     builder.edit_file(ctx.frange.file_id);
                     builder.insert(insert, text)
                 }
@@ -141,10 +154,10 @@ mod tests {
 ~foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
-                %% @param Foo ${2:Argument description}
-                %% @param Arg2 ${3:Argument description}
-                %% @returns ${4:Return description}
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+                -doc #{params => #{"Foo" => "${2:Argument description}", "Arg2" => "${3:Argument description}"}}.
                 foo(Foo, some_atom) -> ok.
             "#]],
         )
@@ -160,10 +173,10 @@ mod tests {
 ~foo(Foo, some_atom) -> ok.
 "#,
             expect![[r#"
-                %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
-                %% @param Foo ${2:Argument description}
-                %% @param Arg2 ${3:Argument description}
-                %% @returns ${4:Return description}
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+                -doc #{params => #{"Foo" => "${2:Argument description}", "Arg2" => "${3:Argument description}"}}.
                 -spec foo(x(), y()) -> ok.
                 foo(Foo, some_atom) -> ok.
             "#]],
@@ -183,8 +196,10 @@ bar() -> ok.
             expect![[r#"
                 %% @doc bar
                 bar() -> ok.
-                %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
-                %% @returns ${2:Return description}
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+
                 foo() -> ok.
             "#]],
         )
@@ -201,8 +216,10 @@ bar() -> ok.
 "#,
             expect![[r#"
                 %% Some comment
-                %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
-                %% @returns ${2:Return description}
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+
                 foo() -> ok.
             "#]],
         )
@@ -234,15 +251,17 @@ bar() -> ok.
             ~foo() -> ok.
             "#,
             expect![[r#"
-            %% @doc
-            %% My test module
-            %% @end
-            -module(main).
-            -export([foo/0]).
+                %% @doc
+                %% My test module
+                %% @end
+                -module(main).
+                -export([foo/0]).
 
-            %% @doc ${1:{@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}}
-            %% @returns ${2:Return description}
-            foo() -> ok.
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+
+                foo() -> ok.
             "#]],
         )
     }

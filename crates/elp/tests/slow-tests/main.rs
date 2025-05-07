@@ -84,7 +84,7 @@ fn test_run_mock_lsp() {
                         {
                           "edits": [
                             {
-                              "newText": "%% @doc {@link https://www.erlang.org/doc/apps/edoc/chapter.html EDoc Manual}\n%% @param Arg1 Argument description\n%% @returns Return description\n",
+                              "newText": "-doc \"\"\"\n[How to write documentation](https://www.erlang.org/doc/system/documentation.html)\n\"\"\".\n-doc #{params => #{\"Arg1\" => \"Argument description\"}}.\n",
                               "range": {
                                 "end": {
                                   "character": 0,
