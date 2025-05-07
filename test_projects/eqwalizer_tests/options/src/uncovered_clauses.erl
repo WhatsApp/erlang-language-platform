@@ -44,3 +44,18 @@ uncovered_number_2(A) -> A.
 
 -spec uncovered_single(#{a => atom()}) -> atom().
 uncovered_single(#{a_typo := A}) -> A.
+-spec uncovered_last_1(atom()) -> ok.
+uncovered_last_1(A) when is_atom(A) -> ok;
+uncovered_last_1(A) when is_integer(A) -> ok.
+
+-spec uncovered_last_2(atom()) -> ok.
+uncovered_last_2(A) when is_atom(A) -> ok;
+uncovered_last_2(A) -> ok.
+
+-spec uncovered_last_3({ok, atom()}) -> ok.
+uncovered_last_3({ok, _A}) -> ok;
+uncovered_last_3({err, _A}) -> ok.
+
+-spec uncovered_last_4({ok, atom()}) -> ok.
+uncovered_last_4({ok, _A}) -> ok;
+uncovered_last_4(_) -> ok.

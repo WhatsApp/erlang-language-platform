@@ -34,4 +34,10 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 46 │ uncovered_single(#{a_typo := A}) -> A.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
-6 ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ options/src/uncovered_clauses.erl:57:1
+   │
+57 │ uncovered_last_3({err, _A}) -> ok.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+7 ERRORS
