@@ -51,6 +51,15 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ast_pointer = AstPtr::new(&form);
     let in_file_ast_pointer = InFileAstPtr::new(ctx.file_id(), ast_pointer);
 
+    let function_def = ctx
+        .sema
+        .find_enclosing_function_def(ctx.file_id(), &clause.syntax())?;
+    let already_has_doc = function_def.doc_id.is_some();
+
+    if already_has_doc {
+        return None;
+    };
+
     let existing_edocs = ctx.db().file_edoc_comments(ctx.file_id());
     let already_has_edoc = existing_edocs
         .is_some_and(|existing_edocs| existing_edocs.contains_key(&in_file_ast_pointer));
@@ -179,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn test_previous_has_comment() {
+    fn test_previous_has_old_style_edoc_comment() {
         check_assist(
             add_doc,
             "Add -doc attribute",
@@ -200,7 +209,7 @@ bar() -> ok.
     }
 
     #[test]
-    fn test_non_edoc_comment() {
+    fn test_with_plain_comment() {
         check_assist(
             add_doc,
             "Add -doc attribute",
@@ -219,7 +228,7 @@ bar() -> ok.
     }
 
     #[test]
-    fn test_already_has_edoc() {
+    fn test_already_has_old_style_edoc() {
         check_assist_not_applicable(
             add_doc,
             r#"
@@ -230,7 +239,7 @@ bar() -> ok.
     }
 
     #[test]
-    fn test_module_has_edoc() {
+    fn test_module_has_old_style_edoc() {
         check_assist(
             add_doc,
             "Add -doc attribute",
@@ -247,6 +256,44 @@ bar() -> ok.
                 %% @doc
                 %% My test module
                 %% @end
+                -module(main).
+                -export([foo/0]).
+
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+                foo() -> ok.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_already_doc_attribute() {
+        check_assist_not_applicable(
+            add_doc,
+            r#"
+-doc """
+This is foo
+""".
+~foo(Foo, some_atom) -> ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn test_module_has_doc_attribute() {
+        check_assist(
+            add_doc,
+            "Add -doc attribute",
+            r#"
+            -moduledoc "This is the main module".
+            -module(main).
+            -export([foo/0]).
+
+            ~foo() -> ok.
+            "#,
+            expect![[r#"
+                -moduledoc "This is the main module".
                 -module(main).
                 -export([foo/0]).
 

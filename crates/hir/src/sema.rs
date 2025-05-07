@@ -454,6 +454,17 @@ impl Semantic<'_> {
         self.function_def_id(&InFile::new(file_id, function_clause_id))
     }
 
+    pub fn find_enclosing_function_def(
+        &self,
+        file_id: FileId,
+        syntax: &SyntaxNode,
+    ) -> Option<FunctionDef> {
+        let def_id = self.find_enclosing_function(file_id, syntax)?;
+        let in_file_def_id = InFile::new(file_id, def_id);
+        let def = self.function_def(&in_file_def_id)?;
+        Some(def)
+    }
+
     pub fn find_enclosing_function_body(
         &self,
         file_id: FileId,
