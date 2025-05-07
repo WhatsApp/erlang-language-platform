@@ -80,51 +80,46 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 .enumerate()
                 .map(|(arg_idx, expr)| arg_name(arg_idx + 1, expr));
 
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let mut snippet_idx = 1;
-                    let header_snippet = format!(
-                        "-doc \"\"\"\n${{{}:{}}}\n\"\"\".",
-                        snippet_idx, DEFAULT_TEXT
-                    );
-                    let args_snippets = arg_names.fold(String::new(), |mut output, arg_name| {
-                        snippet_idx += 1;
+            let mut idx = 1;
+            let header = match ctx.config.snippet_cap {
+                Some(_cap) => {
+                    format!("-doc \"\"\"\n${{{}:{}}}\n\"\"\".", idx, DEFAULT_TEXT)
+                }
+                None => {
+                    format!("-doc \"\"\"\n{}\n\"\"\".", DEFAULT_TEXT)
+                }
+            };
+            let params = arg_names.fold(String::new(), |mut output, arg_name| {
+                idx += 1;
+                match ctx.config.snippet_cap {
+                    Some(_cap) => {
                         let _ = write!(
                             output,
                             "\"{}\" => \"${{{}:{}}}\", ",
-                            arg_name, snippet_idx, ARG_TEXT
+                            arg_name, idx, ARG_TEXT
                         );
-                        output
-                    });
-                    let args_snippets = if !args_snippets.is_empty() {
-                        format!(
-                            "-doc #{{params => #{{{}}}}}.",
-                            args_snippets.trim_end_matches(", ")
-                        )
-                    } else {
-                        "".to_string()
-                    };
-                    let snippet = format!("{}\n{}\n", header_snippet, args_snippets);
-                    builder.edit_file(ctx.frange.file_id);
-                    builder.insert_snippet(cap, insert, snippet);
-                }
-                None => {
-                    let args_text = arg_names.fold(String::new(), |mut output, arg_name| {
+                    }
+                    None => {
                         let _ = write!(output, "\"{}\" => \"{}\", ", arg_name, ARG_TEXT);
-                        output
-                    });
-                    let args_text = if !args_text.is_empty() {
-                        format!(
-                            "-doc #{{params => #{{{}}}}}.",
-                            args_text.trim_end_matches(", ")
-                        )
-                    } else {
-                        "".to_string()
-                    };
-                    let text = format!("-doc \"\"\"\n{}\n\"\"\".\n{}\n", DEFAULT_TEXT, args_text);
-                    builder.edit_file(ctx.frange.file_id);
-                    builder.insert(insert, text)
+                    }
                 }
+                output
+            });
+            let params = if !params.is_empty() {
+                format!(
+                    "-doc #{{params => #{{{}}}}}.\n",
+                    params.trim_end_matches(", ")
+                )
+            } else {
+                "".to_string()
+            };
+            let text = format!("{}\n{}", header, params);
+            builder.edit_file(ctx.frange.file_id);
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    builder.insert_snippet(cap, insert, text);
+                }
+                None => builder.insert(insert, text),
             }
         },
     )
@@ -199,7 +194,6 @@ bar() -> ok.
                 -doc """
                 ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
                 """.
-
                 foo() -> ok.
             "#]],
         )
@@ -219,7 +213,6 @@ bar() -> ok.
                 -doc """
                 ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
                 """.
-
                 foo() -> ok.
             "#]],
         )
@@ -260,7 +253,6 @@ bar() -> ok.
                 -doc """
                 ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
                 """.
-
                 foo() -> ok.
             "#]],
         )
