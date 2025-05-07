@@ -20,11 +20,13 @@ use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
 use elp_base_db::module_name;
 use elp_syntax::AstNode;
+use elp_syntax::AstPtr;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
+use elp_syntax::ast::FunDecl;
 use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -78,6 +80,7 @@ use crate::body::scope::ScopeId;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
+use crate::edoc::FunctionDoc;
 use crate::expr::AnyExpr;
 use crate::expr::AstClauseId;
 use crate::expr::ClauseId;
@@ -515,6 +518,26 @@ impl Semantic<'_> {
             FormIdx::Spec(fun) => Some(fun),
             _ => None,
         }
+    }
+
+    pub fn function_docs(&self, file_id: FileId, function: &FunDecl) -> Option<FunctionDoc> {
+        if let Some(doc_id) = self
+            .find_enclosing_function_def(file_id, &function.syntax())?
+            .doc_id
+        {
+            return Some(FunctionDoc::DocAttributeId(doc_id));
+        }
+        if let Some(edoc_header) = self.function_edoc_header(file_id, function) {
+            return Some(FunctionDoc::EdocHeader(edoc_header));
+        }
+        None
+    }
+
+    fn function_edoc_header(&self, file_id: FileId, function: &FunDecl) -> Option<EdocHeader> {
+        self.form_edoc_comments(InFileAstPtr::new(
+            file_id,
+            AstPtr::new(&ast::Form::FunDecl(function.clone())),
+        ))
     }
 
     pub fn vardef_source(&self, def: &VarDef) -> ast::Var {

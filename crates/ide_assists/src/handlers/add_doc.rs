@@ -12,9 +12,7 @@ use std::fmt::Write;
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::AstNode;
-use elp_syntax::AstPtr;
 use elp_syntax::ast;
-use hir::InFileAstPtr;
 
 use crate::AssistContext;
 use crate::Assists;
@@ -47,24 +45,7 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let clause = ast::FunctionClause::cast(name.syntax().parent()?)?;
     let function = ast::FunDecl::cast(clause.syntax().parent()?)?;
 
-    let form = ast::Form::FunDecl(function.clone());
-    let ast_pointer = AstPtr::new(&form);
-    let in_file_ast_pointer = InFileAstPtr::new(ctx.file_id(), ast_pointer);
-
-    let function_def = ctx
-        .sema
-        .find_enclosing_function_def(ctx.file_id(), &clause.syntax())?;
-    let already_has_doc = function_def.doc_id.is_some();
-
-    if already_has_doc {
-        return None;
-    };
-
-    let existing_edocs = ctx.db().file_edoc_comments(ctx.file_id());
-    let already_has_edoc = existing_edocs
-        .is_some_and(|existing_edocs| existing_edocs.contains_key(&in_file_ast_pointer));
-
-    if already_has_edoc {
+    if ctx.sema.function_docs(ctx.file_id(), &function).is_some() {
         return None;
     }
 

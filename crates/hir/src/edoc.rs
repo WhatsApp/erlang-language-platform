@@ -57,6 +57,12 @@ use stdx::trim_indent;
 use crate::FunctionDef;
 use crate::InFileAstPtr;
 use crate::db::DefDatabase;
+use crate::form_list::DocAttributeId;
+
+pub enum FunctionDoc {
+    EdocHeader(EdocHeader),
+    DocAttributeId(DocAttributeId),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
