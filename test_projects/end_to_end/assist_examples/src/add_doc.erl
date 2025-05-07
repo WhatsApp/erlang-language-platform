@@ -1,4 +1,4 @@
--module(add_edoc).
+-module(add_doc).
 
 -export([version/0]).
 

@@ -105,7 +105,7 @@ fn test_run_mock_lsp() {
                       ]
                     },
                     "kind": "",
-                    "title": "Add edoc comment"
+                    "title": "Add -doc attribute"
                   },
                   {
                     "edit": {

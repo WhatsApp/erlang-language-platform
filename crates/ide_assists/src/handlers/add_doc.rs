@@ -24,9 +24,9 @@ const DEFAULT_TEXT: &str =
     "[How to write documentation](https://www.erlang.org/doc/system/documentation.html)";
 const ARG_TEXT: &str = "Argument description";
 
-// Assist: add_edoc
+// Assist: add_doc
 //
-// Adds an edoc comment above a function, if it doesn't already have one.
+// Adds an -doc attribute above a function, if it doesn't already have one.
 //
 // ```
 // foo(Arg1) -> ok.
@@ -39,7 +39,7 @@ const ARG_TEXT: &str = "Argument description";
 // -doc #{params => #{"Arg1" => "Argument description"}}.
 // foo(Arg1) -> ok.
 // ```
-pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let name = match ctx.find_node_at_offset::<ast::Name>()? {
         ast::Name::Atom(name) => name,
         ast::Name::MacroCallExpr(_) | ast::Name::Var(_) => return None,
@@ -67,8 +67,8 @@ pub(crate) fn add_edoc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let target = name.syntax().text_range();
 
     acc.add(
-        AssistId("add_edoc", AssistKind::Generate),
-        "Add edoc comment",
+        AssistId("add_doc", AssistKind::Generate),
+        "Add -doc attribute",
         None,
         target,
         None,
@@ -143,8 +143,8 @@ mod tests {
     #[test]
     fn test_base_case() {
         check_assist(
-            add_edoc,
-            "Add edoc comment",
+            add_doc,
+            "Add -doc attribute",
             r#"
 ~foo(Foo, some_atom) -> ok.
 "#,
@@ -161,8 +161,8 @@ mod tests {
     #[test]
     fn test_with_spec() {
         check_assist(
-            add_edoc,
-            "Add edoc comment",
+            add_doc,
+            "Add -doc attribute",
             r#"
 -spec foo(x(), y()) -> ok.
 ~foo(Foo, some_atom) -> ok.
@@ -181,8 +181,8 @@ mod tests {
     #[test]
     fn test_previous_has_comment() {
         check_assist(
-            add_edoc,
-            "Add edoc comment",
+            add_doc,
+            "Add -doc attribute",
             r#"
 %% @doc bar
 bar() -> ok.
@@ -202,8 +202,8 @@ bar() -> ok.
     #[test]
     fn test_non_edoc_comment() {
         check_assist(
-            add_edoc,
-            "Add edoc comment",
+            add_doc,
+            "Add -doc attribute",
             r#"
 %% Some comment
 ~foo() -> ok.
@@ -221,7 +221,7 @@ bar() -> ok.
     #[test]
     fn test_already_has_edoc() {
         check_assist_not_applicable(
-            add_edoc,
+            add_doc,
             r#"
 %% @doc foo
 ~foo(Foo, some_atom) -> ok.
@@ -232,8 +232,8 @@ bar() -> ok.
     #[test]
     fn test_module_has_edoc() {
         check_assist(
-            add_edoc,
-            "Add edoc comment",
+            add_doc,
+            "Add -doc attribute",
             r#"
             %% @doc
             %% My test module
