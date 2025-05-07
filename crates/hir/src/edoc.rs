@@ -59,6 +59,7 @@ use crate::InFileAstPtr;
 use crate::db::DefDatabase;
 use crate::form_list::DocAttributeId;
 
+#[allow(clippy::large_enum_variant)]
 pub enum FunctionDoc {
     EdocHeader(EdocHeader),
     DocAttributeId(DocAttributeId),

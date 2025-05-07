@@ -522,7 +522,7 @@ impl Semantic<'_> {
 
     pub fn function_docs(&self, file_id: FileId, function: &FunDecl) -> Option<FunctionDoc> {
         if let Some(doc_id) = self
-            .find_enclosing_function_def(file_id, &function.syntax())?
+            .find_enclosing_function_def(file_id, function.syntax())?
             .doc_id
         {
             return Some(FunctionDoc::DocAttributeId(doc_id));
