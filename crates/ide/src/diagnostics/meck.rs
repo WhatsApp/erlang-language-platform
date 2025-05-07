@@ -97,16 +97,20 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                }| match args.as_vec()[..] {
             [module] => {
                 if let Some(module_range) = def_fb.range_for_expr(module) {
-                    let diag = make_diagnostic(
-                        sema,
-                        def.file.file_id,
-                        range,
-                        module_range.end(),
-                        true,
-                        true,
-                        None,
-                    );
-                    Some(diag)
+                    if def.file.file_id == range.file_id {
+                        let diag = make_diagnostic(
+                            sema,
+                            def.file.file_id,
+                            range.range,
+                            module_range.range.end(),
+                            true,
+                            true,
+                            None,
+                        );
+                        Some(diag)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -117,16 +121,20 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                     hir::Expr::List { exprs, .. } => match exprs.last() {
                         Some(last_option) => {
                             if let Some(last_option_range) = def_fb.range_for_expr(*last_option) {
-                                let diag = make_diagnostic(
-                                    sema,
-                                    def.file.file_id,
-                                    range,
-                                    last_option_range.end(),
-                                    exprs.is_empty(),
-                                    false,
-                                    None,
-                                );
-                                Some(diag)
+                                if def.file.file_id == range.file_id {
+                                    let diag = make_diagnostic(
+                                        sema,
+                                        def.file.file_id,
+                                        range.range,
+                                        last_option_range.range.end(),
+                                        exprs.is_empty(),
+                                        false,
+                                        None,
+                                    );
+                                    Some(diag)
+                                } else {
+                                    None
+                                }
                             } else {
                                 None
                             }
@@ -134,16 +142,20 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                         None => {
                             // Empty list
                             if let Some(options_range) = def_fb.range_for_expr(options) {
-                                let diag = make_diagnostic(
-                                    sema,
-                                    def.file.file_id,
-                                    range,
-                                    options_range.end(),
-                                    true,
-                                    false,
-                                    Some(options_range),
-                                );
-                                Some(diag)
+                                if def.file.file_id == range.file_id {
+                                    let diag = make_diagnostic(
+                                        sema,
+                                        def.file.file_id,
+                                        range.range,
+                                        options_range.range.end(),
+                                        true,
+                                        false,
+                                        Some(options_range.range),
+                                    );
+                                    Some(diag)
+                                } else {
+                                    None
+                                }
                             } else {
                                 None
                             }

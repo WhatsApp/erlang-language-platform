@@ -193,10 +193,14 @@ fn process_badmatches(
                    ..
                }: MatchCtx<'_, String>|
               -> Option<Diagnostic> {
-            let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra, range)
-                .with_severity(Severity::Warning)
-                .with_ignore_fix(sema, def_fb.file_id());
-            Some(diag)
+            if range.file_id == def.file.file_id {
+                let diag = Diagnostic::new(DiagnosticCode::ApplicationGetEnv, extra, range.range)
+                    .with_severity(Severity::Warning)
+                    .with_ignore_fix(sema, def_fb.file_id());
+                Some(diag)
+            } else {
+                None
+            }
         },
     );
 }

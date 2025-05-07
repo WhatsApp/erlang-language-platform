@@ -134,11 +134,17 @@ fn report(
             let add_parens_range = if rhs_complex {
                 let b_rhs_ast_ptr = map.expr(b_rhs)?;
                 let rhs_ast_ptr = map.expr(*rhs)?;
-                TextRange::new(b_rhs_ast_ptr.range().start(), rhs_ast_ptr.range().end())
+                TextRange::new(
+                    b_rhs_ast_ptr.range().range.start(),
+                    rhs_ast_ptr.range().range.end(),
+                )
             } else {
                 let lhs_ast_ptr = map.expr(*lhs)?;
                 let b_lhs_ast_ptr = map.expr(b_lhs)?;
-                TextRange::new(lhs_ast_ptr.range().start(), b_lhs_ast_ptr.range().end())
+                TextRange::new(
+                    lhs_ast_ptr.range().range.start(),
+                    b_lhs_ast_ptr.range().range.end(),
+                )
             };
             let expr_source = map.any(ctx.item_id)?;
             let source = sema.db.parse(file_id).tree();

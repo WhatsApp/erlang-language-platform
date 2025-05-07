@@ -101,7 +101,9 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
                 {
                     for (pat_id, new_name) in replacements.iter() {
                         if let Some(range) = in_clause.range_for_pat(*pat_id) {
-                            diags.push(make_diagnostic(file_id, range, new_name.clone()));
+                            if range.file_id == file_id {
+                                diags.push(make_diagnostic(file_id, range.range, new_name.clone()));
+                            }
                         }
                     }
                 }

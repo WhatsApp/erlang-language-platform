@@ -91,16 +91,18 @@ fn check_file(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: &FileId) {
 
 fn make_diagnostic(acc: &mut Vec<Diagnostic>, file_id: &FileId, ast: ExprSource) {
     let range = ast.range();
-    let fix = add_parens_fix(*file_id, &range);
-    acc.push(
-        Diagnostic::new(
-            DiagnosticCode::MacroPrecedenceEscape,
-            "The macro expansion can have unexpected precedence here",
-            range,
-        )
-        .with_severity(Severity::Warning)
-        .with_fixes(Some(vec![fix])),
-    );
+    if range.file_id == *file_id {
+        let fix = add_parens_fix(*file_id, &range.range);
+        acc.push(
+            Diagnostic::new(
+                DiagnosticCode::MacroPrecedenceEscape,
+                "The macro expansion can have unexpected precedence here",
+                range.range,
+            )
+            .with_severity(Severity::Warning)
+            .with_fixes(Some(vec![fix])),
+        );
+    }
 }
 
 fn add_parens_fix(file_id: FileId, range: &TextRange) -> Assist {

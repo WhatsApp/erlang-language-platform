@@ -13,6 +13,7 @@
 
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use hir::AnyExpr;
 use hir::FunctionDef;
 use hir::Literal;
@@ -63,7 +64,7 @@ fn check_function(acc: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef)
                         if let Some(record) = def_map.get_record(record_name) {
                             if pats.len() == record.record.fields.len() + 1 {
                                 let range = in_clause.range_for_pat(*pat);
-                                report(record_name, range, acc);
+                                report(def.file.file_id, record_name, range, acc);
                             }
                         }
                     }
@@ -73,9 +74,16 @@ fn check_function(acc: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef)
     )
 }
 
-fn report(record_name: &Name, range: Option<TextRange>, acc: &mut Vec<Diagnostic>) -> Option<()> {
+fn report(
+    file_id: FileId,
+    record_name: &Name,
+    range: Option<FileRange>,
+    acc: &mut Vec<Diagnostic>,
+) -> Option<()> {
     let range = range?;
-    acc.push(make_diagnostic(range, record_name));
+    if range.file_id == file_id {
+        acc.push(make_diagnostic(range.range, record_name));
+    }
 
     None
 }

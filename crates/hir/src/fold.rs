@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_syntax::TextRange;
+use elp_base_db::FileRange;
 
 use crate::AnyExprId;
 use crate::Attribute;
@@ -365,7 +365,7 @@ impl AnyCallBackCtx<'_> {
         Some((body, source, ast))
     }
 
-    pub fn find_range(&self, sema: &Semantic) -> Option<(Arc<Body>, TextRange)> {
+    pub fn find_range(&self, sema: &Semantic) -> Option<(Arc<Body>, FileRange)> {
         let (body, _, ast) = self.body_with_expr_source(sema)?;
         Some((body, ast.range()))
     }

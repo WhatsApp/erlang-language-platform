@@ -73,18 +73,19 @@ pub(crate) fn check_function_with_diagnostic_template(
                    extra,
                    ..
                }: MatchCtx<'_, &DiagnosticTemplate>| {
-            let diag = Diagnostic::new(
-                extra.code.clone(),
-                extra.message.clone(),
-                ctx.range(&extra.use_range),
-            )
-            .with_severity(extra.severity);
-            let diag = if extra.with_ignore_fix {
-                diag.with_ignore_fix(sema, def_fb.file_id())
+            let range = ctx.range(&extra.use_range);
+            if range.file_id == def.file.file_id {
+                let diag = Diagnostic::new(extra.code.clone(), extra.message.clone(), range.range)
+                    .with_severity(extra.severity);
+                let diag = if extra.with_ignore_fix {
+                    diag.with_ignore_fix(sema, def_fb.file_id())
+                } else {
+                    diag
+                };
+                Some(diag)
             } else {
-                diag
-            };
-            Some(diag)
+                None
+            }
         },
     );
 }

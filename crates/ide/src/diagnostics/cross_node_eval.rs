@@ -92,14 +92,15 @@ fn process_badmatches(
                    extra,
                    ..
                }: MatchCtx<'_, &str>| {
-            let diag = Diagnostic::new(
-                DiagnosticCode::CrossNodeEval,
-                *extra,
-                ctx.range_mf_or_macro(),
-            )
-            .with_severity(Severity::Error)
-            .with_ignore_fix(sema, def_fb.file_id());
-            Some(diag)
+            let range = ctx.range_mf_or_macro();
+            if def.file.file_id == range.file_id {
+                let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, *extra, range.range)
+                    .with_severity(Severity::Error)
+                    .with_ignore_fix(sema, def_fb.file_id());
+                Some(diag)
+            } else {
+                None
+            }
         },
     );
 }

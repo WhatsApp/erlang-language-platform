@@ -139,15 +139,17 @@ fn check_function(
                             ctx.item_id
                         };
                         if let Some(range) = def_fb.range_for_any(clause_id, expr_id) {
-                            let d = make_diagnostic(range, &target_def, details)
-                                .with_fixes(Some(vec![fix_xref_ignore(
-                                    sema,
-                                    def_fb.file_id(),
-                                    &target_def,
-                                    range,
-                                )]))
-                                .with_ignore_fix(sema, def_fb.file_id());
-                            diagnostics.push(d)
+                            if def.file.file_id == range.file_id {
+                                let d = make_diagnostic(range.range, &target_def, details)
+                                    .with_fixes(Some(vec![fix_xref_ignore(
+                                        sema,
+                                        def_fb.file_id(),
+                                        &target_def,
+                                        range.range,
+                                    )]))
+                                    .with_ignore_fix(sema, def_fb.file_id());
+                                diagnostics.push(d)
+                            }
                         }
                     }
                 }

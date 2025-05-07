@@ -90,12 +90,15 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionC
                         let rhs_ast = body_map
                             .expr(*rhs)
                             .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                        diags.push(make_diagnostic(
-                            def.file.file_id,
-                            lhs_range,
-                            full_range,
-                            rhs_ast,
-                        ));
+                        let file_id = def.file.file_id;
+                        if lhs_range.file_id == file_id && full_range.file_id == file_id {
+                            diags.push(make_diagnostic(
+                                file_id,
+                                &lhs_range.range,
+                                &full_range.range,
+                                rhs_ast,
+                            ));
+                        }
                     }
                 }
             }

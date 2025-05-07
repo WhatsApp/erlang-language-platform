@@ -7,6 +7,7 @@
  * of this source tree.
  */
 
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
@@ -486,19 +487,19 @@ pub struct MatchCtx<'a, Extra> {
     pub args: Args,
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro.
-    pub range_surface_mf: Option<TextRange>,
-    pub range: TextRange,
+    pub range_surface_mf: Option<FileRange>,
+    pub range: FileRange,
     pub extra: &'a Extra,
 }
 
 impl<U> MatchCtx<'_, U> {
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro, in which case the macro call location is used.
-    pub fn range_mf_or_macro(&self) -> TextRange {
+    pub fn range_mf_or_macro(&self) -> FileRange {
         self.range_surface_mf.unwrap_or(self.range)
     }
 
-    pub fn range(&self, use_range: &UseRange) -> TextRange {
+    pub fn range(&self, use_range: &UseRange) -> FileRange {
         match use_range {
             UseRange::WithArgs => self.range,
             UseRange::NameOnly => self.range_mf_or_macro(),
@@ -672,14 +673,18 @@ mod tests {
                        ..
                    }: MatchCtx<'_, &str>| {
                 let diag_range = ctx.range(&use_range);
-                let diag = Diagnostic::new(
-                    DiagnosticCode::AdHoc("test".to_string()),
-                    *extra,
-                    diag_range,
-                )
-                .with_severity(Severity::Warning)
-                .with_ignore_fix(sema, def_fb.file_id());
-                Some(diag)
+                if diag_range.file_id == def_fb.file_id() {
+                    let diag = Diagnostic::new(
+                        DiagnosticCode::AdHoc("test".to_string()),
+                        *extra,
+                        diag_range.range,
+                    )
+                    .with_severity(Severity::Warning)
+                    .with_ignore_fix(sema, def_fb.file_id());
+                    Some(diag)
+                } else {
+                    None
+                }
             },
         );
     }

@@ -58,19 +58,21 @@ pub(super) fn hints(
                                         function_body.range_for_expr(clause_id, arg)
                                     {
                                         if range_limit.is_none()
-                                            || range_limit.unwrap().contains_range(arg_range)
+                                            || range_limit.unwrap().contains_range(arg_range.range)
                                         {
                                             if let ParamName::Name(param_name) = param_name {
-                                                let hint = InlayHint {
-                                                    range: arg_range,
-                                                    kind: InlayKind::Parameter,
-                                                    label: InlayHintLabel::simple(
-                                                        param_name.as_str(),
-                                                        None,
-                                                        None,
-                                                    ),
-                                                };
-                                                res.push(hint);
+                                                if arg_range.file_id == file_id {
+                                                    let hint = InlayHint {
+                                                        range: arg_range.range,
+                                                        kind: InlayKind::Parameter,
+                                                        label: InlayHintLabel::simple(
+                                                            param_name.as_str(),
+                                                            None,
+                                                            None,
+                                                        ),
+                                                    };
+                                                    res.push(hint);
+                                                }
                                             }
                                         }
                                     }

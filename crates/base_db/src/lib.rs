@@ -101,6 +101,18 @@ pub struct FileRange {
     pub file_id: FileId,
     pub range: TextRange,
 }
+impl FileRange {
+    pub fn cover(&self, other: FileRange) -> Option<FileRange> {
+        if self.file_id == other.file_id {
+            Some(FileRange {
+                file_id: self.file_id,
+                range: self.range.cover(other.range),
+            })
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum FileKind {

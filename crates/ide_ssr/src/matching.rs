@@ -320,11 +320,7 @@ impl<'a> Matcher<'a> {
         // First pass at matching, where we check that node types and idents match.
         self.attempt_match_node(&mut Phase::First, self.pattern, code)?;
 
-        let range = self.get_code_range(code).expect("cannot get code range");
-        let code_range = FileRange {
-            file_id: self.code_body.body.origin.file_id(),
-            range,
-        };
+        let code_range = self.get_code_range(code).expect("cannot get code range");
         self.validate_range(&code_range)?;
         let mut the_match = Match {
             range: code_range,
@@ -410,9 +406,7 @@ impl<'a> Matcher<'a> {
                     if let Some(condition) = self.rule.conditions.get(placeholder) {
                         self.check_condition(code, condition)?;
                     }
-                    if let Some(range) = self.get_code_range(code) {
-                        let file_id = self.code_body.body.origin.file_id();
-                        let original_range = FileRange { file_id, range };
+                    if let Some(original_range) = self.get_code_range(code) {
                         // We validated the range for the node
                         // when we started the match, so the
                         // placeholder probably can't fail range
@@ -753,7 +747,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn get_code_range(&self, code: &SubId) -> Option<TextRange> {
+    fn get_code_range(&self, code: &SubId) -> Option<FileRange> {
         match code {
             SubId::AnyExprId(code) => self.code_body.body.range_for_any(self.sema, *code),
             _ => None,

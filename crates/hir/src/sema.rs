@@ -544,7 +544,7 @@ impl Semantic<'_> {
         def.source(self.db.upcast())
     }
 
-    pub fn range_for_any(&self, body: &Body, expr_id: &AnyExprId) -> Option<TextRange> {
+    pub fn range_for_any(&self, body: &Body, expr_id: &AnyExprId) -> Option<FileRange> {
         body.range_for_any(self, *expr_id)
     }
 
@@ -557,10 +557,7 @@ impl Semantic<'_> {
     /// When we eventually improve this, we will not have to rewrite code using this API.
     pub fn expr_type(&self, body: &Body, expr_id: &ExprId) -> Option<eqwalizer::types::Type> {
         let range = self.range_for_any(body, &AnyExprId::Expr(*expr_id))?;
-        let type_info = self.db.eqwalizer_type_at_position(FileRange {
-            file_id: body.origin.file_id(),
-            range,
-        })?;
+        let type_info = self.db.eqwalizer_type_at_position(range)?;
         Some(type_info.0.clone())
     }
     /// We expose a high-level function, which internally does some
@@ -568,10 +565,7 @@ impl Semantic<'_> {
     /// When we eventually improve this, we will not have to rewrite code using this API.
     pub fn pat_type(&self, body: &Body, pat_id: &PatId) -> Option<eqwalizer::types::Type> {
         let range = self.range_for_any(body, &AnyExprId::Pat(*pat_id))?;
-        let type_info = self.db.eqwalizer_type_at_position(FileRange {
-            file_id: body.origin.file_id(),
-            range,
-        })?;
+        let type_info = self.db.eqwalizer_type_at_position(range)?;
         Some(type_info.0.clone())
     }
 
@@ -1293,15 +1287,15 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         fold_function_body(strategy, &self.body, initial, callback)
     }
 
-    pub fn range_for_expr(&self, clause_id: ClauseId, expr_id: ExprId) -> Option<TextRange> {
+    pub fn range_for_expr(&self, clause_id: ClauseId, expr_id: ExprId) -> Option<FileRange> {
         self.in_clause(clause_id).range_for_expr(expr_id)
     }
 
-    pub fn range_for_any(&self, clause_id: ClauseId, id: AnyExprId) -> Option<TextRange> {
+    pub fn range_for_any(&self, clause_id: ClauseId, id: AnyExprId) -> Option<FileRange> {
         self.in_clause(clause_id).range_for_any(id)
     }
 
-    pub fn range_for_pat(&mut self, clause_id: ClauseId, pat_id: PatId) -> Option<TextRange> {
+    pub fn range_for_pat(&mut self, clause_id: ClauseId, pat_id: PatId) -> Option<FileRange> {
         self.in_clause(clause_id).range_for_pat(pat_id)
     }
 
@@ -1446,19 +1440,19 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         self.ast_fun_decl().syntax().text_range()
     }
 
-    pub fn range_for_expr(&self, expr_id: ExprId) -> Option<TextRange> {
+    pub fn range_for_expr(&self, expr_id: ExprId) -> Option<FileRange> {
         let body_map = self.get_body_map();
         let ast = body_map.expr(expr_id)?;
         Some(ast.range())
     }
 
-    pub fn range_for_any(&self, id: AnyExprId) -> Option<TextRange> {
+    pub fn range_for_any(&self, id: AnyExprId) -> Option<FileRange> {
         let body_map = self.get_body_map();
         let ast = body_map.any(id)?;
         Some(ast.range())
     }
 
-    pub fn range_for_pat(&self, pat_id: PatId) -> Option<TextRange> {
+    pub fn range_for_pat(&self, pat_id: PatId) -> Option<FileRange> {
         let body_map = self.get_body_map();
         let ast = body_map.pat(pat_id)?;
         Some(ast.range())
@@ -1633,7 +1627,12 @@ mod tests {
             .unwrap();
         let usages: Vec<_> = usages
             .iter()
-            .map(|(id, v)| (in_clause.range_for_any(*id).unwrap(), v.as_string(&db)))
+            .map(|(id, v)| {
+                (
+                    in_clause.range_for_any(*id).unwrap().range,
+                    v.as_string(&db),
+                )
+            })
             .sorted_by_key(|(r, _)| r.start())
             .collect();
         expect.assert_debug_eq(&usages);

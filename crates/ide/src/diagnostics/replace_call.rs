@@ -95,6 +95,11 @@ pub fn replace_call_site_if_args_match(
                     MFA::from_call_target(target, args.arity(), sema, &def_fb.body(), file_id)?;
                 let mfa_str = mfa.label();
 
+                let range = if range.file_id == file_id {
+                    Some(range.range)
+                } else {
+                    None
+                }?;
                 let diag = diagnostic_builder(&mfa, &extra.0, range)?;
 
                 if let Some(edit) = replace_call(
@@ -197,7 +202,9 @@ fn replace_call(
             let range = target
                 .range(in_clause)
                 .expect("Cannot extract range for invocation");
-            edit_builder.replace(range, replacement.to_owned());
+            if range.file_id == file_id {
+                edit_builder.replace(range.range, replacement.to_owned());
+            }
             Some(edit_builder.finish())
         }
         Replacement::ArgsPermutation { perm } => {
@@ -235,6 +242,7 @@ fn replace_call(
                             in_clause
                                 .range_for_expr(id)
                                 .expect("arg in permutation not found in function body.")
+                                .range
                         })
                         .reduce(|a, b| a.cover(b))
                     {
@@ -288,13 +296,15 @@ pub fn remove_fun_ref_from_list(
                                 let range = def_fb
                                     .clone()
                                     .range_for_expr(clause_id, *matched_funref_id)?;
-                                let diag = diagnostic_builder(&mfa, "", range)?;
-                                diags.push(diag.with_fixes(Some(vec![fix(
-                                    "remove_fun_ref_from_list",
-                                    "Remove noop fun ref from list",
-                                    SourceChange::from_text_edit(file_id, statement_removal),
-                                    range,
-                                )])));
+                                if range.file_id == def_fb.file_id() {
+                                    let diag = diagnostic_builder(&mfa, "", range.range)?;
+                                    diags.push(diag.with_fixes(Some(vec![fix(
+                                        "remove_fun_ref_from_list",
+                                        "Remove noop fun ref from list",
+                                        SourceChange::from_text_edit(file_id, statement_removal),
+                                        range.range,
+                                    )])));
+                                }
                                 Some(())
                             }();
                         });

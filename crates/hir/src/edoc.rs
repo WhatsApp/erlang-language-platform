@@ -101,7 +101,7 @@ impl EdocHeader {
             .chain(&self.sees)
             .chain(self.unknown.iter().map(|(_, tag)| tag))
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
-            .sorted_by(|a, b| a.range().start().cmp(&b.range().start()))
+            .sorted_by(|a, b| a.range().range.start().cmp(&b.range().range.start()))
     }
 
     pub fn copyright_comment(&self) -> Option<String> {
@@ -925,7 +925,7 @@ mod tests {
     fn test_print(edoc: &FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>) -> String {
         let mut buf = String::default();
         let mut edocs: Vec<_> = edoc.iter().collect();
-        edocs.sort_by_key(|(k, _)| k.range().start());
+        edocs.sort_by_key(|(k, _)| k.range().range.start());
         edocs.iter().for_each(
             |(
                 _k,
@@ -948,7 +948,7 @@ mod tests {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",
-                                    line.syntax.range(),
+                                    line.syntax.range().range,
                                     text
                                 ));
                             }
@@ -962,7 +962,7 @@ mod tests {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",
-                                    line.syntax.range(),
+                                    line.syntax.range().range,
                                     text
                                 ));
                             }
@@ -978,7 +978,7 @@ mod tests {
                                 if let Some(text) = &line.content {
                                     buf.push_str(&format!(
                                         "      {:?}: \"{}\"\n",
-                                        line.syntax.range(),
+                                        line.syntax.range().range,
                                         text
                                     ));
                                 }
@@ -993,7 +993,7 @@ mod tests {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",
-                                    line.syntax.range(),
+                                    line.syntax.range().range,
                                     text
                                 ));
                             }
@@ -1007,7 +1007,7 @@ mod tests {
                             if let Some(text) = &line.content {
                                 buf.push_str(&format!(
                                     "    {:?}: \"{}\"\n",
-                                    line.syntax.range(),
+                                    line.syntax.range().range,
                                     text
                                 ));
                             }

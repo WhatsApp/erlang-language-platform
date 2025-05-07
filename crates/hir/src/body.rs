@@ -11,11 +11,11 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileRange;
 use elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SourceFile;
-use elp_syntax::TextRange;
 use elp_syntax::ast;
 use fxhash::FxHashMap;
 use la_arena::Arena;
@@ -320,7 +320,7 @@ impl Body {
         fold_body(strategy, self)
     }
 
-    pub fn range_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<TextRange> {
+    pub fn range_for_any(&self, sema: &Semantic, id: AnyExprId) -> Option<FileRange> {
         let body_map = self.get_body_map(sema)?;
         let ast = body_map.any(id)?;
         Some(ast.range())
@@ -1115,8 +1115,11 @@ impl<T: AstNode> InFileAstPtr<T> {
         self.0.value.to_node(parse.tree().syntax())
     }
 
-    pub fn range(&self) -> TextRange {
-        self.0.value.syntax_node_ptr().range()
+    pub fn range(&self) -> FileRange {
+        FileRange {
+            file_id: self.0.file_id,
+            range: self.0.value.syntax_node_ptr().range(),
+        }
     }
 }
 

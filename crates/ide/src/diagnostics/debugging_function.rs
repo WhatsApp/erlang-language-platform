@@ -9,6 +9,7 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::FunctionDef;
 use hir::Semantic;
@@ -110,16 +111,20 @@ fn check_function(
 fn make_diagnostic(
     sema: &Semantic,
     file_id: FileId,
-    range_mf_only: Option<TextRange>,
+    range_mf_only: Option<FileRange>,
     range: TextRange,
 ) -> Option<Diagnostic> {
     let range_mf_only = range_mf_only?;
-    let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range_mf_only)
-        .with_severity(DIAGNOSTIC_SEVERITY)
-        .with_cli_severity(DIAGNOSTIC_CLI_SEVERITY)
-        .with_fixes(Some(vec![remove_fix(file_id, range)]))
-        .with_ignore_fix(sema, file_id);
-    Some(diagnostic)
+    if range_mf_only.file_id == file_id {
+        let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range_mf_only.range)
+            .with_severity(DIAGNOSTIC_SEVERITY)
+            .with_cli_severity(DIAGNOSTIC_CLI_SEVERITY)
+            .with_fixes(Some(vec![remove_fix(file_id, range)]))
+            .with_ignore_fix(sema, file_id);
+        Some(diagnostic)
+    } else {
+        None
+    }
 }
 
 fn remove_fix(file_id: FileId, range: TextRange) -> Assist {

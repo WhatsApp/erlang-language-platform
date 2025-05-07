@@ -78,25 +78,28 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         Some(replacement_str) => {
                             let expr_id = as_expr_id(ctx.item_id)?;
                             let range = def_fb.range_for_expr(clause_id, expr_id)?;
+                            if range.file_id == file_id {
+                                let range = range.range;
+                                let mut changes = SourceChangeBuilder::new(file_id);
+                                changes.replace(range, &replacement_str);
+                                let replacement = changes.finish();
 
-                            let mut changes = SourceChangeBuilder::new(file_id);
-                            changes.replace(range, &replacement_str);
-                            let replacement = changes.finish();
-
-                            let diag = Diagnostic::new(
-                                DiagnosticCode::ExpressionCanBeSimplified,
-                                format!("Can be simplified to `{}`.", &replacement_str).to_string(),
-                                range,
-                            )
-                            .with_severity(Severity::Warning)
-                            .add_categories([Category::SimplificationRule])
-                            .with_fixes(Some(vec![fix(
-                                "simplify_expression",
-                                format!("Replace by `{}`", &replacement_str).as_str(),
-                                replacement,
-                                range,
-                            )]));
-                            diags.push(diag);
+                                let diag = Diagnostic::new(
+                                    DiagnosticCode::ExpressionCanBeSimplified,
+                                    format!("Can be simplified to `{}`.", &replacement_str)
+                                        .to_string(),
+                                    range,
+                                )
+                                .with_severity(Severity::Warning)
+                                .add_categories([Category::SimplificationRule])
+                                .with_fixes(Some(vec![fix(
+                                    "simplify_expression",
+                                    format!("Replace by `{}`", &replacement_str).as_str(),
+                                    replacement,
+                                    range,
+                                )]));
+                                diags.push(diag);
+                            }
                         }
                     }
                     acc

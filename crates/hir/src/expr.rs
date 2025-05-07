@@ -11,8 +11,8 @@ use std::str::Chars;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileRange;
 use elp_syntax::SmolStr;
-use elp_syntax::TextRange;
 pub use elp_syntax::ast::BinaryOp;
 pub use elp_syntax::ast::MapOp;
 pub use elp_syntax::ast::UnaryOp;
@@ -618,13 +618,13 @@ impl CallTarget<ExprId> {
         }
     }
 
-    pub fn range(&self, in_clause: &InFunctionClauseBody<&FunctionDef>) -> Option<TextRange> {
+    pub fn range(&self, in_clause: &InFunctionClauseBody<&FunctionDef>) -> Option<FileRange> {
         match self {
             CallTarget::Local { name } => in_clause.range_for_expr(*name),
             CallTarget::Remote { module, name, .. } => {
                 let name_range = in_clause.range_for_expr(*name)?;
                 if let Some(module_range) = in_clause.range_for_expr(*module) {
-                    Some(module_range.cover(name_range))
+                    module_range.cover(name_range)
                 } else {
                     // We may have the erlang module, inserted while lowering
                     let module_atom = &in_clause[*module].as_atom()?;

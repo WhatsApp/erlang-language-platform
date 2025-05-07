@@ -108,13 +108,15 @@ fn add_spec_fix(
                 let (_, body_map) = sema.db.spec_body_with_source(spec_id);
                 let source = body_map.type_expr(sig.result)?;
                 let range = source.range();
-                let edit = TextEdit::replace(range, format!("{got}").to_string());
-                diagnostic.add_fix(fix(
-                    "fix_expected_type",
-                    format!("Update function spec to return '{got}'").as_str(),
-                    SourceChange::from_text_edit(file_id, edit),
-                    diagnostic.range,
-                ));
+                if range.file_id == file_id {
+                    let edit = TextEdit::replace(range.range, format!("{got}").to_string());
+                    diagnostic.add_fix(fix(
+                        "fix_expected_type",
+                        format!("Update function spec to return '{got}'").as_str(),
+                        SourceChange::from_text_edit(file_id, edit),
+                        diagnostic.range,
+                    ));
+                }
             }
             TypeExpr::Tuple { args } => {
                 if let [_atom, _rest] = args[..] {
@@ -146,13 +148,15 @@ fn make_spec_fix(
     let (_, body_map) = sema.db.spec_body_with_source(spec_id);
     let source = body_map.type_expr(sig.result)?;
     let range = source.range();
-    let edit = TextEdit::replace(range, format!("{got}").to_string());
-    diagnostic.add_fix(fix(
-        "fix_expected_type",
-        fix_label.as_str(),
-        SourceChange::from_text_edit(file_id, edit),
-        diagnostic.range,
-    ));
+    if range.file_id == file_id {
+        let edit = TextEdit::replace(range.range, format!("{got}").to_string());
+        diagnostic.add_fix(fix(
+            "fix_expected_type",
+            fix_label.as_str(),
+            SourceChange::from_text_edit(file_id, edit),
+            diagnostic.range,
+        ));
+    }
     Some(())
 }
 

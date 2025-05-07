@@ -1213,15 +1213,22 @@ impl GleanIndexer {
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
                     if let Some((body, range)) = ctx.find_range(&sema) {
-                        let arity: Option<u32> = match &body[*arity] {
-                            Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
-                            _ => None,
-                        };
-                        if let Some(arity) = arity {
-                            if let Some(fact) =
-                                Self::resolve_call(&sema, target, arity, file_id, &body, range)
-                            {
-                                acc.push(fact);
+                        if range.file_id == file_id {
+                            let arity: Option<u32> = match &body[*arity] {
+                                Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
+                                _ => None,
+                            };
+                            if let Some(arity) = arity {
+                                if let Some(fact) = Self::resolve_call(
+                                    &sema,
+                                    target,
+                                    arity,
+                                    file_id,
+                                    &body,
+                                    range.range,
+                                ) {
+                                    acc.push(fact);
+                                }
                             }
                         }
                     }
@@ -1316,16 +1323,20 @@ impl GleanIndexer {
             | hir::AnyExpr::Expr(Expr::Var(var)) => {
                 let name = var.as_string(db);
                 let (_, range) = ctx.find_range(sema)?;
-                Some(XRef {
-                    source: range.into(),
-                    target: XRefTarget::Var(
-                        VarTarget {
-                            file_id: file_id.into(),
-                            name,
-                        }
-                        .into(),
-                    ),
-                })
+                if range.file_id == file_id {
+                    Some(XRef {
+                        source: range.range.into(),
+                        target: XRefTarget::Var(
+                            VarTarget {
+                                file_id: file_id.into(),
+                                name,
+                            }
+                            .into(),
+                        ),
+                    })
+                } else {
+                    None
+                }
             }
             hir::AnyExpr::Expr(Expr::Call { target, args }) => {
                 let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
@@ -1339,7 +1350,11 @@ impl GleanIndexer {
                     Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
                     _ => None,
                 };
-                Self::resolve_call_v2(sema, target, arity?, file_id, &body, range)
+                if range.file_id == file_id {
+                    Self::resolve_call_v2(sema, target, arity?, file_id, &body, range.range)
+                } else {
+                    None
+                }
             }
             hir::AnyExpr::Pat(Pat::Record { name, .. })
             | hir::AnyExpr::Pat(Pat::RecordIndex { name, .. })
@@ -1719,21 +1734,33 @@ impl GleanIndexer {
         expr_source: &ExprSource,
     ) -> Option<TextRange> {
         let node = expr_source.to_node(source_file)?;
-        let range = match node {
+        match node {
             elp_syntax::ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(expr)) => {
-                expr.name()?.syntax().text_range()
+                Some(expr.name()?.syntax().text_range())
             }
             elp_syntax::ast::Expr::Call(expr) => match expr.expr()? {
-                ast::Expr::ExprMax(expr_max) => expr_max.syntax().text_range(),
-                expr => expr.syntax().text_range(),
+                ast::Expr::ExprMax(expr_max) => Some(expr_max.syntax().text_range()),
+                expr => Some(expr.syntax().text_range()),
             },
-            elp_syntax::ast::Expr::RecordExpr(expr) => expr.name()?.syntax().text_range(),
-            elp_syntax::ast::Expr::RecordFieldExpr(expr) => expr.name()?.syntax().text_range(),
-            elp_syntax::ast::Expr::RecordIndexExpr(expr) => expr.name()?.syntax().text_range(),
-            elp_syntax::ast::Expr::RecordUpdateExpr(expr) => expr.name()?.syntax().text_range(),
-            _ => ctx.find_range(sema)?.1,
-        };
-        Some(range)
+            elp_syntax::ast::Expr::RecordExpr(expr) => Some(expr.name()?.syntax().text_range()),
+            elp_syntax::ast::Expr::RecordFieldExpr(expr) => {
+                Some(expr.name()?.syntax().text_range())
+            }
+            elp_syntax::ast::Expr::RecordIndexExpr(expr) => {
+                Some(expr.name()?.syntax().text_range())
+            }
+            elp_syntax::ast::Expr::RecordUpdateExpr(expr) => {
+                Some(expr.name()?.syntax().text_range())
+            }
+            _ => {
+                let range = ctx.find_range(sema)?.1;
+                if range.file_id == source_file.file_id {
+                    Some(range.range)
+                } else {
+                    None
+                }
+            }
+        }
     }
 }
 

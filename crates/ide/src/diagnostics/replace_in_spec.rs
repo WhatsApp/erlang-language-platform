@@ -90,30 +90,33 @@ pub fn replace_in_spec(
                                 if type_label == Some(from_label) {
                                     if let Some(range) = spec.body.range_for_any(sema, ctx.item_id)
                                     {
-                                        let mut edit_builder = TextEdit::builder();
-                                        edit_builder.replace(range, action_to.to_string());
-                                        let edit = edit_builder.finish();
+                                        if range.file_id == file_id {
+                                            let mut edit_builder = TextEdit::builder();
+                                            edit_builder
+                                                .replace(range.range, action_to.to_string());
+                                            let edit = edit_builder.finish();
 
-                                        let diag_label = format!(
-                                            "Replace '{}' with '{}'",
-                                            &action_from.label(),
-                                            action_to
-                                        );
+                                            let diag_label = format!(
+                                                "Replace '{}' with '{}'",
+                                                &action_from.label(),
+                                                action_to
+                                            );
 
-                                        let diag = Diagnostic::new(
-                                            DiagnosticCode::AdHoc(action_from.label()),
-                                            diag_label.clone(),
-                                            range,
-                                        )
-                                        .with_severity(Severity::WeakWarning)
-                                        .experimental()
-                                        .with_fixes(Some(vec![fix(
-                                            "replace_type",
-                                            &diag_label,
-                                            SourceChange::from_text_edit(file_id, edit),
-                                            range,
-                                        )]));
-                                        diags.push(diag);
+                                            let diag = Diagnostic::new(
+                                                DiagnosticCode::AdHoc(action_from.label()),
+                                                diag_label.clone(),
+                                                range.range,
+                                            )
+                                            .with_severity(Severity::WeakWarning)
+                                            .experimental()
+                                            .with_fixes(Some(vec![fix(
+                                                "replace_type",
+                                                &diag_label,
+                                                SourceChange::from_text_edit(file_id, edit),
+                                                range.range,
+                                            )]));
+                                            diags.push(diag);
+                                        }
                                     }
                                 }
                             };

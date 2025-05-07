@@ -109,22 +109,25 @@ fn is_var_assignment_to_unused_var(
     let renamings = try_rename_usages(sema, &body_map, &source_file, lhs, rhs_name)?;
 
     let range = in_clause.range_for_expr(expr_id)?;
+    if range.file_id == file_id {
+        let diag = Diagnostic::new(
+            DiagnosticCode::RedundantAssignment,
+            "assignment is redundant",
+            range.range,
+        )
+        .with_severity(Severity::WeakWarning)
+        .add_categories([Category::SimplificationRule])
+        .with_fixes(Some(vec![fix(
+            "remove_redundant_assignment",
+            "Use right-hand of assignment everywhere",
+            renamings,
+            range.range,
+        )]));
 
-    let diag = Diagnostic::new(
-        DiagnosticCode::RedundantAssignment,
-        "assignment is redundant",
-        range,
-    )
-    .with_severity(Severity::WeakWarning)
-    .add_categories([Category::SimplificationRule])
-    .with_fixes(Some(vec![fix(
-        "remove_redundant_assignment",
-        "Use right-hand of assignment everywhere",
-        renamings,
-        range,
-    )]));
-
-    Some(diag)
+        Some(diag)
+    } else {
+        None
+    }
 }
 
 fn try_rename_usages(

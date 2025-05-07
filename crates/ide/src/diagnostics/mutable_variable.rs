@@ -91,11 +91,13 @@ fn mutable_variable_bug(
                                 if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
                                     if bound_vars.contains(lhs) {
                                         if let Some(range) = in_clause.range_for_any(ctx.item_id) {
-                                            diags.push(Diagnostic::new(
-                                                DiagnosticCode::MutableVarBug,
-                                                "Possible mutable variable bug",
-                                                range,
-                                            ));
+                                            if range.file_id == def.file.file_id {
+                                                diags.push(Diagnostic::new(
+                                                    DiagnosticCode::MutableVarBug,
+                                                    "Possible mutable variable bug",
+                                                    range.range,
+                                                ));
+                                            }
                                         }
                                     }
                                 }

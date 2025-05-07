@@ -136,6 +136,7 @@ fn deprecated_func_highlight(
                         CallTarget::Local { name } => {
                             if let Some(range) = find_deprecated_range(
                                 sema,
+                                file_id,
                                 &def_map,
                                 &name,
                                 arity,
@@ -156,6 +157,7 @@ fn deprecated_func_highlight(
                                 let def_map = sema.def_map(file_id);
                                 if let Some(range) = find_deprecated_range(
                                     sema,
+                                    file_id,
                                     &def_map,
                                     &name,
                                     arity,
@@ -180,6 +182,7 @@ fn deprecated_func_highlight(
 
 fn find_deprecated_range(
     sema: &Semantic,
+    file_id: FileId,
     def_map: &DefMap,
     name: &ExprId,
     arity: u32,
@@ -188,10 +191,13 @@ fn find_deprecated_range(
 ) -> Option<TextRange> {
     let fun_atom = &function_body[*name].as_atom()?;
     let range = function_body.range_for_expr(*name)?;
-    if range_to_highlight.intersect(range).is_some() {
+    if range.file_id != file_id {
+        return None;
+    }
+    if range_to_highlight.intersect(range.range).is_some() {
         let name = sema.db.lookup_atom(*fun_atom);
         if def_map.is_deprecated(&NameArity::new(name, arity)) {
-            return Some(range);
+            return Some(range.range);
         }
     }
     None

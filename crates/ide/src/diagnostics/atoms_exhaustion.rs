@@ -97,8 +97,12 @@ fn check_function(
             }
         },
         &move |MatchCtx { sema, range, .. }| {
-            let diag = make_diagnostic(sema, def.file.file_id, range);
-            Some(diag)
+            if range.file_id == def.file.file_id {
+                let diag = make_diagnostic(sema, def.file.file_id, range.range);
+                Some(diag)
+            } else {
+                None
+            }
         },
     );
 }

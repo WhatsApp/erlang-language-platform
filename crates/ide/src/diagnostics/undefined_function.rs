@@ -18,6 +18,7 @@
 use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::ExportForm;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use hir::Expr;
 use hir::FunctionDef;
@@ -25,7 +26,6 @@ use hir::Module;
 use hir::NameArity;
 use hir::Semantic;
 use hir::known;
-use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
@@ -157,12 +157,17 @@ fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32
 fn make_diagnostic(
     sema: &Semantic,
     file_id: FileId,
-    range: TextRange,
+    range: FileRange,
     function_name: &str,
     is_private: bool,
     maybe_function_def: Option<FunctionDef>,
     check_for_unexported: bool,
 ) -> Option<Diagnostic> {
+    let range = if range.file_id == file_id {
+        Some(range.range)
+    } else {
+        None
+    }?;
     if is_private {
         if check_for_unexported {
             let maybe_fix = maybe_function_def.map(|function_def| {
