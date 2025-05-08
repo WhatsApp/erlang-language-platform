@@ -66,7 +66,7 @@ fn feature_attribute() {
 }
 
 #[test]
-fn module_doc_attribute() {
+fn moduledoc_attribute() {
     check(
         r#"
 -moduledoc "
@@ -80,10 +80,34 @@ Convenience functions for encoding and decoding from base64.
 }
 
 #[test]
+fn moduledoc_metadata_attribute() {
+    check(
+        r#"
+-moduledoc #{since => forever}.
+"#,
+        expect![[r#"
+            -moduledoc(...). %% cond: None
+        "#]],
+    )
+}
+
+#[test]
 fn doc_attribute() {
     check(
         r#"
 -doc "Example".
+"#,
+        expect![[r#"
+            -doc(...). %% cond: None
+        "#]],
+    )
+}
+
+#[test]
+fn doc_metadata_attribute() {
+    check(
+        r#"
+-doc #{params => #{"Foo" => "This is foo"}}.
 "#,
         expect![[r#"
             -doc(...). %% cond: None

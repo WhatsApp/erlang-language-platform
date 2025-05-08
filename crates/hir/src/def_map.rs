@@ -138,6 +138,7 @@ impl DefMap {
     pub(crate) fn def_map_local_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
         let mut def_map = Self::default();
         let mut last_doc_attribute = None;
+        let mut last_doc_metadata_attribute = None;
         let file = File { file_id };
         let module = module_name(db.upcast(), file_id);
 
@@ -159,6 +160,7 @@ impl DefMap {
                         function_clause,
                         function_clause_id: idx,
                         doc_id: last_doc_attribute,
+                        doc_metadata_id: last_doc_metadata_attribute,
                     };
                     def_map.function_clauses.insert(idx, function_def);
                     let function_clause_id = idx;
@@ -166,6 +168,7 @@ impl DefMap {
                         .function_clauses_by_fa
                         .insert(fun_name.clone(), function_clause_id);
                     last_doc_attribute = None;
+                    last_doc_metadata_attribute = None;
                 }
                 FormIdx::Export(idx) => {
                     for export_id in form_list[idx].entries.clone() {
@@ -263,6 +266,9 @@ impl DefMap {
                 }
                 FormIdx::DocAttribute(idx) => {
                     last_doc_attribute = Some(idx);
+                }
+                FormIdx::DocMetadataAttribute(idx) => {
+                    last_doc_metadata_attribute = Some(idx);
                 }
                 //https://github.com/erlang/otp/blob/69aa665f3f48a59f83ad48dea63fdf1476d1d46a/lib/stdlib/src/erl_lint.erl#L1123
                 FormIdx::DeprecatedAttribute(idx) => match &form_list[idx] {
@@ -651,6 +657,7 @@ impl DefMap {
         let module = current_def.module.clone();
         let file = current_def.file;
         let doc_id = current_def.doc_id;
+        let doc_metadata_id = current_def.doc_metadata_id;
         let function_clause_ids = current
             .iter()
             .map(|(_, clause)| clause.function_clause_id)
@@ -673,6 +680,7 @@ impl DefMap {
             function_id,
             spec,
             doc_id,
+            doc_metadata_id,
         };
         let function_def_id = FunctionDefId(fun.function_clause_ids[0]);
         if let Some(spec) = fun.spec.as_mut() {

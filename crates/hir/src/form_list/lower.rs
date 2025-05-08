@@ -21,10 +21,12 @@ use la_arena::IdxRange;
 use la_arena::RawIdx;
 
 use super::DocAttribute;
+use super::DocMetadataAttribute;
 use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
 use super::ModuleDocAttribute;
+use super::ModuleDocMetadataAttribute;
 use super::ParamName;
 use super::SsrDefinition;
 use super::form_id::FormIdMap;
@@ -656,15 +658,9 @@ impl<'a> Ctx<'a> {
         let name = self.resolve_name(&attribute.name()?.name()?);
         // SmolStr does not impl PartialEq, can't match on `Name`
         if name == known::moduledoc {
-            let form_id = self.id_map.get_id(attribute);
-            let res = ModuleDocAttribute { cond, form_id };
-            Some(FormIdx::ModuleDocAttribute(
-                self.data.module_doc_attributes.alloc(res),
-            ))
+            self.lower_moduledoc_attribute(attribute, cond)
         } else if name == known::doc {
-            let form_id = self.id_map.get_id(attribute);
-            let res = DocAttribute { cond, form_id };
-            Some(FormIdx::DocAttribute(self.data.doc_attributes.alloc(res)))
+            self.lower_doc_attribute(attribute, cond)
         } else {
             let form_id = self.id_map.get_id(attribute);
             let res = Attribute {
@@ -674,6 +670,50 @@ impl<'a> Ctx<'a> {
             };
             Some(FormIdx::Attribute(self.data.attributes.alloc(res)))
         }
+    }
+
+    fn lower_moduledoc_attribute(
+        &mut self,
+        attribute: &ast::WildAttribute,
+        cond: Option<Idx<PPCondition>>,
+    ) -> Option<FormIdx> {
+        let form_id = self.id_map.get_id(attribute);
+        let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
+            FormIdx::ModuleDocMetadataAttribute(
+                self.data
+                    .moduledoc_metadata_attributes
+                    .alloc(ModuleDocMetadataAttribute { cond, form_id }),
+            )
+        } else {
+            FormIdx::ModuleDocAttribute(
+                self.data
+                    .moduledoc_attributes
+                    .alloc(ModuleDocAttribute { cond, form_id }),
+            )
+        };
+        Some(res)
+    }
+
+    fn lower_doc_attribute(
+        &mut self,
+        attribute: &ast::WildAttribute,
+        cond: Option<Idx<PPCondition>>,
+    ) -> Option<FormIdx> {
+        let form_id = self.id_map.get_id(attribute);
+        let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
+            FormIdx::DocMetadataAttribute(
+                self.data
+                    .doc_metadata_attributes
+                    .alloc(DocMetadataAttribute { cond, form_id }),
+            )
+        } else {
+            FormIdx::DocAttribute(
+                self.data
+                    .doc_attributes
+                    .alloc(DocAttribute { cond, form_id }),
+            )
+        };
+        Some(res)
     }
 
     fn lower_feature_attribute(&mut self, attribute: &ast::FeatureAttribute) -> Option<FormIdx> {

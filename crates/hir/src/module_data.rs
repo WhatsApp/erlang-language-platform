@@ -52,6 +52,7 @@ use crate::def_map::FunctionDefId;
 use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DocAttributeId;
+use crate::form_list::DocMetadataAttributeId;
 
 /// Represents an erlang file - header or module
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -116,6 +117,7 @@ pub struct FunctionClauseDef {
     pub function_clause: FunctionClause,
     pub function_clause_id: FunctionClauseId,
     pub doc_id: Option<DocAttributeId>,
+    pub doc_metadata_id: Option<DocMetadataAttributeId>,
 }
 
 impl FunctionClauseDef {
@@ -162,6 +164,7 @@ pub struct FunctionDef {
     pub function_id: FunctionDefId,
     pub spec: Option<SpecDef>,
     pub doc_id: Option<DocAttributeId>,
+    pub doc_metadata_id: Option<DocMetadataAttributeId>,
 }
 
 impl FunctionDef {
@@ -213,6 +216,23 @@ impl FunctionDef {
             InFile::new(self.file.file_id, self.function_id),
             value,
         )
+    }
+
+    pub fn spec_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        self.spec.as_ref().map(|spec| spec.range(db))
+    }
+
+    pub fn doc_metadata_range(&self, db: &dyn DefDatabase) -> Option<TextRange> {
+        let doc_metadata_id = self.doc_metadata_id?;
+        let file_id = self.file.file_id;
+        let form_list = db.file_form_list(file_id);
+
+        let range = form_list[doc_metadata_id]
+            .form_id
+            .get_ast(db, file_id)
+            .syntax()
+            .text_range();
+        Some(range)
     }
 
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
@@ -329,6 +349,11 @@ impl SpecDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> ast::Spec {
         let source_file = self.file.source(db);
         self.spec.form_id.get(&source_file)
+    }
+
+    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+        let source = self.source(db);
+        source.syntax().text_range()
     }
 
     pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<SpecArgName>> {

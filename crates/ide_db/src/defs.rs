@@ -62,6 +62,7 @@ pub enum ReferenceType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ReferenceClass {
     Definition(SymbolDefinition),
     /// A variable defined in multiple places, e.g. after a case

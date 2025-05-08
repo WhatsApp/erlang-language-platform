@@ -15,8 +15,10 @@ use la_arena::IdxRange;
 use la_arena::RawIdx;
 
 use super::DocAttribute;
+use super::DocMetadataAttribute;
 use super::FeatureAttribute;
 use super::ModuleDocAttribute;
+use super::ModuleDocMetadataAttribute;
 use super::SsrDefinition;
 use crate::Attribute;
 use crate::Behaviour;
@@ -81,10 +83,14 @@ impl Printer<'_> {
             FormIdx::Record(idx) => self.print_record(&self.forms[idx])?,
             FormIdx::CompileOption(idx) => self.print_compile(&self.forms[idx])?,
             FormIdx::Attribute(idx) => self.print_attribute(&self.forms[idx])?,
-            FormIdx::ModuleDocAttribute(idx) => {
-                self.print_module_doc_attribute(&self.forms[idx])?
+            FormIdx::ModuleDocAttribute(idx) => self.print_moduledoc_attribute(&self.forms[idx])?,
+            FormIdx::ModuleDocMetadataAttribute(idx) => {
+                self.print_moduledoc_metadata_attribute(&self.forms[idx])?
             }
             FormIdx::DocAttribute(idx) => self.print_doc_attribute(&self.forms[idx])?,
+            FormIdx::DocMetadataAttribute(idx) => {
+                self.print_doc_metadata_attribute(&self.forms[idx])?
+            }
             FormIdx::FeatureAttribute(idx) => self.print_feature_attribute(&self.forms[idx])?,
             FormIdx::DeprecatedAttribute(idx) => self.print_deprecated(&self.forms[idx])?,
             FormIdx::SsrDefinition(idx) => self.print_ssr(&self.forms[idx])?,
@@ -366,7 +372,18 @@ impl Printer<'_> {
         )
     }
 
-    fn print_module_doc_attribute(&mut self, attribute: &ModuleDocAttribute) -> fmt::Result {
+    fn print_moduledoc_attribute(&mut self, attribute: &ModuleDocAttribute) -> fmt::Result {
+        writeln!(
+            self,
+            "-moduledoc(...). %% cond: {:?}",
+            raw_cond(&attribute.cond)
+        )
+    }
+
+    fn print_moduledoc_metadata_attribute(
+        &mut self,
+        attribute: &ModuleDocMetadataAttribute,
+    ) -> fmt::Result {
         writeln!(
             self,
             "-moduledoc(...). %% cond: {:?}",
@@ -375,6 +392,10 @@ impl Printer<'_> {
     }
 
     fn print_doc_attribute(&mut self, attribute: &DocAttribute) -> fmt::Result {
+        writeln!(self, "-doc(...). %% cond: {:?}", raw_cond(&attribute.cond))
+    }
+
+    fn print_doc_metadata_attribute(&mut self, attribute: &DocMetadataAttribute) -> fmt::Result {
         writeln!(self, "-doc(...). %% cond: {:?}", raw_cond(&attribute.cond))
     }
 

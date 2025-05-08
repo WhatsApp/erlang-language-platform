@@ -126,14 +126,26 @@ impl FormList {
         self.data.attributes.iter()
     }
 
-    pub fn module_doc_attributes(
+    pub fn moduledoc_attributes(
         &self,
     ) -> impl Iterator<Item = (ModuleDocAttributeId, &ModuleDocAttribute)> {
-        self.data.module_doc_attributes.iter()
+        self.data.moduledoc_attributes.iter()
+    }
+
+    pub fn moduledoc_metadata_attributes(
+        &self,
+    ) -> impl Iterator<Item = (ModuleDocMetadataAttributeId, &ModuleDocMetadataAttribute)> {
+        self.data.moduledoc_metadata_attributes.iter()
     }
 
     pub fn doc_attributes(&self) -> impl Iterator<Item = (DocAttributeId, &DocAttribute)> {
         self.data.doc_attributes.iter()
+    }
+
+    pub fn doc_metadata_attributes(
+        &self,
+    ) -> impl Iterator<Item = (DocMetadataAttributeId, &DocMetadataAttribute)> {
+        self.data.doc_metadata_attributes.iter()
     }
 
     pub fn pp_stack(&self) -> &Arena<PPDirective> {
@@ -199,7 +211,11 @@ impl FormList {
             FormIdx::Record(idx) => Form::Record(&self[idx]),
             FormIdx::Attribute(idx) => Form::Attribute(&self[idx]),
             FormIdx::ModuleDocAttribute(idx) => Form::ModuleDocAttribute(&self[idx]),
+            FormIdx::ModuleDocMetadataAttribute(idx) => {
+                Form::ModuleDocMetadataAttribute(&self[idx])
+            }
             FormIdx::DocAttribute(idx) => Form::DocAttribute(&self[idx]),
+            FormIdx::DocMetadataAttribute(idx) => Form::DocMetadataAttribute(&self[idx]),
             FormIdx::CompileOption(idx) => Form::CompileOption(&self[idx]),
             FormIdx::DeprecatedAttribute(idx) => Form::DeprecatedAttribute(&self[idx]),
             FormIdx::FeatureAttribute(idx) => Form::FeatureAttribute(&self[idx]),
@@ -233,8 +249,10 @@ pub(crate) struct FormListData {
     records: Arena<Record>,
     attributes: Arena<Attribute>,
     feature_attributes: Arena<FeatureAttribute>,
-    module_doc_attributes: Arena<ModuleDocAttribute>,
+    moduledoc_attributes: Arena<ModuleDocAttribute>,
+    moduledoc_metadata_attributes: Arena<ModuleDocMetadataAttribute>,
     doc_attributes: Arena<DocAttribute>,
+    doc_metadata_attributes: Arena<DocMetadataAttribute>,
     compile_options: Arena<CompileOption>,
     record_fields: Arena<RecordField>,
     fa_entries: Arena<FaEntry>,
@@ -262,8 +280,10 @@ impl FormListData {
             optional_callbacks,
             records,
             attributes,
-            module_doc_attributes,
+            moduledoc_attributes,
+            moduledoc_metadata_attributes,
             doc_attributes,
+            doc_metadata_attributes,
             feature_attributes,
             compile_options,
             record_fields,
@@ -288,8 +308,10 @@ impl FormListData {
         records.shrink_to_fit();
         compile_options.shrink_to_fit();
         attributes.shrink_to_fit();
-        module_doc_attributes.shrink_to_fit();
+        moduledoc_attributes.shrink_to_fit();
+        moduledoc_metadata_attributes.shrink_to_fit();
         doc_attributes.shrink_to_fit();
+        doc_metadata_attributes.shrink_to_fit();
         feature_attributes.shrink_to_fit();
         record_fields.shrink_to_fit();
         fa_entries.shrink_to_fit();
@@ -315,7 +337,9 @@ pub enum FormIdx {
     Record(RecordId),
     Attribute(AttributeId),
     ModuleDocAttribute(ModuleDocAttributeId),
+    ModuleDocMetadataAttribute(ModuleDocMetadataAttributeId),
     DocAttribute(DocAttributeId),
+    DocMetadataAttribute(DocMetadataAttributeId),
     CompileOption(CompileOptionId),
     DeprecatedAttribute(DeprecatedAttributeId),
     FeatureAttribute(FeatureAttributeId),
@@ -339,7 +363,9 @@ pub enum Form<'a> {
     Record(&'a Record),
     Attribute(&'a Attribute),
     ModuleDocAttribute(&'a ModuleDocAttribute),
+    ModuleDocMetadataAttribute(&'a ModuleDocMetadataAttribute),
     DocAttribute(&'a DocAttribute),
+    DocMetadataAttribute(&'a DocMetadataAttribute),
     CompileOption(&'a CompileOption),
     DeprecatedAttribute(&'a DeprecatedAttribute),
     FeatureAttribute(&'a FeatureAttribute),
@@ -363,7 +389,9 @@ pub type OptionalCallbacksId = Idx<OptionalCallbacks>;
 pub type RecordId = Idx<Record>;
 pub type AttributeId = Idx<Attribute>;
 pub type ModuleDocAttributeId = Idx<ModuleDocAttribute>;
+pub type ModuleDocMetadataAttributeId = Idx<ModuleDocMetadataAttribute>;
 pub type DocAttributeId = Idx<DocAttribute>;
+pub type DocMetadataAttributeId = Idx<DocMetadataAttribute>;
 pub type CompileOptionId = Idx<CompileOption>;
 pub type RecordFieldId = Idx<RecordField>;
 pub type FaEntryId = Idx<FaEntry>;
@@ -503,7 +531,15 @@ impl Index<ModuleDocAttributeId> for FormList {
     type Output = ModuleDocAttribute;
 
     fn index(&self, index: ModuleDocAttributeId) -> &Self::Output {
-        &self.data.module_doc_attributes[index]
+        &self.data.moduledoc_attributes[index]
+    }
+}
+
+impl Index<ModuleDocMetadataAttributeId> for FormList {
+    type Output = ModuleDocMetadataAttribute;
+
+    fn index(&self, index: ModuleDocMetadataAttributeId) -> &Self::Output {
+        &self.data.moduledoc_metadata_attributes[index]
     }
 }
 
@@ -512,6 +548,14 @@ impl Index<DocAttributeId> for FormList {
 
     fn index(&self, index: DocAttributeId) -> &Self::Output {
         &self.data.doc_attributes[index]
+    }
+}
+
+impl Index<DocMetadataAttributeId> for FormList {
+    type Output = DocMetadataAttribute;
+
+    fn index(&self, index: DocMetadataAttributeId) -> &Self::Output {
+        &self.data.doc_metadata_attributes[index]
     }
 }
 
@@ -902,7 +946,19 @@ pub struct ModuleDocAttribute {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ModuleDocMetadataAttribute {
+    pub cond: Option<PPConditionId>,
+    pub form_id: FormId<ast::WildAttribute>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DocAttribute {
+    pub cond: Option<PPConditionId>,
+    pub form_id: FormId<ast::WildAttribute>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DocMetadataAttribute {
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::WildAttribute>,
 }

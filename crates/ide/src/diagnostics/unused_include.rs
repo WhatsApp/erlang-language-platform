@@ -200,7 +200,9 @@ fn is_file_used(
                 FormIdx::DeprecatedAttribute(_) => return true,
                 FormIdx::FeatureAttribute(_) => return true,
                 FormIdx::ModuleDocAttribute(_) => {}
+                FormIdx::ModuleDocMetadataAttribute(_) => {}
                 FormIdx::DocAttribute(_) => {}
+                FormIdx::DocMetadataAttribute(_) => {}
                 FormIdx::FunctionClause(_) => {}
                 FormIdx::PPDirective(_) => {}
                 FormIdx::PPCondition(_) => {}

@@ -13,10 +13,11 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
+use hir::FunctionDef;
+use text_edit::TextSize;
 
 use crate::AssistContext;
 use crate::Assists;
-use crate::helpers::prev_form_nodes;
 
 const DEFAULT_TEXT: &str =
     "[How to write documentation](https://www.erlang.org/doc/system/documentation.html)";
@@ -45,16 +46,17 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let clause = ast::FunctionClause::cast(name.syntax().parent()?)?;
     let function = ast::FunDecl::cast(clause.syntax().parent()?)?;
 
-    if ctx.sema.function_docs(ctx.file_id(), &function).is_some() {
+    let file_id = ctx.file_id();
+    let def = ctx
+        .sema
+        .find_enclosing_function_def(file_id, function.syntax())?;
+
+    if def.doc_id.is_some() || def.edoc_comments(ctx.db()).is_some() {
         return None;
     }
 
-    let insert = prev_form_nodes(function.syntax())
-        .filter_map(ast::Spec::cast)
-        .map(|spec| spec.syntax().text_range().start())
-        .next()
-        .unwrap_or_else(|| function.syntax().text_range().start());
     let target = name.syntax().text_range();
+    let insert_offset = find_insert_offset(ctx, &def)?;
 
     acc.add(
         AssistId("add_doc", AssistKind::Generate),
@@ -107,12 +109,21 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             builder.edit_file(ctx.frange.file_id);
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    builder.insert_snippet(cap, insert, text);
+                    builder.insert_snippet(cap, insert_offset, text);
                 }
-                None => builder.insert(insert, text),
+                None => builder.insert(insert_offset, text),
             }
         },
     )
+}
+
+fn find_insert_offset(ctx: &AssistContext, def: &FunctionDef) -> Option<TextSize> {
+    let db = ctx.db();
+    let range = def
+        .doc_metadata_range(db)
+        .or(def.spec_range(db))
+        .or(def.range(db))?;
+    Some(range.start())
 }
 
 pub fn arg_name(arg_idx: usize, expr: ast::Expr) -> String {
@@ -203,6 +214,25 @@ bar() -> ok.
                 -doc """
                 ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
                 """.
+                foo() -> ok.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_already_has_doc_metadata() {
+        check_assist(
+            add_doc,
+            "Add -doc attribute",
+            r#"
+-doc #{params => #{}}.
+~foo() -> ok.
+"#,
+            expect![[r#"
+                -doc """
+                ${1:[How to write documentation](https://www.erlang.org/doc/system/documentation.html)}
+                """.
+                -doc #{params => #{}}.
                 foo() -> ok.
             "#]],
         )

@@ -15,14 +15,18 @@ use hir::InFile;
 use hir::RecordDef;
 use hir::Semantic;
 use hir::form_list::DocAttribute;
+use hir::form_list::DocMetadataAttribute;
 use hir::form_list::ModuleDocAttribute;
+use hir::form_list::ModuleDocMetadataAttribute;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FoldingRangeKind {
     Function,
     Record,
     ModuleDocAttribute,
+    ModuleDocMetadataAttribute,
     DocAttribute,
+    DocMetadataAttribute,
 }
 
 #[derive(Debug)]
@@ -68,11 +72,33 @@ impl FoldingRangeTrait for InFile<&ModuleDocAttribute> {
     }
 }
 
+impl FoldingRangeTrait for InFile<&ModuleDocMetadataAttribute> {
+    fn folding_range(&self, db: &RootDatabase) -> Option<FoldingRange> {
+        let range = self.value.form_id.range(db, self.file_id);
+        let folding_range = FoldingRange {
+            kind: FoldingRangeKind::ModuleDocMetadataAttribute,
+            range,
+        };
+        Some(folding_range)
+    }
+}
+
 impl FoldingRangeTrait for InFile<&DocAttribute> {
     fn folding_range(&self, db: &RootDatabase) -> Option<FoldingRange> {
         let range = self.value.form_id.range(db, self.file_id);
         let folding_range = FoldingRange {
             kind: FoldingRangeKind::DocAttribute,
+            range,
+        };
+        Some(folding_range)
+    }
+}
+
+impl FoldingRangeTrait for InFile<&DocMetadataAttribute> {
+    fn folding_range(&self, db: &RootDatabase) -> Option<FoldingRange> {
+        let range = self.value.form_id.range(db, self.file_id);
+        let folding_range = FoldingRange {
+            kind: FoldingRangeKind::DocMetadataAttribute,
             range,
         };
         Some(folding_range)
@@ -100,7 +126,14 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<FoldingR
         }
     }
     // Module Doc Attributes
-    for (_idx, attribute) in form_list.module_doc_attributes() {
+    for (_idx, attribute) in form_list.moduledoc_attributes() {
+        let in_file = InFile::new(file_id, attribute);
+        if let Some(folding_range) = in_file.folding_range(db) {
+            folds.push(folding_range)
+        }
+    }
+    // Module Doc Metadata Attributes
+    for (_idx, attribute) in form_list.moduledoc_metadata_attributes() {
         let in_file = InFile::new(file_id, attribute);
         if let Some(folding_range) = in_file.folding_range(db) {
             folds.push(folding_range)
@@ -108,6 +141,13 @@ pub(crate) fn folding_ranges(db: &RootDatabase, file_id: FileId) -> Vec<FoldingR
     }
     // Doc Attributes
     for (_idx, attribute) in form_list.doc_attributes() {
+        let in_file = InFile::new(file_id, attribute);
+        if let Some(folding_range) = in_file.folding_range(db) {
+            folds.push(folding_range)
+        }
+    }
+    // Doc Metadata Attributes
+    for (_idx, attribute) in form_list.doc_metadata_attributes() {
         let in_file = InFile::new(file_id, attribute);
         if let Some(folding_range) = in_file.folding_range(db) {
             folds.push(folding_range)
@@ -155,7 +195,9 @@ mod tests {
                 FoldingRangeKind::Function
                 | FoldingRangeKind::Record
                 | FoldingRangeKind::ModuleDocAttribute
-                | FoldingRangeKind::DocAttribute => "region",
+                | FoldingRangeKind::ModuleDocMetadataAttribute
+                | FoldingRangeKind::DocAttribute
+                | FoldingRangeKind::DocMetadataAttribute => "region",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -205,7 +247,7 @@ mod tests {
     }
 
     #[test]
-    fn test_module_doc_attributes() {
+    fn test_moduledoc_attributes() {
         check(
             r#"
 //- /src/my_module tag:fold
@@ -213,6 +255,26 @@ mod tests {
 <fold region>-moduledoc """
 This is a module doc
 """.</fold>
+
+-export([one/0]).
+
+<fold region>one() -> 1.</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_moduledoc_metadata_attributes() {
+        check(
+            r#"
+//- /src/my_module tag:fold
+-module(my_module).
+<fold region>-moduledoc """
+This is a module doc
+""".</fold>
+<fold region>-moduledoc #{
+  since => forever
+}.</fold>
 
 -export([one/0]).
 
@@ -233,6 +295,23 @@ This is a module doc
 <fold region>-doc "
 This is one function
 ".</fold>
+<fold region>one() -> 1.</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_doc_metadata_attributes() {
+        check(
+            r#"
+//- /src/my_module tag:fold
+-module(my_module).
+
+-export([one/0]).
+
+<fold region>-doc #{
+  params =>#{}
+}.</fold>
 <fold region>one() -> 1.</fold>
 "#,
         );
