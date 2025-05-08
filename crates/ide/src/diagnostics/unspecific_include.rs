@@ -10,7 +10,7 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::IncludeCtx;
+use elp_ide_db::elp_base_db::generated_file_include_lib;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
@@ -74,22 +74,12 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
 
                 let include_path = path_for_file(sema.db.upcast(), included_file_id)?;
                 if !include_path.to_string().contains("/src/") {
-                    let inc_app_data = sema.db.file_app_data(included_file_id)?;
-                    let candidate_path = inc_app_data
-                        .include_path
-                        .iter()
-                        .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
-
-                    let candidate =
-                        format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
-                    let ctx = &IncludeCtx::new(sema.db.upcast(), file_id);
-                    let resolved_file_id = ctx.resolve_include_lib(&candidate)?;
-                    let replacement = if resolved_file_id == included_file_id {
-                        // We have an equivalent include
-                        Some(candidate.as_str())
-                    } else {
-                        None
-                    }?;
+                    let replacement = generated_file_include_lib(
+                        sema.db.upcast(),
+                        file_id,
+                        included_file_id,
+                        include_path,
+                    )?;
                     let source_file = sema.parse(file_id);
                     let ast = inc.form_id().get(&source_file.value);
                     let (range, make_include_lib) = match ast {
@@ -109,7 +99,7 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                     acc.push(make_diagnostic(
                         file_id,
                         range,
-                        replacement,
+                        &replacement,
                         make_include_lib,
                     )?);
                 }

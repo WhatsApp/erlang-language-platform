@@ -38,6 +38,7 @@ pub use elp_project_model::test_fixture::RangeOrOffset;
 pub use elp_project_model::test_fixture::extract_offset;
 pub use elp_project_model::test_fixture::remove_annotations;
 pub use include::IncludeCtx;
+pub use include::generated_file_include_lib;
 pub use input::AppData;
 pub use input::AppDataId;
 pub use input::AppRoots;

@@ -13,6 +13,8 @@ use elp_syntax::SmolStr;
 use vfs::FileId;
 use vfs::VfsPath;
 
+use crate::AppData;
+use crate::ProjectId;
 use crate::SourceDatabase;
 use crate::SourceRoot;
 
@@ -81,24 +83,64 @@ impl<'a> IncludeCtx<'a> {
         let path = target_app_data.dir.join(include_path);
         db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
             .or_else(|| {
-                // buck2 builds create an include file mapping when
-                // invoking the OTP compiler, by manipulating symlinks
-                // in the output directory.
-                //
-                // Since we are only generating some files, not
-                // building them, and we prefer to work with the files
-                // in their canonical locations, we deal with this
-                // here.
-                //
-
-                // The target_app_data has an `include_path` field. An "include/"
-                // prefix on the path should be replaced with an entry from the
-                // set of include paths/
-                let path = include_path.strip_prefix("include/")?;
-                target_app_data.include_path.iter().find_map(|dir| {
-                    let path = dir.join(path);
-                    db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
-                })
+                find_generated_include_lib(db, app_data.project_id, include_path, &target_app_data)
             })
+    }
+}
+
+fn find_generated_include_lib(
+    db: &dyn SourceDatabase,
+    project_id: ProjectId,
+    include_path: &str,
+    target_app_data: &AppData,
+) -> Option<FileId> {
+    // buck2 builds create an include file mapping when
+    // invoking the OTP compiler, by manipulating symlinks
+    // in the output directory.
+    //
+    // Since we are only generating some files, not
+    // building them, and we prefer to work with the files
+    // in their canonical locations, we deal with this
+    // here.
+    //
+
+    // The target_app_data has an `include_path` field. An "include/"
+    // prefix on the path should be replaced with an entry from the
+    // set of include paths/
+    let path = include_path.strip_prefix("include/")?;
+    target_app_data.include_path.iter().find_map(|dir| {
+        let path = dir.join(path);
+        db.include_file_id(project_id, VfsPath::from(path.clone()))
+    })
+}
+
+pub fn generated_file_include_lib(
+    db: &dyn SourceDatabase,
+    file_id: FileId,
+    included_file_id: FileId,
+    include_path: VfsPath,
+) -> Option<String> {
+    // In `find_generated_include_lib`, the processing does
+    // - split the path into app and rest
+    // - get the app_data based on the app
+    // - if the rest starts with "include/"
+    //   - strip it
+    //   - find a dir in the app include_path list such that the
+    //     concatenation gives a valid file
+    //
+    // We need to do the reverse here.
+
+    let inc_app_data = db.file_app_data(included_file_id)?;
+    let candidate_path = inc_app_data
+        .include_path
+        .iter()
+        .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
+    let candidate = format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
+    let resolved_file_id = IncludeCtx::new(db, file_id).resolve_include_lib(&candidate)?;
+    if resolved_file_id == included_file_id {
+        // We have an equivalent include
+        Some(candidate)
+    } else {
+        None
     }
 }
