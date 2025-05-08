@@ -387,11 +387,11 @@ impl Tag {
                 res.push_str(&text.to_string());
             }
         }
-        ensure_non_empty(&format!(
+        ensure_non_empty(&convert_link_macros(&format!(
             "{}{}",
             &head,
-            &trim_indent(&convert_link_macros(&res))
-        ))
+            &trim_indent(&res)
+        )))
     }
 }
 

@@ -2349,6 +2349,40 @@ main(_, _) ->
     }
 
     #[test]
+    fn test_function_doc_link_macro_slogan() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc {@link main/2} is a better function
+%% This is the main function documentation.
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+`main/2` is a better function
+This is the main function documentation.
+""".
+-spec main() -> tuple().
+main() ->
+    {}.
+
+main(_, _) ->
+    {}.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_module_doc_deprecated() {
         check_fix(
             r#"
