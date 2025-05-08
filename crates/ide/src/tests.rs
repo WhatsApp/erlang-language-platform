@@ -360,7 +360,9 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
 
 #[track_caller]
 pub(crate) fn check_diagnostics(fixture: &str) {
-    let config = DiagnosticsConfig::default().set_experimental(true);
+    let config = DiagnosticsConfig::default()
+        .set_experimental(true)
+        .disable(DiagnosticCode::UnspecificInclude);
     check_diagnostics_with_config(config, fixture)
 }
 
@@ -503,7 +505,9 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
 #[track_caller]
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
-    let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
+    let config = DiagnosticsConfig::default()
+        .disable(DiagnosticCode::UnspecificInclude)
+        .disable(DiagnosticCode::UndefinedFunction);
     check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 

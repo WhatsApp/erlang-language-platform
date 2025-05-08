@@ -1900,7 +1900,7 @@ mod tests {
     fn lint_resolves_generated_includes() {
         if cfg!(feature = "buck") {
             simple_snapshot_expect_error(
-                args_vec!["lint",],
+                args_vec!["lint", "--buck-generated"],
                 "buck_tests_2",
                 expect_file!("../resources/test/buck_tests_2/resolves_generated_includes.stdout"),
                 true,

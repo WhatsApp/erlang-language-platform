@@ -236,7 +236,9 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UndefinedFunction);
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::UndefinedFunction)
+            .disable(DiagnosticCode::UnspecificInclude);
         check_diagnostics_with_config(config, fixture)
     }
 

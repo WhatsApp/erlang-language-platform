@@ -1,8 +1,7 @@
 Reporting all diagnostics codes
 Diagnostics reported in 2 modules:
-  app_a: 3
-      2:0-2:50::[Warning] [W0020] Unused file: auto_gen_a/include/auto_gen_a.hrl
-      3:0-3:63::[Warning] [W0020] Unused file: generated_headers/include/generated_header.hrl
+  app_a: 2
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+      5:9-5:31::[WeakWarning] [W0037] Unspecific include.
   auto_gen_a: 1
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.

@@ -62,15 +62,28 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
         .filter(|(included_file_id, _)| *included_file_id != file_id)
         .for_each(|(included_file_id, inc)| {
             || -> Option<()> {
+                // In base_db::include::resolve_remote_query, the fallback processing does
+                // - split the path into app and rest
+                // - get the app_data based on the app
+                // - if the rest starts with "include/"
+                //   - strip it
+                //   - find a dir in the app include_path list such that the
+                //     concatenation gives a valid file
+                //
+                // We need to do the reverse here.
+
                 let include_path = path_for_file(sema.db.upcast(), included_file_id)?;
                 if !include_path.to_string().contains("/src/") {
-                    let app_data = sema.db.file_app_data(file_id)?;
-                    let candidate = include_path
-                        .as_path()?
-                        .strip_prefix(app_data.dir.as_path().parent()?)?;
+                    let inc_app_data = sema.db.file_app_data(included_file_id)?;
+                    let candidate_path = inc_app_data
+                        .include_path
+                        .iter()
+                        .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
 
+                    let candidate =
+                        format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
                     let ctx = &IncludeCtx::new(sema.db.upcast(), file_id);
-                    let resolved_file_id = ctx.resolve_include(candidate.as_str())?;
+                    let resolved_file_id = ctx.resolve_include_lib(&candidate)?;
                     let replacement = if resolved_file_id == included_file_id {
                         // We have an equivalent include
                         Some(candidate.as_str())
@@ -199,15 +212,16 @@ mod tests {
     fn fixes_unspecific_include() {
         check_fix(
             r#"
-           //- /app_a/src/unspecific_include.erl
+           //- /app_a/src/unspecific_include.erl app:app_a
            -module(unspecific_include).
            -include("some~_header_from_app_a.hrl").
            %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
-           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
+           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include app:app_a
            -define(A,3)."#,
+            // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
-                    -module(unspecific_include).
-                    -include_lib("app_a/include/some_header_from_app_a.hrl").
+                -module(unspecific_include).
+                -include_lib("app_a/include/app_a/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
@@ -216,15 +230,16 @@ mod tests {
     fn fixes_unspecific_include_lib() {
         check_fix(
             r#"
-           //- /app_a/src/unspecific_include.erl
+           //- /app_a/src/unspecific_include.erl app:app_a
            -module(unspecific_include).
            -include_lib("some~_header_from_app_a.hrl").
            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
-           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
+           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include app:app_a
            -define(A,3)."#,
+            // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
-                    -module(unspecific_include).
-                    -include_lib("app_a/include/some_header_from_app_a.hrl").
+                -module(unspecific_include).
+                -include_lib("app_a/include/app_a/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
