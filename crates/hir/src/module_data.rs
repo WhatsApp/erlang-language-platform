@@ -19,11 +19,13 @@ use elp_syntax::SmolStr;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
+use elp_syntax::ast::Expr;
 use elp_syntax::ast::MapExpr;
+use elp_syntax::ast::MapField;
+use elp_syntax::ast::WildAttribute;
 use fxhash::FxHashMap;
-use lazy_static::lazy_static;
-use regex::Regex;
 
+use crate::AsName;
 use crate::Callback;
 use crate::DefMap;
 use crate::Define;
@@ -53,6 +55,7 @@ use crate::edoc::EdocHeader;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DocAttributeId;
 use crate::form_list::DocMetadataAttributeId;
+use crate::known;
 
 /// Represents an erlang file - header or module
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -222,16 +225,17 @@ impl FunctionDef {
         self.spec.as_ref().map(|spec| spec.range(db))
     }
 
-    pub fn doc_metadata_range(&self, db: &dyn DefDatabase) -> Option<TextRange> {
+    pub fn doc_metadata(&self, db: &dyn DefDatabase) -> Option<WildAttribute> {
         let doc_metadata_id = self.doc_metadata_id?;
         let file_id = self.file.file_id;
         let form_list = db.file_form_list(file_id);
 
-        let range = form_list[doc_metadata_id]
-            .form_id
-            .get_ast(db, file_id)
-            .syntax()
-            .text_range();
+        let attr = form_list[doc_metadata_id].form_id.get_ast(db, file_id);
+        Some(attr)
+    }
+
+    pub fn doc_metadata_range(&self, db: &dyn DefDatabase) -> Option<TextRange> {
+        let range = self.doc_metadata(db)?.syntax().text_range();
         Some(range)
     }
 
@@ -303,25 +307,18 @@ impl FunctionDef {
     }
 
     fn parameters_doc_from_doc_attribute(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^\s*@param ([^\s]+)\s+(.*)$").unwrap();
-        }
         let mut res = FxHashMap::default();
-        if let Some(doc_id) = self.doc_id {
-            let file_id = self.file.file_id;
-            let form_list = db.file_form_list(file_id);
-            let doc = &form_list[doc_id];
-            let ast = doc.form_id.get_ast(db, file_id);
-            if let Some(expr) = ast.value() {
-                let text = expr.syntax().text().to_string();
-                for line in text.split("\n") {
-                    if let Some(captures) = RE.captures(line) {
-                        if captures.len() == 3 {
-                            res.insert(captures[1].to_string(), captures[2].to_string());
+        if let Some(doc_metadata) = self.doc_metadata(db) {
+            if let Some(ast::Expr::MapExpr(doc_metadata)) = doc_metadata.value() {
+                let params = doc_metadata_params(&doc_metadata);
+                if let Some(ast::Expr::MapExpr(params)) = params {
+                    for param in params.fields() {
+                        if let Some((key, value)) = as_param(param) {
+                            res.insert(key, value);
                         }
                     }
                 }
-            };
+            }
         }
         res
     }
@@ -329,6 +326,45 @@ impl FunctionDef {
     pub fn code_complexity(&self, sema: &Semantic, score_cap: Option<usize>) -> CodeComplexity {
         code_complexity::compute(sema, self, score_cap)
     }
+}
+
+fn doc_metadata_params(map: &MapExpr) -> Option<Expr> {
+    map.fields().find_map(|field| {
+        field.key().and_then(|key| {
+            if is_params_key(key) {
+                field.value()
+            } else {
+                None
+            }
+        })
+    })
+}
+
+fn is_params_key(expr: Expr) -> bool {
+    match expr {
+        ast::Expr::ExprMax(ast::ExprMax::Atom(atom)) => atom.as_name() == known::params,
+        _ => false,
+    }
+}
+
+fn as_param_name(expr: Expr) -> Option<String> {
+    match expr {
+        ast::Expr::ExprMax(ast::ExprMax::String(string)) => Some(String::from(string)),
+        _ => None,
+    }
+}
+
+fn as_param_value(expr: Expr) -> Option<String> {
+    match expr {
+        ast::Expr::ExprMax(ast::ExprMax::String(string)) => Some(String::from(string)),
+        _ => None,
+    }
+}
+
+fn as_param(param: MapField) -> Option<(String, String)> {
+    let key = as_param_name(param.key()?)?;
+    let value = as_param_value(param.value()?)?;
+    Some((key, value))
 }
 
 fn all_spec_arg_names_are_generated(names: &[SpecArgName]) -> bool {

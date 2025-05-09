@@ -269,6 +269,7 @@ pub mod known {
         init_per_group,
         init_per_testcase,
         init_per_suite,
+        params,
         suite,
         testcase,
         // Warnings

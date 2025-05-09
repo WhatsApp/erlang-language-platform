@@ -692,21 +692,20 @@ main() ->
 
 -doc """
 Add This to That
-@param This The first thing
-@param That The second thing
-@returns The sum of This and That plus 0
+Returns the sum of This and That plus 0
 """.
+-doc #{params => #{"This" => """
+The first thing
+""", "That" => "The second thing"}}.
 -spec add(integer(), integer()) -> integer().
 add(This, That) ->
   add(This, That, 0).
 
 -doc """
 Add This to That, including an extra
-@param This The first thing
-@param That The second thing
-@param Extra Something more
-@returns The sum of This and That plus the Extra
+Returns the sum of This and That plus the Extra
 """.
+-doc #{params => #{"This" => "The first thing", "That" => "The second thing", "Extra" => "Something more"}}.
 -spec add(integer(), integer(), integer()) -> integer().
 add(This, That, Extra) ->
   This + That + Extra.
@@ -715,43 +714,38 @@ main() ->
   main:add(This, ~)
 "#,
                 expect![[r#"
-                ```erlang
-                -spec add(integer(), integer()) -> integer().
-                ```
+                    ```erlang
+                    -spec add(integer(), integer()) -> integer().
+                    ```
 
-                -----
+                    -----
 
-                Add This to That
-                @param This The first thing
-                @param That The second thing
-                @returns The sum of This and That plus 0
-                ------
-                main:add(This, That)
-                         ----  ^^^^
-                ------
-                That: The second thing
-                This: The first thing
-                ======
-                ```erlang
-                -spec add(integer(), integer(), integer()) -> integer().
-                ```
+                    Add This to That
+                    Returns the sum of This and That plus 0
+                    ------
+                    main:add(This, That)
+                             ----  ^^^^
+                    ------
+                    That: The second thing
+                    This: The first thing
+                    ======
+                    ```erlang
+                    -spec add(integer(), integer(), integer()) -> integer().
+                    ```
 
-                -----
+                    -----
 
-                Add This to That, including an extra
-                @param This The first thing
-                @param That The second thing
-                @param Extra Something more
-                @returns The sum of This and That plus the Extra
-                ------
-                main:add(This, That, Extra)
-                         ----  ^^^^  -----
-                ------
-                Extra: Something more
-                That: The second thing
-                This: The first thing
-                ======
-            "#]],
+                    Add This to That, including an extra
+                    Returns the sum of This and That plus the Extra
+                    ------
+                    main:add(This, That, Extra)
+                             ----  ^^^^  -----
+                    ------
+                    Extra: Something more
+                    That: The second thing
+                    This: The first thing
+                    ======
+                "#]],
             );
         }
     }
