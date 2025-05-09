@@ -120,12 +120,13 @@ impl ServerSetup {
         // choose this to be so in the client.
         let mut config = Config::new(root_path, params.capabilities);
         if let Some(options) = params.initialization_options {
+            config.update_gks(options.clone());
             config.update(options);
         }
 
         // Pass the --buck-bxl flag through if set
         if let BuckQueryConfig::Bxl(_build) = self.query_config {
-            config.set_buck_query_use_bxl()
+            config.set_buck_query_use_bxl(true)
         }
 
         Ok(config)

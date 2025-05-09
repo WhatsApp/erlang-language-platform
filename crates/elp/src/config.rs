@@ -22,10 +22,15 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::buck::BuildGeneratedCode;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use lsp_types::ClientCapabilities;
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+
+use crate::from_json;
+// @fb-only
 
 // Defines the server-side configuration of ELP. We generate *parts*
 // of VS Code's `package.json` config from this.
@@ -105,6 +110,15 @@ pub struct Config {
     pub root_path: AbsPathBuf,
     pub caps: ClientCapabilities,
     data: ConfigData,
+    pub gks: GKs,
+}
+
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct GKs {
+    #[serde(rename = "initialGKValues")]
+    pub initial_gk_values: FxHashMap<String, bool>,
+    #[serde(rename = "initialSVValues")]
+    pub initial_sv_values: FxHashMap<String, bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,6 +154,7 @@ impl Config {
             root_path,
             caps,
             data: ConfigData::default(),
+            gks: Default::default(),
         }
     }
 
@@ -149,6 +164,18 @@ impl Config {
             return;
         }
         self.data = ConfigData::from_json(json);
+        // @fb-only
+    }
+
+    pub fn update_gks(&mut self, json: serde_json::Value) {
+        log::info!("updating gks from JSON: {:#}", json);
+        if json.is_null() || json.as_object().is_some_and(|it| it.is_empty()) {
+            return;
+        }
+        match from_json::<GKs>("GKs", json) {
+            Ok(val) => self.gks = val,
+            Err(err) => log::warn!("could not update GKs from JSON: {:#}", err),
+        }
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
@@ -341,8 +368,16 @@ impl Config {
         }
     }
 
-    pub fn set_buck_query_use_bxl(&mut self) {
-        self.data.buck_query_useBxl_enable = true
+    pub fn set_buck_query_use_bxl(&mut self, value: bool) {
+        self.data.buck_query_useBxl_enable = value
+    }
+
+    pub fn set_eqwalizer_all(&mut self, value: bool) {
+        self.data.eqwalizer_all = value;
+    }
+
+    pub fn set_buck_query_build_generated(&mut self, value: bool) {
+        self.data.buck_query_buildGenerated_enable = value;
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
