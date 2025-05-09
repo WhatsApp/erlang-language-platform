@@ -193,8 +193,7 @@ fn make_diagnostic_maps_from_list(sema: &Semantic, matched: &Match) -> Option<Di
         )
         .with_severity(Severity::WeakWarning)
         .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes))
-        .add_categories([Category::SimplificationRule]),
+        .with_fixes(Some(fixes)),
     )
 }
 

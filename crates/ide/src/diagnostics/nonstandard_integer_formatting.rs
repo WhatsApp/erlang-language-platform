@@ -168,8 +168,7 @@ fn make_diagnostic(
         .experimental()
         .with_severity(Severity::Information)
         .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes))
-        .add_categories([Category::SimplificationRule]),
+        .with_fixes(Some(fixes)),
     )
 }
 

@@ -177,8 +177,7 @@ fn make_diagnostic(
         Diagnostic::new(DiagnosticCode::SimplifyNegation, message, squiggly_range)
             .with_severity(Severity::Information)
             .with_ignore_fix(sema, file_id)
-            .with_fixes(Some(fixes))
-            .add_categories([Category::SimplificationRule]),
+            .with_fixes(Some(fixes)),
     )
 }
 

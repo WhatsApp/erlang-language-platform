@@ -92,8 +92,7 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
         )
         .with_severity(Severity::WeakWarning)
         .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes))
-        .add_categories([Category::SimplificationRule]),
+        .with_fixes(Some(fixes)),
     )
 }
 
