@@ -240,7 +240,9 @@ impl EdocHeader {
                 res.push_str(&format!(
                     "\"{}\" => \"{}\", ",
                     name.trim_end_matches(is_param_name_separator),
-                    description.trim().replace("\"", "\\\"")
+                    convert_link_macros(&description)
+                        .trim()
+                        .replace("\"", "\\\"")
                 ));
             }
         }

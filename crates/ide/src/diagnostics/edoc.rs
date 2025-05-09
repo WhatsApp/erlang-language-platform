@@ -2383,6 +2383,41 @@ main(_, _) ->
     }
 
     #[test]
+    fn test_function_doc_link_macro_param() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/0]).
+
+%% @d~oc
+%% This is the main function documentation.
+%% @param A This is the A parameter {@link main/2}
+-spec main(term()) -> tuple().
+main(A) ->
+    {A}.
+
+main(A, B) ->
+    {A, B}.
+"#,
+            expect![[r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+This is the main function documentation.
+""".
+-doc #{params => #{"A" => "This is the A parameter `main/2`"}}.
+-spec main(term()) -> tuple().
+main(A) ->
+    {A}.
+
+main(A, B) ->
+    {A, B}.
+"#]],
+        )
+    }
+
+    #[test]
     fn test_module_doc_deprecated() {
         check_fix(
             r#"
