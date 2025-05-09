@@ -230,3 +230,14 @@ unwrap(undefined, Default) -> Default;
 unwrap(Value, _)
   when Value =/= undefined ->
   Value.
+
+-spec id_fun(fun((A) -> ok)) -> fun((A) -> ok).
+id_fun(F) -> F.
+
+-spec id_fun_deep(fun((A) -> ok)) -> fun((A) -> ok).
+id_fun_deep(F) ->
+    id_fun(
+        fun
+            (A) -> F(A)
+        end
+    ).

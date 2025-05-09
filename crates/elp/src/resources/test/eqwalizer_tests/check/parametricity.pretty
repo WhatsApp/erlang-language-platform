@@ -46,4 +46,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: Value
 
-6 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/parametricity.erl:241:22
+    │
+241 │             (A) -> F(A)
+    │                      ^ A.
+Expression has type:   term()
+Context expected type: A
+
+7 ERRORS
