@@ -40,7 +40,6 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
 
-use crate::diagnostics::Category;
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
 use crate::diagnostics::DiagnosticDescriptor;
