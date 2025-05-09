@@ -61,82 +61,183 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
         include_tests: true,
         default_disabled: false,
     },
-    checker: &|acc, sema, file_id, _ext| {
-        map_find_to_syntax_error_atom_ssr(acc, sema, file_id);
-        map_find_to_syntax_underscore_ssr(acc, sema, file_id);
+    checker: &|diags, sema, file_id, _ext| {
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    error -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    error -> {NOT_FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                    error -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    error -> {NOT_FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    _ -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                    error -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    error -> {NOT_FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    error -> {NOT_FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                    _ -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                    _ -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                    {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                    error -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
+        from_ssr(
+            diags,
+            sema,
+            file_id,
+            format!(
+                "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
+                    {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                    _ -> {NOT_FOUND_BODY_VAR}
+                  end."
+            ),
+        );
     },
 };
 
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
+static VALUE_GUARD_VAR: &str = "_@ValueGuard";
 static MAP_VAR: &str = "_@Map";
 static FOUND_BODY_VAR: &str = "_@Found";
 static NOT_FOUND_BODY_VAR: &str = "_@NotFound";
 
-fn map_find_to_syntax_error_atom_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
-    let matches = match_pattern_in_file_functions(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        format!(
-            "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                    error -> {NOT_FOUND_BODY_VAR}
-                  end."
-        )
-        .as_str(),
-    );
-    matches.matches.iter().for_each(|m| {
-        || -> Option<()> {
-            let key = m.get_placeholder_match(sema, KEY_VAR)?;
-            let value = m.get_placeholder_match(sema, VALUE_VAR)?;
-            let body_arc = m.matched_node_body.get_body(sema)?;
-            let body = body_arc.as_ref();
-            if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
-                if let Some(diagnostic) = make_diagnostic(sema, m) {
-                    diags.push(diagnostic)
-                }
-            };
-            Some(())
-        }();
-    });
-}
+static VALUE_VAR2: &str = "_@Value2";
+static FOUND_BODY_VAR2: &str = "_@Found2";
 
-fn map_find_to_syntax_underscore_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
+fn from_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId, pattern: String) {
     let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
-            macros: MacroStrategy::Expand,
+            macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
-        format!(
-            "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                    {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                    _ -> {NOT_FOUND_BODY_VAR}
-                  end."
-        )
-        .as_str(),
+        pattern.as_str(),
     );
     matches.matches.iter().for_each(|m| {
         || -> Option<()> {
             let key = m.get_placeholder_match(sema, KEY_VAR)?;
             let value = m.get_placeholder_match(sema, VALUE_VAR)?;
+            let maybe_value2 = m.get_placeholder_match(sema, VALUE_VAR2);
             let body_arc = m.matched_node_body.get_body(sema)?;
             let body = body_arc.as_ref();
             if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
-                if let Some(diagnostic) = make_diagnostic(sema, m) {
+                if let Some(value2) = maybe_value2 {
+                    if is_match_valid_pat(body, value2) {
+                        if let Some(diagnostic) = make_diagnostic(sema, m) {
+                            diags.push(diagnostic)
+                        }
+                    }
+                } else if let Some(diagnostic) = make_diagnostic(sema, m) {
                     diags.push(diagnostic)
                 }
             }
@@ -218,14 +319,58 @@ fn get_map_syntax_replacement(sema: &Semantic, m: &Match) -> Option<String> {
     let val = m.placeholder_text(sema, VALUE_VAR)?;
     let found = m.placeholder_text(sema, FOUND_BODY_VAR)?;
     let not_found = m.placeholder_text(sema, NOT_FOUND_BODY_VAR)?;
-    Some(format!(
-        "case {map} of
+
+    if let Some(comments) = m.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
+
+    if let Some(val2) = m.placeholder_text(sema, VALUE_VAR2) {
+        let found2 = m.placeholder_text(sema, FOUND_BODY_VAR2)?;
+        if let Some(val_guard) = m.placeholder_text(sema, VALUE_GUARD_VAR) {
+            Some(format!(
+                "case {map} of
+       #{{{key} := {val}}} when {val_guard} ->
+           {found};
+       #{{{key} := {val2}}} ->
+           {found2};
+       #{{}} ->
+           {not_found}
+   end"
+            ))
+        } else {
+            Some(format!(
+                "case {map} of
+       #{{{key} := {val}}} ->
+           {found};
+       #{{{key} := {val2}}} ->
+           {found2};
+       #{{}} ->
+           {not_found}
+   end"
+            ))
+        }
+    } else if let Some(val_guard) = m.placeholder_text(sema, VALUE_GUARD_VAR) {
+        Some(format!(
+            "case {map} of
+       #{{{key} := {val}}} when {val_guard} ->
+           {found};
+       #{{}} ->
+           {not_found}
+   end"
+        ))
+    } else {
+        Some(format!(
+            "case {map} of
        #{{{key} := {val}}} ->
            {found};
        #{{}} ->
            {not_found}
    end"
-    ))
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -250,6 +395,86 @@ mod tests {
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
         tests::check_fix(fixture_before, fixture_after)
+    }
+
+    #[test]
+    fn ignores_map_find_where_comments_might_be_lost() {
+        check_diagnostics(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:find(k, M) of % don't lose this comment
+                {ok, V} ->
+                    {found, V};
+                error ->
+                not_found
+            end.
+            "#,
+        );
+        check_diagnostics(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:find(k, M) of
+                {ok, V} -> % don't lose this comment
+                    {found, V};
+                error ->
+                not_found
+            end.
+            "#,
+        );
+        check_diagnostics(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:find(k, M) of
+                {ok, V} ->
+                    {found, V}; % don't lose this comment
+                error ->
+                not_found
+            end.
+            "#,
+        );
+        check_diagnostics(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:find(k, M) of
+                {ok, V} ->
+                    {found, V};
+                error -> % don't lose this comment
+                    not_found
+            end.
+            "#,
+        );
+        check_diagnostics(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:find(k, M) of
+                {ok, V} ->
+                    {found, V};
+                error ->
+                    % don't lose this comment
+                    not_found
+            end.
+            "#,
+        )
     }
 
     #[test]
@@ -512,4 +737,271 @@ mod tests {
             "#]],
         )
     }
+
+    #[test]
+    fn rewrites_map_find_where_error_is_handled_first() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(my_key,M) of
+                error -> NotFound;
+                {ok, V} -> Found
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{my_key := V} ->
+                    Found;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_two_ok_cases_and_underscore() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, a} ->
+                    FoundA;
+                {ok, b} ->
+                    FoundB;
+                _ ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := a} ->
+                    FoundA;
+                #{key := b} ->
+                    FoundB;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_two_ok_cases_and_error() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, a} ->
+                    FoundA;
+                {ok, b} ->
+                    FoundB;
+                error ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := a} ->
+                    FoundA;
+                #{key := b} ->
+                    FoundB;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_two_ok_cases_guard_and_underscore() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, A} when is_binary(A) ->
+                    FoundA;
+                {ok, B} ->
+                    FoundB;
+                _ ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := A} when is_binary(A) ->
+                    FoundA;
+                #{key := B} ->
+                    FoundB;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_two_ok_cases_guard_and_error() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, A} when is_binary(A) ->
+                    FoundA;
+                {ok, B} ->
+                    FoundB;
+                error ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, FoundA, FoundB, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := A} when is_binary(A) ->
+                    FoundA;
+                #{key := B} ->
+                    FoundB;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_guard() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, V} when is_binary(V) ->
+                    Found;
+                _ ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := V} when is_binary(V) ->
+                    Found;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_find_with_compound_guard() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(KB, Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(key,M) of
+                {ok, V} when is_binary(V) orelse is_atom(V) ->
+                    Found;
+                _ ->
+                    NotFound
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(KB, Found, NotFound, M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{key := V} when is_binary(V) orelse is_atom(V) ->
+                    Found;
+                #{} ->
+                    NotFound
+            end.
+            "#]],
+        )
+    }
+
+    // Disabled until SSR supports globbing statements
+    /*
+    #[test]
+    fn rewrites_map_find_with_multiline_branches() {
+        check_fix(
+            r#"
+         //- /src/map_find_function.erl
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case maps:fi~nd(k, M) of
+                {ok, V} when is_integer(V) ->
+                    V + 1;
+                error ->
+                    W = 1,
+                    W + W
+            end.
+            "#,
+            expect![[r#"
+         -module(map_find_function).
+
+         fn(M) ->
+            % elp:ignore W0017 (undefined_function)
+            case M of
+                #{k := V} when is_integer(V) ->
+                    V + 1;
+                #{} ->
+                    W = 1,
+                    W + W
+            end.
+            "#]],
+        )
+    }
+    */
 }
