@@ -359,7 +359,11 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
     let token = syntax.with_value(pick_best_token(
         syntax.value.token_at_offset(position.offset),
         |kind| match kind {
-            SyntaxKind::ATOM | SyntaxKind::VAR | SyntaxKind::STRING => 2,
+            SyntaxKind::ATOM
+            | SyntaxKind::VAR
+            | SyntaxKind::STRING
+            | SyntaxKind::INTEGER
+            | SyntaxKind::FLOAT => 2,
             _ => 1,
         },
     )?);

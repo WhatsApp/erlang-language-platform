@@ -831,4 +831,112 @@ main() ->
             "#]],
         );
     }
+
+    #[test]
+    fn test_fn_signature_local_integer_argument() {
+        check(
+            r#"
+-module(main).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+main() ->
+  add(1~, That).
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That)
+                    ^^^^  ----
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That, Extra)
+                    ^^^^  ----  -----
+                ======
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_local_float_argument() {
+        check(
+            r#"
+-module(main).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+main() ->
+  add(1.2~, That).
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That)
+                    ^^^^  ----
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That, Extra)
+                    ^^^^  ----  -----
+                ======
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_local_atom_argument() {
+        check(
+            r#"
+-module(main).
+
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  add(This, That, 0).
+
+-spec add(integer(), integer(), integer()) -> integer().
+add(This, That, Extra) ->
+  This + That + Extra.
+
+main() ->
+  add(x~, That).
+"#,
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That)
+                    ^^^^  ----
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
+                ------
+                add(This, That, Extra)
+                    ^^^^  ----  -----
+                ======
+            "#]],
+        );
+    }
 }
