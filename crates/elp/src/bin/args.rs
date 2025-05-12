@@ -384,14 +384,11 @@ pub struct Args {
     pub escript: Option<PathBuf>,
     pub no_log_buffering: bool,
 
-    /// Use BXL when querying for a buck project model
-    pub buck_bxl: bool,
-
     /// Do not use BXL when querying for a buck project model
     pub no_buck_bxl: bool,
 
     /// When using BXL to query for a buck project model, invoke a
-    /// build step for generated files. If present, forces `--buck-bxl`.
+    /// build step for generated files.
     pub buck_generated: bool,
 
     #[bpaf(external(command))]
@@ -401,10 +398,7 @@ pub struct Args {
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
         if self.buck_generated {
-            // buck forces BXL mode
             BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
-        } else if self.buck_bxl {
-            BuckQueryConfig::Bxl(BuildGeneratedCode::No)
         } else if self.no_buck_bxl {
             BuckQueryConfig::Original
         } else {
