@@ -230,17 +230,21 @@ pub struct Lint {
     /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
     #[bpaf(argument("FILE"))]
     pub file: Option<String>,
-    /// Path to a directory where to dump result files
-    #[bpaf(argument("TO"))]
-    pub to: Option<PathBuf>,
-    /// Do not print the full diagnostics for a file, just the count
-    #[bpaf(external(parse_print_diags))]
-    pub print_diags: bool,
-    #[bpaf(external(parse_experimental_diags))]
-    pub experimental_diags: bool,
+
+    /// Run with rebar
+    pub rebar: bool,
     /// Rebar3 profile to pickup (default is test)
     #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
     pub profile: String,
+
+    /// Also generate diagnostics for generated files
+    pub include_generated: bool,
+    /// Also generate diagnostics for test files
+    pub include_tests: bool,
+
+    /// Do not print the full diagnostics for a file, just the count
+    #[bpaf(external(parse_print_diags))]
+    pub print_diags: bool,
     /// Show diagnostics in JSON format
     #[bpaf(
         argument("FORMAT"),
@@ -249,9 +253,9 @@ pub struct Lint {
         guard(format_guard, "Please use json")
     )]
     pub format: Option<String>,
-    /// Run with rebar
-    pub rebar: bool,
-    pub include_generated: bool,
+    /// Optional prefix to prepend to each diagnostic file path. Only used when --format=json is set
+    pub prefix: Option<String>,
+
     /// Include diagnostics produced by erlc
     pub include_erlc_diagnostics: bool,
     /// Include Common Test diagnostics
@@ -262,25 +266,7 @@ pub struct Lint {
     pub include_eqwalizer_diagnostics: bool,
     /// Include Suppressed diagnostics (e.g. elp:fixme)
     pub include_suppressed: bool,
-    /// Also generate diagnostics for test files
-    pub include_tests: bool,
-    /// If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
-    pub apply_fix: bool,
-    /// If applying fixes, apply any new ones that arise from the
-    /// prior fixes recursively. Limited in scope to the clause of the
-    /// prior change.
-    pub recursive: bool,
-    /// When applying a fix, modify the original file.
-    pub in_place: bool,
-    /// After applying a fix step, check that the diagnostics are clear, else roll back
-    pub with_check: bool,
-    /// After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
-    pub check_eqwalize_all: bool,
-    /// Apply to all matching diagnostic occurrences at once, rather
-    /// than one at a time.
-    pub one_shot: bool,
-    /// Optional prefix to prepend to each fact. Only used when --format=json is set
-    pub prefix: Option<String>,
+
     /// If specified, use the provided CLI severity mapping instead of the default one
     pub use_cli_severity: bool,
     /// Ignore the specified diagnostic, by code or label
@@ -289,13 +275,38 @@ pub struct Lint {
     /// Filter out all reported diagnostics except this one, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_filter: Option<String>,
-    /// Only apply elp:ignore fixes
-    pub ignore_fix_only: bool,
+    #[bpaf(external(parse_experimental_diags))]
+    pub experimental_diags: bool,
+
     /// Get some configuration from a .elp_lint.toml file instead in the project root
     pub read_config: bool,
     /// Override normal configuration file. When set, acts as if READ_CONFIG is true.
     #[bpaf(argument("CONFIG_FILE"))]
     pub config_file: Option<String>,
+
+    /// If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
+    pub apply_fix: bool,
+    /// Only apply elp:ignore fixes
+    pub ignore_fix_only: bool,
+
+    /// When applying a fix, modify the original file.
+    pub in_place: bool,
+    /// When applying a fix, put the results in this directory path
+    #[bpaf(argument("TO"))]
+    pub to: Option<PathBuf>,
+
+    /// If applying fixes, apply any new ones that arise from the
+    /// prior fixes recursively. Limited in scope to the clause of the
+    /// prior change.
+    pub recursive: bool,
+    /// After applying a fix step, check that the diagnostics are clear, else roll back
+    pub with_check: bool,
+    /// After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
+    pub check_eqwalize_all: bool,
+    /// Apply to all matching diagnostic occurrences at once, rather
+    /// than one at a time.
+    pub one_shot: bool,
+
     /// Rest of args are space separated list of apps to ignore
     #[bpaf(positional("IGNORED_APPS"))]
     pub ignore_apps: Vec<String>,
