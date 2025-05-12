@@ -362,4 +362,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'no_ok'
 Context expected type: 'ok'
 
-26 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:374:54
+    │
+374 │ use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
+    │                                                      ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: none()
+
+27 ERRORS

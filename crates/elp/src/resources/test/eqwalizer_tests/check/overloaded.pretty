@@ -6,6 +6,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   binary()
 Context expected type: atom()
 
+error: ambiguous_lambda (See https://fb.me/eqwalizer_errors#ambiguous_lambda)
+    ┌─ check/src/overloaded.erl:102:15
+    │
+102 │     Res = bar(fun(a) -> a end),
+    │               ^^^^^^^^^^^^^^^ fun.
+Functional expression can match multiple types in fun(('a') -> 'b') | fun(('a') -> 'c')
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:117:15
     │
@@ -150,4 +157,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'b'
 Context expected type: 'a'
 
-14 ERRORS
+15 ERRORS
