@@ -9,6 +9,7 @@
 
 use std::iter;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use elp_ide_db::ReferenceClass;
 use elp_ide_db::ReferenceType;
@@ -32,6 +33,7 @@ use elp_syntax::algo::skip_inline_comment;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
 use fxhash::FxHashSet;
+use hir::Attribute;
 use hir::Body;
 use hir::CompileOption;
 use hir::CompileOptionId;
@@ -43,6 +45,7 @@ use hir::FunctionDef;
 use hir::InFile;
 use hir::InFileAstPtr;
 use hir::InFunctionClauseBody;
+use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
 use hir::Strategy;
@@ -710,6 +713,31 @@ pub fn rename_atom_in_compile_attribute(
             }
         });
     Some(())
+}
+
+pub fn moduledoc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
+    let form_list = sema.form_list(file_id);
+    let module_attribute = form_list.module_attribute()?;
+    let range = match last_significant_attribute(&form_list) {
+        Some(attribute) => extend_range_to_adjacent_newline_skip_inline_comment(
+            attribute.form_id.get_ast(sema.db, file_id).syntax(),
+        ),
+        None => extend_range_to_adjacent_newline_skip_inline_comment(
+            module_attribute.form_id.get_ast(sema.db, file_id).syntax(),
+        ),
+    };
+    Some(range.end())
+}
+
+pub fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
+    static SIGNIFICANT_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
+        LazyLock::new(|| FxHashSet::from_iter([known::author, known::compile, known::oncall]));
+
+    form_list
+        .attributes()
+        .take_while(|(_idx, attr)| SIGNIFICANT_ATTRIBUTES.contains(&attr.name))
+        .last()
+        .map(|(_idx, attr)| attr)
 }
 
 // ---------------------------------------------------------------------

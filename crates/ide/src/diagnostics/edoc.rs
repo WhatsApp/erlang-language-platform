@@ -8,17 +8,14 @@
  */
 
 // Diagnostic: edoc
-use std::sync::LazyLock;
 
+use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::extend_range;
-use elp_ide_assists::helpers::extend_range_to_adjacent_newline_skip_inline_comment;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use fxhash::FxHashSet;
 use hir::Attribute;
-use hir::FormList;
-use hir::Name;
 use hir::Semantic;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
@@ -102,7 +99,9 @@ fn old_edoc_syntax_diagnostic(
     start_offset: TextSize,
 ) -> Diagnostic {
     let eep59_insert_offset = match header.kind {
-        EdocHeaderKind::Module => module_doc_insert_offset(sema, file_id).unwrap_or(start_offset),
+        EdocHeaderKind::Module => {
+            helpers::moduledoc_insert_offset(sema, file_id).unwrap_or(start_offset)
+        }
         EdocHeaderKind::Function => start_offset,
     };
     let authors_insert_offset = match header.kind {
@@ -187,31 +186,6 @@ fn author_name(sema: &Semantic, file_id: FileId, attribute: &Attribute) -> Optio
     let value = wild_attribute.value()?.syntax().text().to_string();
     let value = value.trim_start_matches('(').trim_end_matches(')');
     Some(value.trim_matches(|c| c == '"' || c == '\'').to_string())
-}
-
-fn module_doc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
-    let form_list = sema.form_list(file_id);
-    let module_attribute = form_list.module_attribute()?;
-    let range = match last_significant_attribute(&form_list) {
-        Some(attribute) => extend_range_to_adjacent_newline_skip_inline_comment(
-            attribute.form_id.get_ast(sema.db, file_id).syntax(),
-        ),
-        None => extend_range_to_adjacent_newline_skip_inline_comment(
-            module_attribute.form_id.get_ast(sema.db, file_id).syntax(),
-        ),
-    };
-    Some(range.end())
-}
-
-fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
-    static SIGNIFICANT_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
-        LazyLock::new(|| FxHashSet::from_iter([known::author, known::compile, known::oncall]));
-
-    form_list
-        .attributes()
-        .take_while(|(_idx, attr)| SIGNIFICANT_ATTRIBUTES.contains(&attr.name))
-        .last()
-        .map(|(_idx, attr)| attr)
 }
 
 #[cfg(test)]
