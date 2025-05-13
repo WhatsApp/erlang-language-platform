@@ -586,19 +586,6 @@ mod tests {
         }
     }
 
-    #[ignore] // TODO(T199099193) Test is flaky, ignore for now
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
-    fn eqwalize_all_fails_on_bad_parse(buck: bool) {
-        simple_snapshot(
-            args_vec!["eqwalize-all", "--format", "json",],
-            "parse_error",
-            expect_file!("../resources/test/standard/eqwalize_all_parse_error.jsonl"),
-            buck,
-            None,
-        );
-    }
-
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_reports_cascading_syntax_errors(buck: bool) {
