@@ -47,6 +47,8 @@ use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
+use crate::form_list::ModuleDocAttributeId;
+use crate::form_list::ModuleDocMetadataAttributeId;
 use crate::known;
 use crate::module_data::SpecDef;
 use crate::name::AsName;
@@ -78,7 +80,15 @@ pub struct DefMap {
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
     pub parse_transform: bool,
+    pub moduledoc: FxHashSet<ModuleDoc>,
+    pub moduledoc_metadata: FxHashSet<ModuleDocMetadata>,
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ModuleDoc(ModuleDocAttributeId);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ModuleDocMetadata(ModuleDocMetadataAttributeId);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionDefId(FunctionClauseId);
@@ -263,6 +273,12 @@ impl DefMap {
                             function: None,
                         },
                     );
+                }
+                FormIdx::ModuleDocAttribute(idx) => {
+                    def_map.moduledoc.insert(ModuleDoc(idx));
+                }
+                FormIdx::ModuleDocMetadataAttribute(idx) => {
+                    def_map.moduledoc_metadata.insert(ModuleDocMetadata(idx));
                 }
                 FormIdx::DocAttribute(idx) => {
                     last_doc_attribute = Some(idx);
@@ -799,6 +815,8 @@ impl DefMap {
             function_clauses_by_fa,
             functions_by_fa,
             behaviours,
+            moduledoc,
+            moduledoc_metadata,
         } = self;
 
         included.shrink_to_fit();
@@ -818,6 +836,8 @@ impl DefMap {
         function_clauses_by_fa.shrink_to_fit();
         functions_by_fa.shrink_to_fit();
         behaviours.shrink_to_fit();
+        moduledoc.shrink_to_fit();
+        moduledoc_metadata.shrink_to_fit();
     }
 }
 

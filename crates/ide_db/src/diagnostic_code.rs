@@ -78,6 +78,7 @@ pub enum DiagnosticCode {
     NonStandardIntegerFormatting,
     SimplifyNegation,
     DuplicateModule,
+    UndocumentedModule,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -217,6 +218,7 @@ impl DiagnosticCode {
             DiagnosticCode::NonStandardIntegerFormatting => "W0043".to_string(),
             DiagnosticCode::SimplifyNegation => "W0044".to_string(),
             DiagnosticCode::DuplicateModule => "W0045".to_string(),
+            DiagnosticCode::UndocumentedModule => "W0046".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -301,6 +303,7 @@ impl DiagnosticCode {
             DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
             DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
             DiagnosticCode::UndocumentedFunction => "undocumented_function".to_string(),
+            DiagnosticCode::UndocumentedModule => "undocumented_module".to_string(),
             DiagnosticCode::DebuggingFunction => "debugging_function".to_string(),
             DiagnosticCode::DuplicateModule => "duplicate_module".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
@@ -441,6 +444,7 @@ impl DiagnosticCode {
             DiagnosticCode::MacroPrecedenceEscape => false,
             DiagnosticCode::UndocumentedFunction => false,
             DiagnosticCode::DuplicateModule => false,
+            DiagnosticCode::UndocumentedModule => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,

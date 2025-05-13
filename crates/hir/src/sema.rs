@@ -27,6 +27,7 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::FunDecl;
+use elp_syntax::ast::ModuleAttribute;
 use elp_types_db::eqwalizer;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -271,11 +272,15 @@ impl Semantic<'_> {
         module_name(self.db.upcast(), file_id)
     }
 
-    pub fn module_attribute_name(&self, file_id: FileId) -> Option<ast::Name> {
+    pub fn module_attribute(&self, file_id: FileId) -> Option<ast::ModuleAttribute> {
         let form_list = self.form_list(file_id);
         let module_attribute = form_list.module_attribute()?;
-        let module_attribute_ast = module_attribute.form_id.get_ast(self.db, file_id);
-        module_attribute_ast.name()
+        Some(module_attribute.form_id.get_ast(self.db, file_id))
+    }
+
+    pub fn module_attribute_name(&self, file_id: FileId) -> Option<ast::Name> {
+        let module_attribute = self.module_attribute(file_id);
+        module_attribute?.name()
     }
 
     pub fn module_name_duplicates(&self, file_id: FileId) -> Option<FxHashSet<FileId>> {
@@ -531,6 +536,17 @@ impl Semantic<'_> {
             return Some(FunctionDoc::EdocHeader(edoc_header));
         }
         None
+    }
+
+    pub fn module_edoc_header(
+        &self,
+        file_id: FileId,
+        module: &ModuleAttribute,
+    ) -> Option<EdocHeader> {
+        self.form_edoc_comments(InFileAstPtr::new(
+            file_id,
+            AstPtr::new(&ast::Form::ModuleAttribute(module.clone())),
+        ))
     }
 
     fn function_edoc_header(&self, file_id: FileId, function: &FunDecl) -> Option<EdocHeader> {
