@@ -7,9 +7,14 @@
  * of this source tree.
  */
 
+use elp_ide_assists::Assist;
+use elp_ide_assists::helpers;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use hir::Semantic;
+use text_edit::TextRange;
+use text_edit::TextSize;
 
 use super::Diagnostic;
 use super::DiagnosticCode;
@@ -20,6 +25,8 @@ use super::Severity;
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::UndocumentedModule;
 const DIAGNOSTIC_MESSAGE: &str = "The module is not documented.";
 const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning;
+const FIX_ID: &str = "add_moduledoc_false";
+const FIX_LABEL: &str = "Add `-moduledoc false.` attribute";
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
@@ -44,24 +51,44 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) ->
     if module_has_no_docs {
         let module_name = module_attribute.name()?;
         let module_name_range = module_name.syntax().text_range();
+        let moduledoc_insert_offset = helpers::moduledoc_insert_offset(sema, file_id)?;
+        let fixes = fixes(file_id, moduledoc_insert_offset, module_name_range);
         let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, module_name_range)
-            .with_severity(DIAGNOSTIC_SEVERITY);
+            .with_severity(DIAGNOSTIC_SEVERITY)
+            .with_fixes(Some(fixes));
         diagnostics.push(diagnostic);
     }
     Some(())
+}
+
+fn fixes(file_id: FileId, insert_offset: TextSize, show_range: TextRange) -> Vec<Assist> {
+    let mut builder = SourceChangeBuilder::new(file_id);
+    builder.insert(insert_offset, "-moduledoc false.\n");
+    let source_change = builder.finish();
+    let fix = crate::fix(FIX_ID, FIX_LABEL, source_change, show_range);
+    vec![fix]
 }
 
 #[cfg(test)]
 mod tests {
 
     use elp_ide_db::DiagnosticCode;
+    use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests;
 
+    fn config() -> DiagnosticsConfig {
+        DiagnosticsConfig::default().enable(DiagnosticCode::UndocumentedModule)
+    }
+
     fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default().enable(DiagnosticCode::UndocumentedModule);
-        tests::check_diagnostics_with_config(config, fixture);
+        tests::check_diagnostics_with_config(config(), fixture);
+    }
+
+    fn check_fix(before: &str, after: Expect) {
+        tests::check_fix_with_config(config(), before, after);
     }
 
     #[test]
@@ -69,7 +96,7 @@ mod tests {
         check_diagnostics(
             r#"
      -module(main).
-          %% ^^^^ weak: The module is not documented.
+          %% ^^^^ 💡 weak: The module is not documented.
          "#,
         )
     }
@@ -118,6 +145,74 @@ mod tests {
      % This is a module
      -module(main).
          "#,
+        )
+    }
+
+    #[test]
+    fn test_undocumented_module_fix() {
+        check_fix(
+            r#"
+-module(ma~in).
+"#,
+            expect![[r#"
+                -module(main).
+                -moduledoc false.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_undocumented_module_fix_significant_attribute() {
+        check_fix(
+            r#"
+-module(ma~in).
+-oncall("my_oncall").
+"#,
+            expect![[r#"
+                -module(main).
+                -oncall("my_oncall").
+                -moduledoc false.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_undocumented_module_fix_significant_attribute_2() {
+        check_fix(
+            r#"
+-module(ma~in).
+-oncall("my_oncall").
+
+-ignore_xref([]).
+"#,
+            expect![[r#"
+                -module(main).
+                -oncall("my_oncall").
+                -moduledoc false.
+
+                -ignore_xref([]).
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_undocumented_module_fix_significant_attribute_3() {
+        check_fix(
+            r#"
+-module(ma~in).
+-oncall("my_oncall").
+-compile(warn_missing_spec_all).
+
+-ignore_xref([]).
+"#,
+            expect![[r#"
+                -module(main).
+                -oncall("my_oncall").
+                -compile(warn_missing_spec_all).
+                -moduledoc false.
+
+                -ignore_xref([]).
+            "#]],
         )
     }
 }

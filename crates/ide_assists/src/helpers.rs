@@ -717,21 +717,69 @@ pub fn rename_atom_in_compile_attribute(
 
 pub fn moduledoc_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSize> {
     let form_list = sema.form_list(file_id);
-    let module_attribute = form_list.module_attribute()?;
-    let range = match last_significant_attribute(&form_list) {
-        Some(attribute) => extend_range_to_adjacent_newline_skip_inline_comment(
-            attribute.form_id.get_ast(sema.db, file_id).syntax(),
+    let module_attribute_range = form_list.module_attribute()?;
+    let last_significant_attribute = last_significant_attribute(&form_list);
+    let last_compile_attribute = last_compile_attribute(&form_list);
+
+    let range = match (last_significant_attribute, last_compile_attribute) {
+        (None, None) => extend_range_to_adjacent_newline_skip_inline_comment(
+            module_attribute_range
+                .form_id
+                .get_ast(sema.db, file_id)
+                .syntax(),
         ),
-        None => extend_range_to_adjacent_newline_skip_inline_comment(
-            module_attribute.form_id.get_ast(sema.db, file_id).syntax(),
+        (Some(attr), None) => extend_range_to_adjacent_newline_skip_inline_comment(
+            attr.form_id.get_ast(sema.db, file_id).syntax(),
         ),
+        (None, Some(compile_option)) => extend_range_to_adjacent_newline_skip_inline_comment(
+            compile_option.form_id.get_ast(sema.db, file_id).syntax(),
+        ),
+        (Some(attr), Some(compile_option)) => {
+            if attr.form_id.range(sema.db, file_id).end()
+                > compile_option.form_id.range(sema.db, file_id).end()
+            {
+                extend_range_to_adjacent_newline_skip_inline_comment(
+                    attr.form_id.get_ast(sema.db, file_id).syntax(),
+                )
+            } else {
+                extend_range_to_adjacent_newline_skip_inline_comment(
+                    compile_option.form_id.get_ast(sema.db, file_id).syntax(),
+                )
+            }
+        }
     };
+
     Some(range.end())
+}
+
+pub fn last_compile_attribute_range(
+    sema: &Semantic,
+    form_list: &FormList,
+    file_id: FileId,
+) -> Option<TextRange> {
+    let attr = last_compile_attribute(form_list)?;
+    Some(attr.form_id.range(sema.db, file_id))
+}
+
+pub fn last_compile_attribute(form_list: &FormList) -> Option<&CompileOption> {
+    form_list
+        .compile_attributes()
+        .last()
+        .map(|(_idx, attr)| attr)
+}
+
+pub fn last_significant_attribute_range(
+    sema: &Semantic,
+    form_list: &FormList,
+    file_id: FileId,
+) -> Option<TextRange> {
+    let attr = last_significant_attribute(form_list)?;
+    Some(attr.form_id.range(sema.db, file_id))
 }
 
 pub fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
     static SIGNIFICANT_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
-        LazyLock::new(|| FxHashSet::from_iter([known::author, known::compile, known::oncall]));
+        LazyLock::new(|| FxHashSet::from_iter([known::author, known::oncall]));
 
     form_list
         .attributes()
