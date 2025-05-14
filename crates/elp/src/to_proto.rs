@@ -325,7 +325,7 @@ fn doc_link(link: &DocLink) -> Option<lsp_ext::CommandLinkGroup> {
         command,
     };
     let group = lsp_ext::CommandLinkGroup {
-        title: Some("Go To:".to_string()),
+        title: Some("Docs for:".to_string()),
         commands: vec![command_link],
     };
     Some(group)
