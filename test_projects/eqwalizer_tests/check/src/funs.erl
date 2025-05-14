@@ -372,3 +372,9 @@ callback_test(_F) -> ok.
 
 -spec use_callback_test_neg() -> ok.
 use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
+
+-spec callback_test_2(fun((term()) -> ok) | dynamic()) -> ok.
+callback_test_2(_F) -> ok.
+
+-spec use_callback_test_2() -> ok.
+use_callback_test_2() -> callback_test_2(fun (_T) -> ok end).
