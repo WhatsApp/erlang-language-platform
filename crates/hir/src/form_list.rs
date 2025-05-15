@@ -645,6 +645,10 @@ impl IncludeAttribute {
             IncludeAttribute::IncludeLib { path, .. } => path,
         }
     }
+
+    pub fn range(&self, db: &dyn DefDatabase, file_id: FileId) -> TextRange {
+        self.form_id().get_ast(db, file_id).syntax().text_range()
+    }
 }
 
 /// -deprecated
