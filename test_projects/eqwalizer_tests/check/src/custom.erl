@@ -2638,3 +2638,28 @@ maps:fold(
     [],
     M
 ).
+
+-spec maps_filter_iter()
+    -> #{number() => atom()}.
+maps_filter_iter() ->
+    M = #{1 => a, 2 => b},
+    F = fun erlang:'=:='/2,
+    I = maps:iterator(M),
+    maps:filter(F, I).
+
+-spec maps_fold_iter()
+    -> [number() | a | b].
+maps_fold_iter() ->
+    M = #{1 => a, 2 => b},
+    I = maps:iterator(M),
+    Res = maps:fold(
+        fun (K, V, Acc) ->
+            [K, V] ++ Acc
+        end, [], I),
+    Res.
+
+-spec maps_to_list_iter(#{K => V})
+    -> [{K, V}].
+maps_to_list_iter(M) ->
+    I = maps:iterator(M),
+    maps:to_list(I).
