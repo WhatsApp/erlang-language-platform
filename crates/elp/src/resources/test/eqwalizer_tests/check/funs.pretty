@@ -370,11 +370,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'ok'
 Context expected type: none()
 
-error: ambiguous_lambda (See https://fb.me/eqwalizer_errors#ambiguous_lambda)
-    ┌─ check/src/funs.erl:380:42
-    │
-380 │ use_callback_test_2() -> callback_test_2(fun (_T) -> ok end).
-    │                                          ^^^^^^^^^^^^^^^^^^ fun.
-Functional expression can match multiple types in fun((term()) -> 'ok') | fun((dynamic()) -> dynamic())
-
-28 ERRORS
+27 ERRORS
