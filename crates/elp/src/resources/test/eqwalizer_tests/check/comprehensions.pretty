@@ -379,26 +379,4 @@ error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
 Expected fun type with arity 0
 Got: fun(() -> atom()) | fun((number()) -> atom())
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/comprehensions.erl:404:26
-    │
-404 │     [{K, V} || K := V <- It].
-    │                          ^^
-    │                          │
-    │                          It.
-Expression has type:   maps:iterator(K, V)
-Context expected type: #{term() => term()}
-    │                          
-
-Because in the expression's type:
-  Here the type is:     {K, V, maps:iterator(K, V)} | 'none' | [number()] | [[K]]
-  Context expects type: #{term() => term()}
-  No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator(K, V) is not compatible with #{term() => term()}
-  because
-  {K, V, maps:iterator(K, V)} | 'none' | [number()] | [[K]] is not compatible with #{term() => term()}
-
-35 ERRORS
+34 ERRORS
