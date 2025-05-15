@@ -354,17 +354,19 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                     │
     │                                     X.
 Expression has type:   #{K => V} | 'a'
-Context expected type: #{term() => term()}
+Context expected type: #{term() => term()} | maps:iterator()
     │                                     
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #{K => V}
   However the following candidate: 'a'
-  Differs from the expected type:  #{term() => term()}
+  Differs from the expected type:  #{term() => term()} | maps:iterator()
 
 ------------------------------ Detailed message ------------------------------
 
-  #{K => V} | 'a' is not compatible with #{term() => term()}
+  #{K => V} | 'a' is not compatible with #{term() => term()} | maps:iterator()
+  because
+  'a' is not compatible with #{term() => term()} | maps:iterator()
   because
   'a' is not compatible with #{term() => term()}
 
@@ -372,9 +374,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/custom.erl:425:20
     │
 425 │     maps:filter(F, non_kv),
-    │                    ^^^^^^ 'non_kv'.
+    │                    ^^^^^^
+    │                    │
+    │                    'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #{term() => term()}
+Context expected type: #{term() => term()} | maps:iterator()
+    │                    
+
+  'non_kv' is not compatible with #{term() => term()} | maps:iterator()
+  because
+  'non_kv' is not compatible with #{term() => term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:454:5
@@ -455,9 +464,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/custom.erl:503:17
     │
 503 │     maps:map(F, non_kv),
-    │                 ^^^^^^ 'non_kv'.
+    │                 ^^^^^^
+    │                 │
+    │                 'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #{term() => term()}
+Context expected type: #{term() => term()} | maps:iterator()
+    │                 
+
+  'non_kv' is not compatible with #{term() => term()} | maps:iterator()
+  because
+  'non_kv' is not compatible with #{term() => term()}
 
 error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
     ┌─ check/src/custom.erl:538:9
@@ -539,9 +555,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/custom.erl:555:9
     │
 555 │         non_kv
-    │         ^^^^^^ 'non_kv'.
+    │         ^^^^^^
+    │         │
+    │         'non_kv'.
 Expression has type:   'non_kv'
-Context expected type: #{term() => term()}
+Context expected type: #{term() => term()} | maps:iterator()
+    │         
+
+  'non_kv' is not compatible with #{term() => term()} | maps:iterator()
+  because
+  'non_kv' is not compatible with #{term() => term()}
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/custom.erl:560:1
@@ -673,9 +696,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/custom.erl:671:41
     │
 671 │ maps_to_list_7_neg(Num) -> maps:to_list(Num).
-    │                                         ^^^ Num.
+    │                                         ^^^
+    │                                         │
+    │                                         Num.
 Expression has type:   number()
-Context expected type: #{term() => term()}
+Context expected type: #{term() => term()} | maps:iterator()
+    │                                         
+
+  number() is not compatible with #{term() => term()} | maps:iterator()
+  because
+  number() is not compatible with #{term() => term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:675:25
@@ -3184,70 +3214,4 @@ Because in the expression's type:
   because
   atom() is not compatible with binary()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2648:20
-     │
-2648 │     maps:filter(F, I).
-     │                    ^
-     │                    │
-     │                    I.
-Expression has type:   maps:iterator(number(), 'a' | 'b')
-Context expected type: #{term() => term()}
-     │                    
-
-Because in the expression's type:
-  Here the type is:     tuple()/3 | 'none' | [...] | [...]
-  Context expects type: #{term() => term()}
-  No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator(number(), 'a' | 'b') is not compatible with #{term() => term()}
-  because
-  {number(), 'a' | 'b', maps:iterator(number(), 'a' | 'b')} | 'none' | [number()] | [[number()]] is not compatible with #{term() => term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2658:18
-     │
-2658 │         end, [], I),
-     │                  ^
-     │                  │
-     │                  I.
-Expression has type:   maps:iterator(number(), 'a' | 'b')
-Context expected type: #{term() => term()}
-     │                  
-
-Because in the expression's type:
-  Here the type is:     tuple()/3 | 'none' | [...] | [...]
-  Context expects type: #{term() => term()}
-  No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator(number(), 'a' | 'b') is not compatible with #{term() => term()}
-  because
-  {number(), 'a' | 'b', maps:iterator(number(), 'a' | 'b')} | 'none' | [number()] | [[number()]] is not compatible with #{term() => term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2665:18
-     │
-2665 │     maps:to_list(I).
-     │                  ^
-     │                  │
-     │                  I.
-Expression has type:   maps:iterator(K, V)
-Context expected type: #{term() => term()}
-     │                  
-
-Because in the expression's type:
-  Here the type is:     {K, V, maps:iterator(K, V)} | 'none' | [number()] | [[K]]
-  Context expects type: #{term() => term()}
-  No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator(K, V) is not compatible with #{term() => term()}
-  because
-  {K, V, maps:iterator(K, V)} | 'none' | [number()] | [[K]] is not compatible with #{term() => term()}
-
-203 ERRORS
+200 ERRORS
