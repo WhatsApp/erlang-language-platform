@@ -240,7 +240,8 @@ mod tests {
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::UndefinedFunction)
-            .disable(DiagnosticCode::UnspecificInclude);
+            .disable(DiagnosticCode::UnspecificInclude)
+            .disable(DiagnosticCode::NoDialyzerAttribute);
         check_diagnostics_with_config(config, fixture)
     }
 

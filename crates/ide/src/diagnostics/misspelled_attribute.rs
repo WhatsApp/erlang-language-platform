@@ -182,7 +182,8 @@ mod tests {
     -di~alyzer({nowarn_function, f/0}).
             "#,
         );
-        let config = DiagnosticsConfig::default();
+        let config =
+            DiagnosticsConfig::default().disable(elp_ide_db::DiagnosticCode::NoDialyzerAttribute);
         let diags = analysis
             .native_diagnostics(&config, &vec![], fixture.file_id())
             .unwrap();

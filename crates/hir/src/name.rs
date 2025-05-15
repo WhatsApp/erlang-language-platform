@@ -240,6 +240,7 @@ pub mod known {
         behaviour_info,
         behavior_info,
         client,
+        dialyzer,
         erlang,
         error,
         export_all,

@@ -53,6 +53,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
 use elp_syntax::TextRange;
@@ -937,6 +938,18 @@ pub struct Attribute {
     pub name: Name,
     pub cond: Option<PPConditionId>,
     pub form_id: FormId<ast::WildAttribute>,
+}
+
+impl Attribute {
+    pub fn name_range(&self, db: &dyn DefDatabase, file_id: FileId) -> Option<TextRange> {
+        Some(
+            self.form_id
+                .get_ast(db, file_id)
+                .name()?
+                .syntax()
+                .text_range(),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

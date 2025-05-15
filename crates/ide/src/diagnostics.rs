@@ -105,6 +105,7 @@ mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
 mod mutable_variable;
+mod no_dialyzer_attribute;
 mod no_garbage_collect;
 mod nonstandard_integer_formatting;
 mod record_tuple_match;
@@ -910,6 +911,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &duplicate_module::DESCRIPTOR,
         &undocumented_module::DESCRIPTOR,
         &no_garbage_collect::DESCRIPTOR,
+        &no_dialyzer_attribute::DESCRIPTOR,
     ]
 }
 

@@ -80,6 +80,7 @@ pub enum DiagnosticCode {
     DuplicateModule,
     UndocumentedModule,
     NoGarbageCollect,
+    NoDialyzerAttribute,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -221,6 +222,7 @@ impl DiagnosticCode {
             DiagnosticCode::DuplicateModule => "W0045".to_string(),
             DiagnosticCode::UndocumentedModule => "W0046".to_string(),
             DiagnosticCode::NoGarbageCollect => "W0047".to_string(),
+            DiagnosticCode::NoDialyzerAttribute => "W0048".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -309,6 +311,7 @@ impl DiagnosticCode {
             DiagnosticCode::DebuggingFunction => "debugging_function".to_string(),
             DiagnosticCode::DuplicateModule => "duplicate_module".to_string(),
             DiagnosticCode::NoGarbageCollect => "no_garbage_collect".to_string(),
+            DiagnosticCode::NoDialyzerAttribute => "no_dialyzer_attribute".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -449,6 +452,8 @@ impl DiagnosticCode {
             DiagnosticCode::DuplicateModule => false,
             DiagnosticCode::UndocumentedModule => false,
             DiagnosticCode::NoGarbageCollect => false,
+            DiagnosticCode::NoDialyzerAttribute => false,
+
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
