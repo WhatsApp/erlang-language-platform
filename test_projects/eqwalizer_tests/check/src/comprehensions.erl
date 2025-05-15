@@ -397,3 +397,8 @@ test52(M, TTL) ->
         Key => Value#{ttl => TTL}
         || Key := Value <- M
     }.
+
+-spec map_comprehension_iterator(#{K => V}) -> [{K, V}].
+map_comprehension_iterator(M) ->
+    It = maps:iterator(M),
+    [{K, V} || K := V <- It].
