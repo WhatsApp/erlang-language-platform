@@ -33,6 +33,11 @@
     "markdownDescription": "Update native diagnostics only when the file is saved.",
     "type": "boolean"
   },
+  "elp.edoc.enable": {
+    "default": false,
+    "markdownDescription": "Whether to report EDoc diagnostics.",
+    "type": "boolean"
+  },
   "elp.eqwalizer.all": {
     "default": false,
     "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",

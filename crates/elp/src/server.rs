@@ -678,7 +678,9 @@ impl Server {
                 if this.config.eqwalizer().all {
                     this.eqwalizer_project_diagnostics_requested = true;
                 }
-                this.edoc_diagnostics_requested = true;
+                if this.config.edoc() {
+                    this.edoc_diagnostics_requested = true;
+                }
                 this.ct_diagnostics_requested = true;
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
@@ -811,7 +813,9 @@ impl Server {
                         if this.config.eqwalizer().all {
                             this.eqwalizer_project_diagnostics_requested = true;
                         }
-                        this.edoc_diagnostics_requested = true;
+                        if this.config.edoc() {
+                            this.edoc_diagnostics_requested = true;
+                        }
                         this.ct_diagnostics_requested = true;
                         this.native_diagnostics_requested = true;
                     } else {
@@ -1438,7 +1442,9 @@ impl Server {
                 // Diagnostic config may have changed, regen
                 self.native_diagnostics_requested = true;
                 self.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                self.edoc_diagnostics_requested = true;
+                if self.config.edoc() {
+                    self.edoc_diagnostics_requested = true;
+                }
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());
