@@ -261,7 +261,7 @@ fn do_parse_all_par(
     let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
     let module_iter = module_index.iter_own();
 
-    let pb = cli.progress(module_iter.len() as u64, "Parsing modules (parallel)");
+    let pb = cli.progress(module_iter.len() as u64, "Parsing modules");
 
     let vfs = &loaded.vfs;
     Ok(module_iter

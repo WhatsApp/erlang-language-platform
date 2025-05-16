@@ -125,7 +125,7 @@ fn do_parse_all(
         .iter()
         .map(|name| Some(Some(AppName(name.to_string()))))
         .collect();
-    let pb = cli.progress(module_iter.len() as u64, "Parsing modules (parallel)");
+    let pb = cli.progress(module_iter.len() as u64, "Parsing modules");
     let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
 
     Ok(module_iter
