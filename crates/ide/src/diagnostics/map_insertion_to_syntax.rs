@@ -88,7 +88,7 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
     let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
-            macros: MacroStrategy::Expand,
+            macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
@@ -111,7 +111,7 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
     let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
-            macros: MacroStrategy::Expand,
+            macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
@@ -156,7 +156,7 @@ fn make_diagnostic(
     )];
     Some(
         Diagnostic::new(op.to_code(), message, map_function_call_range)
-            .with_severity(Severity::Information)
+            .with_severity(Severity::WeakWarning)
             .with_ignore_fix(sema, file_id)
             .with_fixes(Some(fixes))
             .add_categories([Category::SimplificationRule]),
@@ -215,6 +215,21 @@ mod tests {
     }
 
     #[test]
+    fn ignores_map_update_function_in_macro() {
+        check_diagnostics(
+            r#"
+         //- /src/map_update_function.erl
+         -module(map_update_function).
+
+         -define(MAPS_UPDATE(K,V,M), maps:update(K, V, M)).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(K, V, M) -> ?MAPS_UPDATE(K, V, M).
+            "#,
+        )
+    }
+
+    #[test]
     fn detects_map_put_function() {
         check_diagnostics(
             r#"
@@ -223,7 +238,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> maps:put(K, V, Map).
-         %%               ^^^^^^^^^^^^^^^^^^^💡 information: Consider using map syntax rather than a function call.
+         %%               ^^^^^^^^^^^^^^^^^^^💡 weak: Consider using map syntax rather than a function call.
             "#,
         )
     }
@@ -237,7 +252,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> maps:update(K, V, Map).
-         %%               ^^^^^^^^^^^^^^^^^^^^^^💡 information: Consider using map syntax rather than a function call.
+         %%               ^^^^^^^^^^^^^^^^^^^^^^💡 weak: Consider using map syntax rather than a function call.
             "#,
         )
     }
@@ -276,6 +291,214 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> Map#{K := V}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_when_map_is_a_local_binding() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn(K, V) ->
+            Map = #{a => b},
+            % elp:ignore W0017 (undefined_function)
+            maps:p~ut(K, V, Map).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn(K, V) ->
+            Map = #{a => b},
+            % elp:ignore W0017 (undefined_function)
+            Map#{K => V}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_when_map_key_and_value_are_local_bindings() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn() ->
+            Map = #{a => b},
+            K = key,
+            V = value,
+            % elp:ignore W0017 (undefined_function)
+            maps:p~ut(K, V, Map).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn() ->
+            Map = #{a => b},
+            K = key,
+            V = value,
+            % elp:ignore W0017 (undefined_function)
+            Map#{K => V}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_when_map_is_a_local_binding_and_key_and_value_are_literals() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn() ->
+            Map = #{a => b},
+            % elp:ignore W0017 (undefined_function)
+            maps:p~ut(key, value, Map).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn() ->
+            Map = #{a => b},
+            % elp:ignore W0017 (undefined_function)
+            Map#{key => value}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_when_there_is_some_preable_before_the_map() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         -define(FOO, foo).
+
+         fn(K, V) ->
+            Map = #{a => ?FOO},
+            3 = length([a,b,c]),
+            1 = map_size(#{x => y}),
+            % elp:ignore W0017 (undefined_function)
+            maps:p~ut(K, V, Map).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         -define(FOO, foo).
+
+         fn(K, V) ->
+            Map = #{a => ?FOO},
+            3 = length([a,b,c]),
+            1 = map_size(#{x => y}),
+            % elp:ignore W0017 (undefined_function)
+            Map#{K => V}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_when_there_are_statements_before_and_after_the_map() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         -define(FOO, foo).
+
+         -spec fn(term(), term()) -> {ok, term()}.
+         fn(K, V) ->
+            MyParamsMap = #{a => ?FOO},
+            3 = length([a,b,c]),
+            1 = map_size(#{x => y}),
+            % elp:ignore W0017 (undefined_function)
+            MyParamsMap2 = maps:p~ut(K, V, MyParamsMap),
+            {ok, MyParamsMap2}.
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         -define(FOO, foo).
+
+         -spec fn(term(), term()) -> {ok, term()}.
+         fn(K, V) ->
+            MyParamsMap = #{a => ?FOO},
+            3 = length([a,b,c]),
+            1 = map_size(#{x => y}),
+            % elp:ignore W0017 (undefined_function)
+            MyParamsMap2 = MyParamsMap#{K => V},
+            {ok, MyParamsMap2}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_as_sub_expression() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn(K, V, Map) ->
+            % elp:ignore W0017 (undefined_function)
+            tuple_to_list( {ok, maps:pu~t(K, V, Map), 1 + 2}).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn(K, V, Map) ->
+            % elp:ignore W0017 (undefined_function)
+            tuple_to_list( {ok, Map#{K => V}, 1 + 2}).
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_as_sub_expression_of_multiline_expression() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn(K, V, Map) ->
+            % elp:ignore W0017 (undefined_function)
+            tuple_to_list(
+                % elp:ignore W0017 (undefined_function)
+                {ok, maps:pu~t(K, V, Map), 1 + 2}
+            ).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn(K, V, Map) ->
+            % elp:ignore W0017 (undefined_function)
+            tuple_to_list(
+                % elp:ignore W0017 (undefined_function)
+                {ok, Map#{K => V}, 1 + 2}
+            ).
+            "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_map_put_function_in_lambda() {
+        check_fix(
+            r#"
+         //- /src/map_put_function.erl
+         -module(map_put_function).
+
+         fn(Map) ->
+            % elp:ignore W0017 (undefined_function)
+            maps:fold(fun(K, V, MapAcc) -> maps:pu~t(K, V, MapAcc) end, #{}, Map).
+            "#,
+            expect![[r#"
+         -module(map_put_function).
+
+         fn(Map) ->
+            % elp:ignore W0017 (undefined_function)
+            maps:fold(fun(K, V, MapAcc) -> MapAcc#{K => V} end, #{}, Map).
             "#]],
         )
     }
