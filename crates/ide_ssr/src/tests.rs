@@ -1527,3 +1527,165 @@ fn ssr_placeholder_does_not_match_already_matched_arm() {
         "#]],
     )
 }
+
+#[test]
+fn ssr_predicates_on_match_expr_pat() {
+    let pattern = "ssr: {_@S, _@V, _@A}.";
+    let code = r#"
+                %-compile({"str", var, atom}).
+                %-type foo(V) :: {"str", V, atom}.
+                foo({"hello", Var, atom}) -> {"str", Var, aa}.
+                
+                "#;
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+
+    let (db, position, _selections) = single_file(code);
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(position.file_id));
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches = match_finder.matches().flattened();
+
+    let match_pat = matches.matches[0].clone(); // Its a test, panic is fine.
+    expect![[r#"
+        Some(
+            Normal(
+                "hello",
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_pat.placeholder_is_string(&sema, "_@S"));
+    assert!(match_pat.placeholder_is_var(&sema, "_@S").is_none());
+    assert!(match_pat.placeholder_is_atom(&sema, "_@S").is_none());
+
+    // ------------
+
+    assert!(match_pat.placeholder_is_string(&sema, "_@V").is_none());
+    expect![[r#"
+        Some(
+            Var(
+                3,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_pat.placeholder_is_var(&sema, "_@V"));
+    assert!(match_pat.placeholder_is_atom(&sema, "_@V").is_none());
+
+    // ------------
+
+    assert!(match_pat.placeholder_is_string(&sema, "_@A").is_none());
+    assert!(match_pat.placeholder_is_var(&sema, "_@A").is_none());
+    expect![[r#"
+        Some(
+            Atom(
+                1,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_pat.placeholder_is_atom(&sema, "_@A"));
+
+    // ----------------------
+    let match_expr = matches.matches[1].clone(); // Its a test, panic is fine.
+    assert!(match_expr.placeholder_is_string(&sema, "_@V").is_none());
+    expect![[r#"
+        Some(
+            Var(
+                3,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_expr.placeholder_is_var(&sema, "_@V"));
+    assert!(match_expr.placeholder_is_atom(&sema, "_@V").is_none());
+
+    // ------------
+
+    assert!(match_expr.placeholder_is_string(&sema, "_@V").is_none());
+    expect![[r#"
+        Some(
+            Var(
+                3,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_expr.placeholder_is_var(&sema, "_@V"));
+    assert!(match_expr.placeholder_is_atom(&sema, "_@V").is_none());
+
+    // ------------
+
+    assert!(match_expr.placeholder_is_string(&sema, "_@A").is_none());
+    assert!(match_expr.placeholder_is_var(&sema, "_@A").is_none());
+    expect![[r#"
+        Some(
+            Atom(
+                2,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_expr.placeholder_is_atom(&sema, "_@A"));
+}
+
+#[test]
+#[ignore] // until we match on types
+fn ssr_predicates_on_match_type() {
+    let pattern = "ssr: {_@V, _@A}.";
+    let code = r#"
+                -type foo(V) :: {V, atom}.
+                
+                "#;
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+
+    let (db, position, _selections) = single_file(code);
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+    let mut match_finder =
+        MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(position.file_id));
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches = match_finder.matches().flattened();
+
+    let match_type = matches.matches[0].clone(); // Its a test, panic is fine.
+    expect![[r#"
+        Some(
+            Normal(
+                "hello",
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_type.placeholder_is_string(&sema, "_@S"));
+    assert!(match_type.placeholder_is_var(&sema, "_@S").is_none());
+    assert!(match_type.placeholder_is_atom(&sema, "_@S").is_none());
+
+    // ------------
+
+    assert!(match_type.placeholder_is_string(&sema, "_@V").is_none());
+    expect![[r#"
+        Some(
+            Var(
+                3,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_type.placeholder_is_var(&sema, "_@V"));
+    assert!(match_type.placeholder_is_atom(&sema, "_@V").is_none());
+
+    // ------------
+
+    assert!(match_type.placeholder_is_string(&sema, "_@A").is_none());
+    assert!(match_type.placeholder_is_var(&sema, "_@A").is_none());
+    expect![[r#"
+        Some(
+            Atom(
+                1,
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&match_type.placeholder_is_atom(&sema, "_@A"));
+}

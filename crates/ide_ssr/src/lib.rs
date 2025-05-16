@@ -69,6 +69,7 @@ use elp_syntax::ast::CompOp;
 use fxhash::FxHashMap;
 use hir::AnyExprId;
 use hir::AnyExprRef;
+use hir::Atom;
 use hir::Body;
 use hir::Expr;
 use hir::ExprId;
@@ -105,6 +106,7 @@ mod tests;
 
 pub use errors::SsrError;
 use hir::Strategy;
+use hir::StringVariant;
 use hir::Var;
 pub use matching::Match;
 pub use matching::MatchFailureReason;
@@ -599,6 +601,28 @@ impl Match {
     pub fn placeholder_range(&self, sema: &Semantic, placeholder_name: &str) -> Option<TextRange> {
         let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
         Some(placeholder_match.range())
+    }
+
+    pub fn placeholder_is_string(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<StringVariant> {
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        placeholder_match.is_string(&body)
+    }
+
+    pub fn placeholder_is_atom(&self, sema: &Semantic, placeholder_name: &str) -> Option<Atom> {
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        placeholder_match.is_atom(&body)
+    }
+
+    pub fn placeholder_is_var(&self, sema: &Semantic, placeholder_name: &str) -> Option<Var> {
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        placeholder_match.is_var(&body)
     }
 }
 

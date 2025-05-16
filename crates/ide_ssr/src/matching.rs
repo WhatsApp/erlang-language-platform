@@ -50,6 +50,8 @@ use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
 use hir::SsrPlaceholder;
+use hir::StringVariant;
+use hir::Term;
 use hir::TypeExpr;
 use hir::Var;
 
@@ -151,6 +153,68 @@ impl PlaceholderMatch {
                 .to_node(&sema.parse(body.origin.file_id()))?
                 .to_string(),
         )
+    }
+
+    pub fn is_string(&self, body: &Body) -> Option<StringVariant> {
+        match self.code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+                Expr::Literal(Literal::String(s)) => Some(s.clone()),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+                Pat::Literal(Literal::String(s)) => Some(s.clone()),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+                TypeExpr::Literal(Literal::String(s)) => Some(s.clone()),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+                Term::Literal(Literal::String(s)) => Some(s.clone()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn is_atom(&self, body: &Body) -> Option<Atom> {
+        match self.code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+                Expr::Literal(Literal::Atom(a)) => Some(*a),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+                Pat::Literal(Literal::Atom(a)) => Some(*a),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+                TypeExpr::Literal(Literal::Atom(a)) => Some(*a),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+                Term::Literal(Literal::Atom(a)) => Some(*a),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn is_var(&self, body: &Body) -> Option<Var> {
+        match self.code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+                Expr::Var(v) => Some(*v),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+                Pat::Var(v) => Some(*v),
+                _ => None,
+            },
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+                TypeExpr::Var(v) => Some(*v),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     /// Return any comments on the matched item
