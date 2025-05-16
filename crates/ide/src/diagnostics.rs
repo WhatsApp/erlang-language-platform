@@ -107,6 +107,7 @@ mod module_mismatch;
 mod mutable_variable;
 mod no_dialyzer_attribute;
 mod no_garbage_collect;
+mod no_size;
 mod nonstandard_integer_formatting;
 mod record_tuple_match;
 mod redundant_assignment;
@@ -912,6 +913,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &no_garbage_collect::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
         &sets_version_2::DESCRIPTOR,
+        &no_size::DESCRIPTOR,
     ]
 }
 

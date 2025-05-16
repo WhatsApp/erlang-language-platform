@@ -223,9 +223,14 @@ mod tests {
     use expect_test::expect;
 
     use crate::DiagnosticsConfig;
-    use crate::tests::check_diagnostics;
+    use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
     use crate::tests::check_nth_fix;
+
+    pub(crate) fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default().disable(elp_ide_db::DiagnosticCode::NoSize);
+        check_diagnostics_with_config(config, fixture)
+    }
 
     #[test]
     fn test_local() {

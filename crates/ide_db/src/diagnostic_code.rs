@@ -82,6 +82,7 @@ pub enum DiagnosticCode {
     NoGarbageCollect,
     NoDialyzerAttribute,
     SetsVersion2,
+    NoSize,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -225,6 +226,8 @@ impl DiagnosticCode {
             DiagnosticCode::NoGarbageCollect => "W0047".to_string(),
             DiagnosticCode::NoDialyzerAttribute => "W0048".to_string(),
             DiagnosticCode::SetsVersion2 => "W0049".to_string(),
+            DiagnosticCode::NoSize => "W0050".to_string(),
+
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -315,6 +318,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoGarbageCollect => "no_garbage_collect".to_string(),
             DiagnosticCode::NoDialyzerAttribute => "no_dialyzer_attribute".to_string(),
             DiagnosticCode::SetsVersion2 => "sets_version_2".to_string(),
+            DiagnosticCode::NoSize => "no_size".to_string(),
 
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -458,6 +462,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoGarbageCollect => false,
             DiagnosticCode::NoDialyzerAttribute => false,
             DiagnosticCode::SetsVersion2 => false,
+            DiagnosticCode::NoSize => false,
 
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
