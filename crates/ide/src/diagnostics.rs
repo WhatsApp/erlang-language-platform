@@ -112,8 +112,8 @@ mod record_tuple_match;
 mod redundant_assignment;
 mod replace_call;
 mod replace_in_spec;
+mod sets_version_2;
 mod simplify_negation;
-mod slow_functions;
 mod trivial_match;
 mod undefined_function;
 mod undocumented_function;
@@ -893,7 +893,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
         &missing_compile_warn_missing_spec::DESCRIPTOR,
-        &slow_functions::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
         &undefined_function::DESCRIPTOR,
@@ -912,6 +911,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &undocumented_module::DESCRIPTOR,
         &no_garbage_collect::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
+        &sets_version_2::DESCRIPTOR,
     ]
 }
 

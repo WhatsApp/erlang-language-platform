@@ -81,6 +81,7 @@ pub enum DiagnosticCode {
     UndocumentedModule,
     NoGarbageCollect,
     NoDialyzerAttribute,
+    SetsVersion2,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -223,6 +224,7 @@ impl DiagnosticCode {
             DiagnosticCode::UndocumentedModule => "W0046".to_string(),
             DiagnosticCode::NoGarbageCollect => "W0047".to_string(),
             DiagnosticCode::NoDialyzerAttribute => "W0048".to_string(),
+            DiagnosticCode::SetsVersion2 => "W0049".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -312,6 +314,8 @@ impl DiagnosticCode {
             DiagnosticCode::DuplicateModule => "duplicate_module".to_string(),
             DiagnosticCode::NoGarbageCollect => "no_garbage_collect".to_string(),
             DiagnosticCode::NoDialyzerAttribute => "no_dialyzer_attribute".to_string(),
+            DiagnosticCode::SetsVersion2 => "sets_version_2".to_string(),
+
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -453,6 +457,7 @@ impl DiagnosticCode {
             DiagnosticCode::UndocumentedModule => false,
             DiagnosticCode::NoGarbageCollect => false,
             DiagnosticCode::NoDialyzerAttribute => false,
+            DiagnosticCode::SetsVersion2 => false,
 
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
