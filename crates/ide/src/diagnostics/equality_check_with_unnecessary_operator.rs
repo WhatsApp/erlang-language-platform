@@ -225,13 +225,14 @@ fn from_ssr(
         ssr_pattern,
     );
     matches.matches.iter().for_each(|m| {
-        validate_and_make_diagnostic(diags, sema, m, underscore_expected);
+        validate_and_make_diagnostic(diags, sema, file_id, m, underscore_expected);
     });
 }
 
 fn validate_and_make_diagnostic(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic<'_>,
+    file_id: FileId,
     m: &Match,
     underscore_expected: bool,
 ) -> Option<()> {
@@ -248,12 +249,12 @@ fn validate_and_make_diagnostic(
         let rhs_as_pattern_priority = pattern_priority(sema, body, rhs);
         match (lhs_as_pattern_priority, rhs_as_pattern_priority) {
             (Some(left), Some(right)) => match left.cmp(&right) {
-                Ordering::Less => report_diagnostic(diags, sema, m, body, lhs, rhs),
-                Ordering::Greater => report_diagnostic(diags, sema, m, body, rhs, lhs),
-                Ordering::Equal => report_diagnostic(diags, sema, m, body, lhs, rhs),
+                Ordering::Less => report_diagnostic(diags, sema, file_id, m, body, lhs, rhs),
+                Ordering::Greater => report_diagnostic(diags, sema, file_id, m, body, rhs, lhs),
+                Ordering::Equal => report_diagnostic(diags, sema, file_id, m, body, lhs, rhs),
             },
-            (Some(_), None) => report_diagnostic(diags, sema, m, body, rhs, lhs),
-            (None, Some(_)) => report_diagnostic(diags, sema, m, body, lhs, rhs),
+            (Some(_), None) => report_diagnostic(diags, sema, file_id, m, body, rhs, lhs),
+            (None, Some(_)) => report_diagnostic(diags, sema, file_id, m, body, lhs, rhs),
             (None, None) => {
                 // No rewrite possible - neither side of the operator is valid in the pattern position
             }
@@ -265,12 +266,13 @@ fn validate_and_make_diagnostic(
 fn report_diagnostic(
     diags: &mut Vec<Diagnostic>,
     sema: &Semantic<'_>,
+    file_id: FileId,
     m: &Match,
     body: &Body,
     discriminee: &PlaceholderMatch,
     pattern: &PlaceholderMatch,
 ) {
-    if let Some(diagnostic) = make_diagnostic(sema, m, body, discriminee, pattern) {
+    if let Some(diagnostic) = make_diagnostic(sema, file_id, m, body, discriminee, pattern) {
         diags.push(diagnostic)
     }
 }
@@ -521,12 +523,19 @@ fn pattern_priority_pat(sema: &Semantic, body: &Body, pat: Pat) -> Option<Patter
 
 fn make_diagnostic(
     sema: &Semantic,
+    original_file_id: FileId,
     matched: &Match,
     body: &Body,
     expr: &PlaceholderMatch,
     pat: &PlaceholderMatch,
 ) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
+    if file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let old_match_range = matched.range.range;
     let discriminee_lhs_range = matched.placeholder_range(sema, LHS_VAR)?;
     let discriminee_rhs_range = matched.placeholder_range(sema, RHS_VAR)?;

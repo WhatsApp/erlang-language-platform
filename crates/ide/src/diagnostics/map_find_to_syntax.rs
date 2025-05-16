@@ -232,11 +232,11 @@ fn from_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId, patte
             if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
                 if let Some(value2) = maybe_value2 {
                     if is_match_valid_pat(body, value2) {
-                        if let Some(diagnostic) = make_diagnostic(sema, m) {
+                        if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
                             diags.push(diagnostic)
                         }
                     }
-                } else if let Some(diagnostic) = make_diagnostic(sema, m) {
+                } else if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
                     diags.push(diagnostic)
                 }
             }
@@ -286,8 +286,18 @@ fn is_pat_valid(body: &Body, pat: Pat) -> bool {
     }
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
+    if file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let old_query_range = matched.range.range;
     let message = "Unnecessary allocation of result tuple when the key is found.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);

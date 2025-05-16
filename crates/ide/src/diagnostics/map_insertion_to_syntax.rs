@@ -97,7 +97,9 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
             if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
-                if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Put) {
+                if let Some(diagnostic) =
+                    make_diagnostic(sema, file_id, m, MapInsertionFunction::Put)
+                {
                     diags.push(diagnostic)
                 }
             }
@@ -118,7 +120,9 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
             if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
-                if let Some(diagnostic) = make_diagnostic(sema, m, MapInsertionFunction::Update) {
+                if let Some(diagnostic) =
+                    make_diagnostic(sema, file_id, m, MapInsertionFunction::Update)
+                {
                     diags.push(diagnostic)
                 }
             }
@@ -128,10 +132,17 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
 
 fn make_diagnostic(
     sema: &Semantic,
+    original_file_id: FileId,
     matched: &Match,
     op: MapInsertionFunction,
 ) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
+    if file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let map_function_call_range = matched.range.range;
     let message = "Consider using map syntax rather than a function call.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
