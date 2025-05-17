@@ -8,7 +8,7 @@
  */
 
 /// Types as defined in https://www.internalfb.com/intern/wiki/Linting/adding-linters/#flow-type
-/// and https://www.internalfb.com/code/whatsapp-server/[4dcee4c563dd9d160ad885069a816907216c9e40]/erl/tools/lint/arcanist.py?lines=17 /
+/// and https://www.internalfb.com/code/fbsource/[1238f73dac0efd4009443fee6a345a680dc9401b]/whatsapp/server/erl/tools/lint/arcanist.py?lines=17 /
 use std::path::Path;
 
 use serde::Serialize;
