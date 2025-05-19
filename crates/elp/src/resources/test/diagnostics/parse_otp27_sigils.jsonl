@@ -1,6 +1,6 @@
 module specified: otp27_sigils
 Diagnostics reported in 1 modules:
-  otp27_sigils: 64
+  otp27_sigils: 65
       10:5-10:23::[Warning] [W0006] this statement has no effect
       11:4-11:23::[Warning] [W0006] this statement has no effect
       12:4-12:23::[Warning] [W0006] this statement has no effect
@@ -63,5 +63,6 @@ Diagnostics reported in 1 modules:
       84:4-88:9::[Warning] [W0006] this statement has no effect
       89:4-93:10::[Warning] [W0006] this statement has no effect
       94:4-98:11::[Warning] [W0006] this statement has no effect
+      101:4-101:23::[Hint] [W0051] Binary string can be written using sigil syntax.
       111:3-111:4::[Error] [P1711] syntax error before: X
       127:8-127:23::[Warning] [W0002] Unused macro (THIS_IS_THE_END)

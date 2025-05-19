@@ -78,6 +78,7 @@ use crate::common_test;
 
 mod application_env;
 mod atoms_exhaustion;
+mod binary_string_to_sigil;
 mod boolean_precedence;
 mod cross_node_eval;
 mod debugging_function;
@@ -914,6 +915,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &no_dialyzer_attribute::DESCRIPTOR,
         &sets_version_2::DESCRIPTOR,
         &no_size::DESCRIPTOR,
+        &binary_string_to_sigil::DESCRIPTOR,
     ]
 }
 

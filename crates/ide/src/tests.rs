@@ -362,7 +362,8 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
 pub(crate) fn check_diagnostics(fixture: &str) {
     let config = DiagnosticsConfig::default()
         .set_experimental(true)
-        .disable(DiagnosticCode::UnspecificInclude);
+        .disable(DiagnosticCode::UnspecificInclude)
+        .disable(DiagnosticCode::BinaryStringToSigil);
     check_diagnostics_with_config(config, fixture)
 }
 

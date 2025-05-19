@@ -61,6 +61,13 @@ pub fn supports_eep59_doc_attributes() -> bool {
         .unwrap_or(true)
 }
 
+pub fn supports_eep66_sigils() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .map(|v| v.as_str() >= "27")
+        .unwrap_or(true)
+}
+
 fn get_erts_dir() -> AbsPathBuf {
     let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
     for app in apps {

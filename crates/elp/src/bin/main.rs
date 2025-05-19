@@ -214,6 +214,7 @@ mod tests {
     use elp_project_model::buck::BuckConfig;
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::buck::get_prelude_cell;
+    use elp_project_model::otp;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use expect_test::Expect;
     use expect_test::ExpectFile;
@@ -2195,13 +2196,15 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn parse_otp27_sigils(buck: bool) {
-        simple_snapshot_expect_error(
-            args_vec!["parse-elp", "--module", "otp27_sigils"],
-            "diagnostics",
-            expect_file!("../resources/test/diagnostics/parse_otp27_sigils.jsonl"),
-            buck,
-            None,
-        );
+        if otp::supports_eep66_sigils() {
+            simple_snapshot_expect_error(
+                args_vec!["parse-elp", "--module", "otp27_sigils"],
+                "diagnostics",
+                expect_file!("../resources/test/diagnostics/parse_otp27_sigils.jsonl"),
+                buck,
+                None,
+            );
+        }
     }
 
     #[track_caller]

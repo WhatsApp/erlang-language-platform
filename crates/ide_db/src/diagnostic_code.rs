@@ -83,6 +83,7 @@ pub enum DiagnosticCode {
     NoDialyzerAttribute,
     SetsVersion2,
     NoSize,
+    BinaryStringToSigil,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -227,7 +228,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoDialyzerAttribute => "W0048".to_string(),
             DiagnosticCode::SetsVersion2 => "W0049".to_string(),
             DiagnosticCode::NoSize => "W0050".to_string(),
-
+            DiagnosticCode::BinaryStringToSigil => "W0051".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -319,7 +320,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoDialyzerAttribute => "no_dialyzer_attribute".to_string(),
             DiagnosticCode::SetsVersion2 => "sets_version_2".to_string(),
             DiagnosticCode::NoSize => "no_size".to_string(),
-
+            DiagnosticCode::BinaryStringToSigil => "binary_string_to_sigil".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -464,6 +465,7 @@ impl DiagnosticCode {
             DiagnosticCode::SetsVersion2 => false,
             DiagnosticCode::NoSize => false,
 
+            DiagnosticCode::BinaryStringToSigil => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
