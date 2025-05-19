@@ -25,7 +25,6 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use crossbeam_channel::select;
 use dispatch::NotificationDispatcher;
-use elp_eqwalizer::IncludeGenerated;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
 use elp_ide::Analysis;
@@ -1834,7 +1833,7 @@ impl Server {
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
-                match snapshot.update_cache_for_file(file_id, IncludeGenerated::No, eqwalize_all) {
+                match snapshot.update_cache_for_file(file_id, eqwalize_all) {
                     Ok(_) => {}
                     Err(_) => {
                         // Got canceled
@@ -1871,10 +1870,7 @@ impl Server {
             };
 
             for (_, _, file_id) in module_index.iter_own() {
-                match snapshot
-                    .analysis
-                    .should_eqwalize(file_id, IncludeGenerated::No)
-                {
+                match snapshot.analysis.should_eqwalize(file_id) {
                     Ok(true) => {
                         files.push(file_id);
                     }

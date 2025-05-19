@@ -58,6 +58,10 @@ use crate::reporting::Reporter;
 use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
 
+pub const DEPRECATED_INCLUDE_GENERATED: &str = "\
+Option \x1b[0;33m--include-generated\x1b[0m is deprecated and will be removed in a future version. All files are now always eqWAlized.
+";
+
 struct EqwalizerInternalArgs<'a> {
     analysis: &'a Analysis,
     loaded: &'a LoadResult,
@@ -163,16 +167,16 @@ pub fn do_eqwalize_all(
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated.into();
+    if include_generated {
+        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+    }
     let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
     let file_ids: Vec<FileId> = module_index
         .iter_own()
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis
-                .should_eqwalize(file_id, include_generated)
-                .unwrap()
-                && !otp_file_to_ignore(analysis, file_id)
+            if analysis.should_eqwalize(file_id).unwrap() && !otp_file_to_ignore(analysis, file_id)
             {
                 if args.stats {
                     add_stat(name.to_string());
@@ -241,13 +245,14 @@ pub fn do_eqwalize_app(
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated.into();
+    if include_generated {
+        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+    }
     let file_ids: Vec<FileId> = module_index
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
             if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
-                && analysis
-                    .should_eqwalize(file_id, include_generated)
-                    .unwrap()
+                && analysis.should_eqwalize(file_id).unwrap()
                 && !otp_file_to_ignore(analysis, file_id)
             {
                 Some(file_id)
@@ -295,6 +300,9 @@ pub fn eqwalize_target(
 
     let analysis = &loaded.analysis();
     let include_generated = args.include_generated.into();
+    if include_generated {
+        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+    }
     let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
     let exact_match = buck_target.contains(':');
@@ -310,9 +318,7 @@ pub fn eqwalize_target(
                 let vfs_path = VfsPath::from(src.clone());
                 if let Some(file_id) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
-                    if analysis
-                        .should_eqwalize(file_id, include_generated)
-                        .unwrap()
+                    if analysis.should_eqwalize(file_id).unwrap()
                         && !otp_file_to_ignore(analysis, file_id)
                     {
                         file_ids.push(file_id);
@@ -367,6 +373,9 @@ pub fn eqwalize_stats(
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated.into();
+    if include_generated {
+        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+    }
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
     let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = module_index
@@ -374,9 +383,7 @@ pub fn eqwalize_stats(
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis
-                .should_eqwalize(file_id, include_generated)
-                .expect("cancelled")
+            if analysis.should_eqwalize(file_id).expect("cancelled")
                 && !otp_file_to_ignore(analysis, file_id)
             {
                 analysis

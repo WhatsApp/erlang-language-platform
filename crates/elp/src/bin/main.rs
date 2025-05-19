@@ -515,7 +515,7 @@ mod tests {
     fn eqwalize_all_diagnostics_match_snapshot_jsonl_gen(buck: bool) {
         if otp_supported_by_eqwalizer() {
             simple_snapshot(
-                args_vec!["eqwalize-all", "--format", "json", "--include-generated"],
+                args_vec!["eqwalize-all", "--format", "json"],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_all_diagnostics_gen.jsonl"),
                 buck,
@@ -573,12 +573,7 @@ mod tests {
     fn eqwalize_app_diagnostics_match_snapshot_pretty_gen(buck: bool) {
         if otp_supported_by_eqwalizer() {
             simple_snapshot(
-                args_vec![
-                    "--no-buck-bxl",
-                    "eqwalize-app",
-                    "app_a",
-                    "--include-generated",
-                ],
+                args_vec!["--no-buck-bxl", "eqwalize-app", "app_a",],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty"),
                 buck,

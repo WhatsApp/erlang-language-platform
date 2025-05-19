@@ -31,7 +31,6 @@ use elp_eqwalizer::ipc::IpcHandle;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
-use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
 use elp_types_db::eqwalizer::types::Type;
 use erlang_service::Connection;
@@ -373,11 +372,7 @@ pub fn find_best_token(sema: &Semantic<'_>, position: FilePosition) -> Option<In
 // ---------------------------------------------------------------------
 
 impl TypedSemantic for RootDatabase {
-    fn eqwalizer_diagnostics(
-        &self,
-        file_id: FileId,
-        include_generated: IncludeGenerated,
-    ) -> Option<Vec<EqwalizerDiagnostic>> {
+    fn eqwalizer_diagnostics(&self, file_id: FileId) -> Option<Vec<EqwalizerDiagnostic>> {
         // Check, if the file is actually a module
         let app_data = self.file_app_data(file_id)?;
         let module = self
@@ -387,7 +382,7 @@ impl TypedSemantic for RootDatabase {
 
         let project_id = app_data.project_id;
 
-        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id, include_generated);
+        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id);
         if !eqwalizer_enabled {
             return Some(vec![]);
         }

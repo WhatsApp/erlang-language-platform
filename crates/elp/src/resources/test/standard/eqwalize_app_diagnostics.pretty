@@ -120,6 +120,14 @@ Expression has type:   'error'
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+  ┌─ app_a/src/app_a_errors_generated.erl:8:10
+  │
+8 │ foo() -> wrong_ret.
+  │          ^^^^^^^^^ 'wrong_ret'.
+Expression has type:   'wrong_ret'
+Context expected type: 'foo'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a_lists.erl:576:5
     │
 576 │     flatmap(fun thing_to_list/1, List).
@@ -222,4 +230,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'wrong_ret'
 Context expected type: 'error'
 
-18 ERRORS
+19 ERRORS

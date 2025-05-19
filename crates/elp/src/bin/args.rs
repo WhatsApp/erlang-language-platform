@@ -131,7 +131,8 @@ pub struct EqwalizeAll {
     pub format: Option<String>,
     /// Run with rebar
     pub rebar: bool,
-    /// Also eqwalize opted-in generated modules from project
+    /// Also eqwalize opted-in generated modules from project (deprecated)
+    #[bpaf(hide)]
     pub include_generated: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
@@ -146,7 +147,8 @@ pub struct EqwalizeTarget {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
-    /// Also eqwalize opted-in generated modules from application
+    /// Also eqwalize opted-in generated modules from application (deprecated)
+    #[bpaf(hide)]
     pub include_generated: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
@@ -163,7 +165,8 @@ pub struct EqwalizeApp {
     /// Rebar3 profile to pickup (default is test)
     #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
     pub profile: String,
-    /// Also eqwalize opted-in generated modules from project
+    /// Also eqwalize opted-in generated modules from project (deprecated)
+    #[bpaf(hide)]
     pub include_generated: bool,
     /// Run with rebar
     pub rebar: bool,
@@ -184,7 +187,8 @@ pub struct EqwalizeStats {
     pub profile: String,
     /// Run with rebar
     pub rebar: bool,
-    /// Also eqwalize opted-in generated modules from project
+    /// Also eqwalize opted-in generated modules from project (deprecated)
+    #[bpaf(hide)]
     pub include_generated: bool,
     /// If specified, use the provided CLI severity mapping instead of the default one
     pub use_cli_severity: bool,

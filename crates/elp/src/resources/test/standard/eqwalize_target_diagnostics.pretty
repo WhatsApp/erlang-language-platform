@@ -112,6 +112,14 @@ Because in the expression's type:
   #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+  ┌─ app_a/src/app_a_errors_generated.erl:8:10
+  │
+8 │ foo() -> wrong_ret.
+  │          ^^^^^^^^^ 'wrong_ret'.
+Expression has type:   'wrong_ret'
+Context expected type: 'foo'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a_lists.erl:576:5
     │
 576 │     flatmap(fun thing_to_list/1, List).
@@ -206,4 +214,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'an_atom'
 Context expected type: number()
 
-16 ERRORS
+17 ERRORS

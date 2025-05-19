@@ -219,10 +219,8 @@ COMMANDS:
     eqwalize <modules>         Eqwalize specified modules
         --clause-coverage      Use experimental clause coverage checker
     eqwalize-all               Eqwalize all modules in the current project
-        --include-generated    Include generated modules
         --clause-coverage      Use experimental clause coverage checker
     eqwalize-app <app>         Eqwalize all modules in specified application
-        --include-generated    Include generated modules
         --clause-coverage      Use experimental clause coverage checker
 ";
 

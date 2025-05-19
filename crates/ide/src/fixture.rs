@@ -105,11 +105,7 @@ pub fn diagnostics_for(
         }
     }
     if *use_eqwalizer {
-        let include_generated = elp_types_db::IncludeGenerated::Yes;
-        if let Some(diags) = analysis
-            .eqwalizer_diagnostics_for_file(file_id, include_generated)
-            .unwrap()
-        {
+        if let Some(diags) = analysis.eqwalizer_diagnostics_for_file(file_id).unwrap() {
             diagnostics.set_eqwalizer(file_id, diags);
         }
     }

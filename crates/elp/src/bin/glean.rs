@@ -16,7 +16,6 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp_eqwalizer::EqwalizerDiagnostics;
-use elp_eqwalizer::IncludeGenerated;
 use elp_eqwalizer::ast::Pos;
 use elp_ide::Analysis;
 use elp_ide::TextRange;
@@ -1399,7 +1398,7 @@ impl GleanIndexer {
         vars: FxHashMap<&Location, &String>,
     ) -> Vec<VarDecl> {
         let mut result = vec![];
-        if !db.is_eqwalizer_enabled(file_id, IncludeGenerated::No) {
+        if !db.is_eqwalizer_enabled(file_id) {
             return result;
         }
         let module_diagnostics = db.eqwalizer_diagnostics_by_project(project_id, vec![file_id]);

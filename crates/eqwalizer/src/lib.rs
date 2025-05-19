@@ -45,7 +45,6 @@ use crate::ipc::EqWAlizerASTFormat;
 
 pub mod analyses;
 pub mod ast;
-pub use elp_types_db::IncludeGenerated;
 pub use elp_types_db::eqwalizer::types;
 
 #[derive(Clone, Eq, PartialEq, Debug)]

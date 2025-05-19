@@ -58,7 +58,6 @@ use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::ast::edit::start_of_line;
 use elp_syntax::label::Label;
 use elp_syntax::ted::Element;
-use elp_types_db::IncludeGenerated;
 use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -1343,12 +1342,8 @@ fn label_erlang_service_diagnostics(
         .collect_vec()
 }
 
-pub fn eqwalizer_diagnostics(
-    db: &RootDatabase,
-    file_id: FileId,
-    include_generated: IncludeGenerated,
-) -> Option<Vec<Diagnostic>> {
-    let eqwalizer_diagnostics = db.eqwalizer_diagnostics(file_id, include_generated)?;
+pub fn eqwalizer_diagnostics(db: &RootDatabase, file_id: FileId) -> Option<Vec<Diagnostic>> {
+    let eqwalizer_diagnostics = db.eqwalizer_diagnostics(file_id)?;
     // Because of the way db.eqwalizer_diagnostics() is implemented,
     // we only get diagnostics if it is enabled.
     let eqwalizer_enabled = true;
