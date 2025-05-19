@@ -193,11 +193,7 @@ fn do_parse_one(
             {
                 diagnostics.set_eqwalizer_project(diags);
             }
-        } else if let Some(diags) = db.eqwalizer_diagnostics_for_file(file_id).unwrap() {
-            diagnostics.set_eqwalizer(file_id, diags);
         }
-    }
-    if args.include_eqwalizer_diagnostics {
         if let Some(diags) = db.eqwalizer_diagnostics_for_file(file_id).unwrap() {
             diagnostics.set_eqwalizer(file_id, diags);
         }
