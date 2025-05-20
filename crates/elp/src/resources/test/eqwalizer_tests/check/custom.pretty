@@ -2480,9 +2480,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ check/src/custom.erl:1854:5
      │
 1854 │     maps:without([a, b], M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^ maps:without(['a', 'b'], M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(['a', 'b'], M).
 Expression has type:   #{c := 'cv', d := 'dv'} | #{c := 'cv', e => 'ev'}
 Context expected type: #{c := atom()}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{d := ...}
+  Context expects type: #{...}
+  The expected map has no corresponding key for: d.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1916:23

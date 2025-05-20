@@ -39,9 +39,9 @@ Context expected type: [#{bar => 'a'}]
 
 Because in the expression's type:
   [
-    Here the type is:     #{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}
-    Context expects type: #{bar => 'a'}
-    No candidate of the expression's type matches the expected type.
+    Here the type is:     #{baz => ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: baz.
   ]
 
 ------------------------------ Detailed message ------------------------------
