@@ -14,3 +14,6 @@
 -spec map_candidates(#{bar := atom(), baz := atom()}) ->
     foo_map() | #{foo => atom()}.
 map_candidates(M) -> M.
+
+-spec map_candidates_2([#{bar => a | b} | #{baz => a | b}]) -> [#{bar => a}].
+map_candidates_2(M) -> M.
