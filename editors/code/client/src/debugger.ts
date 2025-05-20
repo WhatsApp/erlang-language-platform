@@ -86,7 +86,11 @@ class EDBConfigurationProvider implements vscode.DebugConfigurationProvider {
             }
         }
 
-        config.launchCommand.env = { "PATH": dapConfig.withErlangInstallationPath() };
+        config.runInTerminal.env = {
+            ...config.runInTerminal.env,
+             "PATH": dapConfig.withErlangInstallationPath() 
+        };
+
         return config;
     }
 }
