@@ -32,14 +32,14 @@ use crate::helpers::ExportForm;
 pub(crate) fn export_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if let Some(SymbolClass::Definition(SymbolDefinition::Type(type_alias))) = ctx.classify_offset()
     {
-        let function_range = type_alias.range(ctx.sema.db.upcast())?;
+        let type_range = type_alias.range(ctx.sema.db.upcast())?;
         let name_arity = type_alias.name();
         let name_arity = (*name_arity).clone();
 
         if !type_alias.exported {
             let id = AssistId("export_type", AssistKind::QuickFix);
             let message = format!("Export the type `{name_arity}`");
-            acc.add(id, message, None, function_range, None, |builder| {
+            acc.add(id, message, None, type_range, None, |builder| {
                 helpers::ExportBuilder::new(
                     &ctx.sema,
                     ctx.file_id(),
