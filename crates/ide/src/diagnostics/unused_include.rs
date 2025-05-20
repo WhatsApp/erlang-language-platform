@@ -16,6 +16,7 @@ use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_syntax::SmolStr;
 use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -34,6 +35,13 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 use crate::fix;
 
+lazy_static! {
+    static ref EXCLUDES: FxHashSet<SmolStr> = ["common_test/include/ct.hrl"]
+        .iter()
+        .map(SmolStr::new)
+        .collect();
+}
+
 pub(crate) fn unused_includes(
     sema: &Semantic,
     db: &dyn DefDatabase,
@@ -44,40 +52,42 @@ pub(crate) fn unused_includes(
     let mut cache = Default::default();
     let source_file = db.parse(file_id);
     for (include_idx, attr) in form_list.includes() {
-        let in_file = InFile::new(file_id, include_idx);
-        if let Some(include_file_id) = db.resolve_include(in_file) {
-            if is_file_used(sema, db, include_file_id, file_id, &mut cache) {
-                continue;
+        if !EXCLUDES.contains(attr.path()) {
+            let in_file = InFile::new(file_id, include_idx);
+            if let Some(include_file_id) = db.resolve_include(in_file) {
+                if is_file_used(sema, db, include_file_id, file_id, &mut cache) {
+                    continue;
+                }
+
+                let path = match attr {
+                    IncludeAttribute::Include { path, .. } => path,
+                    IncludeAttribute::IncludeLib { path, .. } => path,
+                };
+                let attribute = attr.form_id().get(&source_file.tree());
+                let attribute_syntax = attribute.syntax();
+                let attribute_range = attribute_syntax.text_range();
+                let mut edit_builder = TextEdit::builder();
+                let extended_attribute_range = extend_range(attribute_syntax);
+                edit_builder.delete(extended_attribute_range);
+                let edit = edit_builder.finish();
+
+                let diagnostic = Diagnostic::new(
+                    DiagnosticCode::UnusedInclude,
+                    format!("Unused file: {}", path),
+                    attribute_range,
+                )
+                .with_severity(Severity::Warning)
+                .with_fixes(Some(vec![fix(
+                    "remove_unused_include",
+                    "Remove unused include",
+                    SourceChange::from_text_edit(file_id, edit.clone()),
+                    attribute_range,
+                )]));
+
+                log::debug!("Found unused include {:?}", path);
+
+                diagnostics.push(diagnostic);
             }
-
-            let path = match attr {
-                IncludeAttribute::Include { path, .. } => path,
-                IncludeAttribute::IncludeLib { path, .. } => path,
-            };
-            let attribute = attr.form_id().get(&source_file.tree());
-            let attribute_syntax = attribute.syntax();
-            let attribute_range = attribute_syntax.text_range();
-            let mut edit_builder = TextEdit::builder();
-            let extended_attribute_range = extend_range(attribute_syntax);
-            edit_builder.delete(extended_attribute_range);
-            let edit = edit_builder.finish();
-
-            let diagnostic = Diagnostic::new(
-                DiagnosticCode::UnusedInclude,
-                format!("Unused file: {}", path),
-                attribute_range,
-            )
-            .with_severity(Severity::Warning)
-            .with_fixes(Some(vec![fix(
-                "remove_unused_include",
-                "Remove unused include",
-                SourceChange::from_text_edit(file_id, edit.clone()),
-                attribute_range,
-            )]));
-
-            log::debug!("Found unused include {:?}", path);
-
-            diagnostics.push(diagnostic);
         }
     }
 }
@@ -629,6 +639,20 @@ foo(?RECORD_NAME) -> ok.
 
 //- /src/header.hrl
 -record(record_name, {field :: string()}).
+"#,
+        )
+    }
+
+    #[test]
+    fn ct_hrl_exception() {
+        check_diagnostics(
+            r#"
+//- /test/main_SUITE.erl
+-module(main_SUITE).
+-include_lib("common_test/include/ct.hrl").
+
+//- /opt/lib/common_test-1.27.1/include/ct.hrl otp_app:/opt/lib/common_test-1.27.1
+//- /src/header.hrl
 "#,
         )
     }
