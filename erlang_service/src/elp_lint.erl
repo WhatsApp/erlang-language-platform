@@ -455,7 +455,7 @@ format_error({bad_export_type, _ETs}) ->
 format_error({duplicated_export_type, {T, A}}) ->
     io_lib:format("type ~tw/~w already exported", [T, A]);
 format_error({undefined_type, {TypeName, Arity}}) ->
-    io_lib:format("type ~tw~s undefined", [TypeName, gen_type_paren(Arity)]);
+    io_lib:format("type ~tw/~w undefined", [TypeName, Arity]);
 format_error({unused_type, {TypeName, Arity}}) ->
     io_lib:format("type ~tw~s is unused", [TypeName, gen_type_paren(Arity)]);
 format_error({redefine_builtin_type, {TypeName, Arity}}) ->

@@ -1642,6 +1642,19 @@ fn parse_error_to_diagnostic_info(
                         None => Some(default_range),
                     }
                 }
+                "L1295" => {
+                    let name = type_undefined_from_message(&parse_error.msg);
+                    match exported_type_name_range(db, file_id, name, range) {
+                        Some(name_range) => Some((
+                            file_id,
+                            name_range.start(),
+                            name_range.end(),
+                            parse_error.code.clone(),
+                            parse_error.msg.clone(),
+                        )),
+                        None => Some(default_range),
+                    }
+                }
                 "L1230" | "L1309" => match function_name_range(db, file_id, range) {
                     Some(name_range) => Some((
                         file_id,
@@ -1691,24 +1704,42 @@ fn exported_function_name_range(
     name: Option<String>,
     range: TextRange,
 ) -> Option<TextRange> {
-    match name {
-        None => None,
-        Some(name) => {
-            let sema = Semantic::new(db);
-            let source_file = sema.parse(file_id);
-            let export = algo::find_node_at_offset::<ast::ExportAttribute>(
-                source_file.value.syntax(),
-                range.start(),
-            )?;
-            export.funs().find_map(|fun| {
-                if fun.to_string() == name {
-                    Some(fun.syntax().text_range())
-                } else {
-                    None
-                }
-            })
+    let name = name?;
+    let sema = Semantic::new(db);
+    let source_file = sema.parse(file_id);
+    let export = algo::find_node_at_offset::<ast::ExportAttribute>(
+        source_file.value.syntax(),
+        range.start(),
+    )?;
+    export.funs().find_map(|fun| {
+        if fun.to_string() == name {
+            Some(fun.syntax().text_range())
+        } else {
+            None
         }
-    }
+    })
+}
+
+fn exported_type_name_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    name: Option<String>,
+    range: TextRange,
+) -> Option<TextRange> {
+    let name = name?;
+    let sema = Semantic::new(db);
+    let source_file = sema.parse(file_id);
+    let export_type = algo::find_node_at_offset::<ast::ExportTypeAttribute>(
+        source_file.value.syntax(),
+        range.start(),
+    )?;
+    export_type.types().find_map(|fun| {
+        if fun.to_string() == name {
+            Some(fun.syntax().text_range())
+        } else {
+            None
+        }
+    })
 }
 
 fn function_name_range(db: &RootDatabase, file_id: FileId, range: TextRange) -> Option<TextRange> {
@@ -1858,6 +1889,13 @@ fn erlang_service_label(diagnostic: &Diagnostic) -> Option<DiagnosticLabel> {
 pub fn function_undefined_from_message(s: &str) -> Option<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^function ([^\s]+) undefined$").unwrap();
+    }
+    RE.captures_iter(s).next().map(|c| c[1].to_string())
+}
+
+pub fn type_undefined_from_message(s: &str) -> Option<String> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^type ([^\s]+) undefined$").unwrap();
     }
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
@@ -2446,6 +2484,19 @@ baz(1)->4.
   -export([foo/0, bar/0]).
 %%                ^^^^^  error: function bar/0 undefined
   foo() -> ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn restricted_range_for_undefined_type_diagnostic() {
+        check_diagnostics(
+            r#"
+//- erlang_service
+  -module(main).
+  -export_type([foo/0, bar/3]).
+%%                     ^^^^^  error: type bar/3 undefined
+  -type foo() :: integer().
 "#,
         );
     }
