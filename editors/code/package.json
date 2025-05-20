@@ -73,27 +73,6 @@
         "type": "erlang-edb",
         "label": "Erlang EDB",
         "languages": ["erlang"],
-        "initialConfigurations": [
-          {
-            "name": "Erlang EDB",
-            "type": "erlang-edb",
-            "request": "launch",
-            "launchCommand": {
-              "cwd": "${workspaceFolder}",
-              "command": "rebar3",
-              "arguments": [
-                "as",
-                "test",
-                "shell",
-                "--sname",
-                "debuggee"
-              ]
-            },
-            "targetNode": {
-              "name": "debuggee@localhost"
-            }
-          }
-        ],
         "configurationSnippets": [
           {
             "label": "Erlang EDB: Launch Configuration (rebar3)",
