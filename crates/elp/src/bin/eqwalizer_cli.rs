@@ -166,7 +166,7 @@ pub fn do_eqwalize_all(
     set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let include_generated = args.include_generated.into();
+    let include_generated = args.include_generated;
     if include_generated {
         write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
     }
@@ -244,7 +244,7 @@ pub fn do_eqwalize_app(
     set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let include_generated = args.include_generated.into();
+    let include_generated = args.include_generated;
     if include_generated {
         write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
     }
@@ -299,7 +299,7 @@ pub fn eqwalize_target(
     let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
     let analysis = &loaded.analysis();
-    let include_generated = args.include_generated.into();
+    let include_generated = args.include_generated;
     if include_generated {
         write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
     }
@@ -372,7 +372,7 @@ pub fn eqwalize_stats(
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
-    let include_generated = args.include_generated.into();
+    let include_generated = args.include_generated;
     if include_generated {
         write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
     }
