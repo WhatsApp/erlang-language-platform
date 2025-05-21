@@ -164,7 +164,7 @@ fn make_diagnostic(
     let squiggly_range = matched.placeholder_range(sema, NEGATED_EXPR_VAR)?;
     let message = "Consider rewriting to match directly on the negated expression.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
-    let equality_pattern_replacement = get_replacement(sema, matched, branch_order)?;
+    let equality_pattern_replacement = get_replacement(sema, file_id, matched, branch_order)?;
     builder.replace(old_conditional_range, equality_pattern_replacement);
     let fixes = vec![fix(
         "simplify_negation",
@@ -180,12 +180,23 @@ fn make_diagnostic(
     )
 }
 
-fn get_replacement(sema: &Semantic, m: &Match, branch_order: BranchOrder) -> Option<String> {
+fn get_replacement(
+    sema: &Semantic,
+    original_file_id: FileId,
+    m: &Match,
+    branch_order: BranchOrder,
+) -> Option<String> {
     if let Some(comments) = m.comments(sema) {
         // Avoid clobbering comments in the original source code
         if !comments.is_empty() {
             return None;
         }
+    }
+    if m.range.file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
     }
     let new_discriminee_expr_text = m.placeholder_text(sema, NEGATED_EXPR_VAR)?;
     let affirmative_branch_text = m.placeholder_text(sema, AFFIRMATIVE_BRANCH_VAR)?;

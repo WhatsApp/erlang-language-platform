@@ -66,10 +66,10 @@ fn inefficient_enumerate_custom_index_ssr(
     );
     matches.matches.iter().for_each(|m| {
         if is_indexing_from_literal_one(sema, m) {
-            if let Some(diagnostic) = make_diagnostic(sema, m) {
+            if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
                 diags.push(diagnostic);
             }
-        } else if let Some(diagnostic) = make_diagnostic_custom_index(sema, m) {
+        } else if let Some(diagnostic) = make_diagnostic_custom_index(sema, file_id, m) {
             diags.push(diagnostic);
         }
     });
@@ -106,13 +106,18 @@ fn inefficient_enumerate_custom_index_and_step_ssr(
             .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic_custom_index_and_step(sema, m) {
+        if let Some(diagnostic) = make_diagnostic_custom_index_and_step(sema, file_id, m) {
             diags.push(diagnostic);
         }
     });
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    sensibility_check(sema, original_file_id, matched)?;
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
     let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
@@ -139,7 +144,12 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     )
 }
 
-fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_custom_index(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    sensibility_check(sema, original_file_id, matched)?;
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
     let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
@@ -167,7 +177,12 @@ fn make_diagnostic_custom_index(sema: &Semantic, matched: &Match) -> Option<Diag
     )
 }
 
-fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_custom_index_and_step(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    sensibility_check(sema, original_file_id, matched)?;
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
     let list_arg_matches = matched.placeholder_texts(sema, LIST_VAR)?;
@@ -195,6 +210,22 @@ fn make_diagnostic_custom_index_and_step(sema: &Semantic, matched: &Match) -> Op
         .with_fixes(Some(fixes))
         .add_categories([Category::SimplificationRule]),
     )
+}
+
+fn sensibility_check(sema: &Semantic<'_>, original_file_id: FileId, matched: &Match) -> Option<()> {
+    if let Some(comments) = matched.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
+    if matched.range.file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
+    Some(())
 }
 
 #[cfg(test)]

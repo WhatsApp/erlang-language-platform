@@ -291,6 +291,12 @@ fn make_diagnostic(
     original_file_id: FileId,
     matched: &Match,
 ) -> Option<Diagnostic> {
+    if let Some(comments) = matched.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
     let file_id = matched.range.file_id;
     if file_id != original_file_id {
         // We've somehow ended up with a match in a different file - this means we've

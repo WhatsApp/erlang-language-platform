@@ -55,7 +55,7 @@ fn inefficient_last_hd_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id
         format!("ssr: hd(lists:reverse({LIST_VAR})).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic_hd(sema, m) {
+        if let Some(diagnostic) = make_diagnostic_hd(sema, file_id, m) {
             diags.push(diagnostic)
         }
     });
@@ -72,13 +72,18 @@ fn inefficient_last_pat_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
         format!("ssr: [{LAST_ELEM_VAR}|_] = lists:reverse({LIST_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic_pat(sema, m) {
+        if let Some(diagnostic) = make_diagnostic_pat(sema, file_id, m) {
             diags.push(diagnostic)
         }
     });
 }
 
-fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_hd(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    sensibility_check(sema, original_file_id, matched)?;
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
@@ -104,7 +109,12 @@ fn make_diagnostic_hd(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
     )
 }
 
-fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_pat(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    sensibility_check(sema, original_file_id, matched)?;
     let file_id = matched.range.file_id;
     let inefficient_call_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
@@ -130,6 +140,22 @@ fn make_diagnostic_pat(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
         .with_fixes(Some(fixes))
         .add_categories([Category::SimplificationRule]),
     )
+}
+
+fn sensibility_check(sema: &Semantic<'_>, original_file_id: FileId, matched: &Match) -> Option<()> {
+    if let Some(comments) = matched.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
+    if matched.range.file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
+    Some(())
 }
 
 #[cfg(test)]

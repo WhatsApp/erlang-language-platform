@@ -60,14 +60,30 @@ fn unnecessary_map_to_list_in_comprehension_ssr(
             .as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic(sema, m) {
+        if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
             diags.push(diagnostic);
         }
     });
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    if let Some(comments) = matched.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
     let file_id = matched.range.file_id;
+    if matched.range.file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let inefficient_comprehension_range = matched.range.range;
     let body = matched.placeholder_text(sema, BODY_VAR)?;
     let key = matched.placeholder_text(sema, KEY_VAR)?;

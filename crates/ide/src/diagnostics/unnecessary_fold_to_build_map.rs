@@ -77,7 +77,7 @@ fn unnecessary_fold_to_build_map_from_list_ssr(
 
     matches.matches.iter().for_each(|m| {
         if let Some(true) = from_list_match_is_valid(sema, m) {
-            if let Some(diagnostic) = make_diagnostic_maps_from_list(sema, m) {
+            if let Some(diagnostic) = make_diagnostic_maps_from_list(sema, file_id, m) {
                 diags.push(diagnostic);
             }
         }
@@ -117,7 +117,7 @@ fn unnecessary_fold_to_build_map_from_keys_ssr(
 
     matches.matches.iter().for_each(|m| {
         if let Some(true) = from_keys_match_is_valid(sema, m) {
-            if let Some(diagnostic) = make_diagnostic_maps_from_keys(sema, m) {
+            if let Some(diagnostic) = make_diagnostic_maps_from_keys(sema, file_id, m) {
                 diags.push(diagnostic);
             }
         }
@@ -171,8 +171,18 @@ fn is_pure_expr(body: &Body, expr: Expr) -> bool {
     }
 }
 
-fn make_diagnostic_maps_from_list(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_maps_from_list(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
     let file_id = matched.range.file_id;
+    if file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let unncessary_fold_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
     let message = "Unnecessary explicit fold to construct map from list.".to_string();
@@ -197,8 +207,24 @@ fn make_diagnostic_maps_from_list(sema: &Semantic, matched: &Match) -> Option<Di
     )
 }
 
-fn make_diagnostic_maps_from_keys(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
+fn make_diagnostic_maps_from_keys(
+    sema: &Semantic,
+    original_file_id: FileId,
+    matched: &Match,
+) -> Option<Diagnostic> {
+    if let Some(comments) = matched.comments(sema) {
+        // Avoid clobbering comments in the original source code
+        if !comments.is_empty() {
+            return None;
+        }
+    }
     let file_id = matched.range.file_id;
+    if file_id != original_file_id {
+        // We've somehow ended up with a match in a different file - this means we've
+        // accidentally expanded a macro from a different file, or some other complex case that
+        // gets hairy, so bail out.
+        return None;
+    }
     let unncessary_fold_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
     let value = matched.placeholder_text(sema, VALUE_VAR)?;
