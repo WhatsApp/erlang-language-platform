@@ -48,7 +48,7 @@ fn binary_string_to_sigil_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file
     let matches = match_pattern_in_file_functions(
         sema,
         Strategy {
-            macros: MacroStrategy::Expand,
+            macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
@@ -132,6 +132,19 @@ mod tests {
 
          fn() -> <<"hello">>.
          %%      ^^^^^^^^^^^ 💡 weak: Binary string can be written using sigil syntax.
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_binary_string_in_macro() {
+        check_diagnostics(
+            r#"
+         //- /src/binary_string_to_sigil.erl
+         -module(binary_string_to_sigil).
+
+         -define(HELLO, <<"hello">>).
+         fn() -> ?HELLO.
             "#,
         )
     }
