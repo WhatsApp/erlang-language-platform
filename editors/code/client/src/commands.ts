@@ -114,7 +114,8 @@ export async function debugSingle(runnable: Runnable): Promise<void> {
             cwd: "${workspaceFolder}",
             args: ["bash", "-c", "rebar3 as test shell --eval \"$EDB_DAP_NODE_INIT, $REBAR3_SHELL_CT_RUN_CMD\""],
             env: {
-                REBAR3_SHELL_CT_RUN_CMD: `gen_server:cast(self(), {cmd, default, ct, \"${runnable.args.args.join(" ")}\"})`
+                REBAR3_SHELL_CT_RUN_CMD: `gen_server:cast(self(), {cmd, default, ct, \"${runnable.args.args.join(" ")}\"})`,
+                "PATH": dapConfig.withErlangInstallationPath(),
             },
             argsCanBeInterpretedByShell: false,
         },
