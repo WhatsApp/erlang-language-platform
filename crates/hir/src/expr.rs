@@ -25,10 +25,12 @@ use crate::FunctionClauseBody;
 use crate::FunctionDef;
 use crate::InFile;
 use crate::InFunctionClauseBody;
+use crate::Name;
 use crate::RecordFieldId;
 use crate::Semantic;
 use crate::TypeAliasDef;
 use crate::Var;
+use crate::db::InternDatabase;
 use crate::known;
 use crate::sema;
 
@@ -225,6 +227,16 @@ pub enum MacroCallName {
     Var(Var),
     Atom(Atom),
     Missing,
+}
+
+impl MacroCallName {
+    pub fn as_name(&self, db: &dyn InternDatabase) -> Name {
+        match self {
+            MacroCallName::Var(var) => var.as_name(db),
+            MacroCallName::Atom(atom) => atom.as_name(db),
+            MacroCallName::Missing => Name::MISSING,
+        }
+    }
 }
 
 pub type ExprId = Idx<Expr>;

@@ -32,7 +32,6 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::path_for_file;
-// @fb-only
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
@@ -80,6 +79,8 @@ use crate::args::Glean;
 const REC_ARITY: u32 = 99;
 const HEADER_ARITY: u32 = 100;
 const FACTS_FILE: &str = "facts.json";
+
+// @fb-only
 
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
@@ -1365,19 +1366,21 @@ impl GleanIndexer {
                 Self::resolve_record_v2(sema, *name, file_id, ctx)
             }
             hir::AnyExpr::Expr(Expr::MacroCall {
-                macro_def, args, ..
-            })
-            | hir::AnyExpr::Pat(Pat::MacroCall {
-                macro_def, args, ..
-            })
-            | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall {
-                macro_def, args, ..
-            })
-            | hir::AnyExpr::Term(Term::MacroCall {
-                macro_def, args, ..
+                macro_def,
+                macro_name,
+                args,
+                ..
             }) => {
                 let def = macro_def.as_ref()?;
-                Self::resolve_macro_v2(sema, def, args, source_file, ctx)
+                let mut resolved = Self::resolve_macro_v2(sema, def, source_file, ctx)?;
+                // @fb-only
+                Some(resolved)
+            }
+            hir::AnyExpr::Pat(Pat::MacroCall { macro_def, .. })
+            | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall { macro_def, .. })
+            | hir::AnyExpr::Term(Term::MacroCall { macro_def, .. }) => {
+                let def = macro_def.as_ref()?;
+                Self::resolve_macro_v2(sema, def, source_file, ctx)
             }
             hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
                 let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
@@ -1604,25 +1607,22 @@ impl GleanIndexer {
     fn resolve_macro_v2(
         sema: &Semantic<'_>,
         macro_def: &InFile<DefineId>,
-        args: &[ExprId],
         source_file: &InFile<ast::SourceFile>,
         ctx: &AnyCallBackCtx,
     ) -> Option<XRef> {
-        let (_, source_map, expr_source) = ctx.body_with_expr_source(sema)?;
+        let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
         let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
         let form_list = sema.form_list(macro_def.file_id);
         let define = &form_list[macro_def.value];
         let name = define.name.name();
         let expansion = Self::expand_macro(sema, &expr_source, source_file);
-        let mut target = MacroTarget {
+        let target = MacroTarget {
             file_id: macro_def.file_id.into(),
             name: name.to_string(),
             arity: define.name.arity(),
             expansion,
             ods_url: None,
         };
-        // @fb-only
-            // @fb-only
         Some(XRef {
             source: range.into(),
             target: XRefTarget::Macro(target.into()),

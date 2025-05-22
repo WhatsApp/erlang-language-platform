@@ -78,4 +78,8 @@ impl Var {
     pub fn as_string(&self, db: &dyn InternDatabase) -> String {
         db.lookup_var(*self).to_string()
     }
+
+    pub fn as_name(&self, db: &dyn InternDatabase) -> Name {
+        db.lookup_var(*self)
+    }
 }

@@ -11,6 +11,7 @@
 
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
@@ -34,10 +35,14 @@ pub fn with_fixture(fixture: &str) -> (Analysis, ChangeFixture) {
 
 /// Creates analysis from a single file fixture, returns the file id
 #[track_caller]
-pub(crate) fn single_file(fixture: &str) -> (Analysis, FileId) {
-    let (db, file_id) = RootDatabase::with_single_file(fixture);
+pub(crate) fn single_file_annotations(
+    fixture: &str,
+) -> (Analysis, FileId, Vec<(FileRange, String)>) {
+    let (db, fixture) = RootDatabase::with_fixture(fixture);
+    let annotations = fixture.annotations();
     let host = AnalysisHost { db };
-    (host.analysis(), file_id)
+    assert_eq!(fixture.files.len(), 1);
+    (host.analysis(), fixture.files[0], annotations)
 }
 
 /// Creates analysis from a multi-file fixture, returns position marked with the [`CURSOR_MARKER`]
