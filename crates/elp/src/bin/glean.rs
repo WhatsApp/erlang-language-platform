@@ -1367,8 +1367,7 @@ impl GleanIndexer {
             }
             hir::AnyExpr::Expr(Expr::MacroCall {
                 macro_def,
-                macro_name,
-                args,
+                expansion,
                 ..
             }) => {
                 let def = macro_def.as_ref()?;
@@ -2481,9 +2480,9 @@ mod tests {
         let spec = r#"
         //- /src/macro.erl
             -module(macro).
-            -define(COUNT_INFRA(X), X).
+            -define(COUNT_INFRA(X), wa_stats_counter:count(X)).
             baz(atom) -> ?COUNT_INFRA(atom),
-        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/70/has_ods/'atom'
+        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/94/has_ods/'wa_stats_counter':'count'( 'atom' )
 
         "#;
         // @fb-only
