@@ -9,6 +9,11 @@ codegen-units = 1
 lto = true
 debug = "line-tables-only"
 
+[profile.release-thin]
+inherits = "release"
+codegen-units = 16
+lto = "thin"
+
 # Workaround to easily locate workspace root
 # See https://github.com/rust-lang/cargo/issues/3946
 [env]
