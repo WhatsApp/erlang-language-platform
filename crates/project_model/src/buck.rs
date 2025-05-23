@@ -1094,7 +1094,14 @@ fn targets_to_project_data_bxl(
             applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
         };
-        result.push(project_app_data);
+        // Do not bother with applications that exist purely as a
+        // handle on dependencies for include_path.
+        if !((target.src_files.is_empty() && project_app_data.extra_src_dirs.is_empty())
+            && project_app_data.include_dirs.is_empty()
+            && project_app_data.abs_src_dirs.is_empty())
+        {
+            result.push(project_app_data);
+        }
     }
 
     result
