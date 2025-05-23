@@ -11,6 +11,7 @@
 import * as vscode from 'vscode';
 import { activateDebugger } from './debugger';
 import { registerCommands } from './commands';
+import { outputChannel } from './logging';
 import * as path from 'path';
 
 import {
@@ -22,13 +23,11 @@ import {
 import { CodeAction317, resolveCodeActionData } from './lspExtensions';
 
 let client: LanguageClient;
-let log: vscode.OutputChannel;
 
 export const ELP = 'elpClient';
 
 export function activate(context: vscode.ExtensionContext) {
-
-	log = vscode.window.createOutputChannel('Erlang ELP');
+	const log = outputChannel();
 
 	// Options to control the language server
 	const config = vscode.workspace.getConfiguration(ELP);
@@ -74,10 +73,11 @@ export function activate(context: vscode.ExtensionContext) {
 		clientOptions
 	);
 
+	log.appendLine('Registering commands');
 	registerCommands(context, client);
 
-	log.append('Activating debugger');
 	// Activate the DAP Debugger
+	log.appendLine('Activating debugger');
 	activateDebugger(context);
 
 	// Start the client. This will also launch the server
