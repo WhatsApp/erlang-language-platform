@@ -1665,6 +1665,16 @@ fn parse_error_to_diagnostic_info(
                     )),
                     None => Some(default_range),
                 },
+                "L1296" => match type_alias_name_range(db, file_id, range) {
+                    Some(name_range) => Some((
+                        file_id,
+                        name_range.start(),
+                        name_range.end(),
+                        parse_error.code.clone(),
+                        parse_error.msg.clone(),
+                    )),
+                    None => Some(default_range),
+                },
                 "L1308" => match spec_name_range(db, file_id, range) {
                     Some(name_range) => Some((
                         file_id,
@@ -1763,6 +1773,18 @@ fn spec_name_range(db: &RootDatabase, file_id: FileId, range: TextRange) -> Opti
     let source_file = sema.parse(file_id);
     let spec = algo::find_node_at_offset::<ast::Spec>(source_file.value.syntax(), range.start())?;
     Some(spec.fun()?.syntax().text_range())
+}
+
+fn type_alias_name_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    range: TextRange,
+) -> Option<TextRange> {
+    let sema = Semantic::new(db);
+    let source_file = sema.parse(file_id);
+    let type_alias =
+        algo::find_node_at_offset::<ast::TypeAlias>(source_file.value.syntax(), range.start())?;
+    Some(type_alias.name()?.name()?.syntax().text_range())
 }
 
 /// For an error in an included file, find the include directive, work
@@ -2511,6 +2533,29 @@ baz(1)->4.
     -spec bar() -> ok.
 %%        ^^^  error: spec for undefined function bar/0
     foo() -> ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn restricted_range_for_unused_type_diagnostic() {
+        check_diagnostics(
+            r#"
+//- erlang_service
+    -module(main).
+
+    -type foo() :: ok.
+%%        ^^^  warning: type foo() is unused
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+//- erlang_service
+    -module(main).
+
+    -type foo(A, B) :: {A, B}.
+%%        ^^^  warning: type foo(_,_) is unused
 "#,
         );
     }
