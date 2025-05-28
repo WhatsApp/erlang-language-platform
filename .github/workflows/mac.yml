@@ -1,0 +1,54 @@
+name: ELP CI
+on:
+  push: {}
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform-arch: [macos-13-x64, macos-latest-arm]
+        otp-version: [28.0]
+        include:
+          - otp-version: 28.0
+            brew-otp-version: 28
+            vscode-publish: false
+          - platform-arch: macos-13-x64
+            platform: macos-13
+            os: macos
+            target: x86_64-apple-darwin
+            vscode-target: darwin-x64
+          - platform-arch: macos-latest-arm
+            platform: macos-latest
+            os: macos
+            target: aarch64-apple-darwin
+            vscode-target: darwin-arm64
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout erlang-language-platform
+        uses: "actions/checkout@v3"
+      - name: Set up rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+      - name: Set up cross-compiler
+        if: matrix.platform-arch == 'ubuntu-22.04-arm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y crossbuild-essential-arm64
+      - name: Install Erlang/OTP (MacOS Only)
+        if: matrix.os == 'macos'
+        run: brew install erlang@${{ matrix.brew-otp-version }}
+      - name: Add erl to path (MacOS Only)
+        if: matrix.os == 'macos'
+        run: |
+          echo '/opt/homebrew/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH
+          echo '/usr/local/opt/erlang@${{ matrix.brew-otp-version }}/bin' >> $GITHUB_PATH
+      - name: Verify Erlang version
+        run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+      - name: Install rebar3
+        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+      - name: Add rebar3 to path
+        run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
+      - name: Verify rebar3 version
+        run: rebar3 version
