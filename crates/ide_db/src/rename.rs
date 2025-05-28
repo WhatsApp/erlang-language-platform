@@ -142,7 +142,7 @@ impl SymbolDefinition {
     /// renaming this `Definition`. Note that some definitions, like
     /// builtin types, can't be renamed.
     pub fn range_for_rename(self, sema: &Semantic) -> Option<FileRange> {
-        let res = match self {
+        match self {
             SymbolDefinition::Var(v) => {
                 let range = v.source(sema.db.upcast()).syntax().text_range();
                 Some(FileRange {
@@ -151,8 +151,7 @@ impl SymbolDefinition {
                 })
             }
             _ => None,
-        };
-        res
+        }
     }
 
     fn rename_reference(
@@ -355,11 +354,10 @@ fn is_safe_var(
             value: var,
         };
         if let Some((resolver_var, scope_var)) = sema.scope_for(var_in) {
-            let name_ok = resolver_var
+            resolver_var
                 .all_vars_in_scope(scope_var)
                 .iter()
-                .all(|&var| sema.db.lookup_var(var) != new_name);
-            name_ok
+                .all(|&var| sema.db.lookup_var(var) != new_name)
         } else {
             false
         }

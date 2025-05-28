@@ -222,7 +222,7 @@ pub fn fold_file<'a, T>(
     form_callback: &'a mut dyn FnMut(T, On, FormIdx) -> T,
 ) -> T {
     let form_list = sema.form_list(file_id);
-    let r = form_list.forms().iter().fold(initial, |r, &form_idx| {
+    form_list.forms().iter().fold(initial, |r, &form_idx| {
         let r = form_callback(r, On::Entry, form_idx);
         let r = match form_idx {
             FormIdx::FunctionClause(function_id) => {
@@ -292,8 +292,7 @@ pub fn fold_file<'a, T>(
             }
         };
         form_callback(r, On::Exit, form_idx)
-    });
-    r
+    })
 }
 
 /// Fold over only the functions in a file.
@@ -644,11 +643,10 @@ impl<'a, T> FoldCtx<'a, T> {
         ctx.macro_stack = Vec::default();
         let r = ctx.do_fold_type_expr(spec_sig.result, r);
 
-        let r = spec_sig.guards.iter().fold(r, |acc, (_, type_expr_id)| {
+        spec_sig.guards.iter().fold(r, |acc, (_, type_expr_id)| {
             ctx.macro_stack = Vec::default();
             ctx.do_fold_type_expr(*type_expr_id, acc)
-        });
-        r
+        })
     }
 
     pub fn fold_record_field_body(

@@ -659,7 +659,7 @@ pub enum GuardLiteral {
 }
 
 fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<GuardLiteral> {
-    let literal = match code {
+    match code {
         SubId::AnyExprId(any_expr_id) => match body.get_any(*any_expr_id) {
             AnyExprRef::Expr(expr) => match expr {
                 Expr::Literal(literal) => Some(GuardLiteral::Literal(literal.clone())),
@@ -675,8 +675,7 @@ fn get_literal_subid<'a>(body: &'a FoldBody, code: &'a SubId) -> Option<GuardLit
             AnyExprRef::Term(_) => None,
         },
         _ => None,
-    };
-    literal
+    }
 }
 
 #[cfg(test)]

@@ -1379,10 +1379,9 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
     pub fn ast_fun_decl(&self) -> ast::FunDecl {
         let form_list = self.sema.db.file_form_list(self.function_clause_id.file_id);
         let function = &form_list[self.function_clause_id.value];
-        let function_ast = function
+        function
             .form_id
-            .get(&self.function_clause_id.file_syntax(self.sema.db.upcast()));
-        function_ast
+            .get(&self.function_clause_id.file_syntax(self.sema.db.upcast()))
     }
 
     pub fn body_exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {

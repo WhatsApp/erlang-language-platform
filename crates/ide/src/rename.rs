@@ -78,7 +78,7 @@ fn find_definitions(
 ) -> RenameResult<Vec<SymbolDefinition>> {
     let symbols =
         if let Some(name_like) = algo::find_node_at_offset::<ast::Name>(syntax, position.offset) {
-            let res = match &name_like {
+            match &name_like {
                 ast::Name::Var(var) => {
                     let def = sema.to_def::<ast::Var>(InFile {
                         file_id: position.file_id,
@@ -125,8 +125,7 @@ fn find_definitions(
                     }
                 }
                 ast::Name::MacroCallExpr(_) => None,
-            };
-            res
+            }
         } else {
             rename_error!("No references found at position")
         };

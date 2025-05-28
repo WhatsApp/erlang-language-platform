@@ -539,13 +539,12 @@ pub fn first_function_insert_location(
             TextSize::from(0)
         }
     });
-    let insert = if let Some((_, export_attr)) = form_list.exports().last() {
+    if let Some((_, export_attr)) = form_list.exports().last() {
         let export_attr_range = export_attr.form_id.get(source).syntax().text_range();
         export_attr_range.end() + TextSize::from(1)
     } else {
         insert
-    };
-    insert
+    }
 }
 
 fn add_to_suite_0(
