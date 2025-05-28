@@ -1,4 +1,4 @@
-name: ELP CI
+name: Mac
 on:
   push: {}
 
