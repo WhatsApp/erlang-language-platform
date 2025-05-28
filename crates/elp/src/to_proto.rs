@@ -609,6 +609,7 @@ pub(crate) fn document_highlight_kind(
 pub(crate) fn buck2_test_runnable(
     snap: &Snapshot,
     runnable: Runnable,
+    mode: Option<String>,
     target: String,
     coverage_enabled: bool,
 ) -> lsp_ext::Runnable {
@@ -616,6 +617,7 @@ pub(crate) fn buck2_test_runnable(
     let location = location_link(snap, None, runnable.clone().nav).ok();
     lsp_ext::Runnable::buck2_test(
         runnable,
+        mode,
         target,
         location,
         snap.workspace_root(file_id).into(),
@@ -675,6 +677,7 @@ pub(crate) fn code_lens(
                             let r = buck2_test_runnable(
                                 snap,
                                 run.clone(),
+                                lens_config.buck2_mode.clone(),
                                 target.clone(),
                                 lens_config.run_coverage,
                             );

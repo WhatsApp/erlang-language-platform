@@ -107,6 +107,7 @@ pub struct Runnable {
 impl Runnable {
     pub fn buck2_test(
         runnable: elp_ide::Runnable,
+        mode: Option<String>,
         target: String,
         location: Option<lsp_types::LocationLink>,
         workspace_root: PathBuf,
@@ -119,7 +120,7 @@ impl Runnable {
             args: RunnableArgs::Buck2(Buck2RunnableArgs {
                 workspace_root,
                 command: "test".to_string(),
-                args: runnable.buck2_test_args(target.clone(), coverage_enabled),
+                args: runnable.buck2_test_args(mode, target.clone(), coverage_enabled),
                 target,
                 id: runnable.id(),
             }),

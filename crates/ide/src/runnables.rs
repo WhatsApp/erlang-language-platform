@@ -73,8 +73,18 @@ impl Runnable {
         }
     }
 
-    pub fn buck2_test_args(&self, target: String, coverage_enabled: bool) -> Vec<String> {
+    pub fn buck2_test_args(
+        &self,
+        mode: Option<String>,
+        target: String,
+        coverage_enabled: bool,
+    ) -> Vec<String> {
         let mut args = Vec::new();
+        if let Some(mode) = mode {
+            if !mode.is_empty() {
+                args.push(mode)
+            }
+        };
         match &self.kind {
             RunnableKind::Test { .. } => {
                 args.push(target);

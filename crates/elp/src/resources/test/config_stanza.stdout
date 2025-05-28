@@ -75,6 +75,14 @@
     "markdownDescription": "Whether to show function parameter name inlay hints at the call\nsite.",
     "type": "boolean"
   },
+  "elp.lens.buck2.mode": {
+    "default": null,
+    "markdownDescription": "The buck2 mode to use for running tests via the code lenses.",
+    "type": [
+      "null",
+      "string"
+    ]
+  },
   "elp.lens.debug.enable": {
     "default": false,
     "markdownDescription": "Whether to show the `Debug` lenses. Only applies when\n`#elp.lens.enable#` is set.",
