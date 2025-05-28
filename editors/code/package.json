@@ -330,6 +330,18 @@
         }
       }
     },
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "meta.embedded.block.markdown",
+            "settings": {
+                "foreground": "#6A9955"
+            }
+        }
+        ]
+      }
+    },
     "semanticTokenTypes": [],
     "semanticTokenModifiers": [
       {

@@ -604,15 +604,13 @@
 			</dict>
 			<key>name</key>
 			<string>meta.directive.doc.erlang</string>
+			<key>contentName</key>
+			<string>meta.embedded.block.markdown</string>
 			<key>patterns</key>
 			<array>
 				<dict>
-					<key>begin</key>
-					<string>\G</string>
-					<key>contentName</key>
-					<string>comment.block.documentation.erlang</string>
-					<key>while</key>
-					<string>(^)(?!\s*(\5))</string>
+					<key>include</key>
+					<string>text.html.markdown</string>
 				</dict>
 			</array>
 		</dict>
