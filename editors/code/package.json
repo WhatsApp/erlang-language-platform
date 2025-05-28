@@ -73,111 +73,123 @@
         "type": "erlang-edb",
         "label": "Erlang EDB",
         "languages": ["erlang"],
-        "initialConfigurations": [
-          {
-            "name": "Erlang EDB",
-            "type": "erlang-edb",
-            "request": "launch",
-            "launchCommand": {
-              "cwd": "${workspaceFolder}",
-              "command": "rebar3",
-              "arguments": [
-                "as",
-                "test",
-                "shell",
-                "--sname",
-                "debuggee"
-              ]
-            },
-            "targetNode": {
-              "name": "debuggee@localhost"
-            }
-          }
-        ],
         "configurationSnippets": [
-          {
-            "label": "Erlang EDB: Launch Configuration (rebar3)",
-            "description": "A new configuration for launching a rebar3 shell for the debuggee.",
+                    {
+            "label": "Launch rebar3 shell",
+            "description": "Launches rebar3 shell and connects it to the debugger",
             "body": {
-              "name": "Erlang EDB",
+              "name": "Launch rebar3 shell",
               "type": "erlang-edb",
               "request": "launch",
-              "launchCommand": {
+              "runInTerminal": {
+                "kind": "integrated",
                 "cwd": "${workspaceFolder}",
-                "command": "rebar3",
-                "arguments": [
-                  "as",
-                  "test",
-                  "shell",
-                  "--sname",
-                  "debuggee"
-                ]
+                "args": ["rebar3", "as", "test", "shell"]
               },
-              "targetNode": {
-                "name": "debuggee@localhost"
+              "config": {
+                "nameDomain": "shortnames"
+              }
+            }
+          },
+          {
+            "label": "Attach to Erlang node",
+            "description": "Attach to a node that must have been started with +D",
+            "body": {
+              "name": "Attach to node",
+              "type": "erlang-edb",
+              "request": "attach",
+              "config": {
+                "cwd": "${workspaceFolder}",
+                "node": "mynode@localhost"
               }
             }
           }
         ],
         "configurationAttributes": {
-          "launch": {
+          "attach": {
             "required": [
-              "launchCommand",
-              "targetNode"
+              "node",
+              "cwd"
             ],
             "properties": {
-              "launchCommand": {
+              "node": {
+                "type": "string",
+                "description": "The node to attach to."
+              },
+              "cookie": {
+                "type": "string",
+                "description": "Connection cookie."
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Path to prepend to any relative source file found in beam files. Typically the workspace folder."
+              },
+              "stripSourcePrefix": {
+                "type": "string",
+                "description": "When source paths in beam files are relative, this can be used to strip a prefix so that they match the filename in the current workspace."
+              }
+            }
+          },
+          "launch": {
+            "required": [
+              "runInTerminal",
+              "config"
+            ],
+            "properties": {
+              "runInTerminal": {
                 "type": "object",
-                "description": "The command used to launch the debuggee (Erlang node under test).",
+                "description": "The RunInTerminal DAP command to use",
                 "required": [
-                  "command"
+                  "args",
+                  "cwd"
                 ],
                 "properties": {
-                  "command": {
-                    "type": "string",
-                    "description": "The command to launch an Erlang node via an external terminal"
-                  },
-                  "arguments": {
+                  "args": {
                     "type": "array",
-                    "description": "Arguments for the command.",
-                    "default": []
+                    "description": "The command to launch and all its arguments"
                   },
                   "cwd": {
                     "type": "string",
-                    "description": "Working directory for the program to start. Defaults to the Workspace Root.",
-                    "default": "${workspaceRoot}"
+                    "description": "Working directory for the node to launch"
                   },
                   "env": {
                     "type": "object",
                     "description": "Environment key-value pairs that are added to or removed from the default environment."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "Use an integrated or external terminal. Possible values: `integrated` (default) or `external`."
+                  },
+                  "argsCanBeInterpretedByShell": {
+                    "type": "boolean",
+                    "description": "Set to true if the args need to have environment variables expanded, etc. Default: false."
                   }
                 }
               },
-              "targetNode": {
+              "config": {
                 "type": "object",
-                "description": "Information about the debuggee (Erlang node under test), used by the debugger to connect via Erlang RPC.",
+                "description": "Debugger configuration",
                 "required": [
-                  "name"
+                  "nameDomain"
                 ],
                 "properties": {
-                  "name": {
+                  "nameDomain": {
                     "type": "string",
-                    "description": "The name of the Erlang node (e.g. my_node@my_host)."
+                    "description": "Should the debugger use shortnames or longnames."
                   },
-                  "cookie": {
+                  "nodeInitCodeInEnvVar": {
                     "type": "string",
-                    "description": "The cookie used to connect to the debuggee. If omitted, the default system cookie is used."
+                    "description": "If given, the initialization code for the node will be put in the given environment variable, which should then be mentioned in the `args`."
+                  },
+                  "stripSourcePrefix": {
+                    "type": "string",
+                    "description": "When source paths in beam files are relative, this can be used to strip a prefix so that they match the filename in the current workspace."
+                  },
+                  "timeout": {
+                    "type": "number",
+                    "description": "How long, in seconds, the debugger will wait for the new node to connect to it. Defaults to 60."
                   }
                 }
-              },
-              "timeout": {
-                "type": "integer",
-                "description": "Timeout for connecting to the project node after starting debugging.",
-                "default": 60
-              },
-              "stripSourcePrefix": {
-                "type": "string",
-                "description": "When specified, the string is stripped from the suffix of the `cwd`. Useful to guarantee that source paths are relative to the repo root, when this does not coincide with the current `cwd`."
               }
             }
           }
