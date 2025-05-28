@@ -495,6 +495,7 @@ bar() -> ?FOO.
                                     dir: AbsPathBuf(
                                         "/",
                                     ),
+                                    include_dirs: [],
                                     include_path: [
                                         AbsPathBuf(
                                             "/src",
@@ -532,6 +533,11 @@ bar() -> ?FOO.
                                     dir: AbsPathBuf(
                                         "/opt/lib/comp-1.3",
                                     ),
+                                    include_dirs: [
+                                        AbsPathBuf(
+                                            "/opt/lib/comp-1.3/include",
+                                        ),
+                                    ],
                                     include_path: [
                                         AbsPathBuf(
                                             "/opt/lib/comp-1.3/include",
@@ -576,6 +582,11 @@ bar() -> ?FOO.
                                     dir: AbsPathBuf(
                                         "/",
                                     ),
+                                    include_dirs: [
+                                        AbsPathBuf(
+                                            "/include",
+                                        ),
+                                    ],
                                     include_path: [
                                         AbsPathBuf(
                                             "/include",
@@ -732,6 +743,14 @@ foo() -> ?BAR.
                                     dir: AbsPathBuf(
                                         "/extra",
                                     ),
+                                    include_dirs: [
+                                        AbsPathBuf(
+                                            "/extra/include",
+                                        ),
+                                        AbsPathBuf(
+                                            "/include",
+                                        ),
+                                    ],
                                     include_path: [
                                         AbsPathBuf(
                                             "/",

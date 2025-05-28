@@ -122,6 +122,11 @@ pub struct AppData {
     pub project_id: ProjectId,
     pub name: AppName,
     pub dir: AbsPathBuf,
+    /// Include directories belonging to this app only. Used for
+    /// include_lib resolution
+    pub include_dirs: Vec<AbsPathBuf>,
+    /// The set of local include directories as well as those of all
+    /// dependencies
     pub include_path: Vec<AbsPathBuf>,
     pub src_path: Vec<AbsPathBuf>,
     pub extra_src_dirs: Vec<String>,
@@ -358,6 +363,7 @@ impl<'a> ProjectApps<'a> {
                     project_id,
                     name: app.name.clone(),
                     dir: app.dir.clone(),
+                    include_dirs: app.include_dirs.clone(),
                     include_path: app.include_path.clone(),
                     extra_src_dirs: app.extra_src_dirs.clone(),
                     macros: app.macros.clone(),

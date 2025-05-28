@@ -107,6 +107,8 @@ fn find_generated_include_lib(
     // The target_app_data has an `include_path` field. An "include/"
     // prefix on the path should be replaced with an entry from the
     // set of include paths/
+    // Note: we use the more relaxed include_path here, as the thrift
+    // includes are not all for direct dependencies at present.
     let path = include_path.strip_prefix("include/")?;
     target_app_data.include_path.iter().find_map(|dir| {
         let path = dir.join(path);
@@ -132,7 +134,9 @@ pub fn generated_file_include_lib(
 
     let inc_app_data = db.file_app_data(included_file_id)?;
     let candidate_path = inc_app_data
-        .include_path
+        // Note: we use include_dirs here, as it keeps the include dirs local to the app only.
+        // include_path is the search path including all dependency include_dir`s
+        .include_dirs
         .iter()
         .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
     let candidate = format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());

@@ -211,7 +211,7 @@ mod tests {
             // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
                 -module(unspecific_include).
-                -include_lib("app_a/include/app_a/include/some_header_from_app_a.hrl").
+                -include_lib("app_a/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
@@ -229,7 +229,7 @@ mod tests {
             // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
                 -module(unspecific_include).
-                -include_lib("app_a/include/app_a/include/some_header_from_app_a.hrl").
+                -include_lib("app_a/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
