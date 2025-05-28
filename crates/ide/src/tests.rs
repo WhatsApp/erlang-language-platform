@@ -508,7 +508,8 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::UnspecificInclude)
-        .disable(DiagnosticCode::UndefinedFunction);
+        .disable(DiagnosticCode::UndefinedFunction)
+        .disable(DiagnosticCode::NoCatch);
     check_no_parse_errors_with_config(analysis, file_id, &config, &vec![]);
 }
 

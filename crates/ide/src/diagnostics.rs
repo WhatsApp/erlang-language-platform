@@ -105,6 +105,7 @@ mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
 mod mutable_variable;
+mod no_catch;
 mod no_dialyzer_attribute;
 mod no_garbage_collect;
 mod no_size;
@@ -915,6 +916,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &sets_version_2::DESCRIPTOR,
         &no_size::DESCRIPTOR,
         &binary_string_to_sigil::DESCRIPTOR,
+        &no_catch::DESCRIPTOR,
     ]
 }
 

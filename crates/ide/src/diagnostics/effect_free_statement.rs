@@ -230,10 +230,20 @@ fn make_diagnostic(file_id: FileId, expr: &ast::Expr) -> Diagnostic {
 #[cfg(test)]
 mod tests {
 
+    use elp_ide_db::DiagnosticCode;
     use expect_test::expect;
 
-    use crate::tests::check_diagnostics;
+    use crate::diagnostics::DiagnosticsConfig;
+    use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
+
+    fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::BinaryStringToSigil)
+            .disable(DiagnosticCode::UnspecificInclude)
+            .disable(DiagnosticCode::NoCatch);
+        check_diagnostics_with_config(config, fixture)
+    }
 
     #[test]
     fn check_removes_comma_and_other_stuff() {
