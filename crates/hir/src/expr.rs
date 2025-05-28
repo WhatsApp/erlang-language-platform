@@ -409,6 +409,13 @@ impl Expr {
         }
     }
 
+    pub fn as_tuple_exprs(&self) -> Option<&Vec<ExprId>> {
+        match self {
+            Expr::Tuple { exprs } => Some(exprs),
+            _ => None,
+        }
+    }
+
     /// Check whether the provided atom is contained in the list.
     /// If the list contains elements other than literals, return None.
     pub fn literal_list_contains_atom(
