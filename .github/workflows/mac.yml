@@ -11,7 +11,7 @@ jobs:
         otp-version: [28.0]
         include:
           - otp-version: 28.0
-            brew-otp-version: 28
+            brew-otp-version: ""
             vscode-publish: false
           - platform-arch: macos-13-x64
             platform: macos-13
@@ -38,7 +38,7 @@ jobs:
           sudo apt-get install -y crossbuild-essential-arm64
       - name: Install Erlang/OTP (MacOS Only)
         if: matrix.os == 'macos'
-        run: brew install erlang@${{ matrix.brew-otp-version }}
+        run: brew install erlang${{ matrix.brew-otp-version }}
       - name: Add erl to path (MacOS Only)
         if: matrix.os == 'macos'
         run: |
