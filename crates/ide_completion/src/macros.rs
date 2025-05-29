@@ -55,7 +55,7 @@ pub(crate) fn add_completions(
                 .get_macros()
                 .keys()
                 .filter(|macro_name| macro_name.name().starts_with(&prefix))
-                .map(macro_name_to_completion);
+                .map(|name| macro_name_to_completion(sema, file_position.file_id, name, None));
 
             acc.extend(user_defined);
 
@@ -93,7 +93,7 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
             .map(|(_chars, define)| {
                 let form_list = sema.form_list(define.file_id);
                 let define = &form_list[define.value];
-                macro_name_to_completion(&define.name)
+                macro_name_to_completion(sema, file_id, &define.name, None)
             })
             .collect()
     } else {
@@ -101,7 +101,18 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
     }
 }
 
-fn macro_name_to_completion(macro_name: &MacroName) -> Completion {
+fn macro_name_to_completion(
+    sema: &Semantic,
+    file_id: FileId,
+    macro_name: &MacroName,
+    include: Option<IncludeFile>,
+) -> Completion {
+    let additional_edit = if let Some(inc) = include {
+        inc.insert_position_if_needed(sema, file_id)
+            .map(|pos| (pos, inc.clone()))
+    } else {
+        None
+    };
     match macro_name.arity() {
         Some(arity) => {
             let label = macro_name.to_string();
@@ -113,7 +124,7 @@ fn macro_name_to_completion(macro_name: &MacroName) -> Completion {
                 position: None,
                 sort_text: None,
                 deprecated: false,
-                additional_edit: None,
+                additional_edit,
             }
         }
         None => Completion {
@@ -123,7 +134,7 @@ fn macro_name_to_completion(macro_name: &MacroName) -> Completion {
             position: None,
             sort_text: None,
             deprecated: false,
-            additional_edit: None,
+            additional_edit,
         },
     }
 }
