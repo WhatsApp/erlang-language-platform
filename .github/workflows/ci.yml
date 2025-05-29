@@ -91,7 +91,8 @@ jobs:
       - name: Verify Erlang version
         run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
       - name: Install rebar3
-        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+        # Note: we are installing version 3.24 as it still supports OTP 25
+        run: "mkdir rebar3 && curl -v https://github.com/erlang/rebar3/releases/download/3.24.0/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
       - name: Add rebar3 to path
         run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
       - name: Verify rebar3 version
